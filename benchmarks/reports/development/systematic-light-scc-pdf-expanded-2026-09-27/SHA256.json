@@ -1,0 +1,161 @@
+{
+  "files": {
+    "benchmarks/reports/development/current-ols-final-blocks-local-2026-09-21/README.md": {
+      "bytes": 10993,
+      "sha256": "b5767595dd2a109ffa8a036f32ba4b229e8edbd2fbab5b4bfb18453b705fe168"
+    },
+    "benchmarks/reports/development/current-ols-final-blocks-local-2026-09-21/measurements.json": {
+      "bytes": 1953493,
+      "sha256": "cb62fd0c0bf19ae05c1e4296c482c742c08a721fce8bf20e59efaaf33eda19c6"
+    },
+    "benchmarks/reports/development/systematic-light-scc-final-2026-09-27/SHA256.json": {
+      "bytes": 3208,
+      "sha256": "717bd719d4ddbf284912195bb024a6bca1b4a9bc69f92f3aafba0037e488601b"
+    },
+    "benchmarks/reports/development/systematic-light-scc-final-2026-09-27/analysis.json": {
+      "bytes": 10373,
+      "sha256": "e94270f59a2399a4119c85d8a8227b6236896d3e22a1401d33bbf188b5fbcdd2"
+    },
+    "benchmarks/reports/development/systematic-light-scc-final-2026-09-27/generated/captured-sha256.csv": {
+      "bytes": 1676958,
+      "sha256": "9ca09bea06038e2762ec1189461085ed588e87c43caec71e4e182bb7cd1b6189"
+    },
+    "benchmarks/reports/development/systematic-light-scc-final-2026-09-27/generated/manifest.json": {
+      "bytes": 4729,
+      "sha256": "ca4d1011b644371cd6c3ab41911e6af77dc4fdc5646d1210bd0f4499669ebf5c"
+    },
+    "benchmarks/reports/development/systematic-light-scc-final-2026-09-27/generated/paired-ratios.csv": {
+      "bytes": 297453,
+      "sha256": "037c5989087c66d2edbc11b34f5ed33681b45ed43d78d4df8fc05467cd6e1dbc"
+    },
+    "benchmarks/reports/development/systematic-light-scc-final-2026-09-27/generated/provenance.json": {
+      "bytes": 40385,
+      "sha256": "f6e9fd4ba5df648f73357705a7e2246cf80bc5fd7b97c7b80885c834a25b0507"
+    },
+    "benchmarks/reports/development/systematic-light-scc-final-2026-09-27/generated/runs.csv": {
+      "bytes": 409001,
+      "sha256": "34b715042386b28b48fe13660eb80e4e90598a53db9ae4b5d2beb83678ee954b"
+    },
+    "benchmarks/reports/development/systematic-light-scc-final-2026-09-27/generated/summary.csv": {
+      "bytes": 84370,
+      "sha256": "dcb70a49276331dad40e93acae882bca3f25f51ae210a58a6773e3864b5131f9"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/README.md": {
+      "bytes": 4960,
+      "sha256": "a486f3dd13b5ac6a80399b48d9dab745272eb785d5404eeb9a4f9c2d8c30523e"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/analysis.json": {
+      "bytes": 50319,
+      "sha256": "4279daf3c5564743eacecac01399d24cb0f986e8bc3c1fab089c5a5bbae986bf"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/analyze.py": {
+      "bytes": 5391,
+      "sha256": "03347d4b48074f03731da40d64c0ba9287e86a2af678fca7116a87623e7ebbdc"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/build_pdf.py": {
+      "bytes": 31516,
+      "sha256": "c556bd4b46ebf3534ccf065fe72b345eff91efc874cdf670d06b940b60e2a319"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/diagnostic-extract.json": {
+      "bytes": 493594,
+      "sha256": "80cc777db537dcde13e92789724f004ab249b50d8d87832171b7d3d6ef8dc026"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/failure-stages.json": {
+      "bytes": 55526,
+      "sha256": "477ebf1729ca115864477a6e39c51c987b0684d8df42d624f5823aaf6b81613c"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures.py": {
+      "bytes": 10739,
+      "sha256": "d82d88c250878e23b27541e8eb0a4d7ff9fce4f9bb0e10b8329c1b00dc6e7baa"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/all_comparators.pdf": {
+      "bytes": 25467,
+      "sha256": "ebd3a194af6865b178d907671b827d9f92122a41e150936d95b0956ffe52d98d"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/all_comparators.png": {
+      "bytes": 86783,
+      "sha256": "7d8d23c261d7083e7777ec631fbaea8eb7a98636c1b16946d513d25e0497d93b"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/coverage.pdf": {
+      "bytes": 18401,
+      "sha256": "5bf9af66b67077f1aac24cd7ed6604b5d81df36535e81d39df89c464d9ff1966"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/coverage.png": {
+      "bytes": 62590,
+      "sha256": "c7e0a6e9ebb0c6be91a39dd1a72cb958563415a869c63509a2b402130641e559"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/distribution.pdf": {
+      "bytes": 20135,
+      "sha256": "012c096f1b8dc4b5c028a3daa989e1bfef9b2aa471c6c1601a0739492b7ac8f8"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/distribution.png": {
+      "bytes": 78716,
+      "sha256": "d70e687deac3d3ec3e565499d85618c34c811b4881d981b9161e231a3604c652"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/heatmap.pdf": {
+      "bytes": 28995,
+      "sha256": "d5bf4a32b4f0f47e59856f49bd8d6e7935399ee187c705fc7bdd016db8ad5f81"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/heatmap.png": {
+      "bytes": 338139,
+      "sha256": "85412df861075da0268aa1bbe0d6874c0a6314f48d7d2021b47ba51037f62527"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/reliability_memory.pdf": {
+      "bytes": 28664,
+      "sha256": "1c54f5a9a0ad1bf2cc680b8eb2a137df8d610079c2aeb5d4325acecc46f8c56b"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/reliability_memory.png": {
+      "bytes": 87629,
+      "sha256": "21c3c43bec4fcf860896039e9a14b6edc687fd40975d94ed42288fe19ffa7f7d"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/scaling.pdf": {
+      "bytes": 28793,
+      "sha256": "a7161179530993b32d3ff9f326995a70dc32d965bf24053656825b129ff4f75b"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/scaling.png": {
+      "bytes": 210488,
+      "sha256": "87e878e403d17b41ed02499ed3d87eb865141fc381fc1b21bde4e4bfb2b462e6"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/slopes.pdf": {
+      "bytes": 15692,
+      "sha256": "840a55bdf8eaef31f08c5f859d8a047e1abb35f6688bb9449dd5b9e7b38bf58a"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/figures/slopes.png": {
+      "bytes": 50787,
+      "sha256": "70a45275958a4168fa56ffb6971fe082b4ade09c954ec4a7b4396998396b9352"
+    },
+    "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/qa.json": {
+      "bytes": 923,
+      "sha256": "b84aa5b140ecb10ad7b612690030b08f39b94b3e5a8c7fa95266cdd0e032e131"
+    },
+    "benchmarks/reports/development/systematic-slope-adjudication-2026-09-26/result.md": {
+      "bytes": 2358,
+      "sha256": "d21e960bd35400d08baf6952eb63f37e7caa1d756f0bfb742c2d94f8a4574f70"
+    },
+    "benchmarks/systematic/generate.py": {
+      "bytes": 5445,
+      "sha256": "b56668181b80cd8dd00629b9841cf8a4faaacce5711e54bdfec8b137d2183482"
+    },
+    "benchmarks/systematic/light.py": {
+      "bytes": 7515,
+      "sha256": "73fc03114c55b8af9ad7220b5905818bc8576ce67854a617cd4964f7065bcb62"
+    },
+    "benchmarks/systematic/python_worker.py": {
+      "bytes": 3927,
+      "sha256": "93fd03dbe2b7d899ea946462dd0b8333d381435174a84624480a2b16ce5ea171"
+    },
+    "benchmarks/systematic/r_worker.R": {
+      "bytes": 3725,
+      "sha256": "975fb03f5338a0502be8dd3eb840a960c679cfd94ba87f90fb9c4a8d0fdf58ef"
+    },
+    "benchmarks/systematic/stata_worker.do": {
+      "bytes": 5828,
+      "sha256": "95aa343b505c05856cd46573bee0e398cacddf99c5399d6f793b2539479f3c2e"
+    },
+    "output/pdf/fereg-scc-benchmark-report-2026-09-27-expanded.pdf": {
+      "bytes": 1011536,
+      "sha256": "ab2b1d93e0616186b6e5ecfd4454611e521080c57842253139870030b772b0f2"
+    }
+  },
+  "schema": "fereg-illustrated-expanded-sha256-v1"
+}

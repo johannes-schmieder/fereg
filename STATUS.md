@@ -11,6 +11,22 @@ unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains acti
 
 ## Illustrated SCC campaign report — 2026-09-27
 
+The requested [expanded 14-page edition](output/pdf/fereg-scc-benchmark-report-2026-09-27-expanded.pdf)
+has seven figures, all comparators, a design glossary, explicit OLS unranked-cell
+causes, failure attribution, all eight slope configurations and comparison to
+the earlier 93/93 Mac timing wins. [Expanded evidence](benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/README.md)
+preserves 498 verified record bindings (including repeats), sanitized error
+excerpts and a fresh independent topology calculation on hash-matched group IDs.
+That sparse two-FE input has 38 components, FE rank 12,865 and residual DoF
+48,565, agreeing with native/reghdfe; default fixest uses 48,528. This identifies
+an inference mismatch, without changing original pair eligibility. Of 24 OLS
+unranked configurations, 21 have scientific discrepancies and three have native
+timeouts. All 150 pyfixest worker failures hit the 10,000-iteration demeaning
+limit. Native sparse-zero rc459 causes remain unlocalized. The lighter campaign
+does not time saved FE, clustering, weights or fitted-output publication.
+All 14 pages passed visual review and content/bounds checks; Telegram delivery
+succeeded. No fits or jobs were run; original reports and receipts are unchanged.
+
 Johannes requested a PDF, Telegram delivery, interpretation, and committing and
 pushing all current work. The [eight-page PDF](output/pdf/fereg-scc-benchmark-report-2026-09-27.pdf)
 and [reproducible derivative evidence](benchmarks/reports/development/systematic-light-scc-pdf-2026-09-27/README.md)

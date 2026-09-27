@@ -1,0 +1,1367 @@
+{
+  "description": "Observed presence of the existing target-stage sentinels at read-only SCC inspection; no fits run.",
+  "rows": [
+    {
+      "path": "results/ols-three_fe_sparse-n3932160-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "a324328c482419366a2011c663d3fd40336356f2b4804e023762650ea635eafd",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n3932160-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "87e224494a6240e73902663622079e80419200dd83b33d6b22f99d7dbf377741",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n3932160-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "a5994efaa7bd1140e55a8778670f13ab6916cbf57a45bc41924679ed0af28001",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n3932160-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "02dbccda3cc6cfb0ba97e61c3e15b6b139a81d812302d1d1493a09803889efc6",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "9e1967b92076953d9ec2c7316517e373e893dc776c392e36d2730b17cca3150f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "0645ae2fc635e10d3d7d54b5ee745caa5e72d69b2564d22ec3c1b1d6e4530d58",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "4ccb496a9e19aa22c00d8458c3eba1727badba4bee63e82a61764b8058229805",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "298d6b4faba1fc8ec7c4ca984c2a290378b66693fdbfb0968327076ff8ae3fcd",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n61440-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "3de1969b8cd058e2ecafba035fc5a614b7310e35d55642a2f1d5b53633609c93",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n61440-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "df550602abbcff0faf7c2d361bf64ae7af92101783c642e9821f035516b5a3c8",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n61440-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "165d420d06858cb3c1c5d2014461202610c33797f8c7aa1a0d9567ffd1daefef",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n61440-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "2798e44cd5cf14b1a93b61d8f3cd52bc2f5a24f686076e504cc50c96ed08ef34",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n61440-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "c1bb0a66f4eee715c225fb7bb2d19bff3328d5c5549f3f412ab33a9ce2156d3e",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n61440-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "c9767d6f7ae247531bebb9aa642add2169cbc98c768511aef83df338908968f8",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t1-main/warm-1/pyfixest/result.json",
+      "sha256": "9fe2893cf2139e94b363f7930ba7d7a34966c6f8916f356a22b91e259b5eac14",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t1-main/warm-2/pyfixest/result.json",
+      "sha256": "398224e502c014573239808ccd2d5206e27764bddb93e294bbdaf2c2b9156fa0",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t1-main/warm-3/pyfixest/result.json",
+      "sha256": "7d56913fc6b88b2ae7c2e30e622aea477c96458098900b4f524fb33d0e6a0bc4",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t1-main/warm-4/pyfixest/result.json",
+      "sha256": "f5c7f4fff5796c1ca85774cef14ceed8de969b8e7593222100593b05a3795ade",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "08b76361f2d67a4ac7a2d50f8d71e5017f3c088dc4a5cfef096167afdb5d5fc9",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "e7ac36c4e6d60f95a145331aaa8836aa75dc828228249b13b6188f4193db2cdf",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "0377d6ead8ebcfa9049f9f46e8cc74978dfa072415f5a88de21ef128403993b0",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "a58c1f876e193f37a8be7e1ea1500af12938fadf8d4526d11ca880c1039fc680",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "5e1666276107d16a4151d99901b7dd132d136b82cdc2db0eb2f666de688e798d",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "9f10b0dcc0ec70b0aafb06ac4cdddb824a4fddd80f8553d76368e80c183d1abd",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "da3d1652131da8863a2807788cd09e0cc4f79e1c0cb9877c7032ad380900bdab",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "52aca77f4c78fb44f137ed4b75a2f3747891185c395fe2d09182cbc8931ed52f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t8-main/warm-1/pyfixest/result.json",
+      "sha256": "7bed030b98985159975381300e89824447c7f43553c9ec648f0829eafed9c330",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t8-main/warm-2/pyfixest/result.json",
+      "sha256": "c8a97d1faaa87a1f6a13381a6608504ea1317618a8de7cdffb20affe72abc77e",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t8-main/warm-3/pyfixest/result.json",
+      "sha256": "9be6eed7045cae350597f04cfde6c9f1458f08f69309b32c5279e05d19b1fdbc",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k10-t8-main/warm-4/pyfixest/result.json",
+      "sha256": "8b6261123ff5b5e102bba96c561d4353cf3e175ee0bb1d1c6e8f2db55310772e",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k50-t28-width/warm-1/pyfixest/result.json",
+      "sha256": "ff56e09c0704853431d6e31c7da98d0527c65bb3a754496baf2078bce1f4d1ae",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k50-t28-width/warm-2/pyfixest/result.json",
+      "sha256": "e47bf0279ca6918ceb93ce40c277e31fa2fb5d08111e6be70dd679d6eb975ed6",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k50-t28-width/warm-3/pyfixest/result.json",
+      "sha256": "b5e6e8db19f9b21e21db0d7a2e918dba409c2015966635b114ebbf324b70d232",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-three_fe_sparse-n983040-k50-t28-width/warm-4/pyfixest/result.json",
+      "sha256": "6e3b5814ec0c93ac25384cd4eddc874fc95359a4cd1b908b89d41042e30b559b",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n3932160-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "005770344b908b13e93a4bbd0e0d3854bc3fcaf1fe8b22a955bb643f55cc1555",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n3932160-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "c1850bd3f0a2d01a19eaf4d13819acde18bdc4b637d84c5999ea62a5096841b1",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n3932160-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "5d298561b2d71f83963e06c39efcc28b1209ca1a92a32ee41a8e64824a9bda09",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n3932160-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "56b3e875cd2710ae546a69d746d1f2fbfa311a4f7a6452e280e66f41f445b117",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n3932160-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "d9733d88788e8f811c82792188015e01884177d890b22956def3b2880f3e8808",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n3932160-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "34936d957194c1f852793176283fb36fe4216ca61af45f7baba674c48ef97360",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n3932160-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "5f034d6a5dec6d157049e7c54bcba1cdd36c14994c78bd026ed20b64d70febdd",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n3932160-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "3b9816ec7fdc93ea4ee1efdc39c2f36b7234ed22aef5cfec4aab311338fc60d7",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n61440-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "45e95d98d36d4554bce75cc2a4e45cb6e856b098efeb60a6fc9bd30fad63fda5",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n61440-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "48839d889afb4b08ac2779ec7b13c2875b85a8dae6fb2cefcd45278a1aaa02e4",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n61440-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "2eb340c09d2fdd4a578b1c9c3641ec6542f567c0d5a80da329717cdf39ea7184",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n61440-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "fe75553834b7afe2cee5a137c44277f83ad58f838316db9f9c9a0e349f7ec01a",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n61440-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "ce1e71bf677adf0d819951a89c1c887ce42a48c7a57efcf7af1aa8577c1bed1c",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n61440-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "43e14b1daff67ed3f6309767de3d25dc9fa4181e4b9335e0829db66fd7afa2ad",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "719e90cb80308379574c338a78c3c54fa97b9d151330e4ee9ae9f9a532c9a22c",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "57e12da8daf501472063645666b72d263f0ab6144b2e9f82341399d7e9e7f94a",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "a9f48ffe58038f0bd88000dc5180b13f404534f3fe0e6b4ccdde45419b77a28f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "e32e154d82908657e6419cb1f75d090a7f295ba2ba890a585f9f1bd2d7ea9be7",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "1f5138f2404a3e92d2af5a8f6c978999261d03e902f22f5eb9560326f94330f8",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "62356f39961e6b39a80ed1e2d6cd74286260dc362a773ec5b9beebb54bc8522f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "2e5d97bd059f00440cc4b9b5a5e804761b2f0a546b456c0665d36804363828cc",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "b13eafab4e7683011a3399fbc6df89ebbbf11d34b6b5b681ee2ee6cc86158999",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k50-t28-width/warm-1/pyfixest/result.json",
+      "sha256": "cbb5dea274290ab46718228aaab344b6f29df9368d0da22c7b755a89a1b2981f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k50-t28-width/warm-2/pyfixest/result.json",
+      "sha256": "e8f17251eb76ac3feb05f05cf0dbf4a58b05b8589bf972e5cc23ae85975d26de",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k50-t28-width/warm-3/pyfixest/result.json",
+      "sha256": "cc71cc51e2501e1df1a99f56f2e62e57223f8b0b753c88ff2ea12212eae91f2a",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k50-t28-width/warm-4/pyfixest/result.json",
+      "sha256": "121f23b0c691077a279bb106897e8cd7310dd07d7ba4e7c4d7a246b1c8c2ee39",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k50-t4-width/warm-1/pyfixest/result.json",
+      "sha256": "31831484a228badc64dbedf508fb28f0dd90ba57ba4906be04c4778e457a1fde",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k50-t4-width/warm-2/pyfixest/result.json",
+      "sha256": "a962c09d9dd51e98d13ab8cb515c35d3c7432320b1f7230471d3c4c13fa64f63",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k50-t4-width/warm-3/pyfixest/result.json",
+      "sha256": "5fca123b78a6ad3caad0b0234e5ac075c2289a1d57f839c7781833767206bf4a",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ols-two_fe_sparse-n983040-k50-t4-width/warm-4/pyfixest/result.json",
+      "sha256": "9bb345eac662d63773577714278814fad3754e98d27b0959f7ca229f0e78f3bb",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-strong_d2-n983040-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "4f1e75b53332ad6b72baebc03c8c571d1a4a1f92eaf06916c180d26df3d085ea",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-strong_d2-n983040-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "6c5982bbd2344fca18a66537ba0c52262bd6145fdff79c15ed132088ed5bc9e4",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-strong_d2-n983040-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "274865efd85f2026a5d4bc7a61ed239b68506b0849d0dfc57e9559320af00e8e",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-strong_d2-n983040-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "b03564bd145d7c6b752d2df6c7a77b0cca6277e63f5bdb8c85942cf504cdd415",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-strong_d2-n983040-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "a3d841fcdbdb70fcb66fd1a2861c1c7427923a05e8a0b5f7783e0320a4959ad9",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-strong_d2-n983040-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "826ef0596e3732c61dd306b47daf0df533dee392e6521a36310c51ebf738619f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-strong_d2-n983040-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "894d37f98488eac4e8a17bfa458659e9ed86459ed47657260dc168584dc1ceeb",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-strong_d2-n983040-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "38283aaa3d7bef4d83db4b41fe431de771fb4e24b57b3d28bca528e907ae31ec",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-1/gglm/result.json",
+      "sha256": "d29d48acc93dbd3f247b825d812b5f97d22260bfa5092fb034af8a51c67dec86",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "c11a80c7fd7f0c2b692724786bd7797c7264dacc4321bc3fa6148cd814bad582",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-2/gglm/result.json",
+      "sha256": "bb67390f47d84b3c51cba97d4d7caadb73e1e09b9dc0c78cf3312419ecf67673",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "0bfdef5e7e29b570999f3b029f30b2bb7c8ed537af85e60341013de9f9654890",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-3/gglm/result.json",
+      "sha256": "6840aabda5683945ddff19b5708739eb2cf438699a5a66f4ced34f66fc97e088",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "e6bee7c2e697963961083625a808d280fd0313cfc33132495a909d257cade538",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-4/gglm/result.json",
+      "sha256": "7d186215eb6d81d6429deffa81479a0253df1a5b3e8ab67bddda3ef3e267623b",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "bec103d0f19c3b853a04cf08e3fb1e11c3a222f3091add3fab27df2991d671c7",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-1/gglm/result.json",
+      "sha256": "6c474f1d1e981861704cb440daf7d093514e3f8164bfe062248cb0e8349a6af5",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "d235cda11d0095a3ea79a9ec3537d2ab9cb3b92d086941b575d8209b53057530",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-2/gglm/result.json",
+      "sha256": "54014a4ed773baeb24b3199eeb655716785c6640680603edde5d0851e91a5c96",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "da36ce285a1a5eb47d996938ac389bee9d521b884f0ee825acbc6b8382ce181c",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-3/gglm/result.json",
+      "sha256": "4436a2793e4cb7649c4bbd6a0dc5701fb346e9b546adb4c81dc898145c7647c0",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "a50a51d88ea79086ff81b86bdc6daeeab657e0e1f2bc1c7425850db2937556c9",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-4/gglm/result.json",
+      "sha256": "bc041bec9eaa591929712914feb2a798e62b57c9fe23d37ce4658f8e0cb69edd",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "e101614f0885174cd36a9c25e89f99b2cd220e9b0ed8b409a014ce759f55a629",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-main/warm-1/gglm/result.json",
+      "sha256": "1731bbb0c10f2ae025e7e0b86018c420dd073f8a986d9e64e48dd864e2670e4d",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-main/warm-2/gglm/result.json",
+      "sha256": "8a9c2223bd657954c366b893167863683edc1c57570f63d9c05983b567a89b7e",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "9325b653ba09d033184459f4f4c2274ba6db7e688804ad5d6febea9779cb3b9e",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-main/warm-3/gglm/result.json",
+      "sha256": "927bb8e76f73ff1cb186b23616e2f80c7e59f752f4f82bdd6294fcda4779c9e9",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "8be49d824ce0ed47cf9829f45fb4132837a9b93b9041c9d01779495d41dc9b1f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-main/warm-4/gglm/result.json",
+      "sha256": "503ae37e3a8f67df524ce6f4511cfd55be05fda27f8883f33b1d9aeef53da886",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "094d85a4a75f48f8d4146609f35875a3e54478d9c471254696be7307a48b91ad",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-slopes_fast/warm-1/ppmlhdfe/result.json",
+      "sha256": "ef17c24df02f439d6c602b82de50a0068f62b2586ea0d3a5bc0efb6a0740b5ce",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-slopes_fast/warm-2/ppmlhdfe/result.json",
+      "sha256": "50a4c6c615239ee8a98c090329b712218f556631d866262e921dd4309263a69b",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-slopes_fast/warm-3/ppmlhdfe/result.json",
+      "sha256": "99c805f8c29577e7f30b432e485d2047fe27c6eeaadbbeee7463d904c856c72a",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t28-slopes_fast/warm-4/ppmlhdfe/result.json",
+      "sha256": "f65fdca3f913d9cc2203fc144c1b677ea94470fdbab69b6499a6073508282ac8",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-main/warm-1/gglm/result.json",
+      "sha256": "8676254410945c2e9566f7f066239c2b2d78bff1f9d4529dd012f7483be01d34",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-main/warm-2/gglm/result.json",
+      "sha256": "35143264b52eef70d94a6bf1a94c1d583619ba1f39e8ec6bbccc2301dc3b9eab",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "6442150b44b8c5392e15bd44ad08e7e604758bacb1b0039cd76ad075732b1eef",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-main/warm-3/gglm/result.json",
+      "sha256": "29b4e8c7ee34374d8f55430de15494a9a1042897a283dc47b35a1238800f841b",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "f5ba53f2ad46591fe56eeb46889a89f8d32642be20b861be2dd0e555101c978b",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-main/warm-4/gglm/result.json",
+      "sha256": "c43a6c291af3c149ae4b5e6d7323f49f880e12e2d16940b4daee4051931a63d5",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "47a1bb5df7eaba10b584770040dd86a436cb3834afbaeb2955fd0c2230853eea",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-zeros/warm-1/gglm/result.json",
+      "sha256": "ccd1f2632b1c87556bd8a678d69742e94a03a1b30637365a5909fb0e1318e2e1",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-zeros/warm-1/pyfixest/result.json",
+      "sha256": "406a37a9eaa81954ebcfbb52f3bcc26a29cd618a51196d3db281a0279e547390",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-zeros/warm-2/gglm/result.json",
+      "sha256": "600fc53f46e85fbc8f93eb961b08436fd3211f3ff7c6feaff24d62acd36be9c1",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-zeros/warm-2/pyfixest/result.json",
+      "sha256": "0a18197fe6269a048e64e0c18d83adeb0ab482c90caa7252561e5b4ba5aa61ef",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-zeros/warm-3/gglm/result.json",
+      "sha256": "782e5fe70c3f44ec1ef744a1a78d5720001d4577752d8e3ae655ec2bd5963be4",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-zeros/warm-3/pyfixest/result.json",
+      "sha256": "da96afd9d74b2a89d19bcf3d4c0acaaa61a43df515d2261335dd3015114f83a6",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-zeros/warm-4/gglm/result.json",
+      "sha256": "615bb94a82c39c3537d601b2bf21e58eaa1211d4b84dcb9db126850e29311959",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k10-t4-zeros/warm-4/pyfixest/result.json",
+      "sha256": "40e8fe59c57ce5309274127fae7e340254e5da716396e9f7b4ac80f11573e446",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k6-t4-slopes_low/warm-1/ppmlhdfe/result.json",
+      "sha256": "84415352dd90a875b414c0a2c40012a5b6414b67ac2f893a1d2a8ae16ef96789",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k6-t4-slopes_low/warm-2/ppmlhdfe/result.json",
+      "sha256": "1a62736c7cba0981e1f6db0e64e29b24cc44374611444cf4b1d8cbc16b014af7",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k6-t4-slopes_low/warm-3/ppmlhdfe/result.json",
+      "sha256": "0df36c1cdbfc91426406b0af15d77701f090f65a239f50264963a9b2247ee8f2",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n61440-k6-t4-slopes_low/warm-4/ppmlhdfe/result.json",
+      "sha256": "e9bd928447ab00c7056c1bde7662ba7bca81435a5152087b35af909b9869ad5f",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t1-main/warm-1/gglm/result.json",
+      "sha256": "a021f9146b67d84ba3c0433a7b42e9d38402d8ff8cc5c16a6cbaaaba53041f4a",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t1-main/warm-1/pyfixest/result.json",
+      "sha256": "adac130a9a492b267ba8d83fc4088ace5011b2bcd6e42f475847c3b140f778a8",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t1-main/warm-2/gglm/result.json",
+      "sha256": "13064f49834571f76950882d9bcd59f7be320e99ba54aaf23f5bb856d688950a",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t1-main/warm-2/pyfixest/result.json",
+      "sha256": "4494aabdb2eefa47764f29feaa13c337f15e30a187d896c7c55c16883182c564",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t1-main/warm-3/gglm/result.json",
+      "sha256": "91ff69742aa119bcc1825c982667216e35b09046dd31814bb4a3cb1384c309d2",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t1-main/warm-3/pyfixest/result.json",
+      "sha256": "0bfae830992dd0c21d0c5b5c6b5ac9cd82cbab30b9b534660bdd60910b7a2432",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t1-main/warm-4/gglm/result.json",
+      "sha256": "81a19c72a8f35698c574d70b828c6e12f851a18fcf8593a6639fa7897ca9f2c3",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t1-main/warm-4/pyfixest/result.json",
+      "sha256": "e272282414cec37510acd74d6ea6575850bb591f90f6c76fa9275a997ce36b79",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t28-main/warm-1/gglm/result.json",
+      "sha256": "ac07128216cac1bc8ac38d65d655c9976e314a4aa74ae7413064ceafebf34ea4",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "a9fbb082159cb4e7114bea0127db20a12b295365e48141db49bc3034593ceb84",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t28-main/warm-2/gglm/result.json",
+      "sha256": "863efb192e51fb913b6189c96d4f452f4ead86f231c58b253c96264d565d453b",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "ac895d1182f3135f8acfa0cbae13af7b9b2e5e1b80c513912b4d2dbdd4c881e4",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t28-main/warm-3/gglm/result.json",
+      "sha256": "9d8bf682e51b4d36c2d9eb26f09afc1e909a8b488421d9d9a02ef6d6f93721f3",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "06cea9f5c9f16cd99a4aa5b1c3f49f81084fd46009e06f8a5179511410ec7f3d",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t28-main/warm-4/gglm/result.json",
+      "sha256": "696787d672720fa68e71841a424396c2c4894580f2e7a2a65351be454146c853",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "bfea2408257fc5217cbe088be84522d45e68ad8890cf082f18ee77d9d8607b9b",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t4-main/warm-1/gglm/result.json",
+      "sha256": "927c6dcb6cd4952e486391e2370b48f07c17fc03de863fd1c53d95c08814c85c",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "dd5383bdd6034de4f5e8846b1db259a7838695a1b09287cc6c0d7901b3f2c9e5",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t4-main/warm-2/gglm/result.json",
+      "sha256": "6a1aea2b7fb143d03695f922c8949453363860563d0ed727ed19e0d914c21411",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "81e19726c8ed503e2464e847980313882345f5ad68161025f8b4228d61e77420",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t4-main/warm-3/gglm/result.json",
+      "sha256": "3edbb5bcb7d61a0b3b69345a148c9448b2405d1f6c442462fa7c079d2424390f",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "587cb395ee580fab5b540be00049ef07c5b6ce8099ddbb6d3409a160769171ec",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t4-main/warm-4/gglm/result.json",
+      "sha256": "38da64c53cc855821e49f5c3cb316f0d996ab101d95371ab956544c6c9fcf9ac",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "b263fe6e5ad34fb5e97dd4a24241972a71c0e1c837fa29b7c491f4e415d347e5",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t8-main/warm-1/gglm/result.json",
+      "sha256": "2dd8a64e304b21899526a5da3ac395df786339513036972d4c7928c91eed7851",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t8-main/warm-1/pyfixest/result.json",
+      "sha256": "0f5d578b22b5115f361b19d2aa7741211eadd90d220ae8b4a105642910aa9d81",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t8-main/warm-2/gglm/result.json",
+      "sha256": "5c4d17f056d110491a6fc31f400aae0fabbf1355ff6daa35b00005e1b42e8284",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t8-main/warm-2/pyfixest/result.json",
+      "sha256": "df3308e95741ee460995a034301eccc81de2b7c88991de26724a4d258adbc1f0",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t8-main/warm-3/gglm/result.json",
+      "sha256": "4fc76b50671e4ef804b285142901baef8b4bd881c9e23909f0e4dba1d8e04972",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t8-main/warm-3/pyfixest/result.json",
+      "sha256": "c98481b959d847628c748060dae76e599e10aaed425a6f440c3da529d26435ef",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t8-main/warm-4/gglm/result.json",
+      "sha256": "be1bc6ac1db4e34318f8b65c8f6e49888f43a50283033718ed4f5d24104f410a",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k10-t8-main/warm-4/pyfixest/result.json",
+      "sha256": "a36be7b5260cd8ccdb862aa7cb93651d9e9622cd91ea955cfe9babd5cb2d5a3d",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t28-width/warm-1/gglm/result.json",
+      "sha256": "f1e87492cd629595299f65e755289fd084cd9757baaed6250f2a61abb56807d9",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t28-width/warm-1/pyfixest/result.json",
+      "sha256": "1ee42a8994747b2f369bfac1a1584ddd5d51456fdd37af3ddaebdff77ea79e7a",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t28-width/warm-2/gglm/result.json",
+      "sha256": "3478840d989d4b078be4e39bcb9984d8b7b391ad9978f7e4ef1293d117acbd60",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t28-width/warm-2/pyfixest/result.json",
+      "sha256": "0da34fc59011e9efcee4f612cda0bfbfaa07f549c30fe37d945e41dcc5fa70c8",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t28-width/warm-3/gglm/result.json",
+      "sha256": "2c2161451d2ceb3e07d1081313844362e5376a1d630ba37f52ae8de9f7090b91",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t28-width/warm-3/pyfixest/result.json",
+      "sha256": "fee00f4d6a2049d65b8a6c15c4588011c89596452621224cc838517b2a019970",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t28-width/warm-4/pyfixest/result.json",
+      "sha256": "0c8a9c509b24c59dba166593108d58bbe463b2d74d54c5f6a5fc7017f83c7afa",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t4-width/warm-1/gglm/result.json",
+      "sha256": "65238b00aec20dd1739fc92a846eb56a1d37657026cb8398c464e0e5d9ca881f",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t4-width/warm-1/pyfixest/result.json",
+      "sha256": "9eed372d7008cf436f6b0690da5987ad7a334865d4eb4a1cbd9c34ac984c07b4",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t4-width/warm-2/gglm/result.json",
+      "sha256": "4f405312ee56cd8a6c0f0aaf40b1414fe39305e6575a4f9eb0c8373bebb2076c",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t4-width/warm-2/pyfixest/result.json",
+      "sha256": "feea0d2fb8eb589748685d00cb596bfc20a91f5e1a0d1d717289b047bad8d09f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t4-width/warm-3/gglm/result.json",
+      "sha256": "9fd8260debb5bd9898bd58d45e1281769306cd7caca66d4f813aadf8afc55282",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t4-width/warm-3/pyfixest/result.json",
+      "sha256": "a9b14ccbff7538e2ff201266339ac736c74944a3224043ef82bf31e4785a1de6",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-three_fe_sparse-n983040-k50-t4-width/warm-4/pyfixest/result.json",
+      "sha256": "094456d96420ae4a46287c9f8d7f5e38e7b6ce317af815aba5a42cbbb73d1e09",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t28-main/warm-1/gglm/result.json",
+      "sha256": "1365c52e8465db041ac0ab13050adf9ec9ee62b0bb3cd6078d4a6043cd05b895",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "79dd03ccfb9c48728ab7efdd712b27ad3d35f2c8fbe332707ca0827fd4749b53",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "1a9374c07264e7782cec0062eca298d925c4745acb0f70ba915882aee0c92c75",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t28-main/warm-3/gglm/result.json",
+      "sha256": "21b9522d63f07eb07b2383532c34969b08a54afd7cb22b031958c2c77e633ee8",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "cc50c802ebb479987d2e31f905e570c084c3883880e575dad961b61d6920508c",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t28-main/warm-4/gglm/result.json",
+      "sha256": "26964323a5368d081aa3b86c750ac67f02b1cd1e6703688cc7db177bc32b6c78",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "59d76d6ba1caf1353353d241c4a8d293a301e107a8b2233fd8f45eaa2c8d285d",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t4-main/warm-1/gglm/result.json",
+      "sha256": "c8e72af22d4a9ef94cf788ad6b41067c32d196394334c5e9bb6fe9ccce55e8aa",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "58aa8072426a871b5369db9ca817b9c07b6adb91394d986d62c5e93e1a0f4cbe",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "de19b6a7a3279080fcf43ea05c64eec2765a0e68700ac8d415bcf54390c70e22",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t4-main/warm-3/gglm/result.json",
+      "sha256": "55119fa245a26e56400c3c73375ce68ddd175372e7afda0d29a5bf52740ad4a4",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "050a8f8dcacb47982c16ff1458ace60f20cc20501e2d7f5fda94fbd9f7ee5edb",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t4-main/warm-4/gglm/result.json",
+      "sha256": "732dffd3c3d6168d3d174c57daddd4dd95d239fd7dd55c5d547a79fc86e2c254",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n3932160-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "2412b11680f9ccb1471648466871d285b2a40cd38ed063443435b36bcd033f64",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t28-main/warm-1/gglm/result.json",
+      "sha256": "2b105232be44d1dc834220c034e7aee63bcd8359fc1e41c4f3645620432fe3c2",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "a9c217ec76f36bea0c32452c9a947a5b99e9008524875eaa8dfa6b5033c9096b",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "fd89039afaf2102e6048e46347ce6cd14df00010a29d67eb9ff7ae5cbd13a585",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t28-main/warm-3/gglm/result.json",
+      "sha256": "22ba3ca139ac74b6ba8e8f48d4def7dc17187bda5273b0b41648c67758184a49",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "375237b9f7ac8a73b689f753228142f022e333931ced9cb7e336876c4f6b2ba4",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t28-main/warm-4/gglm/result.json",
+      "sha256": "b0e2b8c2e29d98033662fe2946630851765df998c9959a7d0a9c46a9ea42a82b",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "4b24dcafb18d8a92692d461886bb56737c5771a69093f1ddc1f31625067896c9",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-main/warm-1/gglm/result.json",
+      "sha256": "bc0d8a1ad13d00e7ce44dc901904c023d092d3f303f8d6aef1c05735dfdc3c6f",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "fe85df1af2efe4b70e49b74abf1e0f6fe640722bb2b1e0344c3d8d9af988a92c",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "2a09921213eed6c1213474ade610ed151be2aba865d9df5109ac40c92937a745",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-main/warm-3/gglm/result.json",
+      "sha256": "670d182cf96c54e29c3b8ed91702e16fcb5623676ae5521e75e08fdde1f86f05",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "42778e3b9ef5abf537ea85824b85ec6b31cf9df790ba19a62e65c2d309193efb",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-main/warm-4/gglm/result.json",
+      "sha256": "19ed08fe1d46ac53f423ce7ed8ca0e29ad6c5a45dcf307853e0c88b4c0177c1d",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "f3de4fa68f2f5c7093450ea48f2eceab3ef0bd3058b8c67330457eaeb1cb060e",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-1/feppml/result.json",
+      "sha256": "f09593669ed0b926bc8e20407ccd840ae2c8195b97843e88e2a5dce0f239d324",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-1/gglm/result.json",
+      "sha256": "3b61894b562971f81b7979a2daef7ea552436d7b70fdebb9a4dc62e50346fe94",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-1/pyfixest/result.json",
+      "sha256": "3971b63799ebfbe10206fff8509688c72adb643d36d068682c5a3dc2c377f36f",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-2/feppml/result.json",
+      "sha256": "2e4b4dfe96d03facd7153a142cfd78ca2b70e936acf10c94f433d3687c8402af",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-2/pyfixest/result.json",
+      "sha256": "6336cb699d89bb43a8db86f5307d4906467deaf6af248f1dd7b0a9443a30e20e",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-3/feppml/result.json",
+      "sha256": "93e6f7c53a9a5d876e1f30aacd24368efff11d8b41f0ce354a96ce538cbe0b18",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-3/gglm/result.json",
+      "sha256": "10a9844935536eaa60d3f6b8700ae837c181e1c3b639913aa24dbd57d57fae61",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-3/pyfixest/result.json",
+      "sha256": "9f29116e837ab711f9f809804f2aafb1cc7ba94818e37ff4edabe326f6c1dd2b",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-4/feppml/result.json",
+      "sha256": "60de5e1648a5c49ae809ca249c0ec4fad0c2297424c2317b749662dc5991ce90",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-4/gglm/result.json",
+      "sha256": "22d693adbacb2c071865606a4dcd32d03f63b12e07ecb703c0e6ad2093663952",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n61440-k10-t4-zeros/warm-4/pyfixest/result.json",
+      "sha256": "71e36a0bc381833ba2323e63965c6ec028f5437358fc9338931421c02dc95183",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t28-main/warm-1/gglm/result.json",
+      "sha256": "77a249ac2fb9a094ff5bdebdd1e0afa889a65ef2ebfe3edc1ec5be663dfe53c2",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t28-main/warm-1/pyfixest/result.json",
+      "sha256": "7b306af96a49e664fc91b2b8c5c4ff4ab24c4e5825022c229bc0be42325544d8",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t28-main/warm-2/pyfixest/result.json",
+      "sha256": "d78654c4b83617623188c753ce0a2b983af111f7161fe764b56bb93cc113c5de",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t28-main/warm-3/gglm/result.json",
+      "sha256": "9a1c09b915e24f03393da44e025283f4c45bd5c6ae1c7708b4acd93f5f534c76",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t28-main/warm-3/pyfixest/result.json",
+      "sha256": "3a108b9c9b61780189ceec50649adebe14276957aaeafeb47de9462509db0f6e",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t28-main/warm-4/gglm/result.json",
+      "sha256": "5b6cf33ffd255fc483c89b53c8aba20256f3df756d39e2a1900e6fa22e19e577",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t28-main/warm-4/pyfixest/result.json",
+      "sha256": "ba518b9b62a4a911a8cc098d60342e2b05e40da456154c37de561f5c1408214e",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t4-main/warm-1/gglm/result.json",
+      "sha256": "7b2fdbbcc337818c8737dd869c14af46228ba528ab36a248d446175d7e6e3690",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t4-main/warm-1/pyfixest/result.json",
+      "sha256": "7d8ce712585e4590abf38ba336fb63a6a13f0d0f97a37a9d622adfd78307c0f7",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t4-main/warm-2/pyfixest/result.json",
+      "sha256": "a928d413d339b7a9b74e46d4000fa8739f6e668d7b333b94c4f5934d8ba43062",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t4-main/warm-3/gglm/result.json",
+      "sha256": "54a61b7b4107a493c5514b9c5475690dc37953ff01fcb845aff7156e5cd03fbf",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t4-main/warm-3/pyfixest/result.json",
+      "sha256": "ce789b7c5dec6ad7a6f83ef455249662b0b25765565805efb988d6ceb37da306",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t4-main/warm-4/gglm/result.json",
+      "sha256": "fd2633b83722780b5f3aa8410423ece441dd35aa1962606f8a3ebce080c5bd2c",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k10-t4-main/warm-4/pyfixest/result.json",
+      "sha256": "0808d4608e171da5cec80cac3beea92bdd46a628c748d816cdb62f5d199fb164",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t28-width/warm-1/pyfixest/result.json",
+      "sha256": "160ca612a33083882858ceba775ba75155d3fb036ae4bc2db96a697dfa845da8",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t28-width/warm-2/pyfixest/result.json",
+      "sha256": "f47100eba99f3f75d26eee3df4f4a8350e7fb51ba895bbbdaccc81a2af405bf5",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t28-width/warm-3/pyfixest/result.json",
+      "sha256": "8af6e2bf27e5768ba5e9f8e72125839380276677c3ac02301c2eb07a059ba744",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t28-width/warm-4/pyfixest/result.json",
+      "sha256": "fb840057e72144640a7078693e83385e202c0d0e6688124426e6da42bb3ae911",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t4-width/warm-1/gglm/result.json",
+      "sha256": "df9aee985dcb2c8848cc5a8e0ac06200f836919ee47fd4e2c16718684171c4e0",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t4-width/warm-1/pyfixest/result.json",
+      "sha256": "f3522f0e52e2a9cff9dbeed89dee30aa354d21147277fb3e09c9c71c8f8f001b",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t4-width/warm-2/pyfixest/result.json",
+      "sha256": "71a2f475d9cda45873a8a84ebf3c3d3b3141c7b7b4c66e621ce2f09788a26581",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t4-width/warm-3/pyfixest/result.json",
+      "sha256": "6fe08391dfa8f218c170b20bf90dad61a97871b7c781455983dfbb92b4c41261",
+      "target_ready": true,
+      "target_done": true
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t4-width/warm-4/gglm/result.json",
+      "sha256": "94bdf029fb2e4151b8ff2e589c558285d4ba5677b75d3ce2fb154a1aad7622db",
+      "target_ready": false,
+      "target_done": false
+    },
+    {
+      "path": "results/ppml-two_fe_sparse-n983040-k50-t4-width/warm-4/pyfixest/result.json",
+      "sha256": "57cdd96c6707d35ddc6995c3d872498147cb88efff4a5cf246ff64c26cb12331",
+      "target_ready": false,
+      "target_done": false
+    }
+  ]
+}

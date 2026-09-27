@@ -1,0 +1,25 @@
+{
+  "schema": "fereg-illustrated-expanded-qa-v1",
+  "pages": 14,
+  "figures": 7,
+  "pdf_path": "output/pdf/fereg-scc-benchmark-report-2026-09-27-expanded.pdf",
+  "pdf_sha256": "ab2b1d93e0616186b6e5ecfd4454611e521080c57842253139870030b772b0f2",
+  "text_checks": [
+    "48,565",
+    "48,528",
+    "38 connected components",
+    "21 scientific disagreements",
+    "150 pyfixest",
+    "93/93",
+    "32 native slope calls",
+    "0.576",
+    "1.423"
+  ],
+  "characters_within_page_bounds": true,
+  "render_warnings": 0,
+  "visual_review": "All 14 pages inspected; no clipping, broken tables, overlapping labels or pagination defects.",
+  "new_estimator_fits": 0,
+  "new_benchmark_jobs": 0,
+  "independent_check": "Exact-input two-way topology: 38 components, FE rank 12865, residual DoF 48565.",
+  "qa_note": "Initial text check failed on a line break; whitespace-normalized extraction passes against the same unmodified PDF."
+}
