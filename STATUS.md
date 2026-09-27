@@ -44,16 +44,23 @@ there is no paired memory-reduction or fixest timing claim. Failed wrapper and
 unit-test setup attempts remain preserved in the report.
 
 SCC job **7760466** continues the unchanged Schwarz-only 23-configuration,
-126-fit rotation. Local correctness work used a separate Mac; the timed SCC
-node and frozen source remain untouched. Preliminary two-seed sparse-three-FE
-PPML K10 ratios are about 0.501 of stock at T8 and 0.749 at T28; T28 is 0.179
-of baseline but 3.8–6.8% slower than candidate T8. These partial observations
-are not the campaign conclusion. Thread ceilings and the full performance
-plan remain open; collect and validate this rotation before the next routing
-change or broader sweep. The new rotation summarizer passes six tests (nine with
-launcher controls), requires every registered seed and independent oracle before
-ranking, and keeps process/RSS distributions and scaling losses separate. No push
-has been performed.
+126-fit rotation. The [immutable 14/42-pair snapshot](benchmarks/reports/development/performance-repair-paired-scc-2026-09-27/progress-14/README.md)
+contains seven complete two-seed configurations; sixteen configurations,
+including the four oracle cases, remain pending. Local correctness work used a
+separate Mac; the timed SCC node and frozen source remain untouched. Comparable
+PPML candidate/stock median ratios are 0.501 (K10/T8), 0.749 (K10/T28), and 0.373
+(K50/T4). Four OLS comparisons remain unranked for accuracy/inference differences;
+all completed native/baseline science checks pass. K10/T28 is 0.179 of baseline,
+but 3.8–6.8% slower than candidate T8. Its median RSS rises to 2.82 GiB from
+1.02 GiB baseline, versus 1.26 GiB stock. These are partial observations on the
+Schwarz snapshot, not the current separation repair or the campaign conclusion.
+
+Collect accounting, completion sentinels and all scientific/oracle outputs
+before accepting the rotation; then collect held Linux PPML smoke 7760663.
+Thread ceilings and the full performance plan remain open. The new rotation
+summarizer passes six tests (nine with launcher controls), requires every
+registered seed and declared oracle before ranking, and keeps process/RSS
+distributions and scaling losses separate. No push has been performed.
 
 ## OLS comparator adjudication — 2026-09-27
 
