@@ -1,0 +1,14 @@
+{
+  "benchmarks/systematic/common.py": "66204753ea9e1631c1b1484737260dd0985276ba607b36ea0ab26d4311a6e795",
+  "benchmarks/systematic/generate.py": "b56668181b80cd8dd00629b9841cf8a4faaacce5711e54bdfec8b137d2183482",
+  "benchmarks/systematic/test_two_fe_ppml_oracle.py": "98ab38c813d9a022c2057cab75316fb59c1d5839026fcc6d6f1f7a55e2bb3d23",
+  "benchmarks/systematic/two_fe_direct_oracle.py": "e40482c2925541f6d067c20574e50fc86a124136ce30ccd7a68a9fec9366b4ad",
+  "benchmarks/systematic/two_fe_ppml_oracle.py": "fcf7988faa21564ba86cf0de35e2cc6ac73acc8422511e588dde85b2513708dd",
+  "gtools_sample.do": "ecfdb19168ab79719e4ef43d48ff86c12aea7fd6d2365d0345f3bf7813b027e5",
+  "job.sh": "9a284fbd90a3347341e36575b23c6df3dee459fed3f3c613aa5107803e29f373",
+  "registration.json": "bcb11d3fbb62fa9c581c8f5382a0bab82458654e14fff6a2b6aa0d7351665942",
+  "run.py": "3d138269d161d94f46808cac5d198b7c97d9bcbcb1951a1d099579d59a5356c2",
+  "scripts/ppml_auto_science.py": "aede679a1e3e8306ed90d02b05ee92054e9456096ea77d1b914ef54ac092863b",
+  "scripts/ppml_coefficient_accuracy.py": "ef1eebb5a6392051df3d74209c0bc976c357baa5bf8939d7be9e3a84d8d8724c",
+  "tests/python/ppml_explicit_dummy_oracle.py": "73aad136a1cd03f68f699cfc1c73a8c470b764da6f810856a3380ae97e747d2d"
+}

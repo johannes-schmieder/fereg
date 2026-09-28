@@ -1,0 +1,37 @@
+{
+  "original_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "files": {
+    "env/python/lib/python3.12/site-packages/pyfixest/utils/utils.py": "91d4f7cd459597c4c2af63248b31e0adc78dba23e9b4cd1825749fbe5008171d",
+    "env/python/lib/python3.12/site-packages/pyfixest/estimation/internals/fit_glm_.py": "ca242277eab2fb3792e8854f2e21f5b685e0e2a4bed930b8800c425341340f5e",
+    "env/python/lib/python3.12/site-packages/pyfixest/estimation/models/feglm_.py": "98d9e027f813aa05e56cf8ec2c1899c43abe9b2151b26f67974a5ca9dbda3ab8",
+    "env/python/lib/python3.12/site-packages/pyfixest/estimation/internals/vcov_.py": "07590acf3f2fb2d5108f46914a527140db943962311ead729d3b0b1344ba95c3",
+    "env/python/lib/python3.12/site-packages/pyfixest/estimation/api/fepois.py": "4edf57a9f27d0c697e05f34014266c6019dde35539c2948a5dec40266a6a9701",
+    "env/python/lib/python3.12/site-packages/pyfixest/demeaners.py": "20047c468b9a2e5b3ce92960ef82e0a93027359da307db2be1025cf54a976e8f",
+    "references/gregress.ado": "de1615bc2f6fa478781268fae658538f6a4667a57721064dda9f02a3d3d76950",
+    "references/greg.ado": "233c877a5a22cc281cc67f96589bd51b50ac4203a1bd1b03d5379d6e93bd3107",
+    "references/gglm.ado": "8d73a7a54feec0f60b3190aa6446fdc524ea266c66608695e131471ea460ebf0"
+  },
+  "claims": [
+    {
+      "source": "env/python/lib/python3.12/site-packages/pyfixest/utils/utils.py",
+      "lines": "232-278",
+      "finding": "With k_adj=False and vcov_type=hetero, get_ssc returns 1; G_adj is applied only to CRV/HAC. This source does not supply a second N/(N-1) factor."
+    },
+    {
+      "source": "env/python/lib/python3.12/site-packages/pyfixest/estimation/internals/fit_glm_.py",
+      "lines": "207-221, 226-230, 258-289, 302-310",
+      "finding": "The iteration computes W from the preceding mu, updates mu, saves W_final=W, then checks convergence at the start of the next iteration. Returned mu and W need not be the same weight frame."
+    },
+    {
+      "source": "env/python/lib/python3.12/site-packages/pyfixest/estimation/models/feglm_.py",
+      "lines": "213-248",
+      "finding": "Published response means use fit.mu. The robust score and Hessian use fit.sqrt_W, fit.X_tilde and fit.z_tilde. Numerical impact is not yet measured by this audit."
+    },
+    {
+      "source": "references/gregress.ado",
+      "lines": "367, 376-419",
+      "finding": "GTOOLS_GREGTABLE=1 invokes pinned Display with touse, posts e(b)/e(V)/e(sample), and adds publication work. The current worker leaves this disabled and exports only the count."
+    }
+  ],
+  "status": "source audit only; diagnostic results pending"
+}

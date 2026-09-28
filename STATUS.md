@@ -56,6 +56,23 @@ next substantive solver/preparation/inference change and directly alternate any
 suspected core-scaling regression. No profiling/builds alongside headline work.
 Do not return to closed narrow micro-tuning while this broader inventory is open.
 
+**Queued comparator diagnostic: 7766146**, held behind all tasks of 7766045;
+four slots, 3G/core, 30-minute cap. The
+[immutable registration](benchmarks/reports/development/comparator-state-registration-scc-2026-09-28/README.md)
+binds two original and two fresh positive PPML inputs (fresh seed2026092837),
+three unmodified public PyFixest profiles, independent Poisson/Hessian and
+coefficient oracles, and four licensed gtools sample-publication boundary checks.
+The exact pinned source rules out the proposed duplicate heteroskedastic SSC
+factor and reveals a preceding-IRLS weight frame in PyFixest inference; its
+numerical contribution remains to be measured. Gtools' own optional publication
+may recover exact samples; its fixture is pending. No maintained worker or
+estimator changed, and historical NR remains unchanged. Local AST/shell checks
+pass. Require accounting, terminal sentinels, all expected outputs and fixture
+checks before adopting anything. If the main array checkpoints pending groups,
+hold further headline work until this diagnostic finishes. The latest inspected
+sweep snapshot had 40 completed applications (including pilot), no application
+failures and all four tasks running; that is not a scientific-comparison summary.
+
 Static allocation drift, physical stack/cap accounting, constrained fits and
 nonretaining CG instability remain open. All eight original sparse-zero failures
 and all three original strict-PPML coefficient discrepancies already have repair
