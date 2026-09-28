@@ -1,0 +1,54 @@
+{
+  "status": "success",
+  "platform": "darwin-arm64",
+  "snapshot": "d21200242734bd33960f633d21d9619fe623efe69825003a08bc19ad5ba4a840",
+  "plugin_sha256": "a7ad04933211678788632916184fdda2ff9139321ff70e935c6a9d9d66767db0",
+  "tests_passed": 4,
+  "tests_failed": 0,
+  "fixtures": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_host_processors.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_passes_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_three_partition_slope_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    }
+  ],
+  "native_break_tests_passed": 2,
+  "python_tests_passed": 17,
+  "break_success": true,
+  "abi_and_panic_checks": true,
+  "evidence_sha256": {
+    "build": "954d46b3eb3ebd9552f0e0521a71b649b1853828f38043724305b92e63bb82ca",
+    "oracles": "04c8e708dde52a00ca996165622b3f59c119c6a14a00da6eb28bf5538edc11ef",
+    "real-break": "756572c64c691b24bde849bc7e70c92df52890663835a59212f91da2c2592c57",
+    "native-break-tests": "2ee1d4a5172d95b145943cdc24bf2fa8348951defc1f4b66a3fb35b85a755104",
+    "static": "138698c126447036d61a488ff1c3040a4d0f4b9a4c8d01f1e654ec76963df600"
+  },
+  "local_build_first_attempt": "Missing cargo on PATH; failed before compilation. Corrected explicit installed toolchain path, then build/ABI succeeded."
+}

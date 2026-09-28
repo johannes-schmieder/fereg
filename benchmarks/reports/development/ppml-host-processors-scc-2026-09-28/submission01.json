@@ -1,0 +1,8 @@
+{
+  "job": "7763612",
+  "run_directory": "dev/20260928-host-processors-01",
+  "snapshot": "0b3d1b6176c9b39e32665ef99497ee5575d79b2acf9c0a12be6225bb8081cfdf",
+  "slots": 4,
+  "wall_minutes": 15,
+  "classification": "Wrapper-only development validation; exact accepted native plugin reused, no compilation"
+}

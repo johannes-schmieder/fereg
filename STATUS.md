@@ -10,7 +10,81 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## Current checkpoint: one-FE checked-kernel candidate rejected; host cost isolated
+## Current checkpoint: native-only host switching rejected; public boundary identified
+
+[ADR0240](docs/adr/0240-ppml-host-processor-boundary.md) retains a hidden native
+Break handshake correction and rejects processor switching only around the
+PPML plugin call. **Retained package snapshot 7a245969…**, 213 bound inputs,
+Linux **d007491a…**, Mac universal **a7ad0493…**. The original PPML ado call is
+restored exactly. Normal numerical source is unchanged from accepted 5c0d4685;
+only the hidden Break hook and its test assertion change in native code.
+No accepted estimation-speed improvement is claimed for this checkpoint.
+No push, qualification or remote release.
+
+The [report](benchmarks/reports/development/ppml-host-processors-scc-2026-09-28/README.md)
+preserves every source, artifact, failed attempt, rejected patch and receipt.
+Initial wrapper validation **7763612** passed five licensed fixtures and 17
+static tests but failed real Ctrl-C: its hidden file handshake armed the
+controller before `SF_display` finished. Linux could return an SPI display
+error instead of the expected interruption code. Host restoration passed.
+Move the handshake after display, with a native assertion that the controller
+cannot interrupt display. This is a test-hook race repair, not a general claim
+that every SPI-interruption classification is fixed.
+
+Repaired candidate d2120024 passes **two focused native tests, 17 static tests,
+four licensed independent oracle/control fixtures and genuine PTY Break on
+both platforms**. Linux **7763618** also passes PPML smoke and build/ABI/panic
+checks. Weighted Poisson/Hessian/sandwich, FW/PW, robust/cluster, slopes and OLS
+controls remain valid. The retained ado rollback was rechecked with Mac
+host-state/Break and Linux **7763672** smoke/host-state/Break, on the identical
+compiled artifacts. All final accounting and terminal sentinels pass.
+
+Isolated headline **7763641** completes **60 applications**, all **20 native
+and 20 stock scientific pairs**, on a 28-core E5-2680v4 allocation. No competing
+build/profile/archive/fit. Native coefficient/covariance exports are all
+byte-identical; work and modeled memory agree. Tracked peaks differ only for
+existing three-FE workspace overlap, in both directions. PPML is robust, OLS
+IID; headline calls omit optional observation outputs. Pinned unmodified
+fixest0.14.2 is strict only for the slope case. Do not transfer this rejected
+package's clocks to the retained package or older saved-output designs.
+
+Candidate/baseline paired medians: **1.041 one-FE T1, .847 T2, .987 T4,
+.984 low, 1.025 wide, .980 larger T8; .955 small two-FE, .973 three-FE,
+1.083 slopes, .976 OLS**. T2 spans .674–1.019; slopes span .813–1.353. The
+native-only wrapper fails the useful, reliable benefit gate. It leaves the
+principal one-FE/small-two-FE losses intact. No favorable-case guards.
+Fresh seed **2026092821** and direct-scaling seed **2026092823** were
+predeclared but **not run**; do not describe them as measured validation.
+
+**Next implementation boundary is now measured:** post-timing diagnostic
+**7763667**, same candidate/artifact and native four workers, passes all
+**96 calls** with exact cross-mode b/V equality. Moving one-host-processor
+scope to the **entire public command**, restoring afterward, nearly matches
+persistent host1. Diagnostic command medians: **one-FE 213→134.5ms; two-FE
+274.5→185.5ms**. Partial Stata self-sample shares fall **67.39→8.60%** and
+**62.42→4.12%**. Fixed-order perf on a shared four-slot node, not headline
+or stock evidence. Earlier control-plane work activating competing Stata
+workers is the supported inference; the precise activation command is not
+isolated. No persistent setting or passive-wait environment policy is adopted.
+
+Implement a scope covering public parsing and temporary-output preparation,
+with caller setting restored on syntax/native errors, panic, Break and success.
+Preserve quiet/noisy behavior, default/explicit native requests, main-thread SPI,
+one substantive plugin call and final publication atomicity. The current thin
+`feppml` wrapper and `_fereg_ppml` adapter are the relevant control-plane entry
+points. Genuine Break tests must exercise the new outer scope, not only the
+hidden transaction. Then measure full public clocks, fresh controls and direct
+T1/T2/T4 scaling before adoption. Consider OLS carryover only with its own
+transaction tests and evidence. Do not resume tuning the rejected native scope.
+
+All five jobs in this milestone are terminal; unrelated SCC work was untouched.
+The universal 1.20 stock ceiling, 0.90 aspiration and monotonic-core goal remain
+unmet. Weak-SE discrepancies, large timeouts, other comparator/sample failures,
+static allocation drift, weighted constrained fits and nonretaining-CG span
+instability remain open. Earlier three-FE slowdown is not adjudicated. The
+broader plan remains active; routine SCC testing is authorized without asking.
+
+## Prior checkpoint: one-FE checked-kernel candidate rejected; host cost isolated
 
 [ADR0239](docs/adr/0239-checked-reduction-inlining.md) rejects a profiled shared
 helper-inlining candidate after broader controls. **Production remains exactly

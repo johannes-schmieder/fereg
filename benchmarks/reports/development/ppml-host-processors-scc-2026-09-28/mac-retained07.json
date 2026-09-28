@@ -1,0 +1,23 @@
+{
+  "status": "success",
+  "snapshot": "7a24596908c18db21b4aaca6fa30ac146afb653b5664352b0e751edd1432f5e0",
+  "plugin_sha256": "a7ad04933211678788632916184fdda2ff9139321ff70e935c6a9d9d66767db0",
+  "tests_passed": 1,
+  "tests_failed": 0,
+  "fixtures": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_host_processors.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    }
+  ],
+  "break_success": true,
+  "evidence_sha256": {
+    "fereg-host-retained-mac-break.log": "756572c64c691b24bde849bc7e70c92df52890663835a59212f91da2c2592c57",
+    "summary.json": "1a4aac6c97086f927709fb8f32b14a3a14648f9f8168d475e0470938398905b4"
+  },
+  "native_artifact_and_unit_oracle_evidence": "mac-validation02.json; native source and artifact unchanged by removing rejected ado wrapper"
+}

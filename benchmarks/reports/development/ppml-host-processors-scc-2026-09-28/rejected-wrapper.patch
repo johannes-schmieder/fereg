@@ -1,0 +1,28 @@
+diff --git a/stata/_fereg_estimate_ppml.ado b/stata/_fereg_estimate_ppml.ado
+index 9ef74b29..92c400b0 100644
+--- a/stata/_fereg_estimate_ppml.ado
++++ b/stata/_fereg_estimate_ppml.ado
+@@ -750,9 +750,20 @@ program define _fereg_estimate_ppml, eclass
+         local request_bundle "bundle_local=`request_bytes'"
+     }
+     else local request_bundle `"bundle=`request_bundle'"'
+-    plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
+-        `weight_variable' `adjustment_variable' `biasunit' `output_variables', ///
+-        `"estimate-ppml"' `"`request_bundle'"'
++    // Stata's waiting MP workers can compete with the native team. The request
++    // already owns its thread policy; change only the host workers and restore
++    // them before validation or publication, including native errors and Break.
++    local host_processors = c(processors)
++    nobreak {
++        if `host_processors' > 1 quietly set processors 1
++        capture noisily break plugin call __fereg_estimate_plugin ///
++            `touse' `depvar' `source_vars' `weight_variable' ///
++            `adjustment_variable' `biasunit' `output_variables', ///
++            `"estimate-ppml"' `"`request_bundle'"'
++        local native_rc = _rc
++        if `host_processors' > 1 quietly set processors `host_processors'
++    }
++    if `native_rc' exit `native_rc'
+ 
+     // Developer-only publication-boundary mutations prove that malformed
+     // native products are classified and rolled back without a second call.

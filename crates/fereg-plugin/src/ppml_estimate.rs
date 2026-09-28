@@ -398,8 +398,10 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             && point == PpmlInterruptPoint::IrlsIteration
         {
             native_break_armed = true;
-            create_native_break_marker(&action.break_marker_token)?;
             spi.display(NATIVE_BREAK_MARKER)?;
+            // Arm the PTY controller only after display returns: Linux Stata
+            // can classify a Ctrl-C inside SF_display as an SPI display error.
+            create_native_break_marker(&action.break_marker_token)?;
             // Synchronize the interactive fixture after actual core entry.
             // The controller sends Ctrl-C only after observing the marker;
             // remain on Stata's caller thread until its poll reports Break.
@@ -3581,6 +3583,9 @@ mod tests {
         }
 
         fn display(&mut self, message: &str) -> Result<()> {
+            if let Some(path) = &self.interrupt_when_marker_exists {
+                assert!(!path.exists(), "the controller must not interrupt SPI display");
+            }
             self.displays.push(message.to_owned());
             if self.interrupt_after_display {
                 self.interrupt_at = Some(self.interrupt_checks.saturating_add(1));

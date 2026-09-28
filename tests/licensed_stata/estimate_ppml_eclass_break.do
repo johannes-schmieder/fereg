@@ -2,6 +2,10 @@ version 18.0
 clear all
 set more off
 
+local original_processors = c(processors)
+local host_processors = min(4, c(processors_lic), c(processors_mach))
+set processors `host_processors'
+
 set obs 80
 generate long obs_id = _n
 generate double x = mod(_n, 11) / 5 - 1
@@ -24,8 +28,9 @@ capture noisily _fereg_estimate_ppml y c.x, ///
     absorb(__ppml_native_fe=fe) separation(none) memory(fast) ///
     residual(__ppml_native_resid) xb(__ppml_native_xb) ///
     d(__ppml_native_d) eta(__ppml_native_eta) mu(__ppml_native_mu) ///
-    dropreason(__ppml_native_drop) inject(breaknative)
+    dropreason(__ppml_native_drop) threads(`host_processors') inject(breaknative)
 local native_break_rc = _rc
+assert c(processors) == `host_processors'
 assert `native_break_rc' == 1
 foreach output in __ppml_native_fe __ppml_native_resid __ppml_native_xb ///
     __ppml_native_d __ppml_native_eta __ppml_native_mu __ppml_native_drop {
@@ -50,6 +55,7 @@ capture noisily _fereg_estimate_ppml y c.x, ///
     publiccmdline("feppml licensed Break prior") publictimeit publicdisplay ///
     inject(breakpostpublic)
 local break_rc = _rc
+assert c(processors) == `host_processors'
 assert `break_rc' == 1
 foreach output in __ppml_break_fe __ppml_break_resid __ppml_break_xb ///
     __ppml_break_d __ppml_break_eta __ppml_break_mu __ppml_break_drop {
@@ -72,8 +78,9 @@ capture noisily _fereg_estimate_ppml y c.x, ///
     residual(__ppml_native_null_resid) xb(__ppml_native_null_xb) ///
     d(__ppml_native_null_d) eta(__ppml_native_null_eta) ///
     mu(__ppml_native_null_mu) dropreason(__ppml_native_null_drop) ///
-    inject(breaknative)
+    threads(`host_processors') inject(breaknative)
 local native_null_break_rc = _rc
+assert c(processors) == `host_processors'
 assert `native_null_break_rc' == 1
 foreach output in __ppml_native_null_fe __ppml_native_null_resid ///
     __ppml_native_null_xb __ppml_native_null_d __ppml_native_null_eta ///
@@ -94,6 +101,7 @@ capture noisily _fereg_estimate_ppml y c.x, ///
     publiccmdline("feppml licensed Break null") publictimeit publicdisplay ///
     inject(breakpostpublic)
 local null_break_rc = _rc
+assert c(processors) == `host_processors'
 assert `null_break_rc' == 1
 foreach output in __ppml_null_fe __ppml_null_resid __ppml_null_xb ///
     __ppml_null_d __ppml_null_eta __ppml_null_mu __ppml_null_drop {
@@ -115,6 +123,7 @@ quietly expand 50000
 display as result "FEPPML_" "PREDICT_BREAK_ARMED"
 capture noisily predict double __ppml_predict_break, mu
 local predict_break_rc = _rc
+assert c(processors) == `host_processors'
 assert `predict_break_rc' == 1
 confirm new variable __ppml_predict_break
 assert mreldif(e(b), `predict_b') == 0
@@ -122,4 +131,5 @@ assert mreldif(e(V), `predict_V') == 0
 
 * Split the literal so the PTY controller cannot mistake command echo for the
 * emitted terminal sentinel.
+set processors `original_processors'
 display as result "END_" "FIXTURE|estimate_ppml_eclass_break|rc=0"

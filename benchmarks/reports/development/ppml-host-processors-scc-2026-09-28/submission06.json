@@ -1,0 +1,12 @@
+{
+  "job_id": "7763667",
+  "run_root": "/projectnb/welfgr/fereg/dev/20260928-host-boundary-06",
+  "snapshot": "d21200242734bd33960f633d21d9619fe623efe69825003a08bc19ad5ba4a840",
+  "slots": 4,
+  "walltime": "00:15:00",
+  "mem_per_core": "3G",
+  "cpu": "E5-2680v4",
+  "fits": 96,
+  "diagnostic_only": true,
+  "registration_sha256": "90e19d88b8f0296b0b56cd8896003eec155b6b2ca77ac7c9a24e7fe4abea7b06"
+}
