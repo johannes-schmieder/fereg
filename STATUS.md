@@ -188,6 +188,17 @@ build, fit or SCC job was added, and all 259 estimator inputs remain unchanged.
 This closes a future harness acceptance gap, not the pending solver/performance,
 static allocation or physical-memory work.
 
+The [Schwarz topology audit](benchmarks/reports/development/schwarz-topology-audit-local-2026-09-28/README.md)
+proves that the unweighted large degree-two generator has one Schwarz subdomain.
+For that graph the apply-storage subset can be bounded at **0.687 GiB**, versus
+the queued candidate's **140.764 GiB** generic estimate; neither is actual RSS or
+full admission. Eight small structural controls pass. The pinned public `within`
+handle does not expose typed subdomain/scratch metadata, and current construction
+admission includes future lazy apply pools. A general successor therefore needs
+reviewed topology metadata and staged construction/solve ownership, not a
+benchmark-specific guard. Finish the queued candidate and budget diagnostic
+before expanding implementation. No production change, build or new job occurred.
+
 ## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 
 [ADR0245](docs/adr/0245-private-implicit-finite-moments.md) extends private finite

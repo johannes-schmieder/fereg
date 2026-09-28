@@ -1,0 +1,78 @@
+{
+  "connected_graph_bank_bound": 1,
+  "graph_checks": [
+    {
+      "components": 1,
+      "disconnected": false,
+      "firms": 16,
+      "workers": 640
+    },
+    {
+      "components": 2,
+      "disconnected": true,
+      "firms": 16,
+      "workers": 640
+    },
+    {
+      "components": 1,
+      "disconnected": false,
+      "firms": 32,
+      "workers": 1280
+    },
+    {
+      "components": 2,
+      "disconnected": true,
+      "firms": 32,
+      "workers": 1280
+    },
+    {
+      "components": 1,
+      "disconnected": false,
+      "firms": 64,
+      "workers": 2560
+    },
+    {
+      "components": 2,
+      "disconnected": true,
+      "firms": 64,
+      "workers": 2560
+    },
+    {
+      "components": 1,
+      "disconnected": false,
+      "firms": 128,
+      "workers": 5120
+    },
+    {
+      "components": 2,
+      "disconnected": true,
+      "firms": 128,
+      "workers": 5120
+    }
+  ],
+  "levels": 2015232,
+  "maximum_levels": 1966080,
+  "minimum_levels": 49152,
+  "n": 3932160,
+  "rhs": 11,
+  "scope": "source proof and scalar apply subset, not runtime or full admission",
+  "scratch_subset": {
+    "connected_graph_proof": {
+      "four_cached_plus_live_rhs_bytes": 737303520,
+      "four_cached_plus_live_rhs_gib": 0.686667412519455,
+      "per_apply_bytes": 49153568
+    },
+    "current": {
+      "four_cached_plus_live_rhs_bytes": 339769803360,
+      "four_cached_plus_live_rhs_gib": 316.43528804183006,
+      "per_apply_bytes": 22651320224
+    },
+    "queued_imbalance": {
+      "four_cached_plus_live_rhs_bytes": 151144088160,
+      "four_cached_plus_live_rhs_gib": 140.76390132308006,
+      "per_apply_bytes": 10076272544
+    }
+  },
+  "threads": 4,
+  "topology_blind_bank_bound": 205
+}
