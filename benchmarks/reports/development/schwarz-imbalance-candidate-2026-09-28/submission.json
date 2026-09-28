@@ -1,0 +1,23 @@
+{
+  "job_id": "7767319",
+  "command": [
+    "qsub",
+    "-terse",
+    "-hold_jid",
+    "7766045,7766146,7767016,7767269",
+    "-v",
+    "RUN_ROOT=/projectnb/welfgr/fereg/dev/20260928-schwarz-imbalance-01",
+    "-o",
+    "/projectnb/welfgr/fereg/dev/20260928-schwarz-imbalance-01/logs",
+    "/projectnb/welfgr/fereg/dev/20260928-schwarz-imbalance-01/job.sh"
+  ],
+  "hold_after": [
+    "7766045",
+    "7766146",
+    "7767016",
+    "7767269"
+  ],
+  "submitted_utc": "2026-09-28T16:17:20.370780+00:00",
+  "deployment_sha256": "b4b4645a1d625827d3faf72890191f0e0ee448d45bff886bb545f0d07268b9ad",
+  "qsub_stderr": ""
+}

@@ -1,0 +1,32 @@
+{
+  "accepted_source": "/projectnb/welfgr/fereg/dev/20260928-private-low-02/source",
+  "base_commit": "a7470ac4",
+  "base_package": "c09eeab353a8445aae85f75891f112964246e876c4865ec9e2f757d83922e236",
+  "candidate_file_sha256": "959733a8a50f9fef07500333037a75c21b21e7edc070a403a27f625e59616e39",
+  "dependencies": [
+    "7766045",
+    "7766146",
+    "7767016",
+    "7767269"
+  ],
+  "exact_tests": [
+    "fe::borrowed_map::tests::routed_auto_selects_lsmr_for_a_slow_chain_graph",
+    "fe::borrowed_map::tests::constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fits",
+    "ols::prepared_fit::tests::initial_full_width_lsmr_preserves_canonical_multiway_rank_policy",
+    "ols::prepared_fit::tests::retained_scratch_parallel_residuals_match_weighted_orthogonal_oracle",
+    "ols::prepared_fit::tests::low_lsmr_batches_match_fast_across_pool_sizes"
+  ],
+  "filters": [
+    "memory::",
+    "ppml::categorical_lsmr::tests::"
+  ],
+  "mem_per_core": "3G",
+  "required_new_tests": [
+    "memory::categorical_schwarz::tests::categorical_schwarz_scratch_bounds_every_oriented_component",
+    "memory::categorical_schwarz::tests::schwarz_scratch_preserves_signed_balanced_and_overflow_boundaries",
+    "memory::categorical_schwarz::tests::imbalanced_categorical_lsmr_admits_complete_workspace_under_restricted_budget"
+  ],
+  "scope": "Candidate core validation only; public science and timing required before adoption",
+  "slots": 8,
+  "walltime_seconds": 1800
+}

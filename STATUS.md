@@ -107,7 +107,7 @@ the previously skipped explicit/insufficient-budget correction cases. Four
 local evidence-parser tests, patch applicability and Python/shell/Rust parsing
 pass; no candidate compilation or numerical result exists yet. Require complete
 records, accounting and red/green evidence before public or performance testing.
-Further headline jobs must wait until both queued diagnostics finish. The
+Further headline jobs must wait until all queued diagnostics below finish. The
 unresolved CG and weighted constrained-fit issues are not claimed repaired.
 
 The [allocation guard dependency repair](benchmarks/reports/development/allocation-dependency-closure-local-2026-09-28/README.md)
@@ -147,6 +147,22 @@ exact input hashes and traces; a harness-complete marker is not scientific
 acceptance. Further headline jobs must wait until this diagnostic also finishes.
 If the route hypothesis is confirmed, investigate tighter topology/ownership
 bounds or bounded live RHS scratch, retaining the current headroom and checks.
+
+**Queued Schwarz-bound candidate: 7767319**, eight slots/3G per core, 30 minutes,
+held behind **7766045, 7766146, 7767016 and 7767269**. The isolated
+[candidate and source proof](benchmarks/reports/development/schwarz-imbalance-candidate-2026-09-28/README.md)
+replace unsigned local scratch `6M+4` with `2M+4min(M,L−M)+4`, using the pinned
+solver's larger-block elimination. Signed-cover and balanced bounds are unchanged;
+all other ownership, concurrency and headroom charges remain. The large degree-two
+apply subset would fall **316.435→140.764 GiB**; this is estimated admission,
+not measured allocation or speed. Scalar checks cover 576 frames/32,400 component
+shapes; patch applicability, Rust parsing, AST and shell checks pass. Production
+remains unchanged. The job builds only an isolated core test executable and runs
+memory, changing-weight PPML, rank, constrained-routing and weighted-oracle controls.
+No Rust or public numerical result exists yet. Require accounting, complete tests
+and both terminal markers. After passing, public science and paired/fresh timings
+are still required before adoption; the nonretaining-CG candidate stays separate.
+Hold further headline work until this last diagnostic job is terminal as well.
 
 ## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 

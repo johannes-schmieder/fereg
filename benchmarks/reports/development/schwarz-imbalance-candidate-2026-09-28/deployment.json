@@ -1,0 +1,8 @@
+{
+  "base-source.json": "6f0cab8958cafee6572c05ab76b69b173b6bd7aae19988408963b24cde7b0275",
+  "candidate.patch": "e01234ef164ea1018379ed47146e6f010ba6ed9bd4ea01afc196a736d518eb40",
+  "job.sh": "8a059d4f5c9223b2b48766ea8199434e0d72c761771da154cfd70e5fec0660dd",
+  "registration.json": "819439223afeff1a6833a84f24aa12f72dba8ea8a9232a27c3a757abc3db3d7c",
+  "run.py": "87a88231b7266e0f7f133c88e9c0a70b9993d6fe0a5f84ff245a98fd9903c262",
+  "rust-toolchain.toml": "f93479dd58b2bce65dd3a0e579efe4c0988894247e7243e1479f8de84f16d81d"
+}

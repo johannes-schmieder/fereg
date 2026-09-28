@@ -1,0 +1,135 @@
+--- a/crates/fereg-core/src/memory/categorical_schwarz.rs
++++ b/crates/fereg-core/src/memory/categorical_schwarz.rs
+@@ -98,17 +98,7 @@
+     )?;
+     let diagonal_bytes = bytes_for_memory::<f64>(levels, "categorical LSMR retained diagonal")?;
+ 
+-    // A categorical component owns both FE blocks and the reduced factor's
+-    // augmented dimension in each of its two local scratch vectors. A signed
+-    // cover additionally needs up to 2*maximum_levels entries in each vector.
+-    let local_scratch_values = checked_sum(&[
+-        checked_mul(
+-            maximum_levels,
+-            if signed_cover { 10 } else { 6 },
+-            "categorical Schwarz local scratch",
+-        )?,
+-        4,
+-    ])?;
++    let local_scratch_values = schwarz_local_scratch_values(levels, maximum_levels, signed_cover)?;
+     let global_apply_values = checked_sum(&[levels, local_scratch_values])?;
+ 
+     // WorkerBufferStack retains each worker's maximum re-entry depth. Only
+@@ -205,6 +195,28 @@
+     })
+ }
+ 
++/// Two local buffers for the pinned larger-block elimination. Categorical
++/// factors retain the smaller block; signed covers keep their previous bound.
++fn schwarz_local_scratch_values(levels: u128, maximum_levels: u128, signed_cover: bool) -> Result<u128> {
++    let payload = if signed_cover {
++        checked_mul(maximum_levels, 10, "signed Schwarz local scratch")?
++    } else {
++        // Every pair's smaller block is bounded by both the largest FE and
++        // the total levels outside it. This remains true for pairs that do
++        // not contain the largest FE and for disconnected subcomponents.
++        let others = levels.checked_sub(maximum_levels)
++            .ok_or_else(|| FeregError::new(ErrorCode::InvalidArgument,
++                "Schwarz maximum FE level count exceeds total levels"))?;
++        let kept = maximum_levels.min(others);
++        checked_sum(&[
++            checked_mul(maximum_levels, 2, "Schwarz eliminated-block scratch")?,
++            checked_mul(kept, 4, "Schwarz kept-block scratch")?,
++        ])?
++    };
++    // Preserve two possible grounding entries in each local buffer.
++    checked_add_memory(payload, 4, "Schwarz local scratch grounding")
++}
++
+ fn checked_add_memory(left: u128, right: u128, context: &'static str) -> Result<u128> {
+     left.checked_add(right)
+         .ok_or_else(|| FeregError::new(ErrorCode::Allocation, context))
+@@ -232,7 +244,7 @@
+             let frame = estimate_categorical_schwarz_memory(
+                 983_040, 3, 206_931, 196_608, threads as u128, 0,
+             ).unwrap();
+-            let active_worker_payload = threads as u128 * (206_931 + 6 * 196_608 + 4) * 8;
++            let active_worker_payload = threads as u128 * (206_931 + 2 * (196_608 + 2 * 9_831 + 2)) * 8;
+             assert!(frame.apply_peak_bytes > active_worker_payload);
+             assert!(frame.retained_bytes > 4 * frame.apply_peak_bytes);
+         }
+@@ -240,11 +252,72 @@
+ 
+     #[test]
+     fn schwarz_stack_bound_keeps_nonreentrant_and_overflow_boundaries() {
+-        // Below the first yielding component the ordinary T-worker allowance
+-        // is unchanged. Crossing the threshold must add scratch even at T=1.
++        // Below the first yielding component charge the ordinary T workers.
++        // Crossing the threshold must add scratch even at T=1.
+         let below = estimate_categorical_schwarz_memory(20_000, 2, 10_001, 6_000, 1, 0).unwrap();
+         let above = estimate_categorical_schwarz_memory(20_000, 2, 10_002, 6_000, 1, 0).unwrap();
+         assert!(above.apply_peak_bytes > 2 * below.apply_peak_bytes - 256);
+         assert!(estimate_categorical_schwarz_memory(1, 2, 10_002, 1, u128::MAX, 0).is_err());
+     }
+-}
++
++    #[test]
++    fn categorical_schwarz_scratch_bounds_every_oriented_component() {
++        // Count the upstream local buffers from component dimensions, rather
++        // than from the aggregate envelope used by the estimator.
++        for a in 1..=8_u128 {
++            for b in 1..=8_u128 {
++                for c in 0..=8_u128 {
++                    let counts = [a, b, c];
++                    let bound = schwarz_local_scratch_values(a + b + c, a.max(b).max(c), false).unwrap();
++                    for left in 0..3 {
++                        for right in left + 1..3 {
++                            for q in 1..=counts[left] {
++                                for r in 1..=counts[right] {
++                                    // Local input + smaller reduced system +
++                                    // two grounding entries, in each buffer.
++                                    let component = 2 * (q + r + q.min(r) + 2);
++                                    assert!(component <= bound, "{counts:?}: {q} x {r}");
++                                }
++                            }
++                        }
++                    }
++                }
++            }
++        }
++    }
++
++    #[test]
++    fn schwarz_scratch_preserves_signed_balanced_and_overflow_boundaries() {
++        for total in 1..=128 {
++            for maximum in 1..=total {
++                assert_eq!(schwarz_local_scratch_values(total, maximum, true).unwrap(), 10 * maximum + 4);
++                let plain = schwarz_local_scratch_values(total, maximum, false).unwrap();
++                assert!(plain <= 6 * maximum + 4);
++                if maximum <= total - maximum {
++                    assert_eq!(plain, 6 * maximum + 4);
++                }
++            }
++        }
++        assert!(schwarz_local_scratch_values(1, 2, false).is_err());
++        assert!(schwarz_local_scratch_values(u128::MAX, u128::MAX, false).is_err());
++        assert!(schwarz_local_scratch_values(u128::MAX, u128::MAX, true).is_err());
++    }
++
++    #[test]
++    fn imbalanced_categorical_lsmr_admits_complete_workspace_under_restricted_budget() {
++        let model = crate::memory::estimate_fe_solver_memory(
++            3_932_160, 11, &[1_966_080, 49_152], 4, Some(4)).unwrap();
++        let execution = 4 * 1024_u128.pow(3);
++        let fits = crate::memory::FeSolverMemoryBudget {
++            execution_bytes: execution,
++            usable_bytes: crate::memory::usable_memory_bytes(Some(192 * 1024_u128.pow(3))).unwrap(),
++        };
++        assert!(fits.fits(model.lsmr_schwarz_bytes));
++        let too_small = crate::memory::FeSolverMemoryBudget {
++            usable_bytes: crate::memory::usable_memory_bytes(Some(128 * 1024_u128.pow(3))).unwrap(),
++            ..fits
++        };
++        assert!(!too_small.fits(model.lsmr_schwarz_bytes));
++    }
++
++}
