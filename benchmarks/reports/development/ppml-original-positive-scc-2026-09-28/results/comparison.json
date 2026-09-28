@@ -1,0 +1,2486 @@
+{
+  "current": {
+    "feppml": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": false,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "3.68415686034511086746099743332664158610528716043515745E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.6668337533670319330122618520276467088060974220843738E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "7.262359573856627176025350472727526467720925893345314E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "7.245046459382355675091465691266845423300802622279686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "5.305711974921206225208928735909952339212358083286720025E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "5.2883888678136855044928007099683475452857612709613269E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "4.907062019643695432802625127905715745369851674595314E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.889748901796707770830115641629587370474874887904686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "3.199034159870608523346428392059837025086343373814064E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.181721042686851296450148602062168974001943979701561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "3.286659726395582187064329609811041992585122670689064E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.269246614352058343188863382138575870116293344935936E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "1.2939227425525226039338159516873505454937875356235939E-10",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.2921904317214853449899654897208589572032034311732811E-10",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "1.354781141493503988073619319048660483626550444559140745E-10",
+            "candidate_inside_optimum_envelope": false,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.35304983070231656315792941494605350080328582863421863E-10",
+            "reference_outside_optimum_envelope": true,
+            "unresolved": true
+          },
+          {
+            "candidate_distance_upper": "3.283355880483454008822756059189063054005563344517189E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.266042763679202001400843819183561462481558237514061E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "4.496514620615512719337440266926508885304391469517189E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.479201500638225637287140507296923059542715464076561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": [
+          8
+        ]
+      },
+      "checks": {
+        "coefficients_certified": false,
+        "coefficients_point": false,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 1.353915486126088e-10,
+      "covariance_max_abs_error": 4.3322940043331523e-16,
+      "files": {
+        "coefficients.csv": "573830c481c14bf00229e3c3fc03447411d8655d9efd61cb10736f2fe44c0f76",
+        "covariance.csv": "aa237180143e6c974ce9911b80f9a637bde7038bdb84e91213b9d8f3c82256cf"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.6668337533670319330122618520276467088060974220843738E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "7.245046459382355675091465691266845423300802622279686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "5.2883888678136855044928007099683475452857612709613269E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.889748901796707770830115641629587370474874887904686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.181721042686851296450148602062168974001943979701561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.269246614352058343188863382138575870116293344935936E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.2921904317214853449899654897208589572032034311732811E-10",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": false,
+            "reference_distance_lower": "1.35304983070231656315792941494605350080328582863421863E-10",
+            "reference_outside_optimum_envelope": true,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.266042763679202001400843819183561462481558237514061E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.479201500638225637287140507296923059542715464076561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": true,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "metadata": {
+        "N": 61440.0,
+        "N_candidate": 61440.0,
+        "N_effective": 61440.0,
+        "N_full": 61440.0,
+        "N_hdfe": 2.0,
+        "N_hdfe_extended": 2.0,
+        "N_physical": 61440.0,
+        "chi2": 3.692948609054125,
+        "command": "feppml y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10, absorb(g1 g2) threads(4) vce(robust)",
+        "converged": 1.0,
+        "deterministic": 0.0,
+        "deviance": 105949.66951089134,
+        "df_a": 31486.0,
+        "df_chi2": 10.0,
+        "df_m": 10.0,
+        "df_resid": 29943.0,
+        "df_structural": 29943.0,
+        "drop_singletons": 1.0,
+        "feppml_action_events_delta": 6544.0,
+        "feppml_action_events_end": 8671.0,
+        "feppml_action_events_start": 2127.0,
+        "feppml_allocation_audit_present": 0.0,
+        "feppml_allocation_current": 3672377.0,
+        "feppml_allocation_growth": 3636278.0,
+        "feppml_allocation_model_ratio": 0.12394779891349748,
+        "feppml_allocation_peak": 62160805.0,
+        "feppml_allocation_peak_delta": 62124706.0,
+        "feppml_allocation_previous": 2441.0,
+        "feppml_allocation_start": 36099.0,
+        "feppml_cert_tolerance": 1e-08,
+        "feppml_cluster_df_cap": 0.0,
+        "feppml_coef_distribution": 1.0,
+        "feppml_connected_components": 1.0,
+        "feppml_diagnostic_records": 4.0,
+        "feppml_fallback_count": 0.0,
+        "feppml_fallback_mask": 0.0,
+        "feppml_final_hash_hi": 3737036183.0,
+        "feppml_final_hash_lo": 2643784485.0,
+        "feppml_hash_digest_hi": 2798856386.0,
+        "feppml_hash_digest_lo": 410542205.0,
+        "feppml_initial_hash_hi": 3737036183.0,
+        "feppml_initial_hash_lo": 2643784485.0,
+        "feppml_iterate": 10000.0,
+        "feppml_iteration_allocation_free": 0.0,
+        "feppml_linear_route": 2.0,
+        "feppml_memory_fast_bytes": 49480310.0,
+        "feppml_memory_low_bytes": 52967974.0,
+        "feppml_memory_requested_code": 0.0,
+        "feppml_memory_selected_bytes": 501216694.0,
+        "feppml_memory_selected_code": 1.0,
+        "feppml_model_rank": 31497.0,
+        "feppml_modeled_peak_fe_recovery": 32053211.0,
+        "feppml_modeled_peak_feproj": 501216694.0,
+        "feppml_modeled_peak_final_solve": 501216694.0,
+        "feppml_modeled_peak_finite": 501216694.0,
+        "feppml_modeled_peak_inference": 32076267.0,
+        "feppml_modeled_peak_line_search": 499740947.0,
+        "feppml_modeled_peak_prep": 47512723.0,
+        "feppml_modeled_peak_publication": 34639091.0,
+        "feppml_modeled_peak_sep_fe": 47076443.0,
+        "feppml_modeled_peak_sep_ir": 47076443.0,
+        "feppml_modeled_peak_sep_mu": 47076443.0,
+        "feppml_modeled_peak_sep_simplex": 47076443.0,
+        "feppml_modeled_peak_weight": 499249107.0,
+        "feppml_modeled_scratch_bytes": 0.0,
+        "feppml_objective_scale_code": 1.0,
+        "feppml_poolsize": 10.0,
+        "feppml_psd_adjusted": 0.0,
+        "feppml_psd_clip_relinf": 0.0,
+        "feppml_psd_clipped": 0.0,
+        "feppml_psd_eigen_relinf": 3.0989374835711886e-14,
+        "feppml_psd_final_min": 4.7764486841199125e-06,
+        "feppml_psd_final_rank": 10.0,
+        "feppml_psd_orthog_relinf": 4.165884217449678e-15,
+        "feppml_psd_passed": 1.0,
+        "feppml_psd_raw_min": 4.7764486841199125e-06,
+        "feppml_psd_state": 1.0,
+        "feppml_rank_frozen": 1.0,
+        "feppml_rank_is_approximate": 0.0,
+        "feppml_repeated_baseline_growth": 33658.0,
+        "feppml_requested_threads": 4.0,
+        "feppml_requested_tolerance": 1e-08,
+        "feppml_scratch_bytes": 0.0,
+        "feppml_sep_executions": 4.0,
+        "feppml_sep_generations": 0.0,
+        "feppml_solver_fallback_count": 0.0,
+        "feppml_strict_profile_rejections": 0.0,
+        "feppml_threads": 4.0,
+        "feppml_time_fe_projection": 0.327731489,
+        "feppml_time_fe_recovery": 2.3589e-05,
+        "feppml_time_finite_solve": 0.05126185,
+        "feppml_time_inference": 0.006014323,
+        "feppml_time_line_search": 0.025544146,
+        "feppml_time_preparation": 0.083945532,
+        "feppml_time_publication": 0.021624725,
+        "feppml_time_separation_fe": 0.002808218,
+        "feppml_time_separation_ir": 0.0,
+        "feppml_time_separation_simplex": 0.0,
+        "feppml_time_strict_final_solve": 0.142977526,
+        "feppml_time_weight_refresh": 0.004610693,
+        "feppml_timeit": 0.0,
+        "feppml_trace_digest_hi": 3219161141.0,
+        "feppml_trace_digest_lo": 3937086494.0,
+        "feppml_two_consecutive": 1.0,
+        "feppml_vce_correction": 1.0000162763065805,
+        "feppml_vce_correction_policy": 1.0,
+        "feppml_vce_effective": 2.0,
+        "feppml_vce_requested": 2.0,
+        "feppml_weight_code": 0.0,
+        "feppml_workspace_allocation_free": 1.0,
+        "ic": 4.0,
+        "inner_iterations": 99.0,
+        "ll": -173929.59842327915,
+        "ll_0": -225046.44853778856,
+        "log_weight_multiplier": 0.0,
+        "mu_0": 9.983870442708334,
+        "num_singletons": 0.0,
+        "poolsize": 10.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2_p": 0.22713911037759005,
+        "rank": 11.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "requested_threads": 4.0,
+        "sample_kind": "observation_ids",
+        "seconds": 0.773,
+        "separated": 0.0,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "step_halvings": 0.0,
+        "sum_y": 613409.0,
+        "sumweights": 61440.0,
+        "weight_multiplier": 1.0
+      },
+      "outside_optimum_envelope": [
+        8
+      ],
+      "pass_all": false
+    }
+  },
+  "new_reference": {
+    "both_tight": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6582450295492106254561623332244571847320456890637E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.659567756199642940865651425641518513619985142189E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6617334500391827359725813126112562221885581402356E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.661107323284572357161942008618753830850209751564E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.658179977418861495190121886056404988229360142189E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.660717010502477575565699325610440651834096470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656683778420831499071191601191204468667592564064E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6573126156808730916429159238157090348602195171887E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656878934811878889869312942695361058175649204689E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.657486088028470772352357116263848225534047642189E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "checks": {
+        "coefficients_certified": true,
+        "coefficients_point": true,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 5.1797758790494974e-17,
+      "covariance_max_abs_error": 4.611247364852411e-17,
+      "files": {
+        "coefficients.csv": "508edb23f75b2d545ec1aa30a07301f3c2ec35f22b63b9f308d7920a7b097334",
+        "covariance.csv": "2730b22512678fcdea37474c99cda22bba35104678bf5849a4a2e930fe9ff240"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "maximum_mean_point_error": 6.649898409705202e-10,
+      "metadata": {
+        "N": 61440,
+        "converged": true,
+        "deviance": 105949.669510891,
+        "df_k": 31497,
+        "fixef_tol": 3e-12,
+        "glm_tol": 1e-12,
+        "iterations": 6,
+        "loglik": -173929.598423279
+      },
+      "outside_optimum_envelope": [],
+      "pass_all": true
+    },
+    "fe_tight": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.68826116669447181571165866401654152101286844296995E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.679560444260275642628748855289560238778676548439E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.745431147249632464516871650206413547456349888282475E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.734009077362497675304603134949248711526479282814E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.678172665479494196953219315704446713388051548439E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.666723490538047270130100614127260128915395298439E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.760680450805641084381186473850649277627553501564E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6581908194405863502344619605844136876464744000012E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.708877271004283682524310379025083462655629673439E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.750488950384277342701516417522471825540151157814E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "checks": {
+        "coefficients_certified": true,
+        "coefficients_point": true,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 1.0412677664550785e-15,
+      "covariance_max_abs_error": 4.900324162460557e-12,
+      "files": {
+        "coefficients.csv": "19000ae85eeae785436727cae1257cd98bf931f0c8e0f1c5679c400b88c8bcfa",
+        "covariance.csv": "bb5eac4662bcbe44b738abde38894f08317227588a0b4b8dac17d2c06b4abcc4"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "maximum_mean_point_error": 3.4025974926521485e-08,
+      "metadata": {
+        "N": 61440,
+        "converged": true,
+        "deviance": 105949.669510891,
+        "df_k": 31497,
+        "fixef_tol": 3e-12,
+        "glm_tol": 1e-10,
+        "iterations": 5,
+        "loglik": -173929.598423279
+      },
+      "outside_optimum_envelope": [],
+      "pass_all": true
+    },
+    "outer_tight": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6593617577868706950231900096093532246948142437512E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656575358203582948627790855911117474496449985939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.66203160563661624969193336213149545615920023007935E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.658028189114713524569360842664283196389760532814E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.658938918939601348293927103017013947427358189064E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.657377667811222221908956370983761231362905064064E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.661432583936318008492144244459014813363637485939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.65971412349292848396424243176963595575102762265745E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.657876400810565553948599799272161404550160923439E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.658635342331305407052405016232770363748158970314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "checks": {
+        "coefficients_certified": true,
+        "coefficients_point": true,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 5.477931476483011e-17,
+      "covariance_max_abs_error": 4.6912919783679424e-17,
+      "files": {
+        "coefficients.csv": "527c93fdec6a326a66acb27a5031ce95eccb9daf5df85451798e28d8ef3947d7",
+        "covariance.csv": "c642aa790b331c60671d479a8359f078c57d61088fef7b78dff815d372473448"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "maximum_mean_point_error": 7.237126453674136e-10,
+      "metadata": {
+        "N": 61440,
+        "converged": true,
+        "deviance": 105949.669510891,
+        "df_k": 31497,
+        "fixef_tol": 1e-11,
+        "glm_tol": 1e-12,
+        "iterations": 6,
+        "loglik": -173929.598423279
+      },
+      "outside_optimum_envelope": [],
+      "pass_all": true
+    },
+    "strict": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.69195829610264738583162407806750802224883035703245E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.677565512262902314470175142135959546029653110939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.74303234994300828595663016088448880141982034726685E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.732014145365124347146029421795648018777455845314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.677175199480807532873932459127646367013539829689E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.664728558540673941971526900973659436166371860939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.761677916804327748460473330427449624002065220314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6590907072437493189146881464091357392669577984387E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.710872203001657010682884092178684155404653110939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.751486416382964006780803274099272171914662876564E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "checks": {
+        "coefficients_certified": true,
+        "coefficients_point": true,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 1.0512424264419451e-15,
+      "covariance_max_abs_error": 4.900325842973924e-12,
+      "files": {
+        "coefficients.csv": "d0f2c9987a2a03ef43fa14004ad2702824aeba606c263b8802b51fcec39e5e46",
+        "covariance.csv": "f577f078428838ee59947cde93585030a743d38c90f1f62702ab3af9a6f5a8fa"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "maximum_mean_point_error": 3.407133242205873e-08,
+      "metadata": {
+        "N": 61440,
+        "converged": true,
+        "deviance": 105949.669510891,
+        "df_k": 31497,
+        "fixef_tol": 1e-11,
+        "glm_tol": 1e-10,
+        "iterations": 5,
+        "loglik": -173929.598423279
+      },
+      "outside_optimum_envelope": [],
+      "pass_all": true
+    }
+  },
+  "original": {
+    "results/ppml-strong_d2-n61440-k10-t28-main/warm-1/feppml": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": false,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "3.68415686034511086746099743332664158610528716043515745E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.6668337533670319330122618520276467088060974220843738E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "7.262359573856627176025350472727526467720925893345314E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "7.245046459382355675091465691266845423300802622279686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "5.305711974921206225208928735909952339212358083286720025E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "5.2883888678136855044928007099683475452857612709613269E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "4.907062019643695432802625127905715745369851674595314E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.889748901796707770830115641629587370474874887904686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "3.199034159870608523346428392059837025086343373814064E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.181721042686851296450148602062168974001943979701561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "3.286659726395582187064329609811041992585122670689064E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.269246614352058343188863382138575870116293344935936E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "1.2939227425525226039338159516873505454937875356235939E-10",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.2921904317214853449899654897208589572032034311732811E-10",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "1.354781141493503988073619319048660483626550444559140745E-10",
+            "candidate_inside_optimum_envelope": false,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.35304983070231656315792941494605350080328582863421863E-10",
+            "reference_outside_optimum_envelope": true,
+            "unresolved": true
+          },
+          {
+            "candidate_distance_upper": "3.283355880483454008822756059189063054005563344517189E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.266042763679202001400843819183561462481558237514061E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "4.496514620615512719337440266926508885304391469517189E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.479201500638225637287140507296923059542715464076561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": [
+          8
+        ]
+      },
+      "checks": {
+        "coefficients_certified": false,
+        "coefficients_point": false,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 1.353915486126088e-10,
+      "covariance_max_abs_error": 4.332336355980515e-16,
+      "files": {
+        "coefficients.csv": "573830c481c14bf00229e3c3fc03447411d8655d9efd61cb10736f2fe44c0f76",
+        "covariance.csv": "3b0670a712b56e74890ca9a1dda6228935999b028fa4eadef1f462da52758196"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.6668337533670319330122618520276467088060974220843738E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "7.245046459382355675091465691266845423300802622279686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "5.2883888678136855044928007099683475452857612709613269E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.889748901796707770830115641629587370474874887904686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.181721042686851296450148602062168974001943979701561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.269246614352058343188863382138575870116293344935936E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.2921904317214853449899654897208589572032034311732811E-10",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": false,
+            "reference_distance_lower": "1.35304983070231656315792941494605350080328582863421863E-10",
+            "reference_outside_optimum_envelope": true,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.266042763679202001400843819183561462481558237514061E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.479201500638225637287140507296923059542715464076561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": true,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "metadata": {
+        "N": 61440.0,
+        "N_candidate": 61440.0,
+        "N_effective": 61440.0,
+        "N_full": 61440.0,
+        "N_hdfe": 2.0,
+        "N_hdfe_extended": 2.0,
+        "N_physical": 61440.0,
+        "chi2": 3.6929486090541297,
+        "command": "feppml y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10, absorb(g1 g2) threads(28) vce(robust)",
+        "converged": 1.0,
+        "deterministic": 0.0,
+        "deviance": 105949.66951089134,
+        "df_a": 31486.0,
+        "df_chi2": 10.0,
+        "df_m": 10.0,
+        "df_resid": 29943.0,
+        "df_structural": 29943.0,
+        "drop_singletons": 1.0,
+        "feppml_action_events_delta": 38965.0,
+        "feppml_action_events_end": 41380.0,
+        "feppml_action_events_start": 2415.0,
+        "feppml_allocation_audit_present": 0.0,
+        "feppml_allocation_current": 3844795.0,
+        "feppml_allocation_growth": 3636278.0,
+        "feppml_allocation_model_ratio": 0.012422806204519637,
+        "feppml_allocation_peak": 62333511.0,
+        "feppml_allocation_peak_delta": 62124994.0,
+        "feppml_allocation_previous": 2443.0,
+        "feppml_allocation_start": 208517.0,
+        "feppml_cert_tolerance": 1e-08,
+        "feppml_cluster_df_cap": 0.0,
+        "feppml_coef_distribution": 1.0,
+        "feppml_connected_components": 1.0,
+        "feppml_diagnostic_records": 4.0,
+        "feppml_fallback_count": 0.0,
+        "feppml_fallback_mask": 0.0,
+        "feppml_final_hash_hi": 3737036183.0,
+        "feppml_final_hash_lo": 2643784485.0,
+        "feppml_hash_digest_hi": 2798856386.0,
+        "feppml_hash_digest_lo": 410542205.0,
+        "feppml_initial_hash_hi": 3737036183.0,
+        "feppml_initial_hash_lo": 2643784485.0,
+        "feppml_iterate": 10000.0,
+        "feppml_iteration_allocation_free": 0.0,
+        "feppml_linear_route": 2.0,
+        "feppml_memory_fast_bytes": 49480184.0,
+        "feppml_memory_low_bytes": 53025192.0,
+        "feppml_memory_requested_code": 0.0,
+        "feppml_memory_selected_bytes": 5000882488.0,
+        "feppml_memory_selected_code": 1.0,
+        "feppml_model_rank": 31497.0,
+        "feppml_modeled_peak_fe_recovery": 32053085.0,
+        "feppml_modeled_peak_feproj": 5000882488.0,
+        "feppml_modeled_peak_final_solve": 5000882488.0,
+        "feppml_modeled_peak_finite": 5000882488.0,
+        "feppml_modeled_peak_inference": 32078253.0,
+        "feppml_modeled_peak_line_search": 4999406741.0,
+        "feppml_modeled_peak_prep": 47512597.0,
+        "feppml_modeled_peak_publication": 34638965.0,
+        "feppml_modeled_peak_sep_fe": 47076381.0,
+        "feppml_modeled_peak_sep_ir": 47076381.0,
+        "feppml_modeled_peak_sep_mu": 47076381.0,
+        "feppml_modeled_peak_sep_simplex": 47076381.0,
+        "feppml_modeled_peak_weight": 4998914901.0,
+        "feppml_modeled_scratch_bytes": 0.0,
+        "feppml_objective_scale_code": 1.0,
+        "feppml_poolsize": 10.0,
+        "feppml_psd_adjusted": 0.0,
+        "feppml_psd_clip_relinf": 0.0,
+        "feppml_psd_clipped": 0.0,
+        "feppml_psd_eigen_relinf": 3.065323409809234e-14,
+        "feppml_psd_final_min": 4.776448684119902e-06,
+        "feppml_psd_final_rank": 10.0,
+        "feppml_psd_orthog_relinf": 4.035237855665175e-15,
+        "feppml_psd_passed": 1.0,
+        "feppml_psd_raw_min": 4.776448684119902e-06,
+        "feppml_psd_state": 1.0,
+        "feppml_rank_frozen": 1.0,
+        "feppml_rank_is_approximate": 0.0,
+        "feppml_repeated_baseline_growth": 206074.0,
+        "feppml_requested_threads": 28.0,
+        "feppml_requested_tolerance": 1e-08,
+        "feppml_scratch_bytes": 0.0,
+        "feppml_sep_executions": 4.0,
+        "feppml_sep_generations": 0.0,
+        "feppml_solver_fallback_count": 0.0,
+        "feppml_strict_profile_rejections": 0.0,
+        "feppml_threads": 28.0,
+        "feppml_time_fe_projection": 0.138963813,
+        "feppml_time_fe_recovery": 1.1442e-05,
+        "feppml_time_finite_solve": 0.018849889,
+        "feppml_time_inference": 0.004327699,
+        "feppml_time_line_search": 0.010066234,
+        "feppml_time_preparation": 0.03450353,
+        "feppml_time_publication": 0.017357116,
+        "feppml_time_separation_fe": 0.001643898,
+        "feppml_time_separation_ir": 0.0,
+        "feppml_time_separation_simplex": 0.0,
+        "feppml_time_strict_final_solve": 0.042325797,
+        "feppml_time_weight_refresh": 0.000709263,
+        "feppml_timeit": 0.0,
+        "feppml_trace_digest_hi": 3219161141.0,
+        "feppml_trace_digest_lo": 3937086494.0,
+        "feppml_two_consecutive": 1.0,
+        "feppml_vce_correction": 1.0000162763065805,
+        "feppml_vce_correction_policy": 1.0,
+        "feppml_vce_effective": 2.0,
+        "feppml_vce_requested": 2.0,
+        "feppml_weight_code": 0.0,
+        "feppml_workspace_allocation_free": 1.0,
+        "ic": 4.0,
+        "inner_iterations": 99.0,
+        "ll": -173929.59842327915,
+        "ll_0": -225046.44853778856,
+        "log_weight_multiplier": 0.0,
+        "mu_0": 9.983870442708334,
+        "num_singletons": 0.0,
+        "poolsize": 10.0,
+        "processors_lic": 4.0,
+        "processors_mach": 28.0,
+        "r2_p": 0.22713911037759005,
+        "rank": 11.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "requested_threads": 28.0,
+        "sample_kind": "observation_ids",
+        "seconds": 0.323,
+        "separated": 0.0,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "step_halvings": 0.0,
+        "sum_y": 613409.0,
+        "sumweights": 61440.0,
+        "weight_multiplier": 1.0
+      },
+      "outside_optimum_envelope": [
+        8
+      ],
+      "pass_all": false
+    },
+    "results/ppml-strong_d2-n61440-k10-t28-main/warm-1/fixest_strict": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.69195829610264738583162407806750802224883035703245E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.677565512262902314470175142135959546029653110939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.74303234994300828595663016088448880141982034726685E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.732014145365124347146029421795648018777455845314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.677175199480807532873932459127646367013539829689E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.664728558540673941971526900973659436166371860939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.761677916804327748460473330427449624002065220314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6590907072437493189146881464091357392669577984387E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.710872203001657010682884092178684155404653110939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.751486416382964006780803274099272171914662876564E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "checks": {
+        "coefficients_certified": true,
+        "coefficients_point": true,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 1.0512424264419451e-15,
+      "covariance_max_abs_error": 4.900325842973924e-12,
+      "files": {
+        "coefficients.csv": "d0f2c9987a2a03ef43fa14004ad2702824aeba606c263b8802b51fcec39e5e46",
+        "covariance.csv": "ecc868a7008a2fb48f1c49440959db171453c27ae79215d8466767836b50b712"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "metadata": {
+        "N": 61440,
+        "R_version": "4.5.2",
+        "converged": true,
+        "covariance_multiplier": 1.00001627630658,
+        "covariance_normalization": "HC0 multiplied by N/(N-1)",
+        "deviance": 105949.669510891,
+        "df_k": 31497,
+        "effective_threads": 28,
+        "error": {},
+        "fixest_version": "0.14.2",
+        "loglik": -173929.598423279,
+        "rc": 0,
+        "requested_threads": 28,
+        "sample_kind": "observation_ids",
+        "seconds": 0.882
+      },
+      "outside_optimum_envelope": [],
+      "pass_all": true
+    },
+    "results/ppml-strong_d2-n61440-k10-t4-main/warm-1/feppml": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": false,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "3.68415686034511086746099743332664158610528716043515745E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.6668337533670319330122618520276467088060974220843738E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "7.262359573856627176025350472727526467720925893345314E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "7.245046459382355675091465691266845423300802622279686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "5.305711974921206225208928735909952339212358083286720025E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "5.2883888678136855044928007099683475452857612709613269E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "4.907062019643695432802625127905715745369851674595314E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.889748901796707770830115641629587370474874887904686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "3.199034159870608523346428392059837025086343373814064E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.181721042686851296450148602062168974001943979701561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "3.286659726395582187064329609811041992585122670689064E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.269246614352058343188863382138575870116293344935936E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "1.2939227425525226039338159516873505454937875356235939E-10",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.2921904317214853449899654897208589572032034311732811E-10",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "1.354781141493503988073619319048660483626550444559140745E-10",
+            "candidate_inside_optimum_envelope": false,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.35304983070231656315792941494605350080328582863421863E-10",
+            "reference_outside_optimum_envelope": true,
+            "unresolved": true
+          },
+          {
+            "candidate_distance_upper": "3.283355880483454008822756059189063054005563344517189E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.266042763679202001400843819183561462481558237514061E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "4.496514620615512719337440266926508885304391469517189E-11",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.479201500638225637287140507296923059542715464076561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": [
+          8
+        ]
+      },
+      "checks": {
+        "coefficients_certified": false,
+        "coefficients_point": false,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 1.353915486126088e-10,
+      "covariance_max_abs_error": 4.332302474662625e-16,
+      "files": {
+        "coefficients.csv": "573830c481c14bf00229e3c3fc03447411d8655d9efd61cb10736f2fe44c0f76",
+        "covariance.csv": "a3fd239477bc5ad4056b60f260731a909bbc642a47ec191669448f680e7a6962"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.6668337533670319330122618520276467088060974220843738E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "7.245046459382355675091465691266845423300802622279686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "5.2883888678136855044928007099683475452857612709613269E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.889748901796707770830115641629587370474874887904686E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.181721042686851296450148602062168974001943979701561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.269246614352058343188863382138575870116293344935936E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "1.2921904317214853449899654897208589572032034311732811E-10",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": false,
+            "reference_distance_lower": "1.35304983070231656315792941494605350080328582863421863E-10",
+            "reference_outside_optimum_envelope": true,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "3.266042763679202001400843819183561462481558237514061E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "4.479201500638225637287140507296923059542715464076561E-11",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": true,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "metadata": {
+        "N": 61440.0,
+        "N_candidate": 61440.0,
+        "N_effective": 61440.0,
+        "N_full": 61440.0,
+        "N_hdfe": 2.0,
+        "N_hdfe_extended": 2.0,
+        "N_physical": 61440.0,
+        "chi2": 3.6929486090541226,
+        "command": "feppml y x1 x2 x3 x4 x5 x6 x7 x8 x9 x10, absorb(g1 g2) threads(4) vce(robust)",
+        "converged": 1.0,
+        "deterministic": 0.0,
+        "deviance": 105949.66951089134,
+        "df_a": 31486.0,
+        "df_chi2": 10.0,
+        "df_m": 10.0,
+        "df_resid": 29943.0,
+        "df_structural": 29943.0,
+        "drop_singletons": 1.0,
+        "feppml_action_events_delta": 6919.0,
+        "feppml_action_events_end": 9046.0,
+        "feppml_action_events_start": 2127.0,
+        "feppml_allocation_audit_present": 0.0,
+        "feppml_allocation_current": 3672377.0,
+        "feppml_allocation_growth": 3636278.0,
+        "feppml_allocation_model_ratio": 0.07106050457135747,
+        "feppml_allocation_peak": 62160741.0,
+        "feppml_allocation_peak_delta": 62124642.0,
+        "feppml_allocation_previous": 2441.0,
+        "feppml_allocation_start": 36099.0,
+        "feppml_cert_tolerance": 1e-08,
+        "feppml_cluster_df_cap": 0.0,
+        "feppml_coef_distribution": 1.0,
+        "feppml_connected_components": 1.0,
+        "feppml_diagnostic_records": 4.0,
+        "feppml_fallback_count": 0.0,
+        "feppml_fallback_mask": 0.0,
+        "feppml_final_hash_hi": 3737036183.0,
+        "feppml_final_hash_lo": 2643784485.0,
+        "feppml_hash_digest_hi": 2798856386.0,
+        "feppml_hash_digest_lo": 410542205.0,
+        "feppml_initial_hash_hi": 3737036183.0,
+        "feppml_initial_hash_lo": 2643784485.0,
+        "feppml_iterate": 10000.0,
+        "feppml_iteration_allocation_free": 0.0,
+        "feppml_linear_route": 2.0,
+        "feppml_memory_fast_bytes": 49479830.0,
+        "feppml_memory_low_bytes": 52967494.0,
+        "feppml_memory_requested_code": 0.0,
+        "feppml_memory_selected_bytes": 874249942.0,
+        "feppml_memory_selected_code": 1.0,
+        "feppml_model_rank": 31497.0,
+        "feppml_modeled_peak_fe_recovery": 32052731.0,
+        "feppml_modeled_peak_feproj": 874249942.0,
+        "feppml_modeled_peak_final_solve": 874249942.0,
+        "feppml_modeled_peak_finite": 874249942.0,
+        "feppml_modeled_peak_inference": 32075787.0,
+        "feppml_modeled_peak_line_search": 872774195.0,
+        "feppml_modeled_peak_prep": 47512243.0,
+        "feppml_modeled_peak_publication": 34638611.0,
+        "feppml_modeled_peak_sep_fe": 47076379.0,
+        "feppml_modeled_peak_sep_ir": 47076379.0,
+        "feppml_modeled_peak_sep_mu": 47076379.0,
+        "feppml_modeled_peak_sep_simplex": 47076379.0,
+        "feppml_modeled_peak_weight": 872282355.0,
+        "feppml_modeled_scratch_bytes": 0.0,
+        "feppml_objective_scale_code": 1.0,
+        "feppml_poolsize": 10.0,
+        "feppml_psd_adjusted": 0.0,
+        "feppml_psd_clip_relinf": 0.0,
+        "feppml_psd_clipped": 0.0,
+        "feppml_psd_eigen_relinf": 3.036813695396311e-14,
+        "feppml_psd_final_min": 4.7764486841199125e-06,
+        "feppml_psd_final_rank": 10.0,
+        "feppml_psd_orthog_relinf": 4.104897845247368e-15,
+        "feppml_psd_passed": 1.0,
+        "feppml_psd_raw_min": 4.7764486841199125e-06,
+        "feppml_psd_state": 1.0,
+        "feppml_rank_frozen": 1.0,
+        "feppml_rank_is_approximate": 0.0,
+        "feppml_repeated_baseline_growth": 33658.0,
+        "feppml_requested_threads": 4.0,
+        "feppml_requested_tolerance": 1e-08,
+        "feppml_scratch_bytes": 0.0,
+        "feppml_sep_executions": 4.0,
+        "feppml_sep_generations": 0.0,
+        "feppml_solver_fallback_count": 0.0,
+        "feppml_strict_profile_rejections": 0.0,
+        "feppml_threads": 4.0,
+        "feppml_time_fe_projection": 0.235248817,
+        "feppml_time_fe_recovery": 1.838e-05,
+        "feppml_time_finite_solve": 0.0292092,
+        "feppml_time_inference": 0.002964124,
+        "feppml_time_line_search": 0.016119908,
+        "feppml_time_preparation": 0.044810199,
+        "feppml_time_publication": 0.015517537000000001,
+        "feppml_time_separation_fe": 0.001702626,
+        "feppml_time_separation_ir": 0.0,
+        "feppml_time_separation_simplex": 0.0,
+        "feppml_time_strict_final_solve": 0.078676295,
+        "feppml_time_weight_refresh": 0.003176068,
+        "feppml_timeit": 0.0,
+        "feppml_trace_digest_hi": 3219161141.0,
+        "feppml_trace_digest_lo": 3937086494.0,
+        "feppml_two_consecutive": 1.0,
+        "feppml_vce_correction": 1.0000162763065805,
+        "feppml_vce_correction_policy": 1.0,
+        "feppml_vce_effective": 2.0,
+        "feppml_vce_requested": 2.0,
+        "feppml_weight_code": 0.0,
+        "feppml_workspace_allocation_free": 1.0,
+        "ic": 4.0,
+        "inner_iterations": 99.0,
+        "ll": -173929.59842327915,
+        "ll_0": -225046.44853778856,
+        "log_weight_multiplier": 0.0,
+        "mu_0": 9.983870442708334,
+        "num_singletons": 0.0,
+        "poolsize": 10.0,
+        "processors_lic": 4.0,
+        "processors_mach": 4.0,
+        "r2_p": 0.22713911037759005,
+        "rank": 11.0,
+        "rc": 0.0,
+        "report_constant": 1.0,
+        "requested_threads": 4.0,
+        "sample_kind": "observation_ids",
+        "seconds": 0.481,
+        "separated": 0.0,
+        "stata_processors": 4.0,
+        "stata_version": 19.0,
+        "step_halvings": 0.0,
+        "sum_y": 613409.0,
+        "sumweights": 61440.0,
+        "weight_multiplier": 1.0
+      },
+      "outside_optimum_envelope": [
+        8
+      ],
+      "pass_all": false
+    },
+    "results/ppml-strong_d2-n61440-k10-t4-main/warm-1/fixest_strict": {
+      "candidate_bound": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.69195829610264738583162407806750802224883035703245E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.677565512262902314470175142135959546029653110939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.74303234994300828595663016088448880141982034726685E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.732014145365124347146029421795648018777455845314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.677175199480807532873932459127646367013539829689E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.664728558540673941971526900973659436166371860939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.761677916804327748460473330427449624002065220314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6590907072437493189146881464091357392669577984387E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.710872203001657010682884092178684155404653110939E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.751486416382964006780803274099272171914662876564E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "checks": {
+        "coefficients_certified": true,
+        "coefficients_point": true,
+        "converged": true,
+        "covariance_point": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors_point": true
+      },
+      "coefficient_max_abs_error": 1.0512424264419451e-15,
+      "covariance_max_abs_error": 4.900325842973924e-12,
+      "files": {
+        "coefficients.csv": "d0f2c9987a2a03ef43fa14004ad2702824aeba606c263b8802b51fcec39e5e46",
+        "covariance.csv": "ecc868a7008a2fb48f1c49440959db171453c27ae79215d8466767836b50b712"
+      },
+      "interval_check": {
+        "campaign_admission": false,
+        "candidate_inside_optimum_envelope": true,
+        "coordinates": [
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 1,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 2,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470313775E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 3,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 4,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 5,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 6,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 7,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.6565536741601332385391107068551000756622214703137E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 8,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 9,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          },
+          {
+            "candidate_distance_upper": "8.656553674160133238539110706855100075662221470314E-14",
+            "candidate_inside_optimum_envelope": true,
+            "coordinate": 10,
+            "pairwise_envelope_proven": true,
+            "reference_distance_lower": "0",
+            "reference_outside_optimum_envelope": false,
+            "unresolved": false
+          }
+        ],
+        "reference_accuracy_exception_supported": false,
+        "requires_all_other_scientific_gates": true,
+        "requires_source_bound_optimum_certificate": true,
+        "unresolved_coordinates": []
+      },
+      "metadata": {
+        "N": 61440,
+        "R_version": "4.5.2",
+        "converged": true,
+        "covariance_multiplier": 1.00001627630658,
+        "covariance_normalization": "HC0 multiplied by N/(N-1)",
+        "deviance": 105949.669510891,
+        "df_k": 31497,
+        "effective_threads": 4,
+        "error": {},
+        "fixest_version": "0.14.2",
+        "loglik": -173929.598423279,
+        "rc": 0,
+        "requested_threads": 4,
+        "sample_kind": "observation_ids",
+        "seconds": 1.483
+      },
+      "outside_optimum_envelope": [],
+      "pass_all": true
+    }
+  }
+}

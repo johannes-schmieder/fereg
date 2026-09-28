@@ -1,0 +1,22 @@
+{
+  "preexisting_failure": "refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model",
+  "baseline_commit": "03cdd9c7",
+  "baseline_strict_rejections": 0,
+  "candidate_initial_strict_rejections": 0,
+  "old_asserted_rejections": 1,
+  "unchanged_accuracy_assertions": true,
+  "repair": "Explicit existing strict-movement injection exercises recovery independently of initialization improvements.",
+  "baseline_trace_sha256": "30f5ff5ad8af6a745cd27d1cb7058eab3f2e19308d1e6fd96b517832f9199f79",
+  "candidate_initial_trace_sha256": "d6d0c0dedf49d9c793e7d558b94b2db50f749cf461e119d8522807825e94a664",
+  "initial_suite": {
+    "passed": 60,
+    "failed": 1,
+    "log_sha256": "04de3c162856f0972263e75b5e57366a5d04702e21a77ba8db90274002d66e90"
+  },
+  "final_suite": {
+    "passed": 61,
+    "failed": 0,
+    "log_sha256": "0ffc74d42fd152ae0eb168deb29949aba47eae39346c615681caa0de46354aba"
+  },
+  "baseline_setup_note": "First isolated compile omitted a compile-time fixture; copied the unchanged tracked tests/fixtures and retried before comparing behavior."
+}

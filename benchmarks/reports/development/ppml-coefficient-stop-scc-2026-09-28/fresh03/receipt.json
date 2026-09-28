@@ -1,0 +1,51 @@
+{
+  "status": "complete_with_three_unranked_stock_SE_comparisons",
+  "job": "7763404",
+  "accounting": {
+    "jobnumber": "7763404",
+    "slots": "28",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "305",
+    "maxvmem": "1.972G"
+  },
+  "accounting_sha256": "b5b4215747fa1ee506fac206f1edf1d4cee3780d3f7c3f92753e58be407217b0",
+  "sentinels": [
+    "FEREG_ROTATIONS_COMPLETE",
+    "FEREG_COEFFICIENT_STOP_ROTATION_SUCCESS job=7763404"
+  ],
+  "complete_applications": 81,
+  "native_pairs_pass": 27,
+  "stock_pairs_pass": 24,
+  "stock_pairs_unranked": 3,
+  "collection": "All collected text files match hashes computed from the remote completed outputs. Initial rsync chmod syntax was unsupported locally; no additional fits or remote mutations.",
+  "collected_bundle_sha256": "b53b266c1edcd03eaaf2535cfbb0e4362f69697a75f409c2cf677cdce41c85cf",
+  "files": {
+    "README.md": "9c6cd97605f21ca000b496df4ea5bd8a6cdfd5924599f9edea952a6f9d961d01",
+    "compare_recorded_threads.py": "a96ad19e99fcb8fccf78821eea8eee5fdd673b48fac077d246373d2921aafe90",
+    "complete.json": "b96ac8412f2a652c946491a7818f2948e2cb47d0465d54ae28c012d504a484fb",
+    "identity.json": "a5f533bd70421233586af4dd88df745b12e4d0c3e83b0f5589be8e72bbf34d44",
+    "phases.json": "7915922668359006f3038220e7c4d3928b70ddf14f058e45f83950c1214dfb20",
+    "plan.json": "7795ec20d2549f89e4e8c6846beb5482f52bec5abb786a8fa7d51fdad25e532a",
+    "progress.json": "32404e2cdc8bd84744524ab58a8df0a4d4755e4d0db654d6276912d39b179086",
+    "summarize_phases.py": "c4ba35e438bc2c71277519b2bab8fd2805d155a582c5ccba806c0a58cefcef44",
+    "summary.json": "128d6a6583f45e398f65bc327fce1ce59d75ab0c0545a98310f59eaef80d7c35",
+    "thread-scaling.json": "fc62df5de354a036d160040ebb9bfec9fee6d95630f2de21174a44d49d7f16f9"
+  },
+  "validation": [
+    "61 Rust tests and four licensed oracle/control fixtures on both platforms",
+    "Linux PPML smoke and ABI",
+    "independently certified original positive input at fast T1/T4 and low T4"
+  ],
+  "no_compilation_profiling_archiving_or_competing_fit_overlap": true,
+  "controller_tests": {
+    "launch": 3,
+    "evidence": 10,
+    "summary": 10
+  },
+  "controller_test_log_sha256": {
+    "fereg-stop-harness-test.log": "7ba600c131d14938fa296eb6eb208c575bf239a15b65439f37d0578df0fff9bf",
+    "fereg-stop-evidence-tests.log": "4111e5c0d7633856bc7d12ae45764af09ebc00c64f4b96ac5c5314c0a2175678",
+    "fereg-stop-summary-tests.log": "ee63c8f8bdfcfd18efc72c1bed7f018f7e82671cd8993e26714692ac2f75c4ec"
+  }
+}

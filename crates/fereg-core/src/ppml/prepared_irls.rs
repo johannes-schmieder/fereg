@@ -4615,10 +4615,7 @@ fn strict_profile_difference(
 ) -> f64 {
     let differences = [
         relative_infinity_difference(eta, strict_eta),
-        coefficient_slots.map_or_else(
-            || relative_infinity_difference(coefficients, strict_coefficients),
-            |slots| relative_infinity_difference_at_slots(coefficients, strict_coefficients, slots),
-        ),
+        strict_coefficient_difference(coefficients, strict_coefficients, coefficient_slots),
         relative_scalar_difference(objective.deviance, strict_objective.deviance),
         relative_scalar_difference(objective.log_likelihood, strict_objective.log_likelihood),
     ];
@@ -4631,6 +4628,31 @@ fn strict_profile_difference(
                 f64::INFINITY
             }
         })
+}
+
+fn strict_coefficient_difference(left: &[f64], right: &[f64], slots: Option<&[usize]>) -> f64 {
+    if left.len() != right.len() {
+        return f64::INFINITY;
+    }
+    let difference = |slot: usize| {
+        let (Some(&left), Some(&right)) = (left.get(slot), right.get(slot)) else {
+            return f64::INFINITY;
+        };
+        if !left.is_finite() || !right.is_finite() {
+            return f64::INFINITY;
+        }
+        let magnitude = left.abs().max(right.abs());
+        // The registered coefficient envelope has atol/rtol = 1e-3. With
+        // the strict tolerance capped at 1e-8, this requires Newton movement
+        // within one tenth of that envelope even near zero. Retain the old
+        // scale as an upper bound so no coefficient gets a weaker check.
+        let scale = (1e-3 + magnitude).min(magnitude.max(1.0));
+        (left - right).abs() / scale
+    };
+    match slots {
+        Some(slots) => slots.iter().copied().map(difference).fold(0.0, f64::max),
+        None => (0..left.len()).map(difference).fold(0.0, f64::max),
+    }
 }
 
 #[cfg(test)]
@@ -5711,6 +5733,10 @@ mod tests {
                 coefficient_values: vec![0.2, 0.0],
                 eta: initial,
             };
+            // Newer proposal paths can reach this known optimum without a
+            // rejection. Exercise checkpoint refinement explicitly rather
+            // than depending on an obsolete iteration trajectory.
+            inject_strict_resume(true, false);
             let fitted = fit_prepared_ppml_irls(
                 &prepared,
                 &y,
@@ -8557,6 +8583,33 @@ mod tests {
             error.message,
             "prepared PPML final Hessian changed the canonical rank basis"
         );
+    }
+
+    #[test]
+    fn strict_profile_requires_small_coefficient_newton_accuracy() {
+        let eta = [0.1, -0.2, 0.3];
+        let objective = PoissonObjective { deviance: 2.5, log_likelihood: -1.25 };
+        for beta in [0.0_f64, -2e-4, 3e-3, 0.5, 4.0] {
+            let allowance = (1e-11 + 1e-8 * beta.abs()).min(1e-8 * beta.abs().max(1.0));
+            for (factor, expected) in [
+                (0.5, FinalHessianSynchronization::Certified),
+                (2.0, FinalHessianSynchronization::ResumeWithCandidate),
+            ] {
+                assert_eq!(strict_candidate_decision(
+                    true, true, 1, 1, &eta, &[beta], objective, &eta,
+                    &[beta + factor * allowance], Some(objective), PpmlConfig::default(),
+                ), expected, "beta={beta}, factor={factor}");
+            }
+        }
+        // Excluded normalization coordinates have no Newton authority. An
+        // invalid active coordinate or slot must still fail closed.
+        assert_eq!(strict_coefficient_difference(&[0.0, 2.0], &[0.0, 3.0], Some(&[0])), 0.0);
+        for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
+            assert!(strict_coefficient_difference(&[invalid], &[0.0], None).is_infinite());
+            assert!(strict_coefficient_difference(&[0.0], &[invalid], Some(&[0])).is_infinite());
+        }
+        assert!(strict_coefficient_difference(&[0.0], &[], None).is_infinite());
+        assert!(strict_coefficient_difference(&[0.0], &[0.0], Some(&[1])).is_infinite());
     }
 
     #[test]

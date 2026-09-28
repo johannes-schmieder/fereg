@@ -1,0 +1,11 @@
+{
+  "job": "7763328",
+  "run_directory": "dev/20260928-original-ppml-positive-01",
+  "source_commit": "03cdd9c7",
+  "plugin_sha256": "a7e95e6712c6b05b0217a9ddffa5b8f14c0f8d95443c2b983ce459f16a0e4596",
+  "slots": 4,
+  "mem_per_core": "3G",
+  "wall_minutes": 30,
+  "deployment_sha256": "6af82581d4a4fd87529741ecfb61a025db4510cc476688bc0f24f307b5979213",
+  "scope": "One exact original positive-outcome PPML input, both captured thread scopes, independent full-design optimum enclosure, one current native fit, four declared stock accuracy profiles. No headline timings."
+}

@@ -1,0 +1,11 @@
+{
+  "job": "7763404",
+  "run_directory": "dev/20260928-coefficient-stop-rotation03",
+  "slots": 28,
+  "whole_node": true,
+  "wall_minutes": 30,
+  "applications": 81,
+  "upstream_validation": "7763383",
+  "upstream_accuracy": "7763387",
+  "deployment_sha256": "5501199c0be30a10e17a3fbcfb90de7ffdb5caf8f3876f6c40638e54d3c1cfd0"
+}

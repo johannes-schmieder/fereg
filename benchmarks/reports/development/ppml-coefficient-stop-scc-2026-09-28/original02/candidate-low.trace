@@ -1,0 +1,16 @@
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=1|deviance_change=1.01352158802634224e-2|score=2.15158108319499545e-4|passed=0|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=2|deviance_change=2.67814660865714077e-6|score=5.29418959900790986e-8|passed=0|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=3|deviance_change=5.91831955560038631e-14|score=6.60464326581300131e-10|passed=1|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=4|deviance_change=1.36053323117250260e-16|score=1.77997486017592996e-12|passed=1|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration=4|seconds=0.007198|original_row=2411|failing_rows=0|tolerance=1.00000000000000002e-8|accepted_eta=9.61227528686731114e-1|candidate_eta=9.61227528665340447e-1|working_response=1.10849701568344594e0|residual=1.47269487018105494e-1|finite_predictor=-1.83608020215281081e-2|absorbed_predictor=9.79588330686868569e-1|outcome=3.00000000000000000e0|mean=2.61490437425761568e0|hessian_weight=2.61490437425761568e0|deviance_change=0.00000000000000000e0|ll_change=0.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=strict_decision|iteration=4|certified=1|basis_unchanged=1|rank=10|eta_change=2.13906670154528911e-11|beta_change=3.92349390823665267e-12|consistent=1
+FEREG_SOLVER_TRACE|phase=profile_final_products|accepted=1
+FEREG_SOLVER_TRACE|phase=strict_result|iteration=4|committed=1|score=1.77997486017592996e-12|score_passed=1|converged=1
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=1|deviance_change=1.19230479129789416e-2|score=1.76425469172652517e-4|passed=0|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=2|deviance_change=6.20173900973945108e-6|score=1.55458308772647434e-7|passed=0|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=3|deviance_change=1.01115180826707510e-12|score=1.01562378475530804e-10|passed=1|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=4|deviance_change=0.00000000000000000e0|score=2.03968873578526533e-14|passed=1|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration=4|seconds=0.080653|original_row=44892|failing_rows=0|tolerance=1.00000000000000002e-8|accepted_eta=5.31976298146690896e-1|candidate_eta=5.31976298145805382e-1|working_response=1.19419157630692441e-1|residual=-4.12557140515112941e-1|finite_predictor=-3.66391062289382532e-3|absorbed_predictor=5.35640208768699222e-1|outcome=1.00000000000000000e0|mean=1.70229322538430483e0|hessian_weight=1.70229322538430483e0|deviance_change=0.00000000000000000e0|ll_change=0.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=strict_decision|iteration=4|certified=1|basis_unchanged=1|rank=10|eta_change=8.85513884441024857e-13|beta_change=2.44645573000806406e-12|consistent=1
+FEREG_SOLVER_TRACE|phase=profile_final_products|accepted=1
+FEREG_SOLVER_TRACE|phase=strict_result|iteration=4|committed=1|score=2.03968873578526533e-14|score_passed=1|converged=1

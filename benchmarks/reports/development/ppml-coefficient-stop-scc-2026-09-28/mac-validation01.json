@@ -1,0 +1,50 @@
+{
+  "status": "success",
+  "platform": "darwin-arm64",
+  "snapshot": "f2e37c75932a30d857efe3192394bac305decca68845412db186a6b24044f231",
+  "plugin_sha256": "932d4fdca3a6ec9b99201948ae44b446a780fddca5d974cf8e8ff4707b168a47",
+  "rust_tests_passed": 61,
+  "tests_passed": 4,
+  "tests_failed": 0,
+  "fixtures": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_iterative_canonical_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_categorical_final_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_three_partition_slope_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    }
+  ],
+  "abi_and_panic_containment": true,
+  "evidence_sha256": {
+    "build.log": "1d793c657a9116713c710bf4e5d3de0323423ab1c74df36d5794156ebbc861ef",
+    "oracles.log": "f8dbb83f98bc053688c0736455c241b4d7cec4c3df756279fb59544ba71a8ab5",
+    "oracles.json": "c55a571e812fb5268304885643f1e69d518c420f7a2ac8aa78cc094eceff9f6d",
+    "irls-tests.log": "0ffc74d42fd152ae0eb168deb29949aba47eae39346c615681caa0de46354aba"
+  }
+}

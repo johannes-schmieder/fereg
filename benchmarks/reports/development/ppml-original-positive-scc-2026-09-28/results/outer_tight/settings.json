@@ -1,0 +1,4 @@
+{
+  "fixef_tol": 1e-11,
+  "glm_tol": 1e-12
+}

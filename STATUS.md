@@ -10,7 +10,82 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## Current checkpoint: original large OLS result independently validated
+## Current checkpoint: PPML coefficient stopping repaired; cost measured
+
+[ADR 0236](docs/adr/0236-ppml-small-coefficient-stopping.md) tightens the shared
+strict-profile coefficient check near zero. The prior unit scale could accept
+Newton movement above the existing coefficient envelope. The new scale follows
+its absolute/relative ratio and retains every stricter outer/score requirement,
+identified-slot rule, rank, reconstruction, objective and final-Hessian check.
+No new observation pass, heap bank, routing or memory-admission change.
+
+The [independent original-input adjudication](benchmarks/reports/development/ppml-original-positive-scc-2026-09-28/README.md),
+job **7763328**, proves original and prior-current native x8 inaccurate on
+positive strong_d2 N61440/K10/seed104729 at both original T4/T28 scopes. Strict
+stock fixest is accurate. Sample, rank, objective and VCE are not the issue.
+A grounded full sparse-design Poisson oracle plus the existing outward Decimal
+certificate encloses the optimum; original input and column hashes match.
+Historical scientific NR remains unchanged.
+
+The [repair report](benchmarks/reports/development/ppml-coefficient-stop-scc-2026-09-28/README.md)
+binds candidate snapshot **f2e37c75…** (211 computational inputs, only prepared
+IRLS changes), Linux plugin **7c01f451…**, Mac **932d4fdc…**. Accuracy job
+**7763387** preserves the baseline failure and passes candidate fast T1/T4 and
+low T4 against fresh coefficient intervals (radius **8.96e-14**). Fast maximum
+coefficient error falls **1.35e-10 → 6.64e-17**. The trace identifies acceptance
+at iteration four as premature: the repair rejects it, commits the strict
+correction, and accepts iteration six with fresh final products. Low remains
+four iterations and passes. No comparison against an inaccurate baseline is
+promoted into a historical timing rank.
+
+Mac and Linux each pass **61 prepared-IRLS Rust tests** and **four licensed
+oracle/control fixtures** covering canonical/final PPML, multipartition slopes
+and OLS. Linux **7763383** also passes PPML smoke; actual-plugin ABI/panic checks
+pass. One obsolete dynamic-range test expected a natural rejection absent on
+unchanged baseline too; it now injects the intended rejection, retaining its
+analytical accuracy and six-iteration bound. All three diagnostic jobs have
+clean accounting and terminal sentinels. They are development evidence only.
+
+[Fresh cost screen 7763404](benchmarks/reports/development/ppml-coefficient-stop-scc-2026-09-28/fresh03/README.md)
+completes **81 headline applications**, **27/27 native** science pairs and
+**24/27 stock** science pairs, with clean accounting and terminal sentinels.
+Seed2026092811 was frozen before generation. Three weak-d3 default-stock SE
+comparisons fail and remain **NR**; neither estimator is independently
+adjudicated on that fresh discrepancy. No compile/profile/archive or competing
+fit overlaps headline timing. All fereg jobs from this milestone are terminal.
+
+This is an accuracy repair, **not a speed gain**. Paired candidate/baseline
+medians are **1.250 small T4**, **1.099 serial**, **1.287 wide**, **1.273 weak**,
+**1.017 strong-d2**, **1.000 low**, **1.005 OLS**, **0.938 three-FE**, **0.960
+slopes**. Unchanged-work control variations are not new algorithmic gains.
+Small/serial/wide/weak/strong-d2 go from four to six outer iterations. Strict-final
+phase medians roughly double on small/wide/weak; those nested clocks identify
+recovery/finalization as a concrete remaining cost, not additive attribution.
+
+Current-source candidate/stock paired medians are **2.162 small T4**, **1.728
+serial**, **1.664 low**, **1.843 OLS**, **0.798 wide**, **0.423 three-FE**,
+**0.339 strict slopes**, **0.360 strict strong-d2**; weak is NR. Robust PPML
+and IID OLS headline calls omit optional observation outputs. Stock is pinned,
+unmodified fixest 0.14.2, default except explicitly strict slopes/strong-d2.
+Full distributions and losses are in the report. Recorded grouped T4/T1
+comparisons pass science but give median **1.068**, range **0.944–1.202**, two
+T4 losses; requests were not directly alternating. The universal 1.20 ceiling,
+0.90 aspiration and monotonic scaling remain unmet.
+
+Modeled memory matches every pair; tracked peaks match except three-FE +113,040
+bytes. Physical process peaks remain diagnostic. Static inventory drift, weighted
+constrained fits and nonretaining CG instability remain open. No push or full
+qualification. Routine SCC testing is authorized; do not ask again.
+
+Next: independently adjudicate the remaining original zero-outcome PPML
+coefficient discrepancy and its retained sample using current code. Then reduce
+avoidable repeated strict correction/finalization while preserving current-state
+Newton, score, objective and final-Hessian authority. Do not restore the inaccurate
+stopping rule or tune its scale to the measured seed. The fresh weak-d3 SE
+comparison is a separate open inference/adjudication case. Preserve all earlier
+remaining families below; the broader repair goal remains active.
+
+## Prior checkpoint: original large OLS result independently validated
 
 The [original-input direct-graph adjudication](benchmarks/reports/development/ols-original-direct-scc-2026-09-28/README.md)
 validates original and current fereg on strong_d2 N983040/K10/seed104729, unit
@@ -52,7 +127,7 @@ and its harness are diagnostic additions. Continue with the original PPML
 coefficient discrepancies, using an independent optimum/accuracy calculation;
 keep the strict large-OLS comparison unavailable instead of restarting it.
 
-### Latest retained PPML performance improvements
+### Earlier accepted PPML performance improvements (source-bound)
 
 Main now retains [ADR 0234](docs/adr/0234-portable-canonical-proposal-products.md)
 (portable dense canonical proposal products) and
@@ -63,7 +138,7 @@ FMA targets retain fusion. Current-weight geometry, preconditioners, independent
 reconstruction/certification, rank, score/objective, exact final Hessian and
 transactional publication are unchanged. No heap bank, budget or routing change.
 
-Current snapshot **4c3d7c44…** matches all **211** frozen computational inputs.
+That measured snapshot **4c3d7c44…** matches its **211** frozen computational inputs.
 Linux plugin **a7e95e67…**, Mac **ed919c1e…**. [Linux validation 7763145](benchmarks/reports/development/joint-operator-scc-2026-09-28/linux-validation01.json)
 and [Mac validation](benchmarks/reports/development/joint-operator-scc-2026-09-28/mac-validation01.json)
 pass 30 categorical Rust tests and four licensed independent-oracle/control
@@ -92,7 +167,7 @@ No new storage; modeled memory and outer/inner counts match on every pair.
 Tracked three-FE peak changes +1.65MB initially and -0.59MB fresh; other PPML
 tracked peaks match. Sampled physical peaks vary. No memory qualification claim.
 
-Current-source fresh candidate/stock paired medians are **1.894 small T4**,
+That artifact’s fresh candidate/stock paired medians are **1.894 small T4**,
 **1.327 small T1**, **1.591 low**, **1.570 OLS**, **1.027 K12**, **1.062 larger**,
 **1.090 weak**, **0.466 sparse**, **0.549 K24**, **0.474 three-FE**, **0.365 strict
 slopes** on these designs. Historical absorbed-slope designs, output requests
@@ -137,12 +212,13 @@ Adjudicate original captured-input scientific discrepancies using the pinned SCC
 runtime or retained bytes, before another small-kernel cycle:
 
 1. The [original issue inventory](benchmarks/reports/development/performance-repair-issue-inventory-2026-09-27/README.md)
-   identifies three strict PPML coefficient disagreements over two inputs:
-   two_fe_dense N61440/K10/T4 zeros seed31415927, and strong_d2 N61440/K10 main
-   seed104729 at T4/T28. Preserve original scientific NR until adjudicated.
-   Existing bounded two-FE Decimal optimum certificates (ADR0194) cover the
-   positive-outcome design's size/topology; inspect their domain before reuse.
-   The zero-outcome input requires its independent sample/separation proof too.
+   identified three strict PPML coefficient disagreements over two inputs.
+   The two positive strong_d2 scopes are now independently adjudicated and the
+   stopping repair validated above; their historical NR stays intact. The
+   two_fe_dense N61440/K10/T4 zeros seed31415927 discrepancy still requires
+   an independent sample/separation and optimum proof. Existing ADR0194
+   coefficient certificates admit strictly positive outcomes; do not silently
+   extend their domain.
 2. Original large OLS first-seed native science is now independently validated
    above; other seeds and a scientifically comparable stock timing remain open.
    Do not rerun the unchanged strict process after its bounded timeout. The

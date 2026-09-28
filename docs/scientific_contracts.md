@@ -34,6 +34,13 @@ restores the full global start; a declined coordinate retains the preceding
 finite guess. These starting guesses have no rank, convergence or final-Hessian
 authority; all independent acceptance requirements remain unchanged.
 
+Strict PPML profile checks scale checked coefficient movement near zero under
+[ADR 0236](adr/0236-ppml-small-coefficient-stopping.md). The existing absolute/
+relative coefficient envelope determines the scale; the strict outer/score
+tolerance and all prior checks remain binding. A rejected Newton witness resumes
+bounded IRLS recovery, and final inference still requires the exact accepted
+Hessian. This diagnostic does not replace independent optimum-accuracy evidence.
+
 Generation-zero numeric classification may bind an immutable input view through
 memory admission and selection under
 [ADR 0214](adr/0214-borrow-bound-ppml-numeric-selection.md). When every candidate

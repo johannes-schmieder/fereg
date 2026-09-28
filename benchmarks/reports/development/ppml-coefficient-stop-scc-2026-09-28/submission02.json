@@ -1,0 +1,8 @@
+{
+  "job": "7763387",
+  "run_directory": "dev/20260928-coefficient-stop-proof02",
+  "slots": 4,
+  "wall_minutes": 30,
+  "dependency": "7763383",
+  "deployment_sha256": "af5925038634cf04d16de01b2dcde204bbe5c77df4d083497ea720d6548f8e2d"
+}

@@ -1,0 +1,18 @@
+{
+  "purpose": "Repair strict PPML coefficient Newton stopping near zero without loosening any acceptance requirement.",
+  "snapshot": "f2e37c75932a30d857efe3192394bac305decca68845412db186a6b24044f231",
+  "development_only": true,
+  "validation": [
+    "61 prepared IRLS Rust tests",
+    "SCC PPML smoke",
+    "four licensed independent-oracle fixtures",
+    "original-input independent optimum certificate",
+    "fresh bounded stock rotations after platform and exact-input validation"
+  ],
+  "preexisting_test_failure": "The dynamic-range test expects one natural strict rejection but produces zero on unchanged03cdd9c7 and candidate. Test now injects that rejection explicitly, retaining its analytical mean accuracy and six-iteration bound.",
+  "allocation": {
+    "slots": 4,
+    "mem_per_core": "3G",
+    "wall_minutes": 30
+  }
+}

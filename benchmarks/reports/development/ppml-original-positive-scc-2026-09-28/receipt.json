@@ -1,0 +1,56 @@
+{
+  "status": "completed_diagnostic_native_accuracy_failure",
+  "job": "7763328",
+  "accounting": {
+    "jobnumber": "7763328",
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "92",
+    "maxvmem": "1.607G"
+  },
+  "sentinels": [
+    "PPML_SMALL_EXPLICIT_ORACLES_PASS",
+    "PPML_FULL_DIRECT_ANCHOR_PASS",
+    "PPML_OPTIMUM_ENCLOSED",
+    "FEREG_PPML_ORIGINAL_POSITIVE_COMPLETE",
+    "FEREG_PPML_ORIGINAL_POSITIVE_SUCCESS job=7763328"
+  ],
+  "accounting_sha256": "93a829506e48e7f4d27510858bbc195d34385e7476d045b028f56ac365e9c49e",
+  "job_log_sha256": "409216ae31a0bdb14d68f63ef04379be500c6438881f53cc86a4f846372fd193",
+  "files": {
+    "results/bindings.json": "4a22bf28070936ccab5f719b96f63b27a14629236bda3c66d716a14cf92d23de",
+    "results/both_tight/coefficients.csv": "508edb23f75b2d545ec1aa30a07301f3c2ec35f22b63b9f308d7920a7b097334",
+    "results/both_tight/covariance.csv": "2730b22512678fcdea37474c99cda22bba35104678bf5849a4a2e930fe9ff240",
+    "results/both_tight/metadata.json": "2acac6acbdb774e70fd4b9af7889afef031950a57e876b35756d02bbab93acf4",
+    "results/both_tight/settings.json": "b8e071d39f4a2bd79d6115f319edca724ba43fb24465d0b0c1bf602c2591655b",
+    "results/comparison.json": "6dce6d6af754c1bd4d019c04ef45b8bd2ab96d51908ce45b76df03aa5121c136",
+    "results/complete.json": "dc003787782a3904c3cf4353ec64d39d5cb7cbb4f649356fe4274b298371f006",
+    "results/fe_tight/coefficients.csv": "19000ae85eeae785436727cae1257cd98bf931f0c8e0f1c5679c400b88c8bcfa",
+    "results/fe_tight/covariance.csv": "bb5eac4662bcbe44b738abde38894f08317227588a0b4b8dac17d2c06b4abcc4",
+    "results/fe_tight/metadata.json": "3c5d243835641990c61b48b5836f05c41129106582dde87e779b766b7ca040dc",
+    "results/fe_tight/settings.json": "d87eb16772c9e2ffdb833ca843e45842b1d2a0b31c1b9a4f76fb351146ccecbb",
+    "results/input.json": "0e04913f5c9a217dcbeddc231d1ff78c81a53dc7fb50b27b48c5fd04d4b37ecc",
+    "results/native/coefficients.csv": "573830c481c14bf00229e3c3fc03447411d8655d9efd61cb10736f2fe44c0f76",
+    "results/native/covariance.csv": "aa237180143e6c974ce9911b80f9a637bde7038bdb84e91213b9d8f3c82256cf",
+    "results/native/import-hashes.json": "8a978a44e5cffcc3b12efa6ee6675f9b3a800c369fc2637c67270c15a401213b",
+    "results/native/result.json": "8deb123dbcd3fb00c4f0ba1c17f80ac2b15f5282af5ccf61b0f107e790bbb726",
+    "results/optimum-certificate.json": "bed44ba621cea94e737632df8e1e2e8e2512014891c41121fa99cdcfcd11975c",
+    "results/optimum-intervals.json": "63ace219a85384998a761e767aff989ce81f079bced10b7278281cf4078d3992",
+    "results/oracle-tests.json": "5054a9be4d2bab5b6375e7aab6e31a8eca6b80106ac2cef50e1bf102aba1a375",
+    "results/oracle.json": "7e61d7cc78a2b9a68e4c81b45b80a783987d8c0b6dc90448360b72a5fb25a535",
+    "results/outer_tight/coefficients.csv": "527c93fdec6a326a66acb27a5031ce95eccb9daf5df85451798e28d8ef3947d7",
+    "results/outer_tight/covariance.csv": "c642aa790b331c60671d479a8359f078c57d61088fef7b78dff815d372473448",
+    "results/outer_tight/metadata.json": "b440f33dbe4b21319385c32e18d257d08e97bbdbe6cfa55090b2394b7ea8dd1d",
+    "results/outer_tight/settings.json": "c41089df4d39bfd4b1dde79b11e43ebdd3b34e7ca973a9d8124631e882879539",
+    "results/strict/coefficients.csv": "d0f2c9987a2a03ef43fa14004ad2702824aeba606c263b8802b51fcec39e5e46",
+    "results/strict/covariance.csv": "f577f078428838ee59947cde93585030a743d38c90f1f62702ab3af9a6f5a8fa",
+    "results/strict/metadata.json": "8de4c42e4aa6c361f3024bf904461f64ea4428cc245dab0c751d8e95c41ddaec",
+    "results/strict/settings.json": "6380cba6c1e2d10d1e02bd954451433a52d8540e824166349600e24c99955a9d"
+  },
+  "remote_anchor_sha256": "20375370d6f5fb90b509a986f26aae2d761aeb407f16f83108ae4b0669f47a71",
+  "interpretation": "Successful diagnostic execution proves native x8 outside the unchanged coefficient envelope. Strict stock passes. No timing rank or historical reclassification.",
+  "remote_only_request_files": {
+    "results/native/request.json": "7f561a665455f6c87654bdd679a125ffdc27aeb6267a1711c3949bb7f9c4b36e"
+  }
+}
