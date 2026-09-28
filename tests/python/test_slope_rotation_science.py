@@ -16,6 +16,20 @@ from slope_probe import stata_threads
 
 
 class SlopeComparisonTests(unittest.TestCase):
+    def test_registered_thread_pairs_preserve_input_and_control_capacity(self):
+        cell = dict(id="same-input", n=100, k=12, threads=8, stata_processors=4,
+                    arms=["baseline", "candidate", "strict"])
+        self.assertEqual(rotation.arm_cell(cell, "baseline"), cell)
+        cell["arm_threads"] = dict(baseline=1, candidate=8, strict=8)
+        lower = rotation.arm_cell(cell, "baseline")
+        self.assertEqual((lower["threads"], lower["stata_processors"]), (1, 1))
+        self.assertEqual((lower["id"], lower["n"], lower["k"]), ("same-input", 100, 12))
+        self.assertEqual((cell["threads"], cell["stata_processors"]), (8, 4))
+        self.assertEqual(rotation.arm_cell(cell, "strict")["threads"], 8)
+        for overrides in [dict(unknown=4), dict(baseline=0), dict(baseline=1.5), dict(baseline=True)]:
+            with self.assertRaises(ValueError):
+                rotation.arm_cell(dict(cell, arm_threads=overrides), "baseline")
+
     def test_stata_capacity_is_explicit_and_independent_of_native_team(self):
         self.assertEqual(stata_threads(dict(threads=8)), 8)
         self.assertEqual(stata_threads(dict(threads=8, stata_processors=4)), 4)
@@ -59,6 +73,20 @@ class SlopeComparisonTests(unittest.TestCase):
             self.assertEqual(by_seed[0]["ratios"]["median"], 1.)
             self.assertEqual(by_seed[0]["paired_losses"], 0)
             self.assertIsNone(by_seed[1]["ratios"])
+            plan = rotation.read(root / "plan.json")
+            plan["cases"][0].update(threads=8, arm_threads=dict(baseline=4, candidate=8))
+            rotation.write(root / "plan.json", plan)
+            with self.assertRaisesRegex(ValueError, "registered arm threads"):
+                summary.summarize(root)
+            for r in records:
+                r["threads"] = 4 if r["arm"] == "baseline" else 8
+                r["result"] = dict(result, metadata=dict(result["metadata"], estimator_threads=r["threads"]))
+            rotation.write(root / "results.json", records)
+            summary.summarize(root)
+            records[0]["result"]["metadata"]["estimator_threads"] = 8
+            rotation.write(root / "results.json", records)
+            with self.assertRaisesRegex(ValueError, "native team"):
+                summary.summarize(root)
             for incomplete in (records[:2], [records[0], *records[1:3], records[0]]):
                 rotation.write(root / "results.json", incomplete)
                 with self.assertRaisesRegex(ValueError, "incomplete or duplicated"):

@@ -82,8 +82,12 @@ they do not replace historical small-group or saved-mean timing.
 [ADR 0232](docs/adr/0232-portable-prepared-coupling-products.md) now accepts the
 portable kernel for bounded development. Computational source **c6c1df25** matches
 all 209 frozen inputs. No storage, certificate, tolerance or admission change.
-Next: nine alternating same-binary T4/T8 pairs on fast, low and larger OLS slope
-inputs to confirm the scaling concern before selecting a concurrency policy.
+[Thread scaling confirmation 7762473](benchmarks/reports/development/slope-thread-scaling-scc-2026-09-28/submission.json)
+is submitted: nine alternating same-binary T4/T8 pairs on fast, low and larger
+OLS slope inputs, with strict stock T8 (81 headline fits plus three probe fits).
+All source/plugin/input hashes match; five focused harness tests pass. The new
+per-arm control records and verifies actual native teams while keeping input,
+science and stock settings fixed. No native code changed for this confirmation.
 The shared thread ceiling, small categorical PPML stock loss, low-memory OLS
 loss, remaining comparator adjudication and broader remeasurement remain open.
 The overall goal is active; this milestone does not complete the repair plan.

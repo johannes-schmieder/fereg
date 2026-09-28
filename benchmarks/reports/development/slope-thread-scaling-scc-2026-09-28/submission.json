@@ -1,0 +1,21 @@
+{
+  "job": "7762473",
+  "run_id": "20260928-portable-coupling-scaling04",
+  "slots": 28,
+  "cpu_type": "E5-2680v4",
+  "wall": "00:20:00",
+  "mem_per_core": "3G",
+  "native_plugin_sha256": "e9d9f706d06ca21d6bb204fc2eb21ea7e56604aa924c47094abe0e4c7516782d",
+  "computational_source_commit": "c6c1df25",
+  "baseline_threads": 4,
+  "candidate_threads": 8,
+  "stock_threads": 8,
+  "fits": 81,
+  "additional_probe_fits": 3,
+  "validated_source_files": 209,
+  "validated_input_files": 12,
+  "registration_sha256": "2862a33167f4115d46eef6adee2efab49a0a18ca096bbd4620c12df29f9104d4",
+  "deployment_sha256": "eea1ce698475fd1f39a1bb540d65a22cec4b14048bffa5b5690a3f0111e0d566",
+  "local_checks": "Five science/completeness/capacity tests pass, including per-arm registration and actual-team rejection. bash -n passes.",
+  "interpretation": "Same artifact at different thread counts. Existing fresh-validation bytes are reused only to confirm repeatability; not new validation or seed tuning."
+}

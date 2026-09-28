@@ -29,6 +29,22 @@ def successful(result):
             and not result["timed_out"] and not result["competing_work"])
 
 
+def arm_cell(cell, arm):
+    """Resolve explicitly registered thread controls without changing the input."""
+    settings = dict(cell)
+    overrides = cell.get("arm_threads", {})
+    if set(overrides) - set(cell["arms"]):
+        raise ValueError("thread override for an unregistered arm")
+    threads = overrides.get(arm, cell["threads"])
+    if type(threads) is not int or threads < 1:
+        raise ValueError("invalid registered arm threads")
+    settings["threads"] = threads
+    if "stata_processors" in settings:
+        settings["stata_processors"] = min(settings["stata_processors"], threads)
+    stata_threads(settings)
+    return settings
+
+
 def compare(candidate, other, tolerance):
     a, b = read(candidate / "receipt.json"), read(other / "receipt.json")
     if not successful(a) or not successful(b):
@@ -73,7 +89,8 @@ def require_allocation(smoke, smoke_slots=4):
 def verify(args, plan):
     require_allocation(args.smoke, plan.get("smoke", {}).get("slots", 4))
     for cell in plan["cases"]:
-        stata_threads(cell)
+        for arm in cell["arms"]:
+            arm_cell(cell, arm)
     if not args.smoke and "E5-2680 v4" not in Path("/proc/cpuinfo").read_text():
         raise ValueError("unexpected timing CPU class")
     identities = {"plan": sha(args.plan), "source_files": {}, "plugins": {}, "inputs": {}}
@@ -141,11 +158,14 @@ def main(args):
                 directory = args.output / str(seed) / cell["id"] / str(repetition)
                 for arm in arms:
                     root = args.baseline if arm == "baseline" else args.candidate
-                    result = run_case(cell, data, directory / arm,
+                    settings = arm_cell(cell, arm)
+                    result = run_case(settings, data, directory / arm,
                                       "native" if arm in ("baseline", "candidate") else arm,
                                       root, args.reference / "env/R")
                     record = dict(seed=seed, case=cell["id"], repetition=repetition,
-                                  arm=arm, input_sha256=sha(data / "input.dta"), result=result)
+                                  arm=arm, threads=settings["threads"],
+                                  stata_processors=stata_threads(settings),
+                                  input_sha256=sha(data / "input.dta"), result=result)
                     records.append(record)
                     write(args.output / "results.json", records)
                     print(seed, cell["id"], repetition, arm, result.get("metadata", result), flush=True)

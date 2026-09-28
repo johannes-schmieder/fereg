@@ -28,6 +28,17 @@ def summarize(root):
             or observed_pairs != expected_pairs or len(results) != len(expected_fits)
             or len(comparisons) != len(expected_pairs)):
         raise ValueError("incomplete or duplicated registered slope panel")
+    by_case = {case["id"]: case for case in plan["cases"]}
+    for result in results:
+        case = by_case[result["case"]]
+        if "arm_threads" in case:
+            threads = case["arm_threads"].get(result["arm"], case["threads"])
+            if result.get("threads") != threads:
+                raise ValueError("result disagrees with registered arm threads")
+            if result["arm"] in ("baseline", "candidate") and result["result"]["sentinel"]:
+                actual = result["result"]["metadata"].get("estimator_threads")
+                if actual != threads:
+                    raise ValueError("native team differs from registered arm threads")
     rows = []
     for case in plan["cases"]:
         pairs = [r for r in comparisons if r["case"] == case["id"]]

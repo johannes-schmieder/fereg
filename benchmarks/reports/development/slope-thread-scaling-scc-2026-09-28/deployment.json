@@ -1,0 +1,10 @@
+{
+  "registration.json": "2862a33167f4115d46eef6adee2efab49a0a18ca096bbd4620c12df29f9104d4",
+  "input-files.json": "94c583a1c85866f729fab542e7a0c9b665a5e6739e31b37bf142f488f7b260b0",
+  "baseline-source.json": "e07c7ec3f4edb9a48e75067d0a41ec2486f95d855dcdc10e2f2ab76267ea7c67",
+  "candidate-source.json": "e07c7ec3f4edb9a48e75067d0a41ec2486f95d855dcdc10e2f2ab76267ea7c67",
+  "job.sh": "d487bcf48393191e26b68db750857256f94e68cd6ddba7511310cb30fffb6633",
+  "harness/slope_summary.py": "ffed77abb3642bc0eda902fd71a692ee73530cc9ece4d5d546dd4c5d3f31259e",
+  "harness/slope_probe.py": "709cace6fce455a0fbd75553d8b973fab460d06e5dcf3e09f824c868df82210e",
+  "harness/slope_rotation.py": "7eedd313b2f82c130366d7436cc72f0f879a71df4e6682f38f3746ecfd98ca25"
+}
