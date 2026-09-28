@@ -81,8 +81,22 @@ plugin and successful Linux validation receipt before copying that artifact.
 Set `ORIGIN_SOURCE` and `REFERENCE_RUN` explicitly. Supply `input/source.json`,
 `input/linux-validation.json`, `input/deployment.json`, and the ordinary candidate
 archive/identity/manifest/history inputs. Stage the two historical CSV fixtures
-at their repository-relative `reports/` paths beside `controller/` for the 31
-controller tests. Pinned reference directories are linked, then their actual
+at their repository-relative `reports/` paths beside `controller/` for the
+controller tests. Include `artifact_source.py` and its test in the deployment
+inventory. The source snapshot must be the SHA-256 of the sorted compact JSON
+file-hash map, captured before building and bound by the successful validation
+receipt. It must cover all local package inputs under `crates/`, `vendor/`,
+`plugin/`, `stata/` and `.cargo/`, plus root Cargo/reference/toolchain files and
+`scripts/build_linux.sh`; generated `target/`, `__pycache__/` and `.git/` trees
+and Finder `.DS_Store` metadata are excluded.
+The verifier discovers added inputs and checks both the original and extracted
+trees. It rejects incomplete inventories, including older Rust/Stata-only maps.
+Do not retrofit a validated snapshot with newly discovered files: build and
+validate a new snapshot, or supply independently reviewed original build evidence.
+This local-file guard does not establish compiler/environment or external Cargo
+dependency closure. The artifact hash and original build/validation evidence
+remain necessary. Existing frozen campaigns retain their original controller.
+Pinned reference directories are linked, then their actual
 runtime bytes are frozen and rechecked before execution. No compilation occurs
 in timing jobs. Follow the same smoke, pilot, packing, accounting and collection
 sequence above; use a new run directory, never an old results tree.

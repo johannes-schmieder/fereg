@@ -177,6 +177,17 @@ remain, including both reference profiles for one three-FE slope seed. Every
 current PPML scientific discrepancy is against default stock; strict-stock
 timeouts/exclusions remain separate. No new fit or job was launched for this audit.
 
+The [artifact-reuse source guard](benchmarks/reports/development/artifact-reuse-source-guard-local-2026-09-28/README.md)
+now rejects incomplete local package/build inventories and file-map changes that
+retain a stale snapshot ID. Seven focused local tests pass. The current 259-file
+map matches but omits eleven bridge/build inputs; future reuse needs a complete
+pre-build inventory bound by validation. Historical receipts and deployed
+controllers are unchanged. The current campaign independently binds its full
+archive and binary; this finding does not invalidate those bindings. No new
+build, fit or SCC job was added, and all 259 estimator inputs remain unchanged.
+This closes a future harness acceptance gap, not the pending solver/performance,
+static allocation or physical-memory work.
+
 ## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 
 [ADR0245](docs/adr/0245-private-implicit-finite-moments.md) extends private finite

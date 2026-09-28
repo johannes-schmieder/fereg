@@ -20,12 +20,14 @@ read=lambda p:json.loads(p.read_text())
 def write(p,v):p.write_text(json.dumps(v,indent=2,sort_keys=True)+'\n')
 for name,digest in read(root/'input/deployment.json').items():
     assert sha(root/name)==digest,name
+sys.path.insert(0,str(root/'controller'))
+from artifact_source import verify_source
 ident=read(root/'input/candidate.json');source=read(root/'input/source.json')
 validated=read(root/'input/linux-validation.json')
 assert validated['status']=='success' and validated['tests_failed']==0
 assert source['snapshot']==validated['snapshot']
 assert sha(root/'input/candidate.tar.gz')==ident['sha256']
-for name,digest in source['files'].items():assert sha(origin/name)==digest,name
+verify_source(origin,source)
 assert sha(origin/'dist/fereg_linux.plugin')==validated['plugin_sha256']
 (root/'env').mkdir(exist_ok=True)
 frozen=read(old/'env/frozen.json')
@@ -44,7 +46,7 @@ for name in ['python-freeze.txt','R-packages.csv','reference-files.json']:
 (root/'candidate').mkdir()
 with tarfile.open(root/'input/candidate.tar.gz') as archive:
     archive.extractall(root/'candidate',filter='data')
-for name,digest in source['files'].items():assert sha(root/'candidate'/name)==digest,name
+verify_source(root/'candidate',source)
 (root/'candidate/dist').mkdir(exist_ok=True)
 shutil.copyfile(origin/'dist/fereg_linux.plugin',root/'candidate/dist/fereg_linux.plugin')
 write(root/'env/artifact-origin.json',dict(source_snapshot=source['snapshot'],candidate_commit=ident['commit'],
@@ -54,7 +56,7 @@ names += ['candidate/'+name for name in source['files']]
 write(root/'env/setup.json',{name:sha(root/name) for name in names})
 PY
 cd "$RUN_ROOT/controller"
-"$RUN_ROOT/env/python/bin/python" -m unittest -v test_campaign test_evidence test_light test_fixest_sweep test_worker_diagnostics > "$RUN_ROOT/logs/controller-tests.txt" 2>&1
+"$RUN_ROOT/env/python/bin/python" -m unittest -v test_campaign test_evidence test_light test_fixest_sweep test_worker_diagnostics test_artifact_source > "$RUN_ROOT/logs/controller-tests.txt" 2>&1
 "$RUN_ROOT/env/python/bin/python" "$RUN_ROOT/controller/provenance.py" freeze "$RUN_ROOT" > "$RUN_ROOT/env/fingerprint.txt"
 "$RUN_ROOT/env/python/bin/python" "$RUN_ROOT/controller/campaign.py" smoke "$RUN_ROOT" "$RUN_ROOT/plans/smoke.json"
 printf 'SYSTEMATIC_SETUP_SUCCESS job=%s\n' "$JOB_ID" > "$RUN_ROOT/env/SETUP.SUCCESS"
