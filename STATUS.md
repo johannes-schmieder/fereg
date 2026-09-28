@@ -32,10 +32,14 @@ A representation-only repair stores the optional slope owner behind one
 fallibly allocated fixed-size box instead of embedding its full state in the
 common OLS descriptor. The existing admitted owner byte count covers its storage;
 excluded routes allocate nothing. It passes [79 focused Rust tests](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-unit06.json).
-Mac build is in progress. The [90-fit SCC registration](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-registration06.json)
+The [universal Mac build and three licensed fixtures](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-validation06.json)
+pass, including the 32-fit weighted WLS/sandwich oracle, three-FE OLS and
+categorical PPML. The [90-fit SCC registration](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-registration06.json)
 uses the confirmed failing input, fast control and two slope cases, with a
-maximum-thread probe before timing. Linux licensed validation and performance
-remain pending. This is a bounded causal experiment, not a claimed fix.
+maximum-thread probe before timing. Exact candidate **03292138** is deployed;
+[build/oracle 7761943 and held confirmation 7761945](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-submission06.json)
+are submitted. Linux licensed validation and performance remain pending. This
+is a bounded causal experiment, not a claimed fix.
 
 ## Two-partition OLS slope owner — SCC gains, control confirmation open
 

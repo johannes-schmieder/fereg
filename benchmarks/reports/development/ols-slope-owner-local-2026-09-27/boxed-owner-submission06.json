@@ -1,0 +1,30 @@
+{
+  "source_commit": "03292138976598132b1aac9251e73e2ca6b13de0",
+  "source_archive_sha256": "8617e0601bfa0f3e0aa9f1b04027aa0f407d3e9820be9dc582de0fc70f63dcc9",
+  "candidate_manifest_sha256": "ff580dfb19f77cac462dc007684c0e8cb3195c3deb4c63d87620393040d474cc",
+  "inputs": "Symlink to unchanged public synthetic literal inputs under prior 852b03a9 run; all per-file hashes checked before every stage.",
+  "build_job": "7761943",
+  "rotation_job": "7761945",
+  "source_manifest_sha256": "ff580dfb19f77cac462dc007684c0e8cb3195c3deb4c63d87620393040d474cc",
+  "registration_sha256": "3ca6ccc422bd16438dfe03616a84954d57a5bb56188e923f83489a0324475079",
+  "harness": {
+    "build_job.sh": "8ae7a49f7d939687f584dc7141b3e14f54001d5bd91f6a9312e5d08d8f0c0213",
+    "rotation_job.sh": "d1974548cdc0dfe243f152ab62d10e71431c4fd7ff1d66a92a818713614fb3f8"
+  },
+  "resources": {
+    "build": {
+      "slots": 4,
+      "mem_per_core": "4G",
+      "wall": "00:20:00"
+    },
+    "rotation": {
+      "slots": 28,
+      "mem_per_core": "3G",
+      "wall": "00:30:00",
+      "cpu_type": "E5-2680v4"
+    }
+  },
+  "headline_fits": 90,
+  "probe_fits": 3,
+  "remote_source_files_verified": 209
+}

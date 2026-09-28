@@ -1,0 +1,48 @@
+{
+  "source_commit": "03292138976598132b1aac9251e73e2ca6b13de0",
+  "plugin_sha256": "13b9f74eb016aacd145fbc7ab5a7938fb39c205d8e8255580e869bb4e143d0de",
+  "licensed": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_three_fe_batch_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_categorical_final_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": 8,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 3
+  },
+  "build": "universal Mac plugin, binary audit and actual ABI tests pass",
+  "build_log_sha256": "6301a75feb6ffa733c304dbd182100c8551d14642f50e3418476276e02dfc194",
+  "rust": "79 focused passes, one ignored; separate owner admission/span pass overlaps"
+}
