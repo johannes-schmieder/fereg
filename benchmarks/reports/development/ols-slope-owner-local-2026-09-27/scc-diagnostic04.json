@@ -1,0 +1,34 @@
+{
+  "purpose": "Phase attribution only, never headline timing; exact frozen inputs and baseline/candidate binaries, one warm and one measured fit.",
+  "seed": 202609280,
+  "cases": [
+    {
+      "input": "three-sparse-fast",
+      "threads": 4
+    },
+    {
+      "input": "three-sparse-low",
+      "threads": 4
+    },
+    {
+      "input": "two-dense-larger",
+      "threads": 8
+    },
+    {
+      "input": "two-dense-larger",
+      "threads": 4
+    },
+    {
+      "input": "two-dense-larger",
+      "threads": 1
+    },
+    {
+      "input": "two-dense-wide",
+      "threads": 4
+    },
+    {
+      "input": "two-dense-wide",
+      "threads": 1
+    }
+  ]
+}

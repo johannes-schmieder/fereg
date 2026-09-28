@@ -1,0 +1,33 @@
+{
+  "job": "7761755",
+  "status": "complete",
+  "source_commit": "852b03a9e0cafd54d578bdf470d05c4c8668ca92",
+  "accounting": {
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 1184,
+    "slots": 28,
+    "host": "scc-wo4",
+    "queue": "econ",
+    "maxvmem": "1.748G"
+  },
+  "sentinels": [
+    "FEREG_SLOPE_ROTATION_COMPLETE",
+    "FEREG_OLS_SLOPE_ROTATIONS_SUCCESS job=7761755"
+  ],
+  "science": {
+    "native_pairs_passed": 56,
+    "strict_pairs_passed": 40,
+    "default_requested_output_failures": 40
+  },
+  "disposition": "Useful two-partition gains; larger strict-reference ratio exceeds 1.20 and low-memory excluded control needs nine-pair confirmation. Candidate not yet accepted.",
+  "files": {
+    "summary.json": "c836ad2357375c70bb311b2572c2614459a37a097e3f33545fa64715d71db1d1",
+    "plan.json": "64ad58846b91ac4eaa66b2289a03720541cb0685e29d4933518faee24772ae25",
+    "results.json": "50491f6acebd2e046b24955b78bd819151a68b8c6ade8b52e738d955298e3bed",
+    "comparisons.json": "276bc40ff9ff748f7be03551dbbfb85c206b9b7d6358e8d67f99a10821387d11",
+    "README.md": "03e942536258649b41ccad85ebea4e3745de8cec4d7e10f46058966f4a2d1693",
+    "identity.json": "de4f1a88465a830ba2287100fefdf56b8938524f9ea01f714a0b38ffcfa002e5",
+    "complete.json": "51fd215a42a3d574eef0648a277c07a20007f924606f7913020403289dbad6e5"
+  }
+}

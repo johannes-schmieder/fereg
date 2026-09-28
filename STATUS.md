@@ -9,7 +9,31 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
-## Two-partition OLS slope owner — fresh confirmation pending
+## Two-partition OLS slope owner — SCC gains, control confirmation open
+
+The [completed SCC rotation](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-rotation03/README.md)
+**7761755** passes all 192 applications and 56 native science pairs on exact
+source **852b03a9** and Linux artifact `2b57467f…`. Clean accounting: 1,184
+seconds, 28 slots, scc-wo4. Two-partition paired candidate/baseline medians are
+0.575 fast, 0.417 low, 0.357 serial, 0.804 wide and 0.541 larger. Process peaks
+fall from 150 to 105 MiB fast and 540 to 255 MiB larger. All 40 strict-stock
+comparisons pass; all 40 default-stock comparisons fail requested fitted/
+residual accuracy despite passing coefficient/covariance/RSS checks and remain
+unranked. Strict-stock ratios are respectively 1.127, 1.069, 0.406, 1.167,
+1.237. The larger case misses the <=1.20 target. These SCC distributions do not
+inherit the stronger Mac candidate01 pilot ratios.
+
+Excluded three-FE controls are 1.013 fast and 1.078 low versus baseline, with
+wide pair ranges. Do not accept the candidate as regression-free. Follow-up
+**7761847** is [registered and submitted](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-followup04.json):
+14 separate diagnostic fits first, then 72 headline applications giving nine
+alternating pairs per seed/control on unchanged source/binaries and exact input
+bytes. Diagnostics compare baseline/current fast/low controls and larger/wide
+slope fits across thread counts; their clocks never enter headline distributions.
+No native change or causal attribution has been made from the control loss yet.
+The full performance plan and shared thread-ceiling implementation remain open.
+
+## Two-partition OLS slope owner — original registration and validation
 
 The [source-bound candidate report](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/README.md)
 and [ADR 0231](docs/adr/0231-one-shot-two-partition-slope-owner.md) preserve a new

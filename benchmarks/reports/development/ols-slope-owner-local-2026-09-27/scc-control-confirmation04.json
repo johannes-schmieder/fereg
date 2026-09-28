@@ -1,0 +1,95 @@
+{
+  "seeds": [
+    202609279,
+    202609280
+  ],
+  "rotations_per_seed": 9,
+  "cases": [
+    {
+      "id": "three-sparse-fast",
+      "design": "three_fe_sparse",
+      "n": 61440,
+      "k": 10,
+      "threads": 4,
+      "memory": "fast",
+      "model": "ols",
+      "section": "slopes",
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "slopes": {
+        "g1": [
+          "z1"
+        ],
+        "g2": [
+          "z2"
+        ]
+      },
+      "arms": [
+        "baseline",
+        "candidate"
+      ],
+      "stata_processors": 4
+    },
+    {
+      "id": "three-sparse-low",
+      "design": "three_fe_sparse",
+      "n": 61440,
+      "k": 10,
+      "threads": 4,
+      "memory": "low",
+      "model": "ols",
+      "section": "slopes",
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "slopes": {
+        "g1": [
+          "z1"
+        ],
+        "g2": [
+          "z2"
+        ]
+      },
+      "arms": [
+        "baseline",
+        "candidate"
+      ],
+      "stata_processors": 4
+    }
+  ],
+  "controls": "16-fit explicit WLS/sandwich/saved-output oracle; categorical PPML, three-FE OLS and PPML slopes; optional-budget and explicit-route refusal tests",
+  "reason": "predeclare width, serial, low-memory and larger threaded boundaries before fresh generation",
+  "schema": 1,
+  "purpose": "Nine-pair confirmation of the observed excluded-route control slowdown; same binaries and exact inputs.",
+  "smoke_seed": 104729,
+  "baseline_plugin_sha256": "5dd3956fa04b53277e0071e1e017eb1f8e1dea7a54288c5abc419b52c4c98da2",
+  "science": {
+    "coefficient_rtol": 1e-07,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-06,
+    "vce_atol": 1e-10,
+    "objective_rtol": 1e-08,
+    "objective_atol": 1e-10
+  },
+  "fitted_envelope": {
+    "rtol": 1e-07,
+    "atol": 1e-07
+  },
+  "amendment": "Preserve seven registered cases and literal already-generated inputs. Run baseline/candidate only for the two excluded three-FE controls: the original stock three-FE arms are already scientifically incomparable. Keep separate default/strict stock arms for all five adopted-path cases. No local fresh fit executed before this amendment.",
+  "fits": 72,
+  "parent_registration_sha256": "64ad58846b91ac4eaa66b2289a03720541cb0685e29d4933518faee24772ae25",
+  "smoke": {
+    "case": "two-dense-larger",
+    "seed": 202609279,
+    "slots": 8
+  },
+  "smoke_output": "smoke-probe03",
+  "control_plane_policy": "Explicitly reserve native/R T for each arm, with Stata processors min(T,4) in both native arms under the SCC four-processor license. Fail before fitting if that registered control-plane capacity is unavailable; assert the requested native team after every timed call. No silent clamp.",
+  "amendment03": "Retain every case, input, seed, arm, repetition and numerical envelope. Correct the overly strict Stata-license guard and test the maximum native T8 configuration before restarting a complete timing block. The previous partial block is preserved and unranked; native source/artifact unchanged.",
+  "amendment04": "Registered after completed block 7761755. Nine alternating baseline/candidate pairs per input for each excluded fast/low control, both original fresh seeds. No reference rerun for these scientifically unresolved controls. Separate phase diagnostics execute first and are never mixed into headline timings."
+}
