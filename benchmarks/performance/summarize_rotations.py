@@ -8,6 +8,7 @@ import json
 import math
 from pathlib import Path
 from statistics import median
+from rotation_threads import native_threads_match, variant_cell
 
 
 def read(path):
@@ -61,8 +62,11 @@ def summarize(root, *, partial=False):
             for variant in ("baseline", "candidate", "stock"):
                 receipt = read(directory / variant / "result.json")
                 arm = case["stock_arm"] if variant == "stock" else ("fereg" if case["cell"]["model"] == "ols" else "feppml")
-                if receipt["cell"] != case["cell"] or receipt["arm"] != arm:
+                if receipt["cell"] != variant_cell(case, variant) or receipt["arm"] != arm:
                     raise ValueError("arm or cell disagrees with registration")
+                if ("arm_threads" in case and variant != "stock" and receipt["status"] == "pass"
+                        and not native_threads_match(receipt, receipt["cell"]["threads"])):
+                    raise ValueError("native thread receipt disagrees with registration")
                 if receipt["measurement_fingerprint"] != fingerprint:
                     raise ValueError("measurement identity mismatch")
                 arms[variant] = receipt
@@ -114,6 +118,9 @@ def summarize(root, *, partial=False):
                    "oracle": bool(case.get("oracle")), "pairs": pairs,
                    "measurements": {key: distribution(values) for key, values in measurements.items()},
                    "comparisons": {}}
+        if "arm_threads" in case:
+            summary["arm_threads"] = {v: variant_cell(case, v)["threads"]
+                                      for v in ("baseline", "candidate", "stock")}
         for reference in ("baseline", "stock"):
             eligible = all(p.get("comparisons", {}).get(reference, {}).get("eligible", False) for p in pairs)
             summary["comparisons"][reference] = {"eligible": eligible,
@@ -124,6 +131,10 @@ def summarize(root, *, partial=False):
     by_case = {case["case"]: case for case in cases}
     groups = defaultdict(list)
     for case in plan["cases"]:
+        # Explicit per-arm comparisons are already paired within each case.
+        # Do not merge them with a nominal-cell cross-case scaling family.
+        if "arm_threads" in case:
+            continue
         key = json.dumps({k: v for k, v in case["cell"].items() if k != "threads"}, sort_keys=True)
         groups[key].append(case)
     scaling = []
@@ -185,6 +196,10 @@ def markdown(summary):
         return "NR" if value is None else " / ".join(f"{value[k]:.3f}" for k in ("min", "median", "max"))
     for case in summary["cases"]:
         lines.append(f"| {case['case']} | {ratios(case['comparisons']['baseline']['seconds_ratio'])} | {ratios(case['comparisons']['stock']['seconds_ratio'])} |")
+    for case in summary["cases"]:
+        if "arm_threads" in case:
+            t = case["arm_threads"]
+            lines += ["", f"{case['case']}: baseline / candidate / stock threads = {t['baseline']} / {t['candidate']} / {t['stock']} (explicit thread comparison)."]
     lines += ["", "NR retains missing results, application failures and scientific discrepancies in the JSON; it is never a timing win.",
               "", "## Native thread scaling", "", "| Lower → higher setting | Higher/lower min / median / max | Slower on every repetition |", "|---|---:|---|"]
     for row in summary["scaling"]:

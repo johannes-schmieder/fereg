@@ -1,0 +1,1163 @@
+[
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 0,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8,
+        "candidate_seconds": 0.8,
+        "other_seconds": 1.0,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9791921664626684,
+        "candidate_seconds": 0.8,
+        "other_seconds": 0.817,
+        "max_fitted_difference": 6.080713710332475e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 0,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8597285067873303,
+        "candidate_seconds": 0.95,
+        "other_seconds": 1.105,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.1515151515151516,
+        "candidate_seconds": 0.95,
+        "other_seconds": 0.825,
+        "max_fitted_difference": 6.081801728896608e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 0,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9265283230510376,
+        "candidate_seconds": 1.652,
+        "other_seconds": 1.783,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8676470588235294,
+        "candidate_seconds": 1.652,
+        "other_seconds": 1.904,
+        "max_fitted_difference": 8.813394458684343e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 1,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9583843329253366,
+        "candidate_seconds": 0.783,
+        "other_seconds": 0.817,
+        "max_fitted_difference": 6.080713710332475e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9157894736842106,
+        "candidate_seconds": 0.783,
+        "other_seconds": 0.855,
+        "max_fitted_difference": 0.0
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 1,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.2528160200250311,
+        "candidate_seconds": 1.001,
+        "other_seconds": 0.799,
+        "max_fitted_difference": 6.081801728896608e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.943449575871819,
+        "candidate_seconds": 1.001,
+        "other_seconds": 1.061,
+        "max_fitted_difference": 1.3322676295501878e-15
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 1,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8751300728407908,
+        "candidate_seconds": 1.682,
+        "other_seconds": 1.922,
+        "max_fitted_difference": 8.813394458684343e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9116531165311653,
+        "candidate_seconds": 1.682,
+        "other_seconds": 1.845,
+        "max_fitted_difference": 0.0
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 2,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.020891364902507,
+        "candidate_seconds": 0.733,
+        "other_seconds": 0.718,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.1453125,
+        "candidate_seconds": 0.733,
+        "other_seconds": 0.64,
+        "max_fitted_difference": 6.080713710332475e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 2,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9764373232799247,
+        "candidate_seconds": 1.036,
+        "other_seconds": 1.061,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.6602564102564077,
+        "candidate_seconds": 1.036,
+        "other_seconds": 0.624000000000001,
+        "max_fitted_difference": 6.081801728896608e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 2,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9524089306698003,
+        "candidate_seconds": 1.621,
+        "other_seconds": 1.702,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8622340425531916,
+        "candidate_seconds": 1.621,
+        "other_seconds": 1.88,
+        "max_fitted_difference": 8.813394458684343e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 3,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9354445797807552,
+        "candidate_seconds": 0.768,
+        "other_seconds": 0.821,
+        "max_fitted_difference": 6.080713710332475e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.7649402390438247,
+        "candidate_seconds": 0.768,
+        "other_seconds": 1.004,
+        "max_fitted_difference": 0.0
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 3,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.6517571884984026,
+        "candidate_seconds": 1.034,
+        "other_seconds": 0.626,
+        "max_fitted_difference": 6.081801728896608e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9654528478057891,
+        "candidate_seconds": 1.034,
+        "other_seconds": 1.071,
+        "max_fitted_difference": 1.3322676295501878e-15
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 3,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9521850899742931,
+        "candidate_seconds": 1.852,
+        "other_seconds": 1.945,
+        "max_fitted_difference": 8.813394458684343e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.074245939675174,
+        "candidate_seconds": 1.852,
+        "other_seconds": 1.724,
+        "max_fitted_difference": 0.0
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 4,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9016172506738545,
+        "candidate_seconds": 0.669,
+        "other_seconds": 0.742,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0878048780487806,
+        "candidate_seconds": 0.669,
+        "other_seconds": 0.615,
+        "max_fitted_difference": 6.080713710332475e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 4,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8452157598499062,
+        "candidate_seconds": 0.901,
+        "other_seconds": 1.066,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.244475138121547,
+        "candidate_seconds": 0.901,
+        "other_seconds": 0.724,
+        "max_fitted_difference": 6.081801728896608e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 4,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.2182926829268292,
+        "candidate_seconds": 1.998,
+        "other_seconds": 1.64,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0526870389884089,
+        "candidate_seconds": 1.998,
+        "other_seconds": 1.898,
+        "max_fitted_difference": 8.813394458684343e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 5,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.7401129943502825,
+        "candidate_seconds": 0.655,
+        "other_seconds": 0.885,
+        "max_fitted_difference": 6.080713710332475e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.7326621923937361,
+        "candidate_seconds": 0.655,
+        "other_seconds": 0.894,
+        "max_fitted_difference": 0.0
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 5,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0540865384615385,
+        "candidate_seconds": 0.877,
+        "other_seconds": 0.832,
+        "max_fitted_difference": 6.081801728896608e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0245327102803738,
+        "candidate_seconds": 0.877,
+        "other_seconds": 0.856,
+        "max_fitted_difference": 1.3322676295501878e-15
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 5,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.960212201591512,
+        "candidate_seconds": 1.81,
+        "other_seconds": 1.885,
+        "max_fitted_difference": 8.813394458684343e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0486674391657012,
+        "candidate_seconds": 1.81,
+        "other_seconds": 1.726,
+        "max_fitted_difference": 0.0
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 6,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.067632850241546,
+        "candidate_seconds": 0.663,
+        "other_seconds": 0.621,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0075987841945304,
+        "candidate_seconds": 0.663,
+        "other_seconds": 0.657999999999999,
+        "max_fitted_difference": 6.080713710332475e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 6,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8940594059405941,
+        "candidate_seconds": 0.903,
+        "other_seconds": 1.01,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.4109375,
+        "candidate_seconds": 0.903,
+        "other_seconds": 0.64,
+        "max_fitted_difference": 6.081801728896608e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 6,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.1524842946887492,
+        "candidate_seconds": 2.018,
+        "other_seconds": 1.751,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.041817243159525,
+        "candidate_seconds": 2.018,
+        "other_seconds": 1.937,
+        "max_fitted_difference": 8.813394458684343e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 7,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9263959390862956,
+        "candidate_seconds": 0.73,
+        "other_seconds": 0.787999999999999,
+        "max_fitted_difference": 6.080713710332475e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8957055214723928,
+        "candidate_seconds": 0.73,
+        "other_seconds": 0.8149999999999998,
+        "max_fitted_difference": 0.0
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 7,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.2043530834340992,
+        "candidate_seconds": 0.996,
+        "other_seconds": 0.827,
+        "max_fitted_difference": 6.081801728896608e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0111675126903552,
+        "candidate_seconds": 0.996,
+        "other_seconds": 0.9850000000000002,
+        "max_fitted_difference": 1.3322676295501878e-15
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 7,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9187529522909779,
+        "candidate_seconds": 1.945,
+        "other_seconds": 2.117,
+        "max_fitted_difference": 8.813394458684343e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0908581043185643,
+        "candidate_seconds": 1.945,
+        "other_seconds": 1.783,
+        "max_fitted_difference": 0.0
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-fast-t8",
+    "repetition": 8,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.7531718569780854,
+        "candidate_seconds": 0.653,
+        "other_seconds": 0.867,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9056865464632455,
+        "candidate_seconds": 0.653,
+        "other_seconds": 0.721,
+        "max_fitted_difference": 6.080713710332475e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-low-t8",
+    "repetition": 8,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0739081746920491,
+        "candidate_seconds": 0.959,
+        "other_seconds": 0.893,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.4508320726172466,
+        "candidate_seconds": 0.959,
+        "other_seconds": 0.661,
+        "max_fitted_difference": 6.081801728896608e-11
+      }
+    }
+  },
+  {
+    "seed": 202609281,
+    "case": "fresh-larger",
+    "repetition": 8,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0472205618649133,
+        "candidate_seconds": 1.752,
+        "other_seconds": 1.673,
+        "max_fitted_difference": 0.0
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9120249869859448,
+        "candidate_seconds": 1.752,
+        "other_seconds": 1.921,
+        "max_fitted_difference": 8.813394458684343e-11
+      }
+    }
+  }
+]

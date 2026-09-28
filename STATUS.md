@@ -82,16 +82,24 @@ they do not replace historical small-group or saved-mean timing.
 [ADR 0232](docs/adr/0232-portable-prepared-coupling-products.md) now accepts the
 portable kernel for bounded development. Computational source **c6c1df25** matches
 all 209 frozen inputs. No storage, certificate, tolerance or admission change.
-[Thread scaling confirmation 7762473](benchmarks/reports/development/slope-thread-scaling-scc-2026-09-28/submission.json)
-is submitted: nine alternating same-binary T4/T8 pairs on fast, low and larger
-OLS slope inputs, with strict stock T8 (81 headline fits plus three probe fits).
-All source/plugin/input hashes match; five focused harness tests pass. The new
-per-arm control records and verifies actual native teams while keeping input,
-science and stock settings fixed. No native code changed for this confirmation.
+[OLS thread confirmation 7762473](benchmarks/reports/development/slope-thread-scaling-scc-2026-09-28/final/README.md)
+passes all **81 headline fits**, three probe fits and **54 science pairs**.
+Nine alternating same-artifact T8/T4 medians are **0.896 fast**, **0.965 low**,
+**1.049 larger**, with two/three/six slower pairs. The earlier fast 15.4% loss
+does not persist; do not impose a blanket T4 cap. Larger has a small scaling
+loss, and low still takes **1.253 of strict stock**. Fast/larger are 0.958/0.919.
+Accounting is clean: 448 s, 28 slots, maxvmem 1.525G. No native policy changed.
+
 A separate [summary indexing repair](benchmarks/reports/development/slope-thread-scaling-scc-2026-09-28/summary-repetition-repair.json)
-retains every repeated-seed scaling clock and input guard (seven tests pass).
-All three existing generic-summary reports were audited and are unaffected;
-the live slope job uses a separate controller. No historical receipt changed.
+retains every repeated-seed scaling clock and input guard. All three historical
+generic-summary reports were audited and are unaffected; no receipt changed.
+The generic controller now also supports explicitly registered per-arm thread
+counts and checks actual native requested/effective receipts (12 focused tests).
+[PPML thread confirmation 7762547](benchmarks/reports/development/ppml-thread-scaling-scc-2026-09-28/submission.json)
+is submitted sequentially: 72 fits; nine pairs for the prior small categorical
+and narrow T28 cases, plus three each on fresh narrow/wide controls. Both native
+arms use the unchanged validated plugin. Prior input SHA must match before fits;
+fresh seed 202609283 is predeclared. Results remain pending.
 The shared thread ceiling, small categorical PPML stock loss, low-memory OLS
 loss, remaining comparator adjudication and broader remeasurement remain open.
 The overall goal is active; this milestone does not complete the repair plan.

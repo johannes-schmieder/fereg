@@ -1,0 +1,25 @@
+{
+  "job": "7762473",
+  "status": "success",
+  "computational_source_commit": "c6c1df25",
+  "accounting": {
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 448,
+    "cpu_seconds": 1159.811,
+    "slots": 28,
+    "host": "scc-wo4",
+    "maxvmem": "1.525G"
+  },
+  "accounting_sha256": "d3ff97374ab7edb95b00f354524da0e7b6732b21e86f9c0537302b95f0addad7",
+  "files": {
+    "summary.json": "1eb45e355f4882099896b8a3cb4dff7521eaafd977cafe4aa203562e938bb8c7",
+    "plan.json": "2862a33167f4115d46eef6adee2efab49a0a18ca096bbd4620c12df29f9104d4",
+    "results.json": "eee2050579743a410de399dde28e6bc2258f4d251df64448bae5fcc61d51c26c",
+    "comparisons.json": "cdc6467e1f508e339665cf098f45a181d17e710be59a3c4c0131a981b4bea854",
+    "README.md": "ecaac8ef0cd3a3e9ec65b1881a4f732571509a65d1e06f991a87c80c7595fd34",
+    "identity.json": "b2e69f4ad41b232200419fdef73f5faa8c04a6fcdf5ef869c01a64ddbc9ae9e0",
+    "complete.json": "bd7579df503cd469412dd5e8e2ed3d39b78ed54494a4e2ba4f3ffab67157cc7c"
+  },
+  "decision": "No blanket T4 cap: small fast/low favor T8; larger 4.9% median scaling loss and low 25.3% stock loss remain open."
+}

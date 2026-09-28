@@ -5,6 +5,7 @@ import tempfile
 import unittest
 
 from summarize_rotations import summarize
+from rotation_threads import variant_cell, native_threads_match
 
 
 def write(path, value):
@@ -13,6 +14,38 @@ def write(path, value):
 
 
 class RotationSummaryTests(unittest.TestCase):
+    def test_variant_thread_override_is_explicit_and_bounded(self):
+        case = {"cell": {"model": "ppml", "threads": 28, "k": 6},
+                "arm_threads": {"baseline": 8, "candidate": 28, "stock": 28}}
+        self.assertEqual(variant_cell(case, "baseline"), dict(model="ppml", threads=8, k=6))
+        self.assertEqual(case["cell"]["threads"], 28)
+        for override in [{"other": 8}, {"candidate": 29}, {"candidate": True}, {"candidate": 0}]:
+            with self.assertRaises(ValueError):
+                variant_cell(dict(case, arm_threads=override), "candidate")
+        receipt = dict(cell=case["cell"], metadata=dict(feppml_threads=8, feppml_requested_threads=8))
+        self.assertTrue(native_threads_match(receipt, 8))
+        self.assertFalse(native_threads_match(receipt, 28))
+
+    def test_explicit_thread_pairs_require_actual_native_receipt(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.fixture(root)
+            plan = json.loads((root / "plan.json").read_text())
+            for case in plan["cases"]:
+                case["arm_threads"] = dict(baseline=2, candidate=case["cell"]["threads"], stock=8)
+                for rep in (1, 2):
+                    for variant in ("baseline", "candidate", "stock"):
+                        cell = variant_cell(case, variant)
+                        self.mutate(root, f"{case['id']}/pair-{rep}/{variant}/result.json",
+                                    lambda r: r.update(cell=cell, metadata=dict(fereg_threads=cell["threads"], fereg_requested_threads=cell["threads"])))
+            write(root / "plan.json", plan)
+            result = summarize(root)
+            self.assertEqual(result["scaling"], [])
+            self.assertEqual(result["cases"][0]["arm_threads"], dict(baseline=2, candidate=4, stock=8))
+            self.mutate(root, "ols-t4/pair-1/candidate/result.json", lambda r: r["metadata"].update(fereg_threads=2))
+            with self.assertRaisesRegex(ValueError, "native thread receipt"):
+                summarize(root)
+
     def fixture(self, root):
         identity = {"sources": {"baseline": "old", "candidate": "new"}}
         fingerprint = hashlib.sha256(json.dumps(identity, sort_keys=True).encode()).hexdigest()

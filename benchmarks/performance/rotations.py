@@ -17,6 +17,7 @@ from common import read_json, sha256, write_json
 from generate import generate
 from oracle import oracle
 from runner import compare, measure, read_coefficients
+from rotation_threads import native_threads_match, variant_cell
 
 
 def oracle_checks(directory, independent, tolerance):
@@ -47,6 +48,9 @@ def run(args):
         raise ValueError("unexpected CPU class")
     args.output.mkdir(parents=True, exist_ok=False)
     plan, manifest = read_json(args.plan), read_json(args.manifest)
+    for case in plan["cases"]:
+        for variant in ("baseline", "candidate", "stock"):
+            variant_cell(case, variant)
     # Verify both computational snapshots and stock reference before any fits.
     identities = {"plan": sha256(args.plan), "manifest": sha256(args.manifest), "sources": {}, "harness": {}}
     for name in ("baseline", "candidate"):
@@ -82,6 +86,9 @@ def run(args):
             output.mkdir(parents=True)
             data = args.scratch / "input.dta"
             generate(cell, seed, data, manifest)
+            expected_input = case.get("input_sha256", {}).get(str(seed))
+            if expected_input is not None and sha256(data) != expected_input:
+                raise ValueError("regenerated input differs from registered prior bytes")
             warm = args.scratch / "warm.dta"
             generate(dict(cell, n=manifest["measurement"]["warmup_rows"], section="main"), seed, warm, manifest)
             write_json(output / "input.json", read_json(data.with_suffix(".json")))
@@ -97,7 +104,7 @@ def run(args):
                 arm = ("fereg" if cell["model"] == "ols" else "feppml") if variant != "stock" else case["stock_arm"]
                 if variant == "stock" and arm not in ("fixest", "fixest_strict"):
                     raise ValueError("unregistered stock command")
-                measure(args.roots / variant, cell, arm, "warm", data, warm,
+                measure(args.roots / variant, variant_cell(case, variant), arm, "warm", data, warm,
                         output / variant, manifest, fingerprint, limits=case["limits"][variant])
             comparisons = {name: compare(output / "candidate", output / name, manifest["science"])
                            for name in ("baseline", "stock")}
@@ -106,6 +113,10 @@ def run(args):
             a = read_json(output / "candidate/result.json")
             b = read_json(output / "baseline/result.json")
             if a["status"] == b["status"] == "pass":
+                if "arm_threads" in case:
+                    comparisons["baseline"]["checks"]["native_threads"] = all(
+                        native_threads_match(receipt, variant_cell(case, name)["threads"])
+                        for name, receipt in (("baseline", b), ("candidate", a)))
                 comparisons["baseline"]["checks"]["native_rank_dof"] = all(
                     a["metadata"].get(k) == b["metadata"].get(k)
                     for k in ("rank", "df_a", "df_r", "df_resid"))
