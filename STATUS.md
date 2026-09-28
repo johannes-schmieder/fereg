@@ -89,11 +89,25 @@ passes **18 canonical Rust tests on both Mac and Linux**, with the changed
 portable arithmetic exercised on Linux. [Validation 7763043](benchmarks/reports/development/canonical-portable-scc-2026-09-28/linux-validation01.json)
 passes PPML smoke plus four licensed explicit-oracle/control fixtures; Mac
 universal build/ABI and the same four fixtures pass. All 211 candidate inputs
-still match. [63-fit rotation 7763067](benchmarks/reports/development/canonical-portable-scc-2026-09-28/submission02.json)
-is queued after the successful validation, with explicit accounting and
-application gates. No performance acceptance yet. The first staging transfer failed before source
-creation because its parent was absent; one path repair and verified retry
-succeeded. No estimator ran in that failed transfer.
+still match. [Initial rotation 7763067](benchmarks/reports/development/canonical-portable-scc-2026-09-28/initial02/README.md)
+completes 63 applications, 21 native and 18 default-stock scientific passes.
+The three slope standard-error discrepancies stay NR. Targeted small fast,
+low, serial and larger-wide PPML C/B paired medians are **0.906/0.869/0.649/
+0.754**. Stock ratios remain **1.775/1.465/1.521/1.150**; the small losses are
+not closed. Three-FE/OLS controls are 0.992/1.000, but the slope control loses
+all three pairs, median **1.080**, and prevents acceptance. No numerical storage
+is added; targeted sampled process peaks change by +0.5 to +4.9 MiB. Clean
+accounting: 228 s, 28 isolated slots, maxvmem 1.984G.
+
+[Fresh confirmation 7763099](benchmarks/reports/development/canonical-portable-scc-2026-09-28/submission03.json)
+is running: 111 fits, predeclared fresh seed202609287 across widths, sizes,
+serial/threaded and low/sparse cases, fresh OLS/slope controls, and nine pairs
+on the original losing slope input. The slope comparisons explicitly use
+strict stock; earlier default discrepancies remain NR. No candidate changes.
+[Separate CPU attribution 7763108](benchmarks/reports/development/canonical-portable-scc-2026-09-28/submission04.json)
+is held behind every fresh fit; its 24 diagnostic calls use DWARF unwinding to
+separate shared-product callers and locate remaining small PPML work. Profile
+clocks never enter timing ranks. No performance acceptance yet.
 
 The broader repair goal remains active: small OLS/PPML and low-memory OLS
 stock losses, original comparator/separation adjudications, large timeouts and

@@ -1,0 +1,15 @@
+{
+  "job": "7763099",
+  "status": "submitted",
+  "holds_after": null,
+  "slots": 28,
+  "wall_minutes": 30,
+  "run_directory": "dev/20260928-canonical-portable-rotation03",
+  "source_snapshot": "4aa44429ef182ee04734002be3681ba7a64042862552ffc32b8f789bddeb10cc",
+  "candidate_plugin_sha256": "d1156e6dc88d1b041e061ce7e4df7a323bcd08f8254276b752172cb022950e22",
+  "applications": 111,
+  "diagnostic_only": false,
+  "deployment_sha256": "d371e6d8efe07fa045b49f56888cc08a4f4a7813f32c7bf233f1ea1b4f8bdc6f",
+  "local_checks": "Shell syntax, Python AST and exact remote deployment hashes passed.",
+  "gate": "Successful completed preceding native scientific comparisons; no compilation/profiling/competing fits during headline timings."
+}
