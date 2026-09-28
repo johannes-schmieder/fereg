@@ -2,7 +2,8 @@
 """Closed structural inventory of both native actions; not a byte-coverage proof.
 
 The OLS/F0 route guard remains independent. This companion also watches PPML,
-separation and session bodies that the OLS-only guard deliberately excludes.
+separation, retained sessions and locally vendored runtime source. Build wiring
+is bound separately: Cargo.lock alone does not identify local path patches.
 """
 from __future__ import annotations
 
@@ -20,7 +21,23 @@ else:
 
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INVENTORY = ROOT / "benchmarks/manifests/action_allocation_inventory_v24.json"
-SOURCE_GLOBS = ("crates/fereg-core/src/**/*.rs", "crates/fereg-plugin/src/**/*.rs")
+SOURCE_GLOBS = (
+    "crates/fereg-core/src/**/*.rs",
+    "crates/fereg-plugin/src/**/*.rs",
+    "vendor/*/src/**/*.rs",
+)
+BUILD_INPUT_GLOBS = (
+    "Cargo.toml",
+    ".cargo/config",
+    ".cargo/config.toml",
+    "rust-toolchain",
+    "rust-toolchain.toml",
+    "crates/*/Cargo.toml",
+    "crates/*/build.rs",
+    "vendor/*/Cargo.toml",
+    "vendor/*/Cargo.lock",
+    "vendor/*/build.rs",
+)
 
 
 def build_inventory(root: Path) -> dict:
@@ -39,10 +56,17 @@ def build_inventory(root: Path) -> dict:
             "allocation_sites_sha256": source._sha256_text(source._canonical_json(sites)),
         })
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "coverage": "structural_only_not_capacity_or_reachability",
         "source_globs": list(SOURCE_GLOBS),
+        "build_input_globs": list(BUILD_INPUT_GLOBS),
         "dependency_lock_sha256": hashlib.sha256((root / "Cargo.lock").read_bytes()).hexdigest(),
+        "build_inputs": [
+            {"path": path.relative_to(root).as_posix(),
+             "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+            for path in sorted({p for glob in BUILD_INPUT_GLOBS for p in root.glob(glob)
+                                if p.is_file()})
+        ],
         "source_files": records,
     }
 
@@ -50,10 +74,12 @@ def build_inventory(root: Path) -> dict:
 def audit(root: Path, inventory: Path) -> list[str]:
     expected = json.loads(inventory.read_text(encoding="utf-8"))
     observed = build_inventory(root)
-    if set(expected) != set(observed):
-        return ["action inventory fields changed"]
-    errors = [f"action inventory policy changed: {key}" for key in observed
-              if key != "source_files" and expected[key] != observed[key]]
+    # A new schema must fail an old receipt without hiding its existing source
+    # drift. No manifest refresh or dependency-coverage claim is implicit here.
+    errors = [] if set(expected) == set(observed) else ["action inventory fields changed"]
+    errors.extend(f"action inventory policy changed: {key}" for key in observed
+                  if key not in ("source_files", "build_inputs") and key in expected
+                  and expected[key] != observed[key])
     before = {r["path"]: r for r in expected["source_files"]}
     after = {r["path"]: r for r in observed["source_files"]}
     if len(before) != len(expected["source_files"]):
@@ -62,6 +88,14 @@ def audit(root: Path, inventory: Path) -> list[str]:
         errors.append("action allocation source set changed")
     errors.extend(f"action allocation source changed: {path}" for path in sorted(before.keys() & after.keys())
                   if before[path] != after[path])
+    build_before = {r["path"]: r for r in expected.get("build_inputs", [])}
+    build_after = {r["path"]: r for r in observed["build_inputs"]}
+    if len(build_before) != len(expected.get("build_inputs", [])):
+        errors.append("duplicate action build input")
+    if build_before.keys() != build_after.keys():
+        errors.append("action build input set changed")
+    errors.extend(f"action build input changed: {path}" for path in sorted(build_before.keys() & build_after.keys())
+                  if build_before[path] != build_after[path])
     return errors
 
 

@@ -10,6 +10,17 @@ Two separate checks protect the current native source:
   `action_allocation_inventory_v24.json`. It also binds `Cargo.lock`. It does not
   exclude a file because the OLS-only route cannot reach it.
 
+The current all-action collector additionally inventories `vendor/*/src/**/*.rs`
+and binds root Cargo/config/toolchain files, crate/vendor manifests, vendor locks
+and build scripts by exact bytes. Cargo.lock alone cannot bind a local runtime
+patch. The observed schema is version 2; the v24 inventory remains unchanged and
+fails until a reviewed successor covers the intervening source changes. Schema
+drift does not hide individual source findings. The
+[dependency-closure review](../benchmarks/reports/development/allocation-dependency-closure-local-2026-09-28/README.md)
+records red/green mutation checks and preserves the existing failures. Generated
+vendor build products are excluded. This watches the specified local source
+layouts, not arbitrary Cargo path dependencies or runtime byte coverage.
+
 The [September 21 baseline review](../benchmarks/reports/development/slopes-baseline-local-2026-09-21/README.md)
 binds v37/v22 to the unchanged estimator at `0efa78bd`, records the allocation-site
 delta from the earlier inventory, and preserves its 102 historical findings.

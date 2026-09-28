@@ -1,0 +1,23 @@
+test_local_runtime_source_and_helpers_are_closed (tests.python.test_action_allocation_inventory.ActionAllocationInventoryTests.test_local_runtime_source_and_helpers_are_closed) ... FAIL
+test_build_wiring_is_closed_even_with_unchanged_lock (tests.python.test_action_allocation_inventory.ActionAllocationInventoryTests.test_build_wiring_is_closed_even_with_unchanged_lock) ... FAIL
+
+======================================================================
+FAIL: test_local_runtime_source_and_helpers_are_closed (tests.python.test_action_allocation_inventory.ActionAllocationInventoryTests.test_local_runtime_source_and_helpers_are_closed)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/python/test_action_allocation_inventory.py", line 66, in test_local_runtime_source_and_helpers_are_closed
+    self.assertIn('action allocation source changed: vendor/rayon-core/src/sleep/mod.rs',
+AssertionError: 'action allocation source changed: vendor/rayon-core/src/sleep/mod.rs' not found in []
+
+======================================================================
+FAIL: test_build_wiring_is_closed_even_with_unchanged_lock (tests.python.test_action_allocation_inventory.ActionAllocationInventoryTests.test_build_wiring_is_closed_even_with_unchanged_lock)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "<repo>/tests/python/test_action_allocation_inventory.py", line 93, in test_build_wiring_is_closed_even_with_unchanged_lock
+    self.assertIn(f'action build input changed: {name}', inventory.audit(root, manifest))
+AssertionError: 'action build input changed: Cargo.toml' not found in []
+
+----------------------------------------------------------------------
+Ran 2 tests in 0.006s
+
+FAILED (failures=2)

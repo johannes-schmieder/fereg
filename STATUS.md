@@ -108,6 +108,15 @@ records, accounting and red/green evidence before public or performance testing.
 Further headline jobs must wait until both queued diagnostics finish. The
 unresolved CG and weighted constrained-fit issues are not claimed repaired.
 
+The [allocation guard dependency repair](benchmarks/reports/development/allocation-dependency-closure-local-2026-09-28/README.md)
+now binds local Rayon source and Cargo/config/toolchain/build wiring. Two mutation
+tests that escaped the old all-action inventory now fail closed. Seven tests pass;
+the unchanged current-source-match test deliberately remains red against stale
+v24. All 56 old action findings remain, with four added schema/coverage findings;
+the separate OLS audit still reports 86. No successor manifest was generated.
+All 259 estimator inputs and the frozen sweep are unchanged. Complete allocation
+review, stack/physical-cap accounting and the queued numerical work remain open.
+
 ## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 
 [ADR0245](docs/adr/0245-private-implicit-finite-moments.md) extends private finite
