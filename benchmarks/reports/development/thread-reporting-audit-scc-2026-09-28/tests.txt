@@ -1,0 +1,12 @@
+test_capped_request_is_not_more_native_cores (test_thread_inventory.ThreadInventoryTests) ... ok
+test_collector_binds_and_preserves_frozen_report (test_thread_inventory.ThreadInventoryTests) ... ok
+test_collector_rejects_missing_pairs_and_identity_drift (test_thread_inventory.ThreadInventoryTests) ... ok
+test_cross_node_ratios_remain_observational (test_thread_inventory.ThreadInventoryTests) ... ok
+test_missing_failed_or_incomparable_repetition_blocks_summary (test_thread_inventory.ThreadInventoryTests) ... ok
+test_repeated_seed_keeps_both_clocks (test_thread_inventory.ThreadInventoryTests) ... ok
+test_requested_selected_and_stata_threads_are_separate (test_thread_inventory.ThreadInventoryTests) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.031s
+
+OK

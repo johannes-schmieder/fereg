@@ -73,6 +73,19 @@ hold further headline work until this diagnostic finishes. The latest inspected
 sweep snapshot had 40 completed applications (including pilot), no application
 failures and all four tasks running; that is not a scientific-comparison summary.
 
+The [thread-reporting supplement](benchmarks/reports/development/thread-reporting-audit-scc-2026-09-28/README.md)
+is implemented separately from the frozen controller. Seven focused tests and
+read-only checks against all original receipts pass. It distinguishes requested
+cores, selected native teams and Stata processors; preserves incomplete/NR
+repetitions; and labels cross-case clocks observational. Original source has
+seven transitions slower on every seed, mostly cross-node/task observations;
+those are not current regressions. The 14:56 UTC partial current capture has 20
+successful native receipts, including one T28→selected-T8 case, and no complete
+eligible scaling distributions. Use `benchmarks/performance/thread_inventory.py`
+on the final frozen-controller report, then directly alternate suspected losses.
+No new fits, estimator changes or performance acceptance claims accompany this
+reporting change.
+
 Static allocation drift, physical stack/cap accounting, constrained fits and
 nonretaining CG instability remain open. All eight original sparse-zero failures
 and all three original strict-PPML coefficient discrepancies already have repair

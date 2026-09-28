@@ -86,3 +86,28 @@ controller tests. Pinned reference directories are linked, then their actual
 runtime bytes are frozen and rechecked before execution. No compilation occurs
 in timing jobs. Follow the same smoke, pilot, packing, accounting and collection
 sequence above; use a new run directory, never an old results tree.
+
+## Requested and selected thread reporting
+
+After generating a report with its original frozen controller, run the separate
+read-only supplement from the maintained checkout:
+
+```bash
+python3 benchmarks/performance/thread_inventory.py RUN_ROOT FROZEN_REPORT OUTPUT.json
+```
+
+The supplement checks the report/runtime identity and registered enumeration,
+binds every consumed native receipt, and keeps requested native cores, selected
+native team and Stata processors separate. It inherits pair eligibility unchanged.
+All registered warm repetitions must be usable before a thread-transition
+distribution is shown. Missing metadata, failed commands, scientific NR and
+different input/sample hashes remain explicit reasons for withholding a summary.
+`--partial` permits an incomplete report for diagnostic metadata inspection;
+it does not change that report's eligibility decisions.
+
+These are observational cross-case clocks, even when two fits used the same
+node. They do not replace an alternating same-node confirmation. A larger request
+that selects the same native team measures request overhead, not the effect of
+adding native cores. Use the emitted locations, actual teams and all repetition
+ratios to choose follow-up comparisons. Never edit the frozen controller to add
+these columns or reinterpret an older receipt as current-source evidence.

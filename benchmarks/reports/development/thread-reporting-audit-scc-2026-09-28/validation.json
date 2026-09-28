@@ -1,0 +1,1944 @@
+{
+  "observed_utc": "2026-09-28T14:56:35.531147+00:00",
+  "analysis_only": true,
+  "no_fits_or_builds": true,
+  "source_files": {
+    "benchmarks/performance/test_thread_inventory.py": "7554ad69008607d1f68a8473a427ebff5f277773e959c42b919988f76067a883",
+    "benchmarks/performance/thread_inventory.py": "adaa607cf7bdab7731357970f04f8d50876975741e46f8026543d0d13adbf978",
+    "benchmarks/systematic/common.py": "66204753ea9e1631c1b1484737260dd0985276ba607b36ea0ab26d4311a6e795",
+    "benchmarks/systematic/light.py": "73fc03114c55b8af9ad7220b5905818bc8576ce67854a617cd4964f7065bcb62",
+    "original-report/completeness.json": "9684ab977f041d1d703d857195949c2f293106d787cab61615e829110391251a",
+    "original-report/manifest.json": "ca4d1011b644371cd6c3ab41911e6af77dc4fdc5646d1210bd0f4499669ebf5c",
+    "original-report/paired-ratios.csv": "037c5989087c66d2edbc11b34f5ed33681b45ed43d78d4df8fc05467cd6e1dbc",
+    "original-report/provenance.json": "f6e9fd4ba5df648f73357705a7e2246cf80bc5fd7b97c7b80885c834a25b0507"
+  },
+  "original": {
+    "inventory_sha256": "5b0873c95ea61f118039c3eb044f263699fad4923e8ad41440603e04e79dabac",
+    "report_complete": true,
+    "fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+    "registered_native": 568,
+    "status_counts": {
+      "pass": 536,
+      "command_timeout": 28,
+      "worker_failure": 4
+    },
+    "thread_counts": {
+      "(4, 4, 4.0)": 240,
+      "(28, 28, 4.0)": 232,
+      "(1, 1, 1.0)": 32,
+      "(8, 8, 4.0)": 32
+    },
+    "missing_thread_metadata": 0,
+    "transitions": 72,
+    "complete_observational_transitions": 68,
+    "slower_every_repetition": 7,
+    "cross_node_or_task_pairs": 262,
+    "causal_scaling_claims": 0,
+    "slow_transitions": [
+      {
+        "cell_without_threads": {
+          "design": "strong_d2",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "k": 10,
+          "model": "ols",
+          "n": 983040,
+          "section": "main",
+          "suite": "paper"
+        },
+        "requested_threads": [
+          4,
+          28
+        ],
+        "pairs": [
+          {
+            "repetition": 1,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 3.5118380062305294,
+            "locations": [
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "11"
+              },
+              {
+                "host": "scc-wf2",
+                "job_id": "7747518",
+                "task_id": "5"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 2,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 3.489274447949527,
+            "locations": [
+              {
+                "host": "scc-wc2",
+                "job_id": "7747518",
+                "task_id": "16"
+              },
+              {
+                "host": "scc-wf1",
+                "job_id": "7747518",
+                "task_id": "1"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 3,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 3.8257575757575752,
+            "locations": [
+              {
+                "host": "scc-xa4",
+                "job_id": "7747518",
+                "task_id": "8"
+              },
+              {
+                "host": "scc-wf2",
+                "job_id": "7747518",
+                "task_id": "10"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 4,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 3.887944601825622,
+            "locations": [
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "3"
+              },
+              {
+                "host": "scc-xb3",
+                "job_id": "7747518",
+                "task_id": "9"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          }
+        ],
+        "all_repetitions_eligible": true,
+        "transitions": {
+          "more_native_threads": 4
+        },
+        "observational_higher_over_lower": {
+          "n": 4,
+          "values": [
+            3.5118380062305294,
+            3.489274447949527,
+            3.8257575757575752,
+            3.887944601825622
+          ],
+          "minimum": 3.489274447949527,
+          "q1": 3.5061971166602786,
+          "median": 3.668797790994052,
+          "q3": 3.841304332274587,
+          "maximum": 3.887944601825622
+        },
+        "slower_on_every_repetition": true,
+        "alternating_confirmation_required": true,
+        "causal_scaling_established": false
+      },
+      {
+        "cell_without_threads": {
+          "design": "strong_d2",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "k": 10,
+          "model": "ppml",
+          "n": 983040,
+          "section": "main",
+          "suite": "paper"
+        },
+        "requested_threads": [
+          4,
+          28
+        ],
+        "pairs": [
+          {
+            "repetition": 1,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 1.1577370721406472,
+            "locations": [
+              {
+                "host": "scc-wf1",
+                "job_id": "7747518",
+                "task_id": "1"
+              },
+              {
+                "host": "scc-wk2",
+                "job_id": "7747518",
+                "task_id": "13"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 2,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 1.1908725883850748,
+            "locations": [
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "2"
+              },
+              {
+                "host": "scc-wj3",
+                "job_id": "7747518",
+                "task_id": "15"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 3,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 1.1901849568434033,
+            "locations": [
+              {
+                "host": "scc-wj3",
+                "job_id": "7747518",
+                "task_id": "15"
+              },
+              {
+                "host": "scc-wk3",
+                "job_id": "7747518",
+                "task_id": "7"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 4,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 1.212471810961859,
+            "locations": [
+              {
+                "host": "scc-wj3",
+                "job_id": "7747518",
+                "task_id": "15"
+              },
+              {
+                "host": "scc-wk3",
+                "job_id": "7747518",
+                "task_id": "7"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          }
+        ],
+        "all_repetitions_eligible": true,
+        "transitions": {
+          "more_native_threads": 4
+        },
+        "observational_higher_over_lower": {
+          "n": 4,
+          "values": [
+            1.1577370721406472,
+            1.1908725883850748,
+            1.1901849568434033,
+            1.212471810961859
+          ],
+          "minimum": 1.1577370721406472,
+          "q1": 1.1820729856677143,
+          "median": 1.190528772614239,
+          "q3": 1.196272394029271,
+          "maximum": 1.212471810961859
+        },
+        "slower_on_every_repetition": true,
+        "alternating_confirmation_required": true,
+        "causal_scaling_established": false
+      },
+      {
+        "cell_without_threads": {
+          "design": "three_fe_sparse",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "k": 10,
+          "model": "ols",
+          "n": 983040,
+          "section": "main",
+          "suite": "panels"
+        },
+        "requested_threads": [
+          8,
+          28
+        ],
+        "pairs": [
+          {
+            "repetition": 1,
+            "selected_threads": [
+              8,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 1.0241751990898749,
+            "locations": [
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "12"
+              },
+              {
+                "host": "scc-wk2",
+                "job_id": "7747518",
+                "task_id": "13"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 2,
+            "selected_threads": [
+              8,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 1.0596120935539075,
+            "locations": [
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "11"
+              },
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "3"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 3,
+            "selected_threads": [
+              8,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 1.0347677400968938,
+            "locations": [
+              {
+                "host": "scc-xb3",
+                "job_id": "7747518",
+                "task_id": "9"
+              },
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "12"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 4,
+            "selected_threads": [
+              8,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 1.0262637672973736,
+            "locations": [
+              {
+                "host": "scc-wk3",
+                "job_id": "7747518",
+                "task_id": "7"
+              },
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "11"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          }
+        ],
+        "all_repetitions_eligible": true,
+        "transitions": {
+          "more_native_threads": 4
+        },
+        "observational_higher_over_lower": {
+          "n": 4,
+          "values": [
+            1.0241751990898749,
+            1.0596120935539075,
+            1.0347677400968938,
+            1.0262637672973736
+          ],
+          "minimum": 1.0241751990898749,
+          "q1": 1.025741625245499,
+          "median": 1.0305157536971337,
+          "q3": 1.0409788284611472,
+          "maximum": 1.0596120935539075
+        },
+        "slower_on_every_repetition": true,
+        "alternating_confirmation_required": true,
+        "causal_scaling_established": false
+      },
+      {
+        "cell_without_threads": {
+          "design": "three_fe_sparse",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "k": 10,
+          "model": "ppml",
+          "n": 983040,
+          "section": "main",
+          "suite": "panels"
+        },
+        "requested_threads": [
+          8,
+          28
+        ],
+        "pairs": [
+          {
+            "repetition": 1,
+            "selected_threads": [
+              8,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 5.636017053373782,
+            "locations": [
+              {
+                "host": "scc-wj3",
+                "job_id": "7747518",
+                "task_id": "15"
+              },
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "11"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 2,
+            "selected_threads": [
+              8,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 6.585656327705798,
+            "locations": [
+              {
+                "host": "scc-xa4",
+                "job_id": "7747518",
+                "task_id": "8"
+              },
+              {
+                "host": "scc-wc2",
+                "job_id": "7747518",
+                "task_id": "4"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 3,
+            "selected_threads": [
+              8,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 7.792423111995357,
+            "locations": [
+              {
+                "host": "scc-wc2",
+                "job_id": "7747518",
+                "task_id": "4"
+              },
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "2"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 4,
+            "selected_threads": [
+              8,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 8.790222185580609,
+            "locations": [
+              {
+                "host": "scc-wc2",
+                "job_id": "7747518",
+                "task_id": "4"
+              },
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "2"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          }
+        ],
+        "all_repetitions_eligible": true,
+        "transitions": {
+          "more_native_threads": 4
+        },
+        "observational_higher_over_lower": {
+          "n": 4,
+          "values": [
+            5.636017053373782,
+            6.585656327705798,
+            7.792423111995357,
+            8.790222185580609
+          ],
+          "minimum": 5.636017053373782,
+          "q1": 6.348246509122793,
+          "median": 7.1890397198505775,
+          "q3": 8.04187288039167,
+          "maximum": 8.790222185580609
+        },
+        "slower_on_every_repetition": true,
+        "alternating_confirmation_required": true,
+        "causal_scaling_established": false
+      },
+      {
+        "cell_without_threads": {
+          "design": "three_fe_sparse",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "k": 50,
+          "model": "ols",
+          "n": 983040,
+          "section": "width",
+          "suite": "panels"
+        },
+        "requested_threads": [
+          4,
+          28
+        ],
+        "pairs": [
+          {
+            "repetition": 1,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 3.0270058324756164,
+            "locations": [
+              {
+                "host": "scc-wf1",
+                "job_id": "7747518",
+                "task_id": "14"
+              },
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "2"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 2,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 3.347765363128492,
+            "locations": [
+              {
+                "host": "scc-wk2",
+                "job_id": "7747518",
+                "task_id": "13"
+              },
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "3"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 3,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 2.9224583572659393,
+            "locations": [
+              {
+                "host": "scc-wc2",
+                "job_id": "7747518",
+                "task_id": "4"
+              },
+              {
+                "host": "scc-wf4",
+                "job_id": "7747518",
+                "task_id": "11"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 4,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 3.3136111780293906,
+            "locations": [
+              {
+                "host": "scc-wk3",
+                "job_id": "7747518",
+                "task_id": "7"
+              },
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "12"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          }
+        ],
+        "all_repetitions_eligible": true,
+        "transitions": {
+          "more_native_threads": 4
+        },
+        "observational_higher_over_lower": {
+          "n": 4,
+          "values": [
+            3.0270058324756164,
+            3.347765363128492,
+            2.9224583572659393,
+            3.3136111780293906
+          ],
+          "minimum": 2.9224583572659393,
+          "q1": 3.000868963673197,
+          "median": 3.1703085052525033,
+          "q3": 3.322149724304166,
+          "maximum": 3.347765363128492
+        },
+        "slower_on_every_repetition": true,
+        "alternating_confirmation_required": true,
+        "causal_scaling_established": false
+      },
+      {
+        "cell_without_threads": {
+          "design": "three_fe_sparse",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "k": 50,
+          "model": "ppml",
+          "n": 983040,
+          "section": "width",
+          "suite": "panels"
+        },
+        "requested_threads": [
+          4,
+          28
+        ],
+        "pairs": [
+          {
+            "repetition": 1,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 5.281825799587614,
+            "locations": [
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "12"
+              },
+              {
+                "host": "scc-wj3",
+                "job_id": "7747518",
+                "task_id": "15"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 2,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 5.6796356835256026,
+            "locations": [
+              {
+                "host": "scc-wf2",
+                "job_id": "7747518",
+                "task_id": "5"
+              },
+              {
+                "host": "scc-wk2",
+                "job_id": "7747518",
+                "task_id": "13"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 3,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 6.951354441171912,
+            "locations": [
+              {
+                "host": "scc-wf2",
+                "job_id": "7747518",
+                "task_id": "10"
+              },
+              {
+                "host": "scc-wk3",
+                "job_id": "7747518",
+                "task_id": "7"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 4,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 6.849520702005039,
+            "locations": [
+              {
+                "host": "scc-xb3",
+                "job_id": "7747518",
+                "task_id": "9"
+              },
+              {
+                "host": "scc-wf1",
+                "job_id": "7747518",
+                "task_id": "1"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          }
+        ],
+        "all_repetitions_eligible": true,
+        "transitions": {
+          "more_native_threads": 4
+        },
+        "observational_higher_over_lower": {
+          "n": 4,
+          "values": [
+            5.281825799587614,
+            5.6796356835256026,
+            6.951354441171912,
+            6.849520702005039
+          ],
+          "minimum": 5.281825799587614,
+          "q1": 5.5801832125411055,
+          "median": 6.26457819276532,
+          "q3": 6.874979136796758,
+          "maximum": 6.951354441171912
+        },
+        "slower_on_every_repetition": true,
+        "alternating_confirmation_required": true,
+        "causal_scaling_established": false
+      },
+      {
+        "cell_without_threads": {
+          "design": "weak_d3",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "k": 10,
+          "model": "ppml",
+          "n": 983040,
+          "section": "main",
+          "suite": "paper"
+        },
+        "requested_threads": [
+          4,
+          28
+        ],
+        "pairs": [
+          {
+            "repetition": 1,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 2.380745423416305,
+            "locations": [
+              {
+                "host": "scc-wf1",
+                "job_id": "7747518",
+                "task_id": "14"
+              },
+              {
+                "host": "scc-wf1",
+                "job_id": "7747518",
+                "task_id": "1"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 2,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 2.3521313481541917,
+            "locations": [
+              {
+                "host": "scc-wf2",
+                "job_id": "7747518",
+                "task_id": "10"
+              },
+              {
+                "host": "scc-xb3",
+                "job_id": "7747518",
+                "task_id": "9"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 3,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 2.5277509393451423,
+            "locations": [
+              {
+                "host": "scc-xa4",
+                "job_id": "7747518",
+                "task_id": "8"
+              },
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "3"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          },
+          {
+            "repetition": 4,
+            "selected_threads": [
+              4,
+              28
+            ],
+            "transition": "more_native_threads",
+            "eligible_observation": true,
+            "reasons": [],
+            "higher_over_lower": 2.374204320150266,
+            "locations": [
+              {
+                "host": "scc-xa4",
+                "job_id": "7747518",
+                "task_id": "8"
+              },
+              {
+                "host": "scc-wc1",
+                "job_id": "7747518",
+                "task_id": "3"
+              }
+            ],
+            "same_node_task": false,
+            "stata_processors": [
+              4.0,
+              4.0
+            ]
+          }
+        ],
+        "all_repetitions_eligible": true,
+        "transitions": {
+          "more_native_threads": 4
+        },
+        "observational_higher_over_lower": {
+          "n": 4,
+          "values": [
+            2.380745423416305,
+            2.3521313481541917,
+            2.5277509393451423,
+            2.374204320150266
+          ],
+          "minimum": 2.3521313481541917,
+          "q1": 2.3686860771512475,
+          "median": 2.3774748717832854,
+          "q3": 2.417496802398514,
+          "maximum": 2.5277509393451423
+        },
+        "slower_on_every_repetition": true,
+        "alternating_confirmation_required": true,
+        "causal_scaling_established": false
+      }
+    ]
+  },
+  "current": {
+    "inventory_sha256": "ae7d2f7cf16d467651a8c3445b8da77a2b7f4fa352212a5cbba6b87ff25ee890",
+    "report_complete": false,
+    "fingerprint": "fb2ad5407afcea22d56155aa7858203bfcaea590f750ca5d06eeccce746cffc6",
+    "registered_native": 568,
+    "status_counts": {
+      "missing": 548,
+      "pass": 20
+    },
+    "thread_counts": {
+      "(28, 28, 4.0)": 7,
+      "(4, 4, 4.0)": 12,
+      "(28, 8, 4.0)": 1
+    },
+    "missing_thread_metadata": 0,
+    "transitions": 72,
+    "complete_observational_transitions": 0,
+    "slower_every_repetition": 0,
+    "cross_node_or_task_pairs": 0,
+    "causal_scaling_claims": 0,
+    "completed_applications": [
+      {
+        "cell": {
+          "model": "ols",
+          "design": "strong_d6",
+          "suite": "paper",
+          "n": 3932160,
+          "k": 10,
+          "threads": 28,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [
+          "fixest"
+        ],
+        "requested_threads": 28,
+        "seconds": 1.798,
+        "elapsed_seconds": 20.333403125987388,
+        "peak_rss_gib": 1.5884132385253906,
+        "input_sha256": "7971feaef8dc8e1939b3ae20d697a327f44dc7a98120d85361785c271082767f",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-we3",
+        "job_id": "7765992",
+        "task_id": "undefined",
+        "recorded_request": 28.0,
+        "selected_threads": 28,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ols",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 3932160,
+          "k": 10,
+          "threads": 4,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 53.3,
+        "elapsed_seconds": 97.24616982799489,
+        "peak_rss_gib": 3.5985679626464844,
+        "input_sha256": "862072059f040bc62491e790d4fce18c64b548bca3ad98972cde41ea458a4b02",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-wd2",
+        "job_id": "7766045",
+        "task_id": "1",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ols",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 3932160,
+          "k": 10,
+          "threads": 4,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 2,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 25.671,
+        "elapsed_seconds": 47.25481211702572,
+        "peak_rss_gib": 3.7220001220703125,
+        "input_sha256": "69ea91a935777b329ccf00c2806373821c21264158eac2c64fee76e8201ece6a",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-wj1",
+        "job_id": "7766045",
+        "task_id": "4",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ols",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 3932160,
+          "k": 10,
+          "threads": 4,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 3,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 25.1,
+        "elapsed_seconds": 43.74058673996478,
+        "peak_rss_gib": 3.5751876831054688,
+        "input_sha256": "2547a9818e2c39c52d2e61bcbfb7d73fd7e723a24dd2712da54adbd4685ecf20",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-wj2",
+        "job_id": "7766045",
+        "task_id": "3",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ols",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 3932160,
+          "k": 10,
+          "threads": 4,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 4,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 27.058,
+        "elapsed_seconds": 45.99068346695276,
+        "peak_rss_gib": 3.6767578125,
+        "input_sha256": "39a2eeee87daa0d25e0b9ce7f910e608f3dcdfc4539a92d85333c071d2e34a41",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-wj1",
+        "job_id": "7766045",
+        "task_id": "4",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ols",
+          "design": "two_fe_dense",
+          "suite": "panels",
+          "n": 983040,
+          "k": 10,
+          "threads": 28,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [
+          "fixest"
+        ],
+        "requested_threads": 28,
+        "seconds": 0.576,
+        "elapsed_seconds": 3.421885588031728,
+        "peak_rss_gib": 0.4503936767578125,
+        "input_sha256": "ea997d2e186bdd0a27d3a771bb1210e0f79b3c04b2cb5f70505f19ebf5604a8a",
+        "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+        "host": "scc-we3",
+        "job_id": "7765992",
+        "task_id": "undefined",
+        "recorded_request": 28.0,
+        "selected_threads": 28,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ols",
+          "design": "two_fe_dense",
+          "suite": "panels",
+          "n": 61440,
+          "k": 10,
+          "threads": 28,
+          "section": "slopes_fast",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "slopes": {
+            "g1": [
+              "z1"
+            ],
+            "g2": [
+              "z2"
+            ]
+          },
+          "memory": "fast"
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [
+          "fixest"
+        ],
+        "requested_threads": 28,
+        "seconds": 0.196,
+        "elapsed_seconds": 0.8231268409872428,
+        "peak_rss_gib": 0.113861083984375,
+        "input_sha256": "17b15fd5b41b522688a8c8f2e67671edaeecb8cec5ef38e01c6998d88d40f012",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-we3",
+        "job_id": "7765992",
+        "task_id": "undefined",
+        "recorded_request": 28.0,
+        "selected_threads": 28,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ols",
+          "design": "two_fe_dense",
+          "suite": "panels",
+          "n": 61440,
+          "k": 6,
+          "threads": 4,
+          "section": "slopes_low",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "slopes": {
+            "g1": [
+              "z1"
+            ],
+            "g2": [
+              "z2"
+            ]
+          },
+          "memory": "low"
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [
+          "fixest"
+        ],
+        "requested_threads": 4,
+        "seconds": 0.301,
+        "elapsed_seconds": 0.9327265129541047,
+        "peak_rss_gib": 0.09847259521484375,
+        "input_sha256": "125208ab103b791f9a0d1350ec4035d42269d4b48cb0e77cb2817a1cd579d356",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-we3",
+        "job_id": "7765992",
+        "task_id": "undefined",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "strong_d6",
+          "suite": "paper",
+          "n": 3932160,
+          "k": 10,
+          "threads": 28,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [
+          "fixest",
+          "fixest_strict"
+        ],
+        "requested_threads": 28,
+        "seconds": 11.355,
+        "elapsed_seconds": 29.339994914014824,
+        "peak_rss_gib": 3.25299072265625,
+        "input_sha256": "a1ae27b10cf0360438a66ff21b48983bc8d172d0a50de54179d394fdc1c1a9c8",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-we3",
+        "job_id": "7765992",
+        "task_id": "undefined",
+        "recorded_request": 28.0,
+        "selected_threads": 28,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 3932160,
+          "k": 10,
+          "threads": 4,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 139.605,
+        "elapsed_seconds": 158.98168747295858,
+        "peak_rss_gib": 6.881000518798828,
+        "input_sha256": "631a00a960aa86b4f4ce0c7bd174991c621bee9f7b96f6961be167e1457d33c4",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-wj1",
+        "job_id": "7766045",
+        "task_id": "4",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 3932160,
+          "k": 10,
+          "threads": 4,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 2,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 142.466,
+        "elapsed_seconds": 162.3364020109875,
+        "peak_rss_gib": 6.6686859130859375,
+        "input_sha256": "6255950b79c1af0ec802ec0c8ce929a952f4d1564087e171fe84ee94d22ce244",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-wj1",
+        "job_id": "7766045",
+        "task_id": "4",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 3932160,
+          "k": 10,
+          "threads": 28,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 2,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 28,
+        "seconds": 116.88,
+        "elapsed_seconds": 135.87524518399732,
+        "peak_rss_gib": 7.979850769042969,
+        "input_sha256": "6255950b79c1af0ec802ec0c8ce929a952f4d1564087e171fe84ee94d22ce244",
+        "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+        "host": "scc-we3",
+        "job_id": "7766045",
+        "task_id": "2",
+        "recorded_request": 28.0,
+        "selected_threads": 8,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "two_fe_dense",
+          "suite": "panels",
+          "n": 983040,
+          "k": 10,
+          "threads": 28,
+          "section": "main",
+          "effects": [
+            "g1",
+            "g2"
+          ]
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [
+          "fixest",
+          "fixest_strict"
+        ],
+        "requested_threads": 28,
+        "seconds": 3.851,
+        "elapsed_seconds": 6.856993528024759,
+        "peak_rss_gib": 0.9475517272949219,
+        "input_sha256": "a06e152dd5ed3331dfa8e30520b6d783456e6a829c49299ff019e574731f4186",
+        "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+        "host": "scc-we3",
+        "job_id": "7765992",
+        "task_id": "undefined",
+        "recorded_request": 28.0,
+        "selected_threads": 28,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "two_fe_dense",
+          "suite": "panels",
+          "n": 61440,
+          "k": 10,
+          "threads": 28,
+          "section": "slopes_fast",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "slopes": {
+            "g1": [
+              "z1"
+            ],
+            "g2": [
+              "z2"
+            ]
+          },
+          "memory": "fast"
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [
+          "fixest_strict"
+        ],
+        "requested_threads": 28,
+        "seconds": 0.436,
+        "elapsed_seconds": 1.317194067989476,
+        "peak_rss_gib": 0.13499069213867188,
+        "input_sha256": "91a389153f91b8c5dfff5957b3d77ff1bfa1152e3ca7a95a5d213a024bdb925e",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-we3",
+        "job_id": "7765992",
+        "task_id": "undefined",
+        "recorded_request": 28.0,
+        "selected_threads": 28,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "two_fe_dense",
+          "suite": "panels",
+          "n": 61440,
+          "k": 6,
+          "threads": 4,
+          "section": "slopes_low",
+          "effects": [
+            "g1",
+            "g2"
+          ],
+          "slopes": {
+            "g1": [
+              "z1"
+            ],
+            "g2": [
+              "z2"
+            ]
+          },
+          "memory": "low"
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [
+          "fixest_strict"
+        ],
+        "requested_threads": 4,
+        "seconds": 0.453,
+        "elapsed_seconds": 1.2670196469989605,
+        "peak_rss_gib": 0.12246322631835938,
+        "input_sha256": "b399eb6c829e6733674ecce12f5ed7c83e5c34fcde4c9115d5a304e97a463dd7",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-we3",
+        "job_id": "7765992",
+        "task_id": "undefined",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 61440,
+          "k": 10,
+          "threads": 28,
+          "section": "slopes_fast",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "slopes": {
+            "g1": [
+              "z1",
+              "z2"
+            ],
+            "g2": [
+              "z3",
+              "z4"
+            ]
+          },
+          "memory": "fast"
+        },
+        "phase": "warm",
+        "repetition": 4,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 28,
+        "seconds": 10.372,
+        "elapsed_seconds": 11.334904772986192,
+        "peak_rss_gib": 0.14889144897460938,
+        "input_sha256": "bb1feb53dd3362d12579f5ff6e3160aa1d231907e60f06d2bd5c2707026ce6be",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-wj1",
+        "job_id": "7766045",
+        "task_id": "4",
+        "recorded_request": 28.0,
+        "selected_threads": 28,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 61440,
+          "k": 6,
+          "threads": 4,
+          "section": "slopes_low",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "slopes": {
+            "g1": [
+              "z1",
+              "z2"
+            ],
+            "g2": [
+              "z3",
+              "z4"
+            ]
+          },
+          "memory": "low"
+        },
+        "phase": "warm",
+        "repetition": 1,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 12.653,
+        "elapsed_seconds": 13.848413904022891,
+        "peak_rss_gib": 0.12744903564453125,
+        "input_sha256": "3c6af4f6278887b8156ef34b3f1a60a9311704563a596e17a853f1729f7533a7",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-wj2",
+        "job_id": "7766045",
+        "task_id": "3",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 61440,
+          "k": 6,
+          "threads": 4,
+          "section": "slopes_low",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "slopes": {
+            "g1": [
+              "z1",
+              "z2"
+            ],
+            "g2": [
+              "z3",
+              "z4"
+            ]
+          },
+          "memory": "low"
+        },
+        "phase": "warm",
+        "repetition": 2,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 7.73,
+        "elapsed_seconds": 9.176222314010374,
+        "peak_rss_gib": 0.13306427001953125,
+        "input_sha256": "a1e7bd4795c9af6722dff6deb9fb97905ce61b18c7092e9afe19aa9e9168b348",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-wj1",
+        "job_id": "7766045",
+        "task_id": "4",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 61440,
+          "k": 6,
+          "threads": 4,
+          "section": "slopes_low",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "slopes": {
+            "g1": [
+              "z1",
+              "z2"
+            ],
+            "g2": [
+              "z3",
+              "z4"
+            ]
+          },
+          "memory": "low"
+        },
+        "phase": "warm",
+        "repetition": 3,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 10.2,
+        "elapsed_seconds": 11.60995145200286,
+        "peak_rss_gib": 0.13697433471679688,
+        "input_sha256": "99869d5b20a13a7b76ee4f29c4f167e7dd1c662e77b6d6660ca69fda786e5019",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-wj1",
+        "job_id": "7766045",
+        "task_id": "4",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      },
+      {
+        "cell": {
+          "model": "ppml",
+          "design": "three_fe_sparse",
+          "suite": "panels",
+          "n": 61440,
+          "k": 6,
+          "threads": 4,
+          "section": "slopes_low",
+          "effects": [
+            "g1",
+            "g2",
+            "g3"
+          ],
+          "slopes": {
+            "g1": [
+              "z1",
+              "z2"
+            ],
+            "g2": [
+              "z3",
+              "z4"
+            ]
+          },
+          "memory": "low"
+        },
+        "phase": "warm",
+        "repetition": 4,
+        "status": "pass",
+        "eligible_references": [],
+        "requested_threads": 4,
+        "seconds": 8.401,
+        "elapsed_seconds": 9.853618976019789,
+        "peak_rss_gib": 0.13103485107421875,
+        "input_sha256": "4a6f9322fd68348df7807197c2185a29afaa440f76bdbae355c20ddf36edf1a4",
+        "sample_sha256": "f160acb5e8099cb1be02128436284b9795966d244f6bae9c3c0ce9bfdac26bc2",
+        "host": "scc-we3",
+        "job_id": "7766045",
+        "task_id": "2",
+        "recorded_request": 4.0,
+        "selected_threads": 4,
+        "thread_metadata_valid": true,
+        "stata_processors": 4.0,
+        "converged": 1.0
+      }
+    ],
+    "completed_receipt_hashes": {
+      "run/results/ols-strong_d6-n3932160-k10-t28-main/warm-1/fereg/result.json": "578af54220fa130151adcebd6b428a507768d92469a65bdf27dcae6ae79d302b",
+      "run/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/fereg/result.json": "9672da63a531fb344dfb45bc9cd6da85d2a44e3fb817721587673f5e8b797b95",
+      "run/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/fereg/result.json": "bc7ca344331521276a5b05ec9a9053adc64af0a3ce3896bb7b3db32a2563145e",
+      "run/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/fereg/result.json": "9e5de40a33b9e432c958cad22b1120a21646cb0e62adaec73abe55bfb6b28a3c",
+      "run/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/fereg/result.json": "e56211d318723423a11a82511300f2e85a46de6f303bdb288fcbd60db51829d1",
+      "run/results/ols-two_fe_dense-n983040-k10-t28-main/warm-1/fereg/result.json": "655cd3de92874300541d6aa88b4fded07b8256da78d329b579535ac99687394c",
+      "run/results/ols-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/fereg/result.json": "8989478430f7458e0c479b8d46ae4f3a685d007dd5a1a1e380fd35c0c26d8d94",
+      "run/results/ols-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/fereg/result.json": "ae80b30d6a30aac4f3ba8df30092a7f87eb29fea4c47785302a18fcc5deee439",
+      "run/results/ppml-strong_d6-n3932160-k10-t28-main/warm-1/feppml/result.json": "2d8536d375597604c2160cc7b00f768fad7716bbd563524e57fea08009604257",
+      "run/results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-1/feppml/result.json": "05fc1e60d5edc2b07ceb4fef194314c4ed2c6dd797884ca34b6c83781b49a85c",
+      "run/results/ppml-three_fe_sparse-n3932160-k10-t4-main/warm-2/feppml/result.json": "51b83ac20f0655b4eea4d5e3ca8838075e242022859a47737d221ec6da3ff82f",
+      "run/results/ppml-three_fe_sparse-n3932160-k10-t28-main/warm-2/feppml/result.json": "98d02d9f15652257302fec8bb31a830b1ca4a96e4504340ae3cea74e7b17d756",
+      "run/results/ppml-two_fe_dense-n983040-k10-t28-main/warm-1/feppml/result.json": "00e7c47b458662043cc5e307805450b06b27c98abc79eb660e76ebad8799f0c4",
+      "run/results/ppml-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/feppml/result.json": "5d78dd35ba7594fb47dbfa6e56f85a4aae3cae80a283bc69f3dbff1500a95635",
+      "run/results/ppml-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/feppml/result.json": "c1709a95589da727bd839c67c68658481f41e367df7ffcec444b5307fd0e18a6",
+      "run/results/ppml-three_fe_sparse-n61440-k10-t28-slopes_fast/warm-4/feppml/result.json": "93b6384107f7d297e96ef6ab69986ccb3c0db2633794b6b843d7015964f73a0a",
+      "run/results/ppml-three_fe_sparse-n61440-k6-t4-slopes_low/warm-1/feppml/result.json": "b89882c7ad6b21b1a92cb4e4ec5aee196af42b0e64ab78fe14459ec5a3507888",
+      "run/results/ppml-three_fe_sparse-n61440-k6-t4-slopes_low/warm-2/feppml/result.json": "fb744a6db10fbe9a21f288b54d5aa73927383428604b10ed0e5000dd378f7e42",
+      "run/results/ppml-three_fe_sparse-n61440-k6-t4-slopes_low/warm-3/feppml/result.json": "6227e7293c967773c6ddd2d321368e5f637aa212fac554f75d8f77b130e659ea",
+      "run/results/ppml-three_fe_sparse-n61440-k6-t4-slopes_low/warm-4/feppml/result.json": "cbcb5aaac6504ed450eb43ad7cd1e5b055fa3ed8a49908418cf4e0abe7bcfec4"
+    }
+  },
+  "interpretation": "Pair eligibility is inherited unchanged from the frozen report. Cross-case clocks are observational even on the same node. Same selected teams measure request overhead, not added native cores. Confirm suspected slowdowns with alternating same-node fits before changing routing. This supplement establishes no causal scaling or qualification claim.",
+  "full_inventories_remote_root": "/projectnb/welfgr/fereg/dev/20260928-thread-inventory-01",
+  "validation_json_sha256": "469331f767ce5f95edc9fdfe80a0b96a24f8eb96c0d31fbbbbfd6059689757c0"
+}
