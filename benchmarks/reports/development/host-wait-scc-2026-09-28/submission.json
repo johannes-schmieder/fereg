@@ -1,0 +1,13 @@
+{
+  "job": "7763005",
+  "status": "submitted",
+  "run_directory": "dev/20260928-host-wait-01",
+  "slots": 28,
+  "wall_minutes": 15,
+  "applications": 45,
+  "source_commit": "a7b46c2f",
+  "plugin_sha256": "8e2d5af21216ebaf17df7b22538761a72e59587ccf8611072c117b1c4c1a9f97",
+  "deployment_sha256": "94d1cbde7822f456717ab468c1a80407d4e6a244e8fd9cb7b6815fd356098b83",
+  "local_checks": "Python AST and shell syntax pass; exact remote deployment hashes verified before submission.",
+  "scope": "Diagnostic only: unchanged artifact, default/passive/scoped-host1 rotations; native threads unchanged, setting and restore costs timed. No stock ranking, qualification or production host-setting change."
+}
