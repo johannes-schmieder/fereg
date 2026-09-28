@@ -31,6 +31,16 @@ alternating pairs per seed/control on unchanged source/binaries and exact input
 bytes. Diagnostics compare baseline/current fast/low controls and larger/wide
 slope fits across thread counts; their clocks never enter headline distributions.
 No native change or causal attribution has been made from the control loss yet.
+The seven phase-diagnostic cases completed at the application level: larger
+slope initial absorption is 1.392 s at T8 versus 0.890 s at T4 in the respective
+timed diagnostic calls; command clocks are 2.239/1.626 s. These single diagnostic
+observations need confirmation. The portable Linux binary imports `fma`, and
+the coefficient loops still call fused multiply/add extensively. Separate CPU
+profile **7761864** is [registered](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-perf05-registration.json)
+and held after 7761847. It tests T1/T8 and a separately labeled passive OpenMP
+wait diagnostic to distinguish numerical work from embedding worker activity.
+An import is not measured cost attribution; no arithmetic change is authorized
+by this observation alone, and no native source has changed.
 The full performance plan and shared thread-ceiling implementation remain open.
 
 ## Two-partition OLS slope owner — original registration and validation
