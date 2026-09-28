@@ -60,10 +60,18 @@ def compare(candidate, other, tolerance):
             "max_fitted_difference": float(np.max(np.abs(ar.fitted.to_numpy() - br.fitted.to_numpy()))) if sample else None}
 
 
-def verify(args, plan):
-    slots = 4 if args.smoke else 28
-    if int(os.environ.get("NSLOTS", 0)) != slots or len(os.sched_getaffinity(0)) != slots:
+def require_allocation(smoke):
+    slots = 4 if smoke else 28
+    available = len(os.sched_getaffinity(0))
+    # SCC's four-slot shared-node smokes need not receive an affinity mask.
+    # The probe pins each child to exactly T cores, with T <= NSLOTS. Headline
+    # rotations separately require the complete isolated 28-core allocation.
+    if int(os.environ.get("NSLOTS", 0)) != slots or available < slots or (not smoke and available != slots):
         raise ValueError("unexpected SCC slot/affinity allocation")
+
+
+def verify(args, plan):
+    require_allocation(args.smoke)
     if not args.smoke and "E5-2680 v4" not in Path("/proc/cpuinfo").read_text():
         raise ValueError("unexpected timing CPU class")
     identities = {"plan": sha(args.plan), "source_files": {}, "plugins": {}, "inputs": {}}

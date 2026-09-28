@@ -30,11 +30,18 @@ No fresh local fit has run: unrelated Mac Stata work prevented a quiet interval.
 The literal inputs are deployed on SCC with verified hashes. An explicit
 registration amendment keeps baseline/candidate controls for excluded three-FE
 routes and both default/strict stock arms for the five new-path cases: 192 fits.
-Linux smoke/oracle **7761688** and isolated paired timing **7761689** are submitted
-at committed candidate **852b03a9**; the latter is dependency-held and checks
-upstream accounting and application receipts before fitting. The
-[submission receipt](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-submission01.json)
-binds the exact archive and literal input manifest. Results remain pending. This
+The native Linux build, OLS smoke and 32-fit oracle passed in **7761688**,
+then the benchmark harness stopped before fits because its shared-node smoke
+incorrectly required an exact four-CPU affinity mask. Own dependent **7761689**
+was canceled before fitting. The [narrow retry](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-retry02.json)
+keeps committed native candidate **852b03a9** and Linux artifact `2b57467f…`
+unchanged. It accepts a larger smoke affinity mask while pinning each child to
+T<=NSLOTS; the isolated timing allocation still requires exactly 28 CPUs. Three
+local harness tests pass. Focused probe **7761708** has its four-arm completion
+sentinel and native science agreement; accounting is pending. Dependency-held
+**7761709** will run the 192-fit timing block only after clean probe accounting
+and the stored Linux scientific fixtures. The [original submission](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-submission01.json)
+and literal input manifest remain preserved. Timing results remain pending. This
 checkpoint is a scientifically validated development candidate, not an accepted
 fresh performance result or completion of the broader plan.
 

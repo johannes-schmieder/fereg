@@ -3,6 +3,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 import pandas as pd
@@ -14,6 +15,17 @@ import slope_summary as summary
 
 
 class SlopeComparisonTests(unittest.TestCase):
+    def test_shared_smoke_and_isolated_timing_have_different_affinity_contracts(self):
+        for slots, available, smoke, accepted in ((4, 28, True, True), (4, 4, True, True),
+                                                  (4, 2, True, False), (28, 28, False, True),
+                                                  (28, 56, False, False), (4, 28, False, False)):
+            with patch.dict(rotation.os.environ, NSLOTS=str(slots)), patch.object(rotation.os, "sched_getaffinity", create=True, return_value=set(range(available))):
+                if accepted:
+                    rotation.require_allocation(smoke)
+                else:
+                    with self.assertRaisesRegex(ValueError, "slot/affinity"):
+                        rotation.require_allocation(smoke)
+
     def test_summary_requires_every_registered_pair_and_retains_disagreement(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)

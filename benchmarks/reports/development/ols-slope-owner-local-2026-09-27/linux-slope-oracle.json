@@ -1,0 +1,25 @@
+{
+  "completed": true,
+  "failure_detail": null,
+  "failure_kind": null,
+  "results": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    }
+  ],
+  "schema_version": 1,
+  "stata_edition": "MP",
+  "stata_machine_type": "PC (64-bit x86-64)",
+  "stata_os": "Unix",
+  "stata_processors": 4,
+  "stata_rc": 0,
+  "stata_version": "19",
+  "status": "success",
+  "tests_failed": 0,
+  "tests_passed": 1
+}
