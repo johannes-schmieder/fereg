@@ -1,0 +1,11 @@
+{
+  "job": "7763043",
+  "status": "submitted",
+  "run_directory": "dev/20260928-canonical-portable-01",
+  "source_snapshot": "4aa44429ef182ee04734002be3681ba7a64042862552ffc32b8f789bddeb10cc",
+  "slots": 4,
+  "wall_minutes": 30,
+  "scope": "PPML development smoke, canonical independent Rust oracles, four licensed oracle/control fixtures.",
+  "deployment_sha256": "3c4721dfe4c94465212a8eaaeee588b1438d68b401ae82476177dd4985f9c8d1",
+  "deployment_repair": "First transfer failed with rsync exit11 before staging: destination parent absent. Created the verified fresh parent, retried once, then verified every deployed file hash before submission. No fit or source build occurred in the failed transfer."
+}

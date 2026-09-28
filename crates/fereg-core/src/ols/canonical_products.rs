@@ -9,6 +9,7 @@ use crate::fe::{
     BorrowedInterceptFeDesign, BorrowedMapWeights, FeCertificate, FeSolverKind, MapConfig,
     SolveReport, SolveStopReason,
 };
+#[cfg(any(target_arch = "aarch64", target_feature = "fma"))]
 use crate::fe::slope_coefficients::joint::normalized_product;
 use crate::memory::SolverWorkspacePeak;
 use crate::prepared_fit_view::PreparedOlsFitView;
@@ -1416,6 +1417,31 @@ fn group_coefficient<P: PreparedOlsFitView + ?Sized>(
 
 // The coefficient recurrence only proposes a projection. The independent
 // original-row FE certificate and direct Gram construction remain mandatory.
+fn reduced_matrix_product(left: &[f64], right: &[f64]) -> f64 {
+    #[cfg(any(target_arch = "aarch64", target_feature = "fma"))]
+    {
+        normalized_product(left, right)
+    }
+    #[cfg(not(any(target_arch = "aarch64", target_feature = "fma")))]
+    {
+        // Portable mul_add calls libm for every entry. This speculative operator
+        // can use inline arithmetic; geometry and fresh certificates retain FMA.
+        debug_assert_eq!(left.len(), right.len());
+        let mut sums = [0.0_f64; 8];
+        let blocks = left.len() / sums.len();
+        for block in 0..blocks {
+            let start = block * sums.len();
+            for lane in 0..sums.len() {
+                sums[lane] += left[start + lane] * right[start + lane];
+            }
+        }
+        for row in blocks * sums.len()..left.len() {
+            sums[0] += left[row] * right[row];
+        }
+        sums.iter().sum()
+    }
+}
+
 fn solve_reduced_cg(
     matrix: &[f64],
     values: &mut [f64],
@@ -1428,7 +1454,7 @@ fn solve_reduced_cg(
     solve_reduced_cg_with_product(values, scratch, max_iterations, tolerance,
         |direction, product| {
             for (row, out) in matrix.chunks(n).zip(product.iter_mut()) {
-                *out = normalized_product(row, direction);
+                *out = reduced_matrix_product(row, direction);
             }
         })
 }
@@ -1815,6 +1841,19 @@ mod tests {
                         .is_err()
                 );
             }
+        }
+    }
+
+    #[test]
+    fn reduced_cg_refuses_null_negative_and_nonfinite_curvature() {
+        for matrix in [
+            [1., -1., -1., 1.],
+            [-1., 0., 0., -1.],
+            [f64::NAN, 0., 0., 1.],
+            [f64::INFINITY, 0., 0., 1.],
+        ] {
+            let mut rhs = [1., 1.];
+            assert!(solve_reduced_cg(&matrix, &mut rhs, &mut [0.; 6], 2, 1e-13).is_err());
         }
     }
 

@@ -1,0 +1,16 @@
+{
+  "build_job.sh": "656ae27656796c63f2ed81224593dc4e78ad4aecd8ce7580a787b5a52289bccc",
+  "candidate-source.json": "4aa44429ef182ee04734002be3681ba7a64042862552ffc32b8f789bddeb10cc",
+  "overlay/crates/fereg-plugin/src/ppml_estimate.rs": "b64e223141c5353799f19866f4d026b4e72228fa60f5a7771ba180558e5b29e2",
+  "overlay/crates/fereg-plugin/src/lib.rs": "2a852e04fe0bdb7b9378987e0246d92dca8b139505a4edf21894745bfedca76c",
+  "overlay/crates/fereg-plugin/src/thread_policy.rs": "9d0c9c5585d8d17795147338541964568c28a518302f1f34ada9511dcbb40ffb",
+  "overlay/crates/fereg-plugin/src/estimate.rs": "b5870723399fe0ddb62d11bbdd2910bdefd09f5df3140b91c6a587038b852b91",
+  "overlay/crates/fereg-core/src/options.rs": "6dc4f7e670b2b9e7f274242c08908f57a8147a623b724e1be8c305541d27578f",
+  "overlay/crates/fereg-core/src/parallel.rs": "125ed538316bb4f60b17833c3c7f6aa944494dabc78d3a31852e18c7a139ba20",
+  "overlay/crates/fereg-core/src/fe/slope_coefficients.rs": "c1662e539a288c8b10659b77cb8ec7c7c59697a6fabcc686a1c0c9457a35099b",
+  "overlay/crates/fereg-core/src/fe/slope_coefficients/coupling.rs": "6742338b06a35074e3e47c51598d5ab588bafd9ac72e2728173e39dd76a2a5df",
+  "overlay/crates/fereg-core/src/ols/canonical_products.rs": "95cf3fe190bb8a62f415644afd8c5bd4b0c56c431306483186b95b0c4e3099a2",
+  "overlay/tests/stata/development/feppml_thread_ceiling_oracle.do": "4788f745ecf6e07b88a443aef67fcb77697aa5936918b4144e559ce0094bf1eb",
+  "overlay/stata/feppml.sthlp": "e5b5b994a1a4cdd2bb4762ff60a1b0c38f30884ea2239d03e1c9d6dc0f566231",
+  "overlay/stata/fereg.sthlp": "fa3e528c8645edb61655be66d8648170d0cbc7734c921d9269e9b177094c86f6"
+}

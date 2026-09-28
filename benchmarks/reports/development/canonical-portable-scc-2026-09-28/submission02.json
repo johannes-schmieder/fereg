@@ -1,0 +1,16 @@
+{
+  "job": "7763067",
+  "status": "submitted-held",
+  "holds_after": "7763043",
+  "run_directory": "dev/20260928-canonical-portable-rotation02",
+  "slots": 28,
+  "wall_minutes": 30,
+  "applications": 63,
+  "source_snapshot": "4aa44429ef182ee04734002be3681ba7a64042862552ffc32b8f789bddeb10cc",
+  "baseline_plugin_sha256": "8e2d5af21216ebaf17df7b22538761a72e59587ccf8611072c117b1c4c1a9f97",
+  "candidate_plugin_sha256": "d1156e6dc88d1b041e061ce7e4df7a323bcd08f8254276b752172cb022950e22",
+  "deployment_sha256": "1c3a32b76248e3578b07d417ef994d308fd55b5f43df57ef034cdbef5f42aeac",
+  "gate": "Clean Linux build/oracle accounting and explicit application receipts plus completed Mac validation before any headline fit.",
+  "local_checks": "Shell syntax and Python AST pass; exact 43-file remote deployment verified.",
+  "scope": "Alternating unchanged-source candidate/baseline/default stock; all distributions and scientific discrepancies retained. No stock rankings for diagnostic clocks."
+}

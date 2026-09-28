@@ -1,0 +1,55 @@
+{
+  "status": "success",
+  "source_snapshot": "4aa44429ef182ee04734002be3681ba7a64042862552ffc32b8f789bddeb10cc",
+  "plugin_sha256": "f9175e6e7c9efebfb5537ca8488c2a37f6d748d8ba0201a5a3d08ad692e9501f",
+  "tests_passed": 4,
+  "tests_failed": 0,
+  "rust_tests_passed": 18,
+  "fixtures": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_iterative_canonical_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_categorical_final_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_three_partition_slope_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    }
+  ],
+  "checks": [
+    "universal build",
+    "ABI/panic containment",
+    "18 canonical unit/oracle tests",
+    "4 licensed fixture sentinels"
+  ],
+  "arithmetic_scope": "ARM retains prior fused arithmetic; portable Linux must validate the changed branch.",
+  "evidence_sha256": {
+    "build.log": "a208367294fdfc1395831f68cdfe2457d7ac7affcab887d64feaceea64199fa6",
+    "canonical-tests.log": "a74350353f0fd5dd6f1edcf3f092bdef4f314acec3f86045e8560898c02504ff",
+    "oracles.json": "c55a571e812fb5268304885643f1e69d518c420f7a2ac8aa78cc094eceff9f6d",
+    "oracles.log": "f8dbb83f98bc053688c0736455c241b4d7cec4c3df756279fb59544ba71a8ab5"
+  }
+}

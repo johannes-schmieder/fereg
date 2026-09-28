@@ -63,6 +63,38 @@ is incomplete. The next bounded step is a same-artifact host-wait diagnostic,
 then a product change only where it preserves independent scientific authority.
 Do not resume OLS ABI or thread-threshold tuning on the now-neutral control.
 
+[Host-wait diagnostic 7763005](benchmarks/reports/development/host-wait-scc-2026-09-28/README.md)
+completes 45 fits / 30 science pairs, all passing. Passive/scoped-host1 paired
+medians are 0.873/0.912 for small OLS, 0.973/0.979 for small categorical PPML,
+and 1.077/1.099 for the fresh slope control. Every slope pair loses. Reject a
+blanket host-setting change; production settings remain unchanged. Clean
+accounting: 83 s, 28 isolated slots, maxvmem 1.804G. CPU wait shares did not
+predict broad command-time savings. An OLS-specific intervention remains a
+possible later target requiring fresh evidence and transaction checks.
+
+[Original sparse-zero confirmation 7763027](benchmarks/reports/development/sparse-zero-originals-scc-2026-09-28/README.md)
+passes all **eight original failed cases**, both designs across all four seeds,
+on accepted artifact **8e2d5af2…**. Every original input/column hash matches;
+every retained row matches the independent integer-potential and closure proof.
+All fits converge with the requested four workers. Diagnostic command clocks
+are 4.8–5.5 s (two FE), 11.6–12.2 s (three FE) on a shared node; no timing rank.
+Clean accounting: 98 s, four slots. The original reference sample differences
+remain separate. This closes the pending four-seed native-failure confirmation.
+
+[ADR 0234](docs/adr/0234-portable-canonical-proposal-products.md) defines the next
+candidate: inline portable arithmetic only in repeated dense canonical PPML
+proposal products. Weighted geometry, Gram/rank and independent certificates
+retain their arithmetic; no storage or routing change. Snapshot **4aa44429…**
+passes **18 canonical Rust tests on both Mac and Linux**, with the changed
+portable arithmetic exercised on Linux. [Validation 7763043](benchmarks/reports/development/canonical-portable-scc-2026-09-28/linux-validation01.json)
+passes PPML smoke plus four licensed explicit-oracle/control fixtures; Mac
+universal build/ABI and the same four fixtures pass. All 211 candidate inputs
+still match. [63-fit rotation 7763067](benchmarks/reports/development/canonical-portable-scc-2026-09-28/submission02.json)
+is queued after the successful validation, with explicit accounting and
+application gates. No performance acceptance yet. The first staging transfer failed before source
+creation because its parent was absent; one path repair and verified retry
+succeeded. No estimator ran in that failed transfer.
+
 The broader repair goal remains active: small OLS/PPML and low-memory OLS
 stock losses, original comparator/separation adjudications, large timeouts and
 the fresh performance/scaling sweep remain. Historical sections below retain
