@@ -1,0 +1,146 @@
+[
+  {
+    "run": 1,
+    "stata_rc": 0,
+    "error": null,
+    "trace_counts": [
+      "0"
+    ],
+    "audit_events": [
+      "0"
+    ],
+    "evidence_sha256": {
+      "capture02-01/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.log": "9cb1bcabf1fabdbf580bf5b9e3561e26473a2ab81b66a2541c0aafdcde2d0bce",
+      "capture02-01/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+      "capture02-01/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.invocation.json": "61d7ad52dc53264917cc0573d411b48aec4a5a8f7d6a0a64caee11a67789ed55",
+      "capture02-01/process.txt": "5688d7d85e4698d1363f7ccf7f7cf49fa4202f8d042f1717d5cd43b515c0d14d",
+      "capture02-01/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.wrapper.do": "f6a240daca8cae3f1aa83c6ca5afe835314bf795dfc74444cec30f7da8d7b843"
+    }
+  },
+  {
+    "run": 2,
+    "stata_rc": 0,
+    "error": null,
+    "trace_counts": [
+      "0"
+    ],
+    "audit_events": [
+      "0"
+    ],
+    "evidence_sha256": {
+      "capture02-02/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.log": "c24c10b232484eded259a2efcfb2975387babbca8018fc566a0f93368628b031",
+      "capture02-02/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+      "capture02-02/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.invocation.json": "bf54379fab508f7f48a5350923dfae5b64a4c6e349f481c85a87c80194e3b14f",
+      "capture02-02/process.txt": "5688d7d85e4698d1363f7ccf7f7cf49fa4202f8d042f1717d5cd43b515c0d14d",
+      "capture02-02/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.wrapper.do": "78acd0293260d4037f8adea9b42106f8dc9417bce7e0360366238465bc660ff3"
+    }
+  },
+  {
+    "run": 3,
+    "stata_rc": 0,
+    "error": null,
+    "trace_counts": [
+      "0"
+    ],
+    "audit_events": [
+      "0"
+    ],
+    "evidence_sha256": {
+      "capture02-03/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.log": "4eaa56152d1adb9cdb4283b71225c0176e0755b59fed3a345767626caa993e6f",
+      "capture02-03/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+      "capture02-03/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.invocation.json": "14ccd578e77a306c9bff5ac40073e83ecd5a58e298971aab3d2513e212d8d0b6",
+      "capture02-03/process.txt": "5688d7d85e4698d1363f7ccf7f7cf49fa4202f8d042f1717d5cd43b515c0d14d",
+      "capture02-03/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.wrapper.do": "eee66719c223115ef2e5bf2f0aa7f8355bc42d61cc29e577408492ce70ce8d49"
+    }
+  },
+  {
+    "run": 4,
+    "stata_rc": 0,
+    "error": null,
+    "trace_counts": [
+      "0"
+    ],
+    "audit_events": [
+      "0"
+    ],
+    "evidence_sha256": {
+      "capture02-04/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.log": "265a9ac50814b42ad96ded607d328634536a5fba9e7e6d619667b448cc9dec62",
+      "capture02-04/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+      "capture02-04/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.invocation.json": "343872dc352cfc6f6fcba6c5f450d904b8a17c5ca357a25b53ce79c53a3f9787",
+      "capture02-04/process.txt": "5688d7d85e4698d1363f7ccf7f7cf49fa4202f8d042f1717d5cd43b515c0d14d",
+      "capture02-04/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.wrapper.do": "af4aa576c7ab8630fdb477d575741156c94e68fbf4bdf1befcc68368504f9d96"
+    }
+  },
+  {
+    "run": 5,
+    "stata_rc": 0,
+    "error": null,
+    "trace_counts": [
+      "0"
+    ],
+    "audit_events": [
+      "0"
+    ],
+    "evidence_sha256": {
+      "capture02-05/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.log": "8aeab3646d11634b80afda0cee374f2ed24ca95af55ede950a6917d32104ee3c",
+      "capture02-05/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+      "capture02-05/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.invocation.json": "91d30bacc807e04c86eeaa322eaa04d46b1aa8f51797dbf44dcbbff1c08eef7e",
+      "capture02-05/process.txt": "5688d7d85e4698d1363f7ccf7f7cf49fa4202f8d042f1717d5cd43b515c0d14d",
+      "capture02-05/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.wrapper.do": "8522a9b115db184bbf15301ff7a7378e9d9d3dedb4984d81d24d0851b25b9a3a"
+    }
+  },
+  {
+    "run": 6,
+    "stata_rc": 0,
+    "error": null,
+    "trace_counts": [
+      "0"
+    ],
+    "audit_events": [
+      "0"
+    ],
+    "evidence_sha256": {
+      "capture02-06/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.log": "7fda5042db8fba55bfba52ff50d0db88b4248a1eb727074023afee746ef1e22f",
+      "capture02-06/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+      "capture02-06/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.invocation.json": "374905ef05558e1cea618fb589adb3c2fc9708ee26c0008550e2aa56d498ce93",
+      "capture02-06/process.txt": "5688d7d85e4698d1363f7ccf7f7cf49fa4202f8d042f1717d5cd43b515c0d14d",
+      "capture02-06/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.wrapper.do": "9b9cfadf07eb13c83490bb6213b428f893026068988f21a587969b6a3b18b40c"
+    }
+  },
+  {
+    "run": 7,
+    "stata_rc": 0,
+    "error": null,
+    "trace_counts": [
+      "0"
+    ],
+    "audit_events": [
+      "0"
+    ],
+    "evidence_sha256": {
+      "capture02-07/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.log": "13673497432debe0cbba84733b130a0c5bd01c80a451b4e80fe98eb9817c4866",
+      "capture02-07/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.status": "dba81c16b263327e69dc2e125a5c6e68192f60d0de75f5b59a45af70e52d79f6",
+      "capture02-07/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.invocation.json": "247e80361de9cc0eb03fd46f9457e3bbc3dcd1fde35f011e4b35430ae7ae0e12",
+      "capture02-07/process.txt": "5688d7d85e4698d1363f7ccf7f7cf49fa4202f8d042f1717d5cd43b515c0d14d",
+      "capture02-07/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.wrapper.do": "451d4be94d862943d0ac5f70b6b86f4634b6070d39f787aad5d80e5d3c97cce5"
+    }
+  },
+  {
+    "run": 8,
+    "stata_rc": 9,
+    "error": "Stata fixture returned r(9)",
+    "trace_counts": [
+      "1"
+    ],
+    "audit_events": [
+      "1"
+    ],
+    "evidence_sha256": {
+      "capture02-08/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.log": "18d8f09591ac498687ca997f1571a27f7ae03f123365f3c99c0f58fc3567bb83",
+      "capture02-08/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.status": "5d247366a7ae0cc00d5c55adad76b6aea2d3b34d51fa9e73dbb9b31f9805b2bc",
+      "capture02-08/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.invocation.json": "5292df72feb868f1e3991e71b063184e4837a23bedbbd42b179fe072d6177e81",
+      "capture02-08/process.txt": "f815241d7f4f22136dd56251f6062e50882f5a7a8b8adc9a4398d3ef3ead7f40",
+      "capture02-08/target__implicit-private-20260928__allocation-diagnostic02__source__feppml_one_fe_low_profile_audit.do.wrapper.do": "e88d08d40b56a89ad1f1b2cf46c298486a0ac2e2d97bd614d7db7b2ec072dac1"
+    }
+  }
+]

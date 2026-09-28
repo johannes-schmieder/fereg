@@ -341,9 +341,15 @@ def compare_reference(candidate, reference):
 
 
 def source_identity(source):
-    return {str(p.relative_to(source)): SHA(p) for p in source.rglob("*")
-            if p.is_file() and (str(p.relative_to(source)).startswith(("crates/", "plugin/", "stata/"))
-            or str(p.relative_to(source)) in ("Cargo.lock", "Cargo.toml", "references.lock.toml"))}
+    files = {}
+    for path in source.rglob("*"):
+        name = str(path.relative_to(source))
+        if name.startswith("vendor/") and name.split("/", 3)[2:3] == ["target"]:
+            continue
+        if path.is_file() and (name.startswith(("crates/", "vendor/", "plugin/", "stata/"))
+                or name in ("Cargo.lock", "Cargo.toml", "references.lock.toml")):
+            files[name] = SHA(path)
+    return files
 
 
 def run(args):

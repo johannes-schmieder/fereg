@@ -1,0 +1,308 @@
+{
+  "schema": "ppml-private-low-scaling-v1",
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "work": "Public feppml/fepois robust, and IID OLS control, without optional observation outputs. Slopes and strong_d2 use stock strict glm.tol=1e-10 and fixef.tol=1e-11; other stock uses the unchanged pinned defaults.",
+  "science": "Frozen gates plus independent weighted Poisson/Hessian/sandwich and OLS oracles. Low allocation audit explicitly uses four native threads.",
+  "warmup": "Same case/design/width/threads on registered 7680-row positive-outcome warm input; generation happens sequentially outside every command clock.",
+  "fits": 54,
+  "purpose": "Directly compare lower/higher native requests on the same candidate; baseline denotes fewer threads, not older code.",
+  "threads_policy": "Native requests/effective counts matched. Existing PPML host scope and stock policies unchanged.",
+  "input_policy": "Predeclared fresh scaling seed2026092835, validation only.",
+  "interpretation": "All failed applications or scientific pairs remain unranked. No universal speed or core-scaling claim. No threshold tuning.",
+  "cases": [
+    {
+      "id": "one-low-t2-1-to-2",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 2,
+        "section": "main",
+        "memory": "low",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092835,
+        2026092835,
+        2026092835
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 2
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 1,
+        "candidate": 2,
+        "stock": 2
+      }
+    },
+    {
+      "id": "one-low-t4-2-to-4",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "low",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092835,
+        2026092835,
+        2026092835
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 2,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 2,
+        "candidate": 4,
+        "stock": 4
+      }
+    },
+    {
+      "id": "one-low-t4-4-to-8",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 8,
+        "section": "main",
+        "memory": "low",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092835,
+        2026092835,
+        2026092835
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 4,
+        "candidate": 8,
+        "stock": 8
+      }
+    },
+    {
+      "id": "one-single-row-t8-4-to-8",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 8,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092835,
+        2026092835,
+        2026092835
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 4,
+        "candidate": 8,
+        "stock": 8
+      }
+    },
+    {
+      "id": "one-low-wide-t4-1-to-4",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 24,
+        "threads": 4,
+        "section": "main",
+        "memory": "low",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092835,
+        2026092835,
+        2026092835
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 1,
+        "candidate": 4,
+        "stock": 4
+      }
+    },
+    {
+      "id": "one-low-larger-t8-4-to-8",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 122880,
+        "k": 10,
+        "threads": 8,
+        "section": "main",
+        "memory": "low",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092835,
+        2026092835,
+        2026092835
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 4,
+        "candidate": 8,
+        "stock": 8
+      }
+    }
+  ],
+  "native_change": "One shared bounded private row/RHS/Gram owner per eligible partition; wide and scratch work unchanged."
+}

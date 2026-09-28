@@ -23,6 +23,12 @@ and effective-count policies above are unchanged. The inner transaction remains
 the publication and rollback boundary. No persistent environment policy or
 host-processor scope is applied to public OLS.
 
+On macOS, the pinned Rayon runtime eagerly initializes its private worker sleep
+mutex/condition-variable storage during pool construction (ADR 0244). Worker
+broadcast alone cannot guarantee that every worker has slept. This keeps lazy
+pthread allocation out of warmed PPML iterations without exempting runtime
+allocations from the audit; numerical scheduling and other platforms are unchanged.
+
 The cache owns at most one pool. A later install at the same count reuses its
 registry and workers; a different count replaces it. Computation does not
 depend on Rayon's ambient global pool. The cache retains no model, sample,

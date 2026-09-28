@@ -42,10 +42,11 @@ def source_files(root: Path) -> dict:
     names = subprocess.check_output(
         ["git", "-C", str(root), "ls-files", "-z", "--cached", "--others", "--exclude-standard"]
     ).decode().split("\0")
-    prefixes = ("crates/", "plugin/", "stata/", "scripts/", "tests/", "benchmarks/manifests/", "benchmarks/scc/")
+    prefixes = ("crates/", "vendor/", "plugin/", "stata/", "scripts/", "tests/", "benchmarks/manifests/", "benchmarks/scc/")
     fixed = {"Cargo.toml", "Cargo.lock", "references.lock.toml", "rust-toolchain.toml", ".cargo/config.toml"}
     return {name: dev.sha256_file(root / name) for name in sorted(set(names))
-            if (name in fixed or name.startswith(prefixes)) and (root / name).is_file()}
+            if (name in fixed or name.startswith(prefixes)) and (root / name).is_file()
+            and not (name.startswith("vendor/") and name.split("/", 3)[2:3] == ["target"])}
 
 
 def identity(root: Path) -> dict:

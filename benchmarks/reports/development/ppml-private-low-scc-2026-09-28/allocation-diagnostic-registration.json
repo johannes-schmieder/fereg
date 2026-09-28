@@ -1,0 +1,15 @@
+{
+  "purpose": "Distinguish deterministic candidate allocation growth from intermittent worker initialization; original assertions remain binding. No timing claim.",
+  "order": [
+    "baseline",
+    "candidate",
+    "candidate",
+    "baseline",
+    "baseline",
+    "candidate"
+  ],
+  "threads": 4,
+  "fixture_sha256": "c4e3b8b6dcf8e2bce8f7a2ce33322f2be489279e7ed47f66ed2fdf1657cc369d",
+  "baseline_artifact": "862bc794b8e235fa91766ca0550c468880e9255f460ad6c20d0f1dc054e4f2ca",
+  "candidate_artifact": "f3fa2066cfba843f0e6123070df6fea43101b638bafd36868e5c1d37f45aff55"
+}

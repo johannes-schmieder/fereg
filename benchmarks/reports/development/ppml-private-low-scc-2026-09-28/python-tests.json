@@ -1,0 +1,10 @@
+{
+  "identity": {
+    "tests": 42,
+    "log_sha256": "0eaca42d237825aa15f7a62477db6aa2d5dd58015e6c490b6d8a0da23506819f"
+  },
+  "rotation": {
+    "tests": 13,
+    "log_sha256": "5e4264ec50b6176be1442df57154f1d3987914da6d925789b666201f7fe9f355"
+  }
+}

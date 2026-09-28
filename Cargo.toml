@@ -1,4 +1,5 @@
 [workspace]
+exclude = ["vendor/rayon-core"]
 members = [
     "crates/fereg-core",
     "crates/fereg-plugin",
@@ -31,3 +32,6 @@ inherits = "release"
 lto = "thin"
 strip = false
 debug = true
+
+[patch.crates-io]
+rayon-core = { path = "vendor/rayon-core" }

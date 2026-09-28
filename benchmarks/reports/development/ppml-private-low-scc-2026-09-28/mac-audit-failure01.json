@@ -1,0 +1,72 @@
+{
+  "completed": true,
+  "failure_detail": "Stata fixture returned r(9)",
+  "failure_kind": "stata_error",
+  "results": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_passes_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/parity_ppmlhdfe/feppml_one_fe_profile_audit.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": "Stata fixture returned r(9)",
+      "failure_kind": "stata_error",
+      "fixture": "tests/stata/development/feppml_one_fe_low_profile_audit.do",
+      "process_rc": 0,
+      "stata_rc": 9,
+      "status": "failure"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_categorical_final_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_three_partition_slope_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    }
+  ],
+  "schema_version": 1,
+  "stata_edition": "MP",
+  "stata_machine_type": "Mac (Apple Silicon)",
+  "stata_os": "Unix",
+  "stata_processors": 8,
+  "stata_rc": 9,
+  "stata_version": "19",
+  "status": "failure",
+  "tests_failed": 1,
+  "tests_passed": 5,
+  "source_snapshot": "c7032da9e75a529e931010b36a1858203261a05616869cc514c8263fff743201",
+  "plugin_sha256": "f3fa2066cfba843f0e6123070df6fea43101b638bafd36868e5c1d37f45aff55",
+  "low_audit_threads": 4,
+  "failed_assertion": "e(feppml_audit_events_delta) == 0",
+  "licensed_log_sha256": {
+    "tests__stata__development__feppml_one_fe_low_profile_audit.do.log": "08fbf34238cbd19fb43e3bbb3b7c6e60c36b39d1af39b343f637d293266d2fe1"
+  }
+}

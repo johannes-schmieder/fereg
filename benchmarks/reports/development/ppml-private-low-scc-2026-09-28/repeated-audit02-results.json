@@ -1,0 +1,162 @@
+[
+  {
+    "position": 1,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "7e7a29d2fc048f19df2b9509e95b128e831d2d2691aed2e8d81db5a4b7a5f989"
+  },
+  {
+    "position": 2,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "16372245757c4a6731ccb3e4a334910adbc85557c375d5c66b13d89237c0960f"
+  },
+  {
+    "position": 3,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "b0972928aa7d39d07ee4f393f61aa05bfd35ff1d73756cacd19728bc4b510b79"
+  },
+  {
+    "position": 4,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "13099784b3e53aa1f4de474dafe2abc4a0265ef0cf4f18814653ad83eba785c4"
+  },
+  {
+    "position": 5,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "5ebc7cfefe81982feaa875a1398f0b079c280873a684824ef9e435eb2054ab10"
+  },
+  {
+    "position": 6,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "b6c3fb139d2dde55a9e010df9a9281e8f362052eacb87dd6e70267fde5717e8d"
+  },
+  {
+    "position": 7,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "91a51feb532a2c33828d9dc6f662cedfafa9302543d22a415a1a8518c50f85a2"
+  },
+  {
+    "position": 8,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "512903b9f198f04a9bd35595c40e0cfaba3203dadb3e88eddd330b5136224c0b"
+  },
+  {
+    "position": 9,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "9ee48701484e0b2b14aab9552450966e8fda4007bcedad688a7ca9c75aa8d949"
+  },
+  {
+    "position": 10,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "580df2ef93e00caa481af088b30ae6109d4d6bd9b2e2d7662b215b2ebc7e3ed8"
+  },
+  {
+    "position": 11,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "42f1ed252d511e8e78392fb1cd1efc5f3b97d51bc1b58b390e27a19dc8149747"
+  },
+  {
+    "position": 12,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "3fd42b0cb3fe23f7fd025ad36c9b0a466de08ad90eb05b3d8ee098eb6c1e285d"
+  },
+  {
+    "position": 13,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "5006ea3f8f714a057cdb50c33c32917412ae5ff99ae7735687418acaa37378a0"
+  },
+  {
+    "position": 14,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "8d23543f10443073b803e427e31627cd6533d84c900fcfd98d685f3d3ce5bd97"
+  },
+  {
+    "position": 15,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "369df40cda7717022c6e49a9d9bbec6cb013e20c9cf376f8ffb3422d8e71df3c"
+  },
+  {
+    "position": 16,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "e8fae9c471d1e3c95e721a81ae2f6a0e86c1a9b96b1b0b61afb3d0376533159c"
+  },
+  {
+    "position": 17,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "715bda056b9d06411d6ac0f9afd3acd71d2b93353c23c0760a6d3caefbad8e96"
+  },
+  {
+    "position": 18,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "0244a0b5190d0b7e59c019488dfaebec7aea3df9c627bcfe34ca1ba8a18056ef"
+  },
+  {
+    "position": 19,
+    "pool": 1,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "f7aa6078362e56b6037de701a78df57bcd826918bd17bf344f4cba54c17049e9"
+  },
+  {
+    "position": 20,
+    "pool": 2,
+    "process_rc": 0,
+    "fixture_status": "success",
+    "stata_rc": 0,
+    "log_sha256": "a41d4237b013893db04596fad0ae9068464c2a8cc28b885c263278f1e193f7ce"
+  }
+]

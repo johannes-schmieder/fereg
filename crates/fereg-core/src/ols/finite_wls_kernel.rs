@@ -2092,33 +2092,45 @@ fn fill_retained_partitioned(
             rhs,
             gram,
         ),
-        FixedBlockMomentSource::RetainedImplicit { values, selected_columns, response, weights, solver_weight_divisor, column_scales } => {
+        FixedBlockMomentSource::RetainedImplicit {
+            values, selected_columns, response, weights, solver_weight_divisor, column_scales,
+        } => {
             let bound = values.bind_columns()?;
             let dimension = rhs.len();
-            let fill = |(part, ((a, b), row)): (usize, ((&mut [f64], &mut [f64]), &mut [f64]))| -> Result<()> {
-                let first = part * layout.columns_per_partition;
-                for observation in 0..values.rows() {
-                    let group = values.codes()[observation] as usize;
-                    let weight = normalized_weight(weights, solver_weight_divisor, observation)?;
-                    for j in first..dimension {
-                        let column = selected_columns.map_or(j, |ids| ids[j]);
-                        row[j] = (bound[column].value(observation)? - values.center(column, group)) / column_scales.map_or(1.0, |scales| scales[j]);
-                    }
-                    for (local, target) in b.iter_mut().enumerate() {
-                        let j = first + local;
-                        let left = weight * row[j];
-                        *target = left.mul_add(response[observation], *target);
-                        for (entry, &right) in a[local * dimension + j..(local + 1) * dimension].iter_mut().zip(&row[j..dimension]) {
-                            *entry = left.mul_add(right, *entry);
-                        }
-                    }
-                }
-                Ok(())
-            };
             gram.par_chunks_mut(dimension * layout.columns_per_partition)
                 .zip(rhs.par_chunks_mut(layout.columns_per_partition))
                 .zip(partials.par_chunks_mut(layout.partial_stride))
-                .enumerate().try_for_each(fill)
+                .enumerate()
+                .try_for_each(|(part, ((gram_rows, rhs_rows), row))| -> Result<()> {
+                    let first = part * layout.columns_per_partition;
+                    let fill = |rhs: &mut [f64], gram: &mut [f64], row: &mut [f64]| -> Result<()> {
+                        for observation in 0..values.rows() {
+                            let group = values.codes()[observation] as usize;
+                            let weight = normalized_weight(weights, solver_weight_divisor, observation)?;
+                            for j in first..dimension {
+                                let column = selected_columns.map_or(j, |ids| ids[j]);
+                                row[j] = (bound[column].value(observation)? - values.center(column, group))
+                                    / column_scales.map_or(1.0, |scales| scales[j]);
+                            }
+                            for (local, target) in rhs.iter_mut().enumerate() {
+                                let j = first + local;
+                                let left = weight * row[j];
+                                *target = left.mul_add(response[observation], *target);
+                                for (entry, &right) in gram[local * dimension + j..(local + 1) * dimension]
+                                    .iter_mut().zip(&row[j..dimension])
+                                {
+                                    *entry = left.mul_add(right, *entry);
+                                }
+                            }
+                        }
+                        Ok(())
+                    };
+                    if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
+                        with_private_retained_moments(rhs_rows, gram_rows, fill)
+                    } else {
+                        fill(rhs_rows, gram_rows, row)
+                    }
+                })
         },
         FixedBlockMomentSource::PreparedStandardized { .. } => Err(invalid_argument(
             "finite-WLS retained partition mode requires a retained source",
@@ -2151,15 +2163,15 @@ fn fill_retained_dense_partitioned(
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
-    if layout.columns_per_partition > 1 {
-        if let Some(scales) = scales {
-            if dimension > FIXED_BLOCK_MOMENT_MAX_COLUMNS {
-                return fill_retained_dense_standardized_tiles(
-                    values, stored_columns, selected_columns, response, weights, divisor,
-                    scales, layout, rhs, gram,
-                );
-            }
+    if let Some(scales) = scales {
+        if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
             return fill_retained_dense_standardized_rows(
+                values, stored_columns, selected_columns, response, weights, divisor,
+                scales, layout, rhs, gram,
+            );
+        }
+        if layout.columns_per_partition > 1 {
+            return fill_retained_dense_standardized_tiles(
                 values, stored_columns, selected_columns, response, weights, divisor,
                 scales, layout, rhs, gram,
             );
@@ -2194,10 +2206,28 @@ fn fill_retained_dense_partitioned(
         })
 }
 
-// Keep the fixed local tile out of wider/unscaled moment calls. Each partition
-// still visits observations in order and owns the same Gram rows; only repeated
-// standardization within an observation is removed. There is no partial bank.
+// Isolate the bounded stack frame from wide/scratch calls. The closure is
+// statically dispatched once per partition, never through a row-loop callback.
 #[inline(never)]
+fn with_private_retained_moments(
+    rhs: &mut [f64],
+    gram: &mut [f64],
+    fill: impl FnOnce(&mut [f64], &mut [f64], &mut [f64]) -> Result<()>,
+) -> Result<()> {
+    let mut row = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
+    let mut local_rhs = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
+    let mut local_gram =
+        [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS * FIXED_BLOCK_MOMENT_MAX_COLUMNS];
+    // Keep both the moments and row scratch private. Disjoint narrow slices of
+    // either output or scratch banks can share cache lines across workers.
+    let rhs_accumulators = &mut local_rhs[..rhs.len()];
+    let gram_accumulators = &mut local_gram[..gram.len()];
+    fill(rhs_accumulators, gram_accumulators, &mut row)?;
+    rhs.copy_from_slice(rhs_accumulators);
+    gram.copy_from_slice(gram_accumulators);
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_standardized_rows(
     values: &[f64],
@@ -2218,41 +2248,32 @@ fn fill_retained_dense_standardized_rows(
         .try_for_each(|(partition, (rhs_rows, gram_rows))| -> Result<()> {
             record_retained_moment_worker();
             let left_start = partition * layout.columns_per_partition;
-            let mut standardized = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
-            // Disjoint output rows can still share cache lines. Keep the ordered
-            // recurrence private until this partition is complete; no merge or
-            // alternative reduction changes the floating-point summation order.
-            let mut local_rhs = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
-            let mut local_gram =
-                [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS * FIXED_BLOCK_MOMENT_MAX_COLUMNS];
-            let rhs_accumulators = &mut local_rhs[..rhs_rows.len()];
-            let gram_accumulators = &mut local_gram[..gram_rows.len()];
-            for (row, &response_value) in response.iter().enumerate() {
-                let source = &values[row * stored_columns..(row + 1) * stored_columns];
-                let weight = normalized_weight(weights, divisor, row)?;
-                for column in left_start..dimension {
-                    let source_column =
-                        selected_columns.map_or(column, |selected| selected[column]);
-                    standardized[column] =
-                        scaled_column(source[source_column], Some(scales), column)?;
-                }
-                for (local_left, destination) in rhs_accumulators.iter_mut().enumerate() {
-                    let left = left_start + local_left;
-                    let weighted_left = weight * standardized[left];
-                    *destination = weighted_left.mul_add(response_value, *destination);
-                    let gram_row =
-                        &mut gram_accumulators[local_left * dimension..(local_left + 1) * dimension];
-                    for (entry, &right_value) in gram_row[left..]
-                        .iter_mut()
-                        .zip(&standardized[left..dimension])
-                    {
-                        *entry = weighted_left.mul_add(right_value, *entry);
+            with_private_retained_moments(rhs_rows, gram_rows, |rhs, gram, standardized| {
+                for (row, &response_value) in response.iter().enumerate() {
+                    let source = &values[row * stored_columns..(row + 1) * stored_columns];
+                    let weight = normalized_weight(weights, divisor, row)?;
+                    for column in left_start..dimension {
+                        let source_column =
+                            selected_columns.map_or(column, |selected| selected[column]);
+                        standardized[column] =
+                            scaled_column(source[source_column], Some(scales), column)?;
+                    }
+                    for (local_left, destination) in rhs.iter_mut().enumerate() {
+                        let left = left_start + local_left;
+                        let weighted_left = weight * standardized[left];
+                        *destination = weighted_left.mul_add(response_value, *destination);
+                        let gram_row =
+                            &mut gram[local_left * dimension..(local_left + 1) * dimension];
+                        for (entry, &right_value) in gram_row[left..]
+                            .iter_mut()
+                            .zip(&standardized[left..dimension])
+                        {
+                            *entry = weighted_left.mul_add(right_value, *entry);
+                        }
                     }
                 }
-            }
-            rhs_rows.copy_from_slice(rhs_accumulators);
-            gram_rows.copy_from_slice(gram_accumulators);
-            Ok(())
+                Ok(())
+            })
         })
 }
 

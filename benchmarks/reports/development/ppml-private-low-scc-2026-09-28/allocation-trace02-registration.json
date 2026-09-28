@@ -1,0 +1,12 @@
+{
+  "maximum_runs": 20,
+  "stop": "First current-window traced allocation; stop unexpected execution failure.",
+  "artifact": "b6bf8f219897cd394266d4a4d3a21103ed453df4b27e863ff15fd4d8c28e9ff2",
+  "diagnostic_only": true,
+  "correction": "Use distinct steady-state probe; original action probe also observed action lifetime and initial trace mixed windows. Capture process_output directly.",
+  "source": {
+    "Cargo.toml": "40f87abdec5e43191e428e57fbbdd22e1fb4f58149990f98bfe340adfd98217a",
+    "crates/fereg-plugin/src/ffi.rs": "607167e68a093c27edbfd09b9bb797011d07ee92811bede4e32c0cbdc7a279ed",
+    "crates/fereg-plugin/src/instrumentation.rs": "e0afb793e9977ce78eb384dfed1fce9b4818807bf39e53c76efe15fc49171887"
+  }
+}

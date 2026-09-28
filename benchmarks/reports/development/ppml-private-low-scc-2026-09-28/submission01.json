@@ -1,0 +1,11 @@
+{
+  "job_id": "7763918",
+  "run_root": "/projectnb/welfgr/fereg/dev/20260928-private-low-01",
+  "source_snapshot": "c7032da9e75a529e931010b36a1858203261a05616869cc514c8263fff743201",
+  "slots": 16,
+  "mem_per_core": "3G",
+  "walltime": "00:30:00",
+  "native_cpu_affinity": "first 16 inherited CPUs; mask logged by taskset",
+  "rust_test_concurrency": 1,
+  "licensed_low_audit_threads": 4
+}

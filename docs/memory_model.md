@@ -324,18 +324,21 @@ another observation-sized design. This increment is independent of thread
 count and uses checked arithmetic. It does not change low-mode estimates or
 the at-most-64 execution policy (ADR 0030).
 
-Scaled retained dense moments at up to 64 active columns may use a fixed
-64-double standardized-row cache plus private 64-double RHS and 4096-double
-Gram accumulators per partition when the layout assigns multiple columns to
-each partition. The complete array payload is 33 KiB per active partition,
-at most 1,081,344 bytes across the 32 simultaneously eligible partitions.
-The private accumulators add 33,280 bytes per partition within the existing
-worker-stack reservation; they create no heap allocation, retained partial bank
-or observation-sized state. Wider, unscaled, implicit and scratch paths do not
-enter that helper. Heap allocation receipts exclude this transient stack payload;
-physical-cap qualification and complete stack accounting remain separate.
-See [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md) and
-[ADR 0243](adr/0243-private-retained-moment-accumulators.md).
+Scaled retained dense and implicit moments at up to 64 active columns may use
+a fixed 64-double row cache plus private 64-double RHS and 4096-double Gram
+accumulators per partition, including one-left-column partitions (ADR 0245).
+The complete array payload is 33 KiB per active partition, at most 2,162,688
+bytes across 64 simultaneously eligible partitions. Existing eligible dense
+partitions already carried this payload; new implicit/one-column routes add
+transient stack storage while retaining their existing admitted workspace.
+There is no new heap, retained partial bank or observation-sized state. Wider,
+unscaled dense and scratch paths retain their loops. The shared worker team
+uses a configured Rayon stack size or the Rust runtime default; it does not
+promise CMG's separate explicit 8 MiB allowance. Heap receipts exclude this
+stack payload. Physical-cap qualification and complete stack accounting remain
+separate. See [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md),
+[ADR 0243](adr/0243-private-retained-moment-accumulators.md) and
+[ADR 0245](adr/0245-private-implicit-finite-moments.md).
 
 Changing-weight retained column-block projection reuses the scratch file's
 existing bounded encoded I/O bank for complete-row extraction and patching.
@@ -998,6 +1001,12 @@ and corrections, merged separately in block order. Partial sums are scratch,
 never accepted point, Hessian or generation authority. Nonfinite accumulation
 replays the original scalar evaluation. This bank does not replace the separate
 independent final replay tile below.
+
+On macOS, worker sleep synchronization storage is materialized during pool
+construction (ADR 0244), before the existing PPML embedding snapshot. Its heap
+can therefore become live earlier, including for workers that never sleep;
+there is no added observation bank or worker. This preserves the zero-event
+iteration audit, not a claim of zero runtime allocation over the whole action.
 
 The Stata adapter's single scoped native task uses a stack-owned callback
 exchange. Its live Rayon job is captured in the embedding allocation snapshot

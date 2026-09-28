@@ -1,0 +1,698 @@
+[
+  {
+    "case": "one-low-t1",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 18841918.0,
+        "candidate": 18841918.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 12538891.0,
+        "candidate": 12538891.0
+      }
+    }
+  },
+  {
+    "case": "one-low-t1",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 18841918.0,
+        "candidate": 18841918.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 12538891.0,
+        "candidate": 12538891.0
+      }
+    }
+  },
+  {
+    "case": "one-low-t2",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 19248318.0,
+        "candidate": 19248318.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 12944075.0,
+        "candidate": 12944075.0
+      }
+    }
+  },
+  {
+    "case": "one-low-t2",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 19248318.0,
+        "candidate": 19248318.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 12944075.0,
+        "candidate": 12944075.0
+      }
+    }
+  },
+  {
+    "case": "one-low-t4",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 19265214.0,
+        "candidate": 19265214.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 12958491.0,
+        "candidate": 12958491.0
+      }
+    }
+  },
+  {
+    "case": "one-low-t4",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 19265214.0,
+        "candidate": 19265214.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 12958491.0,
+        "candidate": 12958491.0
+      }
+    }
+  },
+  {
+    "case": "one-low-wide-t4",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "inner_iterations": {
+        "baseline": 5.0,
+        "candidate": 5.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 31741646.0,
+        "candidate": 31741646.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 23920913.0,
+        "candidate": 23920913.0
+      }
+    }
+  },
+  {
+    "case": "one-low-wide-t4",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "inner_iterations": {
+        "baseline": 5.0,
+        "candidate": 5.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 31741646.0,
+        "candidate": 31741646.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 23920913.0,
+        "candidate": 23920913.0
+      }
+    }
+  },
+  {
+    "case": "one-low-larger-t8",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 89574054.0,
+        "candidate": 89574054.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 61593767.0,
+        "candidate": 61593767.0
+      }
+    }
+  },
+  {
+    "case": "one-low-larger-t8",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 89574054.0,
+        "candidate": 89574054.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 61593767.0,
+        "candidate": 61593767.0
+      }
+    }
+  },
+  {
+    "case": "one-single-row-t8",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 16760031.0,
+        "candidate": 16760031.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 14117860.0,
+        "candidate": 14117860.0
+      }
+    }
+  },
+  {
+    "case": "one-single-row-t8",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 16760031.0,
+        "candidate": 16760031.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 14117860.0,
+        "candidate": 14117860.0
+      }
+    }
+  },
+  {
+    "case": "control-fast-t4",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 16759007.0,
+        "candidate": 16759007.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 14088996.0,
+        "candidate": 14088996.0
+      }
+    }
+  },
+  {
+    "case": "control-fast-t4",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 16759007.0,
+        "candidate": 16759007.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 14088996.0,
+        "candidate": 14088996.0
+      }
+    }
+  },
+  {
+    "case": "control-fast-wide",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "inner_iterations": {
+        "baseline": 5.0,
+        "candidate": 5.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 32929999.0,
+        "candidate": 32929999.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 30104657.0,
+        "candidate": 30104657.0
+      }
+    }
+  },
+  {
+    "case": "control-fast-wide",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "inner_iterations": {
+        "baseline": 5.0,
+        "candidate": 5.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 32929999.0,
+        "candidate": 32929999.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 30104657.0,
+        "candidate": 30104657.0
+      }
+    }
+  },
+  {
+    "case": "control-fast-larger",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 80992807.0,
+        "candidate": 80992807.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 69850981.0,
+        "candidate": 69850981.0
+      }
+    }
+  },
+  {
+    "case": "control-fast-larger",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 3.0,
+        "candidate": 3.0
+      },
+      "inner_iterations": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 80992807.0,
+        "candidate": 80992807.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 69850981.0,
+        "candidate": 69850981.0
+      }
+    }
+  },
+  {
+    "case": "control-two-fe",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "inner_iterations": {
+        "baseline": 112.0,
+        "candidate": 112.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 123090516.0,
+        "candidate": 123090516.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 48635746.0,
+        "candidate": 48635746.0
+      }
+    }
+  },
+  {
+    "case": "control-two-fe",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "inner_iterations": {
+        "baseline": 112.0,
+        "candidate": 112.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 123090516.0,
+        "candidate": 123090516.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 48635746.0,
+        "candidate": 48635746.0
+      }
+    }
+  },
+  {
+    "case": "control-three-fe",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 6.0,
+        "candidate": 6.0
+      },
+      "inner_iterations": {
+        "baseline": 104.0,
+        "candidate": 104.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 344225487.0,
+        "candidate": 344225487.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 105713357.0,
+        "candidate": 102269661.0
+      }
+    }
+  },
+  {
+    "case": "control-three-fe",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 6.0,
+        "candidate": 6.0
+      },
+      "inner_iterations": {
+        "baseline": 104.0,
+        "candidate": 104.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 344225487.0,
+        "candidate": 344225487.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 108923949.0,
+        "candidate": 102288509.0
+      }
+    }
+  },
+  {
+    "case": "control-slopes",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "inner_iterations": {
+        "baseline": 158.0,
+        "candidate": 158.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 27257457.0,
+        "candidate": 27257457.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 23573211.0,
+        "candidate": 23573211.0
+      }
+    }
+  },
+  {
+    "case": "control-slopes",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 4.0,
+        "candidate": 4.0
+      },
+      "inner_iterations": {
+        "baseline": 158.0,
+        "candidate": 158.0
+      },
+      "feppml_strict_profile_rejections": {
+        "baseline": 0.0,
+        "candidate": 0.0
+      },
+      "feppml_memory_selected_bytes": {
+        "baseline": 27257457.0,
+        "candidate": 27257457.0
+      },
+      "feppml_allocation_peak": {
+        "baseline": 23573211.0,
+        "candidate": 23573211.0
+      }
+    }
+  },
+  {
+    "case": "control-ols",
+    "repetition": 1,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 34.0,
+        "candidate": 34.0
+      }
+    }
+  },
+  {
+    "case": "control-ols",
+    "repetition": 2,
+    "coefficients_byte_equal": true,
+    "covariance_byte_equal": true,
+    "telemetry": {
+      "ic": {
+        "baseline": 34.0,
+        "candidate": 34.0
+      }
+    }
+  }
+]

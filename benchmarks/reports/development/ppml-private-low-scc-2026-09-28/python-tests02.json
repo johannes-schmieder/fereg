@@ -1,0 +1,16 @@
+{
+  "identity_calibration_arithmetic": {
+    "tests": 42,
+    "status": "success",
+    "log_sha256": "0eaca42d237825aa15f7a62477db6aa2d5dd58015e6c490b6d8a0da23506819f",
+    "sources": {
+      "scripts/ppml_auto_calibration.py": "5d8de68d6b70545e0314ee456f9ec8c29305df30092563040c2861b131e44978",
+      "scripts/ols_arithmetic_development.py": "148c546192e427bd8f27ebeabe1dd6b3abd25c2d2854523de74fc3d682bd3c58",
+      "tests/python/test_vendored_source_identity.py": "b60df77b0835efd9a17f2ddc8a7dda074191ee4d9689b3f8f01e9532c44fa24b"
+    }
+  },
+  "rotation": {
+    "tests": 13,
+    "log_sha256": "5e4264ec50b6176be1442df57154f1d3987914da6d925789b666201f7fe9f355"
+  }
+}

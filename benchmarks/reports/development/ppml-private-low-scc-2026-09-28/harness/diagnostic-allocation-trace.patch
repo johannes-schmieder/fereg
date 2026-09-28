@@ -1,0 +1,103 @@
+--- a/Cargo.toml
++++ b/Cargo.toml
+@@ -24,7 +24,8 @@
+ lto = "fat"
+ codegen-units = 1
+ panic = "unwind"
+-strip = true
++strip = false
++debug = true
+ 
+ [profile.profiling]
+ inherits = "release"
+--- a/crates/fereg-plugin/src/ffi.rs
++++ b/crates/fereg-plugin/src/ffi.rs
+@@ -56,6 +56,7 @@
+         if !pointer.is_null() {
+             let phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+             record_allocation(layout.size(), phases);
++            trace_allocation(layout.size());
+             record_allocation_event(phases);
+         }
+         pointer
+@@ -70,6 +71,7 @@
+         if !pointer.is_null() {
+             let phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+             record_allocation(layout.size(), phases);
++            trace_allocation(layout.size());
+             record_allocation_event(phases);
+         }
+         pointer
+@@ -92,6 +94,7 @@
+             if new_size >= layout.size() {
+                 let phases = PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed);
+                 record_allocation(new_size - layout.size(), phases);
++                trace_allocation(new_size);
+                 if new_size > layout.size() {
+                     record_allocation_event(phases);
+                 }
+@@ -1706,3 +1709,39 @@
+         );
+     }
+ }
++
++// Isolated diagnostic only: fixed storage and C unwinder, never a production gate.
++static TRACE_ENABLED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
++static TRACE_INDEX: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
++static TRACE_DATA: [std::sync::atomic::AtomicUsize; 64 * 34] = [const { std::sync::atomic::AtomicUsize::new(0) }; 64 * 34];
++fn trace_allocation(size: usize) {
++    if !TRACE_ENABLED.load(Ordering::Acquire) { return; }
++    let index = TRACE_INDEX.fetch_add(1, Ordering::Relaxed);
++    if index >= 64 { return; }
++    let mut frames = [std::ptr::null_mut(); 32];
++    let count = unsafe { libc::backtrace(frames.as_mut_ptr(), 32) } as usize;
++    TRACE_DATA[index * 34].store(size, Ordering::Relaxed);
++    TRACE_DATA[index * 34 + 1].store(count, Ordering::Relaxed);
++    for (i, frame) in frames.iter().take(count).enumerate() {
++        TRACE_DATA[index * 34 + 2 + i].store(*frame as usize, Ordering::Relaxed);
++    }
++}
++pub(crate) fn trace_boundary() {
++    if !TRACE_ENABLED.swap(true, Ordering::AcqRel) {
++        TRACE_INDEX.store(0, Ordering::Relaxed);
++        return;
++    }
++    TRACE_ENABLED.store(false, Ordering::Release);
++    let count = TRACE_INDEX.load(Ordering::Acquire);
++    eprintln!("ALLOCATION_TRACE_COUNT={count}");
++    for index in 0..count.min(64) {
++        let size = TRACE_DATA[index*34].load(Ordering::Relaxed);
++        eprintln!("ALLOCATION_TRACE_EVENT={index} size={size}");
++        for i in 0..TRACE_DATA[index*34+1].load(Ordering::Relaxed) {
++            let address = TRACE_DATA[index*34+2+i].load(Ordering::Relaxed);
++            let mut info: libc::Dl_info = unsafe { std::mem::zeroed() };
++            unsafe { libc::dladdr(address as *const _, &mut info); }
++            eprintln!("ALLOCATION_TRACE_FRAME={i} address={address:#x} base={:#x}", info.dli_fbase as usize);
++        }
++    }
++}
+--- a/crates/fereg-plugin/src/instrumentation.rs
++++ b/crates/fereg-plugin/src/instrumentation.rs
+@@ -126,6 +126,13 @@
+     None
+ }
+ 
++#[cfg(feature = "ffi")]
++fn traced_audit_snapshot() -> fereg_core::ppml::PpmlAllocatorSnapshot {
++    let result = ppml_allocator_snapshot();
++    crate::ffi::trace_boundary();
++    result
++}
++
+ /// Allocation-free probe called by the prepared PPML driver only at complete
+ /// warmed-iteration boundaries. It intentionally excludes RSS collection,
+ /// syscalls, and action-lifetime baseline mutation.
+@@ -144,7 +151,7 @@
+     enabled: bool,
+ ) -> Option<fereg_core::ppml::PpmlAllocatorSnapshotProbe> {
+     if enabled {
+-        Some(ppml_allocator_snapshot)
++        Some(traced_audit_snapshot)
+     } else {
+         None
+     }

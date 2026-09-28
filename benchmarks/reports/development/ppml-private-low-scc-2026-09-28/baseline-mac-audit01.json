@@ -1,0 +1,38 @@
+{
+  "completed": true,
+  "failure_detail": null,
+  "failure_kind": null,
+  "results": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_one_fe_low_profile_audit.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    }
+  ],
+  "schema_version": 1,
+  "stata_edition": "MP",
+  "stata_machine_type": "Mac (Apple Silicon)",
+  "stata_os": "Unix",
+  "stata_processors": 8,
+  "stata_rc": 0,
+  "stata_version": "19",
+  "status": "success",
+  "tests_failed": 0,
+  "tests_passed": 1,
+  "diagnostic_only": true,
+  "artifact_kind": "Relinked accepted Rust archives with unchanged current bridge objects; not the exact earlier universal bundle.",
+  "artifact_sha256": "862bc794b8e235fa91766ca0550c468880e9255f460ad6c20d0f1dc054e4f2ca",
+  "expected_original_artifact_sha256": "57eb15d816abcbcd739dd8e96b68d1d64be831a743da3ffee9f26a591f9036ad",
+  "low_audit_threads": 4,
+  "components_sha256": {
+    "target/private-moments-20260928/x86_64-apple-darwin/release/libfereg_plugin.a": "608c5881b7cc0dd84981a91278ee768b3dc2cd472085f652290c1a35962d56a2",
+    "target/private-moments-20260928/aarch64-apple-darwin/release/libfereg_plugin.a": "6892f974ac6a1fe3dd359ea336678b50a4f4df3bd985c36104dc1c8bdbb2c858",
+    "target/native-macos/stplugin.arm64.o": "238f51b4dfd22d3b7dc9adb10fda4e05afe95410b555e907cff09376cb8368b5",
+    "target/native-macos/stata_bridge.arm64.o": "fe45c4d040a96d05f0aafebe0fd041d24ff5b932f2940c542b6216d6a74e0c0f",
+    "target/native-macos/stplugin.x86_64.o": "b8169584362202fa26afde5de4f80f3c2df8889210772a6fad2a00e5d3d344b9",
+    "target/native-macos/stata_bridge.x86_64.o": "a640ff924554df072557dbeaa453792ebbac82bc59f6203ed36ffc1308f70d53"
+  }
+}

@@ -8,6 +8,10 @@ fn fixture(rank_deficient: bool) -> SharedPreparedOlsData {
 }
 
 fn fixture_partition(rank_deficient: bool, interaction: bool) -> SharedPreparedOlsData {
+    fixture_extra_columns(rank_deficient, interaction, 0)
+}
+
+fn fixture_extra_columns(rank_deficient: bool, interaction: bool, extra: usize) -> SharedPreparedOlsData {
     let n = 96;
     let x: Vec<_> = (0..n).map(|i| (i as f64 * 0.71).sin()).collect();
     let z: Vec<_> = (0..n).map(|i| (i as f64 * 0.47).cos()).collect();
@@ -23,6 +27,9 @@ fn fixture_partition(rank_deficient: bool, interaction: bool) -> SharedPreparedO
             vec![0.; n],
         ]);
     }
+    columns.extend((0..extra).map(|j| {
+        (0..n).map(|i| ((i * (j + 3) + 1) as f64 * 0.39).sin()).collect::<Vec<_>>()
+    }));
     let k = columns.len();
     columns.push(groups);
     if interaction {
@@ -379,4 +386,71 @@ fn implicit_interaction_partition_and_zero_controls_match_closed_form_projection
         );
     }
     assert!(ImplicitCenteredDesign::bytes(usize::MAX, usize::MAX, usize::MAX).is_err());
+}
+
+#[test]
+fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundary() {
+    use crate::ols::finite_wls_kernel::{
+        fill_finite_wls_moments, finite_wls_moment_layout, FixedBlockMomentSource,
+    };
+    for (stored, active) in [(2, 1), (6, 6), (7, 3), (64, 64), (65, 64), (65, 65)] {
+        let source = fixture_extra_columns(false, false, stored - 2);
+        let prepared = source.fit_view();
+        let ids: Vec<_> = (0..stored).collect();
+        let selected: Vec<_> = (0..active).map(|j| if active == 1 { stored - 1 } else { j * (stored - 1) / (active - 1) }).collect();
+        let scales: Vec<_> = (0..active).map(|j| 2.0_f64.powi((j % 3) as i32 * 100 - 100)).collect();
+        let y = &prepared.sample().outcome;
+        let mut frame = ImplicitCenteredDesign::new(source.clone(), &ids, PreparedOlsExecutionMode::Low).unwrap();
+        let mut raw = vec![0.; stored];
+        let mut means = raw.clone();
+        let mut norms = raw.clone();
+        for (generation, magnitude) in [1e-200, 1., 1e200].into_iter().enumerate() {
+            let weights: Vec<_> = (0..y.len()).map(|i| magnitude * (0.25 + ((i * 13 + generation * 11) % 19) as f64)).collect();
+            let divisor = weights.iter().copied().fold(0.0_f64, f64::max);
+            let (response, report) = frame.refresh(y, BorrowedMapWeights::Provided(&weights), divisor,
+                1e-14, &mut raw, &mut means, &mut norms).unwrap();
+            assert!(report.certified());
+            let view = frame.view().unwrap();
+            for scaled in [false, true] {
+                let mut expected_rhs = vec![0.0_f64; active];
+                let mut expected_gram = vec![0.0_f64; active * active];
+                // Separate scalar per-entry sums replay originals and the
+                // already independently tested group centers, not kernel rows.
+                for left in 0..active {
+                    for i in 0..y.len() {
+                        let group = view.codes()[i] as usize;
+                        let value = |j: usize| {
+                            (prepared.fit_column_value(ids[selected[j]], i).unwrap()
+                                - view.center(selected[j], group)) / if scaled { scales[j] } else { 1. }
+                        };
+                        let weighted_left = weights[i] / divisor * value(left);
+                        expected_rhs[left] = weighted_left.mul_add(response[i], expected_rhs[left]);
+                        for right in left..active {
+                            let position = left * active + right;
+                            expected_gram[position] = weighted_left.mul_add(value(right), expected_gram[position]);
+                        }
+                    }
+                    for right in left..active {
+                        expected_gram[right * active + left] = expected_gram[left * active + right];
+                    }
+                }
+                for threads in [1, 2, 4, 16] {
+                    rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                        let source = FixedBlockMomentSource::RetainedImplicit {
+                            values: view, selected_columns: Some(&selected), response: &response,
+                            weights: BorrowedMapWeights::Provided(&weights), solver_weight_divisor: divisor,
+                            column_scales: scaled.then_some(scales.as_slice()),
+                        };
+                        let layout = finite_wls_moment_layout(source).unwrap();
+                        let mut partials = vec![0.; layout.partial_elements];
+                        let mut rhs = vec![0.; active];
+                        let mut gram = vec![0.; active * active];
+                        fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram).unwrap();
+                        assert_eq!(rhs, expected_rhs);
+                        assert_eq!(gram, expected_gram);
+                    });
+                }
+            }
+        }
+    }
 }

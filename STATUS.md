@@ -11,7 +11,81 @@ unchanged under benchmarks/reports/. The broad scientific/performance follow-up 
 <=0.90-stock goal remain active.
 
 
-## Current checkpoint: private finite-moment accumulators retained; one-FE scaling improves
+## Current checkpoint: private low-memory moments retained; Mac runtime audit repaired
+
+[ADR0245](docs/adr/0245-private-implicit-finite-moments.md) extends private finite
+moment rows to implicit low memory and narrow one-left-column partitions, using
+one bounded current-call owner. Row order, weights, FMA, rank and every scientific
+certificate remain unchanged. No new retained/heap/N-sized bank or thread cap.
+[ADR0244](docs/adr/0244-eager-macos-worker-sleep-state.md) separately initializes
+macOS Rayon sleep synchronization during pool construction. A real 48-byte audit
+failure was traced to lazy runtime state. The original zero-event assertion stays;
+a cold-state regression fails upstream and passes on the patch. Pinned upstream
+source/licenses and exact patch provenance are retained under vendor/rayon-core.
+
+**Package c09eeab3…**, 259 bound inputs; Linux **59d0341a…**, Mac universal
+**38bf6916…**. [Report](benchmarks/reports/development/ppml-private-low-scc-2026-09-28/README.md)
+preserves the failed first candidate, invalid first trace and corrected attribution.
+Mac and **SCC 7764784** each pass **104 distinct Rust tests and six licensed
+fixtures**; Mac additionally passes the cold-state test and **20 fresh-process
+low audits** at T4/pool1/2, all zero-event. SCC adds PPML smoke and clean accounting
+(280s/5.433G). **42** source-identity/calibration/arithmetic and **13** rotation
+harness tests pass. Development identity collectors now bind vendor source and
+exclude its build products. No new scientific or memory qualification claim.
+
+Uncontended **7764833/7764860** complete **249 applications**, all **83 native and
+83 stock scientific comparisons passing**. All **83 b/V export pairs are
+byte-identical**, including all 18 cross-thread pairs. All 65 same-thread iteration
+and selected-memory comparisons agree. Clocks are public PPML robust / OLS IID,
+without optional observation outputs; weights/clustering/saved outputs are covered
+by independent fixtures. Pinned stock is unmodified, strict only for slopes.
+Fresh **2026092833** and scaling **2026092835** are consumed validation seeds.
+
+Fresh C/B medians: **.849 lowT1, .840 lowT2, .759 lowT4, .858 low wide,
+.653 low largerT8, .748 narrow fastT8**. Finite solving falls **63.3→29.3ms**
+(lowT4) and **359.5→124.4ms** (larger lowT8). FastT4/wide/two-FE controls lose
+**3.9%/3.1%/4.8%** fresh; two-FE also loses **0.8%** initially. Larger fast is
++0.4% fresh after +2.9% initially. OLS .990, slopes .966, three-FE .999 fresh.
+Retain the substantial repeated gains while preserving these control losses.
+Do not claim universal performance non-regression or tune to these fresh seeds.
+
+**All 18 actual core-scaling pairs improve:** low1→2/2→4/4→8 medians
+**.776/.878/.901**; narrow fast4→8 **.924**, wide low1→4 **.608**, larger
+low4→8 **.851**. No capped-request row is represented as actual scaling here.
+This closes these bounded transitions, not the universal no-slowdown target.
+
+Fresh C/stock remains **2.610/2.171/1.682** for small lowT1/T2/T4,
+**1.533** narrow fastT8, **2.391** fastT4, **1.798** small two-FE and **1.541**
+OLS. Wide fast **.876**, larger fast **.929**, low wide/larger **.955/.954**,
+three-FE **.520**, slopes **.330** are more competitive. The **1.20 ceiling and
+.90 aspiration remain unmet**. These ratios are not the full campaign inventory.
+
+Memory: **33 KiB transient stack payload per active partition**, maximum
+**2,162,688 bytes** across 64 eligible partitions; no additional heap bank.
+The shared team uses the configured/default Rust stack, not a universal 8 MiB
+reservation (ADR0245 corrects that earlier overgeneralization). PPML heap peaks
+agree in 55/60 same-thread pairs; three-FE varies in both directions, fresh up
+to **6.14MB/6.0%**. Changed existing-work overlap is plausible, not proved. OLS
+selected memory/exported allocation bytes agree in all five pairs. Fresh RSS
+median ratios **.977–1.028**. Complete stack/physical-cap accounting remains open.
+
+**Next bounded milestone:** return to the approved broader current-source
+performance inventory/sweep and original failure inputs before another narrow
+tuning cycle. The full 140-configuration fixest development confirmation remains
+outstanding; do not restart unchanged stopped/known-ineligible comparator arms.
+Current small categorical PPML losses extend beyond finite solving: fastT4
+finite time stays26ms while inference rises3.8→6.6ms; small two-FE strict/final
+work rises40.8→47.0ms and publication16.6→20.5ms. Use the broader screen to choose
+between those concrete preparation/inference boundaries and remaining large-fit
+issues. Do not reopen this candidate for favorable-seed or threshold tuning.
+
+All milestone jobs are terminal. Routine SCC testing is authorized without asking.
+No push or qualification. Older weak-SE discrepancies, large timeouts, comparator
+sample/VCE/extraction issues, static allocation drift, weighted constrained fits
+and nonretaining-CG instability remain open. Frozen77/16/111 definitions are
+unchanged. The broader implementation goal remains active.
+
+## Prior checkpoint: private finite-moment accumulators retained; one-FE scaling improves
 
 [ADR0243](docs/adr/0243-private-retained-moment-accumulators.md) adopts private
 worker-stack RHS/Gram accumulators inside the existing narrow scaled retained
