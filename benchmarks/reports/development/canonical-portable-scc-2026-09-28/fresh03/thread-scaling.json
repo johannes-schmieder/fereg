@@ -1,0 +1,157 @@
+{
+  "source_plugin": "d1156e6dc88d1b041e061ce7e4df7a323bcd08f8254276b752172cb022950e22",
+  "comparisons": [
+    {
+      "repetition": 1,
+      "input_sha256": "3028b0c4639cc7ab12d8d27049280f54fdef6ce49d57210d07704176279e0c51",
+      "comparison": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "actual_threads": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "seconds_t1": 0.548,
+      "seconds_t4": 0.425,
+      "ratio_t4_t1": 0.7755474452554744
+    },
+    {
+      "repetition": 2,
+      "input_sha256": "3028b0c4639cc7ab12d8d27049280f54fdef6ce49d57210d07704176279e0c51",
+      "comparison": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "actual_threads": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "seconds_t1": 0.5569999999999999,
+      "seconds_t4": 0.379,
+      "ratio_t4_t1": 0.680430879712747
+    },
+    {
+      "repetition": 3,
+      "input_sha256": "3028b0c4639cc7ab12d8d27049280f54fdef6ce49d57210d07704176279e0c51",
+      "comparison": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "actual_threads": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "seconds_t1": 0.466,
+      "seconds_t4": 0.444,
+      "ratio_t4_t1": 0.9527896995708154
+    },
+    {
+      "repetition": 4,
+      "input_sha256": "3028b0c4639cc7ab12d8d27049280f54fdef6ce49d57210d07704176279e0c51",
+      "comparison": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "actual_threads": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "seconds_t1": 0.475,
+      "seconds_t4": 0.43,
+      "ratio_t4_t1": 0.9052631578947369
+    },
+    {
+      "repetition": 5,
+      "input_sha256": "3028b0c4639cc7ab12d8d27049280f54fdef6ce49d57210d07704176279e0c51",
+      "comparison": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "actual_threads": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "seconds_t1": 0.466,
+      "seconds_t4": 0.395,
+      "ratio_t4_t1": 0.8476394849785408
+    }
+  ],
+  "median_ratio": 0.8476394849785408,
+  "scope": "Corresponding repetitions from separately grouped request cases, not directly alternating thread requests. Unchanged frozen scientific comparator; no new fits."
+}

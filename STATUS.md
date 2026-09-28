@@ -10,7 +10,7 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## PPML thread ceiling accepted; small-command costs are next
+## PPML portable products accepted; ordinary categorical IRLS is next
 
 [ADR 0233](docs/adr/0233-preflight-thread-ceilings.md) accepts at most eight
 workers for automatic three-intercept-FE PPML in fast/auto memory through
@@ -81,33 +81,44 @@ are 4.8–5.5 s (two FE), 11.6–12.2 s (three FE) on a shared node; no timing r
 Clean accounting: 98 s, four slots. The original reference sample differences
 remain separate. This closes the pending four-seed native-failure confirmation.
 
-[ADR 0234](docs/adr/0234-portable-canonical-proposal-products.md) defines the next
-candidate: inline portable arithmetic only in repeated dense canonical PPML
-proposal products. Weighted geometry, Gram/rank and independent certificates
-retain their arithmetic; no storage or routing change. Snapshot **4aa44429…**
-passes **18 canonical Rust tests on both Mac and Linux**, with the changed
-portable arithmetic exercised on Linux. [Validation 7763043](benchmarks/reports/development/canonical-portable-scc-2026-09-28/linux-validation01.json)
-passes PPML smoke plus four licensed explicit-oracle/control fixtures; Mac
-universal build/ABI and the same four fixtures pass. All 211 candidate inputs
-still match. [Initial rotation 7763067](benchmarks/reports/development/canonical-portable-scc-2026-09-28/initial02/README.md)
-completes 63 applications, 21 native and 18 default-stock scientific passes.
-The three slope standard-error discrepancies stay NR. Targeted small fast,
-low, serial and larger-wide PPML C/B paired medians are **0.906/0.869/0.649/
-0.754**. Stock ratios remain **1.775/1.465/1.521/1.150**; the small losses are
-not closed. Three-FE/OLS controls are 0.992/1.000, but the slope control loses
-all three pairs, median **1.080**, and prevents acceptance. No numerical storage
-is added; targeted sampled process peaks change by +0.5 to +4.9 MiB. Clean
-accounting: 228 s, 28 isolated slots, maxvmem 1.984G.
+[ADR 0234](docs/adr/0234-portable-canonical-proposal-products.md) now accepts
+portable inline arithmetic in repeated dense canonical PPML proposal products.
+Weighted geometry, Gram/rank and independent certificates retain their arithmetic;
+there is no numerical storage, routing or tolerance change. Current snapshot
+**4aa44429…**, Linux plugin **d1156e6d…**, Mac plugin **f9175e6e…**, matches all
+**211** frozen computational inputs. [Validation 7763043](benchmarks/reports/development/canonical-portable-scc-2026-09-28/linux-validation01.json)
+and Mac receipts pass 18 canonical Rust tests and four licensed explicit-oracle/
+control fixtures each, plus Linux PPML smoke and Mac universal ABI/panic checks.
+Linux exercises changed portable arithmetic; ARM protects the unchanged path.
 
-[Fresh confirmation 7763099](benchmarks/reports/development/canonical-portable-scc-2026-09-28/submission03.json)
-is running: 111 fits, predeclared fresh seed202609287 across widths, sizes,
-serial/threaded and low/sparse cases, fresh OLS/slope controls, and nine pairs
-on the original losing slope input. The slope comparisons explicitly use
-strict stock; earlier default discrepancies remain NR. No candidate changes.
-[Separate CPU attribution 7763108](benchmarks/reports/development/canonical-portable-scc-2026-09-28/submission04.json)
-is held behind every fresh fit; its 24 diagnostic calls use DWARF unwinding to
-separate shared-product callers and locate remaining small PPML work. Profile
-clocks never enter timing ranks. No performance acceptance yet.
+[Initial 7763067](benchmarks/reports/development/canonical-portable-scc-2026-09-28/initial02/README.md)
+and [fresh 7763099](benchmarks/reports/development/canonical-portable-scc-2026-09-28/fresh03/README.md)
+complete **174 headline applications**, **58/58 native** and **55/58 stock**
+science pairs. Three initial default-stock slope SE discrepancies remain NR;
+all 12 strict-stock slope pairs in confirmation pass. Fresh low/wide/sparse C/B
+paired medians are **0.791/0.757/0.839**. Small fast/serial narrow to **0.943/
+0.912**; larger is **1.010**. Fresh stock ratios are **2.015/2.130/1.607** for
+small fast/serial/low, **1.136/1.038/0.410** for wide/larger/sparse. No blanket
+1.20 ceiling or 0.90 claim. All jobs have clean accounting and terminal sentinels;
+no builds, profiles, archives or competing fits overlap headline timings.
+
+Fresh OLS control is **1.021**, stock **1.569**; fresh slopes **0.970**.
+Nine pairs on the initially losing slope input give **1.018**, range 0.804–1.255,
+five losses; marginal medians 494→541ms are a larger 9.5% loss. Retain both summaries.
+Initial uniform 8% loss is not consistently reproduced; no regression-free claim.
+The small, scoped change is retained for wider/low/sparse gains. No new numeric
+storage; observed fresh process-peak deltas range -4.4 to +6.8 MiB. Fresh T4/T1
+is **0.848**, all five faster and scientifically matching, but separately grouped
+request cases do not establish universal monotonic scaling.
+
+[Separate CPU attribution 7763108](benchmarks/reports/development/canonical-portable-scc-2026-09-28/cpu04/README.md)
+passes 24 diagnostic public fits with zero lost samples, clean accounting and
+sentinels. DWARF callchains now resolve canonical build → normalized product →
+libm FMA; displayed FMA self share falls 9.39%→2.15%. CPU shares are not wall-time
+savings. Remaining callers include ordinary categorical joint LSMR application
+and Schwarz reconstruction. Next: inspect that ordinary IRLS organization and
+existing coefficient-space solver admission/history before choosing a replacement.
+Do not reopen canonical threshold or control-specific micro-tuning.
 
 The broader repair goal remains active: small OLS/PPML and low-memory OLS
 stock losses, original comparator/separation adjudications, large timeouts and
