@@ -10,6 +10,32 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The broad scientific/performance follow-up and
 <=0.90-stock goal remain active.
 
+**Pause requested:** finish the current validation handover, then pause local
+development while already authorized SCC jobs continue. The scheduler check at
+handover confirms all four **7766045** benchmark tasks running and the five
+follow-up jobs held. **7767737** is the final dependency in this chain; no new
+optimization experiment or headline work should overlap it. On resumption,
+inspect and collect the existing jobs before choosing further work. The broad
+implementation goal is incomplete; this pause does not adopt either candidate.
+
+**Queued public solver validation: 7767737**, 16 slots/3G per core, 45-minute
+wall limit and 35-minute controller deadline, held behind **7766045, 7766146,
+7767016, 7767269 and 7767319**. The
+[immutable registration](benchmarks/reports/development/solver-public-validation-registration-scc-2026-09-28/README.md)
+tests CG and Schwarz separately only after their respective core evidence passes.
+Each passing arm builds in an isolated source/target tree and runs eight public
+OLS/PPML fixtures protecting weighted, slope, inference, saved-output and
+transaction behavior. CG adds a new 48-row near-within explicit-design oracle
+across four weight frames, fast/low, T1/4, auto/CMG and saved FE. Six local harness
+tests and an exact rational normal-equation/rank proof pass; licensed execution
+is pending. The complete build inventory explicitly stages the missing remote
+toolchain file without modifying the accepted source. The Python-3.6 submission
+wrapper correction happened before qsub; exactly one job was submitted.
+All 259 production inputs are unchanged. Require accounting, per-arm results,
+source/plugin identities and terminal sentinels. Exit zero means at least one
+arm passed, not both. Even a public pass still needs constrained-memory and
+uncontended paired/fresh performance evidence before separate adoption.
+
 
 ## Current milestone: full current-source OLS/PPML sweep launched
 

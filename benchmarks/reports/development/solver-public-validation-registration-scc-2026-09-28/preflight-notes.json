@@ -1,0 +1,6 @@
+{
+  "initial_read_only_preflight": "refused: accepted source tree lacks rust-toolchain.toml",
+  "resolution": "Stage the exact repository toolchain file separately, as in both existing core diagnostics; do not modify accepted source or old inventory",
+  "estimator_builds": 0,
+  "estimator_fits": 0
+}

@@ -1,0 +1,17 @@
+{
+  "job_id": "7767737",
+  "command": [
+    "qsub",
+    "-terse",
+    "-hold_jid",
+    "7766045,7766146,7767016,7767269,7767319",
+    "-v",
+    "RUN_ROOT=/projectnb/welfgr/fereg/dev/20260928-solver-public-01",
+    "-o",
+    "/projectnb/welfgr/fereg/dev/20260928-solver-public-01/logs",
+    "/projectnb/welfgr/fereg/dev/20260928-solver-public-01/job.sh"
+  ],
+  "submitted_utc": "2026-09-28T17:12:31.857294+00:00",
+  "deployment_sha256": "6c7038b81212e8582687ca55a68b63d5d7d7c05a4d07c198c1f3e095d5243e09",
+  "qsub_stderr": ""
+}

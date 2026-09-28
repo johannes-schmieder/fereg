@@ -1,0 +1,6 @@
+{
+  "first_attempt": "Python 3.6 rejected capture_output before invoking qsub",
+  "correction": "Use Python 3.6-compatible subprocess arguments for submission only; job loads Python 3.12.4",
+  "earlier_jobs_submitted": 0,
+  "retried_submission": true
+}

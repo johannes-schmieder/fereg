@@ -1,0 +1,50 @@
+[
+  {
+    "kind": "unit",
+    "physical_rows": 48,
+    "weight_sum": "48",
+    "within_gram_determinant": "2304",
+    "all_normal_equations_exact_zero": true,
+    "coefficient_truth": [
+      "7/10",
+      "-2/5"
+    ],
+    "residual_truth": "4*u*v"
+  },
+  {
+    "kind": "aw",
+    "physical_rows": 48,
+    "weight_sum": "54",
+    "within_gram_determinant": "2916",
+    "all_normal_equations_exact_zero": true,
+    "coefficient_truth": [
+      "7/10",
+      "-2/5"
+    ],
+    "residual_truth": "4*u*v"
+  },
+  {
+    "kind": "fw",
+    "physical_rows": 48,
+    "weight_sum": "264",
+    "within_gram_determinant": "69696",
+    "all_normal_equations_exact_zero": true,
+    "coefficient_truth": [
+      "7/10",
+      "-2/5"
+    ],
+    "residual_truth": "4*u*v"
+  },
+  {
+    "kind": "pw",
+    "physical_rows": 48,
+    "weight_sum": "54",
+    "within_gram_determinant": "2916",
+    "all_normal_equations_exact_zero": true,
+    "coefficient_truth": [
+      "7/10",
+      "-2/5"
+    ],
+    "residual_truth": "4*u*v"
+  }
+]
