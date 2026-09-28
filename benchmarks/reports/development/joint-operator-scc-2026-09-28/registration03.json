@@ -1,0 +1,517 @@
+{
+  "schema": "joint-operator-screen-v1",
+  "source_snapshot": "4c3d7c44dec6535da0506e1f771516ec1615ce92c43beb6e53520fd0c949771e",
+  "cases": [
+    {
+      "id": "fresh-profiled-small",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-small-low",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "low",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-small-serial",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 1,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 1
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-larger-wide",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 61440,
+        "k": 12,
+        "threads": 8,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-sparse-two",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_sparse",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-wide-serial-adjoint",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 61440,
+        "k": 24,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-three-fe-core-pair",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 61440,
+        "k": 10,
+        "threads": 8,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-excluded-slope",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "slopes",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        }
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest_strict",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-excluded-ols",
+      "cell": {
+        "model": "ols",
+        "design": "two_fe_dense",
+        "n": 61440,
+        "k": 10,
+        "threads": 8,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-larger",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 122880,
+        "k": 10,
+        "threads": 8,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    },
+    {
+      "id": "fresh-weak",
+      "cell": {
+        "model": "ppml",
+        "design": "weak_d3",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      }
+    }
+  ],
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "work": "Public feppml and pinned unmodified fepois, robust inference; OLS control uses IID. No optional saved observation outputs. Slope control uses strict stock (glm.tol=1e-10, fixef.tol=1e-11); categorical and OLS use default.",
+  "science": "Existing systematic sample, convergence, coefficient, covariance and objective checks; native rank/DoF equality. Independent WLS and Poisson/Hessian/sandwich fixtures already passed on both artifacts. Scientific discrepancies stay unranked. Additional fast-categorical strict-final/forced-retry and three-FE/nested-rank/zero-control Rust tests on both targets before timing.",
+  "warmup": "Same case/design/width/threads on registered 7680-row positive-outcome warm input; generation happens sequentially outside every command clock.",
+  "fits": 111,
+  "purpose": "Fresh unchanged joint-operator confirmation with weak connectivity, larger size, wide/serial/three-FE paths and excluded low/slope/OLS controls.",
+  "upstream_linux_validation_job": "7763145",
+  "threads_policy": "Equal public requests, effective native teams and affinities; normal Stata host settings throughout.",
+  "input_policy": "Seed202609288 predeclared before generating any fresh input. No source changes after the initial screen.",
+  "interpretation": "No engine, tolerance, memory policy or guard changes. All default-reference scientific failures stay NR. Slope stock remains explicitly strict. Inspect complete paired distributions, unchanged-path controls, iteration counts and process/native memory before adoption. Do not tune to these cases.",
+  "plugins": {
+    "baseline": "d1156e6dc88d1b041e061ce7e4df7a323bcd08f8254276b752172cb022950e22",
+    "candidate": "a7e95e6712c6b05b0217a9ddffa5b8f14c0f8d95443c2b983ce459f16a0e4596"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "job": "7763189",
+  "status": "submitted",
+  "run_directory": "dev/20260928-joint-operator-rotation03",
+  "applications": 111,
+  "cases": 11,
+  "source_snapshot": "4c3d7c44dec6535da0506e1f771516ec1615ce92c43beb6e53520fd0c949771e",
+  "candidate_plugin_sha256": "a7e95e6712c6b05b0217a9ddffa5b8f14c0f8d95443c2b983ce459f16a0e4596",
+  "slots": 28,
+  "wall_minutes": 30,
+  "whole_node_isolation": true,
+  "deployment_sha256": "8b6ba32fb029bad3c308c3d32412c16b3326132bccf3a6265a21669c84ea3109",
+  "gate": "All initial science comparisons and strict Rust gates passed; candidate source unchanged."
+}

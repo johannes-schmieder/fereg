@@ -1,0 +1,442 @@
+{
+  "cases": [
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "profiled-small",
+      "input_sha256": {
+        "202609282": "0ab60ec65286b157b6c3ed8b156e9e2ca84dfe7a31e097b4717f65062d6f8299"
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "small-low",
+      "input_sha256": {
+        "202609282": "0ab60ec65286b157b6c3ed8b156e9e2ca84dfe7a31e097b4717f65062d6f8299"
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 1
+      },
+      "id": "small-serial",
+      "input_sha256": {
+        "202609282": "0ab60ec65286b157b6c3ed8b156e9e2ca84dfe7a31e097b4717f65062d6f8299"
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 1
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 12,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "larger-wide",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "sparse-two",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 24,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "wide-serial-adjoint",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "three-fe-core-pair",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "slopes",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "threads": 4
+      },
+      "id": "excluded-slope",
+      "input_sha256": {
+        "202609286": "18aab5bf30ea7aa0fe76b83c75219b20ac7a8623edf7765c3646f22c601957a2"
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609286,
+        202609286,
+        202609286
+      ],
+      "stock_arm": "fixest_strict"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ols",
+        "n": 61440,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "excluded-ols",
+      "input_sha256": {
+        "202609284": "5b32c5164a081e0a4434f011824593740e021164344377f0ba7154196132183b"
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest"
+    }
+  ],
+  "fits": 81,
+  "input_policy": "Profiled, slope and OLS inputs must reproduce exact captured hashes. Initial cases diagnose the hypothesis; adoption requires a separate fresh registration.",
+  "interpretation": "Default stock timings require all scientific checks. Preserve NR and every losing pair. No compile/profile/archive/competing fits alongside headline rotations; do not pool profile clocks or prior source blocks.",
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "plugins": {
+    "baseline": "d1156e6dc88d1b041e061ce7e4df7a323bcd08f8254276b752172cb022950e22",
+    "candidate": "a7e95e6712c6b05b0217a9ddffa5b8f14c0f8d95443c2b983ce459f16a0e4596"
+  },
+  "purpose": "Test repeated categorical joint LSMR operator products with unchanged independent acceptance.",
+  "schema": "joint-operator-screen-v1",
+  "science": "Existing systematic sample, convergence, coefficient, covariance and objective checks; native rank/DoF equality. Independent WLS and Poisson/Hessian/sandwich fixtures already passed on both artifacts. Scientific discrepancies stay unranked. Additional fast-categorical strict-final/forced-retry and three-FE/nested-rank/zero-control Rust tests on both targets before timing.",
+  "source_snapshot": "4c3d7c44dec6535da0506e1f771516ec1615ce92c43beb6e53520fd0c949771e",
+  "threads_policy": "Equal public requests, effective native teams and affinities; normal Stata host settings throughout.",
+  "upstream_linux_validation_job": "7763145",
+  "warmup": "Same case/design/width/threads on registered 7680-row positive-outcome warm input; generation happens sequentially outside every command clock.",
+  "work": "Public feppml and pinned unmodified fepois, robust inference; OLS control uses IID. No optional saved observation outputs. Slope control uses strict stock (glm.tol=1e-10, fixef.tol=1e-11); categorical and OLS use default."
+}

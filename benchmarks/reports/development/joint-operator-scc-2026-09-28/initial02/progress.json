@@ -1,0 +1,1541 @@
+[
+  {
+    "case": "profiled-small",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 9.996344030316351e-17,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.5475808004886127e-10,
+        "max_se_error": 8.450038399034077e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609282
+  },
+  {
+    "case": "profiled-small",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 9.996344030316351e-17,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.5475808004886127e-10,
+        "max_se_error": 8.450038399034077e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609282
+  },
+  {
+    "case": "profiled-small",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 9.996344030316351e-17,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.5475808004886127e-10,
+        "max_se_error": 8.450038399034077e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609282
+  },
+  {
+    "case": "small-low",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.7139002890520505e-13,
+        "max_se_error": 8.449533399346176e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609282
+  },
+  {
+    "case": "small-low",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.7139002890520505e-13,
+        "max_se_error": 8.449533399346176e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609282
+  },
+  {
+    "case": "small-low",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.7139002890520505e-13,
+        "max_se_error": 8.449533399346176e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609282
+  },
+  {
+    "case": "small-serial",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.5475808004886127e-10,
+        "max_se_error": 8.450038399034077e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609282
+  },
+  {
+    "case": "small-serial",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.5475808004886127e-10,
+        "max_se_error": 8.450038399034077e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609282
+  },
+  {
+    "case": "small-serial",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.5475808004886127e-10,
+        "max_se_error": 8.450038399034077e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609282
+  },
+  {
+    "case": "larger-wide",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 8.039677300633596e-11,
+        "max_se_error": 4.938275300833683e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609282
+  },
+  {
+    "case": "larger-wide",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 8.039677300633596e-11,
+        "max_se_error": 4.938275300833683e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609282
+  },
+  {
+    "case": "larger-wide",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 8.039677300633596e-11,
+        "max_se_error": 4.938275300833683e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609282
+  },
+  {
+    "case": "sparse-two",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 9.996344030316351e-17,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 5.14878000261107e-12,
+        "max_se_error": 6.30445209925945e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609282
+  },
+  {
+    "case": "sparse-two",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 9.996344030316351e-17,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 5.14878000261107e-12,
+        "max_se_error": 6.30445209925945e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609282
+  },
+  {
+    "case": "sparse-two",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 9.996344030316351e-17,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 5.14878000261107e-12,
+        "max_se_error": 6.30445209925945e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609282
+  },
+  {
+    "case": "wide-serial-adjoint",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.0018028073766061e-16,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 4.938747002504462e-12,
+        "max_se_error": 5.067052099086422e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609282
+  },
+  {
+    "case": "wide-serial-adjoint",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.0018028073766061e-16,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 4.938747002504462e-12,
+        "max_se_error": 5.067052099086422e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609282
+  },
+  {
+    "case": "wide-serial-adjoint",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 1.0018028073766061e-16,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 4.938747002504462e-12,
+        "max_se_error": 5.067052099086422e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609282
+  },
+  {
+    "case": "three-fe-core-pair",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 2.601894199226462e-11,
+        "max_se_error": 5.068189899877507e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609282
+  },
+  {
+    "case": "three-fe-core-pair",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 2.601894199226462e-11,
+        "max_se_error": 5.068189899877507e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609282
+  },
+  {
+    "case": "three-fe-core-pair",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 2.601894199226462e-11,
+        "max_se_error": 5.068189899877507e-10,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609282
+  },
+  {
+    "case": "excluded-slope",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 7.294945897351468e-14,
+        "max_se_error": 2.1014999636304044e-12,
+        "right": "fixest_strict",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609286
+  },
+  {
+    "case": "excluded-slope",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 7.294945897351468e-14,
+        "max_se_error": 2.1014999636304044e-12,
+        "right": "fixest_strict",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609286
+  },
+  {
+    "case": "excluded-slope",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "feppml",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "deviance": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "feppml",
+        "max_coefficient_error": 7.294945897351468e-14,
+        "max_se_error": 2.1014999636304044e-12,
+        "right": "fixest_strict",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609286
+  },
+  {
+    "case": "excluded-ols",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "fereg",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "fereg",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "fereg",
+        "max_coefficient_error": 7.872001661635153e-13,
+        "max_se_error": 2.2798603283025187e-15,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 1,
+    "seed": 202609284
+  },
+  {
+    "case": "excluded-ols",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "fereg",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "fereg",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "fereg",
+        "max_coefficient_error": 7.872001661635153e-13,
+        "max_se_error": 2.2798603283025187e-15,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "stock",
+      "candidate",
+      "baseline"
+    ],
+    "repetition": 2,
+    "seed": 202609284
+  },
+  {
+    "case": "excluded-ols",
+    "comparisons": {
+      "baseline": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "covariance": true,
+          "covariance_available": true,
+          "native_rank_dof": true,
+          "native_threads": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "fereg",
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0,
+        "right": "fereg",
+        "status": "pass"
+      },
+      "stock": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": true,
+          "covariance_available": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": true
+        },
+        "left": "fereg",
+        "max_coefficient_error": 7.872001661635153e-13,
+        "max_se_error": 2.2798603283025187e-15,
+        "right": "fixest",
+        "status": "pass"
+      }
+    },
+    "order": [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    "repetition": 3,
+    "seed": 202609284
+  }
+]

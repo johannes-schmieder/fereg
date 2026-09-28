@@ -131,9 +131,23 @@ fixtures](benchmarks/reports/development/joint-operator-scc-2026-09-28/mac-valid
 plus universal build/ABI/panic checks. [SCC validation 7763145](benchmarks/reports/development/joint-operator-scc-2026-09-28/submission01.json)
 passes 30 Rust tests, PPML smoke and the same four licensed fixtures, clean
 accounting 199s/four slots/maxvmem5.323G. Candidate Linux plugin **a7e95e67…**.
-The [81-application initial screen 7763162](benchmarks/reports/development/joint-operator-scc-2026-09-28/submission02.json)
-is submitted with two additional fast-categorical strict/retry/rank Rust gates
-before timing. No timing or adoption claim for this candidate.
+The [81-application initial screen 7763162](benchmarks/reports/development/joint-operator-scc-2026-09-28/initial02/README.md)
+passes all 27 native and stock science pairs, plus the two additional Linux
+strict/retry/rank tests before timing. Both platforms therefore pass 32 focused
+Rust tests. Small fast and K24 C/B paired medians improve to **0.875/0.884**;
+serial/K12/three-FE are **0.940/0.932/0.954**, sparse **1.005**, OLS **1.005**.
+Excluded low and slope paths also improve **0.855/0.856**; do not attribute all
+clock changes to the kernel. Every outer/inner count and modeled memory field
+matches. Tracked three-FE peak rises 1.65MB; other PPML peaks match. Clean
+accounting 298s/28 isolated slots/maxvmem2.323G. Small dense stock ratios remain
+**1.693/1.781**, OLS **1.472**. No adoption yet.
+
+[Fresh confirmation 7763189](benchmarks/reports/development/joint-operator-scc-2026-09-28/submission03.json)
+is submitted: 111 applications/11 cases on predeclared seed 202609288, adding
+larger and weak-connectivity designs and repeating width/thread/three-FE cases
+and excluded controls. Candidate source is unchanged; no compilation, profiling
+or competing fits overlap headline timing. This is bounded development, not
+qualification or completion of the broader plan.
 
 The broader repair goal remains active: small OLS/PPML and low-memory OLS
 stock losses, original comparator/separation adjudications, large timeouts and
