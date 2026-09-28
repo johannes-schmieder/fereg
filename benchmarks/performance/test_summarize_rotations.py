@@ -5,7 +5,7 @@ import tempfile
 import unittest
 
 from summarize_rotations import summarize
-from rotation_threads import variant_cell, native_threads_match
+from rotation_threads import variant_cell, native_threads_match, selected_threads
 
 
 def write(path, value):
@@ -25,6 +25,14 @@ class RotationSummaryTests(unittest.TestCase):
         receipt = dict(cell=case["cell"], metadata=dict(feppml_threads=8, feppml_requested_threads=8))
         self.assertTrue(native_threads_match(receipt, 8))
         self.assertFalse(native_threads_match(receipt, 28))
+        receipt["metadata"]["feppml_requested_threads"] = 28
+        self.assertTrue(native_threads_match(receipt, 28, 8))
+        self.assertFalse(native_threads_match(receipt, 8, 8))
+        case["native_effective_threads"] = dict(candidate=8)
+        self.assertEqual(selected_threads(case, "candidate"), 8)
+        for counts in [dict(stock=8), dict(candidate=0), dict(candidate=29), dict(candidate=True)]:
+            with self.assertRaises(ValueError):
+                selected_threads(dict(case, native_effective_threads=counts), "candidate")
 
     def test_explicit_thread_pairs_require_actual_native_receipt(self):
         with tempfile.TemporaryDirectory() as folder:
@@ -43,6 +51,28 @@ class RotationSummaryTests(unittest.TestCase):
             self.assertEqual(result["scaling"], [])
             self.assertEqual(result["cases"][0]["arm_threads"], dict(baseline=2, candidate=4, stock=8))
             self.mutate(root, "ols-t4/pair-1/candidate/result.json", lambda r: r["metadata"].update(fereg_threads=2))
+            with self.assertRaisesRegex(ValueError, "native thread receipt"):
+                summarize(root)
+
+    def test_effective_ceiling_keeps_public_request_and_checks_each_pair(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.fixture(root)
+            plan = json.loads((root / "plan.json").read_text())
+            for case in plan["cases"]:
+                case["native_effective_threads"] = dict(candidate=2)
+                for rep in (1, 2):
+                    for variant in ("baseline", "candidate"):
+                        self.mutate(root, f"{case['id']}/pair-{rep}/{variant}/result.json",
+                                    lambda r: r.update(metadata=dict(
+                                        fereg_requested_threads=case["cell"]["threads"],
+                                        fereg_threads=selected_threads(case, variant))))
+            write(root / "plan.json", plan)
+            result = summarize(root)
+            self.assertEqual(result["scaling"], [])
+            self.assertEqual(result["cases"][0]["cell"]["threads"], 4)
+            self.assertEqual(result["cases"][0]["native_effective_threads"], dict(baseline=4, candidate=2))
+            self.mutate(root, "ols-t4/pair-2/candidate/result.json", lambda r: r["metadata"].update(fereg_requested_threads=2))
             with self.assertRaisesRegex(ValueError, "native thread receipt"):
                 summarize(root)
 

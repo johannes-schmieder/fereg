@@ -17,7 +17,7 @@ from common import read_json, sha256, write_json
 from generate import generate
 from oracle import oracle
 from runner import compare, measure, read_coefficients
-from rotation_threads import native_threads_match, variant_cell
+from rotation_threads import native_threads_match, selected_threads, variant_cell
 
 
 def oracle_checks(directory, independent, tolerance):
@@ -51,6 +51,8 @@ def run(args):
     for case in plan["cases"]:
         for variant in ("baseline", "candidate", "stock"):
             variant_cell(case, variant)
+            if variant != "stock":
+                selected_threads(case, variant)
     # Verify both computational snapshots and stock reference before any fits.
     identities = {"plan": sha256(args.plan), "manifest": sha256(args.manifest), "sources": {}, "harness": {}}
     for name in ("baseline", "candidate"):
@@ -113,9 +115,9 @@ def run(args):
             a = read_json(output / "candidate/result.json")
             b = read_json(output / "baseline/result.json")
             if a["status"] == b["status"] == "pass":
-                if "arm_threads" in case:
+                if "arm_threads" in case or "native_effective_threads" in case:
                     comparisons["baseline"]["checks"]["native_threads"] = all(
-                        native_threads_match(receipt, variant_cell(case, name)["threads"])
+                        native_threads_match(receipt, variant_cell(case, name)["threads"], selected_threads(case, name))
                         for name, receipt in (("baseline", b), ("candidate", a)))
                 comparisons["baseline"]["checks"]["native_rank_dof"] = all(
                     a["metadata"].get(k) == b["metadata"].get(k)

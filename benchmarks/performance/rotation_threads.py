@@ -13,8 +13,19 @@ def variant_cell(case, variant):
     return cell
 
 
-def native_threads_match(receipt, expected):
+def selected_threads(case, variant):
+    counts = case.get("native_effective_threads", {})
+    if set(counts) - {"baseline", "candidate"}:
+        raise ValueError("effective native count for an unregistered variant")
+    requested = variant_cell(case, variant)["threads"]
+    selected = counts.get(variant, requested)
+    if type(selected) is not int or not 1 <= selected <= requested:
+        raise ValueError("selected native count exceeds registered request")
+    return selected
+
+
+def native_threads_match(receipt, requested, effective=None):
     prefix = "feppml" if receipt["cell"]["model"] == "ppml" else "fereg"
     metadata = receipt.get("metadata", {})
-    return (metadata.get(prefix + "_threads") == expected
-            and metadata.get(prefix + "_requested_threads") == expected)
+    return (metadata.get(prefix + "_threads") == (requested if effective is None else effective)
+            and metadata.get(prefix + "_requested_threads") == requested)
