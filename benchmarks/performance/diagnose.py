@@ -20,6 +20,71 @@ from common import read_json, sha256, thread_environment, write_json
 from generate import generate
 
 
+def bounded_environment(case, output, inherited, available_bytes=None):
+    env = {key: value for key, value in inherited.items() if not key.startswith("FEREG_")}
+    env.update(thread_environment(case["cell"]["threads"]))
+    env.update(FEREG_SOLVER_TRACE="1", FEREG_SOLVER_TRACE_FILE=str(output / "solver.trace"))
+    if case.get("phase_timing", False):
+        env["FEREG_PHASE_TIMING"] = "1"
+    limit = case.get("memory_limit_bytes")
+    if limit is not None:
+        # The developer seam must only restrict the real available-memory frame.
+        # A large admission forecast is not authority to invent physical memory.
+        if type(limit) is not int or limit <= 0 or available_bytes is None or limit > available_bytes:
+            raise ValueError("diagnostic memory limit must be positive and within current available memory")
+        env["FEREG_MEMORY_LIMIT_BYTES"] = str(limit)
+    return env
+
+
+def available_linux_memory():
+    for line in Path("/proc/meminfo").read_text().splitlines():
+        fields = line.split()
+        if fields[0] == "MemAvailable:" and fields[2:] == ["kB"]:
+            return int(fields[1]) * 1024
+    raise ValueError("Linux MemAvailable is missing")
+
+
+def wait_bounded(child, timeout, rss_limit=None):
+    """Diagnostic-only safety monitor; never produces eligible timing evidence."""
+    if rss_limit is None:
+        try:
+            child.wait(timeout=timeout)
+            return None, None
+        except subprocess.TimeoutExpired:
+            os.killpg(child.pid, signal.SIGKILL)
+            child.wait()
+            return "process_timeout", None
+    if type(rss_limit) is not int or rss_limit <= 0:
+        raise ValueError("RSS limit must be a positive integer")
+    started, peak, reason = time.monotonic(), 0, None
+    try:
+        import psutil
+        parent = psutil.Process(child.pid)
+        while child.poll() is None:
+            try:
+                rss = 0
+                for process in [parent, *parent.children(recursive=True)]:
+                    try:
+                        rss += process.memory_info().rss
+                    except psutil.NoSuchProcess:
+                        pass
+                peak = max(peak, rss)
+            except psutil.NoSuchProcess:
+                pass
+            if peak > rss_limit:
+                reason = "rss_limit"
+            elif time.monotonic() - started > timeout:
+                reason = "process_timeout"
+            if reason:
+                break
+            time.sleep(.1)
+    finally:
+        if child.poll() is None:
+            os.killpg(child.pid, signal.SIGKILL)
+        child.wait()
+    return reason, peak
+
+
 def stata_script(source, refs, data, output, case):
     cell = case["cell"]
     absorption = " ".join(e + ("##c.(" + " ".join(cell["slopes"][e]) + ")"
@@ -92,31 +157,30 @@ def run(args):
         data = args.scratch / (case["id"] + ".dta")
         info = generate(case["cell"], case["seed"], data, manifest)
         write_json(output / "input.json", info)
+        if "expected_input_sha256" in case:
+            assert info["sha256"] == case["expected_input_sha256"], "regenerated input differs"
         script = output / "fit.do"
         script.write_text(stata_script(args.source, args.refs, data, output, case))
-        env = os.environ.copy()
-        for key in list(env):
-            if key.startswith("FEREG_"):
-                del env[key]
-        env.update(thread_environment(case["cell"]["threads"]))
-        env.update(FEREG_SOLVER_TRACE="1", FEREG_SOLVER_TRACE_FILE=str(output / "solver.trace"))
+        available = available_linux_memory() if "memory_limit_bytes" in case else None
+        env = bounded_environment(case, output, os.environ, available)
+        rss_limit = case.get("rss_limit_bytes")
+        if rss_limit is not None and (type(rss_limit) is not int or rss_limit <= 0):
+            raise ValueError("RSS limit must be a positive integer")
         cpus = sorted(os.sched_getaffinity(0))[:case["cell"]["threads"]]
+        assert len(cpus) == case["cell"]["threads"], "insufficient allocated cores"
         command = ["taskset", "-c", ",".join(map(str, cpus)), "stata-mp", "-b", "do", str(script)]
         started = time.monotonic()
-        timed_out = False
         with (output / "stdout.txt").open("w") as stdout, (output / "stderr.txt").open("w") as stderr:
             child = subprocess.Popen(command, cwd=output, env=env, stdout=stdout,
                                      stderr=stderr, start_new_session=True)
-            try:
-                child.wait(timeout=case["timeout_seconds"])
-            except subprocess.TimeoutExpired:
-                timed_out = True
-                os.killpg(child.pid, signal.SIGKILL)
-                child.wait()
+            stop_reason, peak_rss = wait_bounded(child, case["timeout_seconds"], rss_limit)
         log = (output / "fit.log").read_text(errors="replace") if (output / "fit.log").exists() else ""
         record = dict(case=case, input_sha256=info["sha256"], process_rc=child.returncode,
-                      timed_out=timed_out, elapsed_seconds=time.monotonic() - started,
-                      sentinel="PERFORMANCE_COMPLETE rc=0" in log,
+                      timed_out=stop_reason == "process_timeout", stop_reason=stop_reason,
+                      elapsed_seconds=time.monotonic() - started,
+                      available_bytes_before=available, peak_process_tree_rss_bytes=peak_rss,
+                      performance_eligible=False, cpu_affinity=cpus,
+                      sentinel=child.returncode == 0 and stop_reason is None and "PERFORMANCE_COMPLETE rc=0" in log,
                       last_stage=next((line.strip() for line in reversed(log.splitlines())
                                        if line.startswith("PERFORMANCE_STAGE ")), None),
                       files={p.name: sha256(p) for p in output.iterdir() if p.is_file()})

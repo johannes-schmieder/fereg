@@ -131,6 +131,23 @@ times out at 720 command seconds; strict stock large three-FE PPML seed20260819
 times out at 2,400 seconds. Preserve both. After the held diagnostics, prioritize
 a bounded native timeout phase/solver diagnosis; no automatic rerun or restart.
 
+**Queued OLS memory-routing diagnostic: 7767269**, held behind **7766045,
+7766146 and 7767016**, four slots/6G per core, 15 minutes. The
+[source-bound registration](benchmarks/reports/development/ols-timeout-memory-registration-scc-2026-09-28/README.md)
+finds that current large degree-two T4/K10 Schwarz admission charges at least
+**316.435 GiB** for apply buffers alone; the successful seed used LSMR with about
+4 GiB process RSS on a larger-memory host. The timed-out seed lacks a published
+route/memory receipt, so causation remains unproved. Two identical-input probes
+on one large-memory node restrict the real available-memory frame to 448/192 GiB;
+neither may exceed observed MemAvailable. Each stops after 180 process seconds or
+20 GiB sampled process-tree RSS. No source/artifact change, stock rerun or build.
+Seven local diagnostic safety tests and staged AST/shell checks pass. All 259
+computational inputs still match. Require accounting, both attempt receipts,
+exact input hashes and traces; a harness-complete marker is not scientific
+acceptance. Further headline jobs must wait until this diagnostic also finishes.
+If the route hypothesis is confirmed, investigate tighter topology/ownership
+bounds or bounded live RHS scratch, retaining the current headroom and checks.
+
 ## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 
 [ADR0245](docs/adr/0245-private-implicit-finite-moments.md) extends private finite
