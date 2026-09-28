@@ -1,0 +1,8 @@
+{
+  "registration_sha256": "82f5568afaea192220ae4ee971f0e850fd4f876c83fb569f7418d551dc200b88",
+  "generator_sha256": "b56668181b80cd8dd00629b9841cf8a4faaacce5711e54bdfec8b137d2183482",
+  "script_sha256": "4610aa16a3f9b3e5bb63da51e04b289e624dbb8568ec09eb12757990806a3e77",
+  "files": 28,
+  "scaling_inputs_identical": true,
+  "fitted_before_generation": false
+}

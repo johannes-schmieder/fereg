@@ -8,6 +8,28 @@ use crate::error::Result;
 use crate::fe::FeDesign;
 use rayon::prelude::*;
 
+// Portable x86 lowers mul_add to an out-of-line libm call. Keep these
+// speculative products inline; fresh original-row reconstruction and the
+// independent full certificate, not this rounding sequence, accept a solve.
+// Targets with compile-time hardware FMA retain their existing arithmetic.
+#[inline(always)]
+fn product_sum(left: f64, right: f64, sum: f64) -> f64 {
+    #[cfg(any(target_arch = "aarch64", target_feature = "fma"))]
+    {
+        left.mul_add(right, sum)
+    }
+    #[cfg(not(any(target_arch = "aarch64", target_feature = "fma")))]
+    {
+        left * right + sum
+    }
+}
+
+fn product_dot(left: &[f64], right: &[f64]) -> f64 {
+    left.iter()
+        .zip(right)
+        .fold(0., |sum, (&a, &b)| product_sum(a, b, sum))
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 enum Representation {
     Coupling,
@@ -578,15 +600,15 @@ impl PreparedCoupling {
             for start in (0..whole).step_by(4) {
                 let mut sums = [0.; 4];
                 for (j, &v) in x.iter().enumerate() {
-                    sums[0] = self.schur[start * p + j].mul_add(v, sums[0]);
-                    sums[1] = self.schur[(start + 1) * p + j].mul_add(v, sums[1]);
-                    sums[2] = self.schur[(start + 2) * p + j].mul_add(v, sums[2]);
-                    sums[3] = self.schur[(start + 3) * p + j].mul_add(v, sums[3]);
+                    sums[0] = product_sum(self.schur[start * p + j], v, sums[0]);
+                    sums[1] = product_sum(self.schur[(start + 1) * p + j], v, sums[1]);
+                    sums[2] = product_sum(self.schur[(start + 2) * p + j], v, sums[2]);
+                    sums[3] = product_sum(self.schur[(start + 3) * p + j], v, sums[3]);
                 }
                 y[start..start + 4].copy_from_slice(&sums);
             }
             for i in whole..p {
-                y[i] = dot(&self.schur[i * p..(i + 1) * p], x);
+                y[i] = product_dot(&self.schur[i * p..(i + 1) * p], x);
             }
         } else {
             self.compact_base(x, y);
@@ -620,7 +642,7 @@ impl PreparedCoupling {
             };
             for _ in 0..levels {
                 for a in 0..width {
-                    y[coordinate + a] = dot(
+                    y[coordinate + a] = product_dot(
                         &self.diagonal[value + a * width..value + (a + 1) * width],
                         &x[coordinate..coordinate + width],
                     );
@@ -639,8 +661,8 @@ impl PreparedCoupling {
                     for a in 0..lc {
                         for b in 0..rc {
                             let v = pair.values[edge * lc * rc + a * rc + b];
-                            y[left + a] = v.mul_add(x[right + b], y[left + a]);
-                            y[right + b] = v.mul_add(x[left + a], y[right + b]);
+                            y[left + a] = product_sum(v, x[right + b], y[left + a]);
+                            y[right + b] = product_sum(v, x[left + a], y[right + b]);
                         }
                     }
                 }
@@ -668,8 +690,11 @@ impl PreparedCoupling {
                     let right = pair.right_start + pair.targets[edge] * rc;
                     for a in 0..lc {
                         for b in 0..rc {
-                            local[a] = pair.values[edge * lc * rc + a * rc + b]
-                                .mul_add(x[right + b], local[a]);
+                            local[a] = product_sum(
+                                pair.values[edge * lc * rc + a * rc + b],
+                                x[right + b],
+                                local[a],
+                            );
                         }
                     }
                 }
@@ -680,8 +705,11 @@ impl PreparedCoupling {
                     let right = pair.right_start + pair.targets[edge] * rc;
                     for a in 0..lc {
                         for b in 0..rc {
-                            y[right + b] = (-pair.values[edge * lc * rc + a * rc + b])
-                                .mul_add(local[a], y[right + b]);
+                            y[right + b] = product_sum(
+                                -pair.values[edge * lc * rc + a * rc + b],
+                                local[a],
+                                y[right + b],
+                            );
                         }
                     }
                 }

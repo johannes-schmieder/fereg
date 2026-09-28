@@ -9,41 +9,60 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
-## Confirmed OLS control loss — bounded ownership repair in progress
+## OLS slope owner accepted; portable coupling candidate under validation
 
-The [nine-pair confirmation](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-control04/README.md)
-**7761847** completes all 72 timed applications and 36 native science pairs,
-plus 14 separate diagnostic fits. Clean accounting: 940 s, 28 slots, scc-wo4.
-The unchanged three-FE low input at seed 202609280 loses **20.0%** at the paired
-median, seven losses in nine pairs; seed 202609279 loses 2.9%. Combined low
-median is 1.136 (range 0.671–1.635). Fast control medians are 1.016/1.017.
-The new two-partition owner at source 852b03a9 remains scientifically valid but
-**not accepted as regression-free**. No cause is established from these clocks.
+[Boxed-owner confirmation 7761995](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-boxed07/README.md)
+completes **90/90 applications**, **36 native** and **18 strict-stock** science
+pairs on exact **03292138**, plugin `36f068f6…`. Accounting is clean: 789 s,
+28 slots, isolated scc-wo4, maxvmem 1.495G. Two-partition OLS paired medians are
+**0.425/0.526 of baseline**, **0.847/1.173 of comparable stock** for smaller/larger
+cases. Process peaks are 104/311 MiB versus baseline 145/546 MiB. The larger
+case still misses the 0.90 goal. These are source-bound distributions, not a
+universal 20% ceiling.
 
-[CPU attribution](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-perf05/README.md)
-**7761864** also passes, after headline timing ended (57 s, eight slots,
-scc-tb4). The prepared coupling application dominates new-path CPU work at
-41.5–57.1%; out-of-line libm FMA accounts for another 9.5–14.4%. Disassembly
-shows hardware FMA behind those calls, not software emulation. This suggests
-portable speculative-product work after resolving the unrelated control loss;
-no arithmetic/certificate changes have been made.
+Three-FE fast/low controls are **1.008/1.021** of baseline, with five/six losses
+in nine pairs. Low spans 0.686–1.390. The prior 20.0% median loss on this input
+is not retained at that magnitude; no causal stack-layout claim follows.
+[ADR 0231](docs/adr/0231-one-shot-two-partition-slope-owner.md) adopts the bounded
+two-partition owner with these small control losses visible. Three-plus OLS
+remains on its prior route. The source passed 79 focused Rust tests, universal
+Mac build/ABI and three licensed fixtures; [Linux build and 32-fit independent
+WLS oracle](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-linux06.json)
+passed as 7761943. Failed pre-fit 7761945 and its [missing-input-link repair](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-retry07.json)
+remain preserved; no estimator failed there.
 
-A representation-only repair stores the optional slope owner behind one
-fallibly allocated fixed-size box instead of embedding its full state in the
-common OLS descriptor. The existing admitted owner byte count covers its storage;
-excluded routes allocate nothing. It passes [79 focused Rust tests](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-unit06.json).
-The [universal Mac build and three licensed fixtures](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-validation06.json)
-pass, including the 32-fit weighted WLS/sandwich oracle, three-FE OLS and
-categorical PPML. The [90-fit SCC registration](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-registration06.json)
-uses the confirmed failing input, fast control and two slope cases, with a
-maximum-thread probe before timing. Exact candidate **03292138** is deployed;
-[build/oracle 7761943 and held confirmation 7761945](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-submission06.json)
-were submitted. [Linux build and both licensed fixtures passed](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-linux06.json)
-in 125 seconds with clean accounting. Timing 7761945 failed before any fit:
-the deployment omitted a link to pilot inputs still covered by the frozen
-manifest. The [narrow repair and focused retry 7761995](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-retry07.json)
-preserve source, artifacts, cases and every check; all 61 input files verified.
-Performance remains pending. This is a bounded causal experiment, not a claimed fix.
+[CPU attribution 7761864](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-perf05/README.md)
+identified prepared coupling applications and out-of-line hardware FMA calls
+as the dominant portable slope target. [ADR 0232](docs/adr/0232-portable-prepared-coupling-products.md)
+now specifies a separate candidate: inline multiplication/addition only in
+speculative prepared products when hardware FMA is unavailable at compile time.
+Current-weight geometry, independent observation products, reconstruction,
+curvature guards and every acceptance condition remain unchanged. No storage
+is added. The [frozen source and 24-fit registration](benchmarks/reports/development/portable-coupling-scc-2026-09-28/registration.json)
+use the boxed artifact as baseline; this is a new experiment, not an accepted
+speed claim. [79 Mac Rust tests pass](benchmarks/reports/development/portable-coupling-scc-2026-09-28/mac-unit01.json),
+including null/near-null and nonfinite curvature refusal; ARM retains its prior
+arithmetic and does not validate the changed portable branch.
+
+[Shared Linux build/oracles 7762056 and held rotation 7762063](benchmarks/reports/development/portable-coupling-scc-2026-09-28/submission01.json)
+are submitted sequentially after the earlier headline block. The [local universal build and four licensed fixtures pass](benchmarks/reports/development/portable-coupling-scc-2026-09-28/mac-validation01.json).
+Its temporary timing hold was released after local builds, fixtures and fresh
+input staging ended; the Linux success dependency remains mandatory.
+[Linux validation passes](benchmarks/reports/development/portable-coupling-scc-2026-09-28/linux-validation01.json):
+79 Rust tests on the unfused branch, two shared smokes and four independent
+licensed fixtures, clean accounting. The [completed 24-fit block](benchmarks/reports/development/portable-coupling-scc-2026-09-28/initial01/README.md)
+passes every science comparison (234 s, clean accounting). Paired C/B medians
+are 0.950 smaller and 0.404 larger, but the larger same-artifact baseline is
+highly variable; do not claim a stable 60% gain. Strict-stock ratios are
+0.789/0.948. The excluded low control loses 11.1%, two of three pairs, and
+remains a concern. The unchanged candidate proceeds to [fresh 100-fit job
+7762198](benchmarks/reports/development/portable-coupling-scc-2026-09-28/fresh-submission02.json).
+[Fresh seed/cases](benchmarks/reports/development/portable-coupling-scc-2026-09-28/fresh-registration02.json)
+were declared before generation; identical T1/T4/T8 fast inputs are required.
+That block is now running; do not accept the kernel before its distributions
+and controls are reviewed.
+The full repair plan, PPML performance controls, thread ceiling, remaining
+comparator adjudication and broader remeasurement remain open. No push.
 
 ## Two-partition OLS slope owner — SCC gains, control confirmation open
 

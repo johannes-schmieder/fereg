@@ -1,0 +1,335 @@
+[
+  {
+    "seed": 202609280,
+    "case": "two-dense-fast",
+    "repetition": 0,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0133928571428572,
+        "candidate_seconds": 0.454,
+        "other_seconds": 0.448,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.6021220159151194,
+        "candidate_seconds": 0.454,
+        "other_seconds": 0.754,
+        "max_fitted_difference": 1.0593859123275706e-10
+      }
+    }
+  },
+  {
+    "seed": 202609280,
+    "case": "three-sparse-low",
+    "repetition": 0,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.1108420002849406,
+        "candidate_seconds": 7.796999999999999,
+        "other_seconds": 7.019,
+        "max_fitted_difference": 9.103828801926284e-15
+      }
+    }
+  },
+  {
+    "seed": 202609280,
+    "case": "two-dense-larger",
+    "repetition": 0,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8114478114478114,
+        "candidate_seconds": 1.928,
+        "other_seconds": 2.376,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.0444203683640303,
+        "candidate_seconds": 1.928,
+        "other_seconds": 1.846,
+        "max_fitted_difference": 1.7591927914395455e-11
+      }
+    }
+  },
+  {
+    "seed": 202609280,
+    "case": "two-dense-fast",
+    "repetition": 1,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.7893915756630265,
+        "candidate_seconds": 0.506,
+        "other_seconds": 0.641,
+        "max_fitted_difference": 1.0593859123275706e-10
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8955752212389382,
+        "candidate_seconds": 0.506,
+        "other_seconds": 0.565,
+        "max_fitted_difference": 1.3322676295501878e-15
+      }
+    }
+  },
+  {
+    "seed": 202609280,
+    "case": "three-sparse-low",
+    "repetition": 1,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.707728831442891,
+        "candidate_seconds": 5.366,
+        "other_seconds": 7.582,
+        "max_fitted_difference": 5.995204332975845e-15
+      }
+    }
+  },
+  {
+    "seed": 202609280,
+    "case": "two-dense-larger",
+    "repetition": 1,
+    "comparisons": {
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9480874316939891,
+        "candidate_seconds": 1.735,
+        "other_seconds": 1.83,
+        "max_fitted_difference": 1.7591927914395455e-11
+      },
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.39324569356301,
+        "candidate_seconds": 1.735,
+        "other_seconds": 4.412,
+        "max_fitted_difference": 1.3322676295501878e-15
+      }
+    }
+  },
+  {
+    "seed": 202609280,
+    "case": "two-dense-fast",
+    "repetition": 2,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.9501779359430604,
+        "candidate_seconds": 0.534,
+        "other_seconds": 0.562,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.800599700149925,
+        "candidate_seconds": 0.534,
+        "other_seconds": 0.667,
+        "max_fitted_difference": 1.0593859123275706e-10
+      }
+    }
+  },
+  {
+    "seed": 202609280,
+    "case": "three-sparse-low",
+    "repetition": 2,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 1.3301728945900726,
+        "candidate_seconds": 7.155,
+        "other_seconds": 5.379,
+        "max_fitted_difference": 6.9111383282915995e-15
+      }
+    }
+  },
+  {
+    "seed": 202609280,
+    "case": "two-dense-larger",
+    "repetition": 2,
+    "comparisons": {
+      "baseline": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.40402515723270443,
+        "candidate_seconds": 1.606,
+        "other_seconds": 3.975,
+        "max_fitted_difference": 1.3322676295501878e-15
+      },
+      "strict": {
+        "ranked": true,
+        "checks": {
+          "application": true,
+          "sample": true,
+          "converged": true,
+          "dof": true,
+          "rss": true,
+          "coefficients": true,
+          "covariance": true,
+          "fitted": true,
+          "error": true
+        },
+        "ratio": 0.8728260869565218,
+        "candidate_seconds": 1.606,
+        "other_seconds": 1.84,
+        "max_fitted_difference": 1.7591927914395455e-11
+      }
+    }
+  }
+]

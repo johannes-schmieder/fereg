@@ -1,0 +1,116 @@
+{
+  "job": "7762056",
+  "source_snapshot": "e07c7ec3f4edb9a48e75067d0a41ec2486f95d855dcdc10e2f2ab76267ea7c67",
+  "plugin_sha256": "e9d9f706d06ca21d6bb204fc2eb21ea7e56604aa924c47094abe0e4c7516782d",
+  "accounting": {
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 300,
+    "cpu_seconds": 705.195,
+    "slots": 4,
+    "host": "scc-tb4",
+    "maxvmem": "10.840G"
+  },
+  "smoke": {
+    "break_receipts": [],
+    "build_rc": 0,
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "plugin_filename": "fereg_linux.plugin",
+    "plugin_sha256": "e9d9f706d06ca21d6bb204fc2eb21ea7e56604aa924c47094abe0e4c7516782d",
+    "profile": "scc-dev-shared",
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/fereg_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/feppml_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": 4,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 2
+  },
+  "oracles": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_three_partition_slope_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_higher_dimensional_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_three_fe_batch_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": 4,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 4
+  },
+  "rust_tests": {
+    "passed": 79,
+    "failed": 0,
+    "ignored": 1,
+    "target": "x86_64-unknown-linux-gnu",
+    "fma_compile_feature": false
+  },
+  "files": {
+    "accounting.txt": "d9f050170156f2f13667a2acccd1d7b1c74f9ab52dc6b9f0c9454435a88aa1d1",
+    "summary.json": "b9c4a04c1e04aa43c587d78a36829dbacf7c8704ba15a976cfbf0559ae067ad7",
+    "slope-oracle.json": "92ee92a3941e5d4918cc590589907a53bc6573e4ecf6351c7c185f403695d299",
+    "rust-target-cfg.txt": "fc10eb20a7d7b72645bb1bca51c110fe8af01944a91935dfac9a9cc6a8fb53a5",
+    "slope-tests.log": "80b2faf31b45a3bccd7f1a714910cd9ea435206155d08ca6e7b79b204cf02123"
+  },
+  "terminal_sentinel": "FEREG_PORTABLE_COUPLING_BUILD_SUCCESS job=7762056 snapshot=e07c7ec3f4edb9a48e75067d0a41ec2486f95d855dcdc10e2f2ab76267ea7c67"
+}

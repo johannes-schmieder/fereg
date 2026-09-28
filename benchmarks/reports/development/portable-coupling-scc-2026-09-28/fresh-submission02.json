@@ -1,0 +1,20 @@
+{
+  "job": "7762198",
+  "run_id": "20260928-portable-coupling-fresh02",
+  "registration_sha256": "82f5568afaea192220ae4ee971f0e850fd4f876c83fb569f7418d551dc200b88",
+  "source_snapshot": "e07c7ec3f4edb9a48e75067d0a41ec2486f95d855dcdc10e2f2ab76267ea7c67",
+  "baseline_plugin_sha256": "36f068f61a72f2181b0d51f516d4e27421d9245b188513b8abbf21bb8c1056cc",
+  "candidate_plugin_sha256": "e9d9f706d06ca21d6bb204fc2eb21ea7e56604aa924c47094abe0e4c7516782d",
+  "input_manifest_sha256": "cfa3f8ef22c159a011c195ca5b2e57759d461d225fc1992b0c8993722a7d5e17",
+  "rotation_wrapper_sha256": "737af32a68a01a4aafc968eca6b30802220f4e66fc49be3a0ffb8a0e3534d2c2",
+  "verified_input_files": 28,
+  "fits": 100,
+  "rotations_per_case": 5,
+  "slots": 28,
+  "cpu_type": "E5-2680v4",
+  "mem_per_core": "3G",
+  "wall": "00:15:00",
+  "preceding_validation_job": "7762056",
+  "preceding_experiment_job": "7762063",
+  "decision": "Candidate unchanged; proceed on promising gains while retaining the 11.1% excluded-control median loss and baseline variability. Require fresh scientific checks and complete distributions."
+}

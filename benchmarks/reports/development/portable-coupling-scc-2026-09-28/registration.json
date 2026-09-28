@@ -1,0 +1,125 @@
+{
+  "schema": 1,
+  "seeds": [
+    202609280
+  ],
+  "science": {
+    "coefficient_rtol": 1e-07,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-06,
+    "vce_atol": 1e-10,
+    "objective_rtol": 1e-08,
+    "objective_atol": 1e-10
+  },
+  "fitted_envelope": {
+    "rtol": 1e-07,
+    "atol": 1e-07
+  },
+  "control_plane_policy": "Explicitly reserve native/R T for each arm, with Stata processors min(T,4) in both native arms under the SCC four-processor license. Fail before fitting if that registered control-plane capacity is unavailable; assert the requested native team after every timed call. No silent clamp.",
+  "purpose": "Initial bounded portable prepared-product measurement against the boxed-owner artifact; follow promising gains with separately predeclared fresh cases.",
+  "rotations_per_seed": 3,
+  "cases": [
+    {
+      "id": "two-dense-fast",
+      "design": "two_fe_dense",
+      "n": 61440,
+      "k": 10,
+      "threads": 4,
+      "memory": "fast",
+      "model": "ols",
+      "section": "slopes",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "slopes": {
+        "g1": [
+          "z1"
+        ],
+        "g2": [
+          "z2"
+        ]
+      },
+      "arms": [
+        "baseline",
+        "candidate",
+        "strict"
+      ],
+      "stata_processors": 4
+    },
+    {
+      "id": "three-sparse-low",
+      "design": "three_fe_sparse",
+      "n": 61440,
+      "k": 10,
+      "threads": 4,
+      "memory": "low",
+      "model": "ols",
+      "section": "slopes",
+      "effects": [
+        "g1",
+        "g2",
+        "g3"
+      ],
+      "slopes": {
+        "g1": [
+          "z1"
+        ],
+        "g2": [
+          "z2"
+        ]
+      },
+      "arms": [
+        "baseline",
+        "candidate"
+      ],
+      "stata_processors": 4
+    },
+    {
+      "id": "two-dense-larger",
+      "design": "two_fe_dense",
+      "n": 245760,
+      "k": 10,
+      "threads": 8,
+      "memory": "fast",
+      "model": "ols",
+      "section": "slopes",
+      "effects": [
+        "g1",
+        "g2"
+      ],
+      "slopes": {
+        "g1": [
+          "z1"
+        ],
+        "g2": [
+          "z2"
+        ]
+      },
+      "arms": [
+        "baseline",
+        "candidate",
+        "strict"
+      ],
+      "stata_processors": 4
+    }
+  ],
+  "baseline_plugin_sha256": "36f068f61a72f2181b0d51f516d4e27421d9245b188513b8abbf21bb8c1056cc",
+  "smoke": {
+    "case": "two-dense-larger",
+    "seed": 202609280,
+    "slots": 28
+  },
+  "smoke_output": "smoke-probe",
+  "fits": 24,
+  "baseline_source_commit": "03292138976598132b1aac9251e73e2ca6b13de0",
+  "candidate_source_manifest_sha256": "e07c7ec3f4edb9a48e75067d0a41ec2486f95d855dcdc10e2f2ab76267ea7c67",
+  "memory_policy": "No added storage or admission changes.",
+  "interpretation": "Confirmation inputs consumed by earlier experiments, not fresh validation. Three-FE low is an excluded-path control. Default-stock requested-output failures remain unranked and are not rerun.",
+  "gates": [
+    "shared Linux smoke and four independent licensed fixtures",
+    "portable-target Rust slope tests including null/nonfinite curvature refusal",
+    "maximum-thread native and stock probe before headline timing",
+    "fresh current-weight and final acceptance unchanged"
+  ]
+}

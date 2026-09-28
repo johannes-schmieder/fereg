@@ -1,0 +1,25 @@
+{
+  "job": "7762063",
+  "status": "success",
+  "source_snapshot": "e07c7ec3f4edb9a48e75067d0a41ec2486f95d855dcdc10e2f2ab76267ea7c67",
+  "accounting": {
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 234,
+    "cpu_seconds": 631.64,
+    "slots": 28,
+    "host": "scc-wo4",
+    "maxvmem": "1.491G"
+  },
+  "files": {
+    "summary.json": "3e5234bbfb82086fa94e7c669f93e5b764408d0a7afcc9b4dead61e9b80a48a4",
+    "plan.json": "669ae65e2aae39ae93c213043a9038ece2debb87f772f8085228f655a71be252",
+    "results.json": "872effcfad81dda53efeda9498db3763834bf83d210eea59f8cc3389d26c3615",
+    "comparisons.json": "1c1a4406124efabc12629aeeb66c7709f41f3c337c80cfc9d821bfec11db04d9",
+    "README.md": "cbb9b215ffae703db871eb37b275e0af88ff023c78d4f6ad528a35e5e324f6f9",
+    "identity.json": "adf29fb2370b5f2a213c6f1fa4d3ea6ae1abe19e87d601ab7db1e4e2916a527f",
+    "complete.json": "68394d3de58c59b90add87980d3d3e1a6f41fbe37ef1125a3c7e249f68bb4023"
+  },
+  "accounting_sha256": "664956bfc48a81616951618ead37164cddbd5d4ca24b64a7e5720f376f33af27",
+  "decision": "Proceed unchanged to predeclared fresh validation; retain the excluded-control loss and baseline variability."
+}

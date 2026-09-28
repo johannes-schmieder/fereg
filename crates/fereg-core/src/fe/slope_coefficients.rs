@@ -305,6 +305,32 @@ impl SlopeCoefficientWorkspace {
             }
         }
         assert!(used > 0, "test must exercise a prepared numerical operator");
+        let mut direction = vec![0.; self.coefficients];
+        assert!(coupling.apply(&direction, &mut actual, &mut work).is_none());
+        for invalid in [f64::NAN, f64::INFINITY] {
+            direction[0] = invalid;
+            assert!(coupling.apply(&direction, &mut actual, &mut work).is_none());
+        }
+        if design.effects().iter().all(|effect| effect.has_intercept()) {
+            // Each remaining partition represents the weighted constant,
+            // which the eliminated intercept must annihilate. Test this
+            // independently in observation space before requiring fallback
+            // from the cancellation-prone prepared product.
+            let scale = norm(&self.roots);
+            let constant: Vec<_> = self.roots.iter().map(|root| root / scale).collect();
+            operator.transpose(&constant, &mut direction, false);
+            for perturbation in [0., 1e-13] {
+                let near_null: Vec<_> = direction
+                    .iter()
+                    .enumerate()
+                    .map(|(i, value)| value + perturbation * ((i * 19) as f64).sin())
+                    .collect();
+                operator.forward(&near_null, &mut values);
+                operator.project_eliminated(&mut values, &mut work);
+                assert!(dot(&values, &values) <= 1e-20 * dot(&near_null, &near_null));
+                assert!(coupling.apply(&near_null, &mut actual, &mut work).is_none());
+            }
+        }
         let extra = Self::coupling_bytes(design, self.max_rhs).unwrap().unwrap();
         assert!(extra >= coupling.allocated_bytes());
     }

@@ -1,6 +1,6 @@
 # ADR 0231: one-shot two-partition OLS slope ownership
 
-Status: candidate under bounded development confirmation, 2026-09-27.
+Status: accepted for bounded development after SCC confirmation, 2026-09-27.
 
 ## Decision and scope
 
@@ -59,6 +59,10 @@ and ordered parallel certificate scratch receive separate optional admissions.
 Low mode charges its actual RHS block capacity. No existing workspace is
 credited as a speculative saving.
 
+The optional owner resides behind a fallibly allocated fixed-size box, keeping
+its full state out of the common OLS fit descriptor. Its storage is covered by
+the admitted owner byte count. Excluded routes allocate no box.
+
 All failed construction attempts contribute to the eventual reported peak.
 Budget/allocation refusal drops the optional owner and keeps the prior route.
 An admitted numerical failure fails closed. The reusable engine's generic
@@ -77,3 +81,13 @@ WLS and sandwich checks cover both memory modes, unit/analytic/frequency/
 probability weights, T1/T4, multiple slopes and saved reconstruction. Existing
 rank-deficient/changing-weight kernel tests and categorical OLS/PPML controls
 remain required. Native and reference disagreement stays unranked.
+
+The [boxed-owner SCC confirmation](../../benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-boxed07/README.md)
+passes 90 applications, 36 native science pairs and 18 strict-stock pairs on
+03292138. Two-partition paired medians are 0.425/0.526 of baseline and
+0.847/1.173 of comparable stock. Excluded fast/low three-FE controls retain
+0.8%/2.1% median losses and broad pair distributions. The prior 20% low-control
+loss does not persist at that magnitude in this block; these timings do not
+establish its cause. The larger case still misses the 0.90 stock objective.
+This acceptance is bounded development evidence, not a universal speed or
+non-regression claim, release qualification, or closure of the broader plan.
