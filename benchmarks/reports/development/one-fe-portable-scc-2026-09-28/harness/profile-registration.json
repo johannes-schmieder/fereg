@@ -1,0 +1,68 @@
+{
+  "cases": [
+    {
+      "id": "one-fe-k6-t1",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 1,
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-publication-target-01",
+      "plugin_sha256": "94925723e066bdbacf067a66524ff08918d6f3612fcbf557a1c4f1be3091a00e",
+      "command": "feppml y x1-x6, absorb(g1) threads(1) memory(fast) vce(robust)",
+      "repetitions": 12
+    },
+    {
+      "id": "one-fe-k6-t4",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-publication-target-01",
+      "plugin_sha256": "94925723e066bdbacf067a66524ff08918d6f3612fcbf557a1c4f1be3091a00e",
+      "command": "feppml y x1-x6, absorb(g1) threads(4) memory(fast) vce(robust)",
+      "repetitions": 12
+    },
+    {
+      "id": "one-fe-k24-t4",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 24,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-publication-target-01",
+      "plugin_sha256": "94925723e066bdbacf067a66524ff08918d6f3612fcbf557a1c4f1be3091a00e",
+      "command": "feppml y x1-x24, absorb(g1) threads(4) memory(fast) vce(robust)",
+      "repetitions": 12
+    }
+  ],
+  "purpose": "Current one-FE whole-command CPU attribution, including width and threads. All clocks diagnostic only; predeclared seed is not frozen validation.",
+  "frequency_hz": 199,
+  "callgraph": "dwarf,8192",
+  "source_snapshot": "5c0d4685f7e10f126f140d8bfe9a6177ffc8ce73dc00f51f1845cd319800b7e0"
+}

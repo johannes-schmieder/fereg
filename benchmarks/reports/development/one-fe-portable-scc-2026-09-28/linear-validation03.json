@@ -1,0 +1,17 @@
+{
+  "job": "7763576",
+  "status": "success",
+  "tests_passed": 7,
+  "tests_failed": 0,
+  "source": "Existing candidate test binary, run before all headline fits; no rebuild.",
+  "log_sha256": "61464899b0a96cd081ea7e1a820ffa65c18c876566d613e6a7cafde966d0c100",
+  "tests": [
+    "ols::linear_session::checkpoint_report_tests::ppml_canonical_report_merge_preserves_work_and_fallback_in_any_order",
+    "ols::linear_session::reconstruction_tests::reconstruction_failure_cannot_be_erased_by_a_later_row",
+    "ols::linear_session::reconstruction_tests::reconstruction_matches_exact_rational_oracle_and_rejects_corruption",
+    "ols::linear_session::reconstruction_tests::reconstruction_rejects_nonfinite_and_overflowed_values",
+    "ols::linear_session::inference_scan_tests::immutable_inference_scan_preserves_bits_boundaries_and_new_writes",
+    "ols::linear_session::inference_scan_tests::inference_scan_preserves_both_meats_across_weights_blocks_and_teams",
+    "ols::linear_session::reconstruction_tests::joint_response_checks_match_separate_fresh_passes_and_reject_invalid_inputs"
+  ]
+}

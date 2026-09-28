@@ -1,0 +1,27 @@
+{
+  "accounting": [
+    {
+      "jobnumber": "7763535",
+      "hostname": "scc-wn3.scc.bu.edu",
+      "start_time": "Mon Sep 28 04:40:52 2026",
+      "end_time": "Mon Sep 28 04:41:16 2026",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "24",
+      "maxvmem": "1.111G"
+    },
+    {
+      "jobnumber": "7763539",
+      "hostname": "scc-gr4.scc.bu.edu",
+      "start_time": "Mon Sep 28 04:47:03 2026",
+      "end_time": "Mon Sep 28 04:50:42 2026",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "0",
+      "ru_wallclock": "219",
+      "maxvmem": "11.841G"
+    }
+  ],
+  "raw_sha256": "3cca4ccf0d3e2fb73bf6e188b01758728948afa0529918b5afbc69ef13540316"
+}

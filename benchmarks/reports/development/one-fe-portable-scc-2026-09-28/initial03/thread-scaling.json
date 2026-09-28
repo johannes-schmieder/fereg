@@ -1,0 +1,445 @@
+{
+  "scope": "Post-hoc comparison of same-input grouped calls. Thread requests were not directly alternating. Descriptive only; no monotonic-scaling claim.",
+  "records": [
+    {
+      "arm": "baseline",
+      "lower_threads": 1,
+      "higher_threads": 2,
+      "repetition": 1,
+      "higher_over_lower": 1.1596958174904943,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "9d44228f87d7e82428c8994567188c714cd4e98601ebcde1b76e9eee580d0c3b",
+      "higher_sha256": "ad3e608398cff945b29df7a82173d21d43803f39767bc5dc8e2b8263ded68d2b"
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 1,
+      "higher_threads": 2,
+      "repetition": 1,
+      "higher_over_lower": 1.2373540856031129,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "2f3da2a19f2a4b2ee7dd0378776f8a7f7dfe567568a852b54d5641d70ac903e0",
+      "higher_sha256": "a81271bb23a645be9b065c42c7a31d223562ede9f74958eb3639a4492edf7c13"
+    },
+    {
+      "arm": "baseline",
+      "lower_threads": 1,
+      "higher_threads": 2,
+      "repetition": 2,
+      "higher_over_lower": 1.236559139784946,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "21ad7b0f60dc8acfad3f887247d7f38e21ae1a4309f6fc16e36160e739a9bda4",
+      "higher_sha256": "1b1e73debb9451e5a81112ca8308a716329903d97a82c4b47475b149009f368c"
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 1,
+      "higher_threads": 2,
+      "repetition": 2,
+      "higher_over_lower": 1.7025641025641025,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "f504730ef2264b451453c40915d554edd81df494a4c5d0defeae7a14077e3d03",
+      "higher_sha256": "a17949806d59412eacc01677a934dec583765a6ceaba6b21ce7233b7a4477942"
+    },
+    {
+      "arm": "baseline",
+      "lower_threads": 2,
+      "higher_threads": 4,
+      "repetition": 1,
+      "higher_over_lower": 1.0491803278688525,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "ad3e608398cff945b29df7a82173d21d43803f39767bc5dc8e2b8263ded68d2b",
+      "higher_sha256": "ffd3fea62949acc43ff33da58adc305fbf2178cc70eef1b184bf34e03a33c972"
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 2,
+      "higher_threads": 4,
+      "repetition": 1,
+      "higher_over_lower": 0.9056603773584905,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "a81271bb23a645be9b065c42c7a31d223562ede9f74958eb3639a4492edf7c13",
+      "higher_sha256": "49f612972fc92492abb76045c52e76443dbc75c27c87e804e8765632ddcb147e"
+    },
+    {
+      "arm": "baseline",
+      "lower_threads": 2,
+      "higher_threads": 4,
+      "repetition": 2,
+      "higher_over_lower": 0.8376811594202899,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "1b1e73debb9451e5a81112ca8308a716329903d97a82c4b47475b149009f368c",
+      "higher_sha256": "6b4af175a5cca058459eb932dd7e57a82c66b61ed3d5f5ffb669bbf0f74222d1"
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 2,
+      "higher_threads": 4,
+      "repetition": 2,
+      "higher_over_lower": 0.8825301204819276,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "a17949806d59412eacc01677a934dec583765a6ceaba6b21ce7233b7a4477942",
+      "higher_sha256": "2a5e775896c3d40345a53066ccac581728a9c25e3727d2c8def0728b10dfa50f"
+    },
+    {
+      "arm": "baseline",
+      "lower_threads": 1,
+      "higher_threads": 4,
+      "repetition": 1,
+      "higher_over_lower": 1.2167300380228137,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "9d44228f87d7e82428c8994567188c714cd4e98601ebcde1b76e9eee580d0c3b",
+      "higher_sha256": "ffd3fea62949acc43ff33da58adc305fbf2178cc70eef1b184bf34e03a33c972"
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 1,
+      "higher_threads": 4,
+      "repetition": 1,
+      "higher_over_lower": 1.120622568093385,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "2f3da2a19f2a4b2ee7dd0378776f8a7f7dfe567568a852b54d5641d70ac903e0",
+      "higher_sha256": "49f612972fc92492abb76045c52e76443dbc75c27c87e804e8765632ddcb147e"
+    },
+    {
+      "arm": "baseline",
+      "lower_threads": 1,
+      "higher_threads": 4,
+      "repetition": 2,
+      "higher_over_lower": 1.03584229390681,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "21ad7b0f60dc8acfad3f887247d7f38e21ae1a4309f6fc16e36160e739a9bda4",
+      "higher_sha256": "6b4af175a5cca058459eb932dd7e57a82c66b61ed3d5f5ffb669bbf0f74222d1"
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 1,
+      "higher_threads": 4,
+      "repetition": 2,
+      "higher_over_lower": 1.5025641025641023,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "f504730ef2264b451453c40915d554edd81df494a4c5d0defeae7a14077e3d03",
+      "higher_sha256": "2a5e775896c3d40345a53066ccac581728a9c25e3727d2c8def0728b10dfa50f"
+    }
+  ],
+  "summary": [
+    {
+      "arm": "baseline",
+      "lower_threads": 1,
+      "higher_threads": 2,
+      "median": 1.19812747863772,
+      "values": [
+        1.1596958174904943,
+        1.236559139784946
+      ],
+      "slower": 2
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 1,
+      "higher_threads": 2,
+      "median": 1.4699590940836078,
+      "values": [
+        1.2373540856031129,
+        1.7025641025641025
+      ],
+      "slower": 2
+    },
+    {
+      "arm": "baseline",
+      "lower_threads": 2,
+      "higher_threads": 4,
+      "median": 0.9434307436445712,
+      "values": [
+        1.0491803278688525,
+        0.8376811594202899
+      ],
+      "slower": 1
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 2,
+      "higher_threads": 4,
+      "median": 0.894095248920209,
+      "values": [
+        0.9056603773584905,
+        0.8825301204819276
+      ],
+      "slower": 0
+    },
+    {
+      "arm": "baseline",
+      "lower_threads": 1,
+      "higher_threads": 4,
+      "median": 1.1262861659648118,
+      "values": [
+        1.2167300380228137,
+        1.03584229390681
+      ],
+      "slower": 2
+    },
+    {
+      "arm": "candidate",
+      "lower_threads": 1,
+      "higher_threads": 4,
+      "median": 1.3115933353287437,
+      "values": [
+        1.120622568093385,
+        1.5025641025641023
+      ],
+      "slower": 2
+    }
+  ]
+}

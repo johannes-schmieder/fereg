@@ -1,0 +1,2331 @@
+{
+  "schema": "fereg-rotation-summary-v2",
+  "complete": true,
+  "registered_pairs": 18,
+  "completed_pairs": 18,
+  "statuses": {
+    "baseline:pass": 18,
+    "candidate:pass": 18,
+    "stock:pass": 18
+  },
+  "oracle_failures": [],
+  "cases": [
+    {
+      "case": "one-small-t1",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 1
+      },
+      "stock_arm": "fixest",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.9771863117870723,
+              "rss_ratio": 1.0401825326403853
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 2.4951456310679614,
+              "rss_ratio": 0.3455836936380482
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.6989247311827956,
+              "rss_ratio": 0.9900287459575997
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 2.4074074074074074,
+              "rss_ratio": 0.3091531319251592
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            0.263,
+            0.279
+          ],
+          "min": 0.263,
+          "median": 0.271,
+          "max": 0.279
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.208248489012476,
+            1.4548621089779772
+          ],
+          "min": 1.208248489012476,
+          "median": 1.3315552989952266,
+          "max": 1.4548621089779772
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.084930419921875,
+            0.09028244018554688
+          ],
+          "min": 0.084930419921875,
+          "median": 0.08760643005371094,
+          "max": 0.09028244018554688
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            0.195,
+            0.257
+          ],
+          "min": 0.195,
+          "median": 0.226,
+          "max": 0.257
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            0.9918024169746786,
+            1.310991031001322
+          ],
+          "min": 0.9918024169746786,
+          "median": 1.1513967239880003,
+          "max": 1.310991031001322
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.08408355712890625,
+            0.09391021728515625
+          ],
+          "min": 0.08408355712890625,
+          "median": 0.08899688720703125,
+          "max": 0.09391021728515625
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            0.081,
+            0.103
+          ],
+          "min": 0.081,
+          "median": 0.092,
+          "max": 0.103
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            3.183649158978369,
+            3.815959230007138
+          ],
+          "min": 3.183649158978369,
+          "median": 3.4998041944927536,
+          "max": 3.815959230007138
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.2717437744140625,
+            0.27198028564453125
+          ],
+          "min": 0.2717437744140625,
+          "median": 0.2718620300292969,
+          "max": 0.27198028564453125
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.6989247311827956,
+              0.9771863117870723
+            ],
+            "min": 0.6989247311827956,
+            "median": 0.8380555214849339,
+            "max": 0.9771863117870723
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.9900287459575997,
+              1.0401825326403853
+            ],
+            "min": 0.9900287459575997,
+            "median": 1.0151056392989926,
+            "max": 1.0401825326403853
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              2.4074074074074074,
+              2.4951456310679614
+            ],
+            "min": 2.4074074074074074,
+            "median": 2.4512765192376844,
+            "max": 2.4951456310679614
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.3091531319251592,
+              0.3455836936380482
+            ],
+            "min": 0.3091531319251592,
+            "median": 0.32736841278160367,
+            "max": 0.3455836936380482
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 1
+      }
+    },
+    {
+      "case": "one-small-t2",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 2
+      },
+      "stock_arm": "fixest",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.0426229508196723,
+              "rss_ratio": 0.9971941873612797
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 2.0516129032258066,
+              "rss_ratio": 0.3340722242487163
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.9623188405797103,
+              "rss_ratio": 1.1381799865681665
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 2.0,
+              "rss_ratio": 0.38068764126970756
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            0.305,
+            0.345
+          ],
+          "min": 0.305,
+          "median": 0.32499999999999996,
+          "max": 0.345
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.4019692100118846,
+            1.4121448650257662
+          ],
+          "min": 1.4019692100118846,
+          "median": 1.4070570375188254,
+          "max": 1.4121448650257662
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.09088134765625,
+            0.09109115600585938
+          ],
+          "min": 0.09088134765625,
+          "median": 0.09098625183105469,
+          "max": 0.09109115600585938
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            0.318,
+            0.332
+          ],
+          "min": 0.318,
+          "median": 0.325,
+          "max": 0.332
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.3955570289981551,
+            1.4705521080177277
+          ],
+          "min": 1.3955570289981551,
+          "median": 1.4330545685079414,
+          "max": 1.4705521080177277
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.0908355712890625,
+            0.1034393310546875
+          ],
+          "min": 0.0908355712890625,
+          "median": 0.097137451171875,
+          "max": 0.1034393310546875
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            0.155,
+            0.166
+          ],
+          "min": 0.155,
+          "median": 0.1605,
+          "max": 0.166
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            4.136511798016727,
+            4.193306425993796
+          ],
+          "min": 4.136511798016727,
+          "median": 4.164909112005262,
+          "max": 4.193306425993796
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.2717170715332031,
+            0.27190399169921875
+          ],
+          "min": 0.2717170715332031,
+          "median": 0.27181053161621094,
+          "max": 0.27190399169921875
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.9623188405797103,
+              1.0426229508196723
+            ],
+            "min": 0.9623188405797103,
+            "median": 1.0024708956996913,
+            "max": 1.0426229508196723
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.9971941873612797,
+              1.1381799865681665
+            ],
+            "min": 0.9971941873612797,
+            "median": 1.0676870869647233,
+            "max": 1.1381799865681665
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              2.0,
+              2.0516129032258066
+            ],
+            "min": 2.0,
+            "median": 2.0258064516129033,
+            "max": 2.0516129032258066
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.3340722242487163,
+              0.38068764126970756
+            ],
+            "min": 0.3340722242487163,
+            "median": 0.3573799327592119,
+            "max": 0.38068764126970756
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 2,
+        "candidate": 2
+      }
+    },
+    {
+      "case": "one-small-t4",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "stock_arm": "fixest",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.8999999999999999,
+              "rss_ratio": 1.025766765604164
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.9072847682119205,
+              "rss_ratio": 0.3345116853239065
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.013840830449827,
+              "rss_ratio": 1.0
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 3.367816091954015,
+              "rss_ratio": 0.3248821416545067
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            0.289,
+            0.32
+          ],
+          "min": 0.289,
+          "median": 0.3045,
+          "max": 0.32
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.35970091301715,
+            1.3989347870228812
+          ],
+          "min": 1.35970091301715,
+          "median": 1.3793178500200156,
+          "max": 1.3989347870228812
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.08832931518554688,
+            0.08868026733398438
+          ],
+          "min": 0.08832931518554688,
+          "median": 0.08850479125976562,
+          "max": 0.08868026733398438
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            0.288,
+            0.293
+          ],
+          "min": 0.288,
+          "median": 0.2905,
+          "max": 0.293
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.3815347909694538,
+            1.4205094019998796
+          ],
+          "min": 1.3815347909694538,
+          "median": 1.4010220964846667,
+          "max": 1.4205094019998796
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.08832931518554688,
+            0.09096527099609375
+          ],
+          "min": 0.08832931518554688,
+          "median": 0.08964729309082031,
+          "max": 0.09096527099609375
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            0.0870000000000002,
+            0.151
+          ],
+          "min": 0.0870000000000002,
+          "median": 0.1190000000000001,
+          "max": 0.151
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            3.757170856988523,
+            4.239587793999817
+          ],
+          "min": 3.757170856988523,
+          "median": 3.99837932549417,
+          "max": 4.239587793999817
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.271881103515625,
+            0.27193450927734375
+          ],
+          "min": 0.271881103515625,
+          "median": 0.2719078063964844,
+          "max": 0.27193450927734375
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.8999999999999999,
+              1.013840830449827
+            ],
+            "min": 0.8999999999999999,
+            "median": 0.9569204152249134,
+            "max": 1.013840830449827
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              1.0,
+              1.025766765604164
+            ],
+            "min": 1.0,
+            "median": 1.012883382802082,
+            "max": 1.025766765604164
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              1.9072847682119205,
+              3.367816091954015
+            ],
+            "min": 1.9072847682119205,
+            "median": 2.6375504300829675,
+            "max": 3.367816091954015
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.3248821416545067,
+              0.3345116853239065
+            ],
+            "min": 0.3248821416545067,
+            "median": 0.3296969134892066,
+            "max": 0.3345116853239065
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      }
+    },
+    {
+      "case": "one-low-t4",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "stock_arm": "fixest",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.8916408668730649,
+              "rss_ratio": 1.0091774594733682
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 3.599999999999995,
+              "rss_ratio": 0.3302597785356406
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.8538961038961039,
+              "rss_ratio": 0.8782525280786602
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 3.329113924050625,
+              "rss_ratio": 0.3083756701378168
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            0.308,
+            0.323
+          ],
+          "min": 0.308,
+          "median": 0.3155,
+          "max": 0.323
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.234996062994469,
+            1.3695642550010234
+          ],
+          "min": 1.234996062994469,
+          "median": 1.3022801589977462,
+          "max": 1.3695642550010234
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.08895111083984375,
+            0.09543991088867188
+          ],
+          "min": 0.08895111083984375,
+          "median": 0.09219551086425781,
+          "max": 0.09543991088867188
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            0.263,
+            0.288
+          ],
+          "min": 0.263,
+          "median": 0.27549999999999997,
+          "max": 0.288
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.194373200996779,
+            1.1972695509903133
+          ],
+          "min": 1.194373200996779,
+          "median": 1.195821375993546,
+          "max": 1.1972695509903133
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.08382034301757812,
+            0.0897674560546875
+          ],
+          "min": 0.08382034301757812,
+          "median": 0.08679389953613281,
+          "max": 0.0897674560546875
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            0.0790000000000002,
+            0.0800000000000001
+          ],
+          "min": 0.0790000000000002,
+          "median": 0.07950000000000015,
+          "max": 0.0800000000000001
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            3.400717114971485,
+            3.7017214900115505
+          ],
+          "min": 3.400717114971485,
+          "median": 3.5512193024915177,
+          "max": 3.7017214900115505
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.2718086242675781,
+            0.27181243896484375
+          ],
+          "min": 0.2718086242675781,
+          "median": 0.27181053161621094,
+          "max": 0.27181243896484375
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.8538961038961039,
+              0.8916408668730649
+            ],
+            "min": 0.8538961038961039,
+            "median": 0.8727684853845844,
+            "max": 0.8916408668730649
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.8782525280786602,
+              1.0091774594733682
+            ],
+            "min": 0.8782525280786602,
+            "median": 0.9437149937760142,
+            "max": 1.0091774594733682
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              3.329113924050625,
+              3.599999999999995
+            ],
+            "min": 3.329113924050625,
+            "median": 3.46455696202531,
+            "max": 3.599999999999995
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.3083756701378168,
+              0.3302597785356406
+            ],
+            "min": 0.3083756701378168,
+            "median": 0.31931772433672867,
+            "max": 0.3302597785356406
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      }
+    },
+    {
+      "case": "one-wide-t4",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 24,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "stock_arm": "fixest",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.8832116788321167,
+              "rss_ratio": 1.0570893604523093
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.8189509306260575,
+              "rss_ratio": 0.373954491142397
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.9811320754716981,
+              "rss_ratio": 0.9764794060960811
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.0766045548654244,
+              "rss_ratio": 0.3551594771072138
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            0.53,
+            0.548
+          ],
+          "min": 0.53,
+          "median": 0.539,
+          "max": 0.548
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.867639695003163,
+            1.896099368983414
+          ],
+          "min": 1.867639695003163,
+          "median": 1.8818695319932885,
+          "max": 1.896099368983414
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.10390472412109375,
+            0.10688018798828125
+          ],
+          "min": 0.10390472412109375,
+          "median": 0.1053924560546875,
+          "max": 0.10688018798828125
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            0.484,
+            0.52
+          ],
+          "min": 0.484,
+          "median": 0.502,
+          "max": 0.52
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.7371940430020913,
+            1.9706950719701126
+          ],
+          "min": 1.7371940430020913,
+          "median": 1.853944557486102,
+          "max": 1.9706950719701126
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.10436630249023438,
+            0.10983657836914062
+          ],
+          "min": 0.10436630249023438,
+          "median": 0.1071014404296875,
+          "max": 0.10983657836914062
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            0.483,
+            0.591
+          ],
+          "min": 0.483,
+          "median": 0.5369999999999999,
+          "max": 0.591
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            4.337788667995483,
+            5.018567127990536
+          ],
+          "min": 4.337788667995483,
+          "median": 4.6781778979930095,
+          "max": 5.018567127990536
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.2937164306640625,
+            0.2938575744628906
+          ],
+          "min": 0.2937164306640625,
+          "median": 0.29378700256347656,
+          "max": 0.2938575744628906
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.8832116788321167,
+              0.9811320754716981
+            ],
+            "min": 0.8832116788321167,
+            "median": 0.9321718771519074,
+            "max": 0.9811320754716981
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.9764794060960811,
+              1.0570893604523093
+            ],
+            "min": 0.9764794060960811,
+            "median": 1.0167843832741952,
+            "max": 1.0570893604523093
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.8189509306260575,
+              1.0766045548654244
+            ],
+            "min": 0.8189509306260575,
+            "median": 0.947777742745741,
+            "max": 1.0766045548654244
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.3551594771072138,
+              0.373954491142397
+            ],
+            "min": 0.3551594771072138,
+            "median": 0.3645569841248054,
+            "max": 0.373954491142397
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      }
+    },
+    {
+      "case": "control-profiled-small",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "stock_arm": "fixest",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.0626506024096387,
+              "rss_ratio": 1.0670721518564315
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 2.2385786802030454,
+              "rss_ratio": 0.4457442798710092
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.0677966101694916,
+              "rss_ratio": 1.1129004268906397
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 2.120192307692308,
+              "rss_ratio": 0.4474866728069441
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            0.413,
+            0.415
+          ],
+          "min": 0.413,
+          "median": 0.414,
+          "max": 0.415
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.4313698660116643,
+            1.5496731770108454
+          ],
+          "min": 1.4313698660116643,
+          "median": 1.4905215215112548,
+          "max": 1.5496731770108454
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.10991287231445312,
+            0.11414718627929688
+          ],
+          "min": 0.10991287231445312,
+          "median": 0.112030029296875,
+          "max": 0.11414718627929688
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            0.441,
+            0.441
+          ],
+          "min": 0.441,
+          "median": 0.441,
+          "max": 0.441
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.5937888289918192,
+            1.595681159000378
+          ],
+          "min": 1.5937888289918192,
+          "median": 1.5947349939960986,
+          "max": 1.595681159000378
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.12180328369140625,
+            0.12232208251953125
+          ],
+          "min": 0.12180328369140625,
+          "median": 0.12206268310546875,
+          "max": 0.12232208251953125
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            0.197,
+            0.208
+          ],
+          "min": 0.197,
+          "median": 0.2025,
+          "max": 0.208
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            3.335911075002514,
+            4.272904677956831
+          ],
+          "min": 3.335911075002514,
+          "median": 3.8044078764796723,
+          "max": 4.272904677956831
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.2732582092285156,
+            0.27335357666015625
+          ],
+          "min": 0.2732582092285156,
+          "median": 0.27330589294433594,
+          "max": 0.27335357666015625
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              1.0626506024096387,
+              1.0677966101694916
+            ],
+            "min": 1.0626506024096387,
+            "median": 1.0652236062895653,
+            "max": 1.0677966101694916
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              1.0670721518564315,
+              1.1129004268906397
+            ],
+            "min": 1.0670721518564315,
+            "median": 1.0899862893735355,
+            "max": 1.1129004268906397
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              2.120192307692308,
+              2.2385786802030454
+            ],
+            "min": 2.120192307692308,
+            "median": 2.1793854939476764,
+            "max": 2.2385786802030454
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.4457442798710092,
+              0.4474866728069441
+            ],
+            "min": 0.4457442798710092,
+            "median": 0.44661547633897664,
+            "max": 0.4474866728069441
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      }
+    },
+    {
+      "case": "control-three-fe-core-pair",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 8
+      },
+      "stock_arm": "fixest",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.9778283115406481,
+              "rss_ratio": 1.0340723639692713
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.4570821153335105,
+              "rss_ratio": 0.6529437637448947
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.1431215299198025,
+              "rss_ratio": 0.9396929620026488
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.4962506695232994,
+              "rss_ratio": 0.6330790594799743
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            1.621,
+            1.759
+          ],
+          "min": 1.621,
+          "median": 1.69,
+          "max": 1.759
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            3.1112528850208037,
+            3.2250360140460543
+          ],
+          "min": 3.1112528850208037,
+          "median": 3.168144449533429,
+          "max": 3.2250360140460543
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.19167327880859375,
+            0.20450210571289062
+          ],
+          "min": 0.19167327880859375,
+          "median": 0.1980876922607422,
+          "max": 0.20450210571289062
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            1.72,
+            1.853
+          ],
+          "min": 1.72,
+          "median": 1.7865,
+          "max": 1.853
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            3.1901517329970375,
+            3.2558740800013766
+          ],
+          "min": 3.1901517329970375,
+          "median": 3.223012906499207,
+          "max": 3.2558740800013766
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.192169189453125,
+            0.19820404052734375
+          ],
+          "min": 0.192169189453125,
+          "median": 0.19518661499023438,
+          "max": 0.19820404052734375
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            3.734,
+            3.763
+          ],
+          "min": 3.734,
+          "median": 3.7485,
+          "max": 3.763
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            7.881401384016499,
+            7.937277138000354
+          ],
+          "min": 7.881401384016499,
+          "median": 7.9093392610084265,
+          "max": 7.937277138000354
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.3035469055175781,
+            0.3035545349121094
+          ],
+          "min": 0.3035469055175781,
+          "median": 0.30355072021484375,
+          "max": 0.3035545349121094
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.9778283115406481,
+              1.1431215299198025
+            ],
+            "min": 0.9778283115406481,
+            "median": 1.0604749207302253,
+            "max": 1.1431215299198025
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.9396929620026488,
+              1.0340723639692713
+            ],
+            "min": 0.9396929620026488,
+            "median": 0.9868826629859601,
+            "max": 1.0340723639692713
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.4570821153335105,
+              0.4962506695232994
+            ],
+            "min": 0.4570821153335105,
+            "median": 0.4766663924284049,
+            "max": 0.4962506695232994
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.6330790594799743,
+              0.6529437637448947
+            ],
+            "min": 0.6330790594799743,
+            "median": 0.6430114116124346,
+            "max": 0.6529437637448947
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      }
+    },
+    {
+      "case": "control-excluded-slope",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "slopes",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "threads": 4
+      },
+      "stock_arm": "fixest_strict",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.8730158730158731,
+              "rss_ratio": 0.9509061452092988
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.4116766467065868,
+              "rss_ratio": 0.3487404828034103
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.0609756097560976,
+              "rss_ratio": 0.9443398663861514
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 0.4194214876033058,
+              "rss_ratio": 0.35411274584434815
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            0.574,
+            0.63
+          ],
+          "min": 0.574,
+          "median": 0.602,
+          "max": 0.63
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.6989580190274864,
+            1.8892728140344843
+          ],
+          "min": 1.6989580190274864,
+          "median": 1.7941154165309854,
+          "max": 1.8892728140344843
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.10124588012695312,
+            0.10335159301757812
+          ],
+          "min": 0.10124588012695312,
+          "median": 0.10229873657226562,
+          "max": 0.10335159301757812
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            0.55,
+            0.609
+          ],
+          "min": 0.55,
+          "median": 0.5795,
+          "max": 0.609
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.586407124006655,
+            1.8838973009842448
+          ],
+          "min": 1.586407124006655,
+          "median": 1.73515221249545,
+          "max": 1.8838973009842448
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.09627532958984375,
+            0.09759902954101562
+          ],
+          "min": 0.09627532958984375,
+          "median": 0.09693717956542969,
+          "max": 0.09759902954101562
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            1.336,
+            1.452
+          ],
+          "min": 1.336,
+          "median": 1.3940000000000001,
+          "max": 1.452
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            4.988255776988808,
+            5.693291909992695
+          ],
+          "min": 4.988255776988808,
+          "median": 5.3407738434907515,
+          "max": 5.693291909992695
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.2756156921386719,
+            0.2760658264160156
+          ],
+          "min": 0.2756156921386719,
+          "median": 0.27584075927734375,
+          "max": 0.2760658264160156
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.8730158730158731,
+              1.0609756097560976
+            ],
+            "min": 0.8730158730158731,
+            "median": 0.9669957413859853,
+            "max": 1.0609756097560976
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.9443398663861514,
+              0.9509061452092988
+            ],
+            "min": 0.9443398663861514,
+            "median": 0.9476230057977251,
+            "max": 0.9509061452092988
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              0.4116766467065868,
+              0.4194214876033058
+            ],
+            "min": 0.4116766467065868,
+            "median": 0.4155490671549463,
+            "max": 0.4194214876033058
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.3487404828034103,
+              0.35411274584434815
+            ],
+            "min": 0.3487404828034103,
+            "median": 0.3514266143238792,
+            "max": 0.35411274584434815
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      }
+    },
+    {
+      "case": "control-excluded-ols",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ols",
+        "n": 61440,
+        "section": "main",
+        "threads": 8
+      },
+      "stock_arm": "fixest",
+      "oracle": false,
+      "pairs": [
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.0611111111111104,
+              "rss_ratio": 0.8751447596988998
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.6902654867256628,
+              "rss_ratio": 0.3406491237955711
+            }
+          }
+        },
+        {
+          "seed": 2026092817,
+          "status": "complete",
+          "comparisons": {
+            "baseline": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.0264550264550265,
+              "rss_ratio": 0.9705369100280021
+            },
+            "stock": {
+              "eligible": true,
+              "reasons": [],
+              "seconds_ratio": 1.6302521008403363,
+              "rss_ratio": 0.3366697637750936
+            }
+          }
+        }
+      ],
+      "measurements": {
+        "baseline_seconds": {
+          "n": 2,
+          "values": [
+            0.18,
+            0.189
+          ],
+          "min": 0.18,
+          "median": 0.1845,
+          "max": 0.189
+        },
+        "baseline_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.3104282610001974,
+            1.4162625140161254
+          ],
+          "min": 1.3104282610001974,
+          "median": 1.3633453875081614,
+          "max": 1.4162625140161254
+        },
+        "baseline_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.09399795532226562,
+            0.10540771484375
+          ],
+          "min": 0.09399795532226562,
+          "median": 0.09970283508300781,
+          "max": 0.10540771484375
+        },
+        "candidate_seconds": {
+          "n": 2,
+          "values": [
+            0.1909999999999999,
+            0.194
+          ],
+          "min": 0.1909999999999999,
+          "median": 0.19249999999999995,
+          "max": 0.194
+        },
+        "candidate_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            1.4430346349836327,
+            1.4642360580037348
+          ],
+          "min": 1.4430346349836327,
+          "median": 1.4536353464936838,
+          "max": 1.4642360580037348
+        },
+        "candidate_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.09122848510742188,
+            0.09224700927734375
+          ],
+          "min": 0.09122848510742188,
+          "median": 0.09173774719238281,
+          "max": 0.09224700927734375
+        },
+        "stock_seconds": {
+          "n": 2,
+          "values": [
+            0.113,
+            0.119
+          ],
+          "min": 0.113,
+          "median": 0.11599999999999999,
+          "max": 0.119
+        },
+        "stock_elapsed_seconds": {
+          "n": 2,
+          "values": [
+            4.052425105008297,
+            4.087777241016738
+          ],
+          "min": 4.052425105008297,
+          "median": 4.070101173012517,
+          "max": 4.087777241016738
+        },
+        "stock_peak_rss_gib": {
+          "n": 2,
+          "values": [
+            0.2707977294921875,
+            0.27097320556640625
+          ],
+          "min": 0.2707977294921875,
+          "median": 0.2708854675292969,
+          "max": 0.27097320556640625
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              1.0264550264550265,
+              1.0611111111111104
+            ],
+            "min": 1.0264550264550265,
+            "median": 1.0437830687830685,
+            "max": 1.0611111111111104
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.8751447596988998,
+              0.9705369100280021
+            ],
+            "min": 0.8751447596988998,
+            "median": 0.9228408348634509,
+            "max": 0.9705369100280021
+          }
+        },
+        "stock": {
+          "eligible": true,
+          "seconds_ratio": {
+            "n": 2,
+            "values": [
+              1.6302521008403363,
+              1.6902654867256628
+            ],
+            "min": 1.6302521008403363,
+            "median": 1.6602587937829996,
+            "max": 1.6902654867256628
+          },
+          "rss_ratio": {
+            "n": 2,
+            "values": [
+              0.3366697637750936,
+              0.3406491237955711
+            ],
+            "min": 0.3366697637750936,
+            "median": 0.33865944378533236,
+            "max": 0.3406491237955711
+          }
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      }
+    }
+  ],
+  "scaling": [],
+  "targets": {
+    "ppml:fixest:timing": {
+      "registered": 7,
+      "ranked": 7,
+      "unranked": 0,
+      "at_most_0_90": 1,
+      "above_1_20": 5,
+      "case_median_ratios": {
+        "n": 7,
+        "values": [
+          0.4766663924284049,
+          0.947777742745741,
+          2.0258064516129033,
+          2.1793854939476764,
+          2.4512765192376844,
+          2.6375504300829675,
+          3.46455696202531
+        ],
+        "min": 0.4766663924284049,
+        "median": 2.1793854939476764,
+        "max": 3.46455696202531
+      }
+    },
+    "ppml:fixest_strict:timing": {
+      "registered": 1,
+      "ranked": 1,
+      "unranked": 0,
+      "at_most_0_90": 1,
+      "above_1_20": 0,
+      "case_median_ratios": {
+        "n": 1,
+        "values": [
+          0.4155490671549463
+        ],
+        "min": 0.4155490671549463,
+        "median": 0.4155490671549463,
+        "max": 0.4155490671549463
+      }
+    },
+    "ols:fixest:timing": {
+      "registered": 1,
+      "ranked": 1,
+      "unranked": 0,
+      "at_most_0_90": 0,
+      "above_1_20": 1,
+      "case_median_ratios": {
+        "n": 1,
+        "values": [
+          1.6602587937829996
+        ],
+        "min": 1.6602587937829996,
+        "median": 1.6602587937829996,
+        "max": 1.6602587937829996
+      }
+    }
+  },
+  "bindings": {
+    "identity.json": "78f4a574f7bc8e0321ac043e7c659765b102dda55338c410262ad8aa034f5568",
+    "plan.json": "51ba524790ad9ab70f5bb564108dca8bd6c89d03bc3da7468556d146c0214ac8",
+    "complete.json": "f8cf4b9814083c734d27534f031011f8816610232bed8f446eb437b181e45757",
+    "one-small-t1/pair-1/comparison.json": "2bc7178d9e42ef94c8beaea9a119879d3949712556673e79f5332610cf1e8d82",
+    "one-small-t1/pair-1/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one-small-t1/pair-1/baseline/request.json": "2e20ff9915755a125cca9a5e852a0393675fac126bd600699dbbf7e1e10bc5e8",
+    "one-small-t1/pair-1/baseline/feppml_runtime.csv": "c925531cabf3c744e4d302c0853e8f85fae5aeb78c2cc43823cd55a6b815d67f",
+    "one-small-t1/pair-1/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t1/pair-1/baseline/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t1/pair-1/baseline/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t1/pair-1/baseline/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t1/pair-1/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t1/pair-1/baseline/feppml_solver.csv": "1546fc392203eb44bcb92e4659554465bfd2904ee3e31afeb24269a68da800a5",
+    "one-small-t1/pair-1/baseline/result.json": "9d44228f87d7e82428c8994567188c714cd4e98601ebcde1b76e9eee580d0c3b",
+    "one-small-t1/pair-1/candidate/request.json": "ed17a784e82cf39687629dbfac1d55513d6f1c2ba6ca7bbdec86410d5a6ef49b",
+    "one-small-t1/pair-1/candidate/feppml_runtime.csv": "99628c0d75070ad9e7647204aa61d174ac25c5c588c5c81b9ed7aee41827e9cd",
+    "one-small-t1/pair-1/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t1/pair-1/candidate/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t1/pair-1/candidate/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t1/pair-1/candidate/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t1/pair-1/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t1/pair-1/candidate/feppml_solver.csv": "0393b067c3dd9623464759df3932ab08d04364da71ac19e846e5994b1bb47b6a",
+    "one-small-t1/pair-1/candidate/result.json": "2f3da2a19f2a4b2ee7dd0378776f8a7f7dfe567568a852b54d5641d70ac903e0",
+    "one-small-t1/pair-1/stock/request.json": "7ee3cc58f3fb9ef1f064fb9cb444e81163a59bfa5b4e8c67f2a0c5a2f966a673",
+    "one-small-t1/pair-1/stock/covariance.csv": "7958ca33073cadbc76c9d4bf80f458398318c2bf74265b608574cc716e39234c",
+    "one-small-t1/pair-1/stock/coefficients.csv": "1696a6129f5a750dc3b74171a2e1d01eec06551769e0ebd42e9cd9f8c3fb3557",
+    "one-small-t1/pair-1/stock/result.json": "5b91f9443f363d6cadf67874495ba2c426d2f72c3aad1808ac4ea3a988ecb494",
+    "one-small-t1/pair-1/stock/metadata.json": "e44038eb1040f9534d0404f4f1fff5b6abc295508a4e0c63d0776d9550b66769",
+    "one-small-t1/pair-2/comparison.json": "90d756555463f702a01e72da2e41b82359636cd7cee1218c1e86c2e32f104428",
+    "one-small-t1/pair-2/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one-small-t1/pair-2/baseline/request.json": "707fb4091bad9126cdbf26fba058058c2eecf813825d662231bfe62e1677105d",
+    "one-small-t1/pair-2/baseline/feppml_runtime.csv": "754ef302d6b173c8d8ffc57ac38e85378e9a3498dbc15da4212ee5847e43ce8e",
+    "one-small-t1/pair-2/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t1/pair-2/baseline/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t1/pair-2/baseline/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t1/pair-2/baseline/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t1/pair-2/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t1/pair-2/baseline/feppml_solver.csv": "946f9ef5451d36366da93dfc999ab4ebe7b00d60ee7812f8aefb4665d3d2adc7",
+    "one-small-t1/pair-2/baseline/result.json": "21ad7b0f60dc8acfad3f887247d7f38e21ae1a4309f6fc16e36160e739a9bda4",
+    "one-small-t1/pair-2/candidate/request.json": "3dd13b62d598d5e3b6f4cc2f9c148625fbaaa957a7504acd6b27649d9536d620",
+    "one-small-t1/pair-2/candidate/feppml_runtime.csv": "66c226b9155c884490fcee59effe2baf10d9c08bfd838353816d7f0640be26fe",
+    "one-small-t1/pair-2/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t1/pair-2/candidate/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t1/pair-2/candidate/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t1/pair-2/candidate/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t1/pair-2/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t1/pair-2/candidate/feppml_solver.csv": "6fd180b010521559c4e9679392ffa3f145c8890ad662083729600b76742bb676",
+    "one-small-t1/pair-2/candidate/result.json": "f504730ef2264b451453c40915d554edd81df494a4c5d0defeae7a14077e3d03",
+    "one-small-t1/pair-2/stock/request.json": "110c47366c767eac7a3d3ede46c02325c2e2a9cf7827fba6cbd6fa96aa8dbfb8",
+    "one-small-t1/pair-2/stock/covariance.csv": "7958ca33073cadbc76c9d4bf80f458398318c2bf74265b608574cc716e39234c",
+    "one-small-t1/pair-2/stock/coefficients.csv": "1696a6129f5a750dc3b74171a2e1d01eec06551769e0ebd42e9cd9f8c3fb3557",
+    "one-small-t1/pair-2/stock/result.json": "b1229794161ec7af6e148b9bef48e2b73d5eae537f6b86981c69c33b004dca8a",
+    "one-small-t1/pair-2/stock/metadata.json": "59e436beccc49f1d8573ed2e878ecfff1ba16a5d3f8f364350f724f997b665b9",
+    "one-small-t2/pair-1/comparison.json": "2378881de138bf7d5d5a37f5268b67358fcd98fefeeb237ff1b43cc2d5d218c3",
+    "one-small-t2/pair-1/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one-small-t2/pair-1/baseline/request.json": "30745cd97f0e967c720125047302b660553b46fb23d8e77820b8c2d08f7cc909",
+    "one-small-t2/pair-1/baseline/feppml_runtime.csv": "38b75263b49182b2c3bd82ae7b4105e76d949deccc93c639bdd0d47fa19e52ff",
+    "one-small-t2/pair-1/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t2/pair-1/baseline/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t2/pair-1/baseline/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t2/pair-1/baseline/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t2/pair-1/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t2/pair-1/baseline/feppml_solver.csv": "55a6576c7fb8c85def1915afd6d51badc882e36a24b2e51a5172cec7b94d219b",
+    "one-small-t2/pair-1/baseline/result.json": "ad3e608398cff945b29df7a82173d21d43803f39767bc5dc8e2b8263ded68d2b",
+    "one-small-t2/pair-1/candidate/request.json": "9e00cc4cdd0d857460f66dfb3f8cac88cd1c29504a765c7fab109ee425368ef5",
+    "one-small-t2/pair-1/candidate/feppml_runtime.csv": "c6206413e93cf6ba7d3839dae75956773acc630ad11d23ad749ee21d47bfc7b5",
+    "one-small-t2/pair-1/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t2/pair-1/candidate/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t2/pair-1/candidate/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t2/pair-1/candidate/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t2/pair-1/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t2/pair-1/candidate/feppml_solver.csv": "9eb4d656d491d701805f9fbd05325830e1cf29fca32cc4b67a42d9e5c8935636",
+    "one-small-t2/pair-1/candidate/result.json": "a81271bb23a645be9b065c42c7a31d223562ede9f74958eb3639a4492edf7c13",
+    "one-small-t2/pair-1/stock/request.json": "f54ed035521e60405f07a35414ee52652a295dee058fd1194275d2c756ee5f95",
+    "one-small-t2/pair-1/stock/covariance.csv": "7958ca33073cadbc76c9d4bf80f458398318c2bf74265b608574cc716e39234c",
+    "one-small-t2/pair-1/stock/coefficients.csv": "1696a6129f5a750dc3b74171a2e1d01eec06551769e0ebd42e9cd9f8c3fb3557",
+    "one-small-t2/pair-1/stock/result.json": "564beab6d3a71d7adce46f0a5b10fef8102704cb1a5d65282ac7d3d61d5f3942",
+    "one-small-t2/pair-1/stock/metadata.json": "e57561f7e238ff51d36bca5e2d1a3561e5bbd530e58b5c7eae43dd4b55736ffa",
+    "one-small-t2/pair-2/comparison.json": "8ee84828223c293fec72cb9e0b419567773b8fe797d747b138687f40efa3ffd9",
+    "one-small-t2/pair-2/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one-small-t2/pair-2/baseline/request.json": "333c236b66d1abf34fb05f651f30834831bf6aaf79f6cbdd13ffa4a19091bcd2",
+    "one-small-t2/pair-2/baseline/feppml_runtime.csv": "9e9537c28c0d768d6762049772033ad67ae8bf0614598076b5033af4bdfbcbd5",
+    "one-small-t2/pair-2/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t2/pair-2/baseline/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t2/pair-2/baseline/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t2/pair-2/baseline/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t2/pair-2/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t2/pair-2/baseline/feppml_solver.csv": "7c31de8a7be317891648cf6593b083ed5dd78af693d474dc041408977a10a01d",
+    "one-small-t2/pair-2/baseline/result.json": "1b1e73debb9451e5a81112ca8308a716329903d97a82c4b47475b149009f368c",
+    "one-small-t2/pair-2/candidate/request.json": "1cdce28f398c9dfc9910be0dc8c387e96e0bc2b599dd9427cc739a2e57704779",
+    "one-small-t2/pair-2/candidate/feppml_runtime.csv": "95d78c06eb581ca0a131c44d008e022975d5b5ce24a21ed1aca62d2961e1185b",
+    "one-small-t2/pair-2/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t2/pair-2/candidate/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t2/pair-2/candidate/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t2/pair-2/candidate/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t2/pair-2/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t2/pair-2/candidate/feppml_solver.csv": "a313f67ad2a13f851a89866ff49f8ff9ec3b1822fe4b6fd7b134ddd14250bc9c",
+    "one-small-t2/pair-2/candidate/result.json": "a17949806d59412eacc01677a934dec583765a6ceaba6b21ce7233b7a4477942",
+    "one-small-t2/pair-2/stock/request.json": "f3382c5b570058c57c2bf0854b5c7953939ba670c33bef706a3c39c965782911",
+    "one-small-t2/pair-2/stock/covariance.csv": "7958ca33073cadbc76c9d4bf80f458398318c2bf74265b608574cc716e39234c",
+    "one-small-t2/pair-2/stock/coefficients.csv": "1696a6129f5a750dc3b74171a2e1d01eec06551769e0ebd42e9cd9f8c3fb3557",
+    "one-small-t2/pair-2/stock/result.json": "b3fa9fa40aa65edd5ac1593c5bf299f7d078143c2502a4bb19d1beafd023a503",
+    "one-small-t2/pair-2/stock/metadata.json": "17afb1109c43d495c96ebb8e7f03ec7e97a89b1345d23f68948c73e02109d717",
+    "one-small-t4/pair-1/comparison.json": "0495c6ac907f103d6ec4f4e9f97dfd580bae47626fd232531586c0ec70534500",
+    "one-small-t4/pair-1/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one-small-t4/pair-1/baseline/request.json": "1206190cf6717f51acf25e5de0cf1c0e2b59e6a29baaa1744f8ef17f64668915",
+    "one-small-t4/pair-1/baseline/feppml_runtime.csv": "450ef56b51a8d7efdc7888df260e59b16e718cc48914ec5f1fb96c3da9e3d5a7",
+    "one-small-t4/pair-1/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t4/pair-1/baseline/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t4/pair-1/baseline/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t4/pair-1/baseline/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t4/pair-1/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t4/pair-1/baseline/feppml_solver.csv": "62a46c16eab42deffe74b6af22b56f697320bdcfdb1654a4f5cdcbebc0c9b0c6",
+    "one-small-t4/pair-1/baseline/result.json": "ffd3fea62949acc43ff33da58adc305fbf2178cc70eef1b184bf34e03a33c972",
+    "one-small-t4/pair-1/candidate/request.json": "b4290ee54273cb4796d4dc2770adf706b302e5022864966fc1182f6d96c4e1f2",
+    "one-small-t4/pair-1/candidate/feppml_runtime.csv": "ae5f1cffce7a2060e29a7765b845ca0fdd6914c33b52dcbbb588e1dbdd89fd5f",
+    "one-small-t4/pair-1/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t4/pair-1/candidate/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t4/pair-1/candidate/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t4/pair-1/candidate/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t4/pair-1/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t4/pair-1/candidate/feppml_solver.csv": "f6367d3f2c9edd2e1ed09c27a7eeb077b72787fedbb1e96f8880f5fb7543430a",
+    "one-small-t4/pair-1/candidate/result.json": "49f612972fc92492abb76045c52e76443dbc75c27c87e804e8765632ddcb147e",
+    "one-small-t4/pair-1/stock/request.json": "40a465b31ffc2dd1fb46ad23bfb9c06e63bfe28464925a881ba2dc7ae8578dba",
+    "one-small-t4/pair-1/stock/covariance.csv": "7958ca33073cadbc76c9d4bf80f458398318c2bf74265b608574cc716e39234c",
+    "one-small-t4/pair-1/stock/coefficients.csv": "1696a6129f5a750dc3b74171a2e1d01eec06551769e0ebd42e9cd9f8c3fb3557",
+    "one-small-t4/pair-1/stock/result.json": "6916792abf0d7500fabd8d43282c12204380268d39bc258f0fadb5dcb7a3cc4b",
+    "one-small-t4/pair-1/stock/metadata.json": "f3ccb851130b98241b131cbd27c17f6152e124a519d6925c583c36ed8ccdf2a6",
+    "one-small-t4/pair-2/comparison.json": "e62bd55a3c28df009d13c82ea2b8066a219af8c49b9c94d1a90c40e6c619dd93",
+    "one-small-t4/pair-2/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one-small-t4/pair-2/baseline/request.json": "f0a7169a8daaf93f746dd27436be7068504c5e029db0cca8b0298744252fe1b6",
+    "one-small-t4/pair-2/baseline/feppml_runtime.csv": "d71423fc4ffd580efad36af514b036413c903668e6a2e67dd9e161e77f1d58f5",
+    "one-small-t4/pair-2/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t4/pair-2/baseline/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t4/pair-2/baseline/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t4/pair-2/baseline/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t4/pair-2/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t4/pair-2/baseline/feppml_solver.csv": "4f3b91c70da7d5c005b90fc9498f147ac74da173197febab83dcf387f3c5f6a7",
+    "one-small-t4/pair-2/baseline/result.json": "6b4af175a5cca058459eb932dd7e57a82c66b61ed3d5f5ffb669bbf0f74222d1",
+    "one-small-t4/pair-2/candidate/request.json": "2445a9457039d37fdd9372781c87c6854c7d5d9e7212216453588762ee29c61a",
+    "one-small-t4/pair-2/candidate/feppml_runtime.csv": "8961eac1518cf4ff037243c6dcd700038f5739f7a7931de84b63a2b832409fec",
+    "one-small-t4/pair-2/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t4/pair-2/candidate/covariance.csv": "ac703999890d98915d394e81bc5057628f244de059619730ff743b2431310ff0",
+    "one-small-t4/pair-2/candidate/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-small-t4/pair-2/candidate/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-small-t4/pair-2/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-small-t4/pair-2/candidate/feppml_solver.csv": "628255f423df101121dcaa018c5b2f168810e248b7477649ad0ff604e0d890e1",
+    "one-small-t4/pair-2/candidate/result.json": "2a5e775896c3d40345a53066ccac581728a9c25e3727d2c8def0728b10dfa50f",
+    "one-small-t4/pair-2/stock/request.json": "ea65d2e0506d867e4161696a813410641a92cb41f788d20440042721fd5a7cb0",
+    "one-small-t4/pair-2/stock/covariance.csv": "7958ca33073cadbc76c9d4bf80f458398318c2bf74265b608574cc716e39234c",
+    "one-small-t4/pair-2/stock/coefficients.csv": "1696a6129f5a750dc3b74171a2e1d01eec06551769e0ebd42e9cd9f8c3fb3557",
+    "one-small-t4/pair-2/stock/result.json": "84c3d6b2b5b162dd6af893b2543ecfed893a8a0fbdd54b57e7f6cb1dc0a9086d",
+    "one-small-t4/pair-2/stock/metadata.json": "48c3c8103928acbf215b40dc08359d2afbe50296b7ef7e774ebbf3f4f6fff524",
+    "one-low-t4/pair-1/comparison.json": "9c35dbd0b7e7f9fe402f5efe4ffa3cddc4e610f8bbd503d74b3f5aef8f416a34",
+    "one-low-t4/pair-1/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one-low-t4/pair-1/baseline/request.json": "161a274f2d35b8a45cc4a9cde96b1daf8550a53d994640853fb691b5eaa4fde6",
+    "one-low-t4/pair-1/baseline/feppml_runtime.csv": "a26dca236c465bcab86b8cec564983f9f189f8a506361386be228da527328b35",
+    "one-low-t4/pair-1/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-low-t4/pair-1/baseline/covariance.csv": "4f4aa44c8587cbddba7e6b78145c7d25bb9b4fe60c7a93fcc8504e6e20e6065a",
+    "one-low-t4/pair-1/baseline/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-low-t4/pair-1/baseline/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-low-t4/pair-1/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-low-t4/pair-1/baseline/feppml_solver.csv": "8c6da0aae11731de8c0e2b3cba729ddf5a5a583632d444f4d6b36238f393d848",
+    "one-low-t4/pair-1/baseline/result.json": "23ec8b4947b2a604a52b08a063fb1a3d75749e5473fbf1e4f6c6d6efbc52bfd9",
+    "one-low-t4/pair-1/candidate/request.json": "d934f6665f826c110733f911003343111eb456d86bd0758e3eb38b5126bfbf3d",
+    "one-low-t4/pair-1/candidate/feppml_runtime.csv": "f05e0ce0f659dd483a4457b5ad8df6b9795a322d3e40b9286b5805a76dedb10e",
+    "one-low-t4/pair-1/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-low-t4/pair-1/candidate/covariance.csv": "4f4aa44c8587cbddba7e6b78145c7d25bb9b4fe60c7a93fcc8504e6e20e6065a",
+    "one-low-t4/pair-1/candidate/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-low-t4/pair-1/candidate/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-low-t4/pair-1/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-low-t4/pair-1/candidate/feppml_solver.csv": "8aff7004375ba15473484da059e32aa4956bca2dfc29fee83b3a78be568fe1ff",
+    "one-low-t4/pair-1/candidate/result.json": "dda9329b589dcb71b90e53a6eb9316c49923eac1fd15ced54f34618e02f26e8d",
+    "one-low-t4/pair-1/stock/request.json": "cba47a4f4068f4008ad4ba5c6917943aa3ee7c542477b9cd84d2a839b927d0b1",
+    "one-low-t4/pair-1/stock/covariance.csv": "7958ca33073cadbc76c9d4bf80f458398318c2bf74265b608574cc716e39234c",
+    "one-low-t4/pair-1/stock/coefficients.csv": "1696a6129f5a750dc3b74171a2e1d01eec06551769e0ebd42e9cd9f8c3fb3557",
+    "one-low-t4/pair-1/stock/result.json": "18bc9f4d1f08d37a6a25e7532f5b81ae451d0b0b55563fbfad7c4c94d5c5c623",
+    "one-low-t4/pair-1/stock/metadata.json": "0043b0a325a2631633eecfb1898f4838da7043f46aae78c0dca558f54a5eb8e7",
+    "one-low-t4/pair-2/comparison.json": "26f6e5461a1adc5027bc64b411a3937827abfd9f1f5c845faba0e27c6c807e01",
+    "one-low-t4/pair-2/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one-low-t4/pair-2/baseline/request.json": "1a5fd54183c76025baac6a260e8214292ad08036bfaad5fbdb962119bbc34972",
+    "one-low-t4/pair-2/baseline/feppml_runtime.csv": "bc57728c5dc05b280e2de580f06a2326c577c6c1c6bf809badfb8626a73cf4d6",
+    "one-low-t4/pair-2/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-low-t4/pair-2/baseline/covariance.csv": "4f4aa44c8587cbddba7e6b78145c7d25bb9b4fe60c7a93fcc8504e6e20e6065a",
+    "one-low-t4/pair-2/baseline/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-low-t4/pair-2/baseline/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-low-t4/pair-2/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-low-t4/pair-2/baseline/feppml_solver.csv": "3530e22c521fff56c46f740d1e70ad740a7d4500de163d0300ede510abd0cc1a",
+    "one-low-t4/pair-2/baseline/result.json": "a6b28d8e676da56cc42a321924de14d2159c1901e3a22ae82ca54dddfbd76b4b",
+    "one-low-t4/pair-2/candidate/request.json": "ed2635b5dfd6e32b4d4247ffabd837594f7fa26d270a9e2d4640c4f9ccaf591c",
+    "one-low-t4/pair-2/candidate/feppml_runtime.csv": "d195b5aaf3bd529759725677ce0b5d0a870eb74926904f0e72d1717f51cc432b",
+    "one-low-t4/pair-2/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-low-t4/pair-2/candidate/covariance.csv": "4f4aa44c8587cbddba7e6b78145c7d25bb9b4fe60c7a93fcc8504e6e20e6065a",
+    "one-low-t4/pair-2/candidate/import-hashes.json": "0571dfaeb6282a6ef165509f84af63afe4d4c8dff5456dab4bca6a49463ee280",
+    "one-low-t4/pair-2/candidate/coefficients.csv": "6042012408ec6ab603aa1e63692beaecdef5c4b1035d08c333e523fae48017fb",
+    "one-low-t4/pair-2/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-low-t4/pair-2/candidate/feppml_solver.csv": "440a8709ba966477ce63883c5a80bd05f78ccefc6a7dce19e4d5b48e62c392db",
+    "one-low-t4/pair-2/candidate/result.json": "58fcc9e08b2ec223291d515bf13d3022e6e7995e3baa12dd60f1d21171497f74",
+    "one-low-t4/pair-2/stock/request.json": "f80c9d105f72f054e3ac788f0c566ea50b603b9f162ee6a816a9cea208735482",
+    "one-low-t4/pair-2/stock/covariance.csv": "7958ca33073cadbc76c9d4bf80f458398318c2bf74265b608574cc716e39234c",
+    "one-low-t4/pair-2/stock/coefficients.csv": "1696a6129f5a750dc3b74171a2e1d01eec06551769e0ebd42e9cd9f8c3fb3557",
+    "one-low-t4/pair-2/stock/result.json": "e10d72286921d8ed475e2e9d5418a7d5a87eeeadfa01a743bda86c92cdf84038",
+    "one-low-t4/pair-2/stock/metadata.json": "61de2f77aab74303e9fdf86894baa6b366e704ba0f99963d5a8e20a867402a70",
+    "one-wide-t4/pair-1/comparison.json": "c2c6a57509038dc0aa2e975dba22571688f0616f1ca2aa365166ad33982025bc",
+    "one-wide-t4/pair-1/input.json": "dca866c1902484d4dbeecdf8c151d3b439acad62470acf5768f7b9480f8123a3",
+    "one-wide-t4/pair-1/baseline/request.json": "4bc050ff5ee8e545263cc8aae4621a4acfb67e59e6913d8ae18e299f097676c7",
+    "one-wide-t4/pair-1/baseline/feppml_runtime.csv": "2bcb989df8f3b8f1219b054281bc662c839b657212170353cc90ad785eecb234",
+    "one-wide-t4/pair-1/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-wide-t4/pair-1/baseline/covariance.csv": "bb586c7c3dbaf98176d758b18f26e6633957d690d6868c8d0fc81501da0bca1c",
+    "one-wide-t4/pair-1/baseline/import-hashes.json": "253c63e61604e7fab34bee7b3d04d2fc2df0bfb01a881df01aac80e34941dcce",
+    "one-wide-t4/pair-1/baseline/coefficients.csv": "157a6acf8fb214c1ff0d4431f636c918e557a5e8263328022c8bfb38e41c7d70",
+    "one-wide-t4/pair-1/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-wide-t4/pair-1/baseline/feppml_solver.csv": "0a9f06154d708b598b4d0f6dd38f00cb7639b357e9e3584a510d05857734ee65",
+    "one-wide-t4/pair-1/baseline/result.json": "5f9ae7d090ef8b1bb911876c59dfe70c1d49a6e7d533290777ff3b59d09e2204",
+    "one-wide-t4/pair-1/candidate/request.json": "31442927bc4e2cfd98ba115d941561909d8b0b3b44a7c8368ae95e00068aeae4",
+    "one-wide-t4/pair-1/candidate/feppml_runtime.csv": "41b19f7e1bb322e74a4c71558e29d731c5c483c1e0f1bde8bf24eaf447803114",
+    "one-wide-t4/pair-1/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-wide-t4/pair-1/candidate/covariance.csv": "bb586c7c3dbaf98176d758b18f26e6633957d690d6868c8d0fc81501da0bca1c",
+    "one-wide-t4/pair-1/candidate/import-hashes.json": "253c63e61604e7fab34bee7b3d04d2fc2df0bfb01a881df01aac80e34941dcce",
+    "one-wide-t4/pair-1/candidate/coefficients.csv": "157a6acf8fb214c1ff0d4431f636c918e557a5e8263328022c8bfb38e41c7d70",
+    "one-wide-t4/pair-1/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-wide-t4/pair-1/candidate/feppml_solver.csv": "aa41629274655aebc3deac73a430838a815281f5a883fe3605b000a83d08f8f3",
+    "one-wide-t4/pair-1/candidate/result.json": "1d265dee177e5c675f34cce91ceab0b43e087e706b966a4a111f659a988af217",
+    "one-wide-t4/pair-1/stock/request.json": "b4e12020cfb184723e4f3586a72253a226bac31f73f5dea07fed08ec61ff68b6",
+    "one-wide-t4/pair-1/stock/covariance.csv": "2531b6c7b9f8c485137291c6e38e2c51d1186271eca778f9e3305cee25592c96",
+    "one-wide-t4/pair-1/stock/coefficients.csv": "15cf5de0833ea667fee89867027e7cbbecdec03a3a9a617f6f1f6324e8a70a60",
+    "one-wide-t4/pair-1/stock/result.json": "0fb5e497cf641943450a8385023819fbfa8c833cbfe2b2ba2e23e9daacc44076",
+    "one-wide-t4/pair-1/stock/metadata.json": "faca204d65d900c9d9e6474e041bda9959e1c3d2ebd0f0de7ef105ff7ab62a39",
+    "one-wide-t4/pair-2/comparison.json": "047d1810b9c3e3ae162c3a4b75ed47ab9ad6c71414a8e8d42bf9ac1a798e4edc",
+    "one-wide-t4/pair-2/input.json": "dca866c1902484d4dbeecdf8c151d3b439acad62470acf5768f7b9480f8123a3",
+    "one-wide-t4/pair-2/baseline/request.json": "bd8a45db85f937c33f9cf78e4eb72f8a75b2a37c60addc329d27d4ed2915d6ca",
+    "one-wide-t4/pair-2/baseline/feppml_runtime.csv": "b28b5d80c3038e5b1f53a3c58f4da6b646b43cd3901c2048044b46e33ac49eac",
+    "one-wide-t4/pair-2/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-wide-t4/pair-2/baseline/covariance.csv": "bb586c7c3dbaf98176d758b18f26e6633957d690d6868c8d0fc81501da0bca1c",
+    "one-wide-t4/pair-2/baseline/import-hashes.json": "253c63e61604e7fab34bee7b3d04d2fc2df0bfb01a881df01aac80e34941dcce",
+    "one-wide-t4/pair-2/baseline/coefficients.csv": "157a6acf8fb214c1ff0d4431f636c918e557a5e8263328022c8bfb38e41c7d70",
+    "one-wide-t4/pair-2/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-wide-t4/pair-2/baseline/feppml_solver.csv": "9617df35c7c9a0e3b2864d93372d3a2d2d4cd37a0c00b839187432817e76f624",
+    "one-wide-t4/pair-2/baseline/result.json": "caae240b40c6f5dc9601738a5f84f3ac086f75488fe0c1ee90a9af3811d6fd6b",
+    "one-wide-t4/pair-2/candidate/request.json": "89722436cc6ca6814ff5d93e66872a92030b96faff258aa283104e7aafa4a9c0",
+    "one-wide-t4/pair-2/candidate/feppml_runtime.csv": "dc7f41f19ad7d3d9f8ff91c53d621436e060d16ff6721ae1378c2ef73646efad",
+    "one-wide-t4/pair-2/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-wide-t4/pair-2/candidate/covariance.csv": "bb586c7c3dbaf98176d758b18f26e6633957d690d6868c8d0fc81501da0bca1c",
+    "one-wide-t4/pair-2/candidate/import-hashes.json": "253c63e61604e7fab34bee7b3d04d2fc2df0bfb01a881df01aac80e34941dcce",
+    "one-wide-t4/pair-2/candidate/coefficients.csv": "157a6acf8fb214c1ff0d4431f636c918e557a5e8263328022c8bfb38e41c7d70",
+    "one-wide-t4/pair-2/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "one-wide-t4/pair-2/candidate/feppml_solver.csv": "2c31ceb30e59a6dab1a60ba66ee9ebab80d9f5e20732c60ef38ec71baecb71c0",
+    "one-wide-t4/pair-2/candidate/result.json": "1fab86cf9e09eccd37d2720ad348e6f3384df60b14c69b48659b10ad702d29b6",
+    "one-wide-t4/pair-2/stock/request.json": "bbf1b591c234e8809c3d0054ad97a231f007b90ab798c35d0b8e7e02e6f42146",
+    "one-wide-t4/pair-2/stock/covariance.csv": "2531b6c7b9f8c485137291c6e38e2c51d1186271eca778f9e3305cee25592c96",
+    "one-wide-t4/pair-2/stock/coefficients.csv": "15cf5de0833ea667fee89867027e7cbbecdec03a3a9a617f6f1f6324e8a70a60",
+    "one-wide-t4/pair-2/stock/result.json": "ac45db5fd06e696e109e2da698f1b85c6552e090d3d1a3a0a6df22fc721eb804",
+    "one-wide-t4/pair-2/stock/metadata.json": "ba0ba6b0dd7609253e172da41730ac5f864631f0501ed5ae2fbb302f8c92a911",
+    "control-profiled-small/pair-1/comparison.json": "7963d5ba612397d7c3553ab5c6a0a79394f0192bfa11f948ba8f3004b3343941",
+    "control-profiled-small/pair-1/input.json": "c83ea587d553d1b6a8fae1d581451d7ab17b59050ab4bfdd593b1c05a78de28b",
+    "control-profiled-small/pair-1/baseline/request.json": "af1218b6764cbb5b532e338edae3e756ad1b8fdaf83453f076e4ed2c7a5914be",
+    "control-profiled-small/pair-1/baseline/feppml_runtime.csv": "0f596edf1fcbae70708b21a41205362080df4dd7b60ec43682d68b5fc66954ba",
+    "control-profiled-small/pair-1/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-profiled-small/pair-1/baseline/covariance.csv": "934f801e0611ba3ca805a6ab4d99f37459fc16a542b647c8f4282b9f90e9217b",
+    "control-profiled-small/pair-1/baseline/import-hashes.json": "5612206ace6d7b64107cb1e55be0c05510e1a210089d607d826c560aca77dfab",
+    "control-profiled-small/pair-1/baseline/coefficients.csv": "4d58d53041cae59ef261fba5d497be754d1be8a5d8bfe672db3750f8419f2556",
+    "control-profiled-small/pair-1/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-profiled-small/pair-1/baseline/feppml_solver.csv": "3bf1d13ad7adc34ca1e02d8e9b24c83397132687c279a33d8e1e664928420f26",
+    "control-profiled-small/pair-1/baseline/result.json": "e9e1f22a6ff2aa3e34a225fa38c7ea644e719ce09a5a259578305b9df0ec40cd",
+    "control-profiled-small/pair-1/candidate/request.json": "b5190ee323569cdca7a666246ddd2217d66775ede572b42ffe5a0d6d212766ba",
+    "control-profiled-small/pair-1/candidate/feppml_runtime.csv": "e7228aaf779d8d6ced090aac985459a05988b19031254b4054bdb26c02ad914d",
+    "control-profiled-small/pair-1/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-profiled-small/pair-1/candidate/covariance.csv": "934f801e0611ba3ca805a6ab4d99f37459fc16a542b647c8f4282b9f90e9217b",
+    "control-profiled-small/pair-1/candidate/import-hashes.json": "5612206ace6d7b64107cb1e55be0c05510e1a210089d607d826c560aca77dfab",
+    "control-profiled-small/pair-1/candidate/coefficients.csv": "4d58d53041cae59ef261fba5d497be754d1be8a5d8bfe672db3750f8419f2556",
+    "control-profiled-small/pair-1/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-profiled-small/pair-1/candidate/feppml_solver.csv": "fdfcbf2624434ffb9accf49e95569dcde3b145ac5e532256f7695986d4dbf3f6",
+    "control-profiled-small/pair-1/candidate/result.json": "a19376777208d3da4961c657f00a7aec715d94278e9a92f1ee68b67c23d0cbac",
+    "control-profiled-small/pair-1/stock/request.json": "9245d5aff82c4f9c59c169e99795959b445ceeb3be7530d15482726943bacdfa",
+    "control-profiled-small/pair-1/stock/covariance.csv": "ab0ec36c025da611be6edd6903bebbf3cb9e10a0ab413b52f7100c8b9fc513af",
+    "control-profiled-small/pair-1/stock/coefficients.csv": "7326c5e08515aa21500735f3c866ea33fd2221e090746200ba301e37f88efec5",
+    "control-profiled-small/pair-1/stock/result.json": "291a06ff6db22de2a974ec8513bd3a8375e5637d5ab4b3d65d9664975c9827f2",
+    "control-profiled-small/pair-1/stock/metadata.json": "d1ac7dfe34ec56189a21faad669f7318f2a3ef86f8fdfdde2079e241a08dd3c5",
+    "control-profiled-small/pair-2/comparison.json": "685ebd01b94ce707e57d0a5288e048f8d7c060e0ef9595adb3bb9793a801ee8b",
+    "control-profiled-small/pair-2/input.json": "c83ea587d553d1b6a8fae1d581451d7ab17b59050ab4bfdd593b1c05a78de28b",
+    "control-profiled-small/pair-2/baseline/request.json": "04d5a82d2ff68f22b24f31ecf126aae433a6cab187f1893296ddd35a349ebc0d",
+    "control-profiled-small/pair-2/baseline/feppml_runtime.csv": "ff290411e63050563e2c628e7480ef02f6261c92dd0455befa038174bec5f608",
+    "control-profiled-small/pair-2/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-profiled-small/pair-2/baseline/covariance.csv": "934f801e0611ba3ca805a6ab4d99f37459fc16a542b647c8f4282b9f90e9217b",
+    "control-profiled-small/pair-2/baseline/import-hashes.json": "5612206ace6d7b64107cb1e55be0c05510e1a210089d607d826c560aca77dfab",
+    "control-profiled-small/pair-2/baseline/coefficients.csv": "4d58d53041cae59ef261fba5d497be754d1be8a5d8bfe672db3750f8419f2556",
+    "control-profiled-small/pair-2/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-profiled-small/pair-2/baseline/feppml_solver.csv": "787005a1f8f517ef98f9a77203dd9b969a73abfe2100b1e47efc1cdfe9feccf9",
+    "control-profiled-small/pair-2/baseline/result.json": "eb9d4dc262a7fcb97d35e4ade2e77c033e6fae1337b88df594ea8a9aa8f4c070",
+    "control-profiled-small/pair-2/candidate/request.json": "e421f2474a7de46335b9f1a12ae4f215de5fd1bb871f6b0e172be3c38599e000",
+    "control-profiled-small/pair-2/candidate/feppml_runtime.csv": "0d0339dc765ad5dd510ecc49ae864e7f6c13d9375a1e6384df1519383059bfd0",
+    "control-profiled-small/pair-2/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-profiled-small/pair-2/candidate/covariance.csv": "934f801e0611ba3ca805a6ab4d99f37459fc16a542b647c8f4282b9f90e9217b",
+    "control-profiled-small/pair-2/candidate/import-hashes.json": "5612206ace6d7b64107cb1e55be0c05510e1a210089d607d826c560aca77dfab",
+    "control-profiled-small/pair-2/candidate/coefficients.csv": "4d58d53041cae59ef261fba5d497be754d1be8a5d8bfe672db3750f8419f2556",
+    "control-profiled-small/pair-2/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-profiled-small/pair-2/candidate/feppml_solver.csv": "5f20665b6d6152c9bc1e429481059e33fb6c28b0e5c039ffd5da25db708e4a53",
+    "control-profiled-small/pair-2/candidate/result.json": "f47c556a096418ed97e349524bf5c7f3c27c33331ac83fb212771294b7fc1626",
+    "control-profiled-small/pair-2/stock/request.json": "28a135aa030dfb142ff1c196fef10daa95641739ead22b00b120c9aff37e3cc2",
+    "control-profiled-small/pair-2/stock/covariance.csv": "ab0ec36c025da611be6edd6903bebbf3cb9e10a0ab413b52f7100c8b9fc513af",
+    "control-profiled-small/pair-2/stock/coefficients.csv": "7326c5e08515aa21500735f3c866ea33fd2221e090746200ba301e37f88efec5",
+    "control-profiled-small/pair-2/stock/result.json": "618df68573b93d0c69b3323aa72da6fa6c832ff5f4498cebfd9f76dafa89fc3c",
+    "control-profiled-small/pair-2/stock/metadata.json": "f19482cd850b6e7758a8578ac6cc73f493c43a4e16ef4c8430ac02108d6dd842",
+    "control-three-fe-core-pair/pair-1/comparison.json": "6a1459a0001a3f86c9ab69517150213c95bbcf2d8d8d2b4fee4c158ae9f342b7",
+    "control-three-fe-core-pair/pair-1/input.json": "d0e6da2032b6ffbcd4937ef1930efb103e669a5b48be6cc84689f6441fa0fa68",
+    "control-three-fe-core-pair/pair-1/baseline/request.json": "a43614f8e5c9df18c964e77708654fd3716cb7e35282159bea12ee2f2a5d1eb5",
+    "control-three-fe-core-pair/pair-1/baseline/feppml_runtime.csv": "3766f9dc0488ce4fd40c0f9a73cdde5a7efb4f2ab6d06bed50921ec749983757",
+    "control-three-fe-core-pair/pair-1/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-three-fe-core-pair/pair-1/baseline/covariance.csv": "646c21bbc485de61b4ddd8e820dbd944815b25be04a2bb1d7de00f411638a1a2",
+    "control-three-fe-core-pair/pair-1/baseline/import-hashes.json": "fada996c7f37fd8507828b461f8a55c84b3089f84eac329a664141819c4343a7",
+    "control-three-fe-core-pair/pair-1/baseline/coefficients.csv": "6de8d036641d518312d2f41186f10584a5d42cb400f996f405fc83e74ba17e8e",
+    "control-three-fe-core-pair/pair-1/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-three-fe-core-pair/pair-1/baseline/feppml_solver.csv": "882d4438e70da96023081598c8d5a02440f63e4ca3217f5b1ebd545fadec017c",
+    "control-three-fe-core-pair/pair-1/baseline/result.json": "aa55bcd755fdfbe9aa2a8f4aa1eb4b326023dd869dc39f39c275a9c9ebef5376",
+    "control-three-fe-core-pair/pair-1/candidate/request.json": "3d32353cbe9febabd085bdbb7abf26e2da3cb80c929a35af6ab38827f68c1928",
+    "control-three-fe-core-pair/pair-1/candidate/feppml_runtime.csv": "1e14ecbec842ca16ab98e3923b35ebb053d99752b37f958f7446a97d8d716192",
+    "control-three-fe-core-pair/pair-1/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-three-fe-core-pair/pair-1/candidate/covariance.csv": "646c21bbc485de61b4ddd8e820dbd944815b25be04a2bb1d7de00f411638a1a2",
+    "control-three-fe-core-pair/pair-1/candidate/import-hashes.json": "fada996c7f37fd8507828b461f8a55c84b3089f84eac329a664141819c4343a7",
+    "control-three-fe-core-pair/pair-1/candidate/coefficients.csv": "6de8d036641d518312d2f41186f10584a5d42cb400f996f405fc83e74ba17e8e",
+    "control-three-fe-core-pair/pair-1/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-three-fe-core-pair/pair-1/candidate/feppml_solver.csv": "5aa262d2a75515fe90fcee073264312ba0b1c37e6585144ce5b153cb7f10a858",
+    "control-three-fe-core-pair/pair-1/candidate/result.json": "740088ef951e2558e7637c663eee7f18efec91c0dbcb2190d2068bf28f61f2e5",
+    "control-three-fe-core-pair/pair-1/stock/request.json": "c6a3fca9c611d13a07ca658761997ff69726d32ffab07d6189b70781a5f5ae7f",
+    "control-three-fe-core-pair/pair-1/stock/covariance.csv": "be6fcc5b696d84fca7d98208f5b75860d58ef0af201339872e47b40f62fcbf4d",
+    "control-three-fe-core-pair/pair-1/stock/coefficients.csv": "dbb9024b63a514c3f94a40d5f4ce25a2b08077c1fefc776d4252148b7db04771",
+    "control-three-fe-core-pair/pair-1/stock/result.json": "cc70f1b6e338375f9ab3393192fe430ba12f1deedee7185c0949be5e9725ac48",
+    "control-three-fe-core-pair/pair-1/stock/metadata.json": "9b6084909d4655087e6e3f92bb3fc9a7b9ca908398c7af5610d9bd9d0e86ebc7",
+    "control-three-fe-core-pair/pair-2/comparison.json": "c79a4dfdb50d4ef1e4321346713138a5ca32ab34885f17d54cf7e1bb0f7027eb",
+    "control-three-fe-core-pair/pair-2/input.json": "d0e6da2032b6ffbcd4937ef1930efb103e669a5b48be6cc84689f6441fa0fa68",
+    "control-three-fe-core-pair/pair-2/baseline/request.json": "5f8631a398ed5ea79b7db70739c8509e2205aacc11d567c58aa5c23a04f565de",
+    "control-three-fe-core-pair/pair-2/baseline/feppml_runtime.csv": "033e95846f7086cc649c33a3f4ff16b7df025b42eb7ec78d9622dbed9eae1300",
+    "control-three-fe-core-pair/pair-2/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-three-fe-core-pair/pair-2/baseline/covariance.csv": "646c21bbc485de61b4ddd8e820dbd944815b25be04a2bb1d7de00f411638a1a2",
+    "control-three-fe-core-pair/pair-2/baseline/import-hashes.json": "fada996c7f37fd8507828b461f8a55c84b3089f84eac329a664141819c4343a7",
+    "control-three-fe-core-pair/pair-2/baseline/coefficients.csv": "6de8d036641d518312d2f41186f10584a5d42cb400f996f405fc83e74ba17e8e",
+    "control-three-fe-core-pair/pair-2/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-three-fe-core-pair/pair-2/baseline/feppml_solver.csv": "33235b74dbaf6491be4ce31b83e190e415e730643e34724ceb257f005b36bb8f",
+    "control-three-fe-core-pair/pair-2/baseline/result.json": "9647c9e5cefe7b9564d0cb66ab019db04a45a113d9b672ea82ec3427b3c8677c",
+    "control-three-fe-core-pair/pair-2/candidate/request.json": "95aef105d037b4feb06824dea41ed423b2a5d50d7ca38d4dbd0023317ce2c8d9",
+    "control-three-fe-core-pair/pair-2/candidate/feppml_runtime.csv": "920402b802aaaf787288ebad97efdc8b254fba2a0b0f653a500f43dc7cf6c001",
+    "control-three-fe-core-pair/pair-2/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-three-fe-core-pair/pair-2/candidate/covariance.csv": "646c21bbc485de61b4ddd8e820dbd944815b25be04a2bb1d7de00f411638a1a2",
+    "control-three-fe-core-pair/pair-2/candidate/import-hashes.json": "fada996c7f37fd8507828b461f8a55c84b3089f84eac329a664141819c4343a7",
+    "control-three-fe-core-pair/pair-2/candidate/coefficients.csv": "6de8d036641d518312d2f41186f10584a5d42cb400f996f405fc83e74ba17e8e",
+    "control-three-fe-core-pair/pair-2/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-three-fe-core-pair/pair-2/candidate/feppml_solver.csv": "1d37d6eeb7ac928e8ebbdb072fecdbd491d15fdbcd9349fad7e61d25eb0391fa",
+    "control-three-fe-core-pair/pair-2/candidate/result.json": "1df8a945849e8eb2d03a890e6a0b1692d89d7484490c8c911737306a6f543373",
+    "control-three-fe-core-pair/pair-2/stock/request.json": "ba733959ca3652aecd49e5ba9863362ba66b9c33f5f855d26ca88fac6a903368",
+    "control-three-fe-core-pair/pair-2/stock/covariance.csv": "be6fcc5b696d84fca7d98208f5b75860d58ef0af201339872e47b40f62fcbf4d",
+    "control-three-fe-core-pair/pair-2/stock/coefficients.csv": "dbb9024b63a514c3f94a40d5f4ce25a2b08077c1fefc776d4252148b7db04771",
+    "control-three-fe-core-pair/pair-2/stock/result.json": "9aa3d63e7638bd9aaeb87bdb07c84d6beb236afc5a194ea13d2ea0d0a4e98163",
+    "control-three-fe-core-pair/pair-2/stock/metadata.json": "a8b7afbc3a67e5a86156813f69a445fef09760c346bf3a898bea85b9e4297851",
+    "control-excluded-slope/pair-1/comparison.json": "fe78ffe0f1908e6b2dbde8675dd98151c35d716a7b5ffc088b7c04f15e777db1",
+    "control-excluded-slope/pair-1/input.json": "eca199b5bbd2029a77b3d30d2738b3149a5f13873372b608edaeded0e1ac1c53",
+    "control-excluded-slope/pair-1/baseline/request.json": "444aa0c86d0bf76593ad966c04b09d290d96dabbdbbc81d1dc7e4da8009268bf",
+    "control-excluded-slope/pair-1/baseline/feppml_runtime.csv": "5dbf4955757f09dd6ae714d55562b18a0e71133929144426e71d505a71a40958",
+    "control-excluded-slope/pair-1/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-slope/pair-1/baseline/covariance.csv": "6e84a15bd77d4b0478d40b5b2d8990535c8368275fbede903a747261d69fd492",
+    "control-excluded-slope/pair-1/baseline/import-hashes.json": "22f2e52194e3e735ad163d489c8b650a8b4fc52eabc269055b5e2c900cf618bb",
+    "control-excluded-slope/pair-1/baseline/coefficients.csv": "1f75366a64d45155a6c371c0b6f0349b5c558a61eab5adf96d923a593303c223",
+    "control-excluded-slope/pair-1/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-slope/pair-1/baseline/feppml_solver.csv": "a3f92b7a4153e6d860efa95e3c8615b7ba00f5341c28f14b3d406756f97fce66",
+    "control-excluded-slope/pair-1/baseline/result.json": "c2752ee09fe852b6d46285992557d99f739b62d6faeffd2f7df0af03a8aec670",
+    "control-excluded-slope/pair-1/candidate/request.json": "cf7283839af09a04c1c132cbeb19bfe7e67f58b89f250e99a4df799ff8d629f7",
+    "control-excluded-slope/pair-1/candidate/feppml_runtime.csv": "1997e8baa41bde08b688d00a7a518e5109957ec291318eaf1b0e3fd2c6a6a5cd",
+    "control-excluded-slope/pair-1/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-slope/pair-1/candidate/covariance.csv": "6e84a15bd77d4b0478d40b5b2d8990535c8368275fbede903a747261d69fd492",
+    "control-excluded-slope/pair-1/candidate/import-hashes.json": "22f2e52194e3e735ad163d489c8b650a8b4fc52eabc269055b5e2c900cf618bb",
+    "control-excluded-slope/pair-1/candidate/coefficients.csv": "1f75366a64d45155a6c371c0b6f0349b5c558a61eab5adf96d923a593303c223",
+    "control-excluded-slope/pair-1/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-slope/pair-1/candidate/feppml_solver.csv": "2025cb2d77b6706b148ab4deb89c23aff4e13cbd39a32fb9bf0ae861141701ca",
+    "control-excluded-slope/pair-1/candidate/result.json": "9fdd3e68e4ec7e133975709643c38cc10b05dfbb1829bed164d9770636f24c43",
+    "control-excluded-slope/pair-1/stock/request.json": "b74c4ff608e0caed6c79e5979f4661094519593106fba46b66cdfad250ad0b03",
+    "control-excluded-slope/pair-1/stock/covariance.csv": "0c39cba10b1e9a3cb221556802b18ce2c876676054d183b2c7e12279274f83ac",
+    "control-excluded-slope/pair-1/stock/coefficients.csv": "a290fceb10256b94199a47aa0c39a8f8957ba568cb457ac4c22b3970bbf60014",
+    "control-excluded-slope/pair-1/stock/result.json": "2cf8951527c6c932eb11dedd7323333492c9f50cf2cb00d5d7051c4f558ecff3",
+    "control-excluded-slope/pair-1/stock/metadata.json": "d7ae1c74c1f53e1da87c3aa0a63a68425a2c85cc820494feea5a89c58ff04ce4",
+    "control-excluded-slope/pair-2/comparison.json": "b5eead772e42479cdd93d931a134f1e84bc1f5f5dcb4fc3984a0b9eec5c76860",
+    "control-excluded-slope/pair-2/input.json": "eca199b5bbd2029a77b3d30d2738b3149a5f13873372b608edaeded0e1ac1c53",
+    "control-excluded-slope/pair-2/baseline/request.json": "d9887cdc3d7418fc026a341644e232862e0b2a1873662608c3e3442942486ae5",
+    "control-excluded-slope/pair-2/baseline/feppml_runtime.csv": "c72ea8705227d5048eef42dd0d2f24e4ca64db237695eee0070bbcbc34a05456",
+    "control-excluded-slope/pair-2/baseline/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-slope/pair-2/baseline/covariance.csv": "6e84a15bd77d4b0478d40b5b2d8990535c8368275fbede903a747261d69fd492",
+    "control-excluded-slope/pair-2/baseline/import-hashes.json": "22f2e52194e3e735ad163d489c8b650a8b4fc52eabc269055b5e2c900cf618bb",
+    "control-excluded-slope/pair-2/baseline/coefficients.csv": "1f75366a64d45155a6c371c0b6f0349b5c558a61eab5adf96d923a593303c223",
+    "control-excluded-slope/pair-2/baseline/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-slope/pair-2/baseline/feppml_solver.csv": "603ee55b5998fce5535495c9ab99ba4b46e04815235bfdf4aad546f0000e22f3",
+    "control-excluded-slope/pair-2/baseline/result.json": "5c019d0165a89aea20504fa9811eb66f8354842ffe2edb5cbcb256bb809db0b2",
+    "control-excluded-slope/pair-2/candidate/request.json": "bdba375146a40021e2e695387608a13bcc7c8265341730df6e581a7d982f1643",
+    "control-excluded-slope/pair-2/candidate/feppml_runtime.csv": "ee6f0a39c72b22c06adae4fff26e758e0098a7a275e1ae92e2aaa90e1f3ce6f8",
+    "control-excluded-slope/pair-2/candidate/fereg_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-slope/pair-2/candidate/covariance.csv": "6e84a15bd77d4b0478d40b5b2d8990535c8368275fbede903a747261d69fd492",
+    "control-excluded-slope/pair-2/candidate/import-hashes.json": "22f2e52194e3e735ad163d489c8b650a8b4fc52eabc269055b5e2c900cf618bb",
+    "control-excluded-slope/pair-2/candidate/coefficients.csv": "1f75366a64d45155a6c371c0b6f0349b5c558a61eab5adf96d923a593303c223",
+    "control-excluded-slope/pair-2/candidate/fereg_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-slope/pair-2/candidate/feppml_solver.csv": "91bd1750c52e548258416ef3d4471430252cb9bce01280c054ef12c3911873bb",
+    "control-excluded-slope/pair-2/candidate/result.json": "f1d1710f6a2c1d682e6fbb9c48f3da8aad06516bc39ac6c8621674750551b1c1",
+    "control-excluded-slope/pair-2/stock/request.json": "7b45028f42f7685a3bac27b39ab13ea66538037ab029e9a761212623497e43a2",
+    "control-excluded-slope/pair-2/stock/covariance.csv": "0c39cba10b1e9a3cb221556802b18ce2c876676054d183b2c7e12279274f83ac",
+    "control-excluded-slope/pair-2/stock/coefficients.csv": "a290fceb10256b94199a47aa0c39a8f8957ba568cb457ac4c22b3970bbf60014",
+    "control-excluded-slope/pair-2/stock/result.json": "dfcf882f0e4015bc0bb7f6ad1502a43d9435ee218a70a6a4bbed58624fd2bc69",
+    "control-excluded-slope/pair-2/stock/metadata.json": "a105acef0be90fc32a0efa82976ac342bbccb06dfe734079be1f178ca1e86127",
+    "control-excluded-ols/pair-1/comparison.json": "933b97b156e9d3b7de8bfe405c7e904265bf386c716e2de034991ecc3bff178c",
+    "control-excluded-ols/pair-1/input.json": "b725196363142baf7b26fa77cc654f9dad581af8c5b8e2c80e0161823f00daeb",
+    "control-excluded-ols/pair-1/baseline/request.json": "779db158e75f433e54021652763a2c90e65da5b257a9f22104515017acfaa921",
+    "control-excluded-ols/pair-1/baseline/feppml_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-ols/pair-1/baseline/fereg_runtime.csv": "24f6650fdb914482ab80d4f299392ef319d696a4a5136659bf56444703c211c1",
+    "control-excluded-ols/pair-1/baseline/covariance.csv": "05fb238c6eed753d33284511a75977f7f4436c8ab8463d2b709c1054c278369d",
+    "control-excluded-ols/pair-1/baseline/import-hashes.json": "ae662ecc384efebcc4b3d95846a1bc8331a517950e8cf9285dd21e56320ffc8a",
+    "control-excluded-ols/pair-1/baseline/coefficients.csv": "e9d4b95b0aaa349c70a7f30191b26d9e7ea8d6a7727330d1bb3ea5282851cbac",
+    "control-excluded-ols/pair-1/baseline/fereg_solver.csv": "4690a8a70adb80e6e519aa22af623c936819f68e4957058ab6525452070ea790",
+    "control-excluded-ols/pair-1/baseline/feppml_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-ols/pair-1/baseline/result.json": "ef4a99dfa1df1e72eddccda78ec6d1e885f6e17b29ba07d441a49be4863bfec1",
+    "control-excluded-ols/pair-1/candidate/request.json": "796c054672c86c2a8c311f089ea33fa38bd01cf86abfc0b45fc731c64577178f",
+    "control-excluded-ols/pair-1/candidate/feppml_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-ols/pair-1/candidate/fereg_runtime.csv": "f423819f5d03976bc01c803d6f64e79dde82dd714649f823471238b472ad01f1",
+    "control-excluded-ols/pair-1/candidate/covariance.csv": "05fb238c6eed753d33284511a75977f7f4436c8ab8463d2b709c1054c278369d",
+    "control-excluded-ols/pair-1/candidate/import-hashes.json": "ae662ecc384efebcc4b3d95846a1bc8331a517950e8cf9285dd21e56320ffc8a",
+    "control-excluded-ols/pair-1/candidate/coefficients.csv": "e9d4b95b0aaa349c70a7f30191b26d9e7ea8d6a7727330d1bb3ea5282851cbac",
+    "control-excluded-ols/pair-1/candidate/fereg_solver.csv": "339252e33f3767941edcacf7b05400536add8e51b957bcf167cbb5908f57b4e0",
+    "control-excluded-ols/pair-1/candidate/feppml_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-ols/pair-1/candidate/result.json": "84d608a8c8caaf98856dfc763c673b4ca7194b784c503d6b4a2d04ee5f1fb84f",
+    "control-excluded-ols/pair-1/stock/request.json": "f93ea0c9f41d8f85de964f7d8d378cf3ed037c1f3c26b0d42e8d8693e5e7ab46",
+    "control-excluded-ols/pair-1/stock/covariance.csv": "e17b99df74c46c1517930917f67e686610e8ebe4d823a3ebf0c8065e4e799c59",
+    "control-excluded-ols/pair-1/stock/coefficients.csv": "c633f092a64a3c1118fbc5ffa13c063e9e784881870839e7cfa7b7bc0ba4f1dc",
+    "control-excluded-ols/pair-1/stock/result.json": "4723c1fb1ac860fb7399115b308d063593fecd6691d9738aa305ae8d4498e4b6",
+    "control-excluded-ols/pair-1/stock/metadata.json": "a8d547d58a01dfd0f70533b199f10d9c9b6e23c36c982e1e4082e7d42d62564b",
+    "control-excluded-ols/pair-2/comparison.json": "2f17b5053e50dc06f218a3def518cfdf05df3f9186215b3d73d75cfe0d9a0dbb",
+    "control-excluded-ols/pair-2/input.json": "b725196363142baf7b26fa77cc654f9dad581af8c5b8e2c80e0161823f00daeb",
+    "control-excluded-ols/pair-2/baseline/request.json": "e536ea243aec78331cf003d60b08435e5287e6ed4563ccec726728cad228b701",
+    "control-excluded-ols/pair-2/baseline/feppml_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-ols/pair-2/baseline/fereg_runtime.csv": "78243672031cbf0a75f1f9f896a5aa659480cf6706a4ed1e1bb2cf8788934d9d",
+    "control-excluded-ols/pair-2/baseline/covariance.csv": "05fb238c6eed753d33284511a75977f7f4436c8ab8463d2b709c1054c278369d",
+    "control-excluded-ols/pair-2/baseline/import-hashes.json": "ae662ecc384efebcc4b3d95846a1bc8331a517950e8cf9285dd21e56320ffc8a",
+    "control-excluded-ols/pair-2/baseline/coefficients.csv": "e9d4b95b0aaa349c70a7f30191b26d9e7ea8d6a7727330d1bb3ea5282851cbac",
+    "control-excluded-ols/pair-2/baseline/fereg_solver.csv": "33db50c31e26ecbad97059998dba3ac34f228fd400803d28fbba8f08a86f0533",
+    "control-excluded-ols/pair-2/baseline/feppml_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-ols/pair-2/baseline/result.json": "d03d278ad9d08fa0062611ee51dad8c192c8b8322b86bafa4e2fb37f314ecd69",
+    "control-excluded-ols/pair-2/candidate/request.json": "fa1f5980460413c0f7decd6b967e9905cf4c17048681b23e6a1345cdcd166e0f",
+    "control-excluded-ols/pair-2/candidate/feppml_runtime.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-ols/pair-2/candidate/fereg_runtime.csv": "c2644bb259679a251285eabbd34ef935d9db949c8aa61ae6caa85ce757f5db8a",
+    "control-excluded-ols/pair-2/candidate/covariance.csv": "05fb238c6eed753d33284511a75977f7f4436c8ab8463d2b709c1054c278369d",
+    "control-excluded-ols/pair-2/candidate/import-hashes.json": "ae662ecc384efebcc4b3d95846a1bc8331a517950e8cf9285dd21e56320ffc8a",
+    "control-excluded-ols/pair-2/candidate/coefficients.csv": "e9d4b95b0aaa349c70a7f30191b26d9e7ea8d6a7727330d1bb3ea5282851cbac",
+    "control-excluded-ols/pair-2/candidate/fereg_solver.csv": "1bc6c126766d2f4e26426c6fd801b2251596a13fc8bb1d46e8de92b77937ec0c",
+    "control-excluded-ols/pair-2/candidate/feppml_solver.csv": "83ef61de1bc09f8dbacfc56cf532426589c343443e25308d21a992e533068dfb",
+    "control-excluded-ols/pair-2/candidate/result.json": "c862a0e43b8d9a8db0b8e7c18b5acaa87abb06311b2ceace6a2ae372fbd455d7",
+    "control-excluded-ols/pair-2/stock/request.json": "8b2f8a5c54290b22713eb98e4ae0c90c6bd62ac43e3b571d4d1733ea20137080",
+    "control-excluded-ols/pair-2/stock/covariance.csv": "e17b99df74c46c1517930917f67e686610e8ebe4d823a3ebf0c8065e4e799c59",
+    "control-excluded-ols/pair-2/stock/coefficients.csv": "c633f092a64a3c1118fbc5ffa13c063e9e784881870839e7cfa7b7bc0ba4f1dc",
+    "control-excluded-ols/pair-2/stock/result.json": "cd69ec83f7e69494a0311902f6e33d181758be00aa64cb96337da250151d19af",
+    "control-excluded-ols/pair-2/stock/metadata.json": "e69eb65717b704bed3a573581db062801595b1cc10b670966eb6f8b40b4c51d5"
+  },
+  "interpretation": "Ratios use command clocks. Case medians require all registered repetitions to pass. Scaling pairs the corresponding repetition, including repeated seeds, on native-certified same-input/sample fits. A bounded sample does not establish a statistical guarantee."
+}

@@ -1,0 +1,43 @@
+{
+  "column_sha256": {
+    "g1": "fee1f8533989560c0d551ada4540435c2f12dd9ab45d0f72df487fa42601e939",
+    "g2": "20aa1315f0d63e0949935c3500d7553365616bd858e76b477c01aed954fab9fa",
+    "obs_id": "4341681b917ebecd1b14bcd56e48582b8e91b3a94cdaa1acc2f6371af1b88b3b",
+    "x1": "099419c9b4ab5b51373b32a37b317d836839ddb1e143b7137037dda3338c9e2f",
+    "x2": "f593d02598d3dd9cdc69c2aa9858100bce60a08528b1e5baafdf57453ee1151e",
+    "x3": "24c23bb55d040dd42ff68a04a1342ac7ede1ca054fc7f0d1f160f4c3c3108c4c",
+    "x4": "83bd086ac474b8157f93333a874ff65eb7aaf8ebd0cc765f27c9884037760415",
+    "x5": "16c615ccb38a5a76aeb7a2cc39a8b133cbb8776baf4dcbb29b1b2412b18a734d",
+    "x6": "0feb5be4716115f312a577df8a7450895dbf783ccc48fbd7e27834601d54ae5b",
+    "y": "be1293ae0d06a15ba308a297bcb74f2f24ce5c6f05cca67b9c09c7e4b312c9ff"
+  },
+  "columns": [
+    "obs_id",
+    "g1",
+    "g2",
+    "x1",
+    "x2",
+    "x3",
+    "x4",
+    "x5",
+    "x6",
+    "y"
+  ],
+  "design": "two_fe_dense",
+  "k": 6,
+  "levels": {
+    "g1": 6144,
+    "g2": 308
+  },
+  "minimum_level_rows": {
+    "g1": 5,
+    "g2": 65
+  },
+  "model": "ppml",
+  "n": 30720,
+  "schema": "systematic-input-v1",
+  "section": "main",
+  "seed": 2026092817,
+  "sha256": "3e80862a492cb49c2a5572e7da36aa3b7e628f3383f4234d4ab592f406c96a23",
+  "zeros": 0
+}

@@ -1,0 +1,10 @@
+{
+  "job": "7763576",
+  "run_directory": "dev/20260928-centered-inline-rotation03",
+  "source_snapshot": "cda0912f3f7c4ed74856770d57f263b3786afe50c75e66e66154c1b6e523c670",
+  "slots": 28,
+  "wall_minutes": 30,
+  "cpu": "E5-2680v4",
+  "fits": 54,
+  "registration_sha256": "e4152e328a0b5864747874c48dc226b41185ec41eca7d2b8c6dc27bae9f0286e"
+}

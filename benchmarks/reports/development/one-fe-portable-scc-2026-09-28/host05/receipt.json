@@ -1,0 +1,53 @@
+{
+  "job": "7763580",
+  "status": "complete_diagnostic_only",
+  "applications": 72,
+  "accounting": {
+    "jobnumber": "7763580",
+    "slots": "4",
+    "hostname": "scc-wm1.scc.bu.edu",
+    "start_time": "Mon Sep 28 05:06:09 2026",
+    "end_time": "Mon Sep 28 05:06:42 2026",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "33",
+    "maxvmem": "1.114G"
+  },
+  "accounting_sha256": "bab0c4efc820a43722d40f7cbc077bebc045b73930db2a46ea4cbb5a5cebdb4b",
+  "job_log_sha256": "2c2494a6b5cf50b30b7298052cf0c631f1f87e26c34aced81805a577d30b6e19",
+  "sentinels": [
+    "FEREG_CPU_PROFILE_COMPLETE",
+    "FEREG_HOST_CPU_SUCCESS job=7763580"
+  ],
+  "remote_file_sha256": {
+    "results.json": "2d6ec373147e98c56bda95a4fdc9466e3e1e350e96e3ac176eb0294fdb6bf5b1",
+    "complete.json": "e18a2b531d8331d1f2abd03f8682ebcd34be79a0ff2ede0a9982e1154fb8fe37",
+    "two_fe_dense-default/solver.trace": "980b7a7b1dfef420b657bffeb62231daa3c07b199de1b4df231c59a255d8d6d2",
+    "two_fe_dense-default/input.json": "c83ea587d553d1b6a8fae1d581451d7ab17b59050ab4bfdd593b1c05a78de28b",
+    "two_fe_dense-default/metadata.tsv": "491d40c656d60534ddfa58e848f31db15e2f932023222fa52624f48baae99ae9",
+    "two_fe_dense-default/receipt.json": "7d214f9e6b1a51c2edcdf7e5209989c182f577aa4c4701be566da8bd415ca432",
+    "two_fe_dense-host1/solver.trace": "dfa5519c4aa7d0bcbaba5629aec0564e4739e65dbb13043090627d954aa7a38c",
+    "two_fe_dense-host1/input.json": "c83ea587d553d1b6a8fae1d581451d7ab17b59050ab4bfdd593b1c05a78de28b",
+    "two_fe_dense-host1/metadata.tsv": "f4107e4429bee339a558d31190dc0cd4c590cf2498fd1154d7b9941221c593f7",
+    "two_fe_dense-host1/receipt.json": "7877127c284fe214180f7f3228b99f84ddab1ee2d09d2fa9d03c387713e75d2e",
+    "two_fe_dense-passive/solver.trace": "4100735c3ac0d2346ee2b04c8aa37e0dad84ebdecfbd04dcb969a1a11ed645d6",
+    "two_fe_dense-passive/input.json": "c83ea587d553d1b6a8fae1d581451d7ab17b59050ab4bfdd593b1c05a78de28b",
+    "two_fe_dense-passive/metadata.tsv": "c48e700c5638cea26756191117ae88ded5c14f882028fe60a2c9e7a78a17fb59",
+    "two_fe_dense-passive/receipt.json": "9d27b38c011e9e9b08548814bf13d12f7315e65029cdf7732e43fb10338dcc55",
+    "one_fe-host1/solver.trace": "54f5f75d2c526a8fd85b072c27d27516800c1cf3270680b057609328988f5b2e",
+    "one_fe-host1/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one_fe-host1/metadata.tsv": "22c1773965c0ec9aed24c817948bf1743dfe27cf20ace670b10ebe7f3c6ac41a",
+    "one_fe-host1/receipt.json": "ee88cdbe7eb08ccbd6fce386cf449247ad83f2e1141bf6d3bf5b11316889966f",
+    "one_fe-passive/solver.trace": "ad5444dde33329450ae9d918fd2874a60f77b86a3f1c3f88b53037a190aa70ba",
+    "one_fe-passive/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one_fe-passive/metadata.tsv": "cef4b15f1b112dfa538843e0eb9f83853545520c411f81158d49a6d08073a2ad",
+    "one_fe-passive/receipt.json": "cde81c7859f78a5b06391612bc526e1cf5b3d5d4d9ba2280907616f0ad8b1cbe",
+    "one_fe-default/solver.trace": "3a3ef83864cca15ee3443a9296947739e91b17d088dafc1fd85a4eff0c584e4c",
+    "one_fe-default/input.json": "66504678760e5506b64616d5334d7e30debe201e97ab0a4cf9ecefa3217d36b7",
+    "one_fe-default/metadata.tsv": "37b258b86a3118d7b5637ef90caddb8cbfeb20de52c0e27a23e537de2c3c9039",
+    "one_fe-default/receipt.json": "3771ebde7e5a59c0e3074439ed199f7476037557166c44b610a250eb267366ef"
+  },
+  "no_headline_overlap": true,
+  "source_status": "rejected_candidate",
+  "no_comparator_ranking": true
+}

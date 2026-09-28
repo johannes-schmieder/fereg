@@ -1,0 +1,22 @@
+{
+  "job": "7763535",
+  "status": "complete_diagnostic_only",
+  "applications": 36,
+  "accounting": {
+    "jobnumber": "7763535",
+    "hostname": "scc-wn3.scc.bu.edu",
+    "start_time": "Mon Sep 28 04:40:52 2026",
+    "end_time": "Mon Sep 28 04:41:16 2026",
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "24",
+    "maxvmem": "1.111G"
+  },
+  "job_log_sha256": "f4b5afcc4e5a25a68d2884bc920a82d953f82d19035c0cb2ba0398a7b18c5d59",
+  "sentinels": [
+    "FEREG_CPU_PROFILE_COMPLETE",
+    "FEREG_ONE_FE_CPU_SUCCESS job=7763535"
+  ],
+  "source_snapshot": "5c0d4685f7e10f126f140d8bfe9a6177ffc8ce73dc00f51f1845cd319800b7e0"
+}

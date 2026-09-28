@@ -10,7 +10,73 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## Current checkpoint: strict-target ordinary PPML saves repeated finalization
+## Current checkpoint: one-FE checked-kernel candidate rejected; host cost isolated
+
+[ADR0239](docs/adr/0239-checked-reduction-inlining.md) rejects a profiled shared
+helper-inlining candidate after broader controls. **Production remains exactly
+computational snapshot 5c0d4685…** (accepted main 524c8e8b), Linux 94925723… and
+Mac 0172ddaf…. All 211 source inputs and the exact universal Mac artifact were
+[restored](benchmarks/reports/development/one-fe-portable-scc-2026-09-28/restoration.json).
+No production code change is retained. No push, qualification or remote release.
+
+The [source-bound report](benchmarks/reports/development/one-fe-portable-scc-2026-09-28/README.md)
+preserves the rejected patch and candidate cda0912f…, Linux 570eedc0…,
+Mac 1fdf46c0…. Current-source profile 7763535 located checked accumulator/group
+statistics costs; portable proposal FMA was not the main attributed opportunity.
+The candidate preserved every arithmetic expression, check, recurrence, sample,
+rank, weight/inference rule and allocation. Both platforms pass **74 focused
+Rust tests and six licensed oracle/control fixtures**, with ABI/panic checks and
+Linux PPML smoke. A zero-match linear-session filter was corrected before timing;
+seven missing Linux tests ran in the initial rotation preflight, with a receipt.
+
+Uncontended jobs **7763576/7763579** complete **144 headline applications**,
+**48/48 native and 48/48 stock scientific pairs**, with clean accounting and
+terminal sentinels. All native coefficient/covariance exports are byte-identical;
+work counts and modeled memory agree. Tracked peaks agree except existing
+three-FE workspace-overlap variation. Initial/fresh designs and all losses are
+retained. Fresh seed **2026092819** must not become a tuning seed.
+
+Fresh candidate/baseline medians: **.847 one-FE T1, .986 T2, .916 T4, .967 low,
+.887 wide, 1.087 larger T8; 1.024 small two-FE PPML, .923 three-FE, 1.039 slopes,
+.979 OLS**. Reject the package: the larger holdout loses 8.7% and crosses the 1.20
+stock target in the median; small two-FE loses in both blocks and low/slope pairs
+have material losses. Do not continue tuning these annotations or fit guards to
+cases. The report's candidate ratios never describe retained production.
+
+The **accepted source's** fresh baseline/stock medians are **3.165 one-FE T1,
+2.220 T2, 3.219 T4, 3.011 low, 1.062 wide, 1.140 larger; 2.039 small two-FE PPML,
+.538 three-FE, .353 strict slopes and 1.454 OLS**. PPML is robust, OLS IID; headline
+calls omit optional observation outputs. Stock is pinned unmodified fixest 0.14.2,
+strict only for slopes. These are source/seed/output-specific comparisons.
+Grouped accepted-source T4/T1 is 1.126 initial and 1.037 fresh, slower in every
+corresponding repetition; not a directly alternating core-scaling experiment.
+
+**Next mechanism:** post-timing CPU diagnostic **7763580** passes 72 calls on the
+isolated rejected artifact, four native workers verified in each. Normal/passive
+wait/one-host-processor diagnostic elapsed times are **4.328/1.922/2.021s one-FE**
+and **3.927/2.785/2.823s two-FE**; Stata's self-sample share falls sharply. This
+supports substantial embedding-worker overhead. It is a fixed-order, shared-node
+profile, with no per-call switching/restoration cost or exported coefficient/VCE
+comparison. It is not headline speed evidence or a changed production policy.
+
+Implement a scoped host/native coordination candidate on accepted 5c0d4685:
+first inspect processor-setting semantics and transaction/Break boundaries,
+include switching/restoration in the public clock, preserve requested/effective
+native threads and main-thread SPI, and prove restoration on errors/Break/panic.
+Then directly alternate T1/T2/T4 and protect wide/large/low/OLS paths. Normal stock
+settings remain the comparator. If switching consumes the gain, record rejection
+and investigate a safe wait interface. Do not silently alter global process state.
+
+All five milestone jobs are terminal; unrelated SCC work was untouched. Raw logs
+and perf binaries stay remote. Collected synthetic outputs match remote hashes;
+a local summary serialization-order mismatch was resolved by semantic equality
+and preservation of original remote bytes, without reruns. Routine SCC testing
+remains authorized; do not ask again. The broader goal is active. Previous weak
+SE discrepancies, large timeouts, other comparator/sample failures, static
+allocation drift, weighted constrained fits and nonretaining-CG instability remain
+open. The earlier three-FE slowdown is not adjudicated by this different seed.
+
+## Accepted production checkpoint: strict-target ordinary PPML saves repeated finalization
 
 [ADR0238](docs/adr/0238-ppml-publication-target-ordinary-solve.md) retains a small,
 route-independent scheduling change: after both accepted outer diagnostics meet

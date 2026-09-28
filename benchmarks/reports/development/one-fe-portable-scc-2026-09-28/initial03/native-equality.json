@@ -1,0 +1,497 @@
+[
+  {
+    "case": "one-small-t1",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            3.0,
+            3.0
+          ],
+          "inner_iterations": [
+            4.0,
+            4.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            16364677.0,
+            16364677.0
+          ],
+          "feppml_allocation_peak": [
+            13619860.0,
+            13619860.0
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            3.0,
+            3.0
+          ],
+          "inner_iterations": [
+            4.0,
+            4.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            16364677.0,
+            16364677.0
+          ],
+          "feppml_allocation_peak": [
+            13619860.0,
+            13619860.0
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "one-small-t2",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            3.0,
+            3.0
+          ],
+          "inner_iterations": [
+            4.0,
+            4.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            16758495.0,
+            16758495.0
+          ],
+          "feppml_allocation_peak": [
+            14074628.0,
+            14074628.0
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            3.0,
+            3.0
+          ],
+          "inner_iterations": [
+            4.0,
+            4.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            16758495.0,
+            16758495.0
+          ],
+          "feppml_allocation_peak": [
+            14074628.0,
+            14074628.0
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "one-small-t4",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            3.0,
+            3.0
+          ],
+          "inner_iterations": [
+            4.0,
+            4.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            16759007.0,
+            16759007.0
+          ],
+          "feppml_allocation_peak": [
+            14088996.0,
+            14088996.0
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            3.0,
+            3.0
+          ],
+          "inner_iterations": [
+            4.0,
+            4.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            16759007.0,
+            16759007.0
+          ],
+          "feppml_allocation_peak": [
+            14088996.0,
+            14088996.0
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "one-low-t4",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            3.0,
+            3.0
+          ],
+          "inner_iterations": [
+            4.0,
+            4.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            19265214.0,
+            19265214.0
+          ],
+          "feppml_allocation_peak": [
+            12958491.0,
+            12958491.0
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            3.0,
+            3.0
+          ],
+          "inner_iterations": [
+            4.0,
+            4.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            19265214.0,
+            19265214.0
+          ],
+          "feppml_allocation_peak": [
+            12958491.0,
+            12958491.0
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "one-wide-t4",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            4.0,
+            4.0
+          ],
+          "inner_iterations": [
+            5.0,
+            5.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            32929999.0,
+            32929999.0
+          ],
+          "feppml_allocation_peak": [
+            30104657.0,
+            30104657.0
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            4.0,
+            4.0
+          ],
+          "inner_iterations": [
+            5.0,
+            5.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            32929999.0,
+            32929999.0
+          ],
+          "feppml_allocation_peak": [
+            30104657.0,
+            30104657.0
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "control-profiled-small",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            4.0,
+            4.0
+          ],
+          "inner_iterations": [
+            112.0,
+            112.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            123090516.0,
+            123090516.0
+          ],
+          "feppml_allocation_peak": [
+            48635746.0,
+            48635746.0
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            4.0,
+            4.0
+          ],
+          "inner_iterations": [
+            112.0,
+            112.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            123090516.0,
+            123090516.0
+          ],
+          "feppml_allocation_peak": [
+            48635746.0,
+            48635746.0
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "control-three-fe-core-pair",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            6.0,
+            6.0
+          ],
+          "inner_iterations": [
+            104.0,
+            104.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            344225487.0,
+            344225487.0
+          ],
+          "feppml_allocation_peak": [
+            104857741.0,
+            102484317.0
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            6.0,
+            6.0
+          ],
+          "inner_iterations": [
+            104.0,
+            104.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            344225487.0,
+            344225487.0
+          ],
+          "feppml_allocation_peak": [
+            106413493.0,
+            108786445.0
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "control-excluded-slope",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            4.0,
+            4.0
+          ],
+          "inner_iterations": [
+            158.0,
+            158.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            27257457.0,
+            27257457.0
+          ],
+          "feppml_allocation_peak": [
+            23573211.0,
+            23573211.0
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            4.0,
+            4.0
+          ],
+          "inner_iterations": [
+            158.0,
+            158.0
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            27257457.0,
+            27257457.0
+          ],
+          "feppml_allocation_peak": [
+            23573211.0,
+            23573211.0
+          ]
+        }
+      }
+    ]
+  },
+  {
+    "case": "control-excluded-ols",
+    "records": [
+      {
+        "repetition": 1,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            34.0,
+            34.0
+          ],
+          "inner_iterations": [
+            null,
+            null
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            null,
+            null
+          ],
+          "feppml_allocation_peak": [
+            null,
+            null
+          ]
+        }
+      },
+      {
+        "repetition": 2,
+        "coefficients_identical": true,
+        "covariance_identical": true,
+        "work": {
+          "ic": [
+            34.0,
+            34.0
+          ],
+          "inner_iterations": [
+            null,
+            null
+          ]
+        },
+        "memory": {
+          "feppml_memory_selected_bytes": [
+            null,
+            null
+          ],
+          "feppml_allocation_peak": [
+            null,
+            null
+          ]
+        }
+      }
+    ]
+  }
+]

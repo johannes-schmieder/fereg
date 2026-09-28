@@ -1,0 +1,149 @@
+{
+  "cases": [
+    {
+      "id": "one_fe-default",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-centered-inline-02",
+      "plugin_sha256": "570eedc0797f5d7ae65a097f383785cecc5cba6c67f436f2a257ab5dbb1bb0c5",
+      "host_threads": 4,
+      "extra_environment": {},
+      "command": "feppml y x1-x6, absorb(g1) threads(4) memory(fast) vce(robust)",
+      "repetitions": 12
+    },
+    {
+      "id": "one_fe-passive",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-centered-inline-02",
+      "plugin_sha256": "570eedc0797f5d7ae65a097f383785cecc5cba6c67f436f2a257ab5dbb1bb0c5",
+      "host_threads": 4,
+      "extra_environment": {
+        "OMP_WAIT_POLICY": "PASSIVE",
+        "KMP_BLOCKTIME": "0"
+      },
+      "command": "feppml y x1-x6, absorb(g1) threads(4) memory(fast) vce(robust)",
+      "repetitions": 12
+    },
+    {
+      "id": "one_fe-host1",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-centered-inline-02",
+      "plugin_sha256": "570eedc0797f5d7ae65a097f383785cecc5cba6c67f436f2a257ab5dbb1bb0c5",
+      "host_threads": 1,
+      "extra_environment": {},
+      "command": "feppml y x1-x6, absorb(g1) threads(4) memory(fast) vce(robust)",
+      "repetitions": 12
+    },
+    {
+      "id": "two_fe_dense-default",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-centered-inline-02",
+      "plugin_sha256": "570eedc0797f5d7ae65a097f383785cecc5cba6c67f436f2a257ab5dbb1bb0c5",
+      "host_threads": 4,
+      "extra_environment": {},
+      "command": "feppml y x1-x6, absorb(g1 g2) threads(4) memory(fast) vce(robust)",
+      "repetitions": 12
+    },
+    {
+      "id": "two_fe_dense-passive",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-centered-inline-02",
+      "plugin_sha256": "570eedc0797f5d7ae65a097f383785cecc5cba6c67f436f2a257ab5dbb1bb0c5",
+      "host_threads": 4,
+      "extra_environment": {
+        "OMP_WAIT_POLICY": "PASSIVE",
+        "KMP_BLOCKTIME": "0"
+      },
+      "command": "feppml y x1-x6, absorb(g1 g2) threads(4) memory(fast) vce(robust)",
+      "repetitions": 12
+    },
+    {
+      "id": "two_fe_dense-host1",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seed": 2026092817,
+      "source": "20260928-centered-inline-02",
+      "plugin_sha256": "570eedc0797f5d7ae65a097f383785cecc5cba6c67f436f2a257ab5dbb1bb0c5",
+      "host_threads": 1,
+      "extra_environment": {},
+      "command": "feppml y x1-x6, absorb(g1 g2) threads(4) memory(fast) vce(robust)",
+      "repetitions": 12
+    }
+  ],
+  "purpose": "Separate post-timing CPU diagnosis of embedding worker activity under normal host settings, passive OpenMP wait, and one host processor with four verified native workers. Diagnostic clocks never rank public commands or alter headline settings.",
+  "frequency_hz": 199,
+  "callgraph": "dwarf,8192",
+  "source_snapshot": "cda0912f3f7c4ed74856770d57f263b3786afe50c75e66e66154c1b6e523c670"
+}

@@ -1,0 +1,12 @@
+{
+  "all_jobs_terminal": true,
+  "jobs": [
+    "7763535",
+    "7763539",
+    "7763576",
+    "7763579",
+    "7763580"
+  ],
+  "qstat_sha256": "99fc2035dae613e8d17d6573f3b4a3da40779b1e02b4a1f5deef75e7201fc15b",
+  "unrelated_jobs_untouched": true
+}
