@@ -1,0 +1,2367 @@
+{
+  "scope": "Native published telemetry from recorded headline fits; phase clocks may nest and must not be summed or treated as independent causal contributions. Iteration definitions are native only, not comparable stock operations.",
+  "cases": [
+    {
+      "case": "one_fe-t1-to-t2",
+      "arms": {
+        "baseline": {
+          "seconds": {
+            "values": [
+              0.268,
+              0.357,
+              0.276
+            ],
+            "min": 0.268,
+            "median": 0.276,
+            "max": 0.357
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "min": 5.0,
+            "median": 5.0,
+            "max": 5.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.028412903,
+              0.037329442,
+              0.028426356
+            ],
+            "min": 0.028412903,
+            "median": 0.028426356,
+            "max": 0.037329442
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.026013878,
+              0.034444108,
+              0.025962782
+            ],
+            "min": 0.025962782,
+            "median": 0.026013878,
+            "max": 0.034444108
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.052594833,
+              0.070054472,
+              0.052807489
+            ],
+            "min": 0.052594833,
+            "median": 0.052807489,
+            "max": 0.070054472
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.054546729,
+              0.072758747,
+              0.058806615
+            ],
+            "min": 0.054546729,
+            "median": 0.058806615,
+            "max": 0.072758747
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.003856412,
+              0.004365617,
+              0.00349558
+            ],
+            "min": 0.00349558,
+            "median": 0.003856412,
+            "max": 0.004365617
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.034683436,
+              0.046528307,
+              0.034941475
+            ],
+            "min": 0.034683436,
+            "median": 0.034941475,
+            "max": 0.046528307
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.006783767,
+              0.00917441,
+              0.006788213
+            ],
+            "min": 0.006783767,
+            "median": 0.006788213,
+            "max": 0.00917441
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.012881379,
+              0.018094184,
+              0.014653319000000001
+            ],
+            "min": 0.012881379,
+            "median": 0.014653319000000001,
+            "max": 0.018094184
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              13619860.0,
+              13619860.0,
+              13619860.0
+            ],
+            "min": 13619860.0,
+            "median": 13619860.0,
+            "max": 13619860.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              16364677.0,
+              16364677.0,
+              16364677.0
+            ],
+            "min": 16364677.0,
+            "median": 16364677.0,
+            "max": 16364677.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        },
+        "candidate": {
+          "seconds": {
+            "values": [
+              0.294,
+              0.3110000000000001,
+              0.298
+            ],
+            "min": 0.294,
+            "median": 0.298,
+            "max": 0.3110000000000001
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "min": 5.0,
+            "median": 5.0,
+            "max": 5.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.030475375,
+              0.030522735,
+              0.030326065
+            ],
+            "min": 0.030326065,
+            "median": 0.030475375,
+            "max": 0.030522735
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.019259417,
+              0.022466417,
+              0.018237457
+            ],
+            "min": 0.018237457,
+            "median": 0.019259417,
+            "max": 0.022466417
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.062689372,
+              0.062226601,
+              0.066204604
+            ],
+            "min": 0.062226601,
+            "median": 0.062689372,
+            "max": 0.066204604
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.063478769,
+              0.067475387,
+              0.061419836
+            ],
+            "min": 0.061419836,
+            "median": 0.063478769,
+            "max": 0.067475387
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.005445786,
+              0.010020808,
+              0.00984508
+            ],
+            "min": 0.005445786,
+            "median": 0.00984508,
+            "max": 0.010020808
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.028209772,
+              0.029108643,
+              0.028065847
+            ],
+            "min": 0.028065847,
+            "median": 0.028209772,
+            "max": 0.029108643
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.006729536,
+              0.006827677,
+              0.006731206
+            ],
+            "min": 0.006729536,
+            "median": 0.006731206,
+            "max": 0.006827677
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.013036147000000001,
+              0.017060961,
+              0.014246934
+            ],
+            "min": 0.013036147000000001,
+            "median": 0.014246934,
+            "max": 0.017060961
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              14074628.0,
+              14074628.0,
+              14074628.0
+            ],
+            "min": 14074628.0,
+            "median": 14074628.0,
+            "max": 14074628.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              16758495.0,
+              16758495.0,
+              16758495.0
+            ],
+            "min": 16758495.0,
+            "median": 16758495.0,
+            "max": 16758495.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "one_fe-t2-to-t4",
+      "arms": {
+        "baseline": {
+          "seconds": {
+            "values": [
+              0.308,
+              0.315,
+              0.295
+            ],
+            "min": 0.295,
+            "median": 0.308,
+            "max": 0.315
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "min": 5.0,
+            "median": 5.0,
+            "max": 5.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.030514006,
+              0.030604144,
+              0.03004854
+            ],
+            "min": 0.03004854,
+            "median": 0.030514006,
+            "max": 0.030604144
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.019285117,
+              0.021431162,
+              0.018042572
+            ],
+            "min": 0.018042572,
+            "median": 0.019285117,
+            "max": 0.021431162
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.065043029,
+              0.063627816,
+              0.062367478
+            ],
+            "min": 0.062367478,
+            "median": 0.063627816,
+            "max": 0.065043029
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.068429728,
+              0.069372221,
+              0.063628177
+            ],
+            "min": 0.063628177,
+            "median": 0.068429728,
+            "max": 0.069372221
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.00724331,
+              0.008490052,
+              0.008394853
+            ],
+            "min": 0.00724331,
+            "median": 0.008394853,
+            "max": 0.008490052
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.028120981,
+              0.029104591,
+              0.027288256
+            ],
+            "min": 0.027288256,
+            "median": 0.028120981,
+            "max": 0.029104591
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.00676152,
+              0.006828777,
+              0.006631827
+            ],
+            "min": 0.006631827,
+            "median": 0.00676152,
+            "max": 0.006828777
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.016871985,
+              0.017081996,
+              0.015020111
+            ],
+            "min": 0.015020111,
+            "median": 0.016871985,
+            "max": 0.017081996
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              14074628.0,
+              14074628.0,
+              14074628.0
+            ],
+            "min": 14074628.0,
+            "median": 14074628.0,
+            "max": 14074628.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              16758495.0,
+              16758495.0,
+              16758495.0
+            ],
+            "min": 16758495.0,
+            "median": 16758495.0,
+            "max": 16758495.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        },
+        "candidate": {
+          "seconds": {
+            "values": [
+              0.267,
+              0.277,
+              0.251
+            ],
+            "min": 0.251,
+            "median": 0.267,
+            "max": 0.277
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "min": 5.0,
+            "median": 5.0,
+            "max": 5.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.029686832,
+              0.029796319,
+              0.031762062
+            ],
+            "min": 0.029686832,
+            "median": 0.029796319,
+            "max": 0.031762062
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.015183268,
+              0.013792015,
+              0.013561199
+            ],
+            "min": 0.013561199,
+            "median": 0.013792015,
+            "max": 0.015183268
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.055712422,
+              0.054151845,
+              0.044347733
+            ],
+            "min": 0.044347733,
+            "median": 0.054151845,
+            "max": 0.055712422
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.057520364,
+              0.059586622,
+              0.048343469
+            ],
+            "min": 0.048343469,
+            "median": 0.057520364,
+            "max": 0.059586622
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.007154578,
+              0.010550398,
+              0.007562396
+            ],
+            "min": 0.007154578,
+            "median": 0.007562396,
+            "max": 0.010550398
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.018653134,
+              0.019005874,
+              0.018292545
+            ],
+            "min": 0.018292545,
+            "median": 0.018653134,
+            "max": 0.019005874
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.003632918,
+              0.003651265,
+              0.003594421
+            ],
+            "min": 0.003594421,
+            "median": 0.003632918,
+            "max": 0.003651265
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.013255412,
+              0.016613621000000002,
+              0.016202235
+            ],
+            "min": 0.013255412,
+            "median": 0.016202235,
+            "max": 0.016613621000000002
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              14088996.0,
+              14088996.0,
+              14088996.0
+            ],
+            "min": 14088996.0,
+            "median": 14088996.0,
+            "max": 14088996.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              16759007.0,
+              16759007.0,
+              16759007.0
+            ],
+            "min": 16759007.0,
+            "median": 16759007.0,
+            "max": 16759007.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "one_fe-t1-to-t4",
+      "arms": {
+        "baseline": {
+          "seconds": {
+            "values": [
+              0.267,
+              0.356,
+              0.27
+            ],
+            "min": 0.267,
+            "median": 0.27,
+            "max": 0.356
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "min": 5.0,
+            "median": 5.0,
+            "max": 5.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.024242524,
+              0.037263337,
+              0.028425283
+            ],
+            "min": 0.024242524,
+            "median": 0.028425283,
+            "max": 0.037263337
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.021863109,
+              0.034446752,
+              0.025945702
+            ],
+            "min": 0.021863109,
+            "median": 0.025945702,
+            "max": 0.034446752
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.04877807,
+              0.070152134,
+              0.052603864
+            ],
+            "min": 0.04877807,
+            "median": 0.052603864,
+            "max": 0.070152134
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.062208235,
+              0.072656807,
+              0.055123359
+            ],
+            "min": 0.055123359,
+            "median": 0.062208235,
+            "max": 0.072656807
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.003744835,
+              0.00436991,
+              0.003272349
+            ],
+            "min": 0.003272349,
+            "median": 0.003744835,
+            "max": 0.00436991
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.034978887,
+              0.046187057,
+              0.034646778
+            ],
+            "min": 0.034646778,
+            "median": 0.034978887,
+            "max": 0.046187057
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.006374038,
+              0.009036058,
+              0.006790781
+            ],
+            "min": 0.006374038,
+            "median": 0.006790781,
+            "max": 0.009036058
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.016020404000000002,
+              0.018114828,
+              0.013748421
+            ],
+            "min": 0.013748421,
+            "median": 0.016020404000000002,
+            "max": 0.018114828
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              13619860.0,
+              13619860.0,
+              13619860.0
+            ],
+            "min": 13619860.0,
+            "median": 13619860.0,
+            "max": 13619860.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              16364677.0,
+              16364677.0,
+              16364677.0
+            ],
+            "min": 16364677.0,
+            "median": 16364677.0,
+            "max": 16364677.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        },
+        "candidate": {
+          "seconds": {
+            "values": [
+              0.269,
+              0.235,
+              0.252
+            ],
+            "min": 0.235,
+            "median": 0.252,
+            "max": 0.269
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "min": 5.0,
+            "median": 5.0,
+            "max": 5.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.029858228,
+              0.028427846,
+              0.029650199
+            ],
+            "min": 0.028427846,
+            "median": 0.029650199,
+            "max": 0.029858228
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.015138584,
+              0.012387142,
+              0.012974868
+            ],
+            "min": 0.012387142,
+            "median": 0.012974868,
+            "max": 0.015138584
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.054207901,
+              0.042741814,
+              0.048711662
+            ],
+            "min": 0.042741814,
+            "median": 0.048711662,
+            "max": 0.054207901
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.056988287,
+              0.045910444,
+              0.049594999
+            ],
+            "min": 0.045910444,
+            "median": 0.049594999,
+            "max": 0.056988287
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.008002048,
+              0.004049756,
+              0.007145248
+            ],
+            "min": 0.004049756,
+            "median": 0.007145248,
+            "max": 0.008002048
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.017250301,
+              0.017397354,
+              0.018272815
+            ],
+            "min": 0.017250301,
+            "median": 0.017397354,
+            "max": 0.018272815
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.003465021,
+              0.003501137,
+              0.003600378
+            ],
+            "min": 0.003465021,
+            "median": 0.003501137,
+            "max": 0.003600378
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.017635323,
+              0.014411549999999999,
+              0.015114446
+            ],
+            "min": 0.014411549999999999,
+            "median": 0.015114446,
+            "max": 0.017635323
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              14088996.0,
+              14088996.0,
+              14088996.0
+            ],
+            "min": 14088996.0,
+            "median": 14088996.0,
+            "max": 14088996.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              16759007.0,
+              16759007.0,
+              16759007.0
+            ],
+            "min": 16759007.0,
+            "median": 16759007.0,
+            "max": 16759007.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "two_fe_dense-t1-to-t2",
+      "arms": {
+        "baseline": {
+          "seconds": {
+            "values": [
+              0.469,
+              0.526,
+              0.523
+            ],
+            "min": 0.469,
+            "median": 0.523,
+            "max": 0.526
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              109.0,
+              109.0,
+              109.0
+            ],
+            "min": 109.0,
+            "median": 109.0,
+            "max": 109.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.032334899,
+              0.04244414,
+              0.042000162
+            ],
+            "min": 0.032334899,
+            "median": 0.042000162,
+            "max": 0.04244414
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.173738829,
+              0.207613992,
+              0.209987543
+            ],
+            "min": 0.173738829,
+            "median": 0.207613992,
+            "max": 0.209987543
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.047758998,
+              0.057684275,
+              0.057774254
+            ],
+            "min": 0.047758998,
+            "median": 0.057684275,
+            "max": 0.057774254
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.089034808,
+              0.081843543,
+              0.078704134
+            ],
+            "min": 0.078704134,
+            "median": 0.081843543,
+            "max": 0.089034808
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.003736554,
+              0.003082605,
+              0.002930677
+            ],
+            "min": 0.002930677,
+            "median": 0.003082605,
+            "max": 0.003736554
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.032414413,
+              0.038943007,
+              0.038865751
+            ],
+            "min": 0.032414413,
+            "median": 0.038865751,
+            "max": 0.038943007
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.008135391,
+              0.009055531,
+              0.009074882
+            ],
+            "min": 0.008135391,
+            "median": 0.009055531,
+            "max": 0.009074882
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.018904821000000002,
+              0.016221798000000003,
+              0.015579782
+            ],
+            "min": 0.015579782,
+            "median": 0.016221798000000003,
+            "max": 0.018904821000000002
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              48166610.0,
+              48166610.0,
+              48166610.0
+            ],
+            "min": 48166610.0,
+            "median": 48166610.0,
+            "max": 48166610.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              110139028.0,
+              110139028.0,
+              110139028.0
+            ],
+            "min": 110139028.0,
+            "median": 110139028.0,
+            "max": 110139028.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        },
+        "candidate": {
+          "seconds": {
+            "values": [
+              0.445,
+              0.421,
+              0.459
+            ],
+            "min": 0.421,
+            "median": 0.445,
+            "max": 0.459
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              109.0,
+              109.0,
+              109.0
+            ],
+            "min": 109.0,
+            "median": 109.0,
+            "max": 109.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.037719656,
+              0.046646903,
+              0.046203548
+            ],
+            "min": 0.037719656,
+            "median": 0.046203548,
+            "max": 0.046646903
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.183394544,
+              0.164342972,
+              0.184621481
+            ],
+            "min": 0.164342972,
+            "median": 0.183394544,
+            "max": 0.184621481
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.036366329,
+              0.029490721,
+              0.039160597
+            ],
+            "min": 0.029490721,
+            "median": 0.036366329,
+            "max": 0.039160597
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.063165669,
+              0.063299433,
+              0.059656626
+            ],
+            "min": 0.059656626,
+            "median": 0.063165669,
+            "max": 0.063299433
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.006915889,
+              0.005259012,
+              0.007067069
+            ],
+            "min": 0.005259012,
+            "median": 0.006915889,
+            "max": 0.007067069
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.02317711,
+              0.020656024,
+              0.027104987
+            ],
+            "min": 0.020656024,
+            "median": 0.02317711,
+            "max": 0.027104987
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.006838274,
+              0.005725898,
+              0.008647837
+            ],
+            "min": 0.005725898,
+            "median": 0.006838274,
+            "max": 0.008647837
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.012191563999999998,
+              0.019937677,
+              0.014439908000000001
+            ],
+            "min": 0.012191563999999998,
+            "median": 0.014439908000000001,
+            "max": 0.019937677
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              48621378.0,
+              48621378.0,
+              48621378.0
+            ],
+            "min": 48621378.0,
+            "median": 48621378.0,
+            "max": 48621378.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              114754580.0,
+              114754580.0,
+              114754580.0
+            ],
+            "min": 114754580.0,
+            "median": 114754580.0,
+            "max": 114754580.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "two_fe_dense-t2-to-t4",
+      "arms": {
+        "baseline": {
+          "seconds": {
+            "values": [
+              0.412,
+              0.464,
+              0.452
+            ],
+            "min": 0.412,
+            "median": 0.452,
+            "max": 0.464
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              109.0,
+              109.0,
+              109.0
+            ],
+            "min": 109.0,
+            "median": 109.0,
+            "max": 109.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.037419094,
+              0.038390313,
+              0.037123064
+            ],
+            "min": 0.037123064,
+            "median": 0.037419094,
+            "max": 0.038390313
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.157888156,
+              0.182399494,
+              0.182604712
+            ],
+            "min": 0.157888156,
+            "median": 0.182399494,
+            "max": 0.182604712
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.035237109,
+              0.037117341,
+              0.037146412
+            ],
+            "min": 0.035237109,
+            "median": 0.037117341,
+            "max": 0.037146412
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.060500569,
+              0.071053724,
+              0.07101616
+            ],
+            "min": 0.060500569,
+            "median": 0.07101616,
+            "max": 0.071053724
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.006921211,
+              0.009640056,
+              0.004225589
+            ],
+            "min": 0.004225589,
+            "median": 0.006921211,
+            "max": 0.009640056
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.021876336,
+              0.023668672,
+              0.023668167
+            ],
+            "min": 0.021876336,
+            "median": 0.023668167,
+            "max": 0.023668672
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.006561807,
+              0.006890929,
+              0.00684493
+            ],
+            "min": 0.006561807,
+            "median": 0.00684493,
+            "max": 0.006890929
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.014502826,
+              0.017295004,
+              0.017279370999999998
+            ],
+            "min": 0.014502826,
+            "median": 0.017279370999999998,
+            "max": 0.017295004
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              48621378.0,
+              48621378.0,
+              48621378.0
+            ],
+            "min": 48621378.0,
+            "median": 48621378.0,
+            "max": 48621378.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              114754580.0,
+              114754580.0,
+              114754580.0
+            ],
+            "min": 114754580.0,
+            "median": 114754580.0,
+            "max": 114754580.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        },
+        "candidate": {
+          "seconds": {
+            "values": [
+              0.391,
+              0.367,
+              0.376
+            ],
+            "min": 0.367,
+            "median": 0.376,
+            "max": 0.391
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              109.0,
+              109.0,
+              109.0
+            ],
+            "min": 109.0,
+            "median": 109.0,
+            "max": 109.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.034199144,
+              0.031295838,
+              0.033642802
+            ],
+            "min": 0.031295838,
+            "median": 0.033642802,
+            "max": 0.034199144
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.154840653,
+              0.143918592,
+              0.146625609
+            ],
+            "min": 0.143918592,
+            "median": 0.146625609,
+            "max": 0.154840653
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.0283182,
+              0.02775158,
+              0.028416825
+            ],
+            "min": 0.02775158,
+            "median": 0.0283182,
+            "max": 0.028416825
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.04597869,
+              0.043812759,
+              0.047023925
+            ],
+            "min": 0.043812759,
+            "median": 0.04597869,
+            "max": 0.047023925
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.00775689,
+              0.008116052,
+              0.010149559
+            ],
+            "min": 0.00775689,
+            "median": 0.008116052,
+            "max": 0.010149559
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.014459755,
+              0.014284537,
+              0.014421676
+            ],
+            "min": 0.014284537,
+            "median": 0.014421676,
+            "max": 0.014459755
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.003673672,
+              0.003558986,
+              0.00364866
+            ],
+            "min": 0.003558986,
+            "median": 0.00364866,
+            "max": 0.003673672
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.020997654,
+              0.018327547,
+              0.016933780000000002
+            ],
+            "min": 0.016933780000000002,
+            "median": 0.018327547,
+            "max": 0.020997654
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              48635746.0,
+              48635746.0,
+              48635746.0
+            ],
+            "min": 48635746.0,
+            "median": 48635746.0,
+            "max": 48635746.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              123090516.0,
+              123090516.0,
+              123090516.0
+            ],
+            "min": 123090516.0,
+            "median": 123090516.0,
+            "max": 123090516.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "two_fe_dense-t1-to-t4",
+      "arms": {
+        "baseline": {
+          "seconds": {
+            "values": [
+              0.478,
+              0.511,
+              0.448
+            ],
+            "min": 0.448,
+            "median": 0.478,
+            "max": 0.511
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              109.0,
+              109.0,
+              109.0
+            ],
+            "min": 109.0,
+            "median": 109.0,
+            "max": 109.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.032134427,
+              0.032135334,
+              0.032072316
+            ],
+            "min": 0.032072316,
+            "median": 0.032134427,
+            "max": 0.032135334
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.178131507,
+              0.191742054,
+              0.165802301
+            ],
+            "min": 0.165802301,
+            "median": 0.178131507,
+            "max": 0.191742054
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.049495652,
+              0.053326105,
+              0.045486019
+            ],
+            "min": 0.045486019,
+            "median": 0.049495652,
+            "max": 0.053326105
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.088811531,
+              0.097756699,
+              0.082876997
+            ],
+            "min": 0.082876997,
+            "median": 0.088811531,
+            "max": 0.097756699
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.003753681,
+              0.004040961,
+              0.003517885
+            ],
+            "min": 0.003517885,
+            "median": 0.003753681,
+            "max": 0.004040961
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.033896691,
+              0.035978948,
+              0.031527786
+            ],
+            "min": 0.031527786,
+            "median": 0.033896691,
+            "max": 0.035978948
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.007762606,
+              0.008395649,
+              0.007267361
+            ],
+            "min": 0.007267361,
+            "median": 0.007762606,
+            "max": 0.008395649
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.019370545000000003,
+              0.020201581,
+              0.017905272
+            ],
+            "min": 0.017905272,
+            "median": 0.019370545000000003,
+            "max": 0.020201581
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              48166610.0,
+              48166610.0,
+              48166610.0
+            ],
+            "min": 48166610.0,
+            "median": 48166610.0,
+            "max": 48166610.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              110139028.0,
+              110139028.0,
+              110139028.0
+            ],
+            "min": 110139028.0,
+            "median": 110139028.0,
+            "max": 110139028.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        },
+        "candidate": {
+          "seconds": {
+            "values": [
+              0.382,
+              0.345,
+              0.381
+            ],
+            "min": 0.345,
+            "median": 0.381,
+            "max": 0.382
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              109.0,
+              109.0,
+              109.0
+            ],
+            "min": 109.0,
+            "median": 109.0,
+            "max": 109.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.036092237,
+              0.033830203,
+              0.03405183
+            ],
+            "min": 0.033830203,
+            "median": 0.03405183,
+            "max": 0.036092237
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.158702688,
+              0.137903127,
+              0.14847522
+            ],
+            "min": 0.137903127,
+            "median": 0.14847522,
+            "max": 0.158702688
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.028505992,
+              0.02668061,
+              0.028270288
+            ],
+            "min": 0.02668061,
+            "median": 0.028270288,
+            "max": 0.028505992
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.04175423,
+              0.040937938,
+              0.047071277
+            ],
+            "min": 0.040937938,
+            "median": 0.04175423,
+            "max": 0.047071277
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.00756161,
+              0.003038403,
+              0.006230504
+            ],
+            "min": 0.003038403,
+            "median": 0.006230504,
+            "max": 0.00756161
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.014470797,
+              0.013625808,
+              0.014545006
+            ],
+            "min": 0.013625808,
+            "median": 0.014470797,
+            "max": 0.014545006
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.003577524,
+              0.003507113,
+              0.003602779
+            ],
+            "min": 0.003507113,
+            "median": 0.003577524,
+            "max": 0.003602779
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.015603948,
+              0.016326665,
+              0.020715254000000002
+            ],
+            "min": 0.015603948,
+            "median": 0.016326665,
+            "max": 0.020715254000000002
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              48635746.0,
+              48635746.0,
+              48635746.0
+            ],
+            "min": 48635746.0,
+            "median": 48635746.0,
+            "max": 48635746.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              123090516.0,
+              123090516.0,
+              123090516.0
+            ],
+            "min": 123090516.0,
+            "median": 123090516.0,
+            "max": 123090516.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "one-wide-t4-t1-to-t4",
+      "arms": {
+        "baseline": {
+          "seconds": {
+            "values": [
+              0.685,
+              0.837,
+              0.815
+            ],
+            "min": 0.685,
+            "median": 0.815,
+            "max": 0.837
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "min": 5.0,
+            "median": 5.0,
+            "max": 5.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.03754255,
+              0.057733904,
+              0.04370602
+            ],
+            "min": 0.03754255,
+            "median": 0.04370602,
+            "max": 0.057733904
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.076421037,
+              0.121056519,
+              0.092328859
+            ],
+            "min": 0.076421037,
+            "median": 0.092328859,
+            "max": 0.121056519
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.23503572,
+              0.295326694,
+              0.309597296
+            ],
+            "min": 0.23503572,
+            "median": 0.295326694,
+            "max": 0.309597296
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.15392658,
+              0.145438862,
+              0.166722702
+            ],
+            "min": 0.145438862,
+            "median": 0.15392658,
+            "max": 0.166722702
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.030388381,
+              0.028817748,
+              0.027315859
+            ],
+            "min": 0.027315859,
+            "median": 0.028817748,
+            "max": 0.030388381
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.058543842,
+              0.069914131,
+              0.075639813
+            ],
+            "min": 0.058543842,
+            "median": 0.069914131,
+            "max": 0.075639813
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.005936137,
+              0.007917836,
+              0.007741746
+            ],
+            "min": 0.005936137,
+            "median": 0.007741746,
+            "max": 0.007917836
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.015826479,
+              0.014841489,
+              0.014200345
+            ],
+            "min": 0.014200345,
+            "median": 0.014841489,
+            "max": 0.015826479
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              28742145.0,
+              28742145.0,
+              28742145.0
+            ],
+            "min": 28742145.0,
+            "median": 28742145.0,
+            "max": 28742145.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              31586543.0,
+              31586543.0,
+              31586543.0
+            ],
+            "min": 31586543.0,
+            "median": 31586543.0,
+            "max": 31586543.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        },
+        "candidate": {
+          "seconds": {
+            "values": [
+              0.562,
+              0.569,
+              0.545
+            ],
+            "min": 0.545,
+            "median": 0.562,
+            "max": 0.569
+          },
+          "ic": {
+            "values": [
+              4.0,
+              4.0,
+              4.0
+            ],
+            "min": 4.0,
+            "median": 4.0,
+            "max": 4.0
+          },
+          "inner_iterations": {
+            "values": [
+              5.0,
+              5.0,
+              5.0
+            ],
+            "min": 5.0,
+            "median": 5.0,
+            "max": 5.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.041735411,
+              0.045415589,
+              0.039611156
+            ],
+            "min": 0.039611156,
+            "median": 0.041735411,
+            "max": 0.045415589
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.04108928,
+              0.0383801,
+              0.037096002
+            ],
+            "min": 0.037096002,
+            "median": 0.0383801,
+            "max": 0.04108928
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.168283943,
+              0.166669487,
+              0.168892951
+            ],
+            "min": 0.166669487,
+            "median": 0.168283943,
+            "max": 0.168892951
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.139209576,
+              0.138149138,
+              0.134259512
+            ],
+            "min": 0.134259512,
+            "median": 0.138149138,
+            "max": 0.139209576
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.014688761,
+              0.014880098,
+              0.012659616
+            ],
+            "min": 0.012659616,
+            "median": 0.014688761,
+            "max": 0.014880098
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.027544073,
+              0.028564578,
+              0.028696295
+            ],
+            "min": 0.027544073,
+            "median": 0.028564578,
+            "max": 0.028696295
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.003529789,
+              0.00343552,
+              0.003581185
+            ],
+            "min": 0.00343552,
+            "median": 0.003529789,
+            "max": 0.003581185
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.019359071,
+              0.021402519000000002,
+              0.015746132
+            ],
+            "min": 0.015746132,
+            "median": 0.019359071,
+            "max": 0.021402519000000002
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              30104657.0,
+              30104657.0,
+              30104657.0
+            ],
+            "min": 30104657.0,
+            "median": 30104657.0,
+            "max": 30104657.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              32929999.0,
+              32929999.0,
+              32929999.0
+            ],
+            "min": 32929999.0,
+            "median": 32929999.0,
+            "max": 32929999.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    },
+    {
+      "case": "control-three-fe-core-pair-t8-to-t16",
+      "arms": {
+        "baseline": {
+          "seconds": {
+            "values": [
+              1.804,
+              1.812,
+              1.8
+            ],
+            "min": 1.8,
+            "median": 1.804,
+            "max": 1.812
+          },
+          "ic": {
+            "values": [
+              7.0,
+              7.0,
+              7.0
+            ],
+            "min": 7.0,
+            "median": 7.0,
+            "max": 7.0
+          },
+          "inner_iterations": {
+            "values": [
+              132.0,
+              132.0,
+              132.0
+            ],
+            "min": 132.0,
+            "median": 132.0,
+            "max": 132.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.094566761,
+              0.088189999,
+              0.089893505
+            ],
+            "min": 0.088189999,
+            "median": 0.089893505,
+            "max": 0.094566761
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.931304684,
+              0.930405872,
+              0.924197743
+            ],
+            "min": 0.924197743,
+            "median": 0.930405872,
+            "max": 0.931304684
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.148597873,
+              0.144484805,
+              0.173176588
+            ],
+            "min": 0.144484805,
+            "median": 0.148597873,
+            "max": 0.173176588
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.42453005,
+              0.453967987,
+              0.410992829
+            ],
+            "min": 0.410992829,
+            "median": 0.42453005,
+            "max": 0.453967987
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.008912851,
+              0.008166719,
+              0.009725477
+            ],
+            "min": 0.008166719,
+            "median": 0.008912851,
+            "max": 0.009725477
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.036089164,
+              0.036702267,
+              0.036093563
+            ],
+            "min": 0.036089164,
+            "median": 0.036093563,
+            "max": 0.036702267
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.007994225,
+              0.007904195,
+              0.007905414
+            ],
+            "min": 0.007904195,
+            "median": 0.007905414,
+            "max": 0.007994225
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.02201606,
+              0.020807712,
+              0.022261843
+            ],
+            "min": 0.020807712,
+            "median": 0.02201606,
+            "max": 0.022261843
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              108695901.0,
+              102746781.0,
+              102352765.0
+            ],
+            "min": 102352765.0,
+            "median": 102746781.0,
+            "max": 108695901.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              344211375.0,
+              344211375.0,
+              344211375.0
+            ],
+            "min": 344211375.0,
+            "median": 344211375.0,
+            "max": 344211375.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        },
+        "candidate": {
+          "seconds": {
+            "values": [
+              1.679,
+              1.686,
+              1.704
+            ],
+            "min": 1.679,
+            "median": 1.686,
+            "max": 1.704
+          },
+          "ic": {
+            "values": [
+              7.0,
+              7.0,
+              7.0
+            ],
+            "min": 7.0,
+            "median": 7.0,
+            "max": 7.0
+          },
+          "inner_iterations": {
+            "values": [
+              132.0,
+              132.0,
+              132.0
+            ],
+            "min": 132.0,
+            "median": 132.0,
+            "max": 132.0
+          },
+          "feppml_time_preparation": {
+            "values": [
+              0.094633466,
+              0.08814672,
+              0.093435334
+            ],
+            "min": 0.08814672,
+            "median": 0.093435334,
+            "max": 0.094633466
+          },
+          "feppml_time_fe_projection": {
+            "values": [
+              0.846590644,
+              0.827860987,
+              0.892601535
+            ],
+            "min": 0.827860987,
+            "median": 0.846590644,
+            "max": 0.892601535
+          },
+          "feppml_time_finite_solve": {
+            "values": [
+              0.145714623,
+              0.161344659,
+              0.14121407
+            ],
+            "min": 0.14121407,
+            "median": 0.145714623,
+            "max": 0.161344659
+          },
+          "feppml_time_strict_final_solve": {
+            "values": [
+              0.393059301,
+              0.414806369,
+              0.381531094
+            ],
+            "min": 0.381531094,
+            "median": 0.393059301,
+            "max": 0.414806369
+          },
+          "feppml_time_inference": {
+            "values": [
+              0.004952476,
+              0.006823591,
+              0.005528857
+            ],
+            "min": 0.004952476,
+            "median": 0.005528857,
+            "max": 0.006823591
+          },
+          "feppml_time_line_search": {
+            "values": [
+              0.032942957,
+              0.031730707,
+              0.031037415
+            ],
+            "min": 0.031037415,
+            "median": 0.031730707,
+            "max": 0.032942957
+          },
+          "feppml_time_weight_refresh": {
+            "values": [
+              0.007548958,
+              0.006897081,
+              0.007009914
+            ],
+            "min": 0.006897081,
+            "median": 0.007009914,
+            "max": 0.007548958
+          },
+          "feppml_time_publication": {
+            "values": [
+              0.021247131000000002,
+              0.022533749,
+              0.022208246
+            ],
+            "min": 0.021247131000000002,
+            "median": 0.022208246,
+            "max": 0.022533749
+          },
+          "feppml_allocation_peak": {
+            "values": [
+              102534975.0,
+              112160207.0,
+              102745375.0
+            ],
+            "min": 102534975.0,
+            "median": 102745375.0,
+            "max": 112160207.0
+          },
+          "feppml_memory_selected_bytes": {
+            "values": [
+              344211377.0,
+              344211377.0,
+              344211377.0
+            ],
+            "min": 344211377.0,
+            "median": 344211377.0,
+            "max": 344211377.0
+          },
+          "feppml_strict_profile_rejections": {
+            "values": [
+              0.0,
+              0.0,
+              0.0
+            ],
+            "min": 0.0,
+            "median": 0.0,
+            "max": 0.0
+          }
+        }
+      }
+    }
+  ],
+  "bindings": {
+    "one_fe-t1-to-t2/pair-1/baseline/result.json": "bd74f9da44f59a98a1b7126d58384b30525f209fe082ffc7d8a6fee2fc779e0a",
+    "one_fe-t1-to-t2/pair-2/baseline/result.json": "403723fd1d471b8e5d000dda4b6957f429acaea4658c72247e00a4ec7e982dd8",
+    "one_fe-t1-to-t2/pair-3/baseline/result.json": "73c877ff5d0a5852564d6442acd502c22ed89bf5b447f7c43166603d167ac724",
+    "one_fe-t1-to-t2/pair-1/candidate/result.json": "3325b260e09f05011b50ab0ca694b0c49d1329ea3743909f4ed886670dff0676",
+    "one_fe-t1-to-t2/pair-2/candidate/result.json": "471b15b65c105e2c16a428e54917952edbb9baaa6139585eb8fe6ab78b8a6d1b",
+    "one_fe-t1-to-t2/pair-3/candidate/result.json": "1cc94a0a72c2d95ec8fc0f86405e1b021ab39c82cc194668113aeb679155c836",
+    "one_fe-t2-to-t4/pair-1/baseline/result.json": "0c8eb5fd7f7e42b1beeec75e3c95de00dd92c9ee6088838bf8d4e2fdceb70736",
+    "one_fe-t2-to-t4/pair-2/baseline/result.json": "e0b5d1173340986b1561085cfad8dcdc4ce553f3ae625ed790504a0add3b8123",
+    "one_fe-t2-to-t4/pair-3/baseline/result.json": "62f48144768b2707a0bbd80f2a85f97af65e7bbf50dacc4c06480d44448c3956",
+    "one_fe-t2-to-t4/pair-1/candidate/result.json": "8a625938f1bf249af89d89d3ad4bfd53fbf96fb8efc6500b848912fe9169dbd3",
+    "one_fe-t2-to-t4/pair-2/candidate/result.json": "5653208ae51e415b2c3d4700853832f2c4ef0f9117e2fe034463e35e37cb0b0b",
+    "one_fe-t2-to-t4/pair-3/candidate/result.json": "d3d9e3dd3b4b7ccfe0898fdd04d97e38d1cc71d64f99c5e87a983bfbe80d9f84",
+    "one_fe-t1-to-t4/pair-1/baseline/result.json": "139aa59edceb660ee408b7b4b604ad237398585b74c13e4a9019db3005a1a9ff",
+    "one_fe-t1-to-t4/pair-2/baseline/result.json": "1288f083f6c4d49c0e723497d3a9f2387f3d91723ac6d4c2b6e20df00f7f18d2",
+    "one_fe-t1-to-t4/pair-3/baseline/result.json": "f44b068efa04061d98c4f62d3d2bbaeae2e7b31abc5d4ab7328e085745c770ee",
+    "one_fe-t1-to-t4/pair-1/candidate/result.json": "f0514a2e237b3e3f9e446e0a6e46df407f34f6695c46ef53ebb019b272fad49a",
+    "one_fe-t1-to-t4/pair-2/candidate/result.json": "83d96a8bb2e5dee573210c8c9afc7e1b6a9027b66743719ec6920cae3979a3e5",
+    "one_fe-t1-to-t4/pair-3/candidate/result.json": "b5562b331b9c5e9e4ef0e19892fde4445c9618ce26c468a8712ee578a7f873d7",
+    "two_fe_dense-t1-to-t2/pair-1/baseline/result.json": "4602c4a4f3717da379c0dd6b2785bc970913de761f207ce5d3b7ecca8766693f",
+    "two_fe_dense-t1-to-t2/pair-2/baseline/result.json": "abc7469006ad1d51f1b8a32cf3b42a1640b664808be9e9e1a8841da827025794",
+    "two_fe_dense-t1-to-t2/pair-3/baseline/result.json": "7320ed8f60506fb88a7a61f3ba9b4f7b2462533736e0d8b53732e29388735fc3",
+    "two_fe_dense-t1-to-t2/pair-1/candidate/result.json": "7e7f26a665c2790a72d374bb776429f2f43147168d5969078964a92af52671a0",
+    "two_fe_dense-t1-to-t2/pair-2/candidate/result.json": "8daf78115db04df31ce118e3a4a0aa8ba64f46ac36541d161874763c7d22391f",
+    "two_fe_dense-t1-to-t2/pair-3/candidate/result.json": "298888525eda602fd5259bb0a2a5babb4379d4757e028695c72ed71212d8485e",
+    "two_fe_dense-t2-to-t4/pair-1/baseline/result.json": "f9d8138e0809502acb11d62797de982d8e5142b26387e2ba093877daf70c70f8",
+    "two_fe_dense-t2-to-t4/pair-2/baseline/result.json": "9867abcd4a5e7a69e2790b2c6a96f123cfcc9e2608aa4a9d32eec2f3781304f4",
+    "two_fe_dense-t2-to-t4/pair-3/baseline/result.json": "d22892bcaaf80040c9e684666456ba4177181b1d5539365b12cef1480a2de59d",
+    "two_fe_dense-t2-to-t4/pair-1/candidate/result.json": "524f40f5d82474ffe0baf7d93daefde9f0c62dd26ee0f74f9f2f5fa6601bfcb9",
+    "two_fe_dense-t2-to-t4/pair-2/candidate/result.json": "9d2bb78c68eaeb1d649f2539fb88173bbdf2102a8deb9e17deda313609895f91",
+    "two_fe_dense-t2-to-t4/pair-3/candidate/result.json": "0d4fd3f5a3eeed08e34b6c5f83121cfd55fe26c1014961708e980182540fb5ae",
+    "two_fe_dense-t1-to-t4/pair-1/baseline/result.json": "43f44a9278eda626dd02169101a831b9935268ee35a597473bb0c958b819af18",
+    "two_fe_dense-t1-to-t4/pair-2/baseline/result.json": "7edbded85af1b42fdbbb2deb184501282f01ea92103c74bd2ee8fe44019dec77",
+    "two_fe_dense-t1-to-t4/pair-3/baseline/result.json": "fc6462e5c2cd72542f2b834229a63381e5a2a0b3f18dc383cca368d97369adeb",
+    "two_fe_dense-t1-to-t4/pair-1/candidate/result.json": "559dda8619ae89e3a5a0891c1452edbd764eb5b87a9d93e8f66d6f270a0a3b60",
+    "two_fe_dense-t1-to-t4/pair-2/candidate/result.json": "f7767ea42625b9121770da2f82e18ac03fe7e0fabef8fdf28535ed3ebd7b9654",
+    "two_fe_dense-t1-to-t4/pair-3/candidate/result.json": "0e12834b2863d57e48c0edd76589cb3a3da75ff3c66fbdef55e4e70fdc9dcc30",
+    "one-wide-t4-t1-to-t4/pair-1/baseline/result.json": "c28358eb6e764da71ac396a4d95291db210aa16a0f53cb7c346d78a20dd06904",
+    "one-wide-t4-t1-to-t4/pair-2/baseline/result.json": "3cb575a507db2bc1bd08590b3ce4b78d944c2913555008a4b194af66ac60b6fd",
+    "one-wide-t4-t1-to-t4/pair-3/baseline/result.json": "06643eee07f50375e52fb5226a454500e2037d7d8b7fa3cf8cff42771eb9ab1a",
+    "one-wide-t4-t1-to-t4/pair-1/candidate/result.json": "711cb0c6c68d7539a37831d66a29c913aeca0c8e0bfe5dfdb1851d119698ff9e",
+    "one-wide-t4-t1-to-t4/pair-2/candidate/result.json": "068a11545ac742ac87e1a5a63327a42223fff2a13ee14e9b26f0806827f8c117",
+    "one-wide-t4-t1-to-t4/pair-3/candidate/result.json": "a505169c4428551f0ed29608cb0fbbfc38eef2df1e873bff412e75517efa9070",
+    "control-three-fe-core-pair-t8-to-t16/pair-1/baseline/result.json": "03cf1ff89c769a329b48c709ca56e175068bd03137eb37595793bb866425e18f",
+    "control-three-fe-core-pair-t8-to-t16/pair-2/baseline/result.json": "9a62cd88f167887d98a3792695162b6f8ac4a71a64fc12a1bed6c615eee1e0d3",
+    "control-three-fe-core-pair-t8-to-t16/pair-3/baseline/result.json": "c011f1798e6b15b7265203c5939f7bd18c46ae7231b4bdcde865605b300dcd6f",
+    "control-three-fe-core-pair-t8-to-t16/pair-1/candidate/result.json": "2627324540d00df1372b91b5682fe5a4e33cac0c3eecdc9164140216241e212a",
+    "control-three-fe-core-pair-t8-to-t16/pair-2/candidate/result.json": "02efce73fe06d45debce8a1f6b69bc5507cd9b934c1626e68956e410327615c5",
+    "control-three-fe-core-pair-t8-to-t16/pair-3/candidate/result.json": "793503cbe054dd2913c9cdf724012e07e0c58bc5061ddd4ac94b270d830c8e91"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "candidate-source.json": "f396a272878a20ee21562983264660b565d04f7c6134b833b1e402dbc32ef742",
+  "overlay/tests/licensed_stata/estimate_ppml_eclass_break.do": "9cf50f76ca8238c3266b23bff8a50dba5097fd7a6673b367a3a3d15161cc7f90",
+  "overlay/tests/stata/development/feppml_public_scope.do": "e5f133663cdec705c8d9389463064ab99240ce20604ae07e4c5d4c0e91b5a2a5",
+  "overlay/scripts/run_stata_break_test.py": "8ad1d8b7c283bdf3dbf833aaf39076d7559334e348f029c2e653fab2895eb1cd",
+  "overlay/stata/feppml.ado": "e18af10af6406808a631069a8f9862445158122142a7142419b455d23ce0093a"
+}

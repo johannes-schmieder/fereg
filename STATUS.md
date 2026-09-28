@@ -10,7 +10,66 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## Current checkpoint: native-only host switching rejected; public boundary identified
+## Current checkpoint: public PPML host scope accepted; remaining small-fit/core losses measured
+
+[ADR0241](docs/adr/0241-ppml-public-host-scope.md) retains a scope across the complete
+public `feppml` call: Stata uses one host processor temporarily, then restores
+the caller's setting. Native worker requests/effective counts remain independent.
+**Accepted package snapshot 14c753ed…**, 215 bound inputs, identical Linux
+**d007491a…** and Mac universal **a7ad0493…** artifacts from 05690632. No native
+numerical code, certificate, sample, rank, weight, memory plan or output changes.
+No push, qualification or remote release.
+
+[Source-bound evidence](benchmarks/reports/development/ppml-public-host-scc-2026-09-28/README.md)
+includes 24 static tests, five licensed Mac fixtures, six Linux fixtures including
+PPML smoke, and both genuine native/public-scope PTY Break modes on each platform.
+Public syntax/domain errors, quiet/noisy calls, populated/null e(), injected
+panic/allocation/postplugin/precommit failures, native requests, fast/low memory,
+saved outputs, weighted Poisson/Hessian/sandwich/FW/PW/cluster oracles, slopes and
+OLS controls pass. An initial new-fixture macro-scope error is preserved as a
+failed receipt, corrected and rerun; it was not a production failure.
+Linux validation **7763686** is terminal with clean accounting and sentinel.
+
+Uncontended timing **7763691/7763701** completes **222 applications**: initial
+60, fresh 90 and direct scaling 72. All **74 native and 74 stock scientific
+pairs** pass. All 50 same-thread native b/V exports are byte-identical; recorded
+iterations and PPML memory plans agree. Only existing three-FE allocation overlap
+varies, in both directions. No build/profile/archive/competing-fit overlap.
+PPML is robust, OLS IID, without optional observation outputs; pinned unmodified
+fixest0.14.2 is strict only for slopes. Do not transfer these clocks to earlier
+saved-output or broad campaign cases. Fresh seeds **2026092821/2026092823** are
+now consumed validation inputs, never tuning seeds.
+
+Fresh candidate/baseline medians: **.985 one-FE T1, .941 T2, .762 T4, .824 low,
+.966 wide, .984 larger T8; .889 small two-FE, 1.024 three-FE, 1.002 slopes,
+.995 OLS**. Retain the inexpensive host-boundary improvement: principal T4/low
+gains repeat. Keep losses visible: fresh three-FE is slower in all three pairs;
+initial larger loses 5.9% (worst 9.5%), although its median loss does not repeat.
+Initial T1 variability does not establish a reliable gain.
+
+Fresh candidate/stock paired medians remain **2.583 T1, 2.032 T2, 2.049 T4,
+2.450 low, .992 wide, 1.172 larger; 1.766 small two-FE, .547 three-FE,
+.407 slopes, 1.533 OLS**. The universal 1.20 ceiling and 0.90 aspiration remain
+unmet. Direct candidate scaling improves in seven of eight medians, but one-FE
+**T1→T2 loses 8.0%**, slower in two of three pairs. T2→T4 improves 13.3%; T1→T4
+improves 6.7% but one pair loses .7%. Three-FE requested8→16 is effective8→8,
+not evidence of actual16-worker scaling. No new native cap is adopted.
+
+**Next bounded boundary:** test OLS carryover with its own transaction/Break
+checks and timings; its unchanged control still loses 53% to stock. Then isolate
+one-FE T1→T2 scheduling/finite/strict costs before changing team policy. Fresh
+one-FE T4 finite and strict-final clocks remain about46/57ms (can nest), versus
+252ms public; small two-FE projection is147ms of369ms. Whole-harness import
+audits preceding each fit may explain part of the faster repeated-fit diagnostic,
+but that is an untested inference; frozen audits and headline clocks stay intact.
+
+All three milestone jobs are terminal. Routine SCC testing is authorized without
+asking; unrelated work was untouched. Older weak-SE discrepancies, large timeouts,
+other comparator/sample failures, static allocation drift, weighted constrained
+fits and nonretaining-CG span instability remain open. Fresh different designs do
+not adjudicate them. The broader plan remains active.
+
+## Prior checkpoint: native-only host switching rejected; public boundary identified
 
 [ADR0240](docs/adr/0240-ppml-host-processor-boundary.md) retains a hidden native
 Break handshake correction and rejects processor switching only around the

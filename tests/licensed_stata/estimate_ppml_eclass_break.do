@@ -1,6 +1,18 @@
 version 18.0
 clear all
 set more off
+args scope
+
+local estimate_command _fereg_estimate_ppml
+if "`scope'" == "public" {
+    // Expose private injections through a test-only syntax adapter. The actual
+    // public wrapper, native core and publication transaction remain in use.
+    local estimate_command feppml
+    program define _fereg_ppml, eclass
+        assert c(processors) == 1
+        _fereg_estimate_ppml `0'
+    end
+}
 
 local original_processors = c(processors)
 local host_processors = min(4, c(processors_lic), c(processors_mach))
@@ -24,7 +36,7 @@ local prior_N : display %21x e(N)
 * the PTY marker only after entering the core on Stata's caller thread, then
 * polls there until the controller sends Ctrl-C.  No native store, result
 * stripe, e() metadata, or requested variable may escape this boundary.
-capture noisily _fereg_estimate_ppml y c.x, ///
+capture noisily `estimate_command' y c.x, ///
     absorb(__ppml_native_fe=fe) separation(none) memory(fast) ///
     residual(__ppml_native_resid) xb(__ppml_native_xb) ///
     d(__ppml_native_d) eta(__ppml_native_eta) mu(__ppml_native_mu) ///
@@ -47,7 +59,7 @@ assert _rc == 111
 
 * Then interrupt after all public metadata and timeit output have been posted,
 * but before the guarded transaction commits.
-capture noisily _fereg_estimate_ppml y c.x, ///
+capture noisily `estimate_command' y c.x, ///
     absorb(__ppml_break_fe=fe) separation(none) memory(fast) ///
     residual(__ppml_break_resid) xb(__ppml_break_xb) ///
     d(__ppml_break_d) eta(__ppml_break_eta) mu(__ppml_break_mu) ///
@@ -73,7 +85,7 @@ assert e(sample) == __ppml_prior_sample
 * boundary.  Both must remove every output, including the named saved FE.
 ereturn clear
 quietly datasignature set, reset
-capture noisily _fereg_estimate_ppml y c.x, ///
+capture noisily `estimate_command' y c.x, ///
     absorb(__ppml_native_null_fe=fe) separation(none) memory(fast) ///
     residual(__ppml_native_null_resid) xb(__ppml_native_null_xb) ///
     d(__ppml_native_null_d) eta(__ppml_native_null_eta) ///
@@ -93,7 +105,7 @@ capture confirm matrix e(feppml_receipt)
 assert _rc == 111
 quietly datasignature confirm
 
-capture noisily _fereg_estimate_ppml y c.x, ///
+capture noisily `estimate_command' y c.x, ///
     absorb(__ppml_null_fe=fe) separation(none) memory(fast) ///
     residual(__ppml_null_resid) xb(__ppml_null_xb) ///
     d(__ppml_null_d) eta(__ppml_null_eta) mu(__ppml_null_mu) ///
@@ -115,7 +127,8 @@ quietly datasignature confirm
 * large duplicated e(sample) keeps the private construction/validation window
 * open long enough for the PTY controller without adding a developer option to
 * the public predict syntax.
-quietly _fereg_ppml y c.x, separation(none) memory(fast)
+if "`scope'" == "public" program drop _fereg_ppml
+quietly feppml y c.x, separation(none) memory(fast)
 tempname predict_b predict_V
 matrix `predict_b' = e(b)
 matrix `predict_V' = e(V)
@@ -132,4 +145,5 @@ assert mreldif(e(V), `predict_V') == 0
 * Split the literal so the PTY controller cannot mistake command echo for the
 * emitted terminal sentinel.
 set processors `original_processors'
+if "`scope'" == "public" display as result "FEPPML_" "PUBLIC_SCOPE_VERIFIED"
 display as result "END_" "FIXTURE|estimate_ppml_eclass_break|rc=0"

@@ -1,0 +1,413 @@
+{
+  "schema": "ppml-host-processors-scaling-v1",
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "work": "Public feppml/fepois robust, and IID OLS control, without optional observation outputs. Slopes and strong_d2 use stock strict glm.tol=1e-10 and fixef.tol=1e-11; other stock uses the unchanged pinned defaults.",
+  "science": "Existing frozen scientific comparisons plus independently checked licensed weighted Poisson/Hessian/sandwich/saved outputs, transaction/panic/allocation and actual Ctrl-C host-state restoration before timing.",
+  "warmup": "Same case/design/width/threads on registered 7680-row positive-outcome warm input; generation happens sequentially outside every command clock.",
+  "fits": 72,
+  "purpose": "Directly alternate lower/higher native requests on the same whole-public-scope package. Baseline denotes lower threads, not older code.",
+  "threads_policy": "Same candidate source and plugin in both native arms; stock matches higher request; existing three-FE requested16/effective8 ceiling retained.",
+  "input_policy": "Predeclared fresh validation-only seed2026092823; no tuning.",
+  "interpretation": "All failed applications or scientific pairs remain unranked. No universal speed or core-scaling claim. No threshold tuning.",
+  "cases": [
+    {
+      "id": "one_fe-t1-to-t2",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 2,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092823,
+        2026092823,
+        2026092823
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 2
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 1,
+        "candidate": 2,
+        "stock": 2
+      }
+    },
+    {
+      "id": "one_fe-t2-to-t4",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092823,
+        2026092823,
+        2026092823
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 2,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 2,
+        "candidate": 4,
+        "stock": 4
+      }
+    },
+    {
+      "id": "one_fe-t1-to-t4",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092823,
+        2026092823,
+        2026092823
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 1,
+        "candidate": 4,
+        "stock": 4
+      }
+    },
+    {
+      "id": "two_fe_dense-t1-to-t2",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 2,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        2026092823,
+        2026092823,
+        2026092823
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 2
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 1,
+        "candidate": 2,
+        "stock": 2
+      }
+    },
+    {
+      "id": "two_fe_dense-t2-to-t4",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        2026092823,
+        2026092823,
+        2026092823
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 2,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 2,
+        "candidate": 4,
+        "stock": 4
+      }
+    },
+    {
+      "id": "two_fe_dense-t1-to-t4",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        2026092823,
+        2026092823,
+        2026092823
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 1,
+        "candidate": 4,
+        "stock": 4
+      }
+    },
+    {
+      "id": "one-wide-t4-t1-to-t4",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 24,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      },
+      "seeds": [
+        2026092823,
+        2026092823,
+        2026092823
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 1,
+        "candidate": 4,
+        "stock": 4
+      }
+    },
+    {
+      "id": "control-three-fe-core-pair-t8-to-t16",
+      "cell": {
+        "model": "ppml",
+        "design": "three_fe_sparse",
+        "n": 61440,
+        "k": 10,
+        "threads": 16,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        2026092823,
+        2026092823,
+        2026092823
+      ],
+      "stock_arm": "fixest",
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "candidate": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        },
+        "stock": {
+          "startup": 180,
+          "command": 180,
+          "extraction": 120
+        }
+      },
+      "arm_threads": {
+        "baseline": 8,
+        "candidate": 16,
+        "stock": 16
+      }
+    }
+  ],
+  "native_change": "No native code or binary changes. Whole-public-call host scope only.",
+  "source_snapshot": "14c753ede241d94812a25b52f06325cb81d5a08d5465efe0a343ec8b9c4bfad9",
+  "upstream_linux_validation_job": "7763686",
+  "plugins": {
+    "baseline": "d007491ab5dfb5aa659f6c5639c8ac90c7e2e6c2bcd2e2603216cb91cb812116",
+    "candidate": "d007491ab5dfb5aa659f6c5639c8ac90c7e2e6c2bcd2e2603216cb91cb812116"
+  }
+}

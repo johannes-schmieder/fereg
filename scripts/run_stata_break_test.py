@@ -99,7 +99,11 @@ def main() -> None:
     parser.add_argument("--plugin-sha256", required=True)
     parser.add_argument("--timeout", type=float, default=30.0)
     parser.add_argument("--fixture-kind", choices=sorted(BREAK_FIXTURES), default="ols")
+    parser.add_argument("--public-scope", action="store_true",
+                        help="exercise feppml's outer scope with the private injection adapter")
     args = parser.parse_args()
+    if args.public_scope and args.fixture_kind != "ppml":
+        parser.error("--public-scope requires --fixture-kind ppml")
     if not args.stata:
         raise SystemExit("set STATA_BIN or pass --stata")
 
@@ -151,7 +155,7 @@ def main() -> None:
                 "if `provenance_load_rc' != 0 & `provenance_load_rc' != 110 "
                 "exit `provenance_load_rc'",
                 "plugin call __fereg_break_provenance, version",
-                f"do {stata_quote(fixture)}",
+                f"do {stata_quote(fixture)}" + (" public" if args.public_scope else ""),
                 "",
             ]
         )
@@ -178,6 +182,10 @@ def main() -> None:
             raise RuntimeError(f"Break fixture failed: {error}\n{transcript}")
         if sha256_file(bound_plugin) != args.plugin_sha256:
             raise RuntimeError("candidate plugin bytes changed during the Break fixture")
+        if args.public_scope:
+            if "FEPPML_PUBLIC_SCOPE_VERIFIED" not in transcript:
+                raise RuntimeError("public-scope Break fixture did not verify its boundary")
+            print("BOUNDARY: feppml public scope")
         print(f"PASS: {expected}")
     finally:
         native_marker_path.unlink(missing_ok=True)

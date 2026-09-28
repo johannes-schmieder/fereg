@@ -1,0 +1,16 @@
+{
+  "job_id": "7763701",
+  "run_root": "/projectnb/welfgr/fereg/dev/20260928-public-host-rotation04",
+  "source_snapshot": "14c753ede241d94812a25b52f06325cb81d5a08d5465efe0a343ec8b9c4bfad9",
+  "registration_sha256": "072d55824299807b3b59e68ca0e7f711215d9dd5ced394bd454139cd8dde820a",
+  "scaling_registration_sha256": "c6282ce88949f91f001e3ae5da6f74734fae22b003dec1b230376cad05081e92",
+  "slots": 28,
+  "walltime": "00:30:00",
+  "mem_per_core": "3G",
+  "cpu": "E5-2680v4",
+  "fits": 162,
+  "blocks": [
+    "90 fresh candidate/baseline/stock calls",
+    "72 directly alternating same-candidate lower/higher/stock calls"
+  ]
+}

@@ -14,6 +14,15 @@ Ranges are contiguous, nonempty, and
 returned in worker order. Native and plugin tests exercise 1, 2, 8, and 32
 requested threads.
 
+Public `feppml` temporarily uses one Stata host processor across parsing,
+private-output preparation, its native call and publication (ADR 0241). It
+restores the caller's setting after success, errors and Break while preserving
+quiet/noisy behavior. This host scope does not set Rust's team size: native
+`threads(0)` still queries operating-system availability, and explicit requests
+and effective-count policies above are unchanged. The inner transaction remains
+the publication and rollback boundary. No persistent environment policy or
+host-processor scope is applied to public OLS.
+
 The cache owns at most one pool. A later install at the same count reuses its
 registry and workers; a different count replaces it. Computation does not
 depend on Rayon's ambient global pool. The cache retains no model, sample,

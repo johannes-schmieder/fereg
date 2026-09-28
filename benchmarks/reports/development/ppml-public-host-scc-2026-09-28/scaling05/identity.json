@@ -1,0 +1,58 @@
+{
+  "harness": {
+    "performance/diagnose.py": "346a206f47fec07e7cf5863b8865c5f68afc53550ce4409441a3a8b629e62ba9",
+    "performance/issue_inventory.py": "aa56fd007c19f0d3af4a653247035a1da5513ab65913d68b8f3297ba123d3d7b",
+    "performance/launch_rotation.py": "98cfbb5cf6e3a7c18265dfaaa01e637753058ba4c337fb99a446086805f953ba",
+    "performance/rotation_threads.py": "72f225773495f34722aecbf7bdeb6217f8fa4a07d6049d0546ab3debdefb9a11",
+    "performance/rotations.py": "adc2626e5c67db8c8d7a59e093a138d5279a6be4be25d9118f7ec43cc8c3ed80",
+    "performance/slope_diagnostic.py": "8a9a04d846a5ede57968239f4142afc7af9e8f75996fd8bc337bb9d859c7df77",
+    "performance/slope_perf.py": "342da52ef569d4d32ebb39c35bc309e5c062151f461b4877adc44b658054214f",
+    "performance/slope_probe.py": "709cace6fce455a0fbd75553d8b973fab460d06e5dcf3e09f824c868df82210e",
+    "performance/slope_rotation.py": "7eedd313b2f82c130366d7436cc72f0f879a71df4e6682f38f3746ecfd98ca25",
+    "performance/slope_summary.py": "ffed77abb3642bc0eda902fd71a692ee73530cc9ece4d5d546dd4c5d3f31259e",
+    "performance/summarize_rotations.py": "a5568e4148ed6dc7e7a4512f1c819534bc57596238118bffedb54b0ebee445c7",
+    "performance/test_launch_rotation.py": "fd2d660e89c1bd2849fc892314761f76dd6aefe1a8589d087d05532574169d26",
+    "performance/test_summarize_rotations.py": "0cf2fa1d33b77a15a3b5f318cba25b873bd4068577fb3e95571c92c828899c86",
+    "systematic/accounting.py": "470e592bfc8096127d5f58896fe356f64414a842e1b65932cb69016043b19f92",
+    "systematic/acquire.py": "bd5d56326bb79d77b1f5df51958729b4fb8fc333709ad800864fd8bb7f19645f",
+    "systematic/adjudicate_zeros.py": "348d359daa8368b5e8eeeb0cd757bd697de6851dfd3e0a96cf9650a27885284e",
+    "systematic/campaign.py": "6f8c64fafe6bb43308d69962083cd51087457ddf123503526a93a9a835bbf833",
+    "systematic/common.py": "66204753ea9e1631c1b1484737260dd0985276ba607b36ea0ab26d4311a6e795",
+    "systematic/diagnose_oracle.py": "c200152fca576a57aa4f06cdb43c7d37e86e03f9be9191927620d9c47184601e",
+    "systematic/generate.py": "b56668181b80cd8dd00629b9841cf8a4faaacce5711e54bdfec8b137d2183482",
+    "systematic/light.py": "73fc03114c55b8af9ad7220b5905818bc8576ce67854a617cd4964f7065bcb62",
+    "systematic/light_control.py": "e1d16eca3780f1e68c140ef308a3a549e838215a7df04dfbf6b807f6ff8581d4",
+    "systematic/light_report.py": "4293a23b022ef835b24fc3a52089829268e0433985bf56dd004b921c69e496d0",
+    "systematic/oracle.py": "0062ac545397f7a1323706f43ced2d13234267e447d2b99e0884b38b149155a2",
+    "systematic/provenance.py": "f1a4d807c12fc8a61f6c47f9eadf38d333527f3140c57fd394841bc55870a839",
+    "systematic/python_worker.py": "565340389259176dd68fd0d47110c7fdd3ba7563da01cfa3f68c7c283cfc12cd",
+    "systematic/r_worker.R": "d0b287cf6446f28b4617387e97df607995e4f4b27518c0581a997963ce548f8f",
+    "systematic/report.py": "2e79b52bda5f61c81bfb8fc412648f1d608741e6dcbc405720d4428b99ed3886",
+    "systematic/runner.py": "c959d2ea63ea6c1f40543d5e42671cc1ccd642072c89fc40015708d91f4ed661",
+    "systematic/setup.py": "5752927f7d854061113a6c7b4359e12890e693ca2e1110a9154d8a81060b697f",
+    "systematic/stata_worker.do": "ea070e1f9e5556d9292f8f7e2063eebd8d54381e3869c23ea97cb5f8a50758e0",
+    "systematic/stopped_report.py": "4d6c581fab48eaad8d1dd60bd558ee3cd75b1eaf1fe379d23f1886c7f67b52b0",
+    "systematic/test_campaign.py": "ff32b6086f40a2f1165bbbd89aea3001a46f7080519e130400daf4bbd9faf69a",
+    "systematic/test_evidence.py": "2e204f300f23925fa72500811f8f4e018a809fad030c617033d598298d96fd4b",
+    "systematic/test_light.py": "af090984094946b9d2a6473cd9f9022bb9e153edf92f9fd8fe7ae241f4ded6f4",
+    "systematic/test_two_fe_direct_oracle.py": "b69cda985bfedb32b4ee23e4b888b71a12ae1cf35c15afa8b3aa77946e67f797",
+    "systematic/test_two_fe_ppml_oracle.py": "c922e3d43e1bf1d6f28ae6d5b15370f92b0342bc2a378691dcfc0925a24a8587",
+    "systematic/test_worker_diagnostics.py": "7e85006a2529e67172c1e8826b6a5743d8c6aa2d03c064b306bffa138036dda6",
+    "systematic/two_fe_direct_oracle.py": "e40482c2925541f6d067c20574e50fc86a124136ce30ccd7a68a9fec9366b4ad",
+    "systematic/two_fe_ppml_oracle.py": "f11ad8dc9d6b3d9fe9a4bfac91b1ac44cb9d7973681f60d15db367dc35e2bde7",
+    "systematic/worker_diagnostics.py": "0d78cd90c9b4ba45e2cbf840ae5b4f108cdb8b16bd4f7ded4cb29ad8a840a806"
+  },
+  "manifest": "4f73e9f98ed44a3d8590f8e8b4a81ed78b9d8124cac8841d33b8c5feeaca10f6",
+  "plan": "c6282ce88949f91f001e3ae5da6f74734fae22b003dec1b230376cad05081e92",
+  "reference": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "sources": {
+    "baseline": {
+      "plugin": "d007491ab5dfb5aa659f6c5639c8ac90c7e2e6c2bcd2e2603216cb91cb812116",
+      "source": "f396a272878a20ee21562983264660b565d04f7c6134b833b1e402dbc32ef742"
+    },
+    "candidate": {
+      "plugin": "d007491ab5dfb5aa659f6c5639c8ac90c7e2e6c2bcd2e2603216cb91cb812116",
+      "source": "f396a272878a20ee21562983264660b565d04f7c6134b833b1e402dbc32ef742"
+    }
+  }
+}
