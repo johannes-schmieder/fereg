@@ -1,0 +1,15 @@
+{
+  "job_id": "7763828",
+  "run_root": "/projectnb/welfgr/fereg/dev/20260928-private-moments-rotation03",
+  "source_snapshot": "a9fb23075ecbe4f2bc135c78e547d3aa301e49f50a281bdae61820e469edcc20",
+  "deployment_sha256": "3aa4f032fa261feef52a680268f69267e08003f3577955d38b8cf8e69492c3e2",
+  "slots": 28,
+  "cpu_type": "E5-2680v4",
+  "mem_per_core": "3G",
+  "walltime": "00:30:00",
+  "applications": 60,
+  "phase": "initial",
+  "upstream_job": "7763797",
+  "mac_validation": "mac-validation01.json",
+  "harness_tests_passed": 13
+}

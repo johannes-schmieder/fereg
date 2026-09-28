@@ -7,10 +7,86 @@
 tag, or Windows scientific qualification.
 
 This is the sole mutable progress/handover record. Historical receipts remain
-unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
+unchanged under benchmarks/reports/. The broad scientific/performance follow-up and
+<=0.90-stock goal remain active.
 
 
-## Current checkpoint: general OLS host scope rejected; accepted PPML scope retained
+## Current checkpoint: private finite-moment accumulators retained; one-FE scaling improves
+
+[ADR0243](docs/adr/0243-private-retained-moment-accumulators.md) adopts private
+worker-stack RHS/Gram accumulators inside the existing narrow scaled retained
+finite-moment helper. Each worker copies completed rows once, eliminating repeated
+writes to potentially shared output cache lines. Selected values, normalization,
+ordered FMA recurrences, rank, all certificates and publication remain unchanged.
+No thread cap or new automatic solver region. Existing PPML host scope remains;
+rejected general OLS host scope and helper annotations stay closed.
+
+**Package snapshot a9fb2307…**, 215 bound inputs; Linux **f919ea96…**, Mac universal
+**57eb15d8…**. The [report](benchmarks/reports/development/ppml-private-moments-scc-2026-09-28/README.md)
+binds every source/artifact and preserves distributions. **90 distinct Rust tests
+and six independent licensed fixtures pass on each platform**, including weighted
+Poisson/Hessian/sandwich/FW/PW/cluster/saved-output, low-memory, categorical/slopes
+and OLS controls. SCC **7763797** also passes PPML smoke; 13 harness tests pass.
+The inherited empty linear-session filter contributes zero to the count.
+
+Preceding accepted-source attribution **7763785** completes 36 profiled applications,
+all scientific comparisons passing, positive samples and zero lost samples.
+[Its report](benchmarks/reports/development/ppml-thread-cost-scc-2026-09-28/README.md)
+shows the dominant sampled Rayon helper contains finite arithmetic. It does not
+prove scheduler overhead or directly count cache-coherence events. Failed profiler
+controller **7763777** is preserved: one narrow SIGINT-stop fix and successful
+retest, no production failure. Profiling stays separate from headline clocks.
+
+Uncontended **7763828/7763839** complete **222 applications**, **74 native and 74
+stock scientific pairs**, all eligible. All **50 same-thread b/V pairs are
+byte-identical**; iterations and selected memory agree. Cross-thread results meet
+unchanged envelopes (15/24 byte-identical). PPML clocks use robust inference,
+OLS IID; optional observation outputs are validated separately, not timed.
+Pinned stock fixest is unmodified, strict only for slopes. Fresh **2026092829**
+and scaling **2026092831** are consumed validation seeds, never tuning inputs.
+
+Fresh candidate/baseline medians: **.923 one-FE T1, .893 T2, .874 T4, .965 low,
+.842 wide, .774 larger T8, .881 three-FE, .948 slopes**. Small two-FE **1.010**
+and OLS **1.011** remain slight losses. Initial T2 **1.029** and low **1.137**
+losses do not repeat; they remain in the report. Fresh finite solving improves
+T2 **52.8→35.3ms**, T4 **41.5→26.0ms**, larger **204.6→103.4ms**. Inference is
+still slower at T2 than T1. Phase clocks can nest; do not add them.
+
+Direct candidate one-FE scaling wins every pair: **T1→T2 .850, T2→T4 .814,
+T1→T4 .788** median ratios. All seven actual core-count transitions improve in
+median, **20/21** individual pairs improve. Two-FE T1→T2 retains one **4.3%** loss
+(median .955). Three-FE requested8→16 is effective8→8, not native16 scaling.
+No universal monotonic-core claim.
+
+Fresh candidate/stock ratios remain **2.769 T1, 1.627 T2, 1.855 T4, 3.000 low,
+1.533 small two-FE, 1.625 OLS**. Wide **.913** and larger **.927** are competitive;
+three-FE **.306** and slopes **.350** win clearly. The universal 1.20 ceiling and
+.90 aspiration remain unmet. Do not transfer these ratios to old source snapshots,
+other samples/outputs or the broad benchmark campaign.
+
+Memory tradeoff: **33,280 extra transient stack bytes per active partition**;
+33 KiB total helper payload, at most 32 simultaneous partitions (1,081,344 bytes),
+within existing stack reservations. No heap/retained/N-sized bank is added.
+Three-FE observed heap peaks nevertheless rise **0.11–9.83 MB** across five pairs;
+changed overlap of existing independent work is plausible, not proved. Other
+same-thread native peaks agree. Fresh RSS medians range .978–1.043; individual
+ratios .960–1.125. This is not physical-cap or static-inventory qualification.
+
+**Next bounded implementation target:** private write ownership in implicit
+low-memory finite moments and narrow one-column partitions, which retain repeated
+shared-output writes. Fresh low finite work is **58.8ms** versus fast T4 **26.0ms**.
+Use the existing scientific oracles and explicit stack/budget accounting; do not
+merely remove guards. Dense sandwich inference has adjacent mutable partials and
+remains another concrete scaling target. PPML already has an outer scoped native
+owner; more general host scopes or submission tuning lack supporting attribution.
+
+All milestone jobs are terminal. Routine SCC testing remains authorized without
+asking. No push or qualification. Older weak-SE discrepancies, large timeouts,
+comparator/sample failures, static allocation drift, weighted constrained fits
+and nonretaining-CG instability remain open. The broader implementation goal
+is active; this bounded improvement does not complete it.
+
+## Prior checkpoint: general OLS host scope rejected; accepted PPML scope retained
 
 [ADR0242](docs/adr/0242-reject-ols-host-scope.md) closes OLS carryover without adopting
 it. Production is restored exactly to **4ddf7aaa / package 14c753ed…**, all 215 bound

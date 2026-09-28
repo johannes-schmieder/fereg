@@ -1,0 +1,25 @@
+{
+  "hypothesis": "Per-observation writes to disjoint narrow Gram rows and RHS entries cause cache-line contention. Private partition accumulators remove those writes while preserving exact recurrence; CPU coherence-event attribution remains unmeasured.",
+  "source_profile_report": "../ppml-thread-cost-scc-2026-09-28/README.md",
+  "profile_job": "7763785",
+  "changed_source": [
+    "crates/fereg-core/src/ols/finite_wls_kernel.rs"
+  ],
+  "scope": "Existing <=64-column scaled retained dense row helper with columns_per_partition > 1. No routing change; wide, scratch, implicit, unscaled and one-column partitions retain existing paths.",
+  "scientific_changes": "None. Same selected values, weights/divisor, scales, row/FMA order, rank and acceptance checks. Output copied only after partition completes.",
+  "memory": {
+    "additional_stack_bytes_per_active_partition": 33280,
+    "total_helper_array_bytes_per_active_partition": 33792,
+    "maximum_simultaneous_eligible_partitions": 32,
+    "maximum_total_helper_array_bytes": 1081344,
+    "heap_bytes_added": 0,
+    "retained_bytes_added": 0,
+    "note": "Existing 8MiB reserved worker stacks remain the admission envelope. Heap telemetry cannot measure this stack payload; this is not constrained-memory qualification."
+  },
+  "registration_sha256": {
+    "initial-design-registration.json": "e9ef12b5a667a754dd539207d63115fea32438a1947bee722be5a7393a74def0",
+    "fresh-design-registration.json": "814abd5e447e7627e55f3c26d5878cf400b15806bd90da84047fa5e9e158f1be",
+    "scaling-design-registration.json": "e91d53aae601087e508c14d0f2421c87d763f100610b8ce3428e7041f98ca3ce"
+  },
+  "no_case_specific_guard": true
+}

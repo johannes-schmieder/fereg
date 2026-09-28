@@ -1,0 +1,106 @@
+{
+  "schema": "ppml-command-interval-profile-v1",
+  "source_snapshot": "14c753ede241d94812a25b52f06325cb81d5a08d5465efe0a343ec8b9c4bfad9",
+  "source_parent": "1383d0bc",
+  "plugin_sha256": "d007491ab5dfb5aa659f6c5639c8ac90c7e2e6c2bcd2e2603216cb91cb812116",
+  "seed": 2026092817,
+  "repetitions": 6,
+  "cases": [
+    {
+      "id": "one-t1",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 1,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      }
+    },
+    {
+      "id": "one-t2",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 2,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      }
+    },
+    {
+      "id": "one-t4",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      }
+    },
+    {
+      "id": "one-low-t2",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 6,
+        "threads": 2,
+        "section": "main",
+        "memory": "low",
+        "effects": [
+          "g1"
+        ]
+      }
+    },
+    {
+      "id": "one-wide-t2",
+      "cell": {
+        "model": "ppml",
+        "design": "one_fe",
+        "n": 30720,
+        "k": 24,
+        "threads": 2,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1"
+        ]
+      }
+    },
+    {
+      "id": "two-t2",
+      "cell": {
+        "model": "ppml",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 2,
+        "section": "main",
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      }
+    }
+  ],
+  "purpose": "Locate PPML T1/T2/T4 native numerical versus scheduling cost using the accepted production binary. Six repetitions per case; alternate forward/reverse case order. Entire canonical import audit and warm-up retained. No reference ranking or headline performance claim.",
+  "profiling": "Attach perf before releasing the existing START.CHECKED handshake; stop on first observed DONE. The record includes attachment settling and possible short post-command extraction tail, bounded by the existing monitor interval. CPU samples are diagnostic attribution, not timings or proof of exact operation counts.",
+  "frequency_hz": 997,
+  "callgraph": "dwarf,8192",
+  "no_production_source_change": true
+}

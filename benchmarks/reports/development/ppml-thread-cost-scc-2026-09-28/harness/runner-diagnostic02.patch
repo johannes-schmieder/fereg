@@ -1,0 +1,55 @@
+--- benchmarks/systematic/runner.py	2026-09-28 02:28:15
++++ /tmp/fereg-ppml-thread-cost02/systematic/runner.py	2026-09-28 07:29:00
+@@ -19,6 +19,7 @@
+ from common import HERE, arm_order, cell_id, dataset_id, read_json, sha256, thread_environment, write_json, manifest_for
+ from generate import generate
+ from worker_diagnostics import failure_evidence
++import command_profile
+ 
+ 
+ def numeric(value):
+@@ -96,6 +97,7 @@
+     reason = None
+     wall_start = time.monotonic()
+     import_verified = False
++    profiler = None
+     finished = None
+     limits = limits or dict(startup=manifest['measurement']['startup_timeout_seconds'],
+                             command=manifest['measurement']['command_timeout_seconds'], extraction=600)
+@@ -132,6 +134,9 @@
+                 active = (output / "START").exists() and not (output / "DONE").exists()
+                 if (output / 'DONE').exists() and finished is None:
+                     finished = now
++                    if profiler is not None:
++                        command_profile.stop(profiler, output)
++                        profiler = None
+                 if active and started is None:
+                     started = now
+                 if active:
+@@ -152,6 +157,7 @@
+                         # shorter than the periodic sampler interval. Handshake
+                         # waiting is excluded from the command's own timer.
+                         if not (output / "START.CHECKED").exists():
++                            profiler = command_profile.start(process.pid, output)
+                             (output / "START.CHECKED").write_text("SAMPLED\n")
+                     except psutil.NoSuchProcess:
+                         pass
+@@ -172,10 +178,14 @@
+                 time.sleep(manifest["measurement"]["rss_interval_seconds"])
+         finally:
+             try:
+-                os.killpg(process.pid, signal.SIGKILL)
+-            except ProcessLookupError:
+-                pass
+-            process.wait()
++                if profiler is not None:
++                    command_profile.stop(profiler, output)
++            finally:
++                try:
++                    os.killpg(process.pid, signal.SIGKILL)
++                except ProcessLookupError:
++                    pass
++                process.wait()
+     meta = metadata(output)
+     sentinel = any("SYSTEMATIC_WORKER_COMPLETE" in p.read_text(errors="replace")
+                    for p in [output / "stdout.txt", *output.glob("*.log")] if p.exists())

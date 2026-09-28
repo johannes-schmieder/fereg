@@ -325,12 +325,17 @@ count and uses checked arithmetic. It does not change low-mode estimates or
 the at-most-64 execution policy (ADR 0030).
 
 Scaled retained dense moments at up to 64 active columns may use a fixed
-64-double stack cache per Gram-row partition when the layout assigns multiple
-columns to each partition. Its payload is 512 bytes per partition, conservatively
-at most 32 KiB across eligible partitions; it creates no heap allocation,
-retained partial bank or observation-sized state. Wider, unscaled and scratch
-paths do not enter that helper. Heap allocation receipts exclude this transient
-stack payload; see [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md).
+64-double standardized-row cache plus private 64-double RHS and 4096-double
+Gram accumulators per partition when the layout assigns multiple columns to
+each partition. The complete array payload is 33 KiB per active partition,
+at most 1,081,344 bytes across the 32 simultaneously eligible partitions.
+The private accumulators add 33,280 bytes per partition within the existing
+worker-stack reservation; they create no heap allocation, retained partial bank
+or observation-sized state. Wider, unscaled, implicit and scratch paths do not
+enter that helper. Heap allocation receipts exclude this transient stack payload;
+physical-cap qualification and complete stack accounting remain separate.
+See [ADR 0054](adr/0054-retained-dense-moment-row-standardization.md) and
+[ADR 0243](adr/0243-private-retained-moment-accumulators.md).
 
 Changing-weight retained column-block projection reuses the scratch file's
 existing bounded encoded I/O bank for complete-row extraction and patching.

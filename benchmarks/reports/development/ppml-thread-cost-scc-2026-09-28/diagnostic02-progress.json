@@ -1,0 +1,326 @@
+[
+  {
+    "case": "one-t1",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 1,
+    "science": "pass",
+    "seconds": 0.283,
+    "status": "pass"
+  },
+  {
+    "case": "one-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 1,
+    "science": "pass",
+    "seconds": 0.309,
+    "status": "pass"
+  },
+  {
+    "case": "one-t4",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 1,
+    "science": "pass",
+    "seconds": 0.251,
+    "status": "pass"
+  },
+  {
+    "case": "one-low-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 1,
+    "science": "pass",
+    "seconds": 0.337,
+    "status": "pass"
+  },
+  {
+    "case": "one-wide-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 1,
+    "science": "pass",
+    "seconds": 0.674,
+    "status": "pass"
+  },
+  {
+    "case": "two-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 1,
+    "science": "pass",
+    "seconds": 0.479,
+    "status": "pass"
+  },
+  {
+    "case": "two-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 2,
+    "science": "pass",
+    "seconds": 0.476,
+    "status": "pass"
+  },
+  {
+    "case": "one-wide-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 2,
+    "science": "pass",
+    "seconds": 0.672,
+    "status": "pass"
+  },
+  {
+    "case": "one-low-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 2,
+    "science": "pass",
+    "seconds": 0.302,
+    "status": "pass"
+  },
+  {
+    "case": "one-t4",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 2,
+    "science": "pass",
+    "seconds": 0.274,
+    "status": "pass"
+  },
+  {
+    "case": "one-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 2,
+    "science": "pass",
+    "seconds": 0.305,
+    "status": "pass"
+  },
+  {
+    "case": "one-t1",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 2,
+    "science": "pass",
+    "seconds": 0.306,
+    "status": "pass"
+  },
+  {
+    "case": "one-t1",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 3,
+    "science": "pass",
+    "seconds": 0.251,
+    "status": "pass"
+  },
+  {
+    "case": "one-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 3,
+    "science": "pass",
+    "seconds": 0.303,
+    "status": "pass"
+  },
+  {
+    "case": "one-t4",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 3,
+    "science": "pass",
+    "seconds": 0.25,
+    "status": "pass"
+  },
+  {
+    "case": "one-low-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 3,
+    "science": "pass",
+    "seconds": 0.32,
+    "status": "pass"
+  },
+  {
+    "case": "one-wide-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 3,
+    "science": "pass",
+    "seconds": 0.656,
+    "status": "pass"
+  },
+  {
+    "case": "two-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 3,
+    "science": "pass",
+    "seconds": 0.475,
+    "status": "pass"
+  },
+  {
+    "case": "two-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 4,
+    "science": "pass",
+    "seconds": 0.461,
+    "status": "pass"
+  },
+  {
+    "case": "one-wide-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 4,
+    "science": "pass",
+    "seconds": 0.6839999999999999,
+    "status": "pass"
+  },
+  {
+    "case": "one-low-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 4,
+    "science": "pass",
+    "seconds": 0.34,
+    "status": "pass"
+  },
+  {
+    "case": "one-t4",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 4,
+    "science": "pass",
+    "seconds": 0.271,
+    "status": "pass"
+  },
+  {
+    "case": "one-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 4,
+    "science": "pass",
+    "seconds": 0.309,
+    "status": "pass"
+  },
+  {
+    "case": "one-t1",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 4,
+    "science": "pass",
+    "seconds": 0.306,
+    "status": "pass"
+  },
+  {
+    "case": "one-t1",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 5,
+    "science": "pass",
+    "seconds": 0.234,
+    "status": "pass"
+  },
+  {
+    "case": "one-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 5,
+    "science": "pass",
+    "seconds": 0.289,
+    "status": "pass"
+  },
+  {
+    "case": "one-t4",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 5,
+    "science": "pass",
+    "seconds": 0.261,
+    "status": "pass"
+  },
+  {
+    "case": "one-low-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 5,
+    "science": "pass",
+    "seconds": 0.328,
+    "status": "pass"
+  },
+  {
+    "case": "one-wide-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 5,
+    "science": "pass",
+    "seconds": 0.673,
+    "status": "pass"
+  },
+  {
+    "case": "two-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 5,
+    "science": "pass",
+    "seconds": 0.479,
+    "status": "pass"
+  },
+  {
+    "case": "two-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 6,
+    "science": "pass",
+    "seconds": 0.484,
+    "status": "pass"
+  },
+  {
+    "case": "one-wide-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 6,
+    "science": "pass",
+    "seconds": 0.6579999999999999,
+    "status": "pass"
+  },
+  {
+    "case": "one-low-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 6,
+    "science": "pass",
+    "seconds": 0.309,
+    "status": "pass"
+  },
+  {
+    "case": "one-t4",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 6,
+    "science": "pass",
+    "seconds": 0.255,
+    "status": "pass"
+  },
+  {
+    "case": "one-t2",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 6,
+    "science": "pass",
+    "seconds": 0.291,
+    "status": "pass"
+  },
+  {
+    "case": "one-t1",
+    "cross": "pass",
+    "diagnostic_only": true,
+    "repetition": 6,
+    "science": "pass",
+    "seconds": 0.191,
+    "status": "pass"
+  }
+]

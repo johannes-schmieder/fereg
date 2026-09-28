@@ -1,0 +1,788 @@
+{
+  "one-low-t2": {
+    "samples": 1376,
+    "approximate_cycles": 1480761574,
+    "top_self_percent": [
+      {
+        "symbol": "fereg_linux.plugin [.] rayon::iter::plumbing::bridge_producer_consumer::helper",
+        "percent": 43.8770337831241
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::update_fixed_dense_triangle",
+        "percent": 5.332041946538248
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::implicit_centered::group_mean",
+        "percent": 2.836775899581792
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::compensated_add",
+        "percent": 2.430994637263595
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb3140",
+        "percent": 2.0931465720962854
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::update_scaled_square",
+        "percent": 1.8371088743554875
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::reduce_dense_score_meats::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h306a6ee3c5ebedf6",
+        "percent": 1.7728073705470155
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb7fda",
+        "percent": 1.7477556653425153
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] <fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::store_numeric",
+        "percent": 1.2753568050449695
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::CertifiedLinearSession$LT$P$GT$::solve_full_retained_rank::_$u7b$$u7b$closure$u7d$$u7d$::h6aab2538c0a5457f",
+        "percent": 1.2531220385179984
+      },
+      {
+        "symbol": "libm-2.28.so [.] 0x0000000000039429",
+        "percent": 1.2292251421564782
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::prepared_separation::separation_report_digest",
+        "percent": 1.1324420086416964
+      },
+      {
+        "symbol": "stata-mp [.] 0x00000000002e4c79",
+        "percent": 1.1047523142506939
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::prepared_fit::compensated_add",
+        "percent": 1.0383327092400632
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::fe::borrowed_map::fused_group_means_for_level",
+        "percent": 0.9641866431226017
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] <fereg_core::ppml::vce::PpmlScoreMultipliers as fereg_core::sandwich::SandwichScoreMultiplier>::score_pair",
+        "percent": 0.9551846998023192
+      }
+    ],
+    "diagnostic_runtime_row_medians": {
+      "1": 0.28070940749999995,
+      "2": 3.0,
+      "3": 4.0,
+      "4": 0.0,
+      "5": 2.0,
+      "6": 2.0,
+      "7": 2.0,
+      "8": 0.0,
+      "9": 0.0,
+      "10": 2.0,
+      "11": 2.0,
+      "12": 15407358.0,
+      "13": 17897182.0,
+      "14": 19248318.0,
+      "15": 1720320.0,
+      "16": 0.0,
+      "17": 2353.0,
+      "18": 21705.0,
+      "19": 1842777.0,
+      "20": 12944075.0,
+      "21": 12922370.0,
+      "22": 1821072.0,
+      "23": 0.671350608401212,
+      "24": 1.0,
+      "25": 0.0,
+      "26": 3.0,
+      "27": 0.0,
+      "28": 0.0308942545,
+      "29": 0.0008125605,
+      "30": 0.0,
+      "31": 0.0,
+      "33": 0.0044963915,
+      "34": 0.0164386665,
+      "35": 0.07741774900000001,
+      "36": 0.02077278,
+      "37": 0.082465598,
+      "38": 0.009002208000000001,
+      "39": 4.5885e-05,
+      "40": 0.018032694000000002,
+      "41": 0.0,
+      "77": 1.0,
+      "78": 1.0,
+      "79": 19352.0,
+      "80": 1682.0,
+      "81": 3663.0,
+      "82": 1981.0,
+      "83": 16913183.0,
+      "84": 16691308.0,
+      "85": 16691308.0,
+      "86": 16691308.0,
+      "87": 16691308.0,
+      "88": 18264319.0,
+      "89": 19248318.0,
+      "90": 19248318.0,
+      "91": 18510399.0,
+      "92": 19248318.0,
+      "93": 12531975.0,
+      "94": 12527719.0,
+      "95": 13822543.0
+    }
+  },
+  "one-t1": {
+    "samples": 596,
+    "approximate_cycles": 662816146,
+    "top_self_percent": [
+      {
+        "symbol": "fereg_linux.plugin [.] rayon::iter::plumbing::bridge_producer_consumer::helper",
+        "percent": 12.845786548597443
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::compensated_add",
+        "percent": 4.572902273521262
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb3140",
+        "percent": 4.280245262130353
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb7fda",
+        "percent": 3.9343933158954765
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::implicit_centered::group_mean",
+        "percent": 3.501430476468809
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::update_scaled_square",
+        "percent": 2.9567493491626555
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::objective_row_values",
+        "percent": 2.369122700429811
+      },
+      {
+        "symbol": "stata-mp [.] 0x00000000002e4c79",
+        "percent": 1.6732064500583244
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::prepared_fit::compensated_add",
+        "percent": 1.5492979701191527
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::replay_final_objectives_with_threads::_$u7b$$u7b$closure$u7d$$u7d$::h63660853321c4a9a",
+        "percent": 1.4702873830415106
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::CertifiedLinearSession$LT$P$GT$::solve_full_retained_rank::_$u7b$$u7b$closure$u7d$$u7d$::h6aab2538c0a5457f",
+        "percent": 1.4568179646607462
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::prepared_separation::separation_report_digest",
+        "percent": 1.3953648478864906
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::vce::validate_weight_report",
+        "percent": 1.2854825957724936
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::result::certify_ppml_reconstruction",
+        "percent": 1.2554128755034883
+      },
+      {
+        "symbol": "libm-2.28.so [.] 0x0000000000039429",
+        "percent": 1.1599107710933763
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::reduce_dense_score_meats::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h306a6ee3c5ebedf6",
+        "percent": 1.1205406515549787
+      }
+    ],
+    "diagnostic_runtime_row_medians": {
+      "1": 0.23195615549999998,
+      "2": 3.0,
+      "3": 4.0,
+      "4": 0.0,
+      "5": 1.0,
+      "6": 1.0,
+      "7": 2.0,
+      "8": 0.0,
+      "9": 0.0,
+      "10": 1.0,
+      "11": 1.0,
+      "12": 15013765.0,
+      "13": 17491007.0,
+      "14": 16364677.0,
+      "15": 0.0,
+      "16": 0.0,
+      "17": 2354.0,
+      "18": 14554.0,
+      "19": 1835626.0,
+      "20": 13619860.0,
+      "21": 13605306.0,
+      "22": 1821072.0,
+      "23": 0.8313824953587535,
+      "24": 1.0,
+      "25": 0.0,
+      "26": 3.0,
+      "27": 0.0,
+      "28": 0.030394356499999997,
+      "29": 0.000665367,
+      "30": 0.0,
+      "31": 0.0,
+      "33": 0.0048374609999999995,
+      "34": 0.0278537055,
+      "35": 0.044280363,
+      "36": 0.026997629000000002,
+      "37": 0.0596012,
+      "38": 0.0035883115,
+      "39": 2.393e-06,
+      "40": 0.015515046999999999,
+      "41": 0.0,
+      "77": 1.0,
+      "78": 1.0,
+      "79": 12200.0,
+      "80": 1667.0,
+      "81": 3641.0,
+      "82": 1974.0,
+      "83": 13975744.0,
+      "84": 15013765.0,
+      "85": 15013765.0,
+      "86": 15013765.0,
+      "87": 15013765.0,
+      "88": 15326656.0,
+      "89": 16310655.0,
+      "90": 16310655.0,
+      "91": 15572736.0,
+      "92": 16310655.0,
+      "93": 11727696.0,
+      "94": 11723496.0,
+      "95": 13018320.0
+    }
+  },
+  "one-t2": {
+    "samples": 1182,
+    "approximate_cycles": 1128690612,
+    "top_self_percent": [
+      {
+        "symbol": "fereg_linux.plugin [.] rayon::iter::plumbing::bridge_producer_consumer::helper",
+        "percent": 30.993394372239177
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::reduce_dense_score_meats::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h306a6ee3c5ebedf6",
+        "percent": 4.091913659276543
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::implicit_centered::group_mean",
+        "percent": 3.105634038063568
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::update_fixed_dense_triangle",
+        "percent": 3.0591533294068007
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::compensated_add",
+        "percent": 2.9413899918483595
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb7fda",
+        "percent": 2.580866006963829
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::update_scaled_square",
+        "percent": 2.5352423827372097
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb3140",
+        "percent": 2.469635220621468
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] <fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::store_numeric",
+        "percent": 2.0871936064353482
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::CertifiedLinearSession$LT$P$GT$::solve_full_retained_rank::_$u7b$$u7b$closure$u7d$$u7d$::h6aab2538c0a5457f",
+        "percent": 1.4521471141907576
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::prepared_fit::compensated_add",
+        "percent": 1.4274375797590138
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::objective_row_values",
+        "percent": 1.4072578179820991
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::prepared_separation::separation_report_digest",
+        "percent": 1.3449149206443474
+      },
+      {
+        "symbol": "stata-mp [.] 0x00000000002e4c79",
+        "percent": 1.246502552942294
+      },
+      {
+        "symbol": "libm-2.28.so [.] 0x0000000000039429",
+        "percent": 1.14417847553604
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::poisson_half_deviance_with_logs",
+        "percent": 1.129413585810883
+      }
+    ],
+    "diagnostic_runtime_row_medians": {
+      "1": 0.2593864205,
+      "2": 3.0,
+      "3": 4.0,
+      "4": 0.0,
+      "5": 1.0,
+      "6": 1.0,
+      "7": 2.0,
+      "8": 0.0,
+      "9": 0.0,
+      "10": 2.0,
+      "11": 2.0,
+      "12": 15407359.0,
+      "13": 17897183.0,
+      "14": 16758495.0,
+      "15": 0.0,
+      "16": 0.0,
+      "17": 2354.0,
+      "18": 21706.0,
+      "19": 1842778.0,
+      "20": 14074628.0,
+      "21": 14052922.0,
+      "22": 1821072.0,
+      "23": 0.838555132784895,
+      "24": 1.0,
+      "25": 0.0,
+      "26": 3.0,
+      "27": 0.0,
+      "28": 0.031670968,
+      "29": 0.0008180920000000001,
+      "30": 0.0,
+      "31": 0.0,
+      "33": 0.0045669585,
+      "34": 0.021693104,
+      "35": 0.0551809025,
+      "36": 0.0210689295,
+      "37": 0.0698821255,
+      "38": 0.008439571,
+      "39": 5.20515e-05,
+      "40": 0.020878687,
+      "41": 0.0,
+      "77": 1.0,
+      "78": 1.0,
+      "79": 19352.0,
+      "80": 1681.0,
+      "81": 3660.0,
+      "82": 1979.0,
+      "83": 14423360.0,
+      "84": 15015109.0,
+      "85": 15015109.0,
+      "86": 15015109.0,
+      "87": 15015109.0,
+      "88": 15774496.0,
+      "89": 16758495.0,
+      "90": 16758495.0,
+      "91": 16020576.0,
+      "92": 16758495.0,
+      "93": 11729160.0,
+      "94": 11724904.0,
+      "95": 13019728.0
+    }
+  },
+  "one-t4": {
+    "samples": 863,
+    "approximate_cycles": 680297207,
+    "top_self_percent": [
+      {
+        "symbol": "fereg_linux.plugin [.] rayon::iter::plumbing::bridge_producer_consumer::helper",
+        "percent": 18.321301669889113
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb7fda",
+        "percent": 4.764229530696867
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb3140",
+        "percent": 4.684622122709965
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::reduce_dense_score_meats::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h306a6ee3c5ebedf6",
+        "percent": 4.652476565834262
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::update_fixed_dense_triangle",
+        "percent": 4.096851943609406
+      },
+      {
+        "symbol": "stata-mp [.] 0x00000000002e4c79",
+        "percent": 3.0177103982142315
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] <fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::store_numeric",
+        "percent": 2.2602022647286866
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::objective_row_values",
+        "percent": 2.239495984686587
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::poisson_half_deviance_with_logs",
+        "percent": 1.926446084850676
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::prepared_separation::separation_report_digest",
+        "percent": 1.8996909499585817
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::vce::validate_weight_report",
+        "percent": 1.4659758898142883
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::prepared_fit::compensated_add",
+        "percent": 1.2768353361180274
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_plugin::ppml_estimate::store_shadow_prefix",
+        "percent": 1.2189620662664282
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::result::certify_ppml_reconstruction",
+        "percent": 1.187394829815904
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::poisson_null_mean",
+        "percent": 1.0963745473528015
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::replay_final_objectives_with_threads::_$u7b$$u7b$closure$u7d$$u7d$::h63660853321c4a9a",
+        "percent": 1.0324488726880807
+      }
+    ],
+    "diagnostic_runtime_row_medians": {
+      "1": 0.2130481605,
+      "2": 3.0,
+      "3": 4.0,
+      "4": 0.0,
+      "5": 1.0,
+      "6": 1.0,
+      "7": 2.0,
+      "8": 0.0,
+      "9": 0.0,
+      "10": 4.0,
+      "11": 4.0,
+      "12": 15407423.0,
+      "13": 17913631.0,
+      "14": 16759007.0,
+      "15": 0.0,
+      "16": 0.0,
+      "17": 2354.0,
+      "18": 36010.0,
+      "19": 1857082.0,
+      "20": 14088996.0,
+      "21": 14052986.0,
+      "22": 1821072.0,
+      "23": 0.8385333331503472,
+      "24": 1.0,
+      "25": 0.0,
+      "26": 3.0,
+      "27": 0.0,
+      "28": 0.029180275999999998,
+      "29": 0.0009995125,
+      "30": 0.0,
+      "31": 0.0,
+      "33": 0.0024314345000000003,
+      "34": 0.013409831,
+      "35": 0.0462541015,
+      "36": 0.013713010000000001,
+      "37": 0.0569040665,
+      "38": 0.0066932910000000005,
+      "39": 4.6076500000000005e-05,
+      "40": 0.019433297500000002,
+      "41": 0.0,
+      "77": 1.0,
+      "78": 1.0,
+      "79": 33656.0,
+      "80": 1705.0,
+      "81": 3684.0,
+      "82": 1979.0,
+      "83": 14423424.0,
+      "84": 15015109.0,
+      "85": 15015109.0,
+      "86": 15015109.0,
+      "87": 15015109.0,
+      "88": 15775008.0,
+      "89": 16759007.0,
+      "90": 16759007.0,
+      "91": 16021088.0,
+      "92": 16759007.0,
+      "93": 11729336.0,
+      "94": 11724968.0,
+      "95": 13019792.0
+    }
+  },
+  "one-wide-t2": {
+    "samples": 5272,
+    "approximate_cycles": 6868338132,
+    "top_self_percent": [
+      {
+        "symbol": "fereg_linux.plugin [.] rayon::iter::plumbing::bridge_producer_consumer::helper",
+        "percent": 52.25548008850707
+      },
+      {
+        "symbol": "libm-2.28.so [.] 0x0000000000039429",
+        "percent": 9.584927016388773
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::reduce_dense_score_meats::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h306a6ee3c5ebedf6",
+        "percent": 4.500090475579108
+      },
+      {
+        "symbol": "libm-2.28.so [.] 0x0000000000039420",
+        "percent": 4.199126425539237
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::implicit_centered::group_mean",
+        "percent": 3.2965506470626984
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::compensated_add",
+        "percent": 3.0075646334530233
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::update_scaled_square",
+        "percent": 2.464419791221194
+      },
+      {
+        "symbol": "libm-2.28.so [.] 0x0000000000039424",
+        "percent": 1.7224018279055222
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::CertifiedLinearSession$LT$P$GT$::solve_full_retained_rank::_$u7b$$u7b$closure$u7d$$u7d$::h6aab2538c0a5457f",
+        "percent": 1.2282185122419944
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::PreparedPoissonInputs::fill_working_state_and_scores::_$u7b$$u7b$closure$u7d$$u7d$::hbf288d19d1c60008",
+        "percent": 0.5833869072216493
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::prepared_fit::compensated_add",
+        "percent": 0.529317075288104
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::mean_row",
+        "percent": 0.5279485721772557
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb7fda",
+        "percent": 0.5089665005386197
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::CertifiedLinearSession$LT$P$GT$::solve_full_retained_rank::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h9c0d0556e009c975",
+        "percent": 0.5051823702365735
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] <fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::store_numeric",
+        "percent": 0.4918093859156554
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::linear_session::CertifiedLinearSession<P>::into_current_products",
+        "percent": 0.4731963154373134
+      }
+    ],
+    "diagnostic_runtime_row_medians": {
+      "1": 0.6162429949999999,
+      "2": 4.0,
+      "3": 5.0,
+      "4": 0.0,
+      "5": 1.0,
+      "6": 1.0,
+      "7": 2.0,
+      "8": 0.0,
+      "9": 0.0,
+      "10": 2.0,
+      "11": 2.0,
+      "12": 30182127.0,
+      "13": 28977391.0,
+      "14": 32928335.0,
+      "15": 0.0,
+      "16": 0.0,
+      "17": 2678.0,
+      "18": 22032.0,
+      "19": 1858512.0,
+      "20": 30090289.0,
+      "21": 30068257.0,
+      "22": 1836480.0,
+      "23": 0.9131423438202995,
+      "24": 1.0,
+      "25": 0.0,
+      "26": 4.0,
+      "27": 0.0,
+      "28": 0.053154143,
+      "29": 0.0008455625,
+      "30": 0.0,
+      "31": 0.0,
+      "33": 0.0069950595,
+      "34": 0.068342404,
+      "35": 0.2313173935,
+      "36": 0.049449057000000005,
+      "37": 0.134841885,
+      "38": 0.019098101,
+      "39": 3.9063499999999996e-05,
+      "40": 0.017038092,
+      "41": 0.0,
+      "77": 1.0,
+      "78": 1.0,
+      "79": 19354.0,
+      "80": 3195.0,
+      "81": 6688.0,
+      "82": 3493.0,
+      "83": 29195662.0,
+      "84": 28981671.0,
+      "85": 28981671.0,
+      "86": 28981671.0,
+      "87": 28981671.0,
+      "88": 31941870.0,
+      "89": 32928335.0,
+      "90": 32928335.0,
+      "91": 32187950.0,
+      "92": 32928335.0,
+      "93": 25811702.0,
+      "94": 25573302.0,
+      "95": 26873454.0
+    }
+  },
+  "two-t2": {
+    "samples": 2591,
+    "approximate_cycles": 2597176159,
+    "top_self_percent": [
+      {
+        "symbol": "fereg_linux.plugin [.] rayon::iter::plumbing::bridge_producer_consumer::helper",
+        "percent": 32.31412515095782
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::canonical_products::build::_$u7b$$u7b$closure$u7d$$u7d$::h058cad319c65d245",
+        "percent": 10.555198332655726
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] <fereg_core::ppml::categorical_lsmr::AugmentedCategoricalOperator as schwarz_precond::Operator>::apply_adjoint",
+        "percent": 2.8602366500777667
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] within::csr_block::CsrBlock::from_dense_table",
+        "percent": 2.0875402456865078
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] within::domain::cross_tab::accumulate::accumulate_cross_block",
+        "percent": 1.7604208840652618
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::update_fixed_dense_triangle",
+        "percent": 1.6932440139767975
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::sandwich::reduce_dense_score_meats::_$u7b$$u7b$closure$u7d$$u7d$::_$u7b$$u7b$closure$u7d$$u7d$::h306a6ee3c5ebedf6",
+        "percent": 1.4821058625157355
+      },
+      {
+        "symbol": "libm-2.28.so [.] 0x0000000000039429",
+        "percent": 1.3463018689214759
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb7fda",
+        "percent": 1.3332307109169026
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::objective_row_values",
+        "percent": 1.2790568620070257
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::family::PreparedPoissonInputs::fill_working_state_and_scores::_$u7b$$u7b$closure$u7d$$u7d$::hbf288d19d1c60008",
+        "percent": 1.2428428009376318
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ols::canonical_products::Products<P>::residual",
+        "percent": 1.1903743691457473
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] fereg_core::ppml::categorical_lsmr::ScaledSquareSum::add",
+        "percent": 1.1529274901025302
+      },
+      {
+        "symbol": "stata-mp [.] 0x0000000003fb3140",
+        "percent": 1.0906177330961708
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] within::block_elim::solver::backsub_block_from_scaled_rhs::_$u7b$$u7b$closure$u7d$$u7d$::h480c464e26eaadfa",
+        "percent": 0.9747919245858134
+      },
+      {
+        "symbol": "fereg_linux.plugin [.] <fereg_plugin::ffi::SpiSession as fereg_plugin::input::SpiApi>::store_numeric",
+        "percent": 0.9422459803466878
+      }
+    ],
+    "diagnostic_runtime_row_medians": {
+      "1": 0.43374451199999997,
+      "2": 4.0,
+      "3": 112.0,
+      "4": 0.0,
+      "5": 1.0,
+      "6": 1.0,
+      "7": 2.0,
+      "8": 0.0,
+      "9": 0.0,
+      "10": 2.0,
+      "11": 2.0,
+      "12": 17847884.0,
+      "13": 20229508.0,
+      "14": 114754580.0,
+      "15": 0.0,
+      "16": 0.0,
+      "17": 2372.0,
+      "18": 21724.0,
+      "19": 1843148.0,
+      "20": 48621378.0,
+      "21": 48599654.0,
+      "22": 1821424.0,
+      "23": 0.4235094930415849,
+      "24": 1.0,
+      "25": 0.0,
+      "26": 4.0,
+      "27": 0.0,
+      "28": 0.0325955255,
+      "29": 0.001282086,
+      "30": 0.0,
+      "31": 0.0,
+      "33": 0.0070108585,
+      "34": 0.191013338,
+      "35": 0.045633194,
+      "36": 0.0242061365,
+      "37": 0.071528971,
+      "38": 0.0083098045,
+      "39": 4.861750000000001e-05,
+      "40": 0.0201668625,
+      "41": 0.0,
+      "77": 1.0,
+      "78": 1.0,
+      "79": 19352.0,
+      "80": 2581.5,
+      "81": 5819.0,
+      "82": 3240.5,
+      "83": 16863885.0,
+      "84": 16641853.0,
+      "85": 16641853.0,
+      "86": 16641853.0,
+      "87": 16641853.0,
+      "88": 113770581.0,
+      "89": 114754580.0,
+      "90": 114754580.0,
+      "91": 114016661.0,
+      "92": 114754580.0,
+      "93": 12751093.0,
+      "94": 12746837.0,
+      "95": 14041741.0
+    }
+  }
+}

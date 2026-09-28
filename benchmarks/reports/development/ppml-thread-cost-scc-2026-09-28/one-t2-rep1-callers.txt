@@ -1,0 +1,38 @@
+# To display the perf.data header info, please use --header/--header-only options.
+#
+#
+# Total Lost Samples: 0
+#
+# Samples: 243  of event 'cycles:u'
+# Event count (approx.): 232821265
+#
+# Overhead  Shared Object       Symbol                                                                                                                                                                         IPC   [IPC Coverage]
+# ........  ..................  .............................................................................................................................................................................  ....................
+#
+    22.89%  fereg_linux.plugin  [.] rayon::iter::plumbing::bridge_producer_consumer::helper                                                                                                                    -      -            
+            |          
+            |--11.84%--__GI___clone (inlined)
+            |          start_thread
+            |          std::sys::pal::unix::thread::Thread::new::thread_start
+            |          <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once (inlined)
+            |          <alloc::boxed::Box<F,A> as core::ops::function::FnOnce<Args>>::call_once (inlined)
+            |          core::ops::function::FnOnce::call_once$u7b$$u7b$vtable.shim$u7d$$u7d$::h6b7a6484d7d098b0
+            |          std::sys::backtrace::__rust_begin_short_backtrace
+            |          rayon_core::registry::ThreadBuilder::run
+            |          rayon_core::registry::WorkerThread::wait_until_cold
+            |          <rayon_core::job::StackJob<L,F,R> as rayon_core::job::Job>::execute
+            |          rayon::iter::plumbing::bridge_producer_consumer::helper
+            |          
+             --11.05%--fereg_core::ols::linear_session::CertifiedLinearSession<P>::solve_full_retained_rank
+                       fereg_core::ols::finite_wls_kernel::fill_finite_wls_moments
+                       fereg_core::ols::finite_wls_kernel::fill_retained_partitioned
+                       fereg_core::ols::finite_wls_kernel::fill_retained_dense_standardized_rows
+                       rayon::iter::plumbing::bridge_producer_consumer::helper
+                       rayon_core::join::join_context::_$u7b$$u7b$closure$u7d$$u7d$::h62bc373afd877b04
+                       rayon::iter::plumbing::bridge_producer_consumer::helper
+
+
+
+#
+# (Tip: For hierarchical output, try: perf report --hierarchy)
+#

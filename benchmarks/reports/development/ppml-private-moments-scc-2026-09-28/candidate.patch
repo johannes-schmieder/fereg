@@ -1,0 +1,69 @@
+diff --git a/crates/fereg-core/src/ols/finite_wls_kernel.rs b/crates/fereg-core/src/ols/finite_wls_kernel.rs
+index 057b5ebd..0a879c0b 100644
+--- a/crates/fereg-core/src/ols/finite_wls_kernel.rs
++++ b/crates/fereg-core/src/ols/finite_wls_kernel.rs
+@@ -2219,6 +2219,14 @@ fn fill_retained_dense_standardized_rows(
+             record_retained_moment_worker();
+             let left_start = partition * layout.columns_per_partition;
+             let mut standardized = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
++            // Disjoint output rows can still share cache lines. Keep the ordered
++            // recurrence private until this partition is complete; no merge or
++            // alternative reduction changes the floating-point summation order.
++            let mut local_rhs = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
++            let mut local_gram =
++                [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS * FIXED_BLOCK_MOMENT_MAX_COLUMNS];
++            let rhs_accumulators = &mut local_rhs[..rhs_rows.len()];
++            let gram_accumulators = &mut local_gram[..gram_rows.len()];
+             for (row, &response_value) in response.iter().enumerate() {
+                 let source = &values[row * stored_columns..(row + 1) * stored_columns];
+                 let weight = normalized_weight(weights, divisor, row)?;
+@@ -2228,12 +2236,12 @@ fn fill_retained_dense_standardized_rows(
+                     standardized[column] =
+                         scaled_column(source[source_column], Some(scales), column)?;
+                 }
+-                for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
++                for (local_left, destination) in rhs_accumulators.iter_mut().enumerate() {
+                     let left = left_start + local_left;
+                     let weighted_left = weight * standardized[left];
+                     *destination = weighted_left.mul_add(response_value, *destination);
+                     let gram_row =
+-                        &mut gram_rows[local_left * dimension..(local_left + 1) * dimension];
++                        &mut gram_accumulators[local_left * dimension..(local_left + 1) * dimension];
+                     for (entry, &right_value) in gram_row[left..]
+                         .iter_mut()
+                         .zip(&standardized[left..dimension])
+@@ -2242,6 +2250,8 @@ fn fill_retained_dense_standardized_rows(
+                     }
+                 }
+             }
++            rhs_rows.copy_from_slice(rhs_accumulators);
++            gram_rows.copy_from_slice(gram_accumulators);
+             Ok(())
+         })
+ }
+@@ -2921,6 +2931,7 @@ mod tests {
+     fn retained_dense_moments_preserve_scalar_order_across_cache_boundaries() {
+         for (columns, spaced, provided, scaled) in [
+             (1, false, false, true),
++            (6, false, true, true),
+             (7, true, true, true),
+             (16, false, false, true),
+             (63, true, true, true),
+@@ -2997,7 +3008,7 @@ mod tests {
+                     expected_gram[right * columns + left] = expected_gram[left * columns + right];
+                 }
+             }
+-            for threads in [1, 4, 16] {
++            for threads in [1, 2, 4, 16] {
+                 rayon::ThreadPoolBuilder::new()
+                     .num_threads(threads)
+                     .build()
+@@ -3034,7 +3045,7 @@ mod tests {
+                     solver_weight_divisor: divisor,
+                     column_scales: if scaled { Some(&scales) } else { None },
+                 };
+-                for threads in [1, 4, 16] {
++                for threads in [1, 2, 4, 16] {
+                     rayon::ThreadPoolBuilder::new()
+                         .num_threads(threads)
+                         .build()
