@@ -38,8 +38,12 @@ categorical PPML. The [90-fit SCC registration](benchmarks/reports/development/o
 uses the confirmed failing input, fast control and two slope cases, with a
 maximum-thread probe before timing. Exact candidate **03292138** is deployed;
 [build/oracle 7761943 and held confirmation 7761945](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-submission06.json)
-are submitted. Linux licensed validation and performance remain pending. This
-is a bounded causal experiment, not a claimed fix.
+were submitted. [Linux build and both licensed fixtures passed](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-linux06.json)
+in 125 seconds with clean accounting. Timing 7761945 failed before any fit:
+the deployment omitted a link to pilot inputs still covered by the frozen
+manifest. The [narrow repair and focused retry 7761995](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-retry07.json)
+preserve source, artifacts, cases and every check; all 61 input files verified.
+Performance remains pending. This is a bounded causal experiment, not a claimed fix.
 
 ## Two-partition OLS slope owner — SCC gains, control confirmation open
 

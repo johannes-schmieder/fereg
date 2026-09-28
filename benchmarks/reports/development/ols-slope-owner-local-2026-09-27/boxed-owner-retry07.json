@@ -1,0 +1,25 @@
+{
+  "failed_job": "7761945",
+  "failure": "Missing pilot-inputs link while validating all frozen manifest entries, before any fit",
+  "repair": "Link original immutable pilot-inputs; preserve complete manifest",
+  "verified_input_files": 61,
+  "input_manifest_sha256": "2b016f16a980ee6d2774586beba3d6c8442d4c02c2fb92eae60ea6e25ec67719",
+  "prior_smoke_or_rotation_outputs": false,
+  "candidate_changed": false,
+  "retry_job": "7761995",
+  "source_commit": "03292138976598132b1aac9251e73e2ca6b13de0",
+  "candidate_plugin_sha256": "36f068f61a72f2181b0d51f516d4e27421d9245b188513b8abbf21bb8c1056cc",
+  "failed_accounting": {
+    "failed": 0,
+    "exit_status": 1,
+    "wall_seconds": 22,
+    "slots": 28,
+    "host": "scc-wo4",
+    "maxvmem": "280.258M"
+  },
+  "failed_log_sha256": "5f61b1345249577d2a9e15a1aeed95fc89874d226c97b0f2098c03d0f0bf68c0",
+  "failed_accounting_sha256": "529a63d60500ab8e2ef963236bca7f4ad180fc318d7a0898770c397f5c956424",
+  "registration_sha256": "3ca6ccc422bd16438dfe03616a84954d57a5bb56188e923f83489a0324475079",
+  "resources_arms_cases_tolerances_changed": false,
+  "status": "One focused retry submitted; no prior fit ran."
+}

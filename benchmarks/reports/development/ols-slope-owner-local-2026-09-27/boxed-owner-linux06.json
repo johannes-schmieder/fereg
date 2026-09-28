@@ -1,0 +1,83 @@
+{
+  "source_commit": "03292138976598132b1aac9251e73e2ca6b13de0",
+  "job": "7761943",
+  "run_id": "20260927-ols-slope-box-03292138",
+  "accounting": {
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 125,
+    "cpu_seconds": 170.549,
+    "slots": 4,
+    "host": "scc-gr4",
+    "queue": "econ",
+    "maxvmem": "10.974G"
+  },
+  "plugin_sha256": "36f068f61a72f2181b0d51f516d4e27421d9245b188513b8abbf21bb8c1056cc",
+  "smoke": {
+    "break_receipts": [],
+    "build_rc": 0,
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "plugin_filename": "fereg_linux.plugin",
+    "plugin_sha256": "36f068f61a72f2181b0d51f516d4e27421d9245b188513b8abbf21bb8c1056cc",
+    "profile": "scc-dev-ols",
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/fereg_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": 4,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 1
+  },
+  "oracle": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "PC (64-bit x86-64)",
+    "stata_os": "Unix",
+    "stata_processors": 4,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 1
+  },
+  "oracle_fits": 32,
+  "terminal_sentinels": [
+    "FEREG_DEV_SMOKE_SUCCESS profile=ols snapshot=03292138976598132b1aac9251e73e2ca6b13de0",
+    "END_FIXTURE|ols_multipartition_schur_oracle|rc=0",
+    "FEREG_SLOPE_BOX_BUILD_SUCCESS job=7761943"
+  ],
+  "collected_files_sha256": {
+    "accounting.txt": "6fb0109d1fd89fc1a4aeb20aa6cec879472f9b5b34c90298a612c4dc63194937",
+    "summary.json": "87313167c4e1905ad78673e832a302bc65b53bc2fe5a5758bfcacc39f549bb31",
+    "slope-oracle.json": "dcbfb465bb2e02397b127ae9e89db8f45a706ffa0643c6f9c65314613696e3b9"
+  },
+  "disposition": "Linux development validation passes; ownership repair remains a timing experiment."
+}
