@@ -1,8 +1,8 @@
 # ADR 0232: portable prepared coupling products
 
-Status: candidate under bounded development validation, 2026-09-27.
+Status: accepted for bounded development, 2026-09-27.
 
-## Decision being tested
+## Decision
 
 Keep the existing coefficient Schur solver, topology, current-weight geometry,
 column stopping and memory ownership. Change only multiplication/accumulation
@@ -56,3 +56,31 @@ ownership do not change. Acceptance requires source-bound Linux science and
 alternating complete-command measurements; passing on ARM alone does not test
 the changed arithmetic branch. Existing allocation-inventory drift and unrelated
 constrained-fit/CG failures remain open.
+
+## Evidence and limits
+
+[Linux 7762056](../../benchmarks/reports/development/portable-coupling-scc-2026-09-28/linux-validation01.json)
+passes 79 focused Rust tests on the changed portable branch, shared smoke and
+four independent licensed fixtures. Mac universal build, ABI/panic checks and
+four licensed fixtures also pass. The initial 24-fit block and
+[fresh 100-fit OLS block](../../benchmarks/reports/development/portable-coupling-scc-2026-09-28/fresh02/README.md)
+pass every registered scientific comparison. Six fresh new-path OLS paired
+medians improve 9.3–22.9%; the low-memory T8 case still takes 1.277 times stock.
+The larger initial baseline was variable; its apparent 60% gain is not a stable
+claim. The excluded three-FE low route has broad control distributions, including
+an initial 11.1% loss; no causal gain is assigned to that unchanged route.
+
+[PPML 7762256](../../benchmarks/reports/development/portable-coupling-scc-2026-09-28/ppml03/README.md)
+passes 45 applications and 30 scientific pairs. Four slope paired medians
+improve 12.4–34.1%, with all four below 0.90 of strict stock on these particular
+many-group panels. The larger fast case has a worse marginal median despite
+its better paired median; three repetitions do not establish a stable gain.
+The categorical control remains 1.233 times stock. Robust inference is matched;
+optional saved means are outside this block. These ratios cannot be transferred
+to the earlier small-group unbalanced or saved-mean cases.
+
+The source is c6c1df25, frozen computational snapshot e07c7ec3…, Linux plugin
+e9d9f706…. The change adds no numerical memory. Fresh T8/T4 OLS scaling remains
+a concern requiring nine alternating pairs. Acceptance retains the useful
+portable kernel; it does not assert universal nonregression, the requested
+1.20 stock ceiling, or completion of the larger performance plan.

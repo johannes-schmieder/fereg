@@ -1,0 +1,261 @@
+{
+  "schema": "bounded-portable-coupling-ppml-controls-v1",
+  "cases": [
+    {
+      "id": "two-slopes",
+      "cell": {
+        "model": "ppml",
+        "section": "slopes",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        }
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest_strict",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "three-slopes",
+      "cell": {
+        "model": "ppml",
+        "section": "slopes",
+        "design": "three_fe_sparse",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        }
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest_strict",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "three-larger",
+      "cell": {
+        "model": "ppml",
+        "section": "slopes",
+        "design": "three_fe_sparse",
+        "n": 61440,
+        "k": 10,
+        "threads": 8,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        }
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest_strict",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "three-low",
+      "cell": {
+        "model": "ppml",
+        "section": "slopes",
+        "design": "three_fe_sparse",
+        "n": 61440,
+        "k": 10,
+        "threads": 8,
+        "memory": "low",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        }
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest_strict",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "categorical-control",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609282,
+        202609282,
+        202609282
+      ],
+      "stock_arm": "fixest_strict",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    }
+  ],
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "plugins": {
+    "baseline": "36f068f61a72f2181b0d51f516d4e27421d9245b188513b8abbf21bb8c1056cc",
+    "candidate": "e9d9f706d06ca21d6bb204fc2eb21ea7e56604aa924c47094abe0e4c7516782d"
+  },
+  "source_snapshot": "e07c7ec3f4edb9a48e75067d0a41ec2486f95d855dcdc10e2f2ab76267ea7c67",
+  "purpose": "Protect shared PPML performance under the portable product change, using the existing validated systematic controller. New seed declared before generation. No source tuning from these cases.",
+  "work": "Public feppml and pinned unmodified fepois; robust inference, no optional saved observation outputs. This block does not reproduce historical robust-plus-saved-mean timings.",
+  "science": "Existing systematic sample, convergence, coefficient, covariance and objective checks; native rank/DoF equality. Independent WLS and Poisson/Hessian/sandwich fixtures already passed on both artifacts. Scientific discrepancies stay unranked.",
+  "threads_policy": "Native/R T matched; both native arms use the established Stata min(T, licensed, machine) worker policy with capacity metadata preserved.",
+  "warmup": "Same case/design/width/threads on registered 7680-row positive-outcome warm input; generation happens sequentially outside every command clock.",
+  "fits": 45,
+  "iterations": 3,
+  "fresh_seed": 202609282,
+  "upstream_linux_validation_job": "7762056"
+}

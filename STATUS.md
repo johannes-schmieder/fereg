@@ -9,7 +9,7 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
-## OLS slope owner accepted; portable coupling candidate under validation
+## Portable coupling accepted; thread scaling and remaining stock losses open
 
 [Boxed-owner confirmation 7761995](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-boxed07/README.md)
 completes **90/90 applications**, **36 native** and **18 strict-stock** science
@@ -57,12 +57,37 @@ highly variable; do not claim a stable 60% gain. Strict-stock ratios are
 0.789/0.948. The excluded low control loses 11.1%, two of three pairs, and
 remains a concern. The unchanged candidate proceeds to [fresh 100-fit job
 7762198](benchmarks/reports/development/portable-coupling-scc-2026-09-28/fresh-submission02.json).
-[Fresh seed/cases](benchmarks/reports/development/portable-coupling-scc-2026-09-28/fresh-registration02.json)
-were declared before generation; identical T1/T4/T8 fast inputs are required.
-That block is now running; do not accept the kernel before its distributions
-and controls are reviewed.
-The full repair plan, PPML performance controls, thread ceiling, remaining
-comparator adjudication and broader remeasurement remain open. No push.
+[Fresh OLS confirmation 7762198](benchmarks/reports/development/portable-coupling-scc-2026-09-28/fresh02/README.md)
+now completes **100 fits**, **35 native** and **30 strict-stock** science pairs;
+all pass. Six new-path medians improve **9.3–22.9%** against the boxed artifact.
+Strict-stock ratios are 0.385 serial, 0.713 T4 fast, 1.055 T8 fast, **1.277 T8
+low**, 0.856 K32 wide and 1.063 larger. The 1.20 ceiling is still missed in low
+memory. The excluded three-FE low control is 0.822 on the fresh input, with wide
+variation; do not claim a mathematical improvement on that unchanged route.
+Identical fast inputs take 818/680/754 ms at T1/T4/T8. T8/T4 paired median is
+1.154, three slower pairs of five; nine alternating scaling pairs remain needed.
+No numerical storage was added; fresh observed process peaks change by roughly
+-6.5 to +2.3 MiB on new-path cases, +5.1 MiB on the control.
+
+[PPML controls 7762256](benchmarks/reports/development/portable-coupling-scc-2026-09-28/ppml03/README.md)
+complete **45 applications**, **15 native** and **15 strict-stock pairs**, all
+science checks passing; 1,143 seconds, clean accounting, maxvmem 1.588G.
+Four slope paired medians improve **12.4–34.1%** and take **0.348/0.065/0.061/0.054**
+of strict stock on these many-group panels. The larger fast case remains
+variable: its marginal command median rises despite its better paired median.
+The categorical control takes **1.233 times stock** and misses the 1.20 ceiling.
+These clocks match robust inference without optional saved observation outputs;
+they do not replace historical small-group or saved-mean timing.
+
+[ADR 0232](docs/adr/0232-portable-prepared-coupling-products.md) now accepts the
+portable kernel for bounded development. Computational source **c6c1df25** matches
+all 209 frozen inputs. No storage, certificate, tolerance or admission change.
+Next: nine alternating same-binary T4/T8 pairs on fast, low and larger OLS slope
+inputs to confirm the scaling concern before selecting a concurrency policy.
+The shared thread ceiling, small categorical PPML stock loss, low-memory OLS
+loss, remaining comparator adjudication and broader remeasurement remain open.
+The overall goal is active; this milestone does not complete the repair plan.
+No push.
 
 ## Two-partition OLS slope owner — SCC gains, control confirmation open
 

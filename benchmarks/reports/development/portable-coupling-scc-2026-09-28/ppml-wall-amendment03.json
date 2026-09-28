@@ -1,0 +1,16 @@
+{
+  "job": "7762256",
+  "utc": "2026-09-28T02:20:12Z",
+  "old_wall": "00:20:00",
+  "new_wall": "00:30:00",
+  "reason": "The first two completed larger sparse stock calls took 116.419 and 113.123 command seconds (130.293 and 128.641 process seconds). Preserve the registered 45-fit block with sufficient headroom.",
+  "allocation": {
+    "slots": 28,
+    "mem_per_core": "3G",
+    "cpu_type": "E5-2680v4",
+    "num_proc": 28,
+    "no_gpu": true
+  },
+  "cases_arms_repetitions_threads_science_unchanged": true,
+  "scheduler_note": "qalter -l replaces the hard resource list. The full original list, with only h_rt changed, was immediately reapplied and verified; the existing allocation did not move."
+}
