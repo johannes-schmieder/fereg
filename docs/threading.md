@@ -3,8 +3,14 @@
 ## 0.5.0 implementation
 
 `ThreadTeam` installs each parallel phase into a bounded process-local Rayon
-pool at the resolved count. `threads(0)` uses available processors; an explicit
-positive value requests that team size. Ranges are contiguous, nonempty, and
+pool at the resolved count. `threads(0)` uses available processors as its
+ceiling; an explicit positive value sets the maximum team size. The public
+command planner preserves that request and selects an effective count before
+pool creation and solver admission. Under the candidate policy in ADR 0233,
+automatic three-intercept-FE PPML with fast/auto memory and at most 15 declared
+finite columns uses at most eight workers. Other workloads retain their prior
+choice. Runtime matrices report requested and effective counts separately.
+Ranges are contiguous, nonempty, and
 returned in worker order. Native and plugin tests exercise 1, 2, 8, and 32
 requested threads.
 

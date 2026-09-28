@@ -1,0 +1,16 @@
+{
+  "job": "7762631",
+  "held_until_job": "7762547",
+  "run_id": "20260928-thread-ceiling-01",
+  "source_snapshot": "1f290d1cc5d241494dd2e82af7c940899325e0efb515a69e90790d04d20b4773",
+  "source_inputs": 211,
+  "slots": 16,
+  "mem_per_core": "2G",
+  "wall": "00:30:00",
+  "shell_syntax": "pass",
+  "deployment_sha256": "4b59e6b961572dd35f241288f29027e2246b59d767830c0ca8b0d8b9a295a265",
+  "build_wrapper_sha256": "ab135a9260d7614c4068c1fbe63530072481c40080ac5577a4fb79fdd8dd5fcb",
+  "validation": "Shared OLS/PPML fixture profile; five focused Rust tests; four licensed fixtures including the new capped weighted Poisson/Hessian/sandwich/output/failure-atomic oracle.",
+  "slot_reason": "The new excluded low-memory control uses16 real workers. Shared smokes themselves retain4; the unchanged standard4-slot wrapper is not run under falsified NSLOTS.",
+  "status": "held before source extraction, compilation or fits; no validation result claimed"
+}

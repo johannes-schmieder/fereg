@@ -1,0 +1,77 @@
+{
+  "source_snapshot": "1f290d1cc5d241494dd2e82af7c940899325e0efb515a69e90790d04d20b4773",
+  "source_files_verified": 211,
+  "status": "success",
+  "tests_failed": 0,
+  "tests_passed": 4,
+  "unit": {
+    "options": {
+      "passed": 1,
+      "log_sha256": "dde886be1d9b7ac28608ba14c492db60aae4784ef49c79592c12fbec832c3015"
+    },
+    "team": {
+      "passed": 1,
+      "log_sha256": "55cb1b7fc5f2d7d28f277e409db8d01e3d3fb56d093d13a00516e1d4b91a87f4"
+    },
+    "policy": {
+      "passed": 2,
+      "log_sha256": "2b9624ef5e9caa04175887fc279e188b015121962fb48711d1ab87c41a3c6f30"
+    },
+    "ols-thread": {
+      "passed": 1,
+      "log_sha256": "3a540ea245f3ec1e8dc9c2355d605eea3560269d0132a2c0e17db3660595bb36"
+    }
+  },
+  "licensed": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_thread_ceiling_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_auto_route.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_three_partition_slope_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": 8,
+    "stata_rc": 0,
+    "stata_version": "19",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 4
+  },
+  "plugin_sha256": "bda47f5005bd9801559dd921015be8a1ee0e6200aed4ac833653618d9c2991c8",
+  "build_log_sha256": "7a1712a5e0a7bf2ccfdcbaf9e7428f7a3ba6594a0e85fe993bdebbf118510422",
+  "build": "Universal macOS build, binary audit, ABI and injected-panic containment pass."
+}

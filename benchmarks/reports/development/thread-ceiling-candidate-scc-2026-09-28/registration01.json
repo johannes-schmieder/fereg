@@ -1,0 +1,25 @@
+{
+  "schema": "thread-ceiling-candidate-v1",
+  "status": "candidate, uncompiled",
+  "purpose": "Validate shared preflight requested/effective ownership and initial narrow three-FE PPML ceiling; no timing acceptance yet.",
+  "source_snapshot": "1f290d1cc5d241494dd2e82af7c940899325e0efb515a69e90790d04d20b4773",
+  "governing_adr": "docs/adr/0233-preflight-thread-ceilings.md",
+  "baseline_plugin_sha256": "e9d9f706d06ca21d6bb204fc2eb21ea7e56604aa924c47094abe0e4c7516782d",
+  "rule": "Automatic PPML, 3 intercept-only partitions, fast/auto request, at most15 declared finite terms: min(request,8). Other paths unchanged.",
+  "validation_slots": 16,
+  "slot_reason": "New oracle requests16 in excluded low mode and8 actual workers under capped fast requests; the shared smoke fixtures keep their standard4. The unchanged four-slot-only smoke wrapper is not sourced under a falsified NSLOTS.",
+  "validation": [
+    "scc-dev-shared fixture profile through its underlying build/runner",
+    "ThreadConfig ceiling identity, monotonicity and footprint",
+    "plugin policy boundaries, widths, lower counts, automatic, modes and deterministic",
+    "Native installed-team switching with retained request identity and existing OLS deterministic-thread fixture",
+    "new explicit Poisson/Hessian/sandwich/FW/PW/robust/cluster/saved-output/failure-atomic fixture",
+    "existing PPML automatic-route, slope oracle and OLS multipartition oracle"
+  ],
+  "gates": [
+    "No source extraction, compilation or fits until headline7762547terminates",
+    "Exact source snapshot verification before/after build and fixtures",
+    "No performance acceptance until candidate/baseline and fresh controls pass"
+  ],
+  "memory": "No numeric storage added; ThreadConfig ceiling uses existing padding, enforced by size test. Lower selected count can reduce worker-dependent admission and observed memory."
+}

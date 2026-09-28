@@ -1,0 +1,13 @@
+{
+  "job": "7762740",
+  "status": "submitted",
+  "slots": 28,
+  "wall_minutes": 30,
+  "run_directory": "dev/20260928-thread-ceiling-rotation02",
+  "linux_validation_job": "7762631",
+  "linux_plugin_sha256": "8e2d5af21216ebaf17df7b22538761a72e59587ccf8611072c117b1c4c1a9f97",
+  "mac_validation": "mac-validation01.json",
+  "deployment_sha256": "525aa48d113c9268b770fe863a006521b88595566ed522795afe53fe4938e5a4",
+  "fits": 81,
+  "statement": "Native build, focused Rust and licensed oracle validation completed on both platforms before submission. No compilation, profiling, archiving or competing fits during timing."
+}

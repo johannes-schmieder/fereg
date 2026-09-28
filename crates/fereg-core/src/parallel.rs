@@ -336,6 +336,19 @@ mod tests {
     }
 
     #[test]
+    fn ceiling_controls_installed_team_without_rewriting_request() {
+        let request = ThreadConfig::from_requested(28, true).unwrap();
+        for limit in [8, 4, 1, 8] {
+            let config = request.with_ceiling(std::num::NonZeroU16::new(limit).unwrap());
+            assert_eq!(config.requested.unwrap().get(), 28);
+            let actual = ThreadTeam::new(config)
+                .install(rayon::current_num_threads)
+                .unwrap();
+            assert_eq!(actual, usize::from(limit));
+        }
+    }
+
+    #[test]
     fn isolated_pool_uses_the_resolved_thread_count() {
         let team = ThreadTeam::new(ThreadConfig::from_requested(2, true).expect("config"));
         let observed = team

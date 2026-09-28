@@ -19,6 +19,7 @@ mod ppml_execution;
 mod ppml_result;
 mod result;
 mod result_view;
+mod thread_policy;
 
 #[cfg(feature = "ffi")]
 mod ffi;

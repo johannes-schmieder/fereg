@@ -1186,7 +1186,17 @@ impl EstimateActionSpec {
             clusters.len(), self.poolsize, self.vce != OlsVceKind::Iid,
         )?;
         let default_fit = PreparedOlsFitConfig::default();
-        let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
+        let thread_config = crate::thread_policy::plan(
+            ThreadConfig::from_requested(self.threads, self.deterministic)?,
+            crate::thread_policy::Workload {
+                estimator: crate::thread_policy::Estimator::Ols,
+                automatic_solver: self.solver == FeSolverKind::Auto,
+                memory: self.memory,
+                effects: request.absorbed_terms.len(),
+                intercept_only: request.absorbed_terms.iter().all(|term| term.intercept && term.slope_sources.is_empty()),
+                finite_columns: prepared_model.columns.len(),
+            },
+        );
         let fit = PreparedOlsFitConfig {
             allow_final_fe_recovery: true,
             // Residual-derived outputs need pointwise accuracy even when low

@@ -1,0 +1,14 @@
+{
+  "job": "7762812",
+  "status": "submitted-held",
+  "holds_after": "7762780",
+  "slots": 28,
+  "wall_minutes": 30,
+  "headline_fits": 27,
+  "diagnostic_fits": 52,
+  "run_directory": "dev/20260928-thread-ceiling-rotation04",
+  "source_snapshot": "1f290d1cc5d241494dd2e82af7c940899325e0efb515a69e90790d04d20b4773",
+  "deployment_sha256": "e6590a317c2facca0768e6c5537ea4a3ac1230ac741445780f628ef516dbecba",
+  "gate": "Successful preceding accounting and all19native science pairs before the OLS confirmation. CPU attribution starts only after every headline pair is complete.",
+  "local_harness_check": "Shell syntax and Python AST parse passed. Initial py_compile attempted an unwritable system cache; no artifact or native test was affected. AST checking writes no bytecode."
+}

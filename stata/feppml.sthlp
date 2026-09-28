@@ -390,8 +390,11 @@ panic, or Break. If no certified plan fits, the command returns {cmd:r(909)}
 before publishing output. {cmd:poolsize()} sets the low-memory block width.
 
 {pstd}
-{cmd:threads(0)} uses the native default; a positive integer requests an
-isolated native thread team for the call. {cmd:deterministic} fixes reduction
+{cmd:threads(0)} uses the native default ceiling; a positive integer sets the
+maximum native team for the call. Rust may select a smaller team according to
+the model and workload before memory planning. {cmd:e(feppml_requested_threads)}
+records the request and {cmd:e(feppml_threads)} records the selected team.
+{cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
 {cmd:solver(auto)} is the default. It selects LSMR for exactly two or three
 categorical intercept effects when fast-memory execution and the complete

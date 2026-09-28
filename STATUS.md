@@ -9,6 +9,64 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+
+## Thread-ceiling candidate passes science; equal-request timing running
+
+[ADR 0233](docs/adr/0233-preflight-thread-ceilings.md) defines the candidate:
+`ThreadConfig` preserves requested threads and carries a ceiling in existing
+padding. The shared command planner selects at most eight workers for automatic
+three-intercept-FE PPML in fast/auto memory through 15 declared finite columns.
+Other workloads, including OLS, retain their previous choice. Selection precedes
+pool creation and memory admission. No tolerance, certificate or numerical bank
+changes.
+
+Snapshot **1f290d1c…** passes [Linux job 7762631](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/linux-validation01.json)
+and [Mac validation](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/mac-validation01.json):
+five focused Rust tests and four licensed fixtures on each platform, universal
+Mac build/ABI/panic containment and two Linux shared smokes. The new explicit
+Poisson/Hessian/sandwich oracle covers capped fast and excluded low, FW/PW,
+robust/clustered inference, saved FE/means/eta/residuals, team switches and rollback.
+Linux accounting is clean: 236 s, 16 slots, maxvmem 5.298G. Both builds began only
+after headline timing ended. All 211 computational inputs still match.
+
+[Thread confirmation 7762547](benchmarks/reports/development/ppml-thread-scaling-scc-2026-09-28/final/README.md)
+passes 72 applications and 48 science comparisons. Narrow T28/T8 paired medians
+are **1.113 prior / 1.126 fresh**, all 12 pairs slower; fresh K32 is **0.769**,
+all three faster. Small two-FE T4 beats T1 in all nine pairs but still takes
+**1.314 of strict stock**. No serial or wide cap. Strict sparse-reference clocks
+cannot replace earlier comparable default-stock evidence.
+
+[Candidate screen 7762740](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/initial02/README.md)
+completes **81/81 applications**, **27/27 native** and **21/27 stock** science
+pairs. All six independent small-Poisson oracle arm checks pass. K6/K12/K15
+paired C/B medians are **0.856 / 0.896 / 0.927**, all nine pairs faster, with
+roughly **120 / 207 / 80 MiB** lower median process peaks. K16/K32 excluded
+controls are 0.985/0.996. The OLS control instead loses **5.5%**, all three pairs;
+this is not a regression-free acceptance. Small two-FE still takes **1.877 of
+default stock** on the fresh input. K12 default-stock coefficient differences
+(maximum 2.563e-10) and the zero-case sample differences remain **NR**. Successful
+process exits do not turn those six comparisons into wins. Accounting is clean:
+677 s, 28 slots, maxvmem 3.113G. Thirteen focused harness tests pass.
+
+[Fresh confirmation 7762780](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/submission03.json)
+is submitted after that successful native-science gate. Its 57 fits use new
+seed 202609285 for N983,040/K10, matching smaller requests8/28 with five
+repetitions each, and an excluded low-memory control. K12 repeats exact input
+bytes with strict stock; the original default failures stay NR. Results pending.
+[Nine-pair OLS check and CPU attribution 7762812](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/submission04.json)
+is held after 7762780. It repeats the original OLS control bytes for 27 headline
+fits, then runs separate CPU profiles of baseline/candidate OLS and small PPML.
+Profiling never overlaps headline fits and its clocks cannot enter timing ranks.
+[Existing small-fit phase evidence](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/small-fit-phase-evidence.json)
+locates about 225 ms of the 452 ms command median in absorption, versus 15 ms
+publication and 4 ms inference; it does not identify a kernel or prove avoidable
+work. Do not assume a cause for the OLS loss before confirmation/profiling.
+
+The source candidate is scientifically validated and has a complete initial
+performance screen, but adoption remains pending fresh/control evidence. No
+native source or threshold changes during these tests; all 211 inputs still
+match. The broader repair plan remains active. No push.
+
 ## Portable coupling accepted; thread scaling and remaining stock losses open
 
 [Boxed-owner confirmation 7761995](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-boxed07/README.md)

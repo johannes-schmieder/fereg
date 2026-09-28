@@ -216,8 +216,11 @@ blocks and may use bounded temporary scratch storage, which is removed on
 success, error, or Break. {cmd:poolsize()} sets the block width.
 
 {pstd}
-{cmd:threads(0)} uses the native default. A positive value requests a local
-native thread team for that call. {cmd:deterministic} fixes the work partition
+{cmd:threads(0)} uses the native default ceiling. A positive value sets the
+maximum local native thread team for that call. The current OLS policy uses
+that team size; {cmd:e(fereg_requested_threads)} records the request and
+{cmd:e(fereg_threads)} records the selected team.
+{cmd:deterministic} fixes the work partition
 and merge order for the same architecture and thread count; it may be slower.
 {cmd:timeit} prints the selected memory plan, native allocation, scratch, RSS,
 timing, and requested/effective threads. In this beta, {cmd:verbose(#)} is

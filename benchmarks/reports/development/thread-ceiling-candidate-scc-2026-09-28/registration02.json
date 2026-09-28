@@ -1,0 +1,435 @@
+{
+  "schema": "bounded-thread-ceiling-comparison-v1",
+  "cases": [
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 245760,
+        "section": "main",
+        "threads": 28
+      },
+      "id": "prior-narrow-k6",
+      "limits": {
+        "baseline": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "candidate": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        },
+        "stock": {
+          "command": 360,
+          "extraction": 180,
+          "startup": 300
+        }
+      },
+      "seeds": [
+        202609271,
+        202609271,
+        202609271
+      ],
+      "stock_arm": "fixest",
+      "input_sha256": {
+        "202609271": "4cfb19dc472d4e46be04dac2b857d20ef36ec6799e7b101d820f136ad3310079"
+      },
+      "native_effective_threads": {
+        "baseline": 28,
+        "candidate": 8
+      }
+    },
+    {
+      "id": "fresh-narrow-k12",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "three_fe_sparse",
+        "n": 196608,
+        "k": 12,
+        "threads": 28,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest",
+      "oracle": false,
+      "native_effective_threads": {
+        "baseline": 28,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "fresh-boundary-k15",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "three_fe_sparse",
+        "n": 61440,
+        "k": 15,
+        "threads": 28,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest",
+      "oracle": false,
+      "native_effective_threads": {
+        "baseline": 28,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "fresh-boundary-k16",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "three_fe_sparse",
+        "n": 61440,
+        "k": 16,
+        "threads": 28,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest",
+      "oracle": false,
+      "native_effective_threads": {
+        "baseline": 28,
+        "candidate": 28
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "fresh-wide-k32",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "three_fe_sparse",
+        "n": 122880,
+        "k": 32,
+        "threads": 28,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest",
+      "oracle": false,
+      "native_effective_threads": {
+        "baseline": 28,
+        "candidate": 28
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "fresh-small-two-fe",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "two_fe_dense",
+        "n": 30720,
+        "k": 6,
+        "threads": 4,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest",
+      "oracle": false,
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "fresh-zero-three-fe",
+      "cell": {
+        "model": "ppml",
+        "section": "zeros",
+        "design": "three_fe_sparse",
+        "n": 30720,
+        "k": 6,
+        "threads": 28,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest",
+      "oracle": false,
+      "native_effective_threads": {
+        "baseline": 28,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "fresh-ols-control",
+      "cell": {
+        "model": "ols",
+        "section": "main",
+        "design": "two_fe_dense",
+        "n": 61440,
+        "k": 10,
+        "threads": 8,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2"
+        ]
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest",
+      "oracle": false,
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    },
+    {
+      "id": "fresh-small-oracle",
+      "cell": {
+        "model": "ppml",
+        "section": "main",
+        "design": "three_fe_sparse",
+        "n": 1200,
+        "k": 3,
+        "threads": 16,
+        "memory": "fast",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ]
+      },
+      "seeds": [
+        202609284,
+        202609284,
+        202609284
+      ],
+      "stock_arm": "fixest",
+      "oracle": true,
+      "native_effective_threads": {
+        "baseline": 16,
+        "candidate": 8
+      },
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      }
+    }
+  ],
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "plugins": {
+    "baseline": "e9d9f706d06ca21d6bb204fc2eb21ea7e56604aa924c47094abe0e4c7516782d",
+    "candidate": "8e2d5af21216ebaf17df7b22538761a72e59587ccf8611072c117b1c4c1a9f97"
+  },
+  "fits": 81,
+  "source_snapshot": "1f290d1cc5d241494dd2e82af7c940899325e0efb515a69e90790d04d20b4773",
+  "upstream_linux_validation_job": "7762631",
+  "purpose": "Compare current native ceiling candidate against the accepted portable artifact at identical public requests and process affinities; test fresh width boundaries and excluded wide/two-FE/OLS controls plus zeros and an explicit Poisson oracle.",
+  "work": "Public feppml and pinned unmodified fepois; robust inference, no optional saved observation outputs. This block does not reproduce historical robust-plus-saved-mean timings.",
+  "science": "Existing systematic sample, convergence, coefficient, covariance and objective checks; native rank/DoF equality. Independent WLS and Poisson/Hessian/sandwich fixtures already passed on both artifacts. Scientific discrepancies stay unranked.",
+  "warmup": "Same case/design/width/threads on registered 7680-row positive-outcome warm input; generation happens sequentially outside every command clock.",
+  "threads_policy": "Same public request and process affinity in every arm. Assert native requested and effective counts separately. Stata processors remain min(request,license,machine).",
+  "input_policy": "Prior K6 must reproduce its captured byte hash. Fresh seed 202609284 declared before generation; no candidate changes or threshold tuning from these inputs.",
+  "interpretation": "Pinned unmodified default fixest is ranked only if all comparable-science checks pass. Strict-reference history is separate. Three pairs are a bounded screen, not adoption by themselves; follow with fresh confirmation of promising gains and repeat suspected regressions."
+}

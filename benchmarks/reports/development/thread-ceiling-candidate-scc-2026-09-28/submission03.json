@@ -1,0 +1,12 @@
+{
+  "job": "7762780",
+  "status": "submitted-held",
+  "holds_after": "7762740",
+  "slots": 28,
+  "wall_minutes": 30,
+  "fits": 57,
+  "run_directory": "dev/20260928-thread-ceiling-rotation03",
+  "source_snapshot": "1f290d1cc5d241494dd2e82af7c940899325e0efb515a69e90790d04d20b4773",
+  "deployment_sha256": "ee53dfa545ee9a3db75ca781b1946873de9f80b29f447115e05f9891ccd042b9",
+  "gate": "Successful preceding accounting, all27native science pairs and every independent oracle check required before any fit. Stock failures remain NR and do not override independent native checks."
+}
