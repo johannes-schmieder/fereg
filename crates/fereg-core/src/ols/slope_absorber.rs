@@ -32,7 +32,7 @@ impl OlsSlopeAbsorber {
         weights: BorrowedMapWeights<'_>,
         config: PreparedOlsFitConfig,
         attempted_peak: &mut SolverWorkspacePeak,
-    ) -> Result<Option<Self>> {
+    ) -> Result<Option<Box<[Self; 1]>>> {
         if config.absorb.solver != FeSolverKind::Auto
             || !config.absorb.certified_fallback
             || (config.absorb.retain_coefficients && !config.allow_final_fe_recovery)
@@ -133,12 +133,21 @@ impl OlsSlopeAbsorber {
         if parallel_certificates {
             projector.enable_coefficient_certificates()?;
         }
-        Ok(Some(Self {
+        // Keep this optional owner out of the common OLS descriptor. Reserve
+        // fallibly: Box::try_new is unavailable on the minimum Rust version.
+        // With exact capacity one, conversion to the fixed array cannot grow.
+        let mut owner = Vec::new();
+        owner.try_reserve_exact(1).map_err(|_| allocation())?;
+        if owner.capacity() != 1 {
+            return Err(allocation());
+        }
+        owner.push(Self {
             projector,
             weights: normalized,
             peak: SolverWorkspacePeak::from_bytes(resident.max(memory.construction_bytes))?,
             setup_seconds: started.elapsed().as_secs_f64(),
-        }))
+        });
+        Ok(Some(owner.into_boxed_slice().try_into().map_err(|_| allocation())?))
     }
 
     pub(super) fn absorb(

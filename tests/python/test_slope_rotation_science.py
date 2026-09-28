@@ -55,6 +55,10 @@ class SlopeComparisonTests(unittest.TestCase):
             self.assertEqual(row["comparisons"]["baseline"]["eligible"], 1)
             self.assertIsNone(row["comparisons"]["baseline"]["ratios"])
             self.assertEqual(row["comparisons"]["baseline"]["failed_checks"], ["covariance"])
+            by_seed = row["comparisons"]["baseline"]["by_seed"]
+            self.assertEqual(by_seed[0]["ratios"]["median"], 1.)
+            self.assertEqual(by_seed[0]["paired_losses"], 0)
+            self.assertIsNone(by_seed[1]["ratios"])
             for incomplete in (records[:2], [records[0], *records[1:3], records[0]]):
                 rotation.write(root / "results.json", incomplete)
                 with self.assertRaisesRegex(ValueError, "incomplete or duplicated"):

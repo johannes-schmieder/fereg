@@ -1,0 +1,10 @@
+{
+  "status": "success",
+  "tests": "79 distinct slope-filtered Rust passes; one ignored; includes owner span/admission boundary test also run separately",
+  "rust": "1.85.1",
+  "logs": {
+    "boxed-owner-unit01.log": "82ff5565378086c39dcb5e5d119a0cd849e47d2ba3a8471c18060c2288f1f77d",
+    "boxed-owner-slope-tests01.log": "cbac75539bb38af869524332fdf43258c578d32a26d0471eec53d315a23f8f39"
+  },
+  "purpose": "Representation-only repair candidate; Linux licensed validation and timing still pending."
+}

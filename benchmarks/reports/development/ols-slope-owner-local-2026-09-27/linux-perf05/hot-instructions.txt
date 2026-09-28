@@ -1,0 +1,35 @@
+   18.84 :   3d54a3: mov    0xb8(%rsp),%r15
+   12.82 :   3d5237: callq  *0x7d3e5b(%rip)        # ba9098 <fma@GLIBC_2.2.5>
+    5.74 :   3d5440: cmp    %r14,%r12
+    4.00 :   3d5230: movq   0x0(%rbp,%r15,8),%xmm2
+    3.43 :   3d54b1: callq  *0x7d3be1(%rip)        # ba9098 <fma@GLIBC_2.2.5>
+    1.98 :   3d5222: mov    0x80(%rsp),%rax
+    1.95 :   3d5417: mov    %rax,0x18(%rsp)
+    1.87 :   3d50d8: callq  *0x7d2a72(%rip)        # ba7b50 <memset@GLIBC_2.2.5>
+    1.79 :   3d5244: inc    %r13
+    1.27 :   3d54f2: add    0x8(%rsp),%rax
+    1.16 :   3d5204: cmp    %rsi,%r12
+    1.15 :   3d5494: pxor   0x4406b4(%rip),%xmm0        # 815b50 <_fini+0x2b4>
+    1.01 :   3d54bd: inc    %r14
+    1.01 :   3d523d: movq   %xmm0,0x0(%rbp,%r15,8)
+    0.98 :   3d5384: mov    0x70(%rsp),%rdi
+    0.97 :   3d54b7: movq   %xmm0,(%r15,%r14,8)
+    0.93 :   3d54ab: movq   (%r15,%r14,8),%xmm2
+    0.93 :   3d50ac: mov    0x180(%rsp),%rcx
+    0.91 :   3d5449: mov    %rax,0x60(%rsp)
+    0.90 :   3d54f7: mov    %rax,0x40(%rsp)
+    0.82 :   3d543b: nopl   0x0(%rax,%rax,1)
+    0.79 :   3d51ee: mov    0x10(%rsp),%rax
+    0.73 :   3d547b: cmp    0x20(%rsp),%r14
+    0.72 :   3d549c: movq   0x0(%rbp,%r12,8),%xmm1
+    0.71 :   3d51a5: imul   0x60(%rsp),%r13
+    0.68 :   3d5254: mov    0x30(%rsp),%rdx
+    0.68 :   3d51ab: add    0x88(%rbx),%r13
+    0.64 :   3d548f: movq   (%rax,%rbx,8),%xmm0
+    0.64 :   3d5486: mov    0x30(%rsp),%rax
+    0.63 :   3d5465: data16 nopw %cs:0x0(%rax,%rax,1)
+    0.62 :   3d521c: movq   (%rax,%r12,8),%xmm0
+    0.59 :   3d5480: jae    3d5c52 <fereg_core::fe::slope_coefficients::coupling::PreparedCoupling::apply+0x1672>
+    0.59 :   3d53f9: lea    0x1(%rcx),%rax
+    0.58 :   3d525f: adc    $0x0,%rax
+    0.57 :   3d54fc: mov    0x50(%rsp),%rax

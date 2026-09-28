@@ -9,6 +9,34 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
+## Confirmed OLS control loss — bounded ownership repair in progress
+
+The [nine-pair confirmation](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-control04/README.md)
+**7761847** completes all 72 timed applications and 36 native science pairs,
+plus 14 separate diagnostic fits. Clean accounting: 940 s, 28 slots, scc-wo4.
+The unchanged three-FE low input at seed 202609280 loses **20.0%** at the paired
+median, seven losses in nine pairs; seed 202609279 loses 2.9%. Combined low
+median is 1.136 (range 0.671–1.635). Fast control medians are 1.016/1.017.
+The new two-partition owner at source 852b03a9 remains scientifically valid but
+**not accepted as regression-free**. No cause is established from these clocks.
+
+[CPU attribution](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-perf05/README.md)
+**7761864** also passes, after headline timing ended (57 s, eight slots,
+scc-tb4). The prepared coupling application dominates new-path CPU work at
+41.5–57.1%; out-of-line libm FMA accounts for another 9.5–14.4%. Disassembly
+shows hardware FMA behind those calls, not software emulation. This suggests
+portable speculative-product work after resolving the unrelated control loss;
+no arithmetic/certificate changes have been made.
+
+A representation-only repair stores the optional slope owner behind one
+fallibly allocated fixed-size box instead of embedding its full state in the
+common OLS descriptor. The existing admitted owner byte count covers its storage;
+excluded routes allocate nothing. It passes [79 focused Rust tests](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-unit06.json).
+Mac build is in progress. The [90-fit SCC registration](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/boxed-owner-registration06.json)
+uses the confirmed failing input, fast control and two slope cases, with a
+maximum-thread probe before timing. Linux licensed validation and performance
+remain pending. This is a bounded causal experiment, not a claimed fix.
+
 ## Two-partition OLS slope owner — SCC gains, control confirmation open
 
 The [completed SCC rotation](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-rotation03/README.md)
@@ -39,8 +67,8 @@ the coefficient loops still call fused multiply/add extensively. Separate CPU
 profile **7761864** is [registered](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-perf05-registration.json)
 and held after 7761847. It tests T1/T8 and a separately labeled passive OpenMP
 wait diagnostic to distinguish numerical work from embedding worker activity.
-An import is not measured cost attribution; no arithmetic change is authorized
-by this observation alone, and no native source has changed.
+An import is not measured cost attribution; a numerical change still needs
+that evidence and independent validation. No native source has changed.
 The full performance plan and shared thread-ceiling implementation remain open.
 
 ## Two-partition OLS slope owner — original registration and validation

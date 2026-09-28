@@ -47,7 +47,15 @@ def summarize(root):
             eligible = [c for c in checks if c["ranked"] and all(c["checks"].values()) and c["ratio"] is not None]
             row["comparisons"][arm] = {"eligible": len(eligible), "registered": len(checks),
                 "ratios": distribution([c["ratio"] for c in eligible]) if len(eligible) == len(checks) else None,
-                "failed_checks": sorted({k for c in checks for k, v in c["checks"].items() if not v})}
+                "failed_checks": sorted({k for c in checks for k, v in c["checks"].items() if not v}),
+                "by_seed": []}
+            for seed in plan["seeds"]:
+                selected = [p["comparisons"][arm] for p in pairs if p["seed"] == seed]
+                valid = [c for c in selected if c["ranked"] and all(c["checks"].values()) and c["ratio"] is not None]
+                row["comparisons"][arm]["by_seed"].append({
+                    "seed": seed, "eligible": len(valid), "registered": len(selected),
+                    "paired_losses": sum(c["ratio"] > 1. for c in valid),
+                    "ratios": distribution([c["ratio"] for c in valid]) if len(valid) == len(selected) else None})
         rows.append(row)
     return {"fits": len(results), "pairs": len(comparisons), "cases": rows,
             "source_receipts": {name: hashlib.sha256((root / name).read_bytes()).hexdigest()
@@ -74,6 +82,16 @@ def render(summary):
         text.append(f"| {row['case']['id']} | {' | '.join(times)} | {ratio(row, 'baseline')} | {ratio(row, 'default')} | {ratio(row, 'strict')} | {' / '.join(memory)} |")
     text += ["", "Process RSS includes the full warm-plus-timed estimator process, including loaded data and requested outputs.",
              "Setup/loading and extraction are outside the command clock; their process-time distributions remain in the JSON receipt.", ""]
+    text += ["## Individual-input baseline controls", "",
+             "A combined median must not hide a repeatable loss on one input. Loss counts use paired ratios greater than one.", "",
+             "| Case | Seed | C/B median [min, max] | Slower pairs / eligible |",
+             "|---|---:|---:|---:|"]
+    for row in summary["cases"]:
+        for entry in row["comparisons"]["baseline"]["by_seed"]:
+            d = entry["ratios"]
+            value = f"{d['median']:.3f} [{d['minimum']:.3f}, {d['maximum']:.3f}]" if d else "NR"
+            text.append(f"| {row['case']['id']} | {entry['seed']} | {value} | {entry['paired_losses']} / {entry['eligible']} |")
+    text.append("")
     for row in summary["cases"]:
         for arm, comparison in row["comparisons"].items():
             if comparison["failed_checks"]:

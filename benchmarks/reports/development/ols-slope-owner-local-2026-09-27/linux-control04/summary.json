@@ -1,0 +1,227 @@
+{
+  "fits": 72,
+  "pairs": 36,
+  "cases": [
+    {
+      "case": {
+        "id": "three-sparse-fast",
+        "design": "three_fe_sparse",
+        "n": 61440,
+        "k": 10,
+        "threads": 4,
+        "memory": "fast",
+        "model": "ols",
+        "section": "slopes",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "arms": [
+          "baseline",
+          "candidate"
+        ],
+        "stata_processors": 4
+      },
+      "pairs": 18,
+      "arms": {
+        "baseline": {
+          "successful": 18,
+          "registered": 18,
+          "command_seconds": {
+            "minimum": 2.418,
+            "median": 2.677,
+            "maximum": 3.17
+          },
+          "process_seconds": {
+            "minimum": 5.33011478203116,
+            "median": 6.1069406760216225,
+            "maximum": 6.933994191000238
+          },
+          "process_peak_rss_bytes": {
+            "minimum": 157560832,
+            "median": 164397056.0,
+            "maximum": 178413568
+          }
+        },
+        "candidate": {
+          "successful": 18,
+          "registered": 18,
+          "command_seconds": {
+            "minimum": 2.397,
+            "median": 2.7075,
+            "maximum": 3.082
+          },
+          "process_seconds": {
+            "minimum": 5.38308733800659,
+            "median": 6.107113916485105,
+            "maximum": 6.984525197010953
+          },
+          "process_peak_rss_bytes": {
+            "minimum": 158687232,
+            "median": 165015552.0,
+            "maximum": 173056000
+          }
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": 18,
+          "registered": 18,
+          "ratios": {
+            "minimum": 0.8476340694006309,
+            "median": 1.016295854174521,
+            "maximum": 1.2571428571428571
+          },
+          "failed_checks": [],
+          "by_seed": [
+            {
+              "seed": 202609279,
+              "eligible": 9,
+              "registered": 9,
+              "paired_losses": 6,
+              "ratios": {
+                "minimum": 0.8476340694006309,
+                "median": 1.0159443990188062,
+                "maximum": 1.2571428571428571
+              }
+            },
+            {
+              "seed": 202609280,
+              "eligible": 9,
+              "registered": 9,
+              "paired_losses": 7,
+              "ratios": {
+                "minimum": 0.9262689885142646,
+                "median": 1.016647309330236,
+                "maximum": 1.0846918489065607
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "case": {
+        "id": "three-sparse-low",
+        "design": "three_fe_sparse",
+        "n": 61440,
+        "k": 10,
+        "threads": 4,
+        "memory": "low",
+        "model": "ols",
+        "section": "slopes",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "arms": [
+          "baseline",
+          "candidate"
+        ],
+        "stata_processors": 4
+      },
+      "pairs": 18,
+      "arms": {
+        "baseline": {
+          "successful": 18,
+          "registered": 18,
+          "command_seconds": {
+            "minimum": 5.336,
+            "median": 7.064,
+            "maximum": 9.19
+          },
+          "process_seconds": {
+            "minimum": 13.298904252995271,
+            "median": 15.379839469998842,
+            "maximum": 18.93743926298339
+          },
+          "process_peak_rss_bytes": {
+            "minimum": 155693056,
+            "median": 162349056.0,
+            "maximum": 176631808
+          }
+        },
+        "candidate": {
+          "successful": 18,
+          "registered": 18,
+          "command_seconds": {
+            "minimum": 5.212,
+            "median": 7.9905,
+            "maximum": 9.737
+          },
+          "process_seconds": {
+            "minimum": 13.299171281978488,
+            "median": 16.081563585496042,
+            "maximum": 19.764747762004845
+          },
+          "process_peak_rss_bytes": {
+            "minimum": 158117888,
+            "median": 166522880.0,
+            "maximum": 182042624
+          }
+        }
+      },
+      "comparisons": {
+        "baseline": {
+          "eligible": 18,
+          "registered": 18,
+          "ratios": {
+            "minimum": 0.6713034518289541,
+            "median": 1.1355961135318564,
+            "maximum": 1.6345475910693303
+          },
+          "failed_checks": [],
+          "by_seed": [
+            {
+              "seed": 202609279,
+              "eligible": 9,
+              "registered": 9,
+              "paired_losses": 6,
+              "ratios": {
+                "minimum": 0.9252017733318173,
+                "median": 1.0289524477978593,
+                "maximum": 1.6345475910693303
+              }
+            },
+            {
+              "seed": 202609280,
+              "eligible": 9,
+              "registered": 9,
+              "paired_losses": 7,
+              "ratios": {
+                "minimum": 0.6713034518289541,
+                "median": 1.1998301726577978,
+                "maximum": 1.3478260869565217
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "source_receipts": {
+    "identity.json": "1ad907f11c3f450c7b64fca468daf9f0bbabbcf9c7ca41def1f9d7e74a76dc22",
+    "plan.json": "556cc1967f75f647ae7b6cce5860775f731a1868deca2c61864551cd387255c1",
+    "results.json": "f76f0f228567df975314cb2083e8d9a6aeb5f9efd84f7eeaff6190166c0efe41",
+    "comparisons.json": "e29a756fda5784940fe7d4df3fc694e811c6b4574a1574d3342ed0b39cddd78c",
+    "complete.json": "e193677b8d4e6c7ec4b855081390cefde697a95269b586e9c50ab49ef4d5503b"
+  }
+}

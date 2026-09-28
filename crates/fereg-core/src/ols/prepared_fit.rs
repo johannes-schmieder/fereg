@@ -1592,7 +1592,7 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
 }
 
 struct FitFeAbsorber<'a> {
-    slopes: Option<super::slope_absorber::OlsSlopeAbsorber>,
+    slopes: Option<Box<[super::slope_absorber::OlsSlopeAbsorber; 1]>>,
     single_slope: Option<crate::fe::SingleSlopeAbsorber<'a>>,
     one_fe: Option<crate::fe::BorrowedInterceptEffect<'a>>,
     session: Option<CmgAbsorber<'a>>,
@@ -1907,7 +1907,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
     final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
     if let Some(slopes) = cmg.slopes.as_mut() {
-        let result = slopes.absorb(values, config.map, final_residual)?;
+        let result = slopes[0].absorb(values, config.map, final_residual)?;
         if final_residual { cmg.slopes = None; }
         return Ok(result);
     }
