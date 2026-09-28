@@ -1,0 +1,19 @@
+{
+  "job": "7761709",
+  "accounting": {
+    "failed": 100,
+    "exit_status": 137,
+    "wall_seconds": 106,
+    "slots": 28,
+    "host": "scc-wo4"
+  },
+  "status": "operator_canceled",
+  "reason": "identified invalid maximum-thread Stata-license guard; canceled before that case rather than allowing a known harness error",
+  "timing_disposition": "incomplete partial block retained; no headline ranking",
+  "files": {
+    "plan.json": "ff5b2a8ea1ea17f8ef035812a66ce662a58d0854b01fc5d3e9035a8ff4a4a5f4",
+    "results.json": "494106054aea8eaccf205b8c673966a44e844ebd7f7cb0aca672bca6bfae5217",
+    "comparisons.json": "ac452767cfd05736e6570bbffeaf91c632aab666e0e3399c05c6ea0e633d0131",
+    "identity.json": "b4046f6b13bea9b212a0030cce953c1035bf3c8e09a161d0b6a00e831ac01482"
+  }
+}

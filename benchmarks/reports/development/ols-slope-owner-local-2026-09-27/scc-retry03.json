@@ -1,0 +1,35 @@
+{
+  "run_id": "20260927-ols-slope-owner-852b03a9",
+  "prior_timing_job": "7761709",
+  "prior_timing_disposition": "operator cancellation after identifying an invalid license guard before the registered native T8 case; partial results preserved and excluded from headline claims",
+  "prior_probe_job": "7761708",
+  "prior_probe_status": "success; failed=0 exit_status=0, all four arms and baseline science pass",
+  "probe_job": "7761754",
+  "rotation_job": "7761755",
+  "source_commit": "852b03a9e0cafd54d578bdf470d05c4c8668ca92",
+  "native_source_and_artifact_unchanged": true,
+  "plugin_sha256": "2b57467fb5578f846f9c6044b600cd52bc305b19cd15662dfba3f48de25976fe",
+  "registration_sha256": "64ad58846b91ac4eaa66b2289a03720541cb0685e29d4933518faee24772ae25",
+  "harness": {
+    "slope_probe.py": "709cace6fce455a0fbd75553d8b973fab460d06e5dcf3e09f824c868df82210e",
+    "probe_job.sh": "a1194d5758ee9975c32ba47526afa7ce46afbe6bad5859eebbf642386c23bd16",
+    "rotation_job.sh": "0c41c0df9dbc7a44c6b5eb83e2335c5c8e8eb0e48ed16da0008e54ef4c7a1036",
+    "slope_rotation.py": "952535cc362dd0c82d1831af43137a1827d9a6cbce509c8abff1ebf9e1a982f3"
+  },
+  "local_validation": "4 Python scientific/complete-panel/affinity/capacity tests and shell syntax pass",
+  "resources": {
+    "probe": {
+      "slots": 8,
+      "mem_per_core": "4G",
+      "wall": "00:10:00"
+    },
+    "rotation": {
+      "slots": 28,
+      "mem_per_core": "3G",
+      "wall": "01:00:00",
+      "cpu_type": "E5-2680v4"
+    }
+  },
+  "fits": 192,
+  "capacity_policy": "Native/R teams keep registered 1/4/8 threads; both native arms explicitly use Stata control-plane processors min(T,4). No silent clamp. The probe exercises maximum native T8 before timing."
+}

@@ -9,7 +9,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-from slope_probe import run_case
+from slope_probe import run_case, stata_threads
 
 
 def sha(path):
@@ -60,8 +60,8 @@ def compare(candidate, other, tolerance):
             "max_fitted_difference": float(np.max(np.abs(ar.fitted.to_numpy() - br.fitted.to_numpy()))) if sample else None}
 
 
-def require_allocation(smoke):
-    slots = 4 if smoke else 28
+def require_allocation(smoke, smoke_slots=4):
+    slots = smoke_slots if smoke else 28
     available = len(os.sched_getaffinity(0))
     # SCC's four-slot shared-node smokes need not receive an affinity mask.
     # The probe pins each child to exactly T cores, with T <= NSLOTS. Headline
@@ -71,7 +71,9 @@ def require_allocation(smoke):
 
 
 def verify(args, plan):
-    require_allocation(args.smoke)
+    require_allocation(args.smoke, plan.get("smoke", {}).get("slots", 4))
+    for cell in plan["cases"]:
+        stata_threads(cell)
     if not args.smoke and "E5-2680 v4" not in Path("/proc/cpuinfo").read_text():
         raise ValueError("unexpected timing CPU class")
     identities = {"plan": sha(args.plan), "source_files": {}, "plugins": {}, "inputs": {}}
@@ -87,14 +89,15 @@ def verify(args, plan):
     # Build smoke produces the candidate artifact; the full rotation consumes
     # that exact binary only after the application's validation receipts pass.
     if not args.smoke:
-        acceptance = read(args.run / "smoke-probe/complete.json")
+        smoke_output = args.run / plan.get("smoke_output", "smoke-probe")
+        acceptance = read(smoke_output / "complete.json")
         if not acceptance["complete"]:
             raise ValueError("probe did not complete")
         for filename in ("summary.json", "slope-oracle.json"):
             result = read(args.run / "output" / filename)
             if result["status"] != "success" or result["tests_failed"] != 0:
                 raise ValueError("upstream scientific fixture failed")
-        built = read(args.run / "smoke-probe/identity.json")
+        built = read(smoke_output / "identity.json")
         if identities["plugins"] != built["plugins"]:
             raise ValueError("artifacts differ from smoke")
     frozen = read(args.reference / "env/frozen.json")
@@ -117,13 +120,19 @@ def main(args):
     write(args.output / "identity.json", identities)
     write(args.output / "plan.json", plan)
     records, comparisons = [], []
-    cases = plan["cases"][:1] if args.smoke else plan["cases"]
-    seeds = [plan["smoke_seed"]] if args.smoke else plan["seeds"]
+    smoke = plan.get("smoke") if args.smoke else None
+    cases, seeds = plan["cases"], plan["seeds"]
+    if args.smoke:
+        cases = [c for c in cases if c["id"] == smoke["case"]] if smoke else cases[:1]
+        seeds = [smoke["seed"] if smoke else plan["smoke_seed"]]
+        if len(cases) != 1:
+            raise ValueError("smoke case is not uniquely registered")
+    pilot_inputs = args.smoke and smoke is None
     for repetition in range(1 if args.smoke else plan["rotations_per_seed"]):
         for seed in seeds:
             for cell in cases:
-                data = args.run / ("pilot-inputs" if args.smoke else "inputs")
-                if not args.smoke:
+                data = args.run / ("pilot-inputs" if pilot_inputs else "inputs")
+                if not pilot_inputs:
                     data = data / str(seed)
                 data = data / cell["id"]
                 arms = list(cell["arms"])

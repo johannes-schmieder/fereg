@@ -1,0 +1,26 @@
+{
+  "job": "7761754",
+  "accounting": {
+    "failed": 0,
+    "exit_status": 0,
+    "wall_seconds": 31,
+    "slots": 8,
+    "host": "scc-gd4",
+    "queue": "econ",
+    "maxvmem": "1.487G"
+  },
+  "status": "success",
+  "source_commit": "852b03a9e0cafd54d578bdf470d05c4c8668ca92",
+  "sentinels": [
+    "FEREG_SLOPE_ROTATION_COMPLETE",
+    "FEREG_OLS_SLOPE_PROBE_SUCCESS job=7761754"
+  ],
+  "timing_disposition": "functional smoke only, not an isolated headline benchmark",
+  "files": {
+    "plan.json": "64ad58846b91ac4eaa66b2289a03720541cb0685e29d4933518faee24772ae25",
+    "results.json": "935ae26729016e5c8136a9543dd0acd9d817ee922b5f2a90a3b21b5d3eb58b8a",
+    "comparisons.json": "8251b43398e6c2e4f79387654205b11568d8a2b99e51b5ab3fdcccd4ce7fe502",
+    "identity.json": "de4f1a88465a830ba2287100fefdf56b8938524f9ea01f714a0b38ffcfa002e5",
+    "complete.json": "43a42d60af46fac606c8c16ad13a75053e31bec399a909b71cea1d7011184305"
+  }
+}

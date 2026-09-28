@@ -18,6 +18,13 @@ import numpy as np
 import pandas as pd
 
 
+def stata_threads(cell):
+    threads = cell.get("stata_processors", cell["threads"])
+    if not 1 <= threads <= cell["threads"]:
+        raise ValueError("invalid explicit Stata control-plane capacity")
+    return threads
+
+
 def run_case(cell, data, output, arm, source, stock_library, diagnostic=False, monitor=None):
     output.mkdir(parents=True, exist_ok=False)
     env = {k: v for k, v in os.environ.items() if not k.startswith("FEREG_")}
@@ -36,13 +43,14 @@ def run_case(cell, data, output, arm, source, stock_library, diagnostic=False, m
     env.update(MKL_NUM_THREADS="1", NUMEXPR_NUM_THREADS="1")
     k = cell["k"]
     if arm == "native":
+        control_threads = stata_threads(cell)
         absorption = " ".join(e + ("##c." + cell["slopes"][e][0] if e in cell["slopes"] else "") for e in cell["effects"])
         command = f"fereg y x1-x{k}, absorb({absorption}) threads({cell['threads']}) memory({cell['memory']}) residuals(error)"
         script = f'''version 19.0
 clear all
 set more off
-assert c(processors_lic)>={cell['threads']} & c(processors_mach)>={cell['threads']}
-set processors {cell['threads']}
+assert c(processors_lic)>={control_threads} & c(processors_mach)>={control_threads}
+set processors {control_threads}
 sysdir set PLUS "{output}"
 sysdir set PERSONAL "{output}"
 capture adopath - SITE
@@ -58,6 +66,9 @@ generate double fitted = y-error
 timer off 91
 quietly timer list 91
 scalar elapsed = r(t91)
+scalar control_processors = c(processors)
+scalar licensed_processors = c(processors_lic)
+assert e(fereg_threads)=={cell['threads']}
 generate byte sample=e(sample)
 mata:
 b=st_matrix("e(b)")[1,1..{k}]
@@ -69,8 +80,8 @@ fh=fopen("{output}/V.csv","w")
 for (j=1;j<={k};j++) fput(fh,invtokens(strofreal(V[j,.],"%24.17g"),","))
 fclose(fh)
 fh=fopen("{output}/meta.csv","w")
-fput(fh,"seconds,N,rss,df_r,iterations,converged")
-m=(st_numscalar("elapsed"),st_numscalar("e(N)"),st_numscalar("e(rss)"),st_numscalar("e(df_r)"),st_numscalar("e(ic)"),st_numscalar("e(converged)"))
+fput(fh,"seconds,N,rss,df_r,iterations,converged,estimator_threads,stata_processors,processors_lic")
+m=(st_numscalar("elapsed"),st_numscalar("e(N)"),st_numscalar("e(rss)"),st_numscalar("e(df_r)"),st_numscalar("e(ic)"),st_numscalar("e(converged)"),st_numscalar("e(fereg_threads)"),st_numscalar("control_processors"),st_numscalar("licensed_processors"))
 fput(fh,invtokens(strofreal(m,"%24.17g"),","))
 fclose(fh)
 end

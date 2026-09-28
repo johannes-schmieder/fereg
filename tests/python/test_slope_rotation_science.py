@@ -12,9 +12,19 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "benchmarks/performance"))
 import slope_rotation as rotation
 import slope_summary as summary
+from slope_probe import stata_threads
 
 
 class SlopeComparisonTests(unittest.TestCase):
+    def test_stata_capacity_is_explicit_and_independent_of_native_team(self):
+        self.assertEqual(stata_threads(dict(threads=8)), 8)
+        self.assertEqual(stata_threads(dict(threads=8, stata_processors=4)), 4)
+        for processors in [0, -1, 9]:
+            with self.assertRaisesRegex(ValueError, "control-plane capacity"):
+                stata_threads(dict(threads=8, stata_processors=processors))
+        with patch.dict(rotation.os.environ, NSLOTS="8"), patch.object(rotation.os, "sched_getaffinity", create=True, return_value=set(range(28))):
+            rotation.require_allocation(True, smoke_slots=8)
+
     def test_shared_smoke_and_isolated_timing_have_different_affinity_contracts(self):
         for slots, available, smoke, accepted in ((4, 28, True, True), (4, 4, True, True),
                                                   (4, 2, True, False), (28, 28, False, True),

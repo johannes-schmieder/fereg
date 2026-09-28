@@ -30,18 +30,25 @@ No fresh local fit has run: unrelated Mac Stata work prevented a quiet interval.
 The literal inputs are deployed on SCC with verified hashes. An explicit
 registration amendment keeps baseline/candidate controls for excluded three-FE
 routes and both default/strict stock arms for the five new-path cases: 192 fits.
-The native Linux build, OLS smoke and 32-fit oracle passed in **7761688**,
-then the benchmark harness stopped before fits because its shared-node smoke
-incorrectly required an exact four-CPU affinity mask. Own dependent **7761689**
-was canceled before fitting. The [narrow retry](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-retry02.json)
-keeps committed native candidate **852b03a9** and Linux artifact `2b57467f…`
-unchanged. It accepts a larger smoke affinity mask while pinning each child to
-T<=NSLOTS; the isolated timing allocation still requires exactly 28 CPUs. Three
-local harness tests pass. Focused probe **7761708** has its four-arm completion
-sentinel and native science agreement; accounting is pending. Dependency-held
-**7761709** will run the 192-fit timing block only after clean probe accounting
-and the stored Linux scientific fixtures. The [original submission](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-submission01.json)
-and literal input manifest remain preserved. Timing results remain pending. This
+The native Linux build, OLS smoke and 32-fit oracle passed in **7761688**.
+Its subsequent harness affinity check failed before fits; the corrected four-slot
+probe **7761708** passed. During timing **7761709**, inspection identified a second
+invalid guard: SCC's four-processor Stata license does not cap the independently
+requested native team. That partial block was canceled before its T8 case and
+is preserved without headline rankings. These are harness issues, not estimator
+failures; committed native candidate **852b03a9** and Linux artifact `2b57467f…`
+are unchanged throughout.
+
+The [explicit successor registration](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-registration03.json)
+keeps every case/input/seed/arm/repetition and scientific envelope. Native/R
+requests remain T1/T4/T8; both native arms explicitly use Stata min(T,4), with
+capacity rejection before fitting and an actual-native-thread assertion after
+fitting. Four local science/completeness/affinity/capacity tests pass.
+The [maximum-thread probe](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/linux-capacity-probe03/receipt.json)
+**7761754** passes all four arms and native science at native T8/Stata T4, with
+clean accounting and terminal sentinels. The [timing successor](benchmarks/reports/development/ols-slope-owner-local-2026-09-27/scc-retry03.json)
+**7761755** is running its 192 timed fits on isolated 28-core scc-wo4 after the
+probe and Linux science gates. Results remain pending. This
 checkpoint is a scientifically validated development candidate, not an accepted
 fresh performance result or completion of the broader plan.
 
