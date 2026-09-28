@@ -43,10 +43,17 @@ def light_plan(manifest, mode, results):
         selected = smoke_groups(manifest)
     else:
         selected=[]
+        pilot_ids = manifest.get('pilot_cell_ids')
+        if pilot_ids is not None:
+            available = {cell_id(g['cell']) for g in groups(manifest)}
+            if not pilot_ids or len(pilot_ids) != len(set(pilot_ids)) or set(pilot_ids)-available:
+                raise ValueError('Pilot must name distinct registered configurations')
         for g in groups(manifest):
             c=g['cell']
             if g['repetition'] != 1:continue
-            if c.get('slopes') or (c['section']=='main' and c['k']==10 and c['threads']==28 and
+            if pilot_ids is not None:
+                if cell_id(c) in pilot_ids:selected.append(g)
+            elif c.get('slopes') or (c['section']=='main' and c['k']==10 and c['threads']==28 and
                                   ((c['design']=='strong_d6' and c['n']==3932160) or
                                    (c['design']=='two_fe_dense' and c['n']==983040))):
                 selected.append(g)

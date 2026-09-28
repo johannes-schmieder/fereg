@@ -1,0 +1,38 @@
+test_candidate_order_balanced_against_every_comparator (test_campaign.CampaignTests.test_candidate_order_balanced_against_every_comparator) ... ok
+test_complete_grid_and_intersection_deduplication (test_campaign.CampaignTests.test_complete_grid_and_intersection_deduplication) ... ok
+test_missing_records_never_become_success (test_campaign.CampaignTests.test_missing_records_never_become_success) ... ok
+test_production_requires_pilot (test_campaign.CampaignTests.test_production_requires_pilot) ... ok
+test_seed_identity_does_not_depend_on_threads (test_campaign.CampaignTests.test_seed_identity_does_not_depend_on_threads) ... ok
+test_thread_pools_do_not_nest_blas (test_campaign.CampaignTests.test_thread_pools_do_not_nest_blas) ... ok
+test_accounting_missing_and_duplicate_tasks (test_evidence.EvidenceTests.test_accounting_missing_and_duplicate_tasks) ... ok
+test_completely_missing_panel_renders_without_fake_points (test_evidence.EvidenceTests.test_completely_missing_panel_renders_without_fake_points) ... ok
+test_cross_node_or_task_pairing_never_passes (test_evidence.EvidenceTests.test_cross_node_or_task_pairing_never_passes) ... ok
+test_explicit_reference_nonconvergence_overrides_numerical_agreement (test_evidence.EvidenceTests.test_explicit_reference_nonconvergence_overrides_numerical_agreement) ... ok
+test_latex_panels_remain_individual (test_evidence.EvidenceTests.test_latex_panels_remain_individual) ... ok
+test_missing_covariance_never_passes (test_evidence.EvidenceTests.test_missing_covariance_never_passes) ... ok
+test_missing_df_objective_or_convergence_never_passes (test_evidence.EvidenceTests.test_missing_df_objective_or_convergence_never_passes) ... ok
+test_ppml_normalized_constant_preserves_total_rank (test_evidence.EvidenceTests.test_ppml_normalized_constant_preserves_total_rank) ... ok
+test_reference_missing_convergence_keeps_existing_required_surfaces (test_evidence.EvidenceTests.test_reference_missing_convergence_keeps_existing_required_surfaces) ... ok
+test_six_distinct_warm_repetitions_required (test_evidence.EvidenceTests.test_six_distinct_warm_repetitions_required) ... ok
+test_explicit_exclusions (test_light.LightTests.test_explicit_exclusions) ... ok
+test_four_repetitions_and_pair_science (test_light.LightTests.test_four_repetitions_and_pair_science) ... ok
+test_frozen_grid_and_orders (test_light.LightTests.test_frozen_grid_and_orders) ... ok
+test_full_model_separation_beyond_zero_only_groups (test_light.LightTests.test_full_model_separation_beyond_zero_only_groups) ... ok
+test_history_and_complete_packing (test_light.LightTests.test_history_and_complete_packing) ... ok
+test_startup_timeout_kills_worker_group (test_light.LightTests.test_startup_timeout_kills_worker_group) ... ok
+test_tail_fill_and_deadline (test_light.LightTests.test_tail_fill_and_deadline) ... ok
+test_only_exact_failed_reference_seeds_are_excluded (test_fixest_sweep.FixestSweepTests.test_only_exact_failed_reference_seeds_are_excluded) ... ok
+test_pilot_uses_registered_selection_and_rejects_invalid_ids (test_fixest_sweep.FixestSweepTests.test_pilot_uses_registered_selection_and_rejects_invalid_ids) ... ok
+test_preserves_all_scientific_inputs_and_native_coverage (test_fixest_sweep.FixestSweepTests.test_preserves_all_scientific_inputs_and_native_coverage) ... ok
+test_rejects_missing_and_duplicate_history (test_fixest_sweep.FixestSweepTests.test_rejects_missing_and_duplicate_history) ... ok
+test_metadata_is_authoritative_and_pass_has_no_failure (test_worker_diagnostics.WorkerDiagnosticsTests.test_metadata_is_authoritative_and_pass_has_no_failure) ... ok
+test_python_warmup_exception_writes_receipt_before_target (test_worker_diagnostics.WorkerDiagnosticsTests.test_python_warmup_exception_writes_receipt_before_target) ... PREDECLARED PACKING 17 174.05583002122214 node hours
+SYSTEMATIC_WORKER_COMPLETE rc=1
+ok
+test_quiet_application_failure_keeps_stage_and_logs (test_worker_diagnostics.WorkerDiagnosticsTests.test_quiet_application_failure_keeps_stage_and_logs) ... ok
+test_timeout_phase_does_not_require_metadata (test_worker_diagnostics.WorkerDiagnosticsTests.test_timeout_phase_does_not_require_metadata) ... ok
+
+----------------------------------------------------------------------
+Ran 31 tests in 5.265s
+
+OK

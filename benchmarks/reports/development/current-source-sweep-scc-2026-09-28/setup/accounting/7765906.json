@@ -1,0 +1,23 @@
+{
+  "expected_tasks": [
+    1
+  ],
+  "job_id": "7765906",
+  "missing_tasks": [],
+  "records": [
+    {
+      "exit_status": 0,
+      "failed": 0,
+      "hostname": "scc-gr4.scc.bu.edu",
+      "jobnumber": "7765906",
+      "maxvmem": "1.451G",
+      "ru_wallclock": "18",
+      "slots": 4,
+      "task_id": 1,
+      "taskid": "undefined",
+      "wall_seconds": 18.0
+    }
+  ],
+  "schema": "systematic-accounting-v1",
+  "status": "pass"
+}

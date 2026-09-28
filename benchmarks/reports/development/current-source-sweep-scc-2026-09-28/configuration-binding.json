@@ -1,0 +1,14 @@
+{
+  "original_manifest_sha256": "ca4d1011b644371cd6c3ab41911e6af77dc4fdc5646d1210bd0f4499669ebf5c",
+  "current_manifest_sha256": "b65fa2e717c7395bb0f0aa4fc73cb8d5b6757f356491df9496140db2e65a3df3",
+  "changed_fields": [
+    "arms",
+    "candidate_commit",
+    "historical_cost_sha256",
+    "pilot_cell_ids",
+    "purpose",
+    "skip_rules",
+    "sweep_scope"
+  ],
+  "all_other_fields_equal": true
+}

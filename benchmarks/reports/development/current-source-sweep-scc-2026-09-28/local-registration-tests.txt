@@ -1,0 +1,9 @@
+test_only_exact_failed_reference_seeds_are_excluded (test_fixest_sweep.FixestSweepTests) ... ok
+test_pilot_uses_registered_selection_and_rejects_invalid_ids (test_fixest_sweep.FixestSweepTests) ... ok
+test_preserves_all_scientific_inputs_and_native_coverage (test_fixest_sweep.FixestSweepTests) ... ok
+test_rejects_missing_and_duplicate_history (test_fixest_sweep.FixestSweepTests) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.200s
+
+OK

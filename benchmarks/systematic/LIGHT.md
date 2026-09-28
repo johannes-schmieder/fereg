@@ -57,3 +57,32 @@ comparing to the captured native outputs. Use the same compute runtime as the
 original run; cross-platform regeneration is rejected if any value hash differs.
 This audit never rewrites original receipts or reruns an estimator, and does not
 by itself authorize a campaign with another unresolved smoke failure.
+
+## Current-source fixest development sweep
+
+`fixest_sweep.py` registers a successor from the completed light campaign's
+`runs.csv`. It preserves all 140 configurations, four warm seeds, eight cold
+anchors and scientific settings, selecting native/default fixest/strict PPML
+fixest arms. Exact previously timed-out reference seeds are explicit budget
+exclusions; successful neighboring seeds remain live. The two strict slope
+pilot timeouts remain live because later stock adjudication completed them.
+Historical failures never become current measurements. Unchanged other commands
+retain their separate comparison and adjudication evidence.
+
+The manifest's explicit `pilot_cell_ids` selects eight registered large-N and
+two-FE slope groups. Smoke still checks all 28 small independent-oracle groups,
+including three-FE slopes and zeros. Both ordinary stage gates remain required;
+scientific discrepancies in the full sweep remain unranked. The original light
+manifest, enumeration and default pilot are unchanged.
+
+When an accepted Linux artifact already exists for the exact package inputs,
+`reuse_setup_job.sh` verifies the deployment, archived inputs, origin source,
+plugin and successful Linux validation receipt before copying that artifact.
+Set `ORIGIN_SOURCE` and `REFERENCE_RUN` explicitly. Supply `input/source.json`,
+`input/linux-validation.json`, `input/deployment.json`, and the ordinary candidate
+archive/identity/manifest/history inputs. Stage the two historical CSV fixtures
+at their repository-relative `reports/` paths beside `controller/` for the 31
+controller tests. Pinned reference directories are linked, then their actual
+runtime bytes are frozen and rechecked before execution. No compilation occurs
+in timing jobs. Follow the same smoke, pilot, packing, accounting and collection
+sequence above; use a new run directory, never an old results tree.

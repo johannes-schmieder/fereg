@@ -11,7 +11,60 @@ unchanged under benchmarks/reports/. The broad scientific/performance follow-up 
 <=0.90-stock goal remain active.
 
 
-## Current checkpoint: private low-memory moments retained; Mac runtime audit repaired
+## Current milestone: full current-source OLS/PPML sweep launched
+
+[Validated launch evidence](benchmarks/reports/development/current-source-sweep-scc-2026-09-28/README.md)
+registers all **140 original configurations, four warm seeds and eight cold
+anchors** on accepted package **161b9491 / c09eeab3…**, Linux **59d0341a…**.
+All 259 computational inputs remain unchanged. New harness work preserves the
+original grid, permits an explicit registered pilot, binds reused-artifact setup,
+and skips only 50 exact previously timed-out reference attempts. Other unchanged
+commands are omitted; scientific discrepancies stay visible and unranked. The
+original 77/16/111 definitions are unchanged. No estimator compilation is needed.
+
+**7765906** passes 31 controller tests (18 s / 1.451G, 4 slots). **7765908** passes
+all 28 independent native smoke oracles; 72/72 applications complete, 29/44 stock
+pairs pass, 15 scientific discrepancies remain (405 s / 2.148G, 28 slots). Saved-export
+oracle checks identify the small weak-d3 default-stock SE miss independently;
+native and strict stock pass. The separate larger fresh weak-SE discrepancy
+remains open. **7765992** passes 20 applications and has a valid reference for all
+eight pilot configurations (10/12 pairs; two default slope NR). All eight original
+input/column/metadata receipts match exactly. Accounting 268 s / 5.817G is clean.
+All three preflight jobs are terminal and accepted.
+
+**Production submitted: 7766045/tasks 1–4**, each 28 E5-2680v4 cores, 3G/core,
+12-hour cap; concurrency 4. Run root:
+`/projectnb/welfgr/fereg/runs/20260928-current-sweep-161b9491`.
+Remaining 560 groups / 1,358 applications; eight pilot groups are retained under the
+same frozen identity. Forecast 39.063 node-hours, about 9.8 hours per task. These
+are forecasts, not completed performance claims. Measurement fingerprint
+**fb2ad540…** and exact submitted plan **dbface536…** are preserved in the report.
+
+Single-seed pilot native/stock ratios: OLS large degree-six **.956**, large dense
+**.517**, dense slopes fast **1.289** and low **1.505**. PPML large degree-six
+**1.498 default/1.292 strict**, large dense **1.029/.656**, slopes **.340 fast/
+.252 low versus strict** (default NR). Do not promote these to four-repeat
+headlines. The 1.20 ceiling / .90 aspiration and broader no-slowdown goal remain unmet.
+
+**Resume:** inspect 7766045, collect all four task accounting and bundle receipts,
+audit complete/pending groups, preserve every failure/NR and verify regenerated
+inputs against the original receipts. Use the existing frozen controller for
+collection/reporting. Pack only explicitly pending groups if a task reaches its
+deadline; do not rerun completed groups or known unchanged reference failures.
+Then use current distributions and actual selected-thread metadata to choose the
+next substantive solver/preparation/inference change and directly alternate any
+suspected core-scaling regression. No profiling/builds alongside headline work.
+Do not return to closed narrow micro-tuning while this broader inventory is open.
+
+Static allocation drift, physical stack/cap accounting, constrained fits and
+nonretaining CG instability remain open. All eight original sparse-zero failures
+and all three original strict-PPML coefficient discrepancies already have repair
+and independent adjudication evidence; older historical pending entries are
+superseded. Remaining comparator sample/VCE/extraction issues are separate.
+Routine SCC testing is authorized without asking. No push or qualification.
+The broader implementation goal remains active.
+
+## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 
 [ADR0245](docs/adr/0245-private-implicit-finite-moments.md) extends private finite
 moment rows to implicit low memory and narrow one-left-column partitions, using

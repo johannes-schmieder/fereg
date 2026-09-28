@@ -1,0 +1,59 @@
+{
+  "diagnostics": [
+    [
+      [
+        "ppml-two_fe_dense-n61440-k6-t4-slopes_low",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ],
+    [
+      [
+        "ppml-two_fe_dense-n61440-k10-t28-slopes_fast",
+        1
+      ],
+      "fixest",
+      "accuracy_failure"
+    ]
+  ],
+  "evidence": {
+    "accounting/7765906.json": "82a13a3e3f1f3cd7cfe40567fb8fdd2b314c39cb79af1504812c5a51725cf379",
+    "accounting/7765908.json": "2dd728e8dafb193d84189b73282867b19aa9aadc626794c3de8034ad17a60a3c",
+    "accounting/7765992.json": "4721ea85191e4afa049ce9903b47af0eece645839615e8260a5d11a878ce7171",
+    "bundle-results/pilot-1.json": "6d4fa3406c63dbd848717208b49329ce16b6d9ad13f29306daae45543b9d4336",
+    "results/ols-strong_d6-n3932160-k10-t28-main/warm-1/GROUP.COMPLETE.json": "6f153477b8f4140d54e74a48bc75f06b36dff86ed2b66b9d78259c7e68c37aef",
+    "results/ols-strong_d6-n3932160-k10-t28-main/warm-1/fereg/result.json": "578af54220fa130151adcebd6b428a507768d92469a65bdf27dcae6ae79d302b",
+    "results/ols-strong_d6-n3932160-k10-t28-main/warm-1/fixest/result.json": "beba144ca19e9a1696b875f6167578a278f9bee70017fe1802a9663c8a282ee1",
+    "results/ols-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/GROUP.COMPLETE.json": "51ee9055c0d14e9e934d5d8d09ec83ffe7bec5e12b0c6d4f6e7b8ab9940d7c7b",
+    "results/ols-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/fereg/result.json": "8989478430f7458e0c479b8d46ae4f3a685d007dd5a1a1e380fd35c0c26d8d94",
+    "results/ols-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/fixest/result.json": "bc2d86444a5d3c5c7639d036a10e7474b8782a96b57da733d4577b6fb8f0217c",
+    "results/ols-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/GROUP.COMPLETE.json": "3a7ddde513ddf3b8f10b780347e198101960f7fdd31af49c95b16225e711427f",
+    "results/ols-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/fereg/result.json": "ae80b30d6a30aac4f3ba8df30092a7f87eb29fea4c47785302a18fcc5deee439",
+    "results/ols-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/fixest/result.json": "ea2ff9163892f69a3fe2762298d047490266a72de237f4960a0c30fdae3ff9c4",
+    "results/ols-two_fe_dense-n983040-k10-t28-main/warm-1/GROUP.COMPLETE.json": "c2f9012bd7518ab1c12d8bd71091958f2cac35ea6b244b91fd4e07047d41a2fc",
+    "results/ols-two_fe_dense-n983040-k10-t28-main/warm-1/fereg/result.json": "655cd3de92874300541d6aa88b4fded07b8256da78d329b579535ac99687394c",
+    "results/ols-two_fe_dense-n983040-k10-t28-main/warm-1/fixest/result.json": "1aa51ade5686c0227440d6fc243d6a3d46ccb9a79648447b31020890a3469ae1",
+    "results/ppml-strong_d6-n3932160-k10-t28-main/warm-1/GROUP.COMPLETE.json": "c225fe0bb420cf5a26544c0fde678d3e8261e9889c8064a627d87b8837436b52",
+    "results/ppml-strong_d6-n3932160-k10-t28-main/warm-1/feppml/result.json": "2d8536d375597604c2160cc7b00f768fad7716bbd563524e57fea08009604257",
+    "results/ppml-strong_d6-n3932160-k10-t28-main/warm-1/fixest/result.json": "d9e4de20a4995e9b58ad31bb982672362f9c8bc028a66089d37fd01fabf982e3",
+    "results/ppml-strong_d6-n3932160-k10-t28-main/warm-1/fixest_strict/result.json": "118b2d0ebb17eb50682381d85367390405d15efac3a89690ef3f1208158c4f47",
+    "results/ppml-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/GROUP.COMPLETE.json": "c2c224eb0a07634ec258ae97358471fc13a66b8f989261c34ee083867a22124e",
+    "results/ppml-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/feppml/result.json": "5d78dd35ba7594fb47dbfa6e56f85a4aae3cae80a283bc69f3dbff1500a95635",
+    "results/ppml-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/fixest/result.json": "3c2ea6448ccfc58c0b41392de465722ffce1d2c9c0a39a013d1093ac4d1e906f",
+    "results/ppml-two_fe_dense-n61440-k10-t28-slopes_fast/warm-1/fixest_strict/result.json": "79dc669ad67e70abe564f95100e8ffc845fcd81e1d84a5f8aecd2243a6406702",
+    "results/ppml-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/GROUP.COMPLETE.json": "0a646f43ae0f66d1a79ebf38b298575d0f5d736fb16660e0213a296b6cf5463b",
+    "results/ppml-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/feppml/result.json": "c1709a95589da727bd839c67c68658481f41e367df7ffcec444b5307fd0e18a6",
+    "results/ppml-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/fixest/result.json": "727509ffc133350e31456e96e75bdc4496bec20f4f4396bf4d33665c02c8f416",
+    "results/ppml-two_fe_dense-n61440-k6-t4-slopes_low/warm-1/fixest_strict/result.json": "a6cb4d493c77924fd834d1ab2ec3eb0f3f02cb00ef6eab29702d4dac6b18be82",
+    "results/ppml-two_fe_dense-n983040-k10-t28-main/warm-1/GROUP.COMPLETE.json": "1bd41374ddfaf703604127a3ca96179d1f2aa874d75468915f76e1866742f39e",
+    "results/ppml-two_fe_dense-n983040-k10-t28-main/warm-1/feppml/result.json": "00e7c47b458662043cc5e307805450b06b27c98abc79eb660e76ebad8799f0c4",
+    "results/ppml-two_fe_dense-n983040-k10-t28-main/warm-1/fixest/result.json": "a0ba1b2223c7e487dd682c06f27d0243dda525e5cb248b99950d8d4173b5be74",
+    "results/ppml-two_fe_dense-n983040-k10-t28-main/warm-1/fixest_strict/result.json": "a21ec9b24c65e3c61a4ece75f092113a80056ff1f7864e36f9179deed053cf7f"
+  },
+  "groups": 8,
+  "measurement_fingerprint": "fb2ad5407afcea22d56155aa7858203bfcaea590f750ca5d06eeccce746cffc6",
+  "mode": "pilot",
+  "plan": "plans/pilot.json",
+  "plan_sha256": "7b0a6b64d2bbd08865daa4aa40700c3cda8e870c20c02104f5ec7aa89f5c194a"
+}

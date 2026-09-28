@@ -1,0 +1,2664 @@
+{
+  "authority": "Existing independent smoke explicit-design oracles; no new estimator fit or timing eligibility changes.",
+  "fingerprint": "fb2ad5407afcea22d56155aa7858203bfcaea590f750ca5d06eeccce746cffc6",
+  "records": [
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "5650533f30220e0b3ae042777b38157e2981cad72c81a41529452a58ba71105e",
+      "covariance_sha256": "9c4f777ccc9c3eb02759c3d332142b5880213b4ba78d67ef6ab86c4c1e659eec",
+      "input_sha256": "8e0750fb4c2e509e6f10656148c81dc4d5f378d0f923b2ebd54845d09b23f766",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 9.56029467486473e-08,
+        "covariance": 1.4999090573726783e-09,
+        "standard_errors": 5.501292493941541e-09
+      },
+      "oracle_sha256": "66713324022f1cc7c7a3ef9b7f923fee9438825d15e9f0fcda66ac22d5915201",
+      "result_sha256": "e2887c3a129b0d108d7abba97b3ea7e51476b6b7c3dcb161ecb7a02f506f07fe"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "af5b1352dfe9a150246be53839de93867d9d3eac9372fb02763e2a50f81664f9",
+      "covariance_sha256": "58efe1b05b5a3ae366f026e5b123a805187a19c9eaed8196a2ae380dff4680fb",
+      "input_sha256": "8e0750fb4c2e509e6f10656148c81dc4d5f378d0f923b2ebd54845d09b23f766",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 5.952457669889349e-08,
+        "covariance": 2.03681344773373e-09,
+        "standard_errors": 3.1155527689337888e-09
+      },
+      "oracle_sha256": "66713324022f1cc7c7a3ef9b7f923fee9438825d15e9f0fcda66ac22d5915201",
+      "result_sha256": "1e63b44461571e3af78bca7d1fcc4bd0a78100672ec48b75103b1deef5ad6cae"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "e6292033b114d22bfa4fce4d1ad7c68d10c2df7a3ef0e2b393f0c95177e10653",
+      "covariance_sha256": "606663c085fa40b293b8f304300728587f1efa1071bb89daa38bd5af4a6a4a70",
+      "input_sha256": "4ad3e71bb70c8fb7e9dca00d633d7d529f1bc823f20459ff4eb77636f307dd4e",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 7.809358629435264e-08,
+        "covariance": 1.8245213166474342e-09,
+        "standard_errors": 5.259120236346207e-09
+      },
+      "oracle_sha256": "d446c393d9123a613e66bc399fb083bee0813b2f8222f1d4ff7c6bc38c0d8b8d",
+      "result_sha256": "85d2231c0f1e05076a4572278a6066b881a8e71b328dc6c7ef811a5f91e6c9d3"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "8a0b03a60686e956a7c4e4e42bcbd773620df1be2508799760144dd5c1a03249",
+      "covariance_sha256": "11ddd387bff1190c21a37ffdd941dde31a4aabbec41104bb7fa6c70e629609a0",
+      "input_sha256": "4ad3e71bb70c8fb7e9dca00d633d7d529f1bc823f20459ff4eb77636f307dd4e",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00021996066443984863,
+        "covariance": 1.1480403806863281e-06,
+        "standard_errors": 5.711844779501623e-07
+      },
+      "oracle_sha256": "d446c393d9123a613e66bc399fb083bee0813b2f8222f1d4ff7c6bc38c0d8b8d",
+      "result_sha256": "84280b48e9cf5856db9fa769a4ab5c1b73cc3d7dc57110bbc7939d29df87ba1c"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "1d0ab3f0386dd05fa4abfda5b75a5c1da12b59afd85217e33cf1838747014437",
+      "covariance_sha256": "c5e27dc9d071e4a501d27af19d16ad6265bf17b8635f17b6551e69577dbe4319",
+      "input_sha256": "11cc88c3dd6ac7833a13d736e36ac24c0d46bea6484f520a23030c1e6e152eb9",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 6.600628129778165e-08,
+        "covariance": 1.9190257944666812e-09,
+        "standard_errors": 7.953310502417334e-09
+      },
+      "oracle_sha256": "d197f4065b8fa1194066a779aec260927e14d6488b544733bf71b6dca0036bae",
+      "result_sha256": "397b0f3e79aa4e7c551585476e9ee3b5d596190bb46a9f080b82160d4ca317cb"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "387cdf0fd808b5d9d42915d774b8cb6c5cd6d993e521f0ffeed5d8ad3e7d64d5",
+      "covariance_sha256": "d8b8b10f22a566c6ee931772ac388db330cf462fa96ce5cdb67d6164c91aca9b",
+      "input_sha256": "11cc88c3dd6ac7833a13d736e36ac24c0d46bea6484f520a23030c1e6e152eb9",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 6.355568632168479e-08,
+        "covariance": 2.5168202415004976e-09,
+        "standard_errors": 3.2060196953028933e-09
+      },
+      "oracle_sha256": "d197f4065b8fa1194066a779aec260927e14d6488b544733bf71b6dca0036bae",
+      "result_sha256": "cf8260a1ccea845ef9fc20d1e3d423fc3ab1c907a5bcde74dd4a1d024ec6f4dd"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "e4e70839fa60dce01d2e77423ce5fb64ab615704b4ee7cb1dcd713bba1ae9142",
+      "covariance_sha256": "c81369a64e822bc95d044b3473a6ebcef11b4f92d82b70a7f108bde7b2e6312a",
+      "input_sha256": "e922af86e7cd09ddbdb09a192929d9ebf7764e469bede83faa459a5a9f5e5bc4",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 1.78444168054442e-07,
+        "covariance": 3.2657653610533e-09,
+        "standard_errors": 8.142699597184518e-09
+      },
+      "oracle_sha256": "bf6eebd73fe4a7e00f6538643bff52b6dc2bf0831cc6a23e6c5cad68706ac35a",
+      "result_sha256": "bd53a460675146fb5be236436a5d46cf1ae96509badfe6e105320632bf21a033"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "4d0f8f456ff79d00b24b32039c1a64f7d4b25a1698b4e142970387004322edc3",
+      "covariance_sha256": "95204c9736ba21774b9dcff3d45189b23af01c8ff5bbadb9c6d70cb249705226",
+      "input_sha256": "e922af86e7cd09ddbdb09a192929d9ebf7764e469bede83faa459a5a9f5e5bc4",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 4.6529957940015136e-07,
+        "covariance": 3.894654349736896e-09,
+        "standard_errors": 6.540857053476087e-09
+      },
+      "oracle_sha256": "bf6eebd73fe4a7e00f6538643bff52b6dc2bf0831cc6a23e6c5cad68706ac35a",
+      "result_sha256": "c727ca540a809272636232d4988f3857e43166cea1ada7bbb7eb88deacdf0683"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 1920,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "06e68bf85cca780601310a9d42f461ad351f63a1fad7bc61d57aa6a38cca9f3c",
+      "covariance_sha256": "0ffba1ff1b2db7c3e502d4ec4457469ab99abea3629e0767275d99da390cd38b",
+      "input_sha256": "78883e46b43c1e542d63689897dc9fafc9174159d69c320483d6f265c2026129",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 2.5389069446680333e-07,
+        "covariance": 1.734377315988386e-09,
+        "standard_errors": 3.2869111577169765e-09
+      },
+      "oracle_sha256": "1f98986f2cd59ec3688a8ffd6bcf9011473b1e65ae43c4f729ee8a49a3e7dd2d",
+      "result_sha256": "c419b375ea3211b1544b4419871ad22fcda5da65b90baf2661a30eeff25fe1b8"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 1920,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": false,
+        "objective": true,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "18e1a201a286de007f17245c21d79f7b976ea3587f6ffb4a2aa16c0aa1e3e84a",
+      "covariance_sha256": "2606b60263836cf00288ced3c030c329f8e168d37dc706af3fecbc25d39551ff",
+      "input_sha256": "78883e46b43c1e542d63689897dc9fafc9174159d69c320483d6f265c2026129",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.16442323618173618,
+        "covariance": 9285.868335414629,
+        "standard_errors": 7075.172758747692
+      },
+      "oracle_sha256": "1f98986f2cd59ec3688a8ffd6bcf9011473b1e65ae43c4f729ee8a49a3e7dd2d",
+      "result_sha256": "4d41a70140eb31304b15d97002380827ede65b49e70dc27f06c43a1cb8289a79"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ols",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "d1a66e0a0b398a633c6282a39fcb3b7218d8c4a07eaad1b54860f34e7fd4de1f",
+      "covariance_sha256": "e6bf3b092d295e285fecc5f94f2cf8831e1c1db2f7a9e5f3972e2ed587dfa549",
+      "input_sha256": "5cdef1721fdc1395810d943a3a0310f26f4547ece4aa9786e04d0a34f6ed6e60",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 3.694406375398404e-08,
+        "covariance": 2.5764604183205597e-09,
+        "standard_errors": 2.500228173095718e-09
+      },
+      "oracle_sha256": "91f6e639db8cc26adcb7e7aa0d9c0431c1775e5f9cf1ec5694f787e2aba1e004",
+      "result_sha256": "df1b26e9e1bead6844b87105580cfe733f9b1b86e1f2ad2b1858cf270574ccb2"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ols",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": false,
+        "converged": false,
+        "covariance": false,
+        "objective": false,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "0d8b5715b09a87b9cafa25d2f29d730468d00c2475f89bd0a5a33ee2af6eb8b1",
+      "covariance_sha256": "3ed3c4b12c62dab256952183dae2f131f9a1e43da3ee88421bbbadee4426c0f0",
+      "input_sha256": "5cdef1721fdc1395810d943a3a0310f26f4547ece4aa9786e04d0a34f6ed6e60",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 12034.73911394697,
+        "covariance": 132835.15968444265,
+        "standard_errors": 69158.727875168
+      },
+      "oracle_sha256": "91f6e639db8cc26adcb7e7aa0d9c0431c1775e5f9cf1ec5694f787e2aba1e004",
+      "result_sha256": "421b186f08631dad7883459749668841e14715bcb7ced2cd3d1f23325e6f4dc8"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ols",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "92f2c8c7f503902ca7ac2355d1e0f9a70f33df2c8bead591216adf681e74ebaa",
+      "covariance_sha256": "c60f9ac4c3759345892f07640de126357b5c3fba088faeddac619fd906c54ba2",
+      "input_sha256": "8f9a7ddd40058ff4febe538477e79657ab35eb5e6e078d22d683040e14376564",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 4.530780819506878e-08,
+        "covariance": 9.752673601491511e-10,
+        "standard_errors": 8.202211390738097e-10
+      },
+      "oracle_sha256": "897414e350265f401857146ff8ec0686516223ba47a436db85be132e27b9de12",
+      "result_sha256": "0a1ee0df2ec9309d39f8fd378bc7e08ff58cead6e0846915f2322675999e0e00"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ols",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": false,
+        "converged": false,
+        "covariance": false,
+        "objective": false,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "fe7c592829583562a79f444abcc44e35eeb27f5472e4c20e4ca271af64a1fdfe",
+      "covariance_sha256": "2f1a2d23338ca42c5dec58074de6b00a477cd1ec9fd1fef7c4f54e387c1d7577",
+      "input_sha256": "8f9a7ddd40058ff4febe538477e79657ab35eb5e6e078d22d683040e14376564",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 21121.529563720975,
+        "covariance": 130360.59430864034,
+        "standard_errors": 67939.10009606034
+      },
+      "oracle_sha256": "897414e350265f401857146ff8ec0686516223ba47a436db85be132e27b9de12",
+      "result_sha256": "2fff2225080f0283fbf1b2f7dd68523cffaf8cbfa724dc7850b32b078011a4c7"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "c83e2f3df8ce92268c50086d507797a7b37fa81af0bb0683c76a5a2284797df9",
+      "covariance_sha256": "06aad96c0ebb6f803781cb41f675675c593976a4d0b971f7242cfcd858ac77b0",
+      "input_sha256": "ddd7d4e1001bcb640914fc16e5318f8dac56ea477d0d57f145d215039080f41c",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 7.056885636579049e-08,
+        "covariance": 1.6011459301701424e-09,
+        "standard_errors": 8.526741367082992e-09
+      },
+      "oracle_sha256": "aae3a7159ee69b58179adb69a131d9e6d3c1ba4e7f5fb9a140270786e39c65a5",
+      "result_sha256": "0aae0af2a473052272f47c2d04188e36f7f400873bcb71996f0f1cb65b242e96"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "7d5050e7867ce6d01ce7977e2119076c587cb8866ec722cebb7529ce17760877",
+      "covariance_sha256": "57d8041c457d1beadcc3b932d373472114d2252f1b2123a2138a965bf85a085f",
+      "input_sha256": "ddd7d4e1001bcb640914fc16e5318f8dac56ea477d0d57f145d215039080f41c",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 8.740001874351367e-05,
+        "covariance": 3.577543938771591e-07,
+        "standard_errors": 2.9946601165821e-07
+      },
+      "oracle_sha256": "aae3a7159ee69b58179adb69a131d9e6d3c1ba4e7f5fb9a140270786e39c65a5",
+      "result_sha256": "2b02b2a7b589dba4d353e96e09dd0ebfffdc9a22ce8f3c57ce7872c9c57072fb"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ols",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "2c3fcf3f843077c5dc2dfc9064491c4cc97226c87ffd84fa2cbea47384714b9a",
+      "covariance_sha256": "49af6730dee287978f02208c7f3a8536601c297d5f02520184e4b113625cd339",
+      "input_sha256": "d5ef37a5fb5c575307ae218c853b97db813d13d6ba3488baef2b752d1fb053c6",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 1.2712948923386236e-07,
+        "covariance": 2.153633316136043e-09,
+        "standard_errors": 2.6695939732743918e-09
+      },
+      "oracle_sha256": "bf57369a0f56b21ffaf8490865ec47c97995e943bb8b950552bd9b194b8f6b86",
+      "result_sha256": "8c089e69d0938928c79f738ad4557048d393f903bc49c6fb8ccc01af60831e79"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ols",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "2f19bf2271d6b4e6eaf1c8fa200ff646c16eb746b1b776739def07d40d9fd322",
+      "covariance_sha256": "6d382a08f04b91aa4e44a74b79258f10e764e9e0a16cd2f0c176ffc0b9d6c798",
+      "input_sha256": "d5ef37a5fb5c575307ae218c853b97db813d13d6ba3488baef2b752d1fb053c6",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0001354732290397297,
+        "covariance": 2.8322853275208287e-05,
+        "standard_errors": 3.788019629138846e-06
+      },
+      "oracle_sha256": "bf57369a0f56b21ffaf8490865ec47c97995e943bb8b950552bd9b194b8f6b86",
+      "result_sha256": "84f03800903ce56dda63384df09190c79b18f9b78f88f62f4abd49ed6c4beed2"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ols",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "9d1c547fdca5279cbc4d781a727ed1dd7c8a11b85c8c744da1d711b743c37ccd",
+      "covariance_sha256": "f4b227bfac490244c5b202072d7f0dd0f2b4e14c2b2e18c7eed0c930166fd1a4",
+      "input_sha256": "8814a323e1907502574c2f54cefb44135c8e928eb7e2de9f684272aa155bb316",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 1.9257243174951177e-08,
+        "covariance": 7.849127756455105e-10,
+        "standard_errors": 1.7620190654286942e-09
+      },
+      "oracle_sha256": "9aea6cebd08addbac82549b859399f0d2a1f244f66df6fe66e73d31c1eec8aa6",
+      "result_sha256": "1d6ada73efe7d7679f0d28c95f6c35774ccee44bb4b76b7f50df96d951f0c4f1"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ols",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "ef0ccfed6488fddfaeeb1bdbb6316491550b661a907014e9802a673c53e01262",
+      "covariance_sha256": "38638b41e9452096f79815d03f3dd04bca5d03143557f27c5ddb736d24b4a226",
+      "input_sha256": "8814a323e1907502574c2f54cefb44135c8e928eb7e2de9f684272aa155bb316",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 8.082746357127324e-05,
+        "covariance": 1.915202268487599e-05,
+        "standard_errors": 3.507616309445056e-06
+      },
+      "oracle_sha256": "9aea6cebd08addbac82549b859399f0d2a1f244f66df6fe66e73d31c1eec8aa6",
+      "result_sha256": "1be1d2701550c06af6192c1e857fe2ce50860eec04c89cb5475a0c0c77d47824"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "8cebfd88e7316f84218e3b1ee68df467a4edd9476cc153659f1996769794d245",
+      "covariance_sha256": "fca6f6652c4e5709fa250f257284195533607e9c729c8059859cc866f5951bb5",
+      "input_sha256": "af9ecfe758f595ca1deb31690445ae8cef12a8b146548992aefa7e7c0af1b314",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 6.228161954873303e-08,
+        "covariance": 1.348264568727644e-09,
+        "standard_errors": 7.569653110294544e-09
+      },
+      "oracle_sha256": "7085c888fa5eeb73d786076a2f92a0560960f8bac1171823c1668ce12b07cdb0",
+      "result_sha256": "b8594434c404a9167bb7b1920b5019226272fec1bb2ba07da53a9c03c789896b"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": false,
+        "converged": true,
+        "covariance": false,
+        "objective": false,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "8314553fb4980fe53870e420e7037c18ea09e2bfee2005df78d0fd3039d7bb70",
+      "covariance_sha256": "654d6867daa0808dec8f1a5e20ed7fdce103a3b57af0f7d0978109e2ed866e73",
+      "input_sha256": "af9ecfe758f595ca1deb31690445ae8cef12a8b146548992aefa7e7c0af1b314",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 14.939974176906237,
+        "covariance": 48.91140673702982,
+        "standard_errors": 81.39912984110286
+      },
+      "oracle_sha256": "7085c888fa5eeb73d786076a2f92a0560960f8bac1171823c1668ce12b07cdb0",
+      "result_sha256": "8ae656bc26e8cbfd8ab6b311c13f708f775c8e63f41a44778f15a21b9d3c1eb5"
+    },
+    {
+      "arm": "fereg",
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "1a63819c182b037c1936b526c347f85081613f10084d86240dd60aa9b6ecfd07",
+      "covariance_sha256": "1ba93f9d4ee292b607b86409d6d1ada1eb4137539375e770bc79b14c4cbf7056",
+      "input_sha256": "f7f1181b5b4420e4513c0c825ea79f71e89a753ae909b3538f0c56e838b25df3",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 1.3664137722755106e-07,
+        "covariance": 2.301479441962817e-09,
+        "standard_errors": 8.160835397135078e-09
+      },
+      "oracle_sha256": "d8ae2a81bad8298307526b173f9cd45e373b645a2b49ef6a2ca42134adb5816e",
+      "result_sha256": "9790e666db544355af9e5c43ca61078dc9414a1c0ebdb15d09d7cc9b3062b239"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ols",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "f56e0091c408cf7ad43cd19042d6edc50b7188c0ed934960617872abd4f6337b",
+      "covariance_sha256": "e130caa1031e317d5ad851007b2df8c70c2287f246a4528f75b008851b9c5ef2",
+      "input_sha256": "f7f1181b5b4420e4513c0c825ea79f71e89a753ae909b3538f0c56e838b25df3",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00491126072345323,
+        "covariance": 2.702032974972608e-05,
+        "standard_errors": 3.2905985196756055e-05
+      },
+      "oracle_sha256": "d8ae2a81bad8298307526b173f9cd45e373b645a2b49ef6a2ca42134adb5816e",
+      "result_sha256": "dfda095a789dc51a7d5ea735f1f3c48e7195d4ed6dc67d8acb41b4704777a124"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "af5f9bc81893abbf8425fa032a69d20f8dedd0cbc742710473f6fbd245b7b1f1",
+      "covariance_sha256": "359b8ef4cdf091dd45712d2655a83fde955f2e34e2405339bb75ca092b1d594e",
+      "input_sha256": "d1d411c7ff8ffd6774cb7e133da4b444c5e323bf42aa533adbe994d452c3d20c",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0004695793239081968,
+        "covariance": 3.9574493310344215e-09,
+        "standard_errors": 8.981102985771667e-09
+      },
+      "oracle_sha256": "e5282edc9c4dcad7e2ec9021620725605f1186c6e6396554a8b85d43dc079142",
+      "result_sha256": "f25e7dbb5ddd1d7f0e7ad50af7eb146f2147f0ff7a7db6cd4eb3ba8499fa58c4"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "c2c4c1b6d06037badc231762d42b8f660f97f57b0a3420ed02d99243bffd6a77",
+      "covariance_sha256": "e5ab4a10be610e3ea6277f8c06e03659d25bfd66d56172cc62ff98ea3450cb3e",
+      "input_sha256": "d1d411c7ff8ffd6774cb7e133da4b444c5e323bf42aa533adbe994d452c3d20c",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0004691894035226704,
+        "covariance": 0.09842260365131913,
+        "standard_errors": 0.1692681830848785
+      },
+      "oracle_sha256": "e5282edc9c4dcad7e2ec9021620725605f1186c6e6396554a8b85d43dc079142",
+      "result_sha256": "63b779732bf8437754e09fa11d8aa2d196cfcf97148cb690e8aeba261d0e9a5c"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "c2c4c1b6d06037badc231762d42b8f660f97f57b0a3420ed02d99243bffd6a77",
+      "covariance_sha256": "e5ab4a10be610e3ea6277f8c06e03659d25bfd66d56172cc62ff98ea3450cb3e",
+      "input_sha256": "d1d411c7ff8ffd6774cb7e133da4b444c5e323bf42aa533adbe994d452c3d20c",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0004691894035226704,
+        "covariance": 0.09842260365131913,
+        "standard_errors": 0.1692681830848785
+      },
+      "oracle_sha256": "e5282edc9c4dcad7e2ec9021620725605f1186c6e6396554a8b85d43dc079142",
+      "result_sha256": "ed1d1bf57f2f01db58428252f2ae119e38274ff9ff09e07f481e1aaf297c9273"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "365dcf2df55852be69289248780742a366ea205aa3eaa6ecac1062f4077104cb",
+      "covariance_sha256": "1bbbe6730e499db8d9caa1f53f83a0902ba93989e3162c7f64b39a628c534fdf",
+      "input_sha256": "cb8539dadde0b39a74c09e5c8c10304249e1d320f7d3656218365d6966fb9246",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00012624754131833015,
+        "covariance": 3.086679628781212e-07,
+        "standard_errors": 1.187296031961319e-08
+      },
+      "oracle_sha256": "62a972bab01a235906cee11f4cb481a758c837a5da25dc9a429933a5032d1be0",
+      "result_sha256": "1d53d1766e6a910ba31ad80f03e962ddd0479f3ce4b0bd1af172fcd45e694395"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "2185dd052baf6f319be2d884e3454289b0c77969c2514a76bb0a7d4602df0e46",
+      "covariance_sha256": "41ea8347c0b63d542fec52e163296298351ff3a01712d90bfd36c891bd86c6d8",
+      "input_sha256": "cb8539dadde0b39a74c09e5c8c10304249e1d320f7d3656218365d6966fb9246",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0001261525469305812,
+        "covariance": 0.1713567583087446,
+        "standard_errors": 0.026022463066038844
+      },
+      "oracle_sha256": "62a972bab01a235906cee11f4cb481a758c837a5da25dc9a429933a5032d1be0",
+      "result_sha256": "6f18bb3f896a7c54a5dc57cc018a7b77c80e421971b15256a77c7216a68afd6d"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "2185dd052baf6f319be2d884e3454289b0c77969c2514a76bb0a7d4602df0e46",
+      "covariance_sha256": "41ea8347c0b63d542fec52e163296298351ff3a01712d90bfd36c891bd86c6d8",
+      "input_sha256": "cb8539dadde0b39a74c09e5c8c10304249e1d320f7d3656218365d6966fb9246",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0001261525469305812,
+        "covariance": 0.1713567583087446,
+        "standard_errors": 0.026022463066038844
+      },
+      "oracle_sha256": "62a972bab01a235906cee11f4cb481a758c837a5da25dc9a429933a5032d1be0",
+      "result_sha256": "7d9fce76dd5915987696f3f3c71a3d958e95f449846b16d361bcc23dacaf1f53"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "d65075328736e3ccb96bd7148a855f2c64a7b4227331a7de22c28c77eb8ca12b",
+      "covariance_sha256": "dd45c7d1cd6d4db0c3cf37f02df6ef942c0d446954fd9ac635afa06ecd5baf56",
+      "input_sha256": "645acd43fedc4447446cff33d0380a525f2fdebc35be1c8296367bbd5a076295",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0027513459995459483,
+        "covariance": 1.7453556417158797e-07,
+        "standard_errors": 2.5415832867584326e-07
+      },
+      "oracle_sha256": "20a4938652ad100b792016aa58c01b0944f76f814320f1eb42448c80e520f8a5",
+      "result_sha256": "023d8f89a4f5428bfe883fa629fdd3ca3911cf77181e8e261778099eca961baf"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "0dac0180333dff5be2de4825574890938335e4ec2c52053d140e681913865bcd",
+      "covariance_sha256": "0b329482dbca970920c5740411abd04f4c86796f38f6dbfc575e4f9be86d2cbf",
+      "input_sha256": "645acd43fedc4447446cff33d0380a525f2fdebc35be1c8296367bbd5a076295",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00156258223297951,
+        "covariance": 0.3027429589331217,
+        "standard_errors": 0.5062220747706252
+      },
+      "oracle_sha256": "20a4938652ad100b792016aa58c01b0944f76f814320f1eb42448c80e520f8a5",
+      "result_sha256": "fdefcaf54d2dcf08cdb6ee249f4dade6f1702e55a10bc1b637112790d0ce40ac"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "strong_d2",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "131b952d22ff2b8e9028a0988130df982bf56a80f4fd7117ddc6c2e066824b45",
+      "covariance_sha256": "f5cb6b2351ee760f03e9da5c7a924418534f84cec00cb1d926918c05a7874b37",
+      "input_sha256": "645acd43fedc4447446cff33d0380a525f2fdebc35be1c8296367bbd5a076295",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00045812427500110513,
+        "covariance": 0.29890180862793736,
+        "standard_errors": 0.5170344171901939
+      },
+      "oracle_sha256": "20a4938652ad100b792016aa58c01b0944f76f814320f1eb42448c80e520f8a5",
+      "result_sha256": "3dfd58c1bcae346bb578d96e65318f93bae1174787047f25f05bd8794911798b"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "7fb32692e3c26ebe6cec0e96f6edc21523871a2dbcf0e0ea3012f3e2ae2e256e",
+      "covariance_sha256": "ffaecd3c0afab078a5090ad863b47d0dbef7667d6bcf703b81ccbf73a59c64c1",
+      "input_sha256": "b2736e4c53202d9428b02b00b66833bc17080925aaaca46ab198e2b5ae8e2d42",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0007720270496480834,
+        "covariance": 7.700351848197651e-08,
+        "standard_errors": 9.86650366057642e-08
+      },
+      "oracle_sha256": "d717669d07830a0a7b5db1c58f3916e332fa7f3487e632669e03ac4b7f9363e0",
+      "result_sha256": "c4e0433eb75a59f4b55de3fb8770f1cd335632931e27958a2710553ccf84d786"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "cc8d843effd761dc6e7288d9271dce6d21e7b6c6028827cd5ee66361f9a46a10",
+      "covariance_sha256": "da5c5c0782779e4cb38b5501fc977cba43dd21ca2b5b561a06f81b84a6455c82",
+      "input_sha256": "b2736e4c53202d9428b02b00b66833bc17080925aaaca46ab198e2b5ae8e2d42",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0003594482417690821,
+        "covariance": 0.42542624067930074,
+        "standard_errors": 0.7368071163799633
+      },
+      "oracle_sha256": "d717669d07830a0a7b5db1c58f3916e332fa7f3487e632669e03ac4b7f9363e0",
+      "result_sha256": "99331e79f3caa9bdc46588eb373c0f117e57d8dbecc1b72dd9196a3ebb36dba4"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "strong_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "c5858b3bd12481e7d03b122e6419ca98c0dea82b59459d88d336aeb6640b5439",
+      "covariance_sha256": "6050d6f31134f2488c641b4485f84ea19bc3c28098c6b99280299bc5cd4ded31",
+      "input_sha256": "b2736e4c53202d9428b02b00b66833bc17080925aaaca46ab198e2b5ae8e2d42",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0003596259394739042,
+        "covariance": 1.686151893307247e-05,
+        "standard_errors": 2.920319352359694e-05
+      },
+      "oracle_sha256": "d717669d07830a0a7b5db1c58f3916e332fa7f3487e632669e03ac4b7f9363e0",
+      "result_sha256": "02982a614a5afb0dcee034522356099d402cef61a8b5e885954ec456afc3d136"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "a255979247f00ac6d76f7fa8c9ecd30d0602bb398e224f0de639d0d5b85a18af",
+      "covariance_sha256": "06e01c8f7e487c9082563e36c220fe42d5eff17a997b5a2f719a07a05e70bb01",
+      "input_sha256": "ae1fe998b64f2b57ebd93565bd24b006defeef1efbd6e82a9070c687409660d7",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0007716196059326978,
+        "covariance": 4.002016118866033e-08,
+        "standard_errors": 6.446568629994156e-08
+      },
+      "oracle_sha256": "d1a227e6a838fbd9017238b1e19d173a2d36c8792e41982e01e506d4d01cc00b",
+      "result_sha256": "fa48fc90e81a804c3821c10d3d751af0262f39d432ea1557bd68ce60a1a2c4f8"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "645513c6a594d641b158cc18f784056e449e551faa4553488b6da51d87c22963",
+      "covariance_sha256": "9a93e959680b6a2db5a1a02bebd449eb56acac89305bd9c14c64f9d427d59feb",
+      "input_sha256": "ae1fe998b64f2b57ebd93565bd24b006defeef1efbd6e82a9070c687409660d7",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00019295192508412065,
+        "covariance": 0.09348217338570858,
+        "standard_errors": 0.1683485550253547
+      },
+      "oracle_sha256": "d1a227e6a838fbd9017238b1e19d173a2d36c8792e41982e01e506d4d01cc00b",
+      "result_sha256": "21e240d62efad63158d21dc89ca86acf665d3d569c1ae78f66d1cc63548af7e3"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "strong_d6",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "cde6eaa2a3bc9a4840084ac1875151e77161d6cb6405087170139444186f559c",
+      "covariance_sha256": "6c598961b68f32b3af0420b5bae1e0e8c4cfab3da43c94d742314229bbb407c4",
+      "input_sha256": "ae1fe998b64f2b57ebd93565bd24b006defeef1efbd6e82a9070c687409660d7",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0001930014040737456,
+        "covariance": 0.09370265231833277,
+        "standard_errors": 0.16874560683721485
+      },
+      "oracle_sha256": "d1a227e6a838fbd9017238b1e19d173a2d36c8792e41982e01e506d4d01cc00b",
+      "result_sha256": "bf0f70372b4873266d626a3089e79b79935c2470bf2b5da2827f3383fa5f5fc1"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 1920,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "1a6270a0fe41a8efdb08fc75b257814688c62e3a1525ef16c6699ffd9be560a9",
+      "covariance_sha256": "59e86a3c1353e80d50845868072b5d07b72148010f7e37335f527e36e1963ea4",
+      "input_sha256": "7d22b4670c3089082b35b18c7bff902dcf91a7c67a88c1785b5dcf3ca1ccc575",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0016202214211647502,
+        "covariance": 4.919448708934531e-07,
+        "standard_errors": 3.423397593421091e-07
+      },
+      "oracle_sha256": "faf959429d5e8063b91d09dc25b35f422565bdef61cb5cce70985cf84de709a1",
+      "result_sha256": "4df4a11fc655de3da945261e74d8f804fb02487cc85e129de6f6bdc98ae199e7"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 1920,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "a85639da3b18d215ac45f60cab6f4627a638284d3513d27a11063fe27f068be7",
+      "covariance_sha256": "934c9ef0c5497532c990115596edf653d4b9cd7dc4596049983fa09f91c63b3d",
+      "input_sha256": "7d22b4670c3089082b35b18c7bff902dcf91a7c67a88c1785b5dcf3ca1ccc575",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.020379794246219118,
+        "covariance": 0.3883307814704045,
+        "standard_errors": 0.30121870957880925
+      },
+      "oracle_sha256": "faf959429d5e8063b91d09dc25b35f422565bdef61cb5cce70985cf84de709a1",
+      "result_sha256": "77058d199413bf0ef10adc746ebfed2ad7e441e6723b9371c453a4068fa40f13"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 1920,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "5d5afd37ad63b093b2b6077b9f24453bd688515bac0c1fa393ccc120eefeb990",
+      "covariance_sha256": "1cf47285bc0087ae488d6c18ae9f4ed0dff520b089edbcd3ee3017e69bf2f3ac",
+      "input_sha256": "7d22b4670c3089082b35b18c7bff902dcf91a7c67a88c1785b5dcf3ca1ccc575",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0017366627397757495,
+        "covariance": 0.22084996720349465,
+        "standard_errors": 0.18060235111392953
+      },
+      "oracle_sha256": "faf959429d5e8063b91d09dc25b35f422565bdef61cb5cce70985cf84de709a1",
+      "result_sha256": "42a6d02383b8e209412d79f54c4a7c0ba53116bb15a14bc1ae79f40362366807"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "31f5153c882441d528b1a0647fa9ce3ffc27d0e996c7057121b85d3d50d5b81b",
+      "covariance_sha256": "728d393c960e904a329483ac721787de4bf8691e5a2c17a08fab09eb010ac745",
+      "input_sha256": "825644a380634e99a8729428b01d88abba3eda71a94a5b3035d85dcdd22d34cf",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0051088358476232025,
+        "covariance": 1.4218314401187371e-05,
+        "standard_errors": 1.531177964183773e-06
+      },
+      "oracle_sha256": "0b0e8659f95813f63719381cbc6ee01eaed26ec34f842b1d80b1032c3e3cf7be",
+      "result_sha256": "be75b3e271cc282403b8456f897b0095ec69550e467128056364121cd0b9372c"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": false,
+        "converged": true,
+        "covariance": false,
+        "objective": false,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "5a47606951e7febe23f43216b543c40c30cb262ed0971237e7de456cb18e09e4",
+      "covariance_sha256": "ea47518ee5f180e859add3de248c66716558585be7b37ec8ba27564894f9437a",
+      "input_sha256": "825644a380634e99a8729428b01d88abba3eda71a94a5b3035d85dcdd22d34cf",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 20.007953124911687,
+        "covariance": 187.40096726592134,
+        "standard_errors": 10.122127347161625
+      },
+      "oracle_sha256": "0b0e8659f95813f63719381cbc6ee01eaed26ec34f842b1d80b1032c3e3cf7be",
+      "result_sha256": "d47b06f27f8d1dd98acb0c30f2b8761c907c5ec25759e66d0ee972bacbee79b3"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "125fd6be9c1de92c061a693d6180bf2f386aa63a6ddcad8564c686acebbbb1b9",
+      "covariance_sha256": "80742e41864a73428d13a021acc33bae8556924eafaf7208aaf3dbdf6bb3b557",
+      "input_sha256": "825644a380634e99a8729428b01d88abba3eda71a94a5b3035d85dcdd22d34cf",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.005104787613753079,
+        "covariance": 0.007256853336747646,
+        "standard_errors": 0.0008882522878476788
+      },
+      "oracle_sha256": "0b0e8659f95813f63719381cbc6ee01eaed26ec34f842b1d80b1032c3e3cf7be",
+      "result_sha256": "9b43636be010772730dd52dd2d90720cb4b1b9b4e4e6751625655c3e4a33948b"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "7630cc0352a5c26e5c6c95deabd189d0401ceafa15fd49116975d5077e2f47ea",
+      "covariance_sha256": "5bf78d9550f99e7e431a88bbb48161e516c416580dea6f704238ab59a1001156",
+      "input_sha256": "f36d2c9171e9c44c21178e08272869ec5e7606a3014af4f2bcec0a7381598dfc",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0008398666152887445,
+        "covariance": 4.337879137591167e-06,
+        "standard_errors": 4.7423101884438705e-07
+      },
+      "oracle_sha256": "31b76e4f46027683cfff9a0e4ddc7f22d9332fb031760b6cd6d2b4a23d2c268e",
+      "result_sha256": "94ef28f27f10447751553fe70f7b212e38f7675a26f3f0991f35c928126d2a1e"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": false,
+        "objective": false,
+        "sample": false,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "2951a007aa1f256ae2510c2ff571aa289979fb4ba135014d9bbd2e03eeba3ae9",
+      "covariance_sha256": "0ae2d7ca72bcc0866356ef6615399ff3b86e32b4d0e0d2e7bdfd801c61c8ebd0",
+      "input_sha256": "f36d2c9171e9c44c21178e08272869ec5e7606a3014af4f2bcec0a7381598dfc",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.9700034574408744,
+        "covariance": 8.36604438748703,
+        "standard_errors": 3.789277740640083
+      },
+      "oracle_sha256": "31b76e4f46027683cfff9a0e4ddc7f22d9332fb031760b6cd6d2b4a23d2c268e",
+      "result_sha256": "9a88b1ba0b4867608d8591c4a22bf3813c02f64659df0c828d6d62db5d4af7c8"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": false,
+        "covariance": false,
+        "objective": false,
+        "sample": false,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "d0b04b49f9983956e2c2e7e652810086b4f3878bde7a60be57e6e8d0ef26af97",
+      "covariance_sha256": "5d40b422de5a1c612cd3e1f00130933a8a3323024704b929a1483311452d843d",
+      "input_sha256": "f36d2c9171e9c44c21178e08272869ec5e7606a3014af4f2bcec0a7381598dfc",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.014269568884900238,
+        "covariance": 8.425119686976494,
+        "standard_errors": 3.7590304894987647
+      },
+      "oracle_sha256": "31b76e4f46027683cfff9a0e4ddc7f22d9332fb031760b6cd6d2b4a23d2c268e",
+      "result_sha256": "47c36392f738c76e272815068e84d4363fa3db57386c554f6d4ec70075d2c7d7"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "ff2ea595d17f32da8c7cacd0baf85126fb9a9606068892625e08d9dba98851b0",
+      "covariance_sha256": "5967115ed3cdf51e763a047c159a084b416cc3fbe9270bad3518ab7baf1b8591",
+      "input_sha256": "ad3e67b895c161c8a17e6f92477781d1980b0e386dd80d626409b2b1f4eacaa9",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.002216044967881681,
+        "covariance": 1.310936500381877e-05,
+        "standard_errors": 3.84424726330713e-06
+      },
+      "oracle_sha256": "9ce1ee7fa7b6a81cd6ab7ae0049ea1975503729f7357e556cf2fd87648760c73",
+      "result_sha256": "8710680aab2fabbfc5748b58dc4ddae64ab8124c940239bcd45fd11128fba8f9"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": false,
+        "objective": true,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "0f416ce915a259ff2f3f1e025ec43b2aa138bf31c3645dafaa2b04ebc75d2121",
+      "covariance_sha256": "fbf634e48644ff6ffe60c8303b2a19e72793239825a9788f9a3764f3c29d8939",
+      "input_sha256": "ad3e67b895c161c8a17e6f92477781d1980b0e386dd80d626409b2b1f4eacaa9",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.9908778645641672,
+        "covariance": 94.27358602346018,
+        "standard_errors": 10.156919110487427
+      },
+      "oracle_sha256": "9ce1ee7fa7b6a81cd6ab7ae0049ea1975503729f7357e556cf2fd87648760c73",
+      "result_sha256": "6d19bac03197a30310015967a58c2874d27236cb813199036e76b3dd365c660c"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1",
+            "z2"
+          ],
+          "g2": [
+            "z3",
+            "z4"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "7b8b87f553e91e2da9d11867eebcfe02ff1395984f31c8a59983da0c35d6a4bc",
+      "covariance_sha256": "5a7cc5a55610a1830115a56b93690ed7b0a1091f9233dad30e807024c81f9389",
+      "input_sha256": "ad3e67b895c161c8a17e6f92477781d1980b0e386dd80d626409b2b1f4eacaa9",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0021832939004608003,
+        "covariance": 0.1454167684804348,
+        "standard_errors": 0.013689781078498468
+      },
+      "oracle_sha256": "9ce1ee7fa7b6a81cd6ab7ae0049ea1975503729f7357e556cf2fd87648760c73",
+      "result_sha256": "fc1d7944815f9e14ee8fc545d92e09cbefa1a056650715dd6d8b5e222f51075a"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "49f00808c9035cb2251f0e7bb1b35de24386ad01700a56cdae596545290746cb",
+      "covariance_sha256": "c7c673d0c5e8b4d2bf57b2776d005371feebc11e1111f06a7b62353118801623",
+      "input_sha256": "1f812255431002f5d16dcd1ed8d8af523c90dc922e2a9cf69bc725ad6d767444",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.001381347227224395,
+        "covariance": 8.677815952199479e-08,
+        "standard_errors": 1.474266857894566e-07
+      },
+      "oracle_sha256": "c2dcf2d7361a8e2c2ce09934548755a3cca57f6fbb7e1d51819616e3e98b44af",
+      "result_sha256": "dbc4ecbf96c9304b248bbaff42ff825cac9998e901792118a3906a9f5235422a"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "2bcb671faa7a7fc497c6727e1d2f9cbb2c3170721e8eec923d7d6b2bf086ccf1",
+      "covariance_sha256": "b8d4fabd0ec81ec34f4cb0b3e72ade870eaec950822e205781bacfde169d4f07",
+      "input_sha256": "1f812255431002f5d16dcd1ed8d8af523c90dc922e2a9cf69bc725ad6d767444",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0013792536184573652,
+        "covariance": 0.12424999853302543,
+        "standard_errors": 0.21532702344846866
+      },
+      "oracle_sha256": "c2dcf2d7361a8e2c2ce09934548755a3cca57f6fbb7e1d51819616e3e98b44af",
+      "result_sha256": "915dbc24a53921e784673d8d6853aa1a7ffe4f170814247b07196c7605611dde"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "889feeefac8f5ad1a38fe5db941ab318cedf131eb94f04ae19429b29af19a4ea",
+      "covariance_sha256": "4ec999acf646b70a73550ac61a2128402daf8531a64fb1caa7d81af76d27ade3",
+      "input_sha256": "1f812255431002f5d16dcd1ed8d8af523c90dc922e2a9cf69bc725ad6d767444",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00015593715704909772,
+        "covariance": 0.09680846201039664,
+        "standard_errors": 0.16777044489659046
+      },
+      "oracle_sha256": "c2dcf2d7361a8e2c2ce09934548755a3cca57f6fbb7e1d51819616e3e98b44af",
+      "result_sha256": "8cbbc57cede44857cde6e690f8191bc7c1b2eed9a26df12ac0f70831e4915dba"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "2013d511cb11f5801cfc4044013fe827a8837d381bd31d10ba33b1f54284f388",
+      "covariance_sha256": "d9c1bec10cfb05044cc95f643d92bed62cdaa64f318f95999515637dbfc39a83",
+      "input_sha256": "e30ebcf417175c7c8e19a0c0e273c472c5866d49fd641fabbaede11534f0aaad",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0003202149780832531,
+        "covariance": 2.676231744987629e-06,
+        "standard_errors": 4.6275238185458334e-07
+      },
+      "oracle_sha256": "421721af03821cb7970a1e5607cc5f68f23944db0867de6d068a21895d7771c9",
+      "result_sha256": "01da62dcaf682005a7a160e728c56d4bfc5025645cd93a327e7d574d114670a8"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": false,
+        "objective": true,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "9bed9022e1ae46950a5f3a8d504ec7ea8b746a65ea5bef26bfaaf44244025aca",
+      "covariance_sha256": "7bf239f2064ea5d10e8bb4e0b3dffe65f9731b202991078ed0f987fded887cf1",
+      "input_sha256": "e30ebcf417175c7c8e19a0c0e273c472c5866d49fd641fabbaede11534f0aaad",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.24301913914186693,
+        "covariance": 24.733170709141113,
+        "standard_errors": 4.904825740887713
+      },
+      "oracle_sha256": "421721af03821cb7970a1e5607cc5f68f23944db0867de6d068a21895d7771c9",
+      "result_sha256": "b18d78f2982a25dd3730860b58a4dfc020195eb363893bba5bde06dd377a30d1"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_fast",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "59e1242e41edc8bb83b09dd47ab436b7b3a443a7c55e64ce93298ec934235345",
+      "covariance_sha256": "4d1686774c14f3e94aaef2027188f49d0ff29ed5c85bda3694cc89ebfd2b9391",
+      "input_sha256": "e30ebcf417175c7c8e19a0c0e273c472c5866d49fd641fabbaede11534f0aaad",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0003168863596060406,
+        "covariance": 0.007815397638517126,
+        "standard_errors": 0.0013750311201180105
+      },
+      "oracle_sha256": "421721af03821cb7970a1e5607cc5f68f23944db0867de6d068a21895d7771c9",
+      "result_sha256": "30d05f4eb46e5150bf512ae5cf3fc86dd394466b9a0dcb9389c4c76ce355bb20"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "390c18f3c41a4e0db5b892e7a0357825925dc8bd74a4a1a2ea7ebaafeea5e4e4",
+      "covariance_sha256": "688f89f28a1949c4b99397edfecd1bf64792dcacca9df6f3fc7dab11e9d3a54f",
+      "input_sha256": "7a0b5bcd4a645fff044a9db731d02cd7d65446abbf5d906f1a96d263ce107cc6",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00015262243897667534,
+        "covariance": 3.736983500298711e-06,
+        "standard_errors": 2.674236777050184e-07
+      },
+      "oracle_sha256": "8e9424b43d56be770ec516fb147dd4eecd22cac2b58f5cd98dcebf727cd65b85",
+      "result_sha256": "4ef1a56572a6ce426dd74381765285b76f6efb71922bf0f4464f4238a00b7bce"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": false,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "664df3ac615b424fa53fb5d9f883dff40b4b074495e91c0a4968c69563e6dd39",
+      "covariance_sha256": "26bb72a3f577742ff393b61e7d007d13e68dfe6983761db07be944f5e4153a19",
+      "input_sha256": "7a0b5bcd4a645fff044a9db731d02cd7d65446abbf5d906f1a96d263ce107cc6",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0004731888494697388,
+        "covariance": 2.173208519989026,
+        "standard_errors": 0.5122591084295497
+      },
+      "oracle_sha256": "8e9424b43d56be770ec516fb147dd4eecd22cac2b58f5cd98dcebf727cd65b85",
+      "result_sha256": "dd26169cd219c66e8b21e4c5623b281883f2478d80a049331d1b5e4d231199ea"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": false,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "13a7e1e15500a8f32c034fe641ab91ebcdfc400df25fb68d6cf6e39c7aa16f8d",
+      "covariance_sha256": "3d69a644b44f38484e0a53662ef4bcdb4a2ec30baf2f48721bbcdccbc13604ca",
+      "input_sha256": "7a0b5bcd4a645fff044a9db731d02cd7d65446abbf5d906f1a96d263ce107cc6",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 5.70130203536475e-05,
+        "covariance": 1.8829782903464534,
+        "standard_errors": 0.3965696507961668
+      },
+      "oracle_sha256": "8e9424b43d56be770ec516fb147dd4eecd22cac2b58f5cd98dcebf727cd65b85",
+      "result_sha256": "abf8f7ee341aa3d3178ca700fa5f30a13844d3a1a673bf54d93c0ddc29b70619"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "f131cf0702553c068fde5b8623263462525c14e971c4dee5ecc78526a37098fa",
+      "covariance_sha256": "4b37dd28e221891561c00d6818dccbe09a27a89126b3741a10936eefc62c7b99",
+      "input_sha256": "54349949e0c4f99c4954c25314c25a9cfff6a674243e1b43a844f106a2d1f9be",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0021387720714865608,
+        "covariance": 2.564339484293769e-06,
+        "standard_errors": 4.7281966580460716e-07
+      },
+      "oracle_sha256": "2f8dac1279663d88291899ac14280cc5fcb6fe6063771648cc53ced21fdfd52c",
+      "result_sha256": "426d79339f3654bf9178c03b70adaef0c897cf3631435c4d62cbaed46ca35eb6"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": false,
+        "objective": true,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "93e7fde5174013c68360979d892a5d39a35ffaa2f7f59497dfe8a6f6bd738c5f",
+      "covariance_sha256": "a07f301ba02c3a0e90616b943065208011373138b0a6887fffea22626e732140",
+      "input_sha256": "54349949e0c4f99c4954c25314c25a9cfff6a674243e1b43a844f106a2d1f9be",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0797239470295129,
+        "covariance": 13.650228245870364,
+        "standard_errors": 2.845918907042542
+      },
+      "oracle_sha256": "2f8dac1279663d88291899ac14280cc5fcb6fe6063771648cc53ced21fdfd52c",
+      "result_sha256": "e982435b314eeb0a3a21995100d72af61c9b95872c27fd88b40af1f8655c8b68"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 960,
+        "section": "slopes_low",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "dffdb9466af9abdd91133fc49980e8c94f9384e065780b1c499f4cf5b10883dd",
+      "covariance_sha256": "309fe3782fb6df392aa856da9dd873f5893309478163e063ff4b1a2aee9eb832",
+      "input_sha256": "54349949e0c4f99c4954c25314c25a9cfff6a674243e1b43a844f106a2d1f9be",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.002122631757920143,
+        "covariance": 0.0036680898059896416,
+        "standard_errors": 0.0004674700188504127
+      },
+      "oracle_sha256": "2f8dac1279663d88291899ac14280cc5fcb6fe6063771648cc53ced21fdfd52c",
+      "result_sha256": "d527f7b30d948104b283e2ea7db44a924266795a89da60bb52df6849d00cde80"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "9f2ed6e0cd214446119a5133a2c9f09df83746e40a21e8c0a3e8b650cddedfb4",
+      "covariance_sha256": "18c97aa587c0da3501e2603ae7306641ed15046da0999decbd25db3b18c13736",
+      "input_sha256": "a02804d4b07315ea2c6d96de407a04d92bd083a3d0ac54d448ac796b6c9f5e2d",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00102889967001416,
+        "covariance": 2.3649440011557624e-07,
+        "standard_errors": 3.577269495250361e-07
+      },
+      "oracle_sha256": "9111702ed3efc8419ac6571f1dbfe5115a773bbd01d0c64e54f8a4b9b08b4011",
+      "result_sha256": "a1c675b2f42b46dfc47723759ba1c0754eaebf9caceeb4ed62420d31a20cdd37"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "cc9e7f50e61c6d648b250f9dcb3a352d3cc4f3ac307316100a7ae0c53914a71e",
+      "covariance_sha256": "7fd62017bc542c34d35d870230c466edc5eaabb2bdc25f5fcadaa0ea26ef9803",
+      "input_sha256": "a02804d4b07315ea2c6d96de407a04d92bd083a3d0ac54d448ac796b6c9f5e2d",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.3503037750550884,
+        "covariance": 0.28343884958825144,
+        "standard_errors": 0.4981692142010624
+      },
+      "oracle_sha256": "9111702ed3efc8419ac6571f1dbfe5115a773bbd01d0c64e54f8a4b9b08b4011",
+      "result_sha256": "c43f7fe4372f74b0de9568b3c0d230aa2e8843733e3964aec5d265aa4d3231ad"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "780b5fe0eadb9984ba6c07af115c405780fc549448b12b9ceaa854eb8bcf6986",
+      "covariance_sha256": "4bc6fde07840330ba218b0e1ecd4dcc0410bc1034b45ccf78a881879387cabb2",
+      "input_sha256": "a02804d4b07315ea2c6d96de407a04d92bd083a3d0ac54d448ac796b6c9f5e2d",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0008128407855361622,
+        "covariance": 0.13110630545193133,
+        "standard_errors": 0.22943364680487147
+      },
+      "oracle_sha256": "9111702ed3efc8419ac6571f1dbfe5115a773bbd01d0c64e54f8a4b9b08b4011",
+      "result_sha256": "861b61e5f1ae2542f46862bec1de95a2e19c53bf784d9a712ffe3dff1850c7c4"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "b3ec8612c1c34dee67becf8e7d3c8f1ab798355482d103b6dd4f7e7c09875b34",
+      "covariance_sha256": "e4adc85aaf6850b8fa2ecc008e0ff8f41cb036355c7b4e0a4f27220282e6a21d",
+      "input_sha256": "31ab57d6852c4e55bd85323bd7e70fe63dbe7583cd8bacb748e2b4c5ab2b7bd0",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00020007593634966588,
+        "covariance": 2.0651680917729465e-06,
+        "standard_errors": 1.0644574342559172e-07
+      },
+      "oracle_sha256": "26b582794392e82201da80f389569a44c70e911b03ff2894058978b8520da4a7",
+      "result_sha256": "690cae0c842d30291b777a283c00a139b3133d33a2cbd51e59d34cf9aa044796"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": false,
+        "objective": false,
+        "sample": false,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "1c6fab18a075f9f462f3eb4d6c2545272e0a98605a8ab6ac77fb068fd4b2e66b",
+      "covariance_sha256": "34c9e136d448eac3852751da48aba862e082e550385efc9e4a85081dc3f1db2d",
+      "input_sha256": "31ab57d6852c4e55bd85323bd7e70fe63dbe7583cd8bacb748e2b4c5ab2b7bd0",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.5981417483834408,
+        "covariance": 12.512463076862424,
+        "standard_errors": 6.857225099409804
+      },
+      "oracle_sha256": "26b582794392e82201da80f389569a44c70e911b03ff2894058978b8520da4a7",
+      "result_sha256": "d7f680d957fa09fcb96d8fe7eb84a7bc6e4eeee2b574e7c5d60ae9a5a8aa6b2e"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 960,
+        "section": "zeros",
+        "suite": "panels",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": false,
+        "covariance": false,
+        "objective": false,
+        "sample": false,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "bc8ba6d40292172f77bc935c331ab3f59da93c2d49acd480eb71a3a9c6ba02c1",
+      "covariance_sha256": "b11e07228ec7b134b4e976f73afc41fc50f8577358f5d11d8e7570e97b6f088b",
+      "input_sha256": "31ab57d6852c4e55bd85323bd7e70fe63dbe7583cd8bacb748e2b4c5ab2b7bd0",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.00013026722688325675,
+        "covariance": 12.390969915581103,
+        "standard_errors": 6.726443954960552
+      },
+      "oracle_sha256": "26b582794392e82201da80f389569a44c70e911b03ff2894058978b8520da4a7",
+      "result_sha256": "b58543f0b18ba9fe3e51028f820085279509e4f13e9580996b05b91df9e7f050"
+    },
+    {
+      "arm": "feppml",
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "8331ad64511fffbde127d95e7503d1aa88dca7b74d0476ae0214d7d21a4079a2",
+      "covariance_sha256": "0fd478e21d069253384a37d3fd158f1b22d531880036ee88e18a5fa44e5c7103",
+      "input_sha256": "e1ed433b8f0e68d8a2a04b3e1c47297aaa85195e30dce5f0b500d7040c4137f8",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.0022191553188303805,
+        "covariance": 2.6903972107657885e-07,
+        "standard_errors": 2.869557630881225e-07
+      },
+      "oracle_sha256": "55af8bf3ed5a2737fa8a4ce36b2b97e78f8049bfc8b5a6b11d23b1dcc6977361",
+      "result_sha256": "1ab5dd9478ab71518dd688729547ec0d9ece2edeac8a4783483db615d5041c36"
+    },
+    {
+      "arm": "fixest",
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": false
+      },
+      "coefficients_sha256": "bbceaa5af25092dcb72fcf27d7bdabc481fdd568f5bc12fbc5ee159b5ee4a86b",
+      "covariance_sha256": "d5b44587fbb24fdcc4c79ead749ad912135dc2e9550e70e7be3a81f4a4557762",
+      "input_sha256": "e1ed433b8f0e68d8a2a04b3e1c47297aaa85195e30dce5f0b500d7040c4137f8",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.019152214182536747,
+        "covariance": 0.7989685000402169,
+        "standard_errors": 1.2827327233057704
+      },
+      "oracle_sha256": "55af8bf3ed5a2737fa8a4ce36b2b97e78f8049bfc8b5a6b11d23b1dcc6977361",
+      "result_sha256": "547f6f2998f242bd3304b905a6bb5cc64e67930c18f428bb5447b78b49a1e012"
+    },
+    {
+      "arm": "fixest_strict",
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 7680,
+        "section": "main",
+        "suite": "paper",
+        "threads": 4
+      },
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "objective": true,
+        "sample": true,
+        "standard_errors": true
+      },
+      "coefficients_sha256": "1ab1ef8a334e66e71e7832a3e9d40dd09cbcf09a0347e3e3dc5234d202928a3f",
+      "covariance_sha256": "1604f8794ef897dd41d743a28c1b1b785fb3f4c46d0f58f0296e64be2d4bf8c0",
+      "input_sha256": "e1ed433b8f0e68d8a2a04b3e1c47297aaa85195e30dce5f0b500d7040c4137f8",
+      "maximum_error_in_envelope_units": {
+        "coefficients": 0.000614700475066542,
+        "covariance": 2.003562773270887e-05,
+        "standard_errors": 3.132176287004535e-05
+      },
+      "oracle_sha256": "55af8bf3ed5a2737fa8a4ce36b2b97e78f8049bfc8b5a6b11d23b1dcc6977361",
+      "result_sha256": "5d7e3c13348ef75c3c26b429f423e963cdbaff972f8d781ed97f369ea7157d46"
+    }
+  ]
+}

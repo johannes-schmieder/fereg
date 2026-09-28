@@ -25,6 +25,8 @@ def freeze(root):
         raise ValueError("candidate archive identity differs")
     paths = [root / "candidate/dist/fereg_linux.plugin", root / "env/python-freeze.txt",
              root / "env/R-packages.csv", root / "input/candidate.tar.gz"]
+    paths += [root / name for name in ('env/setup.json', 'env/artifact-origin.json', 'input/source.json')
+              if (root / name).exists()]
     if (root/'input/manifest.json').exists():paths.append(root/'input/manifest.json')
     paths += sorted((root / "references").glob("*"))
     paths += sorted((root / "candidate/stata").glob("*.ado"))

@@ -1,0 +1,11 @@
+{
+  "job_id": "7765992",
+  "plan": "plans/pilot.json",
+  "registered_groups": 8,
+  "slots": 28,
+  "cpu_type": "E5-2680v4",
+  "mem_per_core_gib": 3,
+  "wall_seconds": 7200,
+  "forecast_seconds": 1114.069016,
+  "smoke_gate": "7765908"
+}
