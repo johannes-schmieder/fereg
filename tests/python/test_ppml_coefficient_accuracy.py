@@ -19,6 +19,52 @@ from ppml_explicit_dummy_oracle import fit_explicit_ppml
 
 
 class IntervalTests(unittest.TestCase):
+    def test_nonnegative_sample_encloses_known_zero_outcome_optimum(self):
+        rng = np.random.default_rng(237)
+        for disconnected in (False, True):
+            worker = np.repeat(np.arange(12), 8)
+            firm = (worker + np.tile(np.arange(4), 24)) % 5
+            if disconnected:
+                firm += 5 * (worker >= 6)
+            groups = np.repeat(np.column_stack((worker, firm)), 2, axis=0)
+            x = np.repeat(rng.normal(size=(len(worker), 2)), 2, axis=0)
+            beta = np.array([.2, -.1])
+            mu = np.exp(x @ beta + .01 * groups[:, 0] - .02 * groups[:, 1])
+            y = mu * np.tile([0., 2.], len(worker))
+            result = accuracy.two_fe_nonnegative_sample_accuracy(y, x, beta, mu, groups)
+            self.assertTrue(result['coefficient_accuracy_certified'], result)
+            self.assertTrue(result['finite_optimum_certified'])
+            self.assertFalse(result['sample_selection_certified'])
+            self.assertFalse(result['campaign_admission'])
+            self.assertEqual(result['zero_outcomes'], len(worker))
+            self.assertEqual(result['components'], 2 if disconnected else 1)
+            self.assertLess(float(result['public_to_optimum_log_mean_upper']), 1e-10)
+            with self.assertRaises(ValueError):
+                accuracy.two_fe_coefficient_accuracy(y, x, beta, mu, groups)
+            bad = accuracy.two_fe_nonnegative_sample_accuracy(y, x, beta + .001, mu, groups)
+            self.assertFalse(bad['coefficient_accuracy_certified'])
+            with self.assertRaises(MemoryError):
+                accuracy.two_fe_nonnegative_sample_accuracy(y, x, beta, mu, groups, memory_bytes=1)
+
+    def test_nonnegative_certificate_refuses_separated_and_invalid_samples(self):
+        worker = np.repeat(np.arange(4), 8)
+        firm = np.tile(np.arange(4), 8)
+        groups = np.column_stack((worker, firm))
+        x = np.random.default_rng(239).normal(size=(len(worker), 1))
+        y = np.ones(len(worker)); y[worker == 0] = 0.
+        # A vanishing proposed mean on a separated group must not manufacture
+        # a finite optimum, even with small unscaled scores.
+        for level in (1., 1e-20):
+            mu = np.ones(len(worker)); mu[worker == 0] = level
+            with self.assertRaisesRegex(ValueError, 'exponential curvature'):
+                accuracy.two_fe_nonnegative_sample_accuracy(y, x, [0.], mu, groups)
+        for invalid in (-1., float('nan'), float('inf')):
+            y[0] = invalid
+            with self.assertRaises(ValueError):
+                accuracy.two_fe_nonnegative_sample_accuracy(y, x, [0.], np.ones(len(y)), groups)
+        with self.assertRaises(ValueError):
+            accuracy.two_fe_nonnegative_sample_accuracy(np.zeros(len(y)), x, [0.], np.ones(len(y)), groups)
+
     def test_forest_bound_is_sum_of_independent_component_flow_energies(self):
         component = np.array([[0,0],[0,1],[1,0],[1,1]])
         groups = np.vstack((component, component + 10))

@@ -1,0 +1,17 @@
+{
+  "job.sh": "5406ae2d2b66d0022bfa4bf391f93b6ecb818f8ca2f162d11a94ca443b336490",
+  "registration.json": "217b5cc8cdb9caea1c1ba40f192234995352c43c1cfba0ae5065a5a133fc8c6e",
+  "run.py": "49216debb3a4a6c08ba226b0223d40023a5aa77890312384764e556908e68664",
+  "scripts/ppml_auto_science.py": "aede679a1e3e8306ed90d02b05ee92054e9456096ea77d1b914ef54ac092863b",
+  "scripts/ppml_coefficient_accuracy.py": "ef1eebb5a6392051df3d74209c0bc976c357baa5bf8939d7be9e3a84d8d8724c",
+  "source.json": "e0938581453be38ddef84895120a76b2fd26f41532d3ebbd2a62d1a9a1115b58",
+  "systematic/common.py": "66204753ea9e1631c1b1484737260dd0985276ba607b36ea0ab26d4311a6e795",
+  "systematic/generate.py": "b56668181b80cd8dd00629b9841cf8a4faaacce5711e54bdfec8b137d2183482",
+  "systematic/runner.py": "c959d2ea63ea6c1f40543d5e42671cc1ccd642072c89fc40015708d91f4ed661",
+  "systematic/stata_worker.do": "ea070e1f9e5556d9292f8f7e2063eebd8d54381e3869c23ea97cb5f8a50758e0",
+  "systematic/test_two_fe_ppml_oracle.py": "98ab38c813d9a022c2057cab75316fb59c1d5839026fcc6d6f1f7a55e2bb3d23",
+  "systematic/two_fe_ppml_oracle.py": "fcf7988faa21564ba86cf0de35e2cc6ac73acc8422511e588dde85b2513708dd",
+  "systematic/worker_diagnostics.py": "0d78cd90c9b4ba45e2cbf840ae5b4f108cdb8b16bd4f7ded4cb29ad8a840a806",
+  "tests/python/ppml_explicit_dummy_oracle.py": "73aad136a1cd03f68f699cfc1c73a8c470b764da6f810856a3380ae97e747d2d",
+  "tests/python/test_ppml_coefficient_accuracy.py": "637767f6af623bac1c97038eb7fcf3ee53ed3ba6cd786676fc2ff5b3d1e220db"
+}

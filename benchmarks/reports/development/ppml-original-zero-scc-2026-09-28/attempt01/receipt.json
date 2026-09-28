@@ -1,0 +1,36 @@
+{
+  "status": "partial_harness_failure_before_native_fits",
+  "job": "7763438",
+  "accounting": {
+    "hostname": "scc-tb4.scc.bu.edu",
+    "jobnumber": "7763438",
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "1",
+    "ru_wallclock": "50",
+    "maxvmem": "950.410M"
+  },
+  "accounting_sha256": "ca53d51453a4efa17f111594ed9a62150a899fe3643813e4f8031ace9e334ee7",
+  "job_log_sha256": "2c94d8f4e02288b923a8bbf4d5bcd26eda08e623e22ecdea77f8d6fe3b7cc387",
+  "markers": [
+    "Ran 8 tests",
+    "PPML_SMALL_EXPLICIT_ORACLES_PASS",
+    "PPML_ZERO_SAMPLE_WITNESS",
+    "PPML_FULL_DIRECT_ANCHOR_PASS",
+    "PPML_OPTIMUM_ENCLOSED"
+  ],
+  "diagnostic_only": true,
+  "no_timing_rank": true,
+  "output_sha256": {
+    "bindings.json": "ed72226182027ffc4f133039b8572aad37ce0e61dca7e0f9dd0595defe020902",
+    "sample-witness.json": "377ec1d20d4d9f30918070a5b94cce454a7e97462a3c29db7c9dcb2283c87f17",
+    "input.json": "cc1e1ca712a8d7e481dd0e558b3df4b15b00755df0316ee0fbff2faa5f85b875",
+    "optimum-certificate.json": "8447241a558eb09dcb97e5711379d5ff3e4414634e166f87446549cc93537858",
+    "oracle.json": "7613e8a1a5555ebb796e09fe8be20423692545e5f021fa697180e494eb9eef78",
+    "oracle-tests.json": "03cb0debe626d27e24bad1d0fc0bddd4db33cc44b7257c4d3bd278cc8f5d3742",
+    "optimum-intervals.json": "a3b9e03f1e5158dbd0b86d3a8cc298561c7086ba406956d394790d0509552be1"
+  },
+  "failure": "The runner hashes/counts and deletes sample.csv; the harness erroneously required a second CSV read.",
+  "correction": "Attempt02 uses the source-bound runner sample SHA256 and row count. Independent sample witness, identity, numerical bounds and artifacts unchanged.",
+  "native_fits_run": 0
+}

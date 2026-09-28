@@ -1,0 +1,51 @@
+{
+  "positive": {
+    "passed": true,
+    "full_dummy_scalar_oracles": [
+      {
+        "disconnected": false,
+        "rank": 13,
+        "beta_error": 2.0816681711721685e-17,
+        "mean_error": 2.6645352591003757e-15,
+        "covariance_error": 3.0357660829594124e-18
+      },
+      {
+        "disconnected": true,
+        "rank": 15,
+        "beta_error": 4.763550665032312e-15,
+        "mean_error": 2.424727085781342e-13,
+        "covariance_error": 2.862293735361732e-17
+      }
+    ],
+    "nonzero_residual_known_optimum": true
+  },
+  "nonnegative": {
+    "passed": true,
+    "nonnegative_known_optima": [
+      {
+        "disconnected": false,
+        "rank": 13,
+        "coefficient_error": 0.0,
+        "mean_error": 2.220446049250313e-16
+      },
+      {
+        "disconnected": true,
+        "rank": 16,
+        "coefficient_error": 0.0,
+        "mean_error": 2.220446049250313e-16
+      }
+    ],
+    "zero_group_witness": true,
+    "reordered_witness": true,
+    "singleton_refusal": true,
+    "positive_domain_unchanged": true
+  },
+  "interval_unit_tests_pass": 8,
+  "interval_log_sha256": "e12a80fe0f6d47aff240a1935b74bd0c696b8507494fba1715b5abbbd512fbbc",
+  "source": {
+    "scripts/ppml_coefficient_accuracy.py": "ef1eebb5a6392051df3d74209c0bc976c357baa5bf8939d7be9e3a84d8d8724c",
+    "tests/python/test_ppml_coefficient_accuracy.py": "637767f6af623bac1c97038eb7fcf3ee53ed3ba6cd786676fc2ff5b3d1e220db",
+    "benchmarks/systematic/two_fe_ppml_oracle.py": "fcf7988faa21564ba86cf0de35e2cc6ac73acc8422511e588dde85b2513708dd",
+    "benchmarks/systematic/test_two_fe_ppml_oracle.py": "98ab38c813d9a022c2057cab75316fb59c1d5839026fcc6d6f1f7a55e2bb3d23"
+  }
+}

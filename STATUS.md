@@ -77,13 +77,34 @@ bytes. Physical process peaks remain diagnostic. Static inventory drift, weighte
 constrained fits and nonretaining CG instability remain open. No push or full
 qualification. Routine SCC testing is authorized; do not ask again.
 
-Next: independently adjudicate the remaining original zero-outcome PPML
-coefficient discrepancy and its retained sample using current code. Then reduce
-avoidable repeated strict correction/finalization while preserving current-state
-Newton, score, objective and final-Hessian authority. Do not restore the inaccurate
-stopping rule or tune its scale to the measured seed. The fresh weak-d3 SE
-comparison is a separate open inference/adjudication case. Preserve all earlier
-remaining families below; the broader repair goal remains active.
+The [original zero-outcome adjudication](benchmarks/reports/development/ppml-original-zero-scc-2026-09-28/README.md)
+now closes the third original strict PPML coefficient discrepancy on current
+source. ADR0237 extends only the offline certificate to a supplied nonnegative
+sample. An independent recession witness certifies 530 exclusions; the retained
+60,910 IDs exactly match all five comparable commands. A full sparse Poisson
+anchor and outward coefficient radius **8.20e-15** establish a finite optimum,
+excluding further retained-sample separation. Original/prior-current native x4
+fails; current fast T4 and low T4 pass every coefficient/VCE/SE/sample/rank/
+objective/convergence check. Maximum coefficient errors are **4.14e-10** before,
+**1.16e-16 fast**, **1.15e-12 low**. Original default/strict fixest, ppmlhdfe and
+pyfixest pass; gglm remains incomparable (different N, missing sample/evidence).
+Historical NR and timing rankings stay unchanged.
+
+SCC **7763438** preserves a harness failure after the independent proof and
+before any native fit: the runner had already hashed/deleted sample.csv. One
+narrow correction uses its bound hash/count. **7763447** completes all intended
+checks, clean accounting and both terminal sentinels. Eight interval tests and
+small scalar explicit-dummy checks pass on Mac and SCC. No production source
+change, compilation or new comparator fit; all 211 computational inputs remain
+**f2e37c75…**. Diagnostic clocks are not rankable. All milestone jobs are terminal.
+
+Next: reduce avoidable repeated strict correction/finalization while preserving
+current-state Newton, score, objective and final-Hessian authority. Do not restore
+the inaccurate stopping rule or tune its scale to measured seeds. Read ADR0177's
+required fallback and ADR0192's rejected early-checkpoint schedule before changing
+this boundary. The fresh weak-d3 SE comparison remains a separate open inference/
+adjudication case. Preserve all earlier remaining families below; the broader
+repair goal remains active.
 
 ## Prior checkpoint: original large OLS result independently validated
 

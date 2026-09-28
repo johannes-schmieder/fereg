@@ -1,0 +1,56 @@
+{
+  "purpose": "Adjudicate the original two_fe_dense zero-outcome strict coefficient discrepancy on an independently certified retained sample; preserve other original comparator discrepancies; no new reference fits or timing ranks.",
+  "source_commit": "8a645481",
+  "original_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "original_cases": [
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4"
+  ],
+  "original_receipts": {
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/input.json": "cc1e1ca712a8d7e481dd0e558b3df4b15b00755df0316ee0fbff2faa5f85b875",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/feppml/result.json": "57e68ffe9814c2d796bc33968f508ea36c7204c922bf30150c44fb8f9951cf69",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/feppml/coefficients.csv": "20db5b48bd98dacca0a17bc2de8250e8fae92982b144f78ca4735c6e658e6919",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/feppml/covariance.csv": "cba697b06eb571e140a1b7e177476edc24931ee4454d062c3784c5efda741054",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/fixest_strict/result.json": "70d971649975ccd2cd8c8a9a913294b25c566637f8d80e1955f402b4a4da71e7",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/fixest_strict/coefficients.csv": "db41a47458589724742041bbcfa07f6c6404f36f81ca723e31ea124b0b4b0c7c",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/fixest_strict/covariance.csv": "82008c43a96fbf0eccc591b81a1b7ff176b7ed814c37635a7d911d00d63e9713",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/fixest/result.json": "83087568597b087cbc323b3b10a695fd8f9c95a271af3757f56d2ae44fe11c76",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/fixest/coefficients.csv": "aef5a4f229e0da5cdfc6631cd61730fd3212b0a9ea5bf7a702c0d4ea84e3ccaf",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/fixest/covariance.csv": "224056cfa1d272955f4835c9a907cbc7684246e97f9bd15c7835492972180f8f",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/ppmlhdfe/result.json": "f91bbb0754f95cb8ba28336dcb9475b725daf7152a6b1b6e6afff524b9304f20",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/ppmlhdfe/coefficients.csv": "b44ec60434267e74de606fc7e6cea5a4230ec8119a030f486bb1f73b91f1e056",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/ppmlhdfe/covariance.csv": "e8de8904401a0c2803f6b0d31d3327113c2953f11063ffadf6b2ba66ec189f78",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/pyfixest/result.json": "1be942ec3d83bd1f0af7bdd2bde95fa0eb8150686a11f9ce23213ec4bff70029",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/pyfixest/coefficients.csv": "44eb1bdb01af7256702ab4cd6145cdc4c80a0e6a781e723da4eb53b55b789249",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/pyfixest/covariance.csv": "6488e4239c2145a3ec7b8a61241bf6374332dad05f93abeb0dee72b74d531eca",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/gglm/result.json": "ec8e29ea5563bfb765a5a9dcfe9dae46f4ef94ab0cb1fc59bad33d50beca3432",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/gglm/coefficients.csv": "ee3a8cfeecb7bdc4fd09c94197b0a59cf31c6faf89a6cb900c10d03e54a632a1",
+    "results/ppml-two_fe_dense-n61440-k10-t4-zeros/warm-4/gglm/covariance.csv": "4774cc1ef97dccac4a7d5d3004394a65d6fa9ff577d7a4da9a4684f6e0dbc056"
+  },
+  "input_sha256": "2ea62fa38b1d33c03b2bae8ba0dfed4da0b307b73ae16a6f05e0034a06d8f15c",
+  "science": {
+    "coefficient_rtol": 1e-07,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-06,
+    "vce_atol": 1e-10,
+    "objective_rtol": 1e-08,
+    "objective_atol": 1e-10
+  },
+  "reference_profiles": {},
+  "reference_timeout_seconds": 90,
+  "native_limits": {
+    "startup": 120,
+    "command": 180,
+    "extraction": 120
+  },
+  "allocation": {
+    "slots": 4,
+    "mem_per_core": "3G",
+    "wall_minutes": 30
+  },
+  "oracle": "Separate nonnegative-sample entry for direct full-design Newton proposal and ADR0237 outward optimum certificate; unit robust inference. Old positive-only entries stay closed.",
+  "sample": "Exact integer all-zero-intercept-group recession witness plus absence of retained singletons and independent finite-optimum certificate. Actual original and native sample CSV hashes must match computed retained original IDs.",
+  "stop": "Complete all declared scientific comparisons and retain failures. Sample-witness, independent-optimum, input-binding or application failure stops the diagnostic without an automatic scientific retry.",
+  "baseline_plugin_sha256": "a7e95e6712c6b05b0217a9ddffa5b8f14c0f8d95443c2b983ce459f16a0e4596",
+  "source_snapshot": "f2e37c75932a30d857efe3192394bac305decca68845412db186a6b24044f231",
+  "candidate_plugin_sha256": "7c01f4514454c1fb7f9804abb08ea3917ac98a67ef65d69ed9c3ea4083e792ec"
+}

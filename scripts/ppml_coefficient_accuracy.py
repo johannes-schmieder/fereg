@@ -170,6 +170,22 @@ def two_fe_coefficient_accuracy(y, x, beta, public_mu, groups, *, memory_bytes=1
         project=_dense_reduced_project, topology_builder=forest)
 
 
+def two_fe_nonnegative_sample_accuracy(y, x, beta, public_mu, groups, *, memory_bytes=1024**3):
+    """Certify a supplied retained sample, including zero outcomes (ADR 0237).
+
+    The exponential Hessian and Newton-ball bound do not require y > 0. Sample
+    selection must be established separately; this entry never drops rows or
+    grants a comparator exception. The positive-outcome entries stay closed.
+    """
+    report = _coefficient_accuracy(y, x, beta, public_mu, groups,
+        firm_multiplier=1, memory_bytes=memory_bytes,
+        project=_dense_reduced_project, topology_builder=forest, allow_zeros=True)
+    report.update(outcome_domain='nonnegative supplied sample',
+                  zero_outcomes=int(np.count_nonzero(np.asarray(y) == 0)),
+                  sample_selection_certified=False, finite_optimum_certified=True)
+    return report
+
+
 def _dense_reduced_project(groups, weights, values, firm_multiplier, memory_bytes):
     n, k = values.shape
     _, worker = np.unique(groups[:, 0], return_inverse=True)
@@ -202,14 +218,15 @@ def _dense_reduced_project(groups, weights, values, firm_multiplier, memory_byte
 
 
 def _coefficient_accuracy(y, x, beta, public_mu, groups, *, firm_multiplier,
-                          memory_bytes, project, topology_builder):
+                          memory_bytes, project, topology_builder, allow_zeros=False):
     y, x, beta, public_mu, g = (np.asarray(a, dtype=np.float64)
                                 for a in (y, x, beta, public_mu, groups))
     if (x.ndim != 2 or not 1 <= x.shape[1] <= 50 or x.shape[0] > 75000
             or y.shape != (x.shape[0],) or public_mu.shape != y.shape
             or beta.shape != (x.shape[1],) or g.shape != (len(y), 2)
             or not all(np.isfinite(a).all() for a in (x,y,beta,public_mu,g))
-            or np.any(y <= 0) or np.any(public_mu <= 0)
+            or np.any(y < 0) or (not allow_zeros and np.any(y == 0))
+            or not np.any(y > 0) or np.any(public_mu <= 0)
             or np.any(g != np.floor(g)) or len(y) < 8):
         raise ValueError('unsupported coefficient-accuracy surface')
     if not isinstance(firm_multiplier, int):

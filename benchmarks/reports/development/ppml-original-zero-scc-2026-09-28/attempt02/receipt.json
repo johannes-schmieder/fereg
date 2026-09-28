@@ -1,0 +1,53 @@
+{
+  "status": "candidate_science_pass_baseline_known_failure",
+  "job": "7763447",
+  "accounting": {
+    "hostname": "scc-gd4.scc.bu.edu",
+    "jobnumber": "7763447",
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "43",
+    "maxvmem": "1.286G"
+  },
+  "accounting_sha256": "9c6a423ee8aea8584ef5f66da06afab1a50d40a8537c69dce61e033c6a02219e",
+  "job_log_sha256": "f55815accc702cb7b5a3adcb3600ae3ffaa9edcf7fc302209b0b195e52060224",
+  "markers": [
+    "Ran 8 tests",
+    "PPML_SMALL_EXPLICIT_ORACLES_PASS",
+    "PPML_ZERO_SAMPLE_WITNESS",
+    "PPML_FULL_DIRECT_ANCHOR_PASS",
+    "PPML_OPTIMUM_ENCLOSED",
+    "FEREG_PPML_ORIGINAL_ZERO_COMPLETE",
+    "FEREG_PPML_ORIGINAL_ZERO_SUCCESS job=7763447"
+  ],
+  "diagnostic_only": true,
+  "no_timing_rank": true,
+  "output_sha256": {
+    "bindings.json": "fb711e1a1ffa99f4eb810b4787535f8a299a561bd4c69b570c94020ebe18432b",
+    "sample-witness.json": "91885f843375dd25795663686c1b6d821274f0c52e85d7afde831bed0107f3f1",
+    "candidate-t4.trace": "9525c45dfed0f2a731b6f8960c0f7b73eeefeeb258eb6337298dbc0525bc6bae",
+    "baseline-t4.trace": "fbb65e9b418ca46f3fd4d17ddc3642e8ca5d5d4fd5c61634264a3e56bae216a7",
+    "input.json": "cc1e1ca712a8d7e481dd0e558b3df4b15b00755df0316ee0fbff2faa5f85b875",
+    "optimum-certificate.json": "e43ac994efc3b40b834a6ace9bb70ff70546103f1385158480ba8a86133ce515",
+    "comparison.json": "ee25eae3456a6b2e0b4d083af4730f953475b215ee113891d015d9a6ff5d2646",
+    "oracle.json": "bcb5091729350f30f7f4370bd009204463e5faa103d4d33492e93ee8caf7b37d",
+    "oracle-tests.json": "bf56d3d0c060ef711bfe2aec16afc17389ffcf2238bd69da388b15b457361fe0",
+    "complete.json": "cd92c239a87ec22c07d7b9411a19f7f787e2ceb7e142f363cd4826e1d74d7681",
+    "candidate-low.trace": "ad50aeca8929b3d4a10d19136943b88092c912b8d2dabc10dbfda737253bb8c3",
+    "collection.json": "057b41a1aa48fa803c46e69a3446e6e2e002bc7bb93f467dcdb5ae2168938ae8",
+    "optimum-intervals.json": "b6e7914c02aa41181a848bb5e36416b378793c461611f5252f1c0278c4674c30",
+    "baseline-t4/coefficients.csv": "d62db72a12d73ff5179489705875ea472235e80994eb693f4b656bf662d488c8",
+    "baseline-t4/import-hashes.json": "7e7b1012b96d670d4254a8919e197c59869b2899f823b4085f6dc7ea45c9e285",
+    "baseline-t4/result.json": "13128d210f35fcda77545d6909664e39910d9305627468991ad61eeadbdf26d5",
+    "baseline-t4/covariance.csv": "4a0b07a1941b0f5518d421cd5e28e704ad9d3a62dfec2b6fc9e2e4e151a634e8",
+    "candidate-low/coefficients.csv": "4a8c6dd91b41189404e155cea900bdde0ed80a192e3663cf42a14acadf271d19",
+    "candidate-low/import-hashes.json": "7e7b1012b96d670d4254a8919e197c59869b2899f823b4085f6dc7ea45c9e285",
+    "candidate-low/result.json": "6c0623ec3d23360c4e7c7f66bc892b94ed42170e98b24c1bbff8ff836c54b43d",
+    "candidate-low/covariance.csv": "b3a204dac9e167108be393c5be3dacbfa2f736cee9f17c37f526727383534c60",
+    "candidate-t4/coefficients.csv": "32d19612447e5ca28cef580e2f2c91d500fdd72f3e284339c52f39450223cca5",
+    "candidate-t4/import-hashes.json": "7e7b1012b96d670d4254a8919e197c59869b2899f823b4085f6dc7ea45c9e285",
+    "candidate-t4/result.json": "7c745f9bbf5160e3b0a3291facc21327e3838c55e52a64dd8e1dd08af1d81ef4",
+    "candidate-t4/covariance.csv": "0158dc195f9278ce40d6732fbaab7c022230947522ec6f5a72be158c4ec10fc5"
+  }
+}

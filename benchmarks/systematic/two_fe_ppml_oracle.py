@@ -12,11 +12,59 @@ from scipy.special import gammaln, xlogy
 
 
 def fit(y, X, first, second):
+    return _fit(y, X, first, second, allow_zeros=False)
+
+
+def fit_nonnegative_sample(y, X, first, second):
+    """Propose an optimum on a supplied sample; no row selection or certificate."""
+    return _fit(y, X, first, second, allow_zeros=True)
+
+
+def zero_intercept_group_sample(y, groups):
+    """Exact integer recession witness for all-zero intercept groups only.
+
+    Retained singletons fail closed. A separate finite-optimum certificate must
+    exclude further separation on the retained sample before claiming closure.
+    """
+    y, groups = np.asarray(y, dtype=float), np.asarray(groups, dtype=float)
+    if (y.ndim != 1 or groups.shape != (len(y), 2) or len(y) < 8
+            or not np.isfinite(y).all() or np.any(y < 0)
+            or not np.isfinite(groups).all() or np.any(groups != np.floor(groups))):
+        raise ValueError('unsupported zero-group sample')
+    direction = np.zeros(len(y), dtype=np.int8)
+    counts, codes = [], []
+    for column in groups.T:
+        _, code = np.unique(column, return_inverse=True)
+        positive = np.bincount(code[y > 0], minlength=code.max() + 1)
+        zero = positive == 0
+        direction -= zero[code].astype(np.int8)
+        counts.append(int(zero.sum()))
+        codes.append(code)
+    keep = direction == 0
+    if not keep.any() or np.any(direction[y > 0] != 0) or np.any(y[~keep] != 0):
+        raise ValueError('invalid zero-group recession witness')
+    minimum = []
+    for code in codes:
+        _, retained = np.unique(code[keep], return_inverse=True)
+        count = np.bincount(retained)
+        if np.any(count < 2):
+            raise ValueError('retained singleton requires separate closure adjudication')
+        minimum.append(int(count.min()))
+    return keep, dict(excluded_zero_rows=int((~keep).sum()), zero_groups=counts,
+                      retained_minimum_level_rows=minimum,
+                      witness_minimum=int(direction.min()),
+                      positive_row_direction_zero=True, retained_row_direction_zero=True,
+                      excluded_row_direction_strictly_negative=True,
+                      additional_separation_adjudicated=False)
+
+
+def _fit(y, X, first, second, *, allow_zeros):
     y, X = np.asarray(y, dtype=float), np.asarray(X, dtype=float)
     if (X.ndim != 2 or not 8 <= len(y) <= 75000 or X.shape[0] != len(y)
-            or not 1 <= X.shape[1] <= 50 or np.any(y <= 0)
+            or not 1 <= X.shape[1] <= 50 or np.any(y < 0)
+            or (not allow_zeros and np.any(y == 0)) or not np.any(y > 0)
             or not np.isfinite(y).all() or not np.isfinite(X).all()):
-        raise ValueError('unsupported positive-outcome PPML oracle input')
+        raise ValueError('unsupported PPML oracle outcome domain or dimensions')
     _, g = np.unique(first, return_inverse=True)
     _, h = np.unique(second, return_inverse=True)
     n, k = X.shape
