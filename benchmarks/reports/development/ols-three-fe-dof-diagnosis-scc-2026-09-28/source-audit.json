@@ -1,0 +1,42 @@
+{
+  "arithmetic_checks": [
+    "Analytic 2x2 IID scale identity",
+    "Changed covariance shape stays visible",
+    "Nonpositive reference residual DoF rejected"
+  ],
+  "fixest_archive_sha256": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9",
+  "fixest_version": "0.14.2",
+  "local_sources": {
+    "benchmarks/systematic/r_worker.R": "d0b287cf6446f28b4617387e97df607995e4f4b27518c0581a997963ce548f8f",
+    "crates/fereg-core/src/ols/prepared_dof.rs": "1e8d8a8a5983c0cba6e17f9d29bcc5e0fc80729e350ef489ab504d8eb92adc09",
+    "crates/fereg-core/src/ols/prepared_unadjusted.rs": "6a95adbc1afc66822146269970433a6108618d3de22e5f3bc8466a46916a0ef0",
+    "crates/fereg-plugin/src/estimate.rs": "b5870723399fe0ddb62d11bbdd2910bdefd09f5df3140b91c6a587038b852b91",
+    "stata/_fereg_estimate_ols.ado": "3ea2bbfca3d62b2a1ecf3f624a6ffce79cb81bff59a3206e2e84babbe22d508d"
+  },
+  "native_findings": {
+    "_fereg_estimate_ols.ado:720": "Default reported policy is pairwise clusters continuous.",
+    "estimate.rs:3573": "Public pairwise request maps to that policy.",
+    "prepared_dof.rs:11-17": "Default prepared absorbed DoF is pairwise.",
+    "prepared_dof.rs:257-273": "Later FE redundancy is maximum pairwise component count."
+  },
+  "runtime_work": "Saved scalar and 10x10 covariance arithmetic only; no fit, build or estimator change",
+  "source_files": [
+    {
+      "findings": {
+        "1103-1127": "SSC defaults: K.adj TRUE, K.fixef nonnested, K.exact FALSE.",
+        "1991-1998": "IID K.adj restores (n-1)/(n-K).",
+        "2586-2597": "Unclustered/default K is object$nparams; exact changes count after fixef recovery.",
+        "779-795": "IID base removes original nparams adjustment before applying selected SSC."
+      },
+      "path": "fixest/R/VCOV.R",
+      "sha256": "9c4b8ec73302632a5f42ced64de93d3b8441299af8deda8f1d83195d0a818596"
+    },
+    {
+      "findings": {
+        "2102-2104": "Initial sigma2 is weighted residual square sum divided by length(y)-df_k; cov.iid scales inverse Gram."
+      },
+      "path": "fixest/R/estimation.R",
+      "sha256": "76aee19f93a5ab0b45e9bc30e593c905f84e139aa98b0dbdef5ed0386765f641"
+    }
+  ]
+}

@@ -1,0 +1,243 @@
+{
+  "cell": "ols-three_fe_sparse-n3932160-k10-t4-main",
+  "current_measurement_fingerprint": "fb2ad5407afcea22d56155aa7858203bfcaea590f750ca5d06eeccce746cffc6",
+  "files": {
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/GROUP.COMPLETE.json": "9eed6fb0b1e92c1374137a1358fa42f2c5daccfd92c5bc311aa3ca6186108e04",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/fereg/coefficients.csv": "0f107580be8821c13a5d32ed567f0fff39ac5cb86a4f8c81d2a4cea6e8e5efc6",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/fereg/covariance.csv": "76c00eec8f67e52cecfdbd66d4d5a8c1af309af96f702e1b11500a9dad2d5c5d",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/fereg/result.json": "9672da63a531fb344dfb45bc9cd6da85d2a44e3fb817721587673f5e8b797b95",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/fixest/coefficients.csv": "be7d08afd1b2aca34050e0495fc5aed24f9d90edd7e1f6d7af4aa43c18b5c840",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/fixest/covariance.csv": "aded8579ac9fb8397600511d9de7bd4a52b91c2418a8f8bfc49b5be48393da08",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/fixest/result.json": "b3c023678f5fc6b4d3123c250a10f101e25a5e71375313eb1422330a86278f4e",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/GROUP.COMPLETE.json": "4366e4cb23bf35b8661c8b8a06d81516f7817cc19158efa1edd51d5d413ecc56",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/fereg/coefficients.csv": "de807d3ddfa4dc78946913be4184a5cb69048ddb4f7ba8ce2186bf74446b0944",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/fereg/covariance.csv": "07ea00f6af1a568eacf626609a5ec13abf256d51541543bc99189f25405ba208",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/fereg/result.json": "bc7ca344331521276a5b05ec9a9053adc64af0a3ce3896bb7b3db32a2563145e",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/fixest/coefficients.csv": "f1d76281e51c75d90cbe560a6cf2d34fbfe582d3e41da808ab705772c33d41c0",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/fixest/covariance.csv": "c6d31af46b8f63a0987d8b18f6889eb5bc0edba9c5f39376439ce98320ff3341",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/fixest/result.json": "d155ef6a015ace4005157cfa3aa7e734cc2d5624240d82bdc441257902d41689",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/GROUP.COMPLETE.json": "c89617bc7c3bf0b71252044092fc9a6d2d7e2b311d8e2616eca2a3212d8a72f1",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/fereg/coefficients.csv": "69034a3b07124a2a94b6926972d307b5aa776830b63dfeaf08a75b4cbcc9248e",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/fereg/covariance.csv": "7ebc30eef5a3d7349c6114a8fbbfc9427dc4022fccbd1d47913256a0664e9e7e",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/fereg/result.json": "9e5de40a33b9e432c958cad22b1120a21646cb0e62adaec73abe55bfb6b28a3c",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/fixest/coefficients.csv": "035bd25eaabb3bb1d002a12b23e9132b270046e413e13b07644bebbc2ac048ad",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/fixest/covariance.csv": "58a6e2a9d689418812840af32c478a5f42f90871e569fc7d1a7f152f4fdfe200",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/fixest/result.json": "70c9245ff7ac988859389b44537e2193742398690c722a76dc623f5d1ee10a86",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/GROUP.COMPLETE.json": "482f38236d01d5ffd7d6710f4aa8bfcd10abdaff51fb390f13155b4670e34660",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/fereg/coefficients.csv": "a638cb4f2b9c9fdfd9d65a24b8dee1c8dce2700ed51ebc5057464c2c1740c4ed",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/fereg/covariance.csv": "6f4d386beaf5be1ca5d818579b93be52082ae40e0e019d9e4a59f13a7894dc36",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/fereg/result.json": "e56211d318723423a11a82511300f2e85a46de6f303bdb288fcbd60db51829d1",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/fixest/coefficients.csv": "25f15d1f7b4fd4f0f68edf076852838b78d3445a42c7ce2769fb8903e2402d27",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/fixest/covariance.csv": "0db265cdecd7a174aaac9f2d2c9e4fcb5ab615aced8735722ce37fc25ace1441",
+    "current/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/fixest/result.json": "55e63895ebdd8ad64c89ce19d78e85e44a165961c4d7573534f99f70bfbbe979",
+    "original/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-1/reghdfe/result.json": "6f7d33c24e5e9e296964c8c88dc18e81b113b6e910107da7b73c8508bddae78d",
+    "original/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-2/reghdfe/result.json": "425a3364675065592b35f4c4e55bfdbc53d38baa2c452be47ef6bf28f31e32ad",
+    "original/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-3/reghdfe/result.json": "285a7afb2cdab5903a45629e4fc5e3420823b2c90231e2a9b5b39e273cac8fb8",
+    "original/results/ols-three_fe_sparse-n3932160-k10-t4-main/warm-4/reghdfe/result.json": "d3f23feec975b3dab4ed38def22b9f4310d95fbbd5c02da62361257a9b97e16e"
+  },
+  "fixest_archive_sha256": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9",
+  "original_measurement_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "records": [
+    {
+      "adjudication": "variance-scale attribution only; original NR remains",
+      "df_difference": 1727.0,
+      "eligible": false,
+      "input_sha256": "862072059f040bc62491e790d4fce18c64b548bca3ad98972cde41ea458a4b02",
+      "matched_variance_scale_max_se_difference": 5.3812794606651615e-12,
+      "max_normalized_inverse_gram_difference": 3.7946384094501485e-08,
+      "native_absorbed_df_matches_original_reghdfe": true,
+      "native_df": 3106158.0,
+      "native_df_matches_original_reghdfe": true,
+      "native_reghdfe_rss_difference": -3.739842213690281e-06,
+      "native_rss": 776976.8693136317,
+      "native_rss_lower": true,
+      "observed_se_ratio_range": [
+        0.9997219549874038,
+        0.9997219725911975
+      ],
+      "original_comparisons": [
+        {
+          "checks": {
+            "candidate_converged": true,
+            "coefficient_names": true,
+            "coefficients": true,
+            "comparator_converged": true,
+            "covariance": true,
+            "covariance_available": true,
+            "rss": false,
+            "same_input": true,
+            "same_node_task": true,
+            "same_runtime": true,
+            "sample_count": true,
+            "sample_exact": true,
+            "standard_errors": false
+          },
+          "left": "fereg",
+          "max_coefficient_error": 7.299856608078414e-09,
+          "max_se_error": 7.898073469699398e-08,
+          "right": "fixest",
+          "status": "accuracy_failure"
+        }
+      ],
+      "original_max_se_difference": 7.898073469699398e-08,
+      "predicted_se_ratio": 0.9997219536232077,
+      "reghdfe_comparison_is_same_input_only_not_new_paired_timing": true,
+      "repetition": 1,
+      "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+      "stock_df": 3104431,
+      "stock_rss": 776976.887288457
+    },
+    {
+      "adjudication": "variance-scale attribution only; original NR remains",
+      "df_difference": 1800.0,
+      "eligible": false,
+      "input_sha256": "69ea91a935777b329ccf00c2806373821c21264158eac2c64fee76e8201ece6a",
+      "matched_variance_scale_max_se_difference": 1.0095474803351046e-12,
+      "max_normalized_inverse_gram_difference": 7.1234789558154825e-09,
+      "native_absorbed_df_matches_original_reghdfe": true,
+      "native_df": 3106231.0,
+      "native_df_matches_original_reghdfe": true,
+      "native_reghdfe_rss_difference": -3.872904926538467e-06,
+      "native_rss": 776430.6141947755,
+      "native_rss_lower": true,
+      "observed_se_ratio_range": [
+        0.999710216008355,
+        0.9997102192436957
+      ],
+      "original_comparisons": [
+        {
+          "checks": {
+            "candidate_converged": true,
+            "coefficient_names": true,
+            "coefficients": true,
+            "comparator_converged": true,
+            "covariance": true,
+            "covariance_available": true,
+            "rss": true,
+            "same_input": true,
+            "same_node_task": true,
+            "same_runtime": true,
+            "sample_count": true,
+            "sample_exact": true,
+            "standard_errors": false
+          },
+          "left": "fereg",
+          "max_coefficient_error": 9.81809501754416e-10,
+          "max_se_error": 8.231303009499907e-08,
+          "right": "fixest",
+          "status": "accuracy_failure"
+        }
+      ],
+      "original_max_se_difference": 8.231303009499907e-08,
+      "predicted_se_ratio": 0.9997102156830158,
+      "reghdfe_comparison_is_same_input_only_not_new_paired_timing": true,
+      "repetition": 2,
+      "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+      "stock_df": 3104431,
+      "stock_rss": 776430.617499116
+    },
+    {
+      "adjudication": "variance-scale attribution only; original NR remains",
+      "df_difference": 1860.0,
+      "eligible": false,
+      "input_sha256": "2547a9818e2c39c52d2e61bcbfb7d73fd7e723a24dd2712da54adbd4685ecf20",
+      "matched_variance_scale_max_se_difference": 2.1390651836622476e-12,
+      "max_normalized_inverse_gram_difference": 1.5082076061968904e-08,
+      "native_absorbed_df_matches_original_reghdfe": true,
+      "native_df": 3106291.0,
+      "native_df_matches_original_reghdfe": true,
+      "native_reghdfe_rss_difference": -6.436486728489399e-06,
+      "native_rss": 775718.8275186366,
+      "native_rss_lower": true,
+      "observed_se_ratio_range": [
+        0.9997005455496023,
+        0.9997005509305524
+      ],
+      "original_comparisons": [
+        {
+          "checks": {
+            "candidate_converged": true,
+            "coefficient_names": true,
+            "coefficients": false,
+            "comparator_converged": true,
+            "covariance": true,
+            "covariance_available": true,
+            "rss": false,
+            "same_input": true,
+            "same_node_task": true,
+            "same_runtime": true,
+            "sample_count": true,
+            "sample_exact": true,
+            "standard_errors": false
+          },
+          "left": "fereg",
+          "max_coefficient_error": 5.9858252104971754e-09,
+          "max_se_error": 8.49684919170023e-08,
+          "right": "fixest",
+          "status": "accuracy_failure"
+        }
+      ],
+      "original_max_se_difference": 8.49684919170023e-08,
+      "predicted_se_ratio": 0.999700543391896,
+      "reghdfe_comparison_is_same_input_only_not_new_paired_timing": true,
+      "repetition": 3,
+      "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+      "stock_df": 3104431,
+      "stock_rss": 775718.857548317
+    },
+    {
+      "adjudication": "variance-scale attribution only; original NR remains",
+      "df_difference": 1735.0,
+      "eligible": false,
+      "input_sha256": "39a2eeee87daa0d25e0b9ce7f910e608f3dcdfc4539a92d85333c071d2e34a41",
+      "matched_variance_scale_max_se_difference": 4.239838840257304e-12,
+      "max_normalized_inverse_gram_difference": 2.987781715284657e-08,
+      "native_absorbed_df_matches_original_reghdfe": true,
+      "native_df": 3106166.0,
+      "native_df_matches_original_reghdfe": true,
+      "native_reghdfe_rss_difference": -1.2364471331238747e-06,
+      "native_rss": 776319.7690418218,
+      "native_rss_lower": true,
+      "observed_se_ratio_range": [
+        0.9997206699016433,
+        0.9997206838669808
+      ],
+      "original_comparisons": [
+        {
+          "checks": {
+            "candidate_converged": true,
+            "coefficient_names": true,
+            "coefficients": false,
+            "comparator_converged": true,
+            "covariance": true,
+            "covariance_available": true,
+            "rss": false,
+            "same_input": true,
+            "same_node_task": true,
+            "same_runtime": true,
+            "sample_count": true,
+            "sample_exact": true,
+            "standard_errors": false
+          },
+          "left": "fereg",
+          "max_coefficient_error": 7.902600900056012e-09,
+          "max_se_error": 7.930935492600445e-08,
+          "right": "fixest",
+          "status": "accuracy_failure"
+        }
+      ],
+      "original_max_se_difference": 7.930935492600445e-08,
+      "predicted_se_ratio": 0.9997206689323708,
+      "reghdfe_comparison_is_same_input_only_not_new_paired_timing": true,
+      "repetition": 4,
+      "sample_sha256": "4a05f3e0ed2176c59e35af0e4a63967e106b312f19e0aa1fa20b95fe2f617d10",
+      "stock_df": 3104431,
+      "stock_rss": 776319.782787776
+    }
+  ],
+  "script_sha256": "35664ac6018b1de7897b87b5badc121c35012649ce24ea07f1706ba91227a85f",
+  "source_roots": {
+    "current": "/projectnb/welfgr/fereg/runs/20260928-current-sweep-161b9491",
+    "original": "/projectnb/welfgr/fereg/runs/20260926-systematic-light-58284f76"
+  }
+}

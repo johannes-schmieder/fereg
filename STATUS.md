@@ -70,8 +70,10 @@ estimator changed, and historical NR remains unchanged. Local AST/shell checks
 pass. Require accounting, terminal sentinels, all expected outputs and fixture
 checks before adopting anything. If the main array checkpoints pending groups,
 hold further headline work until this diagnostic finishes. The latest inspected
-sweep snapshot had 40 completed applications (including pilot), no application
-failures and all four tasks running; that is not a scientific-comparison summary.
+sweep snapshot at 15:31 UTC has 81 successful applications (including pilot), two
+command timeouts, 17 scientific discrepancies and 29 passing comparison pairs;
+there are no complete eligible four-repeat configurations yet. All four tasks
+remain running. Historical budget exclusions remain separate from new failures.
 
 The [thread-reporting supplement](benchmarks/reports/development/thread-reporting-audit-scc-2026-09-28/README.md)
 is implemented separately from the frozen controller. Seven focused tests and
@@ -116,6 +118,18 @@ v24. All 56 old action findings remain, with four added schema/coverage findings
 the separate OLS audit still reports 86. No successor manifest was generated.
 All 259 estimator inputs and the frozen sweep are unchanged. Complete allocation
 review, stack/physical-cap accounting and the queued numerical work remain open.
+
+The [large three-FE OLS diagnosis](benchmarks/reports/development/ols-three-fe-dof-diagnosis-scc-2026-09-28/README.md)
+explains the four T4 N3,932,160/K10 SE mismatches: native DoF matches original
+reghdfe on each exact input, whereas default fixest counts 1,727–1,860 additional
+parameters. Removing each output's reported RSS/DoF scale reduces SE differences
+from about 8e-8 to at most 5.4e-12. This saved-export/source audit changes no
+eligibility; coefficient/RSS differences remain separately unresolved. Future
+comparable inference needs an explicit verified stock DoF profile, not post-hoc
+promotion of these clocks. Native degree-two OLS N3,932,160/K10/T4/seed8675309
+times out at 720 command seconds; strict stock large three-FE PPML seed20260819
+times out at 2,400 seconds. Preserve both. After the held diagnostics, prioritize
+a bounded native timeout phase/solver diagnosis; no automatic rerun or restart.
 
 ## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 
