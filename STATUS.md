@@ -10,150 +10,109 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## PPML portable products accepted; ordinary categorical IRLS is next
+## Current checkpoint: portable PPML kernels accepted; original discrepancies next
 
-[ADR 0233](docs/adr/0233-preflight-thread-ceilings.md) accepts at most eight
-workers for automatic three-intercept-FE PPML in fast/auto memory through
-15 declared finite columns. Original requests remain published separately.
-Selection precedes loading, pool creation and admission; all phases use the
-selected team. OLS, slopes, low memory, explicit solvers, other FE counts and
-wider frames keep their previous choices. No numerical bank or certificate
-change. Snapshot **1f290d1c…**, Linux plugin **8e2d5af2…**, matches all **211**
-frozen computational inputs at this acceptance checkpoint.
+Main now retains [ADR 0234](docs/adr/0234-portable-canonical-proposal-products.md)
+(portable dense canonical proposal products) and
+[ADR 0235](docs/adr/0235-joint-ppml-proposal-kernels.md) (repeated categorical
+joint-LSMR operator products). The latter uses contiguous finite-row slices,
+eight fixed adjoint lanes, and inline multiply/add on portable targets; hardware
+FMA targets retain fusion. Current-weight geometry, preconditioners, independent
+reconstruction/certification, rank, score/objective, exact final Hessian and
+transactional publication are unchanged. No heap bank, budget or routing change.
 
-[Linux job 7762631](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/linux-validation01.json)
-and [Mac validation](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/mac-validation01.json)
-pass five focused Rust tests and four licensed fixtures each, plus Linux shared
-smoke and Mac universal ABI/panic checks. Independent Poisson/Hessian/sandwich
-coverage includes fast/low, FW/PW, robust/clustered inference, saved FE/means/eta/
-residuals, actual team switches and post-plugin rollback. Thirteen focused
-benchmark-harness tests pass. This is development validation, not qualification.
+Current snapshot **4c3d7c44…** matches all **211** frozen computational inputs.
+Linux plugin **a7e95e67…**, Mac **ed919c1e…**. [Linux validation 7763145](benchmarks/reports/development/joint-operator-scc-2026-09-28/linux-validation01.json)
+and [Mac validation](benchmarks/reports/development/joint-operator-scc-2026-09-28/mac-validation01.json)
+pass 30 categorical Rust tests and four licensed independent-oracle/control
+fixtures each. Two additional strict-final/retry/nested-rank/zero-control tests
+pass on both platforms, bringing each to **32 distinct Rust tests**; the Linux
+receipt is in initial02. Linux PPML smoke and Mac universal ABI/panic checks pass.
+ARM science passes; ARM performance is not measured by this Linux block.
 
-[Initial 7762740](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/initial02/README.md),
-[fresh 7762780](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/fresh03/README.md)
-and [OLS confirmation 7762812](benchmarks/reports/development/thread-ceiling-candidate-scc-2026-09-28/control04/README.md)
-complete **165 applications**, **55/55 native** and **49/55 stock** science
-pairs. Six initial default-stock discrepancies stay NR. Six small explicit-
-Poisson oracle arm checks also pass. All jobs have clean accounting and terminal
-sentinels. No competing fits, compilation or profiling overlap headline timing.
+[Initial 7763162](benchmarks/reports/development/joint-operator-scc-2026-09-28/initial02/README.md)
+and [fresh 7763189](benchmarks/reports/development/joint-operator-scc-2026-09-28/fresh03/README.md)
+complete **192 headline applications**, **64/64 native** and **64/64 stock**
+science pairs, with clean accounting and terminal sentinels. Stock is pinned,
+unmodified fixest 0.14.2: 58 default pairs and six explicitly strict slope pairs.
+Robust PPML and IID OLS are timed without optional saved observation outputs;
+independent fixtures cover additional scientific/output boundaries. No build,
+profile, archive or competing fit overlaps headline timing. All jobs are terminal.
 
-Initial capped K6/K12/K15 C/B paired medians are **0.856/0.896/0.927**.
-Fresh seed202609285 confirms N983,040/K10 at **0.942**, default-stock **0.688**,
-about **728 MiB** lower process peak; N245,760/K6 request28 is **0.811**,
-stock **0.822**, about **135 MiB** lower peak. All eight fresh capped pairs
-are faster. Request8 control is **0.995**. Same-input candidate request28/request8
-is **0.987**, range0.955–1.020, both selecting eight; requests were separately
-grouped, so this is bounded plateau evidence, not universal monotonic scaling.
+Fresh seed 202609288 confirms serial small PPML at **0.678 of baseline** and
+K24 at **0.783**, with every paired call faster. K12 is **0.958**, weak
+connectivity **0.934**. Small T4 is **0.998**: its initial 12.5% gain does not
+replicate. Sparse/three-FE/larger are **1.015/1.009/1.004**. Fresh OLS control
+is **1.000**; slopes **1.049**, range 0.897–1.197, two of three losses and
+marginal medians 577→605ms. Initial slopes instead improve. Keep those control
+losses visible; do not claim regression freedom or another algorithmic slope gain.
+No new storage; modeled memory and outer/inner counts match on every pair.
+Tracked three-FE peak changes +1.65MB initially and -0.59MB fresh; other PPML
+tracked peaks match. Sampled physical peaks vary. No memory qualification claim.
 
-The nine-pair OLS control is **1.000** of baseline, range0.947–1.044: the initial
-three-pair 5.5% loss does not persist. It still takes **1.545 of default stock**.
-Excluded low PPML has mixed paired ratios, median **1.053**, despite marginal
-medians903→853ms; no uniform nonregression claim. Small two-FE PPML still takes
-**1.877 of default stock** in the initial block. K12 strict adjudication agrees
-within1.604e-13 on coefficients and1.409e-13 on SE, pointing to default stopping
-accuracy; strict timings remain separate, and the earlier default NR stays.
-Zero-case reference sample differences remain open.
+Current-source fresh candidate/stock paired medians are **1.894 small T4**,
+**1.327 small T1**, **1.591 low**, **1.570 OLS**, **1.027 K12**, **1.062 larger**,
+**1.090 weak**, **0.466 sparse**, **0.549 K24**, **0.474 three-FE**, **0.365 strict
+slopes** on these designs. Historical absorbed-slope designs, output requests
+and default-reference failures cannot inherit those ratios. Neither a universal
+1.20 ceiling nor the 0.90 aspiration is achieved.
 
-After timing, job7762812 completes **52 separate CPU-profile fits**. Matched
-build IDs and ELF mapping identify substantial Stata activity in wait/polling
-code. Small PPML also spends sampled cycles in out-of-line hardware FMA and
-`normalized_product`, shared by finite Gram construction and canonical reduced-
-CG products. Samples are CPU shares, not wall-time savings; caller attribution
-is incomplete. The next bounded step is a same-artifact host-wait diagnostic,
-then a product change only where it preserves independent scientific authority.
-Do not resume OLS ABI or thread-threshold tuning on the now-neutral control.
+Recorded candidate T4/T1 fits pass all five same-input/sample, numerical,
+rank/DoF and actual-team checks. Paired timing is **1.005**, range **0.843–1.543**,
+three T4 losses; marginal medians 428/370ms imply a 15.7% loss. Requests were
+separately grouped, not directly alternating. Monotonic scaling remains open.
+The width/team-dependent adjoint traversal is a possible mechanism, not proved
+attribution. Do not fit a cap to this seed or continue threshold micro-tuning.
 
-[Host-wait diagnostic 7763005](benchmarks/reports/development/host-wait-scc-2026-09-28/README.md)
-completes 45 fits / 30 science pairs, all passing. Passive/scoped-host1 paired
-medians are 0.873/0.912 for small OLS, 0.973/0.979 for small categorical PPML,
-and 1.077/1.099 for the fresh slope control. Every slope pair loses. Reject a
-blanket host-setting change; production settings remain unchanged. Clean
-accounting: 83 s, 28 isolated slots, maxvmem 1.804G. CPU wait shares did not
-predict broad command-time savings. An OLS-specific intervention remains a
-possible later target requiring fresh evidence and transaction checks.
+### Earlier accepted work and closed diagnostics
 
-[Original sparse-zero confirmation 7763027](benchmarks/reports/development/sparse-zero-originals-scc-2026-09-28/README.md)
-passes all **eight original failed cases**, both designs across all four seeds,
-on accepted artifact **8e2d5af2…**. Every original input/column hash matches;
-every retained row matches the independent integer-potential and closure proof.
-All fits converge with the requested four workers. Diagnostic command clocks
-are 4.8–5.5 s (two FE), 11.6–12.2 s (three FE) on a shared node; no timing rank.
-Clean accounting: 98 s, four slots. The original reference sample differences
-remain separate. This closes the pending four-seed native-failure confirmation.
+- [Canonical product confirmation](benchmarks/reports/development/canonical-portable-scc-2026-09-28/fresh03/README.md)
+  on earlier snapshot 4aa44429/plugin d1156e6d passes 174 applications, 58 native
+  and 55 stock pairs; three initial default-stock slope SE failures stay NR.
+  Fresh low/wide/sparse C/B 0.791/0.757/0.839 support ADR 0234. Those source-bound
+  ratios are not current-source retimings.
+- [Thread ceiling ADR 0233](docs/adr/0233-preflight-thread-ceilings.md) remains:
+  automatic three-intercept-FE fast/auto PPML through 15 declared finite columns
+  selects at most eight workers before loading/admission; original request stays
+  published. Earlier source-bound jobs 7762740/7762780/7762812 pass 165 applications,
+  55 native and 49 stock pairs, six initial NR. Fresh capped ratios 0.942/0.811
+  and lower process peaks are evidence for that artifact, not the current one.
+- [Original sparse-zero confirmation 7763027](benchmarks/reports/development/sparse-zero-originals-scc-2026-09-28/README.md)
+  closes all eight original native failures on artifact 8e2d5af2. Exact original
+  input/column hashes and independent integer-potential/closure sample proofs
+  pass all four seeds in both designs. Reference sample disagreements remain
+  separate. Diagnostic shared-node clocks are not performance ranks.
+- [Host-wait experiment 7763005](benchmarks/reports/development/host-wait-scc-2026-09-28/README.md)
+  rejects a blanket host setting: small OLS improves, but every slope pair loses.
+  Production settings remain unchanged. [DWARF profile 7763108](benchmarks/reports/development/canonical-portable-scc-2026-09-28/cpu04/README.md)
+  resolves canonical build/product/FMA callers. CPU shares are not wall-time gains.
+  Do not reopen rejected categorical coefficient-engine swaps (ADRs 0155/0157/0207)
+  or borrowed canonical-control tuning (0209).
 
-[ADR 0234](docs/adr/0234-portable-canonical-proposal-products.md) now accepts
-portable inline arithmetic in repeated dense canonical PPML proposal products.
-Weighted geometry, Gram/rank and independent certificates retain their arithmetic;
-there is no numerical storage, routing or tolerance change. Current snapshot
-**4aa44429…**, Linux plugin **d1156e6d…**, Mac plugin **f9175e6e…**, matches all
-**211** frozen computational inputs. [Validation 7763043](benchmarks/reports/development/canonical-portable-scc-2026-09-28/linux-validation01.json)
-and Mac receipts pass 18 canonical Rust tests and four licensed explicit-oracle/
-control fixtures each, plus Linux PPML smoke and Mac universal ABI/panic checks.
-Linux exercises changed portable arithmetic; ARM protects the unchanged path.
+### Resume with a different bounded milestone
 
-[Initial 7763067](benchmarks/reports/development/canonical-portable-scc-2026-09-28/initial02/README.md)
-and [fresh 7763099](benchmarks/reports/development/canonical-portable-scc-2026-09-28/fresh03/README.md)
-complete **174 headline applications**, **58/58 native** and **55/58 stock**
-science pairs. Three initial default-stock slope SE discrepancies remain NR;
-all 12 strict-stock slope pairs in confirmation pass. Fresh low/wide/sparse C/B
-paired medians are **0.791/0.757/0.839**. Small fast/serial narrow to **0.943/
-0.912**; larger is **1.010**. Fresh stock ratios are **2.015/2.130/1.607** for
-small fast/serial/low, **1.136/1.038/0.410** for wide/larger/sparse. No blanket
-1.20 ceiling or 0.90 claim. All jobs have clean accounting and terminal sentinels;
-no builds, profiles, archives or competing fits overlap headline timings.
+Adjudicate original captured-input scientific discrepancies using the pinned SCC
+runtime or retained bytes, before another small-kernel cycle:
 
-Fresh OLS control is **1.021**, stock **1.569**; fresh slopes **0.970**.
-Nine pairs on the initially losing slope input give **1.018**, range 0.804–1.255,
-five losses; marginal medians 494→541ms are a larger 9.5% loss. Retain both summaries.
-Initial uniform 8% loss is not consistently reproduced; no regression-free claim.
-The small, scoped change is retained for wider/low/sparse gains. No new numeric
-storage; observed fresh process-peak deltas range -4.4 to +6.8 MiB. Fresh T4/T1
-is **0.848**, all five faster and scientifically matching, but separately grouped
-request cases do not establish universal monotonic scaling.
+1. Original OLS strong_d2, N983040/K10/seed104729: the
+   [local attempt](benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/original-d2/README.md)
+   rejected regenerated doubles before any fit. Preserve its exact input guard.
+   Smaller explicit-dummy oracles passed but do not resolve the large stopping
+   discrepancy. A separate direct reduced graph/design oracle is appropriate.
+2. The [original issue inventory](benchmarks/reports/development/performance-repair-issue-inventory-2026-09-27/README.md)
+   identifies three strict PPML coefficient disagreements over two inputs:
+   two_fe_dense N61440/K10/T4 zeros seed31415927, and strong_d2 N61440/K10 main
+   seed104729 at T4/T28. Preserve original scientific NR until adjudicated.
+3. Retain original N3932160 timeouts, pyfixest inference normalization, gglm
+   sample/separation, gtools exact-sample extraction and reference failures as
+   separate open families. Do not restart unchanged stopped campaigns.
 
-[Separate CPU attribution 7763108](benchmarks/reports/development/canonical-portable-scc-2026-09-28/cpu04/README.md)
-passes 24 diagnostic public fits with zero lost samples, clean accounting and
-sentinels. DWARF callchains now resolve canonical build → normalized product →
-libm FMA; displayed FMA self share falls 9.39%→2.15%. CPU shares are not wall-time
-savings. Remaining callers include ordinary categorical joint LSMR application
-and Schwarz reconstruction. Next: inspect that ordinary IRLS organization and
-existing coefficient-space solver admission/history before choosing a replacement.
-Do not reopen canonical threshold or control-specific micro-tuning.
-
-The next bounded [candidate, ADR 0235](docs/adr/0235-joint-ppml-proposal-kernels.md),
-keeps LSMR and all independent checks, but changes its repeated speculative
-operator products: contiguous finite-row access, eight fixed adjoint lanes,
-and portable inline products. No added heap bank or routing change. Earlier
-coefficient-engine replacements (ADRs 0155/0157/0207) and borrowed control views
-(0209) remain rejected; this is not another automatic engine swap.
-Snapshot **4c3d7c44…** passes [32 Mac Rust tests and four licensed oracle/control
-fixtures](benchmarks/reports/development/joint-operator-scc-2026-09-28/mac-validation01.json),
-plus universal build/ABI/panic checks. [SCC validation 7763145](benchmarks/reports/development/joint-operator-scc-2026-09-28/submission01.json)
-passes 30 Rust tests, PPML smoke and the same four licensed fixtures, clean
-accounting 199s/four slots/maxvmem5.323G. Candidate Linux plugin **a7e95e67…**.
-The [81-application initial screen 7763162](benchmarks/reports/development/joint-operator-scc-2026-09-28/initial02/README.md)
-passes all 27 native and stock science pairs, plus the two additional Linux
-strict/retry/rank tests before timing. Both platforms therefore pass 32 focused
-Rust tests. Small fast and K24 C/B paired medians improve to **0.875/0.884**;
-serial/K12/three-FE are **0.940/0.932/0.954**, sparse **1.005**, OLS **1.005**.
-Excluded low and slope paths also improve **0.855/0.856**; do not attribute all
-clock changes to the kernel. Every outer/inner count and modeled memory field
-matches. Tracked three-FE peak rises 1.65MB; other PPML peaks match. Clean
-accounting 298s/28 isolated slots/maxvmem2.323G. Small dense stock ratios remain
-**1.693/1.781**, OLS **1.472**. No adoption yet.
-
-[Fresh confirmation 7763189](benchmarks/reports/development/joint-operator-scc-2026-09-28/submission03.json)
-is submitted: 111 applications/11 cases on predeclared seed 202609288, adding
-larger and weak-connectivity designs and repeating width/thread/three-FE cases
-and excluded controls. Candidate source is unchanged; no compilation, profiling
-or competing fits overlap headline timing. This is bounded development, not
-qualification or completion of the broader plan.
-
-The broader repair goal remains active: small OLS/PPML and low-memory OLS
-stock losses, original comparator/separation adjudications, large timeouts and
-the fresh performance/scaling sweep remain. Historical sections below retain
-chronology; their pending entries are superseded by this opening where resolved.
-No push.
+The full 140-configuration/four-seed performance/scaling sweep is not run. Static
+allocation-inventory drift, weighted constrained-fit failures and nonretaining
+CG span instability remain open; this checkpoint does not repair them. No
+Windows/physical-memory/full qualification claim. Routine SCC testing is already
+authorized: do not ask again. No push. The broader repair goal remains active.
+Historical pending entries below are superseded by this opening where resolved.
 
 ## Portable coupling accepted; thread scaling and remaining stock losses open
 

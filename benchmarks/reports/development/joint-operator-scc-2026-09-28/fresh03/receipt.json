@@ -1,0 +1,32 @@
+{
+  "job": "7763189",
+  "status": "success",
+  "applications_passed": 111,
+  "native_science_pairs": 37,
+  "stock_science_passed": 37,
+  "stock_default_pairs": 34,
+  "stock_strict_pairs": 3,
+  "accounting": {
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "385",
+    "slots": "28",
+    "maxvmem": "1.998G"
+  },
+  "accounting_source_sha256": "da82ad3e1618c14d6c52d3e6970bebec83ee4fcceebd1975e4fc25b658473f8a",
+  "terminal_sentinels": [
+    "FEREG_ROTATIONS_COMPLETE",
+    "FEREG_JOINT_OPERATOR_ROTATION_SUCCESS job=7763189"
+  ],
+  "files": {
+    "summary.json": "9821d767f08c1ec8f7324989a916d78fb383a85ad81fab6b8f4e5d6117b194fa",
+    "thread-scaling.json": "ef8f861ed3527384bc368f140d85aead1d356011137c7aec44c448f664cfca8a",
+    "plan.json": "698f54b55923d481924f5f9ccd599c12e2f493ef20c3d1884e4054712263e854",
+    "compare_recorded_threads.py": "66f2f4f0efbe91eb481dc974547cecd2511e648857976f49c4cef49da14f577f",
+    "README.md": "2695e3799628924f92e18d0cf4a01caa1f8cad4255a305ff8ed692cff87b831f",
+    "identity.json": "17ffcfd52062fdf6cb05fbb0fa2d6accd7604932a4b57867dc2852319a8dc941",
+    "complete.json": "019989653163417ffd4e093be0e185097a0457fe8f67acd000bc78422f8787e6",
+    "progress.json": "262e07a07f09413cb2034ee4fecccb563e510c2d82a495d170e99ab949b0e3bc",
+    "phases.json": "deea360b575335bb55501bf17a488cab549d2ec045143160bb80b736b614ae73"
+  }
+}

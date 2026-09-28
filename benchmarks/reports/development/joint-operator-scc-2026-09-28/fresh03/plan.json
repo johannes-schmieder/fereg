@@ -1,0 +1,517 @@
+{
+  "cases": [
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-profiled-small",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "low",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-small-low",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 1
+      },
+      "id": "fresh-small-serial",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 1,
+        "candidate": 1
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 12,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "fresh-larger-wide",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_sparse",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-sparse-two",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 24,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-wide-serial-adjoint",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "three_fe_sparse",
+        "effects": [
+          "g1",
+          "g2",
+          "g3"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "fresh-three-fe-core-pair",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "slopes",
+        "slopes": {
+          "g1": [
+            "z1"
+          ],
+          "g2": [
+            "z2"
+          ]
+        },
+        "threads": 4
+      },
+      "id": "fresh-excluded-slope",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest_strict"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ols",
+        "n": 61440,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "fresh-excluded-ols",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 122880,
+        "section": "main",
+        "threads": 8
+      },
+      "id": "fresh-larger",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 8,
+        "candidate": 8
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    },
+    {
+      "cell": {
+        "design": "weak_d3",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "memory": "fast",
+        "model": "ppml",
+        "n": 30720,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "fresh-weak",
+      "limits": {
+        "baseline": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "candidate": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        },
+        "stock": {
+          "command": 180,
+          "extraction": 120,
+          "startup": 180
+        }
+      },
+      "native_effective_threads": {
+        "baseline": 4,
+        "candidate": 4
+      },
+      "seeds": [
+        202609288,
+        202609288,
+        202609288
+      ],
+      "stock_arm": "fixest"
+    }
+  ],
+  "fits": 111,
+  "input_policy": "Seed202609288 predeclared before generating any fresh input. No source changes after the initial screen.",
+  "interpretation": "No engine, tolerance, memory policy or guard changes. All default-reference scientific failures stay NR. Slope stock remains explicitly strict. Inspect complete paired distributions, unchanged-path controls, iteration counts and process/native memory before adoption. Do not tune to these cases.",
+  "orders": [
+    [
+      "baseline",
+      "candidate",
+      "stock"
+    ],
+    [
+      "stock",
+      "candidate",
+      "baseline"
+    ]
+  ],
+  "plugins": {
+    "baseline": "d1156e6dc88d1b041e061ce7e4df7a323bcd08f8254276b752172cb022950e22",
+    "candidate": "a7e95e6712c6b05b0217a9ddffa5b8f14c0f8d95443c2b983ce459f16a0e4596"
+  },
+  "purpose": "Fresh unchanged joint-operator confirmation with weak connectivity, larger size, wide/serial/three-FE paths and excluded low/slope/OLS controls.",
+  "schema": "joint-operator-screen-v1",
+  "science": "Existing systematic sample, convergence, coefficient, covariance and objective checks; native rank/DoF equality. Independent WLS and Poisson/Hessian/sandwich fixtures already passed on both artifacts. Scientific discrepancies stay unranked. Additional fast-categorical strict-final/forced-retry and three-FE/nested-rank/zero-control Rust tests on both targets before timing.",
+  "source_snapshot": "4c3d7c44dec6535da0506e1f771516ec1615ce92c43beb6e53520fd0c949771e",
+  "threads_policy": "Equal public requests, effective native teams and affinities; normal Stata host settings throughout.",
+  "upstream_linux_validation_job": "7763145",
+  "warmup": "Same case/design/width/threads on registered 7680-row positive-outcome warm input; generation happens sequentially outside every command clock.",
+  "work": "Public feppml and pinned unmodified fepois, robust inference; OLS control uses IID. No optional saved observation outputs. Slope control uses strict stock (glm.tol=1e-10, fixef.tol=1e-11); categorical and OLS use default."
+}

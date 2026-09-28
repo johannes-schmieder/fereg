@@ -1,8 +1,8 @@
 # ADR 0235: repeated categorical PPML proposal products
 
-Status: candidate, 2026-09-28.
+Status: accepted for bounded development, 2026-09-28. Not qualification.
 
-## Decision being tested
+## Decision
 
 Retain ordinary categorical joint LSMR, its finite block and FE preconditioners,
 canonical initial/strict/final ownership and all acceptance checks. Change only
@@ -62,10 +62,37 @@ or scientific failures without changing tolerances or adding fitted guards.
 
 Candidate snapshot `4c3d7c44…` passes 30 categorical LSMR Rust tests and four
 licensed oracle/control fixtures on both Mac and Linux, plus PPML Linux smoke
-and Mac universal ABI/panic containment. Mac additionally passes two strict
-categorical final/retry/nested-rank/zero-control tests; Linux runs those before
+and Mac universal ABI/panic containment. Both platforms additionally pass two
+strict categorical final/retry/nested-rank/zero-control tests, for 32 distinct
+Rust tests each. Linux runs them before
 headline timing. Linux build/validation 7763145 has clean accounting and terminal
 sentinel. The 81-application isolated screen 7763162 is registered against
 baseline `d1156e6d…` and candidate `a7e95e67…`. Receipts are in the
 [candidate report](../../benchmarks/reports/development/joint-operator-scc-2026-09-28/).
-Performance adoption remains pending.
+The [initial screen](../../benchmarks/reports/development/joint-operator-scc-2026-09-28/initial02/README.md)
+and [fresh confirmation](../../benchmarks/reports/development/joint-operator-scc-2026-09-28/fresh03/README.md)
+complete 192 headline applications and 64/64 native plus 64/64 stock science
+pairs. Fresh serial and K24 C/B paired medians are 0.678 and 0.783, with every
+pair faster; K12 is 0.958 and weak connectivity 0.934. Small T4, sparse, larger
+and three-FE are approximately neutral. The initial small-T4 gain does not
+replicate. Accept the small implementation for the repeatable serial/wide gains,
+without adding a fitted selector. Outer/inner counts and modeled memory fields
+match on every pair. No heap bank is added; physical peaks still vary.
+
+Controls remain mixed: fresh slopes lose 4.9% at both paired and marginal
+medians, with two of three losses and range 0.897–1.197; initial slopes instead
+improve. Fresh OLS is neutral. Do not claim uniform nonregression, attribute
+excluded-route changes to this kernel, or reopen control-specific tuning.
+
+Small dense PPML still takes 1.894 of stock at T4 and 1.327 at T1; OLS takes
+1.570. Recorded same-input T4/T1 science passes, but paired timing is 1.005,
+range 0.843–1.543, and marginal medians imply a 15.7% T4 loss. Requests were
+separately grouped; matched alternating requests are necessary before changing
+team policy or attributing the loss to the existing traversal switch. The
+universal 1.20 ceiling, 0.90 aspiration and monotonic scaling are not achieved.
+ARM performance is unmeasured here, although independent science passes.
+
+Close this bounded kernel experiment. Prioritize the original large-input
+comparator discrepancies next; smaller oracles have not adjudicated them.
+Future performance work must retain these concrete small-command and scaling
+losses, rather than reopening rejected engine swaps or fitting guards.
