@@ -1,0 +1,21 @@
+{
+  "job": "7763263",
+  "stage": "original-native-receipt preflight",
+  "small_oracle_tests_pass": true,
+  "original_data_generated": false,
+  "large_oracle_executed": false,
+  "estimator_fits": 0,
+  "expected_misbound_sha256": "8743e06581015e79b2a7273ee0572215a234153ee09732d8c4d1786df2b70256",
+  "observed_original_sha256": "35aefc502adacf7d5692cffb2b6cf4fccf09fa7ad8425fab969a53656a4147cb",
+  "correct_original_binding": "benchmarks/reports/development/systematic-light-scc-pdf-expanded-2026-09-27/diagnostic-extract.json: ols-strong_d2-n983040-k10-t4-main/warm-1/fereg/result.json",
+  "misbound_later_binding": "benchmarks/reports/development/performance-repair-paired-scc-2026-09-27/final/summary.json: ols-strong_d2-n983040-k10-t4-main-auto/pair-1/candidate/result.json",
+  "cause": "Harness mixed two campaign result paths. Original receipt agrees with committed original capture.",
+  "action": "One operational binding correction; original run and all scientific guards preserved.",
+  "accounting": {
+    "failed": "0",
+    "exit_status": "1",
+    "slots": "4",
+    "ru_wallclock": "10",
+    "maxvmem": "354.781M"
+  }
+}

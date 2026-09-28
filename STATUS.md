@@ -10,7 +10,49 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## Current checkpoint: portable PPML kernels accepted; original discrepancies next
+## Current checkpoint: original large OLS result independently validated
+
+The [original-input direct-graph adjudication](benchmarks/reports/development/ols-original-direct-scc-2026-09-28/README.md)
+validates original and current fereg on strong_d2 N983040/K10/seed104729, unit
+weights and IID inference. Pinned SCC regeneration matches the original DTA and
+every column hash. A new offline two-FE WLS oracle eliminates one partition and
+uses grounded sparse SuperLU, independently of native/fixest absorption. Six
+full-dummy SVD checks, deficient-rank refusal and the zero-control boundary pass
+on Mac and Linux. Exact total model rank is **503817**; oracle RSS
+**119761.04313891233**, maximum finite score **4.39e-15**. Original/current native
+coefficients and covariance exports are byte-identical; coefficient error
+**3.18e-15**, covariance error **4.82e-20**, RSS error **1.08e-8**. All native
+sample/rank/coefficients/SE/VCE/RSS/convergence checks pass.
+
+Original default fixest, areg and pyfixest instead fail coefficient/RSS/SE checks
+against that oracle. RSS excesses are **0.870469/1.664993/1.632167**. The new
+default-stock fit reproduces the discrepancy. This input's discrepancy is not a
+native rank/inference/coefficient bug. No other seed or old timing is reclassified.
+Original areg explicitly reports converged=0 despite rc=0; pyfixest OLS has no
+convergence field. The benchmark pair checker now rejects every explicitly false
+or null comparator convergence flag, including areg, even if numbers agree.
+Previously required fields remain required; missing OLS pyfixest evidence is not
+invented. Ten focused evidence tests pass, including PPML rank controls and
+negative convergence cases. Frozen controllers and old classifications remain unchanged.
+
+The full diagnostic is **partial**, with failures retained. Job **7763263**
+rejects a misbound later-campaign receipt hash before any large solve/fit. One
+verified correction leads to **7763270**: the oracle/native/default checks finish,
+but stock `fixef.tol=1e-11` reaches the declared **300-second R-process timeout**
+without results. Accounting failed=0/exit_status=1, four slots, 354s, maxvmem 2.273G;
+no parent terminal sentinel, no successful complete-probe or command-time claim.
+The planned third arm is not run; `fixef.tol=1e-13` is also unsupported by pinned
+fixest (floor just above 2.22e-12) and must not be reused. Both jobs are terminal;
+no further retry or new timing was run. Routine bounded
+SCC testing remains authorized by Johannes; do not ask for renewed approval.
+
+No estimator change in this milestone. All **211** prior computational inputs
+still match snapshot **4c3d7c44…** / Linux plugin **a7e95e67…**. The new oracle
+and its harness are diagnostic additions. Continue with the original PPML
+coefficient discrepancies, using an independent optimum/accuracy calculation;
+keep the strict large-OLS comparison unavailable instead of restarting it.
+
+### Latest retained PPML performance improvements
 
 Main now retains [ADR 0234](docs/adr/0234-portable-canonical-proposal-products.md)
 (portable dense canonical proposal products) and
@@ -89,20 +131,23 @@ attribution. Do not fit a cap to this seed or continue threshold micro-tuning.
   Do not reopen rejected categorical coefficient-engine swaps (ADRs 0155/0157/0207)
   or borrowed canonical-control tuning (0209).
 
-### Resume with a different bounded milestone
+### Remaining bounded milestones
 
 Adjudicate original captured-input scientific discrepancies using the pinned SCC
 runtime or retained bytes, before another small-kernel cycle:
 
-1. Original OLS strong_d2, N983040/K10/seed104729: the
-   [local attempt](benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/original-d2/README.md)
-   rejected regenerated doubles before any fit. Preserve its exact input guard.
-   Smaller explicit-dummy oracles passed but do not resolve the large stopping
-   discrepancy. A separate direct reduced graph/design oracle is appropriate.
-2. The [original issue inventory](benchmarks/reports/development/performance-repair-issue-inventory-2026-09-27/README.md)
+1. The [original issue inventory](benchmarks/reports/development/performance-repair-issue-inventory-2026-09-27/README.md)
    identifies three strict PPML coefficient disagreements over two inputs:
    two_fe_dense N61440/K10/T4 zeros seed31415927, and strong_d2 N61440/K10 main
    seed104729 at T4/T28. Preserve original scientific NR until adjudicated.
+   Existing bounded two-FE Decimal optimum certificates (ADR0194) cover the
+   positive-outcome design's size/topology; inspect their domain before reuse.
+   The zero-outcome input requires its independent sample/separation proof too.
+2. Original large OLS first-seed native science is now independently validated
+   above; other seeds and a scientifically comparable stock timing remain open.
+   Do not rerun the unchanged strict process after its bounded timeout. The
+   [old local preflight rejection](benchmarks/reports/development/ols-comparator-adjudication-local-2026-09-27/original-d2/README.md)
+   remains intact; this new evidence succeeds using the original SCC runtime.
 3. Retain original N3932160 timeouts, pyfixest inference normalization, gglm
    sample/separation, gtools exact-sample extraction and reference failures as
    separate open families. Do not restart unchanged stopped campaigns.

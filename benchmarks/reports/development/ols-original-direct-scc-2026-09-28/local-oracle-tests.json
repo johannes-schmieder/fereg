@@ -1,0 +1,63 @@
+{
+  "passed": true,
+  "full_dummy_svd_cases": [
+    {
+      "disconnected": false,
+      "weight_generation": 0,
+      "rank": 32,
+      "coefficient_error": 1.3739009929736312e-15,
+      "residual_error": 6.661338147750939e-15,
+      "bread_error": 4.065758146820642e-18
+    },
+    {
+      "disconnected": false,
+      "weight_generation": 1,
+      "rank": 32,
+      "coefficient_error": 6.938893903907228e-16,
+      "residual_error": 5.218048215738236e-15,
+      "bread_error": 1.951563910473908e-18
+    },
+    {
+      "disconnected": false,
+      "weight_generation": 2,
+      "rank": 32,
+      "coefficient_error": 4.440892098500626e-15,
+      "residual_error": 1.7319479184152442e-14,
+      "bread_error": 3.2526065174565133e-19
+    },
+    {
+      "disconnected": true,
+      "weight_generation": 0,
+      "rank": 40,
+      "coefficient_error": 6.661338147750939e-16,
+      "residual_error": 4.884981308350689e-15,
+      "bread_error": 5.692061405548898e-18
+    },
+    {
+      "disconnected": true,
+      "weight_generation": 1,
+      "rank": 40,
+      "coefficient_error": 4.829470157119431e-15,
+      "residual_error": 2.1760371282653068e-14,
+      "bread_error": 3.0357660829594124e-18
+    },
+    {
+      "disconnected": true,
+      "weight_generation": 2,
+      "rank": 40,
+      "coefficient_error": 1.9984014443252818e-15,
+      "residual_error": 1.4210854715202004e-14,
+      "bread_error": 9.215718466126788e-19
+    }
+  ],
+  "rank_deficiency_rejected": true,
+  "zero_controls_pass": true,
+  "platform": "darwin-arm64",
+  "numpy": "2.5.3",
+  "scipy": "1.18.1",
+  "scope": "Only the independent oracle, no native or reference estimates in this local check.",
+  "files": {
+    "benchmarks/systematic/two_fe_direct_oracle.py": "e40482c2925541f6d067c20574e50fc86a124136ce30ccd7a68a9fec9366b4ad",
+    "benchmarks/systematic/test_two_fe_direct_oracle.py": "b69cda985bfedb32b4ee23e4b888b71a12ae1cf35c15afa8b3aa77946e67f797"
+  }
+}

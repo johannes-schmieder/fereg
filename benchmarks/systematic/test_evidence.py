@@ -84,6 +84,41 @@ class EvidenceTests(unittest.TestCase):
             write_json(b / "result.json", right)
             self.assertEqual(compare(a, b, settings)["status"], "accuracy_failure")
 
+    def test_explicit_reference_nonconvergence_overrides_numerical_agreement(self):
+        with tempfile.TemporaryDirectory() as folder:
+            a, b = Path(folder) / "a", Path(folder) / "b"
+            self.fixture(a, "fereg"); self.fixture(b, "areg")
+            settings = read_json(HERE / "manifest.json")["science"]
+            record = read_json(b / "result.json")
+            # Every reported number and row remains identical to the candidate.
+            for arm in ("areg", "reghdfe", "greg", "pyfixest"):
+                record["arm"] = arm
+                for flag in (0, False, None):
+                    with self.subTest(arm=arm, converged=flag):
+                        record["metadata"]["converged"] = flag
+                        write_json(b / "result.json", record)
+                        result = compare(a, b, settings)
+                        self.assertTrue(result["checks"]["coefficients"])
+                        self.assertFalse(result["checks"]["comparator_converged"])
+                        self.assertEqual(result["status"], "accuracy_failure")
+                record["metadata"]["converged"] = 1
+                write_json(b / "result.json", record)
+                self.assertEqual(compare(a, b, settings)["status"], "pass")
+
+    def test_reference_missing_convergence_keeps_existing_required_surfaces(self):
+        with tempfile.TemporaryDirectory() as folder:
+            a, b = Path(folder) / "a", Path(folder) / "b"
+            self.fixture(a, "fereg"); self.fixture(b, "fixest")
+            settings = read_json(HERE / "manifest.json")["science"]
+            record = read_json(b / "result.json")
+            del record["metadata"]["converged"]
+            write_json(b / "result.json", record)
+            self.assertFalse(compare(a, b, settings)["checks"]["comparator_converged"])
+            # Missing pyfixest OLS metadata is not a fabricated positive flag.
+            record["arm"] = "pyfixest"
+            write_json(b / "result.json", record)
+            self.assertNotIn("comparator_converged", compare(a, b, settings)["checks"])
+
     def test_latex_panels_remain_individual(self):
         result = composite("Example", ["a.pdf", "b.pdf", "c.pdf", "d.pdf"], ["a", "b", "c", "d"], "Note")
         self.assertEqual(result.count(r"\begin{subfigure}"), 4)

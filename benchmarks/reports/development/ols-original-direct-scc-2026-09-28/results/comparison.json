@@ -1,0 +1,144 @@
+{
+  "current": {
+    "fereg": {
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors": true
+      },
+      "coefficient_max_abs_error": 3.1780134079895106e-15,
+      "covariance_max_abs_error": 4.817499887508833e-20,
+      "files": {
+        "coefficients.csv": "a33afa43ee96e09fac1e075a3167a0634a4e344f4b25b5ebe8b8bda8f1fc5aca",
+        "covariance.csv": "7f8eaf0f0b57127a8e40374dfee83a7b3f805dba630915e3ca22e3d8a3c52f66",
+        "result.json": "00a7b30f8875519a3476d47fb175153e2f183a7ee739c46a3371f1f1083a08cf"
+      },
+      "pass_all": true,
+      "rank": 503817.0,
+      "rss_error": 1.0797521099448204e-08
+    }
+  },
+  "new_reference": {
+    "default": {
+      "checks": {
+        "coefficients": false,
+        "converged": true,
+        "covariance": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": false,
+        "standard_errors": false
+      },
+      "coefficient_max_abs_error": 2.1222186642536056e-06,
+      "covariance_max_abs_error": 3.1881993839561132e-12,
+      "iterations": "160,200,240,240,200,200,120,240,160,160,200",
+      "metadata": {
+        "N": 983040,
+        "converged": true,
+        "df_k": 503817,
+        "fit_nparams": 503817,
+        "rss": 119761.91360769
+      },
+      "pass_all": false,
+      "rank": 503817,
+      "residual_max_abs_error": 0.0027123421593915342,
+      "residual_scores": {
+        "finite": 2.1166343041629803e-06,
+        "first_fe": 2.94903020598657e-18,
+        "second_fe": 2.8258077138243026e-07
+      },
+      "rss_error": 0.8704687776771607,
+      "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58"
+    }
+  },
+  "original": {
+    "areg": {
+      "checks": {
+        "coefficients": false,
+        "converged": false,
+        "covariance": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": false,
+        "standard_errors": false
+      },
+      "coefficient_max_abs_error": 4.903060683354721e-06,
+      "covariance_max_abs_error": 5.676059180237492e-12,
+      "files": {
+        "coefficients.csv": "a40d1ecd886cf4356e6864a19debf1b5de29b95b9f6cecdf0b56cf16c852303a",
+        "covariance.csv": "e4673c990fceb7f4c38179236455bbe5e9ea905bb6af19169b7393b3b215bce8",
+        "result.json": "9b18c812a2c90af6095bf3d474045e67cd752fc27487ae5c5c82d028c90be52b"
+      },
+      "pass_all": false,
+      "rank": 503817.0,
+      "rss_error": 1.6649929618724855
+    },
+    "fereg": {
+      "checks": {
+        "coefficients": true,
+        "converged": true,
+        "covariance": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": true,
+        "standard_errors": true
+      },
+      "coefficient_max_abs_error": 3.1780134079895106e-15,
+      "covariance_max_abs_error": 4.817499887508833e-20,
+      "files": {
+        "coefficients.csv": "a33afa43ee96e09fac1e075a3167a0634a4e344f4b25b5ebe8b8bda8f1fc5aca",
+        "covariance.csv": "7f8eaf0f0b57127a8e40374dfee83a7b3f805dba630915e3ca22e3d8a3c52f66",
+        "result.json": "35aefc502adacf7d5692cffb2b6cf4fccf09fa7ad8425fab969a53656a4147cb"
+      },
+      "pass_all": true,
+      "rank": 503817.0,
+      "rss_error": 1.0797521099448204e-08
+    },
+    "fixest": {
+      "checks": {
+        "coefficients": false,
+        "converged": true,
+        "covariance": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": false,
+        "standard_errors": false
+      },
+      "coefficient_max_abs_error": 2.1222186642536056e-06,
+      "covariance_max_abs_error": 3.1881993839561132e-12,
+      "files": {
+        "coefficients.csv": "ea5d778adec80ba14d2c737fd85c914b586be998e71889115621b8ed96c3a25d",
+        "covariance.csv": "bd9af92f20cec6dd954cd7675c207d30d5b568a64b1ecdd145e2204a13bb692a",
+        "result.json": "8d8bcb7324e7c7400f76fada54dbb37f015ede09f20241febb299ff0d1ef8c36"
+      },
+      "pass_all": false,
+      "rank": 503817,
+      "rss_error": 0.8704687776771607
+    },
+    "pyfixest": {
+      "checks": {
+        "coefficients": false,
+        "converged": false,
+        "covariance": true,
+        "exact_rank": true,
+        "exact_sample": true,
+        "objective": false,
+        "standard_errors": false
+      },
+      "coefficient_max_abs_error": 4.303831543789327e-06,
+      "covariance_max_abs_error": 5.5505821576075134e-12,
+      "files": {
+        "coefficients.csv": "1f748865c69bba32548b11a32bafca183f0fbc15f8205e1d305a5716f36c7fec",
+        "covariance.csv": "e2662ef7d4e269f7098d6bc3ba94a0b5d3e67aaa1f7dea9df86275a3f1dc3f7b",
+        "result.json": "909123d19ec1ae64e24ccdd80dcb0b90e529a116314878109efb94a5284faffd"
+      },
+      "pass_all": false,
+      "rank": 503817.0,
+      "rss_error": 1.6321667499287287
+    }
+  }
+}

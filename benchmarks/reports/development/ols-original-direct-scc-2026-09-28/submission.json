@@ -1,0 +1,11 @@
+{
+  "job": "7763263",
+  "run_directory": "dev/20260928-original-ols-direct-01",
+  "slots": 4,
+  "mem_per_core": "3G",
+  "wall_minutes": 30,
+  "source_commit": "2c63aa74",
+  "plugin_sha256": "a7e95e6712c6b05b0217a9ddffa5b8f14c0f8d95443c2b983ce459f16a0e4596",
+  "deployment_sha256": "112ca113ae34040a9c704b82ae97c6ee4665cb25241384332920f8043d28a1ca",
+  "scope": "Six small explicit-design checks, one original large OLS direct solve, original captured output comparisons, one current public fereg fit and three pinned stock feols accuracy settings. No headline timings."
+}

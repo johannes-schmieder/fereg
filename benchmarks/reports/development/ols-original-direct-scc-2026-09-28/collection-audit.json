@@ -1,0 +1,24 @@
+{
+  "original_reported_standard_errors": {
+    "fereg": {
+      "max_reported_se_sqrt_covariance_error": 4.4777549723651333e-17,
+      "reported_converged": 1.0
+    },
+    "fixest": {
+      "max_reported_se_sqrt_covariance_error": 9.833713704443525e-17,
+      "reported_converged": true
+    },
+    "areg": {
+      "max_reported_se_sqrt_covariance_error": 4.412702842016003e-17,
+      "reported_converged": 0.0
+    },
+    "pyfixest": {
+      "max_reported_se_sqrt_covariance_error": 8.716985466783456e-17,
+      "reported_converged": null
+    }
+  },
+  "native_current_original_exports_identical": true,
+  "unchanged_computational_input_count": 211,
+  "source_manifest_sha256": "a4041635598e428f4cc378d2f9b1b8445490120bf73880a844b6bf7ae31de19c",
+  "python_ast_pass": true
+}

@@ -1,0 +1,79 @@
+{
+  "status": "partial_diagnostic_with_declared_reference_timeout",
+  "job": "7763270",
+  "accounting": {
+    "jobnumber": "7763270",
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "1",
+    "ru_wallclock": "354",
+    "maxvmem": "2.273G"
+  },
+  "accounting_source_sha256": "d55bc7a7ea0493705acae8fb2ff3517874be33299b6c78ccd91e1c9f36ba2a1a",
+  "attempt01_accounting": {
+    "jobnumber": "7763263",
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "1",
+    "ru_wallclock": "10",
+    "maxvmem": "354.781M"
+  },
+  "attempt01_accounting_source_sha256": "c320f039dc66bc761239df30c371d2175fba94224a8775b97991961171b2e53f",
+  "application_evidence": {
+    "job_log_sha256": "94800352e4509bb27a2026acf2caf1be7df7d01e5d44291fefb1957a0b949ec8",
+    "small_svd_sentinel": true,
+    "large_oracle_sentinel": true,
+    "parent_terminal_sentinel": false,
+    "strict_timeout": true,
+    "strict_has_result": false,
+    "very_strict_attempted": false,
+    "default_sentinel": true,
+    "default_log_sha256": "ea458b95b80c57a855cf6952c2efe7217f26c0d7a27e9db654ad91cf1748edfe",
+    "strict_log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "attempt01_log_sha256": "d87dd475e46f375a5c8f687ec4307aa1934894e276d66e8ff4315a5103a1ac2c"
+  },
+  "completed": {
+    "small_full_dummy_svd_checks": 6,
+    "rank_deficiency_rejection": true,
+    "zero_control_boundary": true,
+    "exact_original_input_and_columns": true,
+    "large_direct_oracle": true,
+    "current_native_application": true,
+    "current_native_science": true,
+    "stock_default_application": true,
+    "stock_default_science": false
+  },
+  "uncompleted": {
+    "strict": "R process exceeded 300-second wall limit; no fit result, no per-command timing bound, no numerical adjudication.",
+    "very_strict": "Not executed after strict timeout. Registered fixef.tol=1e-13 is below the pinned package supported floor (10000*machine epsilon); it must not be used in a future fit."
+  },
+  "interpretation": "Completed numerical evidence diagnoses the original/native outputs. The overall job failed and no complete-run sentinel exists. This is not a successful full probe, qualification, or new timing rank.",
+  "files": {
+    "results/bindings.json": "19197a30e456fd3920f74e4923a4ca36bc0d52caf064223f0d590e9d8a52092c",
+    "results/comparison.json": "f249be2e18d5752f6a8cb8dc6b8532241766c48742c2433b7649c832f4a8dec3",
+    "results/default/V.csv": "1a286a06abf02ff9cbea78d1a410d19bc1457f2d5e2b93fcfd0f3430d1e1f334",
+    "results/default/b.csv": "8ea5b6752ef644482583178c5c958605d3fe45a1e3d53c0a64e14df5d7a88a1c",
+    "results/default/iterations.txt": "1471ad96e57de0cfdf5638e0a6243c622f7f8a1264e113e70558a7129988be54",
+    "results/default/meta.csv": "a0caff48f8d3dc0bbc11adf553d13261d0038a1c44fd19eedf8dfa39e9d686ee",
+    "results/input.json": "5d862ec9f8ad2aa3d90359a019e5dbc125dadc1e34e18fe3e778eb0b5221621b",
+    "results/native/coefficients.csv": "a33afa43ee96e09fac1e075a3167a0634a4e344f4b25b5ebe8b8bda8f1fc5aca",
+    "results/native/covariance.csv": "7f8eaf0f0b57127a8e40374dfee83a7b3f805dba630915e3ca22e3d8a3c52f66",
+    "results/native/import-hashes.json": "a955ac0343670b7caaf03621c23c23630edef9504bf9a02e8b079ed743b4efc8",
+    "results/native/request.json": "44b847fa0a27e712423046ed4cf12cd30c3261534ad8f886faeda43840b6e2cb",
+    "results/native/result.json": "00a7b30f8875519a3476d47fb175153e2f183a7ee739c46a3371f1f1083a08cf",
+    "results/oracle-tests.json": "0d8fd0b0c440d1c419cdb4ba23c1915d6bdb6f0110fc528ff3b2cb39a8fdb7f2",
+    "results/oracle.json": "8f50ef56a9aaac343c426e6cd8185cc17351109de6edffdeb3c7f3569a4e0b45",
+    "original-outputs/areg/coefficients.csv": "a40d1ecd886cf4356e6864a19debf1b5de29b95b9f6cecdf0b56cf16c852303a",
+    "original-outputs/areg/covariance.csv": "e4673c990fceb7f4c38179236455bbe5e9ea905bb6af19169b7393b3b215bce8",
+    "original-outputs/areg/result.json": "9b18c812a2c90af6095bf3d474045e67cd752fc27487ae5c5c82d028c90be52b",
+    "original-outputs/fereg/coefficients.csv": "a33afa43ee96e09fac1e075a3167a0634a4e344f4b25b5ebe8b8bda8f1fc5aca",
+    "original-outputs/fereg/covariance.csv": "7f8eaf0f0b57127a8e40374dfee83a7b3f805dba630915e3ca22e3d8a3c52f66",
+    "original-outputs/fereg/result.json": "35aefc502adacf7d5692cffb2b6cf4fccf09fa7ad8425fab969a53656a4147cb",
+    "original-outputs/fixest/coefficients.csv": "ea5d778adec80ba14d2c737fd85c914b586be998e71889115621b8ed96c3a25d",
+    "original-outputs/fixest/covariance.csv": "bd9af92f20cec6dd954cd7675c207d30d5b568a64b1ecdd145e2204a13bb692a",
+    "original-outputs/fixest/result.json": "8d8bcb7324e7c7400f76fada54dbb37f015ede09f20241febb299ff0d1ef8c36",
+    "original-outputs/pyfixest/coefficients.csv": "1f748865c69bba32548b11a32bafca183f0fbc15f8205e1d305a5716f36c7fec",
+    "original-outputs/pyfixest/covariance.csv": "e2662ef7d4e269f7098d6bc3ba94a0b5d3e67aaa1f7dea9df86275a3f1dc3f7b",
+    "original-outputs/pyfixest/result.json": "909123d19ec1ae64e24ccdd80dcb0b90e529a116314878109efb94a5284faffd"
+  }
+}

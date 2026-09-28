@@ -248,7 +248,10 @@ def compare(left, right, config):
         for field in ("df_a", "df_r"):
             checks[field] = isinstance(a["metadata"].get(field), (float, int)) and a["metadata"].get(field) == b["metadata"].get(field)
     checks["candidate_converged"] = a["metadata"].get("converged") == 1
-    if b["arm"] in ("fixest", "fixest_strict", "ppmlhdfe") or (b["arm"] == "pyfixest" and a["cell"]["model"] == "ppml"):
+    # Some OLS references return estimates with rc=0 and converged=0. Numerical
+    # agreement cannot make an explicitly unfinished solve timing-eligible.
+    if ("converged" in b["metadata"] or b["arm"] in ("fixest", "fixest_strict", "ppmlhdfe")
+            or (b["arm"] == "pyfixest" and a["cell"]["model"] == "ppml")):
         checks["comparator_converged"] = b["metadata"].get("converged") == 1
     if b["arm"] == "ppmlhdfe":
         # Accepted PPML capture contract assigns the normalized constant to

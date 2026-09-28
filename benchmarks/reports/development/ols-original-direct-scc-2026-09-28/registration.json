@@ -1,0 +1,53 @@
+{
+  "purpose": "Bounded untimed exact-original-input adjudication of OLS fit, inference and rank using a separately implemented grounded two-FE direct graph factorization. No timing claims, estimator changes, tolerance changes or retroactive receipt edits.",
+  "source_commit": "2c63aa74",
+  "plugin_sha256": "a7e95e6712c6b05b0217a9ddffa5b8f14c0f8d95443c2b983ce459f16a0e4596",
+  "original_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "original_case": "results/ols-strong_d2-n983040-k10-t4-main/warm-1",
+  "original_input_receipt_sha256": "5d862ec9f8ad2aa3d90359a019e5dbc125dadc1e34e18fe3e778eb0b5221621b",
+  "original_native_result_sha256": "8743e06581015e79b2a7273ee0572215a234153ee09732d8c4d1786df2b70256",
+  "input_sha256": "0e4b437326bfe01a0e6058b0487f75b66036ae9f4f65d1ea94bfcea21c758ff0",
+  "case": {
+    "model": "ols",
+    "design": "strong_d2",
+    "n": 983040,
+    "k": 10,
+    "seed": 104729,
+    "threads": 4,
+    "section": "main",
+    "vce": "iid",
+    "weights": "unit"
+  },
+  "science": {
+    "coefficient_rtol": 1e-07,
+    "coefficient_atol": 1e-10,
+    "vce_rtol": 1e-06,
+    "vce_atol": 1e-10,
+    "objective_rtol": 1e-08,
+    "objective_atol": 1e-10
+  },
+  "reference_arms": [
+    "default",
+    "strict",
+    "very_strict"
+  ],
+  "reference_options": {
+    "default": "Pinned unmodified feols defaults",
+    "strict": "fixef.tol=1e-11",
+    "very_strict": "fixef.tol=1e-13"
+  },
+  "reference_threads": 1,
+  "reference_timeout_seconds": 300,
+  "native_limits": {
+    "startup": 120,
+    "command": 180,
+    "extraction": 120
+  },
+  "oracle_gate": "Six full explicit-dummy SVD cases with connected/disconnected topology and three weight generations, deficient finite rank rejection and zero-control boundary; full original-row FE/finite scores <1e-10, projection score <1e-10, factor backward error <1e-12. Exact original DTA and all column hashes required before any original-data solve.",
+  "allocation": {
+    "slots": 4,
+    "mem_per_core": "3G",
+    "wall_minutes": 30
+  },
+  "stop": "Keep every discrepancy and failure; no adaptive scientific retries."
+}

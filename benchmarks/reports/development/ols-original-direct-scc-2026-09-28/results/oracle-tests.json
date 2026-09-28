@@ -1,0 +1,55 @@
+{
+  "full_dummy_svd_cases": [
+    {
+      "bread_error": 6.071532165918825e-18,
+      "coefficient_error": 1.4432899320127035e-15,
+      "disconnected": false,
+      "rank": 32,
+      "residual_error": 5.773159728050814e-15,
+      "weight_generation": 0
+    },
+    {
+      "bread_error": 2.168404344971009e-18,
+      "coefficient_error": 5.551115123125783e-16,
+      "disconnected": false,
+      "rank": 32,
+      "residual_error": 5.662137425588298e-15,
+      "weight_generation": 1
+    },
+    {
+      "bread_error": 5.149960319306146e-19,
+      "coefficient_error": 4.829470157119431e-15,
+      "disconnected": false,
+      "rank": 32,
+      "residual_error": 2.042810365310288e-14,
+      "weight_generation": 2
+    },
+    {
+      "bread_error": 6.071532165918825e-18,
+      "coefficient_error": 1.2212453270876722e-15,
+      "disconnected": true,
+      "rank": 40,
+      "residual_error": 8.326672684688674e-15,
+      "weight_generation": 0
+    },
+    {
+      "bread_error": 2.6020852139652106e-18,
+      "coefficient_error": 4.9404924595819466e-15,
+      "disconnected": true,
+      "rank": 40,
+      "residual_error": 1.9317880628477724e-14,
+      "weight_generation": 1
+    },
+    {
+      "bread_error": 5.421010862427522e-19,
+      "coefficient_error": 2.220446049250313e-15,
+      "disconnected": true,
+      "rank": 40,
+      "residual_error": 1.2989609388114332e-14,
+      "weight_generation": 2
+    }
+  ],
+  "passed": true,
+  "rank_deficiency_rejected": true,
+  "zero_controls_pass": true
+}

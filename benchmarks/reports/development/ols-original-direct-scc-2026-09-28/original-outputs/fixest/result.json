@@ -1,0 +1,65 @@
+{
+  "arm": "fixest",
+  "cell": {
+    "design": "strong_d2",
+    "effects": [
+      "g1",
+      "g2"
+    ],
+    "k": 10,
+    "model": "ols",
+    "n": 983040,
+    "section": "main",
+    "suite": "paper",
+    "threads": 4
+  },
+  "command_time_lower_bound": null,
+  "cpu_affinity": [
+    0,
+    1,
+    2,
+    3
+  ],
+  "elapsed_seconds": 19.337874408985954,
+  "host": "scc-wf4",
+  "input_sha256": "0e4b437326bfe01a0e6058b0487f75b66036ae9f4f65d1ea94bfcea21c758ff0",
+  "input_value_audit": "columnwise IEEE-754 SHA-256",
+  "job_id": "7747518",
+  "limits": {
+    "command": 120,
+    "extraction": 600,
+    "startup": 600
+  },
+  "measurement_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "metadata": {
+    "N": 983040,
+    "R_version": "4.5.2",
+    "converged": true,
+    "covariance_multiplier": 1,
+    "covariance_normalization": "native IID",
+    "deviance": 119761.91360769,
+    "df_k": 503817,
+    "effective_threads": 4,
+    "error": {},
+    "fixest_version": "0.14.2",
+    "loglik": -360152.911381458,
+    "rc": 0,
+    "requested_threads": 4,
+    "rss": 119761.91360769,
+    "sample_kind": "observation_ids",
+    "seconds": 11.337
+  },
+  "peak_process_tree_threads": 5,
+  "peak_rss_gib": 0.6865806579589844,
+  "phase": "warm",
+  "process_returncode": 0,
+  "rss_interval_seconds": 0.01,
+  "rss_samples": 658,
+  "sample_rows": 983040,
+  "sample_sha256": "03f965a14a25438dfc65d81c1ba55afcd58217b6c32fc21e5b1407ad5cd8ac58",
+  "schema": "systematic-arm-v1",
+  "seconds": 11.337,
+  "sentinel": true,
+  "status": "pass",
+  "task_id": "11"
+}

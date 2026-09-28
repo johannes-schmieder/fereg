@@ -1,0 +1,24 @@
+{
+  "left": "fereg",
+  "right": "areg",
+  "status": "accuracy_failure",
+  "checks": {
+    "same_input": true,
+    "same_runtime": true,
+    "same_node_task": true,
+    "sample_count": true,
+    "sample_exact": true,
+    "coefficient_names": true,
+    "coefficients": false,
+    "standard_errors": false,
+    "covariance_available": true,
+    "covariance": true,
+    "candidate_converged": true,
+    "comparator_converged": false,
+    "rss": false
+  },
+  "max_coefficient_error": 4.9030606838959545e-06,
+  "max_se_error": 3.2518592999559656e-09,
+  "scope": "Prospective checker applied offline to captured original exports; original campaign files/reports unchanged.",
+  "source_sha256": "c959d2ea63ea6c1f40543d5e42671cc1ccd642072c89fc40015708d91f4ed661"
+}
