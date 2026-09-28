@@ -1,0 +1,11 @@
+{
+  "base-source.json": "6f0cab8958cafee6572c05ab76b69b173b6bd7aae19988408963b24cde7b0275",
+  "borrowed_probe.rs": "9956b608ad5575a77fb9fe3fa5637e01650d418e2dca89c9e4832aa7af200ddd",
+  "candidate.patch": "1a4b56bde29892160868e5d474ab2b5324d5f3851cb54a787db0c3b28d454fa2",
+  "cmg_probe.rs": "c46ba47f5766cc0d595eeea6174105cf1447bd273717df214db1054ebb6877b6",
+  "job.sh": "2fbcb4bcf0b506e798737fa1a021774158d30b90225a7719f35efb110d3f06dd",
+  "registration.json": "e3850bb02f131e545de2888f5d0fc223d3caef627c866cb4dccedf1677a9ebbb",
+  "run.py": "dd1e0bdbfd257d4079089e9a479ba3c5171321f2ed8fd2a510c942be508a543f",
+  "rust-toolchain.toml": "f93479dd58b2bce65dd3a0e579efe4c0988894247e7243e1479f8de84f16d81d",
+  "test_run.py": "3db43791f4c873eedce6d33c10783ec51808220b721dc6e54745a10506d47336"
+}

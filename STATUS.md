@@ -94,6 +94,20 @@ superseded. Remaining comparator sample/VCE/extraction issues are separate.
 Routine SCC testing is authorized without asking. No push or qualification.
 The broader implementation goal remains active.
 
+**Queued nonretaining-CG diagnostic: 7767016**, eight slots, one-hour cap, held
+behind **7766045 and 7766146**. The
+[candidate registration](benchmarks/reports/development/nonretaining-cg-registration-scc-2026-09-28/README.md)
+preserves an isolated implementation patch that reuses PPML's direct weighted
+group-contribution action for nonretaining OLS CG, with bounded wide-RHS tiles.
+No production input changed. Its baseline/candidate checks each cover 72
+independently known-within cases and ten existing boundary controls, including
+the previously skipped explicit/insufficient-budget correction cases. Four
+local evidence-parser tests, patch applicability and Python/shell/Rust parsing
+pass; no candidate compilation or numerical result exists yet. Require complete
+records, accounting and red/green evidence before public or performance testing.
+Further headline jobs must wait until both queued diagnostics finish. The
+unresolved CG and weighted constrained-fit issues are not claimed repaired.
+
 ## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 
 [ADR0245](docs/adr/0245-private-implicit-finite-moments.md) extends private finite

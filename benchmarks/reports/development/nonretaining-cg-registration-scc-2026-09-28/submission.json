@@ -1,0 +1,21 @@
+{
+  "job_id": "7767016",
+  "command": [
+    "qsub",
+    "-terse",
+    "-hold_jid",
+    "7766045,7766146",
+    "-v",
+    "RUN_ROOT=/projectnb/welfgr/fereg/dev/20260928-nonretaining-cg-01",
+    "-o",
+    "/projectnb/welfgr/fereg/dev/20260928-nonretaining-cg-01/logs",
+    "/projectnb/welfgr/fereg/dev/20260928-nonretaining-cg-01/job.sh"
+  ],
+  "hold_after": [
+    "7766045",
+    "7766146"
+  ],
+  "submitted_utc": "2026-09-28T15:20:27.195100+00:00",
+  "deployment_sha256": "6bae095d7a219c62f0af2d15a912aba57234af773ee76f467193f05414b9523d",
+  "qsub_stderr": ""
+}

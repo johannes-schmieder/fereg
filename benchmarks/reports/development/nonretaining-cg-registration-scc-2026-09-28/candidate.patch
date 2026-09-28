@@ -1,0 +1,126 @@
+--- a/crates/fereg-core/src/fe/borrowed_map.rs
++++ b/crates/fereg-core/src/fe/borrowed_map.rs
+@@ -6562,14 +6562,20 @@
+     let mut residual_coefficients = retain_coefficients
+         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
+         .transpose()?;
+-    borrowed_symmetric_projection_into_recording(
+-        design,
+-        weights,
+-        &values,
+-        &mut residual,
+-        &mut workspace,
+-        residual_coefficients.as_mut(),
+-    )?;
++    if retain_coefficients {
++        borrowed_symmetric_projection_into_recording(
++            design,
++            weights,
++            &values,
++            &mut residual,
++            &mut workspace,
++            residual_coefficients.as_mut(),
++        )?;
++    } else {
++        borrowed_symmetric_projection_from_group_means(
++            design, weights, &values, &mut residual, &mut workspace,
++        )?;
++    }
+     if reconstruct_projection {
+         reconstruct_intercept_product(design, residual_coefficients.as_ref()
+             .ok_or_else(|| invalid_argument("stable CG projection requires coefficient products"))?, &mut residual)?;
+@@ -6620,14 +6626,20 @@
+         if let Some(coefficients) = projection_coefficients.as_mut() {
+             coefficients.fill_zero();
+         }
+-        borrowed_symmetric_projection_into_recording(
+-            design,
+-            weights,
+-            &direction,
+-            &mut projection,
+-            &mut workspace,
+-            projection_coefficients.as_mut(),
+-        )?;
++        if retain_coefficients {
++            borrowed_symmetric_projection_into_recording(
++                design,
++                weights,
++                &direction,
++                &mut projection,
++                &mut workspace,
++                projection_coefficients.as_mut(),
++            )?;
++        } else {
++            borrowed_symmetric_projection_from_group_means(
++                design, weights, &direction, &mut projection, &mut workspace,
++            )?;
++        }
+         if reconstruct_projection {
+             reconstruct_intercept_product(design, projection_coefficients.as_ref()
+                 .ok_or_else(|| invalid_argument("stable CG projection requires coefficient products"))?, &mut projection)?;
+@@ -8314,8 +8326,9 @@
+ /// Form I-S from its FE contributions, not by subtracting two observation
+ /// vectors. The latter introduces off-model-space cancellation error that CG
+ /// can amplify along weak graph directions despite passing FE normal equations.
+-/// This PPML action reuses the admitted mean buffers and retains no coefficient
+-/// history; ordinary OLS projection arithmetic remains unchanged.
++/// Reuse admitted mean buffers without retaining coefficient history. This is
++/// also the nonretaining OLS CG action, including constrained continuations.
++/// Wide RHS batches use fixed-size tiles with no extra heap bank.
+ fn borrowed_symmetric_projection_from_group_means(
+     design: &BorrowedInterceptFeDesign<'_>,
+     weights: ValidatedWeights<'_>,
+@@ -8328,7 +8341,6 @@
+         || projection.ncols() != columns
+         || input.nrows() != design.nobs()
+         || columns == 0
+-        || columns > PARALLEL_GROUP_MAX_RHS
+     {
+         return Err(invalid_argument(
+             "categorical projection action dimensions differ",
+@@ -8342,7 +8354,8 @@
+             .n_levels()
+             .checked_mul(columns)
+             .ok_or_else(|| allocation("categorical projection group dimensions overflow"))?;
+-        if rayon::current_num_threads() > 1
++        if columns <= PARALLEL_GROUP_MAX_RHS
++            && rayon::current_num_threads() > 1
+             && workspace.parallel_group_means.len() >= cells
+             && (columns > 1 || input.nrows() >= PARALLEL_PROJECTION_MIN_ROWS)
+         {
+@@ -8381,19 +8394,22 @@
+         } else {
+             let mut means = [0.0; PARALLEL_GROUP_MAX_RHS];
+             for level in 0..effect.n_levels() {
+-                fused_group_means_by_value(
+-                    effect,
+-                    level,
+-                    weights,
+-                    input.nrows(),
+-                    &mut means[..columns],
+-                    |row, rhs| input[(row, rhs)] - projection[(row, rhs)],
+-                )?;
+-                for &row in effect.level_index().checked_members(level)? {
+-                    for rhs in 0..columns {
+-                        projection[(row, rhs)] += means[rhs];
+-                        if !projection[(row, rhs)].is_finite() {
+-                            return Err(invalid_data("categorical projection action is nonfinite"));
++                for first in (0..columns).step_by(PARALLEL_GROUP_MAX_RHS) {
++                    let count = (columns - first).min(PARALLEL_GROUP_MAX_RHS);
++                    fused_group_means_by_value(
++                        effect,
++                        level,
++                        weights,
++                        input.nrows(),
++                        &mut means[..count],
++                        |row, rhs| input[(row, first + rhs)] - projection[(row, first + rhs)],
++                    )?;
++                    for &row in effect.level_index().checked_members(level)? {
++                        for rhs in 0..count {
++                            projection[(row, first + rhs)] += means[rhs];
++                            if !projection[(row, first + rhs)].is_finite() {
++                                return Err(invalid_data("categorical projection action is nonfinite"));
++                            }
+                         }
+                     }
+                 }
