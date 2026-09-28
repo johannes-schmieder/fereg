@@ -1,0 +1,32 @@
+{
+  "scope": "Only jobs belonging to this milestone; unrelated SCC jobs untouched.",
+  "all_terminal": true,
+  "qstat_absent": [
+    "7763462",
+    "7763463",
+    "7763485",
+    "7763488",
+    "7763492",
+    "7763493",
+    "7763502",
+    "7763505",
+    "7763512"
+  ],
+  "clean_completed_jobs": [
+    "7763463",
+    "7763502",
+    "7763505",
+    "7763512"
+  ],
+  "failed_probes": [
+    "7763485",
+    "7763492"
+  ],
+  "canceled_before_fits": [
+    "7763462",
+    "7763488",
+    "7763493"
+  ],
+  "scientific_candidate_checks_pass": true,
+  "global_goal_complete": false
+}

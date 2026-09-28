@@ -1,0 +1,17 @@
+{
+  "job": "7763485",
+  "status": "harness_import_failure_before_fits",
+  "accounting": {
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "1",
+    "ru_wallclock": "11",
+    "maxvmem": "357.520M"
+  },
+  "log_and_accounting_sha256": "d40ac88f8a4e57300bba816b83593e9a57f31d689894c8188ffcfab4a3a4a077",
+  "reason": "The relocated explicit-dummy test module needs tests/python on sys.path; the combined job had omitted the old per-job PYTHONPATH.",
+  "correction": "New roots and frozen wrappers explicitly include tests/python, checked in separate clean local Python interpreters.",
+  "candidate_or_reference_fits_run": 0,
+  "dependent_timing_job": "7763488",
+  "dependent_action": "canceled while waiting for proof; replacement7763493 depends on corrected7763492"
+}

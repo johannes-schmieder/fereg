@@ -1,0 +1,139 @@
+{
+  "scope": "Post-hoc comparison of same-input grouped T1/T4 calls; thread requests were not directly alternating. Descriptive evidence only, not a monotonic-scaling claim.",
+  "records": [
+    {
+      "arm": "baseline",
+      "repetition": 1,
+      "higher_over_lower": 0.8932676518883417,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 1.0018028073766061e-16,
+        "max_se_error": 9.974659986866641e-17
+      },
+      "lower_sha256": "b7e533f3efd7bcbd22f8aa1937242d8114ad441263ce3b03dbc2cb23e51c100a",
+      "higher_sha256": "3e1a2a91285cf6324ce39e071eea816dcb8b4e7d23820fbc640dc124ff9b3911"
+    },
+    {
+      "arm": "candidate",
+      "repetition": 1,
+      "higher_over_lower": 1.1972222222222222,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "d0743013bbf33b4e5e9c92212cb44dff555786f4729d9d09eb38ac084c6ceb3a",
+      "higher_sha256": "306fce61823e8e583d66d5b6c135ecd93a3cf16f99ad6634803fbd1bb1afd185"
+    },
+    {
+      "arm": "baseline",
+      "repetition": 2,
+      "higher_over_lower": 0.9066666666666666,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 1.0018028073766061e-16,
+        "max_se_error": 9.974659986866641e-17
+      },
+      "lower_sha256": "6454017274abe2da8e3790f71cbcc148b5d80b241afc8ed89b8c067ddb137202",
+      "higher_sha256": "b6f8d428df48e1c81af8a5711352b48ffd7035e83061a82adc32367857d87aea"
+    },
+    {
+      "arm": "candidate",
+      "repetition": 2,
+      "higher_over_lower": 1.4930555555555556,
+      "science": {
+        "left": "feppml",
+        "right": "feppml",
+        "status": "pass",
+        "checks": {
+          "same_input": true,
+          "same_runtime": true,
+          "same_node_task": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "standard_errors": true,
+          "covariance_available": true,
+          "covariance": true,
+          "candidate_converged": true,
+          "comparator_converged": true,
+          "deviance": true
+        },
+        "max_coefficient_error": 0.0,
+        "max_se_error": 0.0
+      },
+      "lower_sha256": "b9dc7222590d4c319fc80a05ec1633343d3f631b133732eb2b3cf5c43358fd80",
+      "higher_sha256": "7a4b2324e6c604c341ff1135e14101a6996c755ecfd6dc7c057e1cd8831351e6"
+    }
+  ],
+  "summary": {
+    "baseline": {
+      "median": 0.8999671592775041,
+      "values": [
+        0.8932676518883417,
+        0.9066666666666666
+      ],
+      "slower": 0
+    },
+    "candidate": {
+      "median": 1.3451388888888889,
+      "values": [
+        1.1972222222222222,
+        1.4930555555555556
+      ],
+      "slower": 2
+    }
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "additional_separation_adjudicated": true,
+  "excluded_row_direction_strictly_negative": true,
+  "excluded_zero_rows": 530,
+  "finite_optimum_proof_sha256": "c569fa6ec2d872e3b4f3eeaeb078a7e13301271408a29082768ae85040c6b2de",
+  "input_sha256": "2ea62fa38b1d33c03b2bae8ba0dfed4da0b307b73ae16a6f05e0034a06d8f15c",
+  "original_n": 61440,
+  "positive_row_direction_zero": true,
+  "retained_minimum_level_rows": [
+    5,
+    67
+  ],
+  "retained_n": 60910,
+  "retained_original_ids_sha256": "ecb9393bee58ec72c8ced77744610fb5118097390c7cd348e6b6046fb2dd2d0e",
+  "retained_row_direction_zero": true,
+  "sample_closure_certified": true,
+  "witness_minimum": -1,
+  "zero_groups": [
+    106,
+    0
+  ]
+}

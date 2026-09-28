@@ -217,7 +217,11 @@ pub(crate) fn strict_inner_tolerance(config: PpmlConfig) -> f64 {
 /// Deterministic, monotone tolerance policy shared by the prepared production
 /// session and the cfg(test)-only dense oracle. The staged target preserves the
 /// bounded early-iteration policy, while accepted deviance and score progress
-/// can tighten the next solve sooner. It is deliberately route-independent so
+/// can tighten the next solve sooner. Once both outer diagnostics meet their
+/// convergence bounds, the next ordinary solve uses the publication target;
+/// a loose direction would otherwise spend a final checkpoint discovering its
+/// avoidable linear error. Both outer passes and the strict checkpoint remain
+/// mandatory. It is deliberately route-independent so
 /// fast and low memory modes follow the same scientific path. Invalid progress
 /// fails closed to the strict floor instead of silently permitting a loose
 /// solve.
@@ -245,7 +249,15 @@ pub(crate) fn scheduled_inner_tolerance(
     let progress_target = match progress {
         Some(progress) => progress
             .scale()
-            .map(|scale| (0.1 * scale).clamp(floor, config.inner_tolerance_initial))
+            .map(|scale| {
+                if progress.relative_deviance_change <= config.tolerance
+                    && progress.score_relative_infinity_norm <= config.score_tolerance
+                {
+                    floor
+                } else {
+                    (0.1 * scale).clamp(floor, config.inner_tolerance_initial)
+                }
+            })
             .unwrap_or(floor),
         None => config.inner_tolerance_initial,
     };
@@ -707,6 +719,29 @@ mod tests {
         assert!(both_improved < deviance_limited);
         assert!(both_improved < score_limited);
         assert!(both_improved >= strict_inner_tolerance(config));
+    }
+
+    #[test]
+    fn inner_tolerance_prepares_a_converged_outer_point_for_publication() {
+        for (outer, score) in [(1e-8, 1e-8), (1e-8, 1e-10), (1e-14, 1e-12)] {
+            let mut config = PpmlConfig::default();
+            config.tolerance = outer;
+            config.score_tolerance = score;
+            let floor = config.inner_tolerance_final.min(strict_inner_tolerance(config));
+            let next = |deviance, score, previous| scheduled_inner_tolerance(
+                config, 2, previous, Some(PpmlInnerToleranceProgress::new(deviance, score)),
+            );
+            assert_eq!(next(outer, score, config.inner_tolerance_initial), floor);
+            assert_eq!(next(0.0, score, config.inner_tolerance_initial), floor);
+            assert_eq!(next(outer, 0.0, config.inner_tolerance_initial), floor);
+            assert_eq!(next(outer, score, floor * 0.01), floor * 0.01);
+            // Both independent diagnostics must pass. A small score alone
+            // cannot authorize the publication target on a moving objective.
+            assert!(next(1e-3, 0.0, config.inner_tolerance_initial) > floor);
+            assert!(next(0.0, 1e-3, config.inner_tolerance_initial) > floor);
+            assert_eq!(next(f64::NAN, score, config.inner_tolerance_initial), floor);
+            assert_eq!(next(outer, -1.0, config.inner_tolerance_initial), floor);
+        }
     }
 
     #[test]

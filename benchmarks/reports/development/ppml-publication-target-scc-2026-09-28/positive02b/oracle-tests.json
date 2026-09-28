@@ -1,0 +1,20 @@
+{
+  "full_dummy_scalar_oracles": [
+    {
+      "beta_error": 2.7755575615628914e-17,
+      "covariance_error": 1.734723475976807e-18,
+      "disconnected": false,
+      "mean_error": 2.6645352591003757e-15,
+      "rank": 13
+    },
+    {
+      "beta_error": 4.763550665032312e-15,
+      "covariance_error": 2.949029909160572e-17,
+      "disconnected": true,
+      "mean_error": 2.424727085781342e-13,
+      "rank": 15
+    }
+  ],
+  "nonzero_residual_known_optimum": true,
+  "passed": true
+}

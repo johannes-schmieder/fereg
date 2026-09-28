@@ -41,6 +41,12 @@ tolerance and all prior checks remain binding. A rejected Newton witness resumes
 bounded IRLS recovery, and final inference still requires the exact accepted
 Hessian. This diagnostic does not replace independent optimum-accuracy evidence.
 
+Once both accepted outer diagnostics meet their respective convergence bounds,
+the next ordinary PPML solve uses the existing strict inner target under
+[ADR 0238](adr/0238-ppml-publication-target-ordinary-solve.md). Two accepted outer
+passes and independent strict/final-Hessian acceptance remain mandatory. A
+tighter previously required inner target is never loosened.
+
 Generation-zero numeric classification may bind an immutable input view through
 memory admission and selection under
 [ADR 0214](adr/0214-borrow-bound-ppml-numeric-selection.md). When every candidate

@@ -10,7 +10,79 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## Current checkpoint: PPML coefficient stopping repaired; cost measured
+## Current checkpoint: strict-target ordinary PPML saves repeated finalization
+
+[ADR0238](docs/adr/0238-ppml-publication-target-ordinary-solve.md) retains a small,
+route-independent scheduling change: after both accepted outer diagnostics meet
+their existing bounds, the next ordinary solve uses the existing strict inner
+floor. Two ordinary convergence passes, current-weight projection/rank/finite
+solve, scaled coefficient movement, fresh score/objective, reconstruction and
+exact final-Hessian authority remain mandatory. No new threshold, guard, buffer,
+solver layer or memory-admission credit. OLS does not call this schedule.
+
+The [source-bound report](benchmarks/reports/development/ppml-publication-target-scc-2026-09-28/README.md)
+binds all **211** computational inputs to snapshot **5c0d4685…**, based on
+**18ff2dbf**; only ppml/mod.rs changes. Linux plugin **94925723…**, Mac **0172ddaf…**.
+Both platforms pass **65 focused Rust tests** and **four licensed independent
+oracle/control fixtures**, with ABI/panic checks. Linux **7763463** also passes
+PPML smoke. Original positive and zero-outcome fits retain independently certified
+coefficient accuracy: fast T1/T4 errors at most **3.80e-13**, zero fast **1.87e-13**;
+low passes both. Original sample/rank/inference/objective and all public bounds
+are unchanged. Fast original fits go from six to four outer iterations.
+
+Initial **7763505** and fresh **7763512** complete **153 headline applications**
+on isolated 28-core E5-2680v4 allocations, with clean accounting and both terminal
+sentinels. **51/51 native pairs**, **49/51 stock pairs** pass science. Initial
+weak-d3 stock SE differences remain NR; all 33 fresh stock pairs pass, which does
+not adjudicate the older seed. No build/profile/archive/competing fit overlaps
+timing. Stock is pinned unmodified fixest0.14.2, default except explicitly strict
+slopes/strong-d2. PPML uses robust inference, OLS IID; no optional saved observation
+outputs in headline calls. Fresh seed2026092813 must not become a tuning seed.
+
+Fresh candidate/baseline paired medians: **0.756 small T4**, **0.641 serial**,
+**0.754 wide**, **0.763 weak**, **0.753 strong-d2**, **0.988 low**, **0.956 slopes**,
+**0.903 low slopes**, **1.071 three-FE**, **1.011 OLS**, **0.991 one-FE**. Small,
+wide, weak and strong-d2 avoid a strict rejection and two extra outer iterations;
+strict-final phase clocks roughly halve. Keep costs visible: initial low loses
+2.7%; fresh three-FE loses all three pairs (5.4–11.1%) despite unchanged 7/132
+reported work; low slopes include a 20.7% paired loss. No regression-freedom claim.
+
+Fresh candidate/stock paired medians: **1.629 small T4**, **1.688 serial**,
+**1.467 low**, **0.618 wide**, **0.460 three-FE**, **0.375 strict slopes**,
+**0.349 strict low slopes**, **0.325 strict strong-d2**, **1.295 weak**,
+**1.638 OLS**, **3.517 one-FE**. The new one-FE control exposes an existing large
+loss: candidate 0.313s, stock about 0.089s; C/B is near a tie. Full ranges and losses
+are in the report. No ratios transfer to older saved-output designs/artifacts.
+
+Modeled memory agrees on every native pair. Tracked peaks agree outside three-FE,
+whose existing workspace overlap varies in both directions. Grouped same-input
+T4/T1 candidate ratios are **1.345 initial**, **1.075 fresh**, with two losses per
+block and passing science. Calls were not directly alternating by thread count;
+these are descriptive observations. The universal 1.20 ceiling, 0.90 aspiration
+and monotonic core scaling remain unmet.
+
+Preserved operational failures: queued 7763462 had a wrong display label and was
+canceled before execution; 7763485 failed on a missing diagnostic import path,
+before fits; 7763492 completed all positive numerical checks but failed a stale
+assertion expecting the corrected baseline to fail. Its process stays failed.
+Dependent timing jobs 7763488/7763493 were canceled before fits. **7763502** binds
+and verifies the completed positive evidence and runs only the missing zero
+check, with clean accounting and composite/zero sentinels. No positive refit or
+relabeling of a failed probe. All milestone jobs are terminal. No push or full
+qualification. Routine SCC testing remains authorized; do not ask again.
+
+Next: profile the **one-FE PPML public path** and small two-FE execution. The
+one-FE receipt records about 57.6ms finite solve, 53.9ms strict finalization,
+35.9ms preparation and 30.4ms FE projection within 0.313s; clocks may nest. Check
+which portable finite-product mechanisms reach this path, then directly compare
+T1/T2/T4 before choosing a concurrency policy. The existing whole-action ceiling
+only covers narrow three-FE PPML. Preserve the fresh three-FE slowdown as an open
+regression signal and independently adjudicate the old weak SE mismatch. Small
+OLS, large timeouts, other comparator/sample failures and wider scaling remain.
+Static allocation drift, weighted constrained fits and nonretaining-CG instability
+are still open. This is one accepted milestone; the broader repair goal is active.
+
+## Prior checkpoint: PPML coefficient stopping repaired; cost measured
 
 [ADR 0236](docs/adr/0236-ppml-small-coefficient-stopping.md) tightens the shared
 strict-profile coefficient check near zero. The prior unit scale could accept

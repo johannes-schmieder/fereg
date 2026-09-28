@@ -1,0 +1,16 @@
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=1|deviance_change=1.01352158802634224e-2|score=2.15158108319499545e-4|passed=0|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=2|deviance_change=2.67814660865714077e-6|score=5.29418959900790986e-8|passed=0|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=3|deviance_change=5.91831955560038631e-14|score=6.60464326581300131e-10|passed=1|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=4|deviance_change=0.00000000000000000e0|score=2.03487248432057341e-14|passed=1|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration=4|seconds=0.018132|original_row=2746|failing_rows=0|tolerance=1.00000000000000002e-8|accepted_eta=1.15183988524759640e0|candidate_eta=1.15183988524712144e0|working_response=2.04816826324095391e0|residual=8.96328377993832470e-1|finite_predictor=-2.16004391464260613e-2|absorbed_predictor=1.17344032439354740e0|outcome=6.00000000000000000e0|mean=3.16400897103540402e0|hessian_weight=3.16400897103540402e0|deviance_change=0.00000000000000000e0|ll_change=0.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=strict_decision|iteration=4|certified=1|basis_unchanged=1|rank=10|eta_change=4.12343257094754313e-13|beta_change=1.35542559844505443e-12|consistent=1
+FEREG_SOLVER_TRACE|phase=profile_final_products|accepted=1
+FEREG_SOLVER_TRACE|phase=strict_result|iteration=4|committed=1|score=2.03487248432057341e-14|score_passed=1|converged=1
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=1|deviance_change=1.19230479129789416e-2|score=1.76425469172652517e-4|passed=0|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=2|deviance_change=6.20173900973945108e-6|score=1.55458308772647434e-7|passed=0|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=3|deviance_change=1.01115180826707510e-12|score=1.01562378475530804e-10|passed=1|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=irls_convergence|iteration=4|deviance_change=0.00000000000000000e0|score=2.10945885322548103e-15|passed=1|step=1.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration=4|seconds=0.154640|original_row=42829|failing_rows=0|tolerance=1.00000000000000002e-8|accepted_eta=1.01510046471264270e0|candidate_eta=1.01510046471274729e0|working_response=1.82693057973938022e0|residual=8.11830115026633048e-1|finite_predictor=7.18844022375504394e-3|absorbed_predictor=1.00791202448899231e0|outcome=5.00000000000000000e0|mean=2.75964062995288817e0|hessian_weight=2.75964062995288817e0|deviance_change=0.00000000000000000e0|ll_change=0.00000000000000000e0
+FEREG_SOLVER_TRACE|phase=strict_decision|iteration=4|certified=1|basis_unchanged=1|rank=10|eta_change=1.03027249573060344e-13|beta_change=2.44645573000806406e-12|consistent=1
+FEREG_SOLVER_TRACE|phase=profile_final_products|accepted=1
+FEREG_SOLVER_TRACE|phase=strict_result|iteration=4|committed=1|score=2.10945885322548103e-15|score_passed=1|converged=1

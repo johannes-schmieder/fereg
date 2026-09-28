@@ -1,0 +1,12 @@
+{
+  "job": "7763505",
+  "hold_jid": "7763502",
+  "run_directory": "dev/20260928-publication-target-rotation07",
+  "supersedes_canceled": "7763493",
+  "source_snapshot": "5c0d4685f7e10f126f140d8bfe9a6177ffc8ce73dc00f51f1845cd319800b7e0",
+  "slots": 28,
+  "wall_minutes": 30,
+  "cpu": "E5-2680v4",
+  "fits": 54,
+  "registration_sha256": "f63f57a6561124195385f0d990d7fc9e9695198172df4837910a3a6ef1d72d69"
+}
