@@ -71,7 +71,7 @@ def summarize(root, *, partial=False):
                     for field in ("seconds", "elapsed_seconds", "peak_rss_gib"):
                         if positive(receipt.get(field)):
                             measurements[f"{variant}_{field}"].append(receipt[field])
-                raw[case["id"], seed, variant] = receipt
+                raw[case["id"], rep, variant] = receipt
             for path in directory.rglob("*"):
                 if path.is_file() and path.suffix in (".json", ".csv"):
                     bindings[str(path.relative_to(root))] = digest(path)
@@ -138,21 +138,25 @@ def summarize(root, *, partial=False):
                     reasons.append(f"{case['id']}:native_science_unavailable")
             if low["seeds"] != high["seeds"]:
                 reasons.append("different_registered_seeds")
-            for seed in low["seeds"]:
-                a, b = raw.get((low["id"], seed, "candidate")), raw.get((high["id"], seed, "candidate"))
+            # A seed can appear in several alternating repetitions. Keeping
+            # only its last fit would silently duplicate that final clock and
+            # hide both earlier scaling losses and earlier input mismatches.
+            for rep, seed in enumerate(low["seeds"], 1):
+                label = f"seed-{seed}-rep-{rep}"
+                a, b = raw.get((low["id"], rep, "candidate")), raw.get((high["id"], rep, "candidate"))
                 if not a or not b or a["status"] != "pass" or b["status"] != "pass":
-                    reasons.append(f"seed-{seed}:unavailable")
+                    reasons.append(f"{label}:unavailable")
                     continue
                 if not a.get("input_sha256") or a["input_sha256"] != b.get("input_sha256") or not a.get("sample_sha256") or a["sample_sha256"] != b.get("sample_sha256"):
-                    reasons.append(f"seed-{seed}:different_input_or_sample")
+                    reasons.append(f"{label}:different_input_or_sample")
                 if not all(positive(r.get("seconds")) for r in (a, b)):
-                    reasons.append(f"seed-{seed}:invalid_command_time")
+                    reasons.append(f"{label}:invalid_command_time")
                 else:
                     ratios.append(b["seconds"] / a["seconds"])
             scaling.append({"lower_case": low["id"], "higher_case": high["id"],
                 "eligible": not reasons, "reasons": reasons,
                 "higher_over_lower": distribution(ratios) if not reasons else None,
-                "slower_on_every_seed": min(ratios) > 1 if not reasons and ratios else None})
+                "slower_on_every_repetition": min(ratios) > 1 if not reasons and ratios else None})
     targets = defaultdict(list)
     for case in cases:
         # Small oracle probes and strict references never dilute headline losses.
@@ -165,11 +169,11 @@ def summarize(root, *, partial=False):
         target_counts[key] = {"registered": len(group), "ranked": len(eligible),
             "unranked": len(group) - len(eligible), "at_most_0_90": sum(r <= 0.90 for r in ratios),
             "above_1_20": sum(r > 1.20 for r in ratios), "case_median_ratios": distribution(ratios)}
-    return {"schema": "fereg-rotation-summary-v1", "complete": observed == expected and complete == {"complete": True, "pairs": len(expected)},
+    return {"schema": "fereg-rotation-summary-v2", "complete": observed == expected and complete == {"complete": True, "pairs": len(expected)},
             "registered_pairs": len(expected), "completed_pairs": len(observed),
             "statuses": dict(sorted(statuses.items())), "oracle_failures": oracle_failures,
             "cases": cases, "scaling": scaling, "targets": target_counts, "bindings": bindings,
-            "interpretation": "Ratios use command clocks. Case medians require all registered seeds to pass. Scaling is diagnostic on native-certified same-input/sample fits. Two seeds do not establish a statistical guarantee."}
+            "interpretation": "Ratios use command clocks. Case medians require all registered repetitions to pass. Scaling pairs the corresponding repetition, including repeated seeds, on native-certified same-input/sample fits. A bounded sample does not establish a statistical guarantee."}
 
 
 def markdown(summary):
@@ -182,9 +186,9 @@ def markdown(summary):
     for case in summary["cases"]:
         lines.append(f"| {case['case']} | {ratios(case['comparisons']['baseline']['seconds_ratio'])} | {ratios(case['comparisons']['stock']['seconds_ratio'])} |")
     lines += ["", "NR retains missing results, application failures and scientific discrepancies in the JSON; it is never a timing win.",
-              "", "## Native thread scaling", "", "| Lower → higher setting | Higher/lower min / median / max | Slower on every seed |", "|---|---:|---|"]
+              "", "## Native thread scaling", "", "| Lower → higher setting | Higher/lower min / median / max | Slower on every repetition |", "|---|---:|---|"]
     for row in summary["scaling"]:
-        lines.append(f"| {row['lower_case']} → {row['higher_case']} | {ratios(row['higher_over_lower'])} | {row['slower_on_every_seed']} |")
+        lines.append(f"| {row['lower_case']} → {row['higher_case']} | {ratios(row['higher_over_lower'])} | {row['slower_on_every_repetition']} |")
     lines += ["", f"Independent-oracle failures: {len(summary['oracle_failures'])}.", "",
               "Per-fit command/process clocks, sampled RSS, failure reasons, all seed ratios and source-file bindings are retained in the JSON.", ""]
     return "\n".join(lines)

@@ -88,6 +88,10 @@ OLS slope inputs, with strict stock T8 (81 headline fits plus three probe fits).
 All source/plugin/input hashes match; five focused harness tests pass. The new
 per-arm control records and verifies actual native teams while keeping input,
 science and stock settings fixed. No native code changed for this confirmation.
+A separate [summary indexing repair](benchmarks/reports/development/slope-thread-scaling-scc-2026-09-28/summary-repetition-repair.json)
+retains every repeated-seed scaling clock and input guard (seven tests pass).
+All three existing generic-summary reports were audited and are unaffected;
+the live slope job uses a separate controller. No historical receipt changed.
 The shared thread ceiling, small categorical PPML stock loss, low-memory OLS
 loss, remaining comparator adjudication and broader remeasurement remain open.
 The overall goal is active; this milestone does not complete the repair plan.

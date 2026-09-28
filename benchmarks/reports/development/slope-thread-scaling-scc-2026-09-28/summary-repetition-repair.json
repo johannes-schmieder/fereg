@@ -1,0 +1,31 @@
+{
+  "issue": "The generic rotation summarizer indexed scaling fits by seed, overwriting earlier repetitions when one seed was repeated. A scaling table could duplicate the final clock and hide an earlier input mismatch.",
+  "repair": "Index fits by repetition, check every corresponding input/sample pair, and label all-repetition slowdown explicitly. Summary schema advances to v2. Scientific/timing case distributions are unchanged.",
+  "checks": "Seven focused generic summarizer tests pass, including repeated-seed asymmetric timing and earlier-input mismatch.",
+  "impact_audit": [
+    {
+      "report": "performance-repair-paired-scc-2026-09-27/final",
+      "scaling_groups": 11,
+      "repeated_seed_cases": 0,
+      "affected": false
+    },
+    {
+      "report": "performance-repair-paired-scc-2026-09-27/progress-14",
+      "scaling_groups": 11,
+      "repeated_seed_cases": 0,
+      "affected": false
+    },
+    {
+      "report": "portable-coupling-scc-2026-09-28/ppml03",
+      "scaling_groups": 0,
+      "repeated_seed_cases": 5,
+      "affected": false
+    }
+  ],
+  "current_job": "7762473 uses the separate slope summary, which already indexes by case/seed/repetition. Its captured deployed harness is unchanged.",
+  "historical_receipts_rewritten": false,
+  "files": {
+    "benchmarks/performance/summarize_rotations.py": "c15c34da80b5b52497ba4b80ba7a399e1faf268ec1f2fc2b14789ae44b79fe33",
+    "benchmarks/performance/test_summarize_rotations.py": "3835ab6ca2db979ae85507401bc85c0b9815b0aae0d874cf508c3337fcd57e15"
+  }
+}

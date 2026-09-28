@@ -65,6 +65,27 @@ class RotationSummaryTests(unittest.TestCase):
             self.assertIsNone(comparison["seconds_ratio"])
             self.assertTrue(result["cases"][0]["comparisons"]["baseline"]["eligible"])
 
+    def test_repeated_seed_keeps_each_scaling_clock_and_input_guard(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            self.fixture(root)
+            plan = json.loads((root / "plan.json").read_text())
+            for case in plan["cases"]:
+                case["seeds"] = [11, 11]
+                self.mutate(root, case["id"] + "/pair-2/comparison.json", lambda r: r.update(seed=11))
+                for arm in ("baseline", "candidate", "stock"):
+                    self.mutate(root, case["id"] + "/pair-2/" + arm + "/result.json",
+                                lambda r: r.update(input_sha256="input-11"))
+            write(root / "plan.json", plan)
+            self.mutate(root, "ols-t8/pair-1/candidate/result.json", lambda r: r.update(seconds=8))
+            scaling = summarize(root)["scaling"][0]
+            self.assertEqual(scaling["higher_over_lower"]["values"], [0.5, 2.0])
+            self.assertFalse(scaling["slower_on_every_repetition"])
+            self.mutate(root, "ols-t8/pair-1/candidate/result.json", lambda r: r.update(input_sha256="changed"))
+            scaling = summarize(root)["scaling"][0]
+            self.assertFalse(scaling["eligible"])
+            self.assertIn("seed-11-rep-1:different_input_or_sample", scaling["reasons"])
+
     def test_missing_oracle_or_exact_sample_prevents_ranking(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
