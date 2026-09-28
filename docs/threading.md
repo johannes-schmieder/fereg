@@ -6,7 +6,7 @@
 pool at the resolved count. `threads(0)` uses available processors as its
 ceiling; an explicit positive value sets the maximum team size. The public
 command planner preserves that request and selects an effective count before
-pool creation and solver admission. Under the candidate policy in ADR 0233,
+pool creation and solver admission. Under the bounded policy in ADR 0233,
 automatic three-intercept-FE PPML with fast/auto memory and at most 15 declared
 finite columns uses at most eight workers. Other workloads retain their prior
 choice. Runtime matrices report requested and effective counts separately.
