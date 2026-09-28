@@ -10,7 +10,67 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The multi-FE <=0.90-stock goal remains active.
 
 
-## Current checkpoint: public PPML host scope accepted; remaining small-fit/core losses measured
+## Current checkpoint: general OLS host scope rejected; accepted PPML scope retained
+
+[ADR0242](docs/adr/0242-reject-ols-host-scope.md) closes OLS carryover without adopting
+it. Production is restored exactly to **4ddf7aaa / package 14c753ed…**, all 215 bound
+inputs verified, Linux d007491a… and Mac a7ad0493… unchanged. **PPML's public host
+scope remains accepted; OLS has no host scope.** No push or qualification.
+
+[The report](benchmarks/reports/development/ols-public-host-scc-2026-09-28/README.md)
+retains candidate 72448897… (217 inputs), rejected patch/fixture and all evidence.
+Mac passes five parser tests, five licensed fixtures and genuine native/public
+OLS Break; SCC 7763733 adds OLS smoke (six fixtures total), with clean accounting
+and sentinel. Host1/4, default/explicit native requests, fast/low memory, weighted
+clustered saved outputs, quiet/noisy, populated/null e(), seven rollback stages,
+independent weighted three-FE/slopes oracles and PPML control pass. Queued 7763730
+was cancelled before execution to correct its 16-worker oracle's slot request;
+7763733 reserves 16 slots with inherited 16-CPU affinity. No application failed.
+
+Uncontended **7763739/7763749/7763758** complete **222 applications**, **74/74 native
+scientific pairs** and **69/74 stock pairs** eligible. All 74 native b/V pairs are
+byte-identical; recorded iterations and selected OLS memory bytes agree. Only existing
+three-FE allocation overlap varies. No build/profile/archive/competing-fit overlap.
+OLS clocks use IID inference, PPML controls robust, no optional observation outputs.
+Stock fixest 0.14.2 is unmodified, strict FE tolerance only for slopes.
+
+Fresh rejected candidate/baseline medians: **.893 one-FE T1, .949 T4, .744 wide,
+.800 low, .993 two-FE T1, .911 two-FE T8, .915 three-FE, 1.070 slopes**. One bounded
+unchanged-source confirmation repeats the fresh slope loss at **1.151 median,
+1.500 worst**, four of six pairs slower. Known slopes are mixed (.899 median);
+wide repeats its gain (.681 median). **Reject the general scope; no further
+threshold tuning or favorable-case guards.** Fresh 2026092827 remains validation,
+never tuning. Candidate gains do not transfer to retained production.
+
+The five three-FE stock NR pairs have matched samples/coefficient/RSS gates but
+different residual DoF: native 48519 (initial)/48528 (fresh), stock 48498. Their declared
+DoF factors explain covariance gaps to <8e-15. Preserve unranked clocks: readonly
+normalization is not altered eligibility or an independent full-rank oracle.
+This localizes this discrepancy to inference policy, not a new native regression;
+it does not adjudicate older weak-design PPML SE failures.
+
+**Retained-source** fresh paired stock ratios in this OLS screen are **2.286 one-FE
+T1, 1.857 T4, 2.379 wide, 3.719 low; 2.691 two-FE T1, 1.496 T8, 1.274 slopes**. Three-FE is
+unranked. These small-design/output-specific clocks do not replace the historical
+OLS closeout evidence. Universal 1.20/0.90 and monotonic-core targets remain unmet.
+
+**Next native boundary:** the accepted PPML direct T1→T2 screen shows slower
+finite solving, strict-final work and inference despite faster projection. Count
+and amortize installed-team submissions/reductions there under unchanged science.
+For OLS, the fresh slope reversal is inside native computation (median 240→265ms,
+worst 372ms), not merely setting/display overhead. Measure caller/team handoffs
+before another scope; PPML already has a post-load scoped worker owner whereas
+OLS enters teams at separate preparation/fit/reconstruction boundaries. This is
+a source-supported hypothesis, not proved attribution. Do not restart rejected
+scope/annotation tuning or closed serial-weighted-slope micro-optimizations.
+
+All milestone jobs are terminal and all production changes from the rejected
+candidate are reverted. Routine SCC testing remains authorized without asking.
+Older weak-SE discrepancies, large timeouts, comparator/sample failures, static
+allocation drift, weighted constrained fits and nonretaining-CG instability remain
+open. The broader implementation goal remains active.
+
+## Prior accepted checkpoint: public PPML host scope; remaining small-fit/core losses measured
 
 [ADR0241](docs/adr/0241-ppml-public-host-scope.md) retains a scope across the complete
 public `feppml` call: Stata uses one host processor temporarily, then restores

@@ -1,0 +1,16 @@
+{
+  "status": "restored",
+  "retained_commit": "4ddf7aaa",
+  "snapshot": "14c753ede241d94812a25b52f06325cb81d5a08d5465efe0a343ec8b9c4bfad9",
+  "matched_bound_inputs": 215,
+  "restored_paths": [
+    "stata/fereg.ado",
+    "scripts/run_stata_break_test.py",
+    "tests/licensed_stata/estimate_ols_eclass_break.do"
+  ],
+  "additional_tracked_paths_match_head": true,
+  "native_plugin_unchanged": true,
+  "candidate_patch": "rejected-candidate.patch",
+  "candidate_added_fixture": "harness/ols_public_scope.do",
+  "validation": "The restored production package and artifacts are byte-identical to the accepted source already validated in the PPML public-host report. No restored-package test rerun is claimed."
+}

@@ -1,0 +1,2343 @@
+{
+  "scope": "Read-only telemetry from existing fits. Native compute includes post-load validation and science; total stops before SPI stores. DoF normalization is a diagnostic, not altered eligibility or an independent rank oracle.",
+  "phases": [
+    {
+      "case": "ols-one-t1",
+      "arms": {
+        "baseline": {
+          "public_seconds": {
+            "values": [
+              0.075,
+              0.064,
+              0.065
+            ],
+            "min": 0.064,
+            "median": 0.065,
+            "max": 0.075
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000572203,
+              0.000452877,
+              0.000485775
+            ],
+            "min": 0.000452877,
+            "median": 0.000485775,
+            "max": 0.000572203
+          },
+          "input_load_seconds": {
+            "values": [
+              0.007552115,
+              0.006276383,
+              0.006658233
+            ],
+            "min": 0.006276383,
+            "median": 0.006658233,
+            "max": 0.007552115
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.045117349,
+              0.038792747,
+              0.038797117
+            ],
+            "min": 0.038792747,
+            "median": 0.038797117,
+            "max": 0.045117349
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.053241667,
+              0.045522007,
+              0.045941125
+            ],
+            "min": 0.045522007,
+            "median": 0.045941125,
+            "max": 0.053241667
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              5185527.0,
+              5185527.0,
+              5185527.0
+            ],
+            "min": 5185527.0,
+            "median": 5185527.0,
+            "max": 5185527.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              8724872.0,
+              8724872.0,
+              8724872.0
+            ],
+            "min": 8724872.0,
+            "median": 8724872.0,
+            "max": 8724872.0
+          }
+        },
+        "candidate": {
+          "public_seconds": {
+            "values": [
+              0.067,
+              0.045,
+              0.076
+            ],
+            "min": 0.045,
+            "median": 0.067,
+            "max": 0.076
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000495,
+              0.000310384,
+              0.000559089
+            ],
+            "min": 0.000310384,
+            "median": 0.000495,
+            "max": 0.000559089
+          },
+          "input_load_seconds": {
+            "values": [
+              0.007067625,
+              0.004245192,
+              0.008022261
+            ],
+            "min": 0.004245192,
+            "median": 0.007067625,
+            "max": 0.008022261
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.038852945,
+              0.027447428000000003,
+              0.04521222900000001
+            ],
+            "min": 0.027447428000000003,
+            "median": 0.038852945,
+            "max": 0.04521222900000001
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.04641557,
+              0.032003004,
+              0.053793579
+            ],
+            "min": 0.032003004,
+            "median": 0.04641557,
+            "max": 0.053793579
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              5185527.0,
+              5185527.0,
+              5185527.0
+            ],
+            "min": 5185527.0,
+            "median": 5185527.0,
+            "max": 5185527.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              8724872.0,
+              8724872.0,
+              8724872.0
+            ],
+            "min": 8724872.0,
+            "median": 8724872.0,
+            "max": 8724872.0
+          }
+        }
+      }
+    },
+    {
+      "case": "ols-one-t4",
+      "arms": {
+        "baseline": {
+          "public_seconds": {
+            "values": [
+              0.086,
+              0.078,
+              0.078
+            ],
+            "min": 0.078,
+            "median": 0.078,
+            "max": 0.086
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000602987,
+              0.000514897,
+              0.000574665
+            ],
+            "min": 0.000514897,
+            "median": 0.000574665,
+            "max": 0.000602987
+          },
+          "input_load_seconds": {
+            "values": [
+              0.010342266000000001,
+              0.00957275,
+              0.010338350999999999
+            ],
+            "min": 0.00957275,
+            "median": 0.010338350999999999,
+            "max": 0.010342266000000001
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.053044193,
+              0.047627873,
+              0.043135567
+            ],
+            "min": 0.043135567,
+            "median": 0.047627873,
+            "max": 0.053044193
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.063989446,
+              0.05771552,
+              0.054048583
+            ],
+            "min": 0.054048583,
+            "median": 0.05771552,
+            "max": 0.063989446
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              5305135.0,
+              5305135.0,
+              5305135.0
+            ],
+            "min": 5305135.0,
+            "median": 5305135.0,
+            "max": 5305135.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              8724872.0,
+              8724872.0,
+              8724872.0
+            ],
+            "min": 8724872.0,
+            "median": 8724872.0,
+            "max": 8724872.0
+          }
+        },
+        "candidate": {
+          "public_seconds": {
+            "values": [
+              0.072,
+              0.076,
+              0.074
+            ],
+            "min": 0.072,
+            "median": 0.074,
+            "max": 0.076
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000571116,
+              0.000579369,
+              0.000582813
+            ],
+            "min": 0.000571116,
+            "median": 0.000579369,
+            "max": 0.000582813
+          },
+          "input_load_seconds": {
+            "values": [
+              0.009171842,
+              0.009259892,
+              0.009358197
+            ],
+            "min": 0.009171842,
+            "median": 0.009259892,
+            "max": 0.009358197
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.036516887,
+              0.040357515,
+              0.039884055
+            ],
+            "min": 0.036516887,
+            "median": 0.039884055,
+            "max": 0.040357515
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.046259845,
+              0.050196776,
+              0.049825065
+            ],
+            "min": 0.046259845,
+            "median": 0.049825065,
+            "max": 0.050196776
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              5305135.0,
+              5305135.0,
+              5305135.0
+            ],
+            "min": 5305135.0,
+            "median": 5305135.0,
+            "max": 5305135.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              8724872.0,
+              8724872.0,
+              8724872.0
+            ],
+            "min": 8724872.0,
+            "median": 8724872.0,
+            "max": 8724872.0
+          }
+        }
+      }
+    },
+    {
+      "case": "ols-one-wide-t4",
+      "arms": {
+        "baseline": {
+          "public_seconds": {
+            "values": [
+              0.207,
+              0.204,
+              0.175
+            ],
+            "min": 0.175,
+            "median": 0.204,
+            "max": 0.207
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000974985,
+              0.000974975,
+              0.000991571
+            ],
+            "min": 0.000974975,
+            "median": 0.000974985,
+            "max": 0.000991571
+          },
+          "input_load_seconds": {
+            "values": [
+              0.026193529,
+              0.027843314,
+              0.026747909
+            ],
+            "min": 0.026193529,
+            "median": 0.026747909,
+            "max": 0.027843314
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.134697666,
+              0.13080406,
+              0.09926175
+            ],
+            "min": 0.09926175,
+            "median": 0.13080406,
+            "max": 0.134697666
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.16186618,
+              0.159622349,
+              0.12700123
+            ],
+            "min": 0.12700123,
+            "median": 0.159622349,
+            "max": 0.16186618
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              14908788.0,
+              14908788.0,
+              14908788.0
+            ],
+            "min": 14908788.0,
+            "median": 14908788.0,
+            "max": 14908788.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              26424200.0,
+              26424200.0,
+              26424200.0
+            ],
+            "min": 26424200.0,
+            "median": 26424200.0,
+            "max": 26424200.0
+          }
+        },
+        "candidate": {
+          "public_seconds": {
+            "values": [
+              0.154,
+              0.146,
+              0.145
+            ],
+            "min": 0.145,
+            "median": 0.146,
+            "max": 0.154
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000958447,
+              0.000993424,
+              0.000988738
+            ],
+            "min": 0.000958447,
+            "median": 0.000988738,
+            "max": 0.000993424
+          },
+          "input_load_seconds": {
+            "values": [
+              0.026233067,
+              0.027680524,
+              0.026354695
+            ],
+            "min": 0.026233067,
+            "median": 0.026354695,
+            "max": 0.027680524
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.078645996,
+              0.068570722,
+              0.069033718
+            ],
+            "min": 0.068570722,
+            "median": 0.069033718,
+            "max": 0.078645996
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.10583751,
+              0.09724467,
+              0.096377151
+            ],
+            "min": 0.096377151,
+            "median": 0.09724467,
+            "max": 0.10583751
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              14908788.0,
+              14908788.0,
+              14908788.0
+            ],
+            "min": 14908788.0,
+            "median": 14908788.0,
+            "max": 14908788.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              26424200.0,
+              26424200.0,
+              26424200.0
+            ],
+            "min": 26424200.0,
+            "median": 26424200.0,
+            "max": 26424200.0
+          }
+        }
+      }
+    },
+    {
+      "case": "ols-one-low-t4",
+      "arms": {
+        "baseline": {
+          "public_seconds": {
+            "values": [
+              0.119,
+              0.119,
+              0.12
+            ],
+            "min": 0.119,
+            "median": 0.119,
+            "max": 0.12
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000551007,
+              0.000591661,
+              0.000595209
+            ],
+            "min": 0.000551007,
+            "median": 0.000591661,
+            "max": 0.000595209
+          },
+          "input_load_seconds": {
+            "values": [
+              0.011844763000000001,
+              0.01105182,
+              0.010805379
+            ],
+            "min": 0.010805379,
+            "median": 0.01105182,
+            "max": 0.011844763000000001
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.08507975499999998,
+              0.085081355,
+              0.085386132
+            ],
+            "min": 0.08507975499999998,
+            "median": 0.085081355,
+            "max": 0.085386132
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.097475525,
+              0.096724836,
+              0.09678672
+            ],
+            "min": 0.096724836,
+            "median": 0.09678672,
+            "max": 0.097475525
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              6405255.0,
+              6405255.0,
+              6405255.0
+            ],
+            "min": 6405255.0,
+            "median": 6405255.0,
+            "max": 6405255.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              9527688.0,
+              9527688.0,
+              9527688.0
+            ],
+            "min": 9527688.0,
+            "median": 9527688.0,
+            "max": 9527688.0
+          }
+        },
+        "candidate": {
+          "public_seconds": {
+            "values": [
+              0.096,
+              0.091,
+              0.096
+            ],
+            "min": 0.091,
+            "median": 0.096,
+            "max": 0.096
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000565781,
+              0.000537787,
+              0.000551354
+            ],
+            "min": 0.000537787,
+            "median": 0.000551354,
+            "max": 0.000565781
+          },
+          "input_load_seconds": {
+            "values": [
+              0.008771618,
+              0.008379391,
+              0.009536056
+            ],
+            "min": 0.008379391,
+            "median": 0.008771618,
+            "max": 0.009536056
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.061146917,
+              0.057312959,
+              0.05998654499999999
+            ],
+            "min": 0.057312959,
+            "median": 0.05998654499999999,
+            "max": 0.061146917
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.070484316,
+              0.066230137,
+              0.070073955
+            ],
+            "min": 0.066230137,
+            "median": 0.070073955,
+            "max": 0.070484316
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              6405255.0,
+              6405255.0,
+              6405255.0
+            ],
+            "min": 6405255.0,
+            "median": 6405255.0,
+            "max": 6405255.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              9527688.0,
+              9527688.0,
+              9527688.0
+            ],
+            "min": 9527688.0,
+            "median": 9527688.0,
+            "max": 9527688.0
+          }
+        }
+      }
+    },
+    {
+      "case": "ols-two-t1",
+      "arms": {
+        "baseline": {
+          "public_seconds": {
+            "values": [
+              0.577,
+              0.602,
+              0.6
+            ],
+            "min": 0.577,
+            "median": 0.6,
+            "max": 0.602
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000614205,
+              0.000713506,
+              0.000579272
+            ],
+            "min": 0.000579272,
+            "median": 0.000614205,
+            "max": 0.000713506
+          },
+          "input_load_seconds": {
+            "values": [
+              0.022960792,
+              0.027423722,
+              0.021298093
+            ],
+            "min": 0.021298093,
+            "median": 0.022960792,
+            "max": 0.027423722
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.52447185,
+              0.5444375690000001,
+              0.5509691390000001
+            ],
+            "min": 0.52447185,
+            "median": 0.5444375690000001,
+            "max": 0.5509691390000001
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.548046847,
+              0.572574797,
+              0.572846504
+            ],
+            "min": 0.548046847,
+            "median": 0.572574797,
+            "max": 0.572846504
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              20992709.0,
+              20992709.0,
+              20992709.0
+            ],
+            "min": 20992709.0,
+            "median": 20992709.0,
+            "max": 20992709.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              26051528.0,
+              26051528.0,
+              26051528.0
+            ],
+            "min": 26051528.0,
+            "median": 26051528.0,
+            "max": 26051528.0
+          }
+        },
+        "candidate": {
+          "public_seconds": {
+            "values": [
+              0.559,
+              0.598,
+              0.626
+            ],
+            "min": 0.559,
+            "median": 0.598,
+            "max": 0.626
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000601879,
+              0.000725417,
+              0.000589926
+            ],
+            "min": 0.000589926,
+            "median": 0.000601879,
+            "max": 0.000725417
+          },
+          "input_load_seconds": {
+            "values": [
+              0.020786989,
+              0.025608847,
+              0.021292671
+            ],
+            "min": 0.020786989,
+            "median": 0.021292671,
+            "max": 0.025608847
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.5089358730000001,
+              0.542512227,
+              0.5783484430000001
+            ],
+            "min": 0.5089358730000001,
+            "median": 0.542512227,
+            "max": 0.5783484430000001
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.530324741,
+              0.568846491,
+              0.60023104
+            ],
+            "min": 0.530324741,
+            "median": 0.568846491,
+            "max": 0.60023104
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              20992709.0,
+              20992709.0,
+              20992709.0
+            ],
+            "min": 20992709.0,
+            "median": 20992709.0,
+            "max": 20992709.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              26051528.0,
+              26051528.0,
+              26051528.0
+            ],
+            "min": 26051528.0,
+            "median": 26051528.0,
+            "max": 26051528.0
+          }
+        }
+      }
+    },
+    {
+      "case": "ols-two-t8",
+      "arms": {
+        "baseline": {
+          "public_seconds": {
+            "values": [
+              0.1919999999999999,
+              0.19,
+              0.181
+            ],
+            "min": 0.181,
+            "median": 0.19,
+            "max": 0.1919999999999999
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000684108,
+              0.000703206,
+              0.000730486
+            ],
+            "min": 0.000684108,
+            "median": 0.000703206,
+            "max": 0.000730486
+          },
+          "input_load_seconds": {
+            "values": [
+              0.028379857,
+              0.027453744,
+              0.02553805
+            ],
+            "min": 0.02553805,
+            "median": 0.027453744,
+            "max": 0.028379857
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.131488181,
+              0.129330753,
+              0.12163437599999999
+            ],
+            "min": 0.12163437599999999,
+            "median": 0.129330753,
+            "max": 0.131488181
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.160552146,
+              0.157487703,
+              0.147902912
+            ],
+            "min": 0.147902912,
+            "median": 0.157487703,
+            "max": 0.160552146
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              18584633.0,
+              18593385.0,
+              18615265.0
+            ],
+            "min": 18584633.0,
+            "median": 18593385.0,
+            "max": 18615265.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              26051528.0,
+              26051528.0,
+              26051528.0
+            ],
+            "min": 26051528.0,
+            "median": 26051528.0,
+            "max": 26051528.0
+          }
+        },
+        "candidate": {
+          "public_seconds": {
+            "values": [
+              0.166,
+              0.173,
+              0.167
+            ],
+            "min": 0.166,
+            "median": 0.167,
+            "max": 0.173
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000702029,
+              0.000678261,
+              0.0007096
+            ],
+            "min": 0.000678261,
+            "median": 0.000702029,
+            "max": 0.0007096
+          },
+          "input_load_seconds": {
+            "values": [
+              0.027988851,
+              0.031566306,
+              0.027207955
+            ],
+            "min": 0.027207955,
+            "median": 0.027988851,
+            "max": 0.031566306
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.10130009900000002,
+              0.10273587099999999,
+              0.101308592
+            ],
+            "min": 0.10130009900000002,
+            "median": 0.101308592,
+            "max": 0.10273587099999999
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.129990979,
+              0.134980438,
+              0.129226147
+            ],
+            "min": 0.129226147,
+            "median": 0.129990979,
+            "max": 0.134980438
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              18606049.0,
+              18615265.0,
+              18615265.0
+            ],
+            "min": 18606049.0,
+            "median": 18615265.0,
+            "max": 18615265.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              26051528.0,
+              26051528.0,
+              26051528.0
+            ],
+            "min": 26051528.0,
+            "median": 26051528.0,
+            "max": 26051528.0
+          }
+        }
+      }
+    },
+    {
+      "case": "ols-three-t8",
+      "arms": {
+        "baseline": {
+          "public_seconds": {
+            "values": [
+              0.449,
+              0.455,
+              0.4330000000000001
+            ],
+            "min": 0.4330000000000001,
+            "median": 0.449,
+            "max": 0.455
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000755614,
+              0.000701131,
+              0.000714516
+            ],
+            "min": 0.000701131,
+            "median": 0.000714516,
+            "max": 0.000755614
+          },
+          "input_load_seconds": {
+            "values": [
+              0.028516166,
+              0.028959208,
+              0.028447951000000003
+            ],
+            "min": 0.028447951000000003,
+            "median": 0.028516166,
+            "max": 0.028959208
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.3864949,
+              0.393668296,
+              0.37208612599999996
+            ],
+            "min": 0.37208612599999996,
+            "median": 0.3864949,
+            "max": 0.393668296
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.41576668,
+              0.423328635,
+              0.401248593
+            ],
+            "min": 0.401248593,
+            "median": 0.41576668,
+            "max": 0.423328635
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              51625108.0,
+              58070948.0,
+              53349428.0
+            ],
+            "min": 51625108.0,
+            "median": 53349428.0,
+            "max": 58070948.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              26788808.0,
+              26788808.0,
+              26788808.0
+            ],
+            "min": 26788808.0,
+            "median": 26788808.0,
+            "max": 26788808.0
+          }
+        },
+        "candidate": {
+          "public_seconds": {
+            "values": [
+              0.411,
+              0.411,
+              0.412
+            ],
+            "min": 0.411,
+            "median": 0.411,
+            "max": 0.412
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000744885,
+              0.000704048,
+              0.00070483
+            ],
+            "min": 0.000704048,
+            "median": 0.00070483,
+            "max": 0.000744885
+          },
+          "input_load_seconds": {
+            "values": [
+              0.028832967,
+              0.029433915,
+              0.028738156
+            ],
+            "min": 0.028738156,
+            "median": 0.028832967,
+            "max": 0.029433915
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.34337877800000005,
+              0.34153357700000003,
+              0.342682158
+            ],
+            "min": 0.34153357700000003,
+            "median": 0.342682158,
+            "max": 0.34337877800000005
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.37295663,
+              0.37167154,
+              0.372125144
+            ],
+            "min": 0.37167154,
+            "median": 0.372125144,
+            "max": 0.37295663
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              52572364.0,
+              48985452.0,
+              48968140.0
+            ],
+            "min": 48968140.0,
+            "median": 48985452.0,
+            "max": 52572364.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              26788808.0,
+              26788808.0,
+              26788808.0
+            ],
+            "min": 26788808.0,
+            "median": 26788808.0,
+            "max": 26788808.0
+          }
+        }
+      }
+    },
+    {
+      "case": "ols-slopes-t4",
+      "arms": {
+        "baseline": {
+          "public_seconds": {
+            "values": [
+              0.286,
+              0.278,
+              0.279
+            ],
+            "min": 0.278,
+            "median": 0.279,
+            "max": 0.286
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000656084,
+              0.000621406,
+              0.000665117
+            ],
+            "min": 0.000621406,
+            "median": 0.000656084,
+            "max": 0.000665117
+          },
+          "input_load_seconds": {
+            "values": [
+              0.014827690000000001,
+              0.013669898,
+              0.013734632
+            ],
+            "min": 0.013669898,
+            "median": 0.013734632,
+            "max": 0.014827690000000001
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.244480918,
+              0.23763309100000002,
+              0.23965719
+            ],
+            "min": 0.23763309100000002,
+            "median": 0.23965719,
+            "max": 0.244480918
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.259964692,
+              0.251924395,
+              0.254056939
+            ],
+            "min": 0.251924395,
+            "median": 0.254056939,
+            "max": 0.259964692
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              14446514.0,
+              14446514.0,
+              14446514.0
+            ],
+            "min": 14446514.0,
+            "median": 14446514.0,
+            "max": 14446514.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              9830792.0,
+              9830792.0,
+              9830792.0
+            ],
+            "min": 9830792.0,
+            "median": 9830792.0,
+            "max": 9830792.0
+          }
+        },
+        "candidate": {
+          "public_seconds": {
+            "values": [
+              0.306,
+              0.416,
+              0.275
+            ],
+            "min": 0.275,
+            "median": 0.306,
+            "max": 0.416
+          },
+          "preflight_seconds": {
+            "values": [
+              0.000653019,
+              0.00064748,
+              0.000618276
+            ],
+            "min": 0.000618276,
+            "median": 0.00064748,
+            "max": 0.000653019
+          },
+          "input_load_seconds": {
+            "values": [
+              0.012201791,
+              0.012769883,
+              0.01182202
+            ],
+            "min": 0.01182202,
+            "median": 0.012201791,
+            "max": 0.012769883
+          },
+          "native_compute_seconds": {
+            "values": [
+              0.264731345,
+              0.37180314100000006,
+              0.234607161
+            ],
+            "min": 0.234607161,
+            "median": 0.264731345,
+            "max": 0.37180314100000006
+          },
+          "native_total_before_store_seconds": {
+            "values": [
+              0.277586155,
+              0.385220504,
+              0.247047457
+            ],
+            "min": 0.247047457,
+            "median": 0.277586155,
+            "max": 0.385220504
+          },
+          "allocation_peak_bytes": {
+            "values": [
+              14446514.0,
+              14446514.0,
+              14446514.0
+            ],
+            "min": 14446514.0,
+            "median": 14446514.0,
+            "max": 14446514.0
+          },
+          "selected_phase2_bytes": {
+            "values": [
+              9830792.0,
+              9830792.0,
+              9830792.0
+            ],
+            "min": 9830792.0,
+            "median": 9830792.0,
+            "max": 9830792.0
+          }
+        }
+      }
+    }
+  ],
+  "equality": [
+    {
+      "case": "ols-one-t1",
+      "repetition": 1,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 8724872.0,
+          "candidate": 8724872.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 5171300.0,
+          "candidate": 5171300.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-t1",
+      "repetition": 2,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 8724872.0,
+          "candidate": 8724872.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 5171300.0,
+          "candidate": 5171300.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-t1",
+      "repetition": 3,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 8724872.0,
+          "candidate": 8724872.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 5171300.0,
+          "candidate": 5171300.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-t4",
+      "repetition": 1,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 8724872.0,
+          "candidate": 8724872.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 5269452.0,
+          "candidate": 5269452.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-t4",
+      "repetition": 2,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 8724872.0,
+          "candidate": 8724872.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 5269452.0,
+          "candidate": 5269452.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-t4",
+      "repetition": 3,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 8724872.0,
+          "candidate": 8724872.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 5269452.0,
+          "candidate": 5269452.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-wide-t4",
+      "repetition": 1,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24552.0,
+          "candidate": 24552.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 24.0,
+          "candidate": 24.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26424200.0,
+          "candidate": 26424200.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 14872779.0,
+          "candidate": 14872779.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-wide-t4",
+      "repetition": 2,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24552.0,
+          "candidate": 24552.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 24.0,
+          "candidate": 24.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26424200.0,
+          "candidate": 26424200.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 14872779.0,
+          "candidate": 14872779.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-wide-t4",
+      "repetition": 3,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24552.0,
+          "candidate": 24552.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 24.0,
+          "candidate": 24.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26424200.0,
+          "candidate": 26424200.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 14872779.0,
+          "candidate": 14872779.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-low-t4",
+      "repetition": 1,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 9527688.0,
+          "candidate": 9527688.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 6369573.0,
+          "candidate": 6369573.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 1720320.0,
+          "candidate": 1720320.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-low-t4",
+      "repetition": 2,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 9527688.0,
+          "candidate": 9527688.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 6369573.0,
+          "candidate": 6369573.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 1720320.0,
+          "candidate": 1720320.0
+        }
+      }
+    },
+    {
+      "case": "ols-one-low-t4",
+      "repetition": 3,
+      "telemetry": {
+        "df_r": {
+          "baseline": 24570.0,
+          "candidate": 24570.0
+        },
+        "df_a": {
+          "baseline": 6144.0,
+          "candidate": 6144.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 9527688.0,
+          "candidate": 9527688.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 6369573.0,
+          "candidate": 6369573.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 1720320.0,
+          "candidate": 1720320.0
+        }
+      }
+    },
+    {
+      "case": "ols-two-t1",
+      "repetition": 1,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26051528.0,
+          "candidate": 26051528.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 20974017.0,
+          "candidate": 20974017.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-two-t1",
+      "repetition": 2,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26051528.0,
+          "candidate": 26051528.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 20974017.0,
+          "candidate": 20974017.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-two-t1",
+      "repetition": 3,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 1.0,
+          "candidate": 1.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26051528.0,
+          "candidate": 26051528.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 20974017.0,
+          "candidate": 20974017.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-two-t8",
+      "repetition": 1,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26051528.0,
+          "candidate": 26051528.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 18515749.0,
+          "candidate": 18515749.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-two-t8",
+      "repetition": 2,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26051528.0,
+          "candidate": 26051528.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 18515749.0,
+          "candidate": 18515749.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-two-t8",
+      "repetition": 3,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26051528.0,
+          "candidate": 26051528.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 18515749.0,
+          "candidate": 18515749.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-three-t8",
+      "repetition": 1,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26788808.0,
+          "candidate": 26788808.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 51543079.0,
+          "candidate": 52472831.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-three-t8",
+      "repetition": 2,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26788808.0,
+          "candidate": 26788808.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 57971415.0,
+          "candidate": 48885919.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-three-t8",
+      "repetition": 3,
+      "telemetry": {
+        "df_r": {
+          "baseline": 48528.0,
+          "candidate": 48528.0
+        },
+        "df_a": {
+          "baseline": 12902.0,
+          "candidate": 12902.0
+        },
+        "rank": {
+          "baseline": 10.0,
+          "candidate": 10.0
+        },
+        "fereg_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 8.0,
+          "candidate": 8.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 26788808.0,
+          "candidate": 26788808.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 53271775.0,
+          "candidate": 48886111.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-slopes-t4",
+      "repetition": 1,
+      "telemetry": {
+        "df_r": {
+          "baseline": 17811.0,
+          "candidate": 17811.0
+        },
+        "df_a": {
+          "baseline": 12903.0,
+          "candidate": 12903.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 9830792.0,
+          "candidate": 9830792.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 14410776.0,
+          "candidate": 14410776.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-slopes-t4",
+      "repetition": 2,
+      "telemetry": {
+        "df_r": {
+          "baseline": 17811.0,
+          "candidate": 17811.0
+        },
+        "df_a": {
+          "baseline": 12903.0,
+          "candidate": 12903.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 9830792.0,
+          "candidate": 9830792.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 14410776.0,
+          "candidate": 14410776.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    },
+    {
+      "case": "ols-slopes-t4",
+      "repetition": 3,
+      "telemetry": {
+        "df_r": {
+          "baseline": 17811.0,
+          "candidate": 17811.0
+        },
+        "df_a": {
+          "baseline": 12903.0,
+          "candidate": 12903.0
+        },
+        "rank": {
+          "baseline": 6.0,
+          "candidate": 6.0
+        },
+        "fereg_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_requested_threads": {
+          "baseline": 4.0,
+          "candidate": 4.0
+        },
+        "fereg_memory_selected_bytes": {
+          "baseline": 9830792.0,
+          "candidate": 9830792.0
+        },
+        "fereg_native_allocation_bytes": {
+          "baseline": 14410776.0,
+          "candidate": 14410776.0
+        },
+        "fereg_scratch_bytes": {
+          "baseline": 0.0,
+          "candidate": 0.0
+        }
+      }
+    }
+  ],
+  "dof_diagnostics": [
+    {
+      "case": "ols-three-t8",
+      "repetition": 1,
+      "status": "unranked_policy_diagnostic",
+      "native_df_r": 48528.0,
+      "stock_df_k": 12942,
+      "stock_implied_df_r": 48498.0,
+      "expected_stock_native_variance_factor": 1.0006185822095757,
+      "max_covariance_gap": 3.2299420273809864e-09,
+      "max_gap_after_dof_factor": 7.965365698839669e-15,
+      "max_bread_gap": 3.1953098207724434e-14,
+      "comparison": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": false,
+          "covariance_available": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": false
+        },
+        "left": "fereg",
+        "max_coefficient_error": 4.280790305566384e-11,
+        "max_se_error": 7.066411535699632e-07,
+        "right": "fixest",
+        "status": "accuracy_failure"
+      }
+    },
+    {
+      "case": "ols-three-t8",
+      "repetition": 2,
+      "status": "unranked_policy_diagnostic",
+      "native_df_r": 48528.0,
+      "stock_df_k": 12942,
+      "stock_implied_df_r": 48498.0,
+      "expected_stock_native_variance_factor": 1.0006185822095757,
+      "max_covariance_gap": 3.2299420273809864e-09,
+      "max_gap_after_dof_factor": 7.965365698839669e-15,
+      "max_bread_gap": 3.1953098207724434e-14,
+      "comparison": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": false,
+          "covariance_available": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": false
+        },
+        "left": "fereg",
+        "max_coefficient_error": 4.280790305566384e-11,
+        "max_se_error": 7.066411535699632e-07,
+        "right": "fixest",
+        "status": "accuracy_failure"
+      }
+    },
+    {
+      "case": "ols-three-t8",
+      "repetition": 3,
+      "status": "unranked_policy_diagnostic",
+      "native_df_r": 48528.0,
+      "stock_df_k": 12942,
+      "stock_implied_df_r": 48498.0,
+      "expected_stock_native_variance_factor": 1.0006185822095757,
+      "max_covariance_gap": 3.2299420273809864e-09,
+      "max_gap_after_dof_factor": 7.965365698839669e-15,
+      "max_bread_gap": 3.1953098207724434e-14,
+      "comparison": {
+        "checks": {
+          "candidate_converged": true,
+          "coefficient_names": true,
+          "coefficients": true,
+          "comparator_converged": true,
+          "covariance": false,
+          "covariance_available": true,
+          "rss": true,
+          "same_input": true,
+          "same_node_task": true,
+          "same_runtime": true,
+          "sample_count": true,
+          "sample_exact": true,
+          "standard_errors": false
+        },
+        "left": "fereg",
+        "max_coefficient_error": 4.280790305566384e-11,
+        "max_se_error": 7.066411535699632e-07,
+        "right": "fixest",
+        "status": "accuracy_failure"
+      }
+    }
+  ],
+  "bindings": {
+    "ols-one-t1/pair-1/baseline/result.json": "f4bdd242130c15a57fa73edd6b1b5536840b1a7d42a7e0fea123561eba4835ee",
+    "ols-one-t1/pair-1/candidate/result.json": "71fb17575bfc2d17e112ba38c5a98b582beb666622ab19c747c4da335015c0bd",
+    "ols-one-t1/pair-1/stock/result.json": "617cb69aedcda3a99d7194ea3a6d2d2e22bbe44ab6d6260548489b04174ce1de",
+    "ols-one-t1/pair-1/baseline/fereg_runtime.csv": "77c8b14d3a58afa92fced984215f86370cad23aeeb632955c0cfddeb1a413c7b",
+    "ols-one-t1/pair-1/candidate/fereg_runtime.csv": "e334cc5f79e902d531a2de4f1623255aad0846f02c648e888ed6fb97fb517a21",
+    "ols-one-t1/pair-2/baseline/result.json": "3fd6b6f69dcea3e49cce7273bbf4ef79cfe8ae6c58f294dd647bb95d10ce5284",
+    "ols-one-t1/pair-2/candidate/result.json": "5a20165ca433bf34d5683a21bb49950b0f9f49910c70f1b475985913f968edeb",
+    "ols-one-t1/pair-2/stock/result.json": "9a68f5bc6480ec4c89cadb5429f801cf798f4170344c5bd7391af0bd9a5f5195",
+    "ols-one-t1/pair-2/baseline/fereg_runtime.csv": "028127a98d467771f084fdcc14e2a3e36ca15365732e1e9408a8eedfde274857",
+    "ols-one-t1/pair-2/candidate/fereg_runtime.csv": "46023e383abdd1739395d36e53ea9877c225dc12e05e1bb00129321c503ecab6",
+    "ols-one-t1/pair-3/baseline/result.json": "7edc132b9fba3beecdc291f0ff04c9757ed452ee921d42cb7235719bb9463c63",
+    "ols-one-t1/pair-3/candidate/result.json": "f8034031c00ebed081250674cd4d15245669c1447b5f46c59fe67939079428cb",
+    "ols-one-t1/pair-3/stock/result.json": "2a24db8a0711b939a0e5fbb5cd96395f681e45e0a2358813a10c998bc5fd4745",
+    "ols-one-t1/pair-3/baseline/fereg_runtime.csv": "8981ac6317419aecf51adb8f53abd22aed95e5dc70b15729a10740b59121cd8f",
+    "ols-one-t1/pair-3/candidate/fereg_runtime.csv": "6b3ff267db9e3bc74ced4fc4a67818d59f7313e02c9f8c694197ff0952953bd5",
+    "ols-one-t4/pair-1/baseline/result.json": "fd5eb94d017bc2d730421ca0e35400c094a18e8d9b88367e5f22bb6d68a90f3d",
+    "ols-one-t4/pair-1/candidate/result.json": "1ee5d04d9ad838a85aa58a2c3fbf072efbdb6f6a510c239bb0308aaedefca0b0",
+    "ols-one-t4/pair-1/stock/result.json": "1c3437811e3c9412f524afaac3f2fcc64bdf1b161871f4c352ff5b16429be812",
+    "ols-one-t4/pair-1/baseline/fereg_runtime.csv": "ec73cf7a308a25f55edf169eff18991f030bc385801b05256fc99f9433a1ebd0",
+    "ols-one-t4/pair-1/candidate/fereg_runtime.csv": "f215060db460f69ba70f2b774e56c88b639de018e9fe712f59af1ddf696fa3bd",
+    "ols-one-t4/pair-2/baseline/result.json": "ecd0fb19ee6218fd1509452d58efcf45ed35b951a7f40a663c8844a90524d723",
+    "ols-one-t4/pair-2/candidate/result.json": "8ad496ca59e3f7cf7aec92d099b1f9f1f1a33d55c863a3045a817b32c59a56a2",
+    "ols-one-t4/pair-2/stock/result.json": "e65271c2da38fcb5f4e20fb25ad2ec8d0b27d5a245a37754000caf358ceb3293",
+    "ols-one-t4/pair-2/baseline/fereg_runtime.csv": "83113af15b9fe689912c85b2e15f4021475607292f690950129d2a1602849fd6",
+    "ols-one-t4/pair-2/candidate/fereg_runtime.csv": "d3fa7e0233942dc4f0162dad84b1c4654e2317c3b1558464e3260f25deadd1e3",
+    "ols-one-t4/pair-3/baseline/result.json": "62d7aa2bd3862506c70c26a9caac1095d99d58f170c3c946dda6f73170cef84a",
+    "ols-one-t4/pair-3/candidate/result.json": "067acbd7c7c92d0b6e3951cf5b3994551bb2ed18c039c423e12495ad77c38d22",
+    "ols-one-t4/pair-3/stock/result.json": "2bfc26df8fc716ce1bd188117c10136738cb11f77fa077ba396b8294abf572ee",
+    "ols-one-t4/pair-3/baseline/fereg_runtime.csv": "874eda41a78d912b38bf81861dda380d2a76e216d0dd27e10a5ffbc722b6b8dc",
+    "ols-one-t4/pair-3/candidate/fereg_runtime.csv": "1f3f09125a2f4a3d9f15af8d160763e570dcf5c172166f40dcf3040138e8ae1f",
+    "ols-one-wide-t4/pair-1/baseline/result.json": "8d9d81bdaffbc75dad0be7badcba002c29744c8dab20382c728331dc194b8ad9",
+    "ols-one-wide-t4/pair-1/candidate/result.json": "23725947643603f9a24a270ff0d76d809448943a580fe78a27248ce82339e091",
+    "ols-one-wide-t4/pair-1/stock/result.json": "fd2ea03a592c822ac73c520451dfeaaa7f3c6a708d55ddb327b61db258b65c5d",
+    "ols-one-wide-t4/pair-1/baseline/fereg_runtime.csv": "fdc0d47e80d7b1064f2f57bd906743a93799e8c2e3bc31180619305647321ae3",
+    "ols-one-wide-t4/pair-1/candidate/fereg_runtime.csv": "cef3a46a33a764d016c8f447eeb7588a12ba94dfc50a2992a2a9d4b7e4c2f939",
+    "ols-one-wide-t4/pair-2/baseline/result.json": "a32cff46260c2ce0fbdbe9553446de001f086c945ee4ffbf3d2c47275a35c7ad",
+    "ols-one-wide-t4/pair-2/candidate/result.json": "64179553956ae52cc6576406814020e5921a29963a72101f392de7ce79017922",
+    "ols-one-wide-t4/pair-2/stock/result.json": "69750bc98540dab5c82be42fe366c95a935b015610d67e7d21fe863ebd22b092",
+    "ols-one-wide-t4/pair-2/baseline/fereg_runtime.csv": "9935659052a2ef22465f259e377845bf82bed8748469dfd9a0b49f6a36954d33",
+    "ols-one-wide-t4/pair-2/candidate/fereg_runtime.csv": "6f5d134fac643e9f890440f2c0def341ab3a1f082b2e5572efb505e156747781",
+    "ols-one-wide-t4/pair-3/baseline/result.json": "e52dc0e218f90f3e4ea70c7c343a029fc1902e71d57af1845394cfbbc56df6f6",
+    "ols-one-wide-t4/pair-3/candidate/result.json": "acd83b36a9b7f00f68bb5386e048d4701148046f0cb989265354d77df3268237",
+    "ols-one-wide-t4/pair-3/stock/result.json": "edca43d02a6790e0a1e57c1c1a39df6ef68e2b42b7581c4367ded984c59ef7d6",
+    "ols-one-wide-t4/pair-3/baseline/fereg_runtime.csv": "561f8dfd6938f8fa3191d36fceacf8653045d43ddca6f22d3724d0d57d7e9ebf",
+    "ols-one-wide-t4/pair-3/candidate/fereg_runtime.csv": "cf253b690b90c0b85a9eab0ad7d64a5e77b823415dc440bb633ad17f77a774af",
+    "ols-one-low-t4/pair-1/baseline/result.json": "c2a8b9a51c3c0f16190e667709897ca23831a8a2b3919518c01e85768755e3f9",
+    "ols-one-low-t4/pair-1/candidate/result.json": "64d619c263a86e1d2c12cb9e9a2ca9e20985c0809e2aec8a7c9d46071ffe59f4",
+    "ols-one-low-t4/pair-1/stock/result.json": "3e5715b21057f27ec4015bde8efe754d75f5b350b068e2fa1814104142d23c4e",
+    "ols-one-low-t4/pair-1/baseline/fereg_runtime.csv": "1f6f16682fecdcbbfd3d9ef5057132f0af244d1aff615c271476daf1c938a7eb",
+    "ols-one-low-t4/pair-1/candidate/fereg_runtime.csv": "f182a2be94d67850cc56aca6798ec16cd5967e1f79682ca099ee52aedabf30f9",
+    "ols-one-low-t4/pair-2/baseline/result.json": "6f9838718f67e39cdb45dd101655445dddf6c13ac1774fdc5c9b1f2cc3fae275",
+    "ols-one-low-t4/pair-2/candidate/result.json": "721d52f488d6baa2f473f962b43f19063b196a2c24ab826ad491c6f2846f5ff7",
+    "ols-one-low-t4/pair-2/stock/result.json": "03ae4fa499380520c57147aa5d52203d4014cb59ae68c05281a35556eeaade65",
+    "ols-one-low-t4/pair-2/baseline/fereg_runtime.csv": "466a128bd7a64fbe1bc0fd2ebc049ba5f49f7e79fcdeed8df31e4883df34404c",
+    "ols-one-low-t4/pair-2/candidate/fereg_runtime.csv": "c0b2cda5c97492eda529d07dd8d8eca909b0602a08f4b46ba5e06480929c66fc",
+    "ols-one-low-t4/pair-3/baseline/result.json": "d9bae3c4b9c27271101325ef7e8800e74d584b92c7f557461da9cf174531832b",
+    "ols-one-low-t4/pair-3/candidate/result.json": "660f5423cbc6a57612cb06cfa2607af6fc2c65e265921e0ab631b17855c5af79",
+    "ols-one-low-t4/pair-3/stock/result.json": "025f69667ad3372e9870ae6f1015a525dbf9ee7bf6cb41065f5844ff09bb796f",
+    "ols-one-low-t4/pair-3/baseline/fereg_runtime.csv": "f452f0bd3688b3401dd2f367abfe1d0faf5468a9919689b4acffdfbd83847d0b",
+    "ols-one-low-t4/pair-3/candidate/fereg_runtime.csv": "064e82c7459d862a606cdf715454c3bd84b44c8d4c8de5f6405e9965c500b77a",
+    "ols-two-t1/pair-1/baseline/result.json": "30a3cf0b2c0b93e5dcc61c602f85db554b7235a9aa3997bbf118558562128598",
+    "ols-two-t1/pair-1/candidate/result.json": "d367c3c3e869fc62f459bbeb92619c0dc7d22bc1643bea55c5a9ce0142a6221a",
+    "ols-two-t1/pair-1/stock/result.json": "16271c202ad7833cdc6b868f8d4104f39d977df96d68ba0db8864f773d3cc455",
+    "ols-two-t1/pair-1/baseline/fereg_runtime.csv": "25be46ffcdc7f877226eefadf08b288316bc44dd8f1119715981d0895a3aaf56",
+    "ols-two-t1/pair-1/candidate/fereg_runtime.csv": "3fc03313da3f2e98743de9a5dfb817720fcd1a39249b394bb5f74a4a03b1c1a0",
+    "ols-two-t1/pair-2/baseline/result.json": "93729f371a587375311eb11e34623af9c3734b869ae0ba4af770860d0819fba9",
+    "ols-two-t1/pair-2/candidate/result.json": "1636457a33d1a8ab9107a7549e3d744e2f3c8106682f94b62e5a2c6d511b408b",
+    "ols-two-t1/pair-2/stock/result.json": "822cf04eb99e1ae3bb4e3968be1cbd82d4f39ce09eb96c006ec2e37dde38263a",
+    "ols-two-t1/pair-2/baseline/fereg_runtime.csv": "7b3c4acb9a1df6951d7669f7862ac6f3a39a01351d6fd58026bdea4f37a2798a",
+    "ols-two-t1/pair-2/candidate/fereg_runtime.csv": "56f60e8eab99a023302aa5e794400734a879af57dd94533f648a321b991228e9",
+    "ols-two-t1/pair-3/baseline/result.json": "5f92da538bad7aaafa328d100c8c9cc955447f5084a7c89083c153eab916b6e6",
+    "ols-two-t1/pair-3/candidate/result.json": "4bb4d82fc7f08256987fc37f6097878bb4428b4d92be1df6518547311ac3027f",
+    "ols-two-t1/pair-3/stock/result.json": "d657be753640d7dcfe93bb9dcb536de126ed6a12ef3bb1c281649baa75414e04",
+    "ols-two-t1/pair-3/baseline/fereg_runtime.csv": "4e7bc0b6ad2237f430a900183871a5592bb606be4ffd10c0594135991e065dea",
+    "ols-two-t1/pair-3/candidate/fereg_runtime.csv": "f33dd47100ef2844ad14fb8746a78b5968ac3318da62a57bf94aa2d7d684b3f7",
+    "ols-two-t8/pair-1/baseline/result.json": "455fb0af3e9e59de652ddb8ffb61a314b92c060846787bff9fcfb84d602d2ab4",
+    "ols-two-t8/pair-1/candidate/result.json": "87046c81f6701a62885a977ad061ae618efec15cfe10d6102791036385451740",
+    "ols-two-t8/pair-1/stock/result.json": "4f21c408d20163c88dea73efab89a654659b46bbc224f648514fe7cdfdbf930f",
+    "ols-two-t8/pair-1/baseline/fereg_runtime.csv": "b8410dfb7e25604badd466e249f7eb5125cd06bd5d6b6fe97c56b90067f53c4c",
+    "ols-two-t8/pair-1/candidate/fereg_runtime.csv": "343e224740f480b3f9d802a99cebbbcdb1c395e9ad8c7bef7b623a130b277e1b",
+    "ols-two-t8/pair-2/baseline/result.json": "ba21eb048077abe0913232bbb02bceb2f483e22d0a0756fc2eca899dc7362100",
+    "ols-two-t8/pair-2/candidate/result.json": "1004cbd59376b0a5aad595db58ce973de69c5836c6e3d5a69b4bb45cef8f2de3",
+    "ols-two-t8/pair-2/stock/result.json": "00e62777d967a109e80cc011fb1250a0ae27ccc06cdf2668da05f71804da1d17",
+    "ols-two-t8/pair-2/baseline/fereg_runtime.csv": "75e4a9a6e1fe3162bc218629e546565447bd9648e40fc7b94e529d679010d72b",
+    "ols-two-t8/pair-2/candidate/fereg_runtime.csv": "9d72b109c3251b440fd41cff7ec29487682489428a24f30c1e4b964512142862",
+    "ols-two-t8/pair-3/baseline/result.json": "53c293805b2c06abf99a450be3b083a119955e4c3514a4d590f3aa59c07b428f",
+    "ols-two-t8/pair-3/candidate/result.json": "3738ed59ab28b05bc7cac20f3252ac31e947157309926d9e1a04e8a2905fffa9",
+    "ols-two-t8/pair-3/stock/result.json": "66e4fd3388f05096e03e374a22fcb4d00d797b32b9d0dfa829feaea5751e1eeb",
+    "ols-two-t8/pair-3/baseline/fereg_runtime.csv": "9588b6b63ba814ff3d1e6e7b01cc63eac3a3223d42beb2c8d8b752d3f9cfa8e1",
+    "ols-two-t8/pair-3/candidate/fereg_runtime.csv": "618df2093f69102a4ec1848992caa991f0dac8fedfd628f8234d96ae5b2cefdf",
+    "ols-three-t8/pair-1/baseline/result.json": "c49ebbd7acca650f79067b3489142fcbddd9bc034c79b5437cfd02fc9a93bc1b",
+    "ols-three-t8/pair-1/candidate/result.json": "f99011dc4de5ec5ed77e7afb958d9458abeb284bcfbbfc95612bad2828de32dd",
+    "ols-three-t8/pair-1/stock/result.json": "e37737ff5c0b79d189be6eafbff938386c773222bf8868af4040cd7ab79f8d4c",
+    "ols-three-t8/pair-1/baseline/fereg_runtime.csv": "9eca739ea85624a4f77a795e1583d8d9ff106b2bb0d61d39c57daf91da680107",
+    "ols-three-t8/pair-1/candidate/fereg_runtime.csv": "125cd927f3bf7410f6483a2af8f1c148058ad7245dfa5c0ea3654ab54a4cad29",
+    "ols-three-t8/pair-1/candidate/covariance.csv": "39f00902a786c5a25e794c66a899b13ab0e713dcfd5c9d2ccd7587921827346e",
+    "ols-three-t8/pair-1/stock/covariance.csv": "71844d772412c666bd2b392bcf7a0d03d61527d185e0b321d462c749fa2873f2",
+    "ols-three-t8/pair-2/baseline/result.json": "2e739748bb791bc2202c75327d5a7ed7178a2b64ad4b60ed737ec9badc0cc539",
+    "ols-three-t8/pair-2/candidate/result.json": "0fccd4671265ebda318cb570342aa0eef8e780ddf1db60cc1566a34c6c4a3875",
+    "ols-three-t8/pair-2/stock/result.json": "40e44d1947032cf47fb17e6d8b55f8aa6671813164762b15e18324c4ba80ded8",
+    "ols-three-t8/pair-2/baseline/fereg_runtime.csv": "589ad961cc4ff4be31c0137aab641eea61abc148766949a65c61649f7bf9e801",
+    "ols-three-t8/pair-2/candidate/fereg_runtime.csv": "81beeb85d9a86d250e61d2c4d41dc5f5dba897cf45d8b00aab5dfcd7fdca98c8",
+    "ols-three-t8/pair-2/candidate/covariance.csv": "39f00902a786c5a25e794c66a899b13ab0e713dcfd5c9d2ccd7587921827346e",
+    "ols-three-t8/pair-2/stock/covariance.csv": "71844d772412c666bd2b392bcf7a0d03d61527d185e0b321d462c749fa2873f2",
+    "ols-three-t8/pair-3/baseline/result.json": "7437041e8372ffd1729b1fffd7bb54dd6665b27590096e79c401f9ba91b645fe",
+    "ols-three-t8/pair-3/candidate/result.json": "d3db4941f7572a8c0b04810174fd6f2e0ddf37388f6cebeb0daf9890be064231",
+    "ols-three-t8/pair-3/stock/result.json": "550d7822fd7cb8bb15f850f1a33d2d68f27141375927c4984459f6aeafbcd438",
+    "ols-three-t8/pair-3/baseline/fereg_runtime.csv": "b8a91302bb34c5c61736088507023ddfdf9ef02b93fecbc19b2969b551b14377",
+    "ols-three-t8/pair-3/candidate/fereg_runtime.csv": "341b0ce4a7bdb99e020eb0244bcd9efb1b53f828b1ffa89a6c957d25644f0a0a",
+    "ols-three-t8/pair-3/candidate/covariance.csv": "39f00902a786c5a25e794c66a899b13ab0e713dcfd5c9d2ccd7587921827346e",
+    "ols-three-t8/pair-3/stock/covariance.csv": "71844d772412c666bd2b392bcf7a0d03d61527d185e0b321d462c749fa2873f2",
+    "ols-slopes-t4/pair-1/baseline/result.json": "078eae129575bee6635e00c9e861138f6167d63b86d9dbb0a35e3f17dc3c2a05",
+    "ols-slopes-t4/pair-1/candidate/result.json": "b9e834c880ea5dc0daa7b73578c4088aa3243eeb243d3db685414cf7f97833c4",
+    "ols-slopes-t4/pair-1/stock/result.json": "1a2dc75bfe115f9bb366141ed0a3d42ed7ac3e7ae6f08f5ea4781597dfd7030c",
+    "ols-slopes-t4/pair-1/baseline/fereg_runtime.csv": "142f2d6eee30312ec059b8403df419be4033f7c63dfd7346a1ffcf9b27618b23",
+    "ols-slopes-t4/pair-1/candidate/fereg_runtime.csv": "fe127181bc50009dc965385e87e00bd17694a47054ee85e93177f4d4e405bed2",
+    "ols-slopes-t4/pair-2/baseline/result.json": "f6cb3260a6fd3980d3502f0010305ba0aec55e647dcddebb4aac9d5807eeaa42",
+    "ols-slopes-t4/pair-2/candidate/result.json": "b12e63f50342a046369b5254cca37a70864f798904f3e238b9cebf09740525c2",
+    "ols-slopes-t4/pair-2/stock/result.json": "8661ea9b6ad2d0c8e4336542843afeed585aa7aeba4421bb5d1de1c0bdc89680",
+    "ols-slopes-t4/pair-2/baseline/fereg_runtime.csv": "e303f9fc9a2e75faf8f50b914f399da7771e20a7e9660d881f35050e823e7a01",
+    "ols-slopes-t4/pair-2/candidate/fereg_runtime.csv": "4a65eeee8028a5712155ee9ba2be5fabbd97159cc9e2c7a1eab68526c4d14ba5",
+    "ols-slopes-t4/pair-3/baseline/result.json": "8cfe628d1c7835839b84d003fe45731124f688f77d9433624c661a3d9d80f946",
+    "ols-slopes-t4/pair-3/candidate/result.json": "9a7bf56b4435d419cf5c57e347977e6f5682237fedd56ecbfcd4c03380fe8944",
+    "ols-slopes-t4/pair-3/stock/result.json": "b360cf474f9cc0593c175bf4e4f6f3eef0d5edd0b0e615384d29c1cce8ba375f",
+    "ols-slopes-t4/pair-3/baseline/fereg_runtime.csv": "59b45072fd78e87ff4e77c3be8cd03ed7729201a9753d5ea01c886c617e1e564",
+    "ols-slopes-t4/pair-3/candidate/fereg_runtime.csv": "d89210569be1d84bd100079aaf61f4d96542cff14254e987752177a78ab8190f"
+  }
+}

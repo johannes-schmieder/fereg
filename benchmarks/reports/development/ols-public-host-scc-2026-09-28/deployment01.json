@@ -1,0 +1,7 @@
+{
+  "candidate-source.json": "85dbc5841e5ecf0550f9d56daf569c9d0dd7801b786a58bc9474acf4fa95d220",
+  "overlay/tests/licensed_stata/estimate_ols_eclass_break.do": "8ef2fc0a0d67ad952db9c21530e1d5daec6536812ddb36451ba8f3b0e0e0ff85",
+  "overlay/tests/stata/development/ols_public_scope.do": "85db42acd5dd03dbbd5ea9974566a3280856077f20551c5ac90be3d6e5c7a94f",
+  "overlay/scripts/run_stata_break_test.py": "4ca328a3b08fc2b2809319442fca7d503f03b71269b1b432cf0e38022c31547d",
+  "overlay/stata/fereg.ado": "d157a098fae60f15dcde98dab26b86f14da3717c2e9e9760859064ffd9245463"
+}

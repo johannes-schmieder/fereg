@@ -1,0 +1,58 @@
+{
+  "status": "success",
+  "snapshot": "72448897d6e25ccc8616e51c82efa0652386a4163cb44322f4cdafe0376172f8",
+  "plugin_sha256": "a7ad04933211678788632916184fdda2ff9139321ff70e935c6a9d9d66767db0",
+  "tests_passed": 5,
+  "tests_failed": 0,
+  "fixtures": [
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_public_scope.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_three_fe_batch_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/ols_multipartition_schur_oracle.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    },
+    {
+      "failure_detail": null,
+      "failure_kind": null,
+      "fixture": "tests/stata/development/feppml_public_scope.do",
+      "process_rc": 0,
+      "stata_rc": 0,
+      "status": "success"
+    }
+  ],
+  "public_break_success": true,
+  "native_break_success": true,
+  "python_tests_passed": 5,
+  "evidence_sha256": {
+    "static": "6273232de4d3ef7acd4ecafa5c86beeeb974f56586b21089a2990b3f72facbe6",
+    "break-public": "086f566d7aa2c43c0f7c2730f944a05bfe28c577c2c11d0a2f555a95cbce15c5",
+    "break-native": "6e34ae90d9ae35896ca63ce58bd1dd3b893325aa47dcfbe3cf9dfe2f763e3238",
+    "fixtures": "862f9990e73c2ff54195acb7018c9d3d4c24ab54d8d077f33ebd78b8a9e3eb5e"
+  }
+}

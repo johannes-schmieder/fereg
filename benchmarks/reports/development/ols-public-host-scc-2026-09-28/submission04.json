@@ -1,0 +1,12 @@
+{
+  "job_id": "7763749",
+  "run_root": "/projectnb/welfgr/fereg/dev/20260928-ols-host-rotation04",
+  "source_snapshot": "72448897d6e25ccc8616e51c82efa0652386a4163cb44322f4cdafe0376172f8",
+  "slots": 28,
+  "cpu_type": "E5-2680v4",
+  "mem_per_core": "3G",
+  "walltime": "00:30:00",
+  "fits": 90,
+  "deployment_sha256": "58244466ba3c340efdd402a4c73934fc7c00f6267b98284c204e293f48efda57",
+  "fresh_seed": 2026092827
+}

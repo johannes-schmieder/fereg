@@ -1,0 +1,8 @@
+{
+  "status": "success",
+  "verified_at_utc": "2026-09-28T11:18:52.399063+00:00",
+  "source_root": "/projectnb/welfgr/fereg/dev/20260928-ols-host-01/source",
+  "snapshot": "72448897d6e25ccc8616e51c82efa0652386a4163cb44322f4cdafe0376172f8",
+  "matched_bound_inputs": 217,
+  "method": "Recomputed SHA256 of every source-manifest file on SCC after all three timing jobs completed; no mismatch."
+}

@@ -1,0 +1,9 @@
+{
+  "job_id": "7763730",
+  "run_root": "/projectnb/welfgr/fereg/dev/20260928-ols-host-01",
+  "source_snapshot": "72448897d6e25ccc8616e51c82efa0652386a4163cb44322f4cdafe0376172f8",
+  "slots": 4,
+  "status": "cancelled_before_execution",
+  "reason": "Queued resource preflight found existing three-FE oracle explicitly requests 16 workers. Cancelled this job only while qw; corrected submission requests 16 slots and constrains inherited CPU affinity to 16. No application ran.",
+  "deployment_sha256": "b1437173b8e57bd7c4c4d7b30cc9981be39ba1cdab6f177049407e733f41c70e"
+}
