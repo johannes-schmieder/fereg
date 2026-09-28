@@ -100,6 +100,11 @@ is submitted sequentially: 72 fits; nine pairs for the prior small categorical
 and narrow T28 cases, plus three each on fresh narrow/wide controls. Both native
 arms use the unchanged validated plugin. Prior input SHA must match before fits;
 fresh seed 202609283 is predeclared. Results remain pending.
+The small nine-pair T1/T4 block and first original sparse T8/T28 pair pass
+science and actual-team checks. Strict stock takes 70.5 s on the first narrow
+case, much longer than the earlier default reference. The [wall-only amendment](benchmarks/reports/development/ppml-thread-scaling-scc-2026-09-28/wall-amendment.json)
+raises the allowance to 50 minutes; per-command caps and all cases remain fixed.
+Strict-stock ratios cannot replace earlier comparable default-stock evidence.
 The shared thread ceiling, small categorical PPML stock loss, low-memory OLS
 loss, remaining comparator adjudication and broader remeasurement remain open.
 The overall goal is active; this milestone does not complete the repair plan.

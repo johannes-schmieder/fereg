@@ -1,0 +1,16 @@
+{
+  "job": "7762547",
+  "change": "Wall allowance only, 00:30:00 to 00:50:00",
+  "reason": "First narrow pair: native T8 6.990s, native T28 7.593s, strict stock 70.519s (77.612s full stock process), versus the earlier default-stock ~10.8s. Remaining predeclared wide stock cases retain their 360s command cap. Fifty minutes accommodates the unchanged full block plus startup/extraction and avoids a wall kill before those bounded limits.",
+  "unchanged": [
+    "72 applications and all repetition orders",
+    "input seeds and exact-data guards",
+    "native/reference source and artifact",
+    "per-command startup/command/extraction limits",
+    "28 slots and E5-2680v4 class",
+    "mem_per_core=3G and no_gpu=TRUE",
+    "scientific acceptance and requested work"
+  ],
+  "verified_hard_resources": "h_rt=3000,mem_per_core=3G,num_proc=28,cpu_type=E5-2680v4,no_gpu=TRUE",
+  "interpretation": "This thread confirmation uses strict stock. Its stock ratios cannot substitute for the earlier comparable default-stock ratios; no earlier receipt is reclassified."
+}
