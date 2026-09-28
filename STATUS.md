@@ -70,8 +70,8 @@ estimator changed, and historical NR remains unchanged. Local AST/shell checks
 pass. Require accounting, terminal sentinels, all expected outputs and fixture
 checks before adopting anything. If the main array checkpoints pending groups,
 hold further headline work until this diagnostic finishes. The latest inspected
-sweep snapshot at 15:31 UTC has 81 successful applications (including pilot), two
-command timeouts, 17 scientific discrepancies and 29 passing comparison pairs;
+sweep snapshot at 16:23:39 UTC has 173 successful applications (including pilot),
+six command timeouts, 48 scientific discrepancies and 47 passing comparison pairs;
 there are no complete eligible four-repeat configurations yet. All four tasks
 remain running. Historical budget exclusions remain separate from new failures.
 
@@ -163,6 +163,19 @@ No Rust or public numerical result exists yet. Require accounting, complete test
 and both terminal markers. After passing, public science and paired/fresh timings
 are still required before adoption; the nonretaining-CG candidate stays separate.
 Hold further headline work until this last diagnostic job is terminal as well.
+
+The [current native thread-consistency audit](benchmarks/reports/development/native-thread-science-scc-2026-09-28/README.md)
+passes all **12 available cross-thread comparisons** (seven OLS/five PPML):
+registered b/SE/regressor-V/objective envelopes, exact samples and native rank/DoF
+checks. Maximum regressor b difference is 1.901e-15; exported SEs agree exactly.
+Four large three-FE PPML comparisons are actual **T4→T8**, despite a T28 request.
+This is saved-output reproducibility, not an independent optimum or timing claim.
+At the same capture 73/568 groups are terminal; scheduler accounting remains pending.
+Large degree-two OLS now times out on all three remaining seeds at T4 on scc-wd2,
+strengthening but not proving the memory-route hypothesis. Three stock timeouts
+remain, including both reference profiles for one three-FE slope seed. Every
+current PPML scientific discrepancy is against default stock; strict-stock
+timeouts/exclusions remain separate. No new fit or job was launched for this audit.
 
 ## Prior checkpoint: private low-memory moments retained; Mac runtime audit repaired
 
