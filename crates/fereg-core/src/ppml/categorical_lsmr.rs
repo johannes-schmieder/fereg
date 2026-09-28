@@ -1248,6 +1248,17 @@ impl<'a> AugmentedCategoricalOperator<'a> {
     }
 }
 
+// These products belong only to speculative LSMR applications. Reconstruction
+// and original-input certification retain their separate arithmetic. Portable
+// builds avoid an out-of-line libm call per entry; hardware FMA targets keep it.
+#[inline]
+fn proposal_product_add(left: f64, right: f64, sum: f64) -> f64 {
+    #[cfg(any(target_arch = "aarch64", target_feature = "fma"))]
+    { left.mul_add(right, sum) }
+    #[cfg(not(any(target_arch = "aarch64", target_feature = "fma")))]
+    { left * right + sum }
+}
+
 impl Operator for AugmentedCategoricalOperator<'_> {
     fn nrows(&self) -> usize {
         self.fe_design.nobs()
@@ -1266,8 +1277,9 @@ impl Operator for AugmentedCategoricalOperator<'_> {
         let finite = self.active_design.ncols();
         y.par_iter_mut().enumerate().for_each(|(row, value)| {
             let mut fitted = 0.0_f64;
-            for (column, &coefficient) in x[..finite].iter().enumerate() {
-                fitted = self.active_design[(row, column)].mul_add(coefficient, fitted);
+            let values = &self.active_design.as_slice()[row * finite..(row + 1) * finite];
+            for (&value, &coefficient) in values.iter().zip(&x[..finite]) {
+                fitted = proposal_product_add(value, coefficient, fitted);
             }
             for (effect_index, effect) in self.fe_design.effects().iter().enumerate() {
                 let level = effect.codes()[row] as usize;
@@ -1291,10 +1303,24 @@ impl Operator for AugmentedCategoricalOperator<'_> {
                 .par_iter_mut()
                 .enumerate()
                 .for_each(|(column, output)| {
-                    let mut sum = 0.0_f64;
-                    for (row, &input) in x.iter().enumerate() {
-                        sum = (self.sqrt_weights[row] * self.active_design[(row, column)])
-                            .mul_add(input, sum);
+                    let mut sums = [0.0; 8];
+                    let values = self.active_design.as_slice();
+                    let full = x.len() / 8 * 8;
+                    for row in (0..full).step_by(8) {
+                        for lane in 0..8 {
+                            let r = row + lane;
+                            sums[lane] = proposal_product_add(
+                                self.sqrt_weights[r] * values[r * finite + column],
+                                x[r], sums[lane],
+                            );
+                        }
+                    }
+                    let mut sum = sums.into_iter().sum();
+                    for row in full..x.len() {
+                        sum = proposal_product_add(
+                            self.sqrt_weights[row] * values[row * finite + column],
+                            x[row], sum,
+                        );
                     }
                     *output = sum;
                 });
@@ -1305,7 +1331,8 @@ impl Operator for AugmentedCategoricalOperator<'_> {
                 let start = row * finite;
                 for (column, &value) in active_values[start..start + finite].iter().enumerate() {
                     finite_output[column] =
-                        (self.sqrt_weights[row] * value).mul_add(input, finite_output[column]);
+                        proposal_product_add(self.sqrt_weights[row] * value, input,
+                            finite_output[column]);
                 }
             }
         }
@@ -1321,7 +1348,7 @@ impl Operator for AugmentedCategoricalOperator<'_> {
                         let level = first_level + within_chunk;
                         let mut sum = 0.0_f64;
                         for &row in effect.level_index().members(level) {
-                            sum = self.sqrt_weights[row].mul_add(x[row], sum);
+                            sum = proposal_product_add(self.sqrt_weights[row], x[row], sum);
                         }
                         *output = sum;
                     }
@@ -2524,6 +2551,70 @@ mod tests {
         let left_product = ax.iter().zip(&y).map(|(a, b)| a * b).sum::<f64>();
         let right_product = x.iter().zip(&aty).map(|(a, b)| a * b).sum::<f64>();
         assert!((left_product - right_product).abs() <= 1e-13);
+    }
+
+    #[test]
+    fn augmented_products_match_explicit_design_across_widths_and_teams() {
+        for rows in [17, 131] {
+            let design = FeDesign::new(rows, vec![
+                EffectTerm::new((0..rows).map(|r| (r % 3) as u32).collect(),
+                    3, true, Vec::new()).unwrap(),
+                EffectTerm::new((0..rows).map(|r| ((r / 3) % 5) as u32).collect(),
+                    5, true, Vec::new()).unwrap(),
+            ]).unwrap();
+            for columns in [0, 1, 6, 17] {
+                let active = DenseMatrix::from_row_major(rows, columns,
+                    (0..rows * columns).map(|i| ((i * 17 + 3) as f64).sin()).collect(),
+                ).unwrap();
+                let coefficients: Vec<_> = (0..columns + 8)
+                    .map(|i| ((i * 7 + 2) as f64).cos()).collect();
+                let input: Vec<_> = (0..rows).map(|r| ((r * 11 + 1) as f64).sin()).collect();
+                for generation in 0..2 {
+                    let roots: Vec<_> = (0..rows).map(|r|
+                        10.0_f64.powi(((r * 7 + generation * 3) % 13) as i32 - 6)
+                    ).collect();
+                    // Independently materialize the mathematical weighted design.
+                    let mut explicit = vec![vec![0.0; columns + 8]; rows];
+                    for row in 0..rows {
+                        for col in 0..columns {
+                            explicit[row][col] = roots[row] * active[(row, col)];
+                        }
+                        explicit[row][columns + row % 3] = roots[row];
+                        explicit[row][columns + 3 + (row / 3) % 5] = roots[row];
+                    }
+                    let expected_forward: Vec<f64> = explicit.iter().map(|row|
+                        row.iter().zip(&coefficients).map(|(a, b)| a * b).sum()).collect();
+                    let expected_adjoint: Vec<f64> = (0..columns + 8).map(|col|
+                        (0..rows).map(|r| explicit[r][col] * input[r]).sum()).collect();
+                    for threads in [1, 4] {
+                        let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+                        pool.install(|| {
+                            let operator = AugmentedCategoricalOperator::new(
+                                &design, &active, &[0, 3, 8], &roots).unwrap();
+                            let mut forward = vec![0.0; rows];
+                            let mut adjoint = vec![0.0; columns + 8];
+                            operator.apply(&coefficients, &mut forward).unwrap();
+                            operator.apply_adjoint(&input, &mut adjoint).unwrap();
+                            for row in 0..rows {
+                                let scale: f64 = explicit[row].iter().zip(&coefficients)
+                                    .map(|(a, b)| (a * b).abs()).sum();
+                                assert!((forward[row] - expected_forward[row]).abs()
+                                    <= 1e-12 * scale.max(1.0));
+                            }
+                            for col in 0..columns + 8 {
+                                let scale: f64 = (0..rows)
+                                    .map(|r| (explicit[r][col] * input[r]).abs()).sum();
+                                assert!((adjoint[col] - expected_adjoint[col]).abs()
+                                    <= 1e-12 * scale.max(1.0));
+                            }
+                            let prior = adjoint.clone();
+                            operator.apply_adjoint(&input, &mut adjoint).unwrap();
+                            assert_eq!(prior, adjoint);
+                        });
+                    }
+                }
+            }
+        }
     }
 
     #[test]

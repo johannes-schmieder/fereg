@@ -120,6 +120,21 @@ and Schwarz reconstruction. Next: inspect that ordinary IRLS organization and
 existing coefficient-space solver admission/history before choosing a replacement.
 Do not reopen canonical threshold or control-specific micro-tuning.
 
+The next bounded [candidate, ADR 0235](docs/adr/0235-joint-ppml-proposal-kernels.md),
+keeps LSMR and all independent checks, but changes its repeated speculative
+operator products: contiguous finite-row access, eight fixed adjoint lanes,
+and portable inline products. No added heap bank or routing change. Earlier
+coefficient-engine replacements (ADRs 0155/0157/0207) and borrowed control views
+(0209) remain rejected; this is not another automatic engine swap.
+Snapshot **4c3d7c44…** passes [32 Mac Rust tests and four licensed oracle/control
+fixtures](benchmarks/reports/development/joint-operator-scc-2026-09-28/mac-validation01.json),
+plus universal build/ABI/panic checks. [SCC validation 7763145](benchmarks/reports/development/joint-operator-scc-2026-09-28/submission01.json)
+passes 30 Rust tests, PPML smoke and the same four licensed fixtures, clean
+accounting 199s/four slots/maxvmem5.323G. Candidate Linux plugin **a7e95e67…**.
+The [81-application initial screen 7763162](benchmarks/reports/development/joint-operator-scc-2026-09-28/submission02.json)
+is submitted with two additional fast-categorical strict/retry/rank Rust gates
+before timing. No timing or adoption claim for this candidate.
+
 The broader repair goal remains active: small OLS/PPML and low-memory OLS
 stock losses, original comparator/separation adjudications, large timeouts and
 the fresh performance/scaling sweep remain. Historical sections below retain
