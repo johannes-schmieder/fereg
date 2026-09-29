@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M4.4 OLS orchestration on the shared engine; M3.5 dependency determinism decision pending; M1.6 SCC full array running (7779872), Mac standard and auto/LSMR/CMG baselines captured.
+Current task: M6.1 independent Poisson-family harvest; M4.4/M3.5 qualification decisions pending; M1.6 SCC full array running (7779872), Mac standard and auto/LSMR/CMG baselines captured.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -108,7 +108,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M4.4 reported coordinates (this commit) — canonical zero/base/omitted/collinear slots and compact inference coordinates, stable normalized constant with independent mean-formula check, extended reference bread and score design without extra rank; shared weighted-mean primitive replaces the statistics duplicate; 2,200 independent dense/pinned-legacy comparisons plus IID/robust full-design equivalence and exact worker identity pass; 133 engine tests and full lean/long oracle suites pass; full original-equation estimator controller remains open.
+- 2026-09-29 M6.1 Poisson family (this commit) — harvested stable deviance/log-gamma formulas, unclipped positive means, immutable outcome/offset terms, fixed-block objective evaluation and explicit qmu/z working frames with stale-predictor rejection; shared compensated accumulator preserves prior reduction arithmetic; analytic fractional likelihood, near-saturation deviance, frequency replication and worker/chunk-boundary identity pass; 2,200 independent Newton-state/pinned-legacy comparisons, 138 engine tests and full lean/long suites pass; starts, IRLS and accepted-state controller remain open.
+
+- 2026-09-29 M4.4 reported coordinates 99357269 — canonical zero/base/omitted/collinear slots and compact inference coordinates, stable normalized constant with independent mean-formula check, extended reference bread and score design without extra rank; shared weighted-mean primitive replaces the statistics duplicate; 2,200 independent dense/pinned-legacy comparisons plus IID/robust full-design equivalence and exact worker identity pass; 133 engine tests and full lean/long oracle suites pass; full original-equation estimator controller remains open.
 
 - 2026-09-29 M4.4 cluster frame 0a7d997c — final-sample cluster dimensions borrow matching FE partitions, including interactions, and share repeated cluster storage without dropping declared dimensions; remaining observed tuples use the common collision-safe factorization; lifetime-bound views feed the existing DoF/VCE interfaces, with post-singleton identity, exact nesting and malformed-frame regressions; 131 engine tests and full lean/long oracle suites pass.
 

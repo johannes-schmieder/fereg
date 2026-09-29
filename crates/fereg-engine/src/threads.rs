@@ -4,7 +4,7 @@ use crate::error::{reserved, ErrorCode, FeregError, Result};
 use rayon::prelude::*;
 use std::ops::Range;
 
-const REDUCTION_CHUNK: usize = 1024;
+pub(crate) const REDUCTION_CHUNK: usize = 1024;
 
 #[derive(Debug, Default)]
 struct JoinedWorkers(Vec<std::thread::JoinHandle<()>>);
@@ -140,19 +140,31 @@ impl Drop for ThreadTeam {
     }
 }
 
-pub(crate) fn compensated_sum(values: impl IntoIterator<Item = f64>) -> f64 {
-    let mut sum: f64 = 0.0;
-    let mut correction = 0.0;
-    for value in values {
-        let next = sum + value;
-        correction += if sum.abs() >= value.abs() {
-            (sum - next) + value
+#[derive(Default)]
+pub(crate) struct CompensatedSum {
+    sum: f64,
+    correction: f64,
+}
+impl CompensatedSum {
+    pub(crate) fn add(&mut self, value: f64) {
+        let next = self.sum + value;
+        self.correction += if self.sum.abs() >= value.abs() {
+            (self.sum - next) + value
         } else {
-            (value - next) + sum
+            (value - next) + self.sum
         };
-        sum = next;
+        self.sum = next;
     }
-    sum + correction
+    pub(crate) fn total(self) -> f64 {
+        self.sum + self.correction
+    }
+}
+pub(crate) fn compensated_sum(values: impl IntoIterator<Item = f64>) -> f64 {
+    let mut sum = CompensatedSum::default();
+    for value in values {
+        sum.add(value);
+    }
+    sum.total()
 }
 
 pub(crate) fn blocked_sum(length: usize, value: impl Fn(usize) -> f64) -> f64 {

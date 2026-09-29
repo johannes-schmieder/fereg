@@ -10,6 +10,7 @@ pub mod fe;
 mod linalg;
 pub mod ols;
 pub mod outputs;
+pub mod ppml;
 pub mod spec;
 pub mod statistics;
 pub mod threads;
