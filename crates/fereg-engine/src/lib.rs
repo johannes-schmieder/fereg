@@ -9,8 +9,10 @@ pub mod factor;
 pub mod fe;
 mod linalg;
 pub mod spec;
+pub mod statistics;
 pub mod threads;
 pub mod topology;
+pub mod vce;
 pub mod wls;
 
 pub use error::{ErrorCode, FeregError, Result};

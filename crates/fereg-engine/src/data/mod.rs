@@ -4,8 +4,11 @@ mod model_matrix;
 mod prepare;
 mod prepared;
 pub(crate) use prepared::retain_rows;
+mod reference_weights;
 mod sample;
 mod weights;
+pub(crate) use reference_weights::exact_count;
+pub use reference_weights::ReferenceWeights;
 
 use crate::error::Result;
 pub use loaded::{Loaded, LoadedAdjustment, LoadedSource, NumericColumn};

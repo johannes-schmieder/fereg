@@ -155,6 +155,12 @@ pub(crate) fn compensated_sum(values: impl IntoIterator<Item = f64>) -> f64 {
     sum + correction
 }
 
+pub(crate) fn blocked_sum(length: usize, value: impl Fn(usize) -> f64) -> f64 {
+    compensated_sum((0..length).step_by(REDUCTION_CHUNK).map(|start| {
+        compensated_sum((start..start.saturating_add(REDUCTION_CHUNK).min(length)).map(&value))
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

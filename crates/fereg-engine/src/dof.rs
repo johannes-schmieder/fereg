@@ -1,10 +1,12 @@
 //! SPEC §9 policy harvested from legacy topology_dof.rs; one topology for every channel.
+mod residual;
 use crate::{
     data::Prepared,
     error::{copied_string, reserved, ErrorCode, FeregError, Result},
     topology::{connected_components_all, Effect, FeTopology, Partition},
     AbsorbTermId, SourceId,
 };
+pub use residual::ResidualDof;
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub enum DofPolicy {
     None,

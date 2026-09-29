@@ -205,7 +205,7 @@ fn column_norm(matrix: &DenseMatrix, column: usize, start: usize) -> f64 {
 }
 // Split exponents before rescaling: neither an intermediate overflow nor an
 // intermediate underflow may discard an otherwise representable coefficient.
-pub(super) fn scale_ratio(value: f64, numerator: f64, denominator: f64, norm: f64) -> f64 {
+pub(crate) fn scale_ratio(value: f64, numerator: f64, denominator: f64, norm: f64) -> f64 {
     if value == 0. || numerator == 0. {
         return 0.;
     }
