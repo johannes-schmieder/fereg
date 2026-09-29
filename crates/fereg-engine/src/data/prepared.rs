@@ -36,6 +36,7 @@ impl Prepared {
             return Err(invalid("invalid compact-row mask or deletion reason"));
         }
         self.validate_alignment()?;
+        self.topology = None;
         for (&row, &retained) in self.original_row_by_active.iter().zip(keep) {
             if !retained {
                 self.drop_reasons[row] = reason;
@@ -60,7 +61,11 @@ impl Prepared {
 
     pub fn validate_alignment(&self) -> Result<()> {
         let n = self.n_active();
-        if self.outcome.len() != n
+        if self
+            .topology
+            .as_ref()
+            .is_some_and(|topology| topology.nobs() != n)
+            || self.outcome.len() != n
             || self.regressors.iter().any(|column| column.len() != n)
             || matches!(&self.weights, PreparedWeights::Provided {values,..} if values.len()!=n)
             || matches!(&self.adjustment, PreparedAdjustment::Offset(values) | PreparedAdjustment::Exposure(values) if values.len()!=n)
@@ -97,7 +102,7 @@ impl Prepared {
     }
 }
 
-fn retain_rows<T>(values: &mut Vec<T>, keep: &[bool]) {
+pub(crate) fn retain_rows<T>(values: &mut Vec<T>, keep: &[bool]) {
     let mut row = 0;
     values.retain(|_| {
         let retain = keep[row];

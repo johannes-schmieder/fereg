@@ -79,6 +79,7 @@ pub(super) fn prepare_sample<P: NumericDomainPolicy>(
         .all(|column| column.len() == original_row_by_active.len()));
 
     Ok(Prepared {
+        topology: None,
         n_original,
         n_candidate,
         original_row_by_active,

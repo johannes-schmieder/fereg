@@ -3,6 +3,7 @@ mod loaded;
 mod model_matrix;
 mod prepare;
 mod prepared;
+pub(crate) use prepared::retain_rows;
 mod sample;
 mod weights;
 

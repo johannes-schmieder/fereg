@@ -175,6 +175,7 @@ pub enum PreparedAdjustment {
 /// Compact native numeric data after availability and policy validation.
 #[derive(Debug, PartialEq)]
 pub struct Prepared {
+    pub topology: Option<crate::topology::FeTopology>,
     pub n_original: usize,
     pub n_candidate: usize,
     pub original_row_by_active: Vec<usize>,
