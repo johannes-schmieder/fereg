@@ -1,14 +1,18 @@
-use super::{cascade, invalid, verify, ExactProposal};
+use super::{
+    cascade, invalid, verify, DirectionProposal, ExactProposal, Method, Methods, Model,
+    NumericalCommit,
+};
 use crate::{
     data::{DropReason, Prepared, ReferenceWeights},
     error::{reserved, ErrorCode, FeregError, Result},
     spec::Estimator,
+    threads::ThreadTeam,
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Policy {
     pub drop_singletons: bool,
-    pub exact_fe: bool,
+    pub methods: Methods,
 }
 #[derive(Debug, Clone, Copy)]
 pub struct View<'a> {
@@ -90,41 +94,80 @@ impl Ledger {
     }
 
     pub fn accept_exact(&mut self, proposal: &ExactProposal) -> Result<Option<Commit>> {
-        if !self.policy.exact_fe {
+        if !self.policy.methods.contains(Method::FixedEffects) {
             return Err(invalid("exact FE separation was not requested"));
         }
         if proposal.generation != self.generation {
             return Err(invalid("stale separation proposal generation"));
         }
         verify::proposal(self.view(), proposal)?;
+        self.require_singleton_fixed_point()?;
+        if proposal.rows.is_empty() {
+            return Ok(None);
+        }
+        self.commit_rows(&proposal.rows, Method::FixedEffects)
+            .map(Some)
+    }
+
+    pub fn accept_direction(
+        &mut self,
+        proposal: &DirectionProposal,
+        model: &Model<'_>,
+        team: &ThreadTeam,
+    ) -> Result<NumericalCommit> {
+        if !self.policy.methods.contains(proposal.method) || proposal.method == Method::FixedEffects
+        {
+            return Err(invalid("numerical separation method was not requested"));
+        }
+        self.require_singleton_fixed_point()?;
+        if self.policy.methods.contains(Method::FixedEffects)
+            && !self.view().exact_proposal()?.rows.is_empty()
+        {
+            return Err(invalid(
+                "requested exact FE fixed point must precede numerical separation",
+            ));
+        }
+        let validation = self.view().certify_direction(proposal, model, team)?;
+        let commit = self.commit_rows(&proposal.rows, proposal.method)?;
+        Ok(NumericalCommit { commit, validation })
+    }
+
+    fn require_singleton_fixed_point(&self) -> Result<()> {
         if self.policy.drop_singletons {
             let (mut active, mut reasons) = masks(self.sample.n_active())?;
             cascade::singletons(&self.sample, &mut active, &mut reasons)?;
             if active.iter().any(|&keep| !keep) {
                 return Err(invalid(
-                    "initial singleton generation must precede exact FE separation",
+                    "initial singleton generation must precede separation detectors",
                 ));
             }
         }
-        if proposal.rows.is_empty() {
-            return Ok(None);
-        }
+        Ok(())
+    }
+
+    fn commit_rows(&mut self, rows: &[usize], method: Method) -> Result<Commit> {
+        let reason = match method {
+            Method::FixedEffects => DropReason::FixedEffectSeparation,
+            Method::Simplex => DropReason::SimplexSeparation,
+            Method::IteratedRectifier => DropReason::IteratedRectifierSeparation,
+            Method::Mu => DropReason::MuSeparation,
+        };
         let (mut active, mut reasons) = masks(self.sample.n_active())?;
-        for &original in &proposal.rows {
+        for &original in rows {
             let row = self
                 .sample
                 .retained_rows()
                 .binary_search(&original)
                 .map_err(|_| invalid("separation row is absent from this generation"))?;
             active[row] = false;
-            reasons[row] = DropReason::FixedEffectSeparation;
+            reasons[row] = reason;
         }
         cascade::complete(
             &self.sample,
             &mut active,
             &mut reasons,
             self.policy.drop_singletons,
-            self.policy.exact_fe,
+            self.policy.methods.contains(Method::FixedEffects),
         )?;
         let total_exact = reasons
             .iter()
@@ -132,11 +175,15 @@ impl Ledger {
             .count();
         self.publish(
             &reasons,
-            proposal.rows.len(),
-            total_exact - proposal.rows.len(),
-            2,
+            rows.len(),
+            total_exact
+                - if method == Method::FixedEffects {
+                    rows.len()
+                } else {
+                    0
+                },
+            2 + method as u64,
         )
-        .map(Some)
     }
 
     fn publish(

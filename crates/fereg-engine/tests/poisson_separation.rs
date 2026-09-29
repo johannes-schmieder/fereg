@@ -50,7 +50,7 @@ fn sample(columns: &[Vec<f64>], outcome: &[f64]) -> Prepared {
 fn policy() -> Policy {
     Policy {
         drop_singletons: true,
-        exact_fe: true,
+        methods: Methods::only(Method::FixedEffects),
     }
 }
 fn cascade_sample() -> Prepared {
@@ -135,7 +135,7 @@ fn one_generation_unites_certified_drop_singletons_and_exact_followup() {
         ErrorCode::InvalidArgument
     );
     let terminal = ledger.view().exact_proposal().unwrap();
-    assert_eq!(terminal.status, ExactStatus::NoSeparation);
+    assert_eq!(terminal.status, Status::NoSeparation);
     assert!(ledger.accept_exact(&terminal).unwrap().is_none());
     assert_eq!(ledger.trace_digest(), commit.trace_digest);
 }
@@ -167,7 +167,7 @@ fn every_malformed_row_and_certificate_rejects_the_whole_transaction() {
     p.iterations = 0;
     mutations.push(p);
     let mut p = valid.clone();
-    p.status = ExactStatus::NoSeparation;
+    p.status = Status::NoSeparation;
     mutations.push(p);
     let mut p = valid.clone();
     p.certificate.checked_intercept_effects = 0;
@@ -304,7 +304,7 @@ fn frequency_mass_and_disabled_methods_preserve_their_policies() {
     let mut ledger = Ledger::new(
         input,
         Policy {
-            exact_fe: false,
+            methods: Methods::none(),
             ..policy()
         },
     )
@@ -356,7 +356,7 @@ fn slope_only_and_implicit_constants_have_distinct_combinatorial_support() {
                 2
             );
         } else {
-            assert_eq!(proposal.status, ExactStatus::NoCandidates);
+            assert_eq!(proposal.status, Status::NoCandidates);
             assert!(proposal.rows.is_empty());
         }
     }
@@ -365,7 +365,7 @@ fn slope_only_and_implicit_constants_have_distinct_combinatorial_support() {
     assert!(ledger.prune_initial_singletons().unwrap().is_none());
     assert_eq!(
         ledger.view().exact_proposal().unwrap().status,
-        ExactStatus::NoSeparation
+        Status::NoSeparation
     );
     assert_eq!(
         Ledger::new(sample(&[], &[0., 0.]), policy())

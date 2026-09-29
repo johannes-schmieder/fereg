@@ -1,5 +1,5 @@
 //! Reconstruct certificate evidence from row codes, independently of detector CSR scans.
-use super::{invalid, ExactCertificate, ExactLevel, ExactProposal, ExactStatus, View};
+use super::{invalid, ExactCertificate, ExactLevel, ExactProposal, Status, View};
 use crate::{
     data::Prepared,
     error::{reserved, Result},
@@ -15,11 +15,11 @@ pub(super) fn proposal(view: View<'_>, proposal: &ExactProposal) -> Result<()> {
         ));
     }
     let expected_status = if proposal.certificate.checked_intercept_effects == 0 {
-        ExactStatus::NoCandidates
+        Status::NoCandidates
     } else if proposal.rows.is_empty() {
-        ExactStatus::NoSeparation
+        Status::NoSeparation
     } else {
-        ExactStatus::Certified
+        Status::Certified
     };
     if proposal.status != expected_status {
         return Err(invalid("inconsistent exact FE proposal status"));

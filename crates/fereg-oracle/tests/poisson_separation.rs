@@ -60,7 +60,11 @@ fn case(seed: usize) -> Case {
         frequency,
         policy: Policy {
             drop_singletons: seed % 7 != 0,
-            exact_fe: seed % 11 != 0,
+            methods: if seed % 11 != 0 {
+                Methods::only(Method::FixedEffects)
+            } else {
+                Methods::none()
+            },
         },
     }
 }
@@ -153,7 +157,7 @@ fn singleton_oracle(c: &Case, reasons: &mut [DropReason]) {
 }
 fn exact_oracle(c: &Case, reasons: &mut [DropReason]) -> Vec<usize> {
     let mut rows = vec![];
-    if c.policy.exact_fe {
+    if c.policy.methods.contains(Method::FixedEffects) {
         // Compute the union on the unchanged generation, independent of traversal order.
         for (column, &intercept) in c.columns.iter().zip(&c.intercept) {
             if intercept {
@@ -205,7 +209,7 @@ fn compare(seed: usize) {
     let mut generation = usize::from(expected.iter().any(|&r| r != DropReason::Retained));
     let initial = ledger.prune_initial_singletons().unwrap();
     assert_eq!(initial.is_some(), generation > 0);
-    if c.policy.exact_fe {
+    if c.policy.methods.contains(Method::FixedEffects) {
         loop {
             let proposal = ledger.view().exact_proposal().unwrap();
             let primary = exact_oracle(&c, &mut expected);

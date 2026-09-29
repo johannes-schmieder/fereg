@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.2 numerical separation certificates and simplex/IR/Mu detectors; transactional exact-FE ledger and singleton cascades verified; M6.1 final-sample IRLS verified for direct/Schur, with retained-backend qualification pending M3.5; M4.4/M3.5 qualification decisions pending; M1.6 baselines captured with comparator failures preserved.
+Current task: M6.2 simplex/IR/Mu detectors, terminal replay and orchestration; exact-FE ledger and numerical cone/span certificates verified; M6.1 final-sample IRLS verified for direct/Schur, with retained-backend qualification pending M3.5; M4.4/M3.5 qualification decisions pending; M1.6 baselines captured with comparator failures preserved.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -41,7 +41,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M5.3 Benchmarks
 - [ ] M5.4 G-OLS, then flip the `fereg` default to `engine(next)`
 - [~] M6.1 `ppml::family` and IRLS; direct/Schur verified, retained backends await M3.5
-- [ ] M6.2 Separation (exact-FE ledger verified; numerical certificates/detectors pending)
+- [ ] M6.2 Separation (ledger and numerical certificates verified; detectors/orchestration pending)
 - [ ] M6.3 PPML inference and outputs
 - [ ] M6.4 Bias correction
 - [ ] M6.5 Tests and seam
@@ -107,6 +107,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M6.2 numerical certificates (this commit) — canonical closed method subsets retain fe/simplex/ir defaults and opt-in Mu; numerical proposals bind original rows/outcomes to a generation and replay every sign/scale/strict-negative-set claim before a fresh unit-weight shared FE/WLS span check. Certified numerical drops use the same staged cascade/commit path, with singleton/exact prerequisites and rollback on later sample failure. Seed 27 localized a passing FE-score certificate with a 1.33e-10 whole-model residual against the unchanged 1e-10 span limit; the existing strict PPML inner policy resolves this distinct-scale boundary, with an executable regression. Ten new regressions and 4,400 independent explicit-dummy QR valid/invalid direction comparisons pass; exact 1/2/4/8-worker certificates, extreme direction scaling, slope support, malformed/stale evidence and atomic cascades are covered. Full lean and long oracle suites pass. Detector execution, terminal replay, capacity policy and bounded method diagnostics remain open.
 
 - 2026-09-29 M6.2 exact ledger (this commit) — immutable generation views, original-row proposals and stable FE-level identities; independent row-code certificate replay verifies CSR detector proposals and cascade follow-ups. Initial singletons commit separately; each certified exact drop plus frequency-aware singleton cascade and requested exact fixed point stages all source banks and rebases topology once before atomic publication. Invalid/stale evidence and late empty-positive-sample failures preserve the accepted owner and digests. Seven regressions and 2,200 literal-group generation comparisons pass, including pinned legacy singleton/component parity, slope-only exclusions, raw weight/adjustment alignment and repeatable original-identity digests. Full lean and long oracle suites pass. Numerical cone certificates, simplex/IR/Mu orchestration and bounded method diagnostics remain open; public defaults stay legacy.
 

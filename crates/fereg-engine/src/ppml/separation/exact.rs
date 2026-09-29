@@ -6,7 +6,7 @@ use crate::{
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum ExactStatus {
+pub enum Status {
     NoCandidates,
     NoSeparation,
     Certified,
@@ -36,7 +36,7 @@ pub struct ExactCertificate {
 pub struct ExactProposal {
     pub generation: usize,
     pub rows: Vec<usize>,
-    pub status: ExactStatus,
+    pub status: Status,
     pub iterations: usize,
     pub certificate: ExactCertificate,
 }
@@ -53,11 +53,11 @@ impl View<'_> {
                 .filter_map(|(&drop, &row)| drop.then_some(row)),
         );
         let status = if certificate.checked_intercept_effects == 0 {
-            ExactStatus::NoCandidates
+            Status::NoCandidates
         } else if rows.is_empty() {
-            ExactStatus::NoSeparation
+            Status::NoSeparation
         } else {
-            ExactStatus::Certified
+            Status::Certified
         };
         Ok(ExactProposal {
             generation: self.generation,
