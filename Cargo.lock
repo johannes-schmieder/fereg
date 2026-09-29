@@ -132,8 +132,8 @@ version = "0.5.0"
 dependencies = [
  "cmg",
  "rayon",
- "schwarz-precond",
- "within",
+ "schwarz-precond 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9)",
+ "within 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9)",
 ]
 
 [[package]]
@@ -141,6 +141,7 @@ name = "fereg-engine"
 version = "0.5.0"
 dependencies = [
  "rayon",
+ "within 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1)",
 ]
 
 [[package]]
@@ -149,7 +150,7 @@ version = "0.5.0"
 dependencies = [
  "fereg-core",
  "fereg-engine",
- "within",
+ "within 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1)",
 ]
 
 [[package]]
@@ -273,6 +274,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "once_cell"
+version = "1.21.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "9f7c3e4beb33f85d45ae3e3a1792185706c8e16d043238c593331cc7cd313b50"
+
+[[package]]
 name = "portable-atomic"
 version = "1.15.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -366,6 +373,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustc-hash"
+version = "2.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6b1e7f9a428571be2dc5bc0505c13fb6bf936822b894ec87abf8a08a4e51742d"
+
+[[package]]
 name = "rustc_version"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -378,6 +391,17 @@ dependencies = [
 name = "schwarz-precond"
 version = "0.4.0"
 source = "git+https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9#1ac3522a251c2622dbeab451415924f9ebe117b9"
+dependencies = [
+ "rayon",
+ "serde",
+ "thiserror",
+ "thread_local",
+]
+
+[[package]]
+name = "schwarz-precond"
+version = "0.4.0"
+source = "git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1#b80e2991084a13bd4bea0715ababdf5f0824b8a1"
 dependencies = [
  "rayon",
  "serde",
@@ -513,7 +537,23 @@ dependencies = [
  "portable-atomic",
  "postcard",
  "rayon",
- "schwarz-precond",
+ "schwarz-precond 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9)",
+ "serde",
+ "thiserror",
+]
+
+[[package]]
+name = "within"
+version = "0.4.0"
+source = "git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1#b80e2991084a13bd4bea0715ababdf5f0824b8a1"
+dependencies = [
+ "approx-chol",
+ "ndarray",
+ "once_cell",
+ "postcard",
+ "rayon",
+ "rustc-hash",
+ "schwarz-precond 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1)",
  "serde",
  "thiserror",
 ]

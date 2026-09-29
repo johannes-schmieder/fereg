@@ -101,24 +101,23 @@ fn perfect_fit_coefficient_cancellation_is_not_accepted_at_pre_fit_scales() {
     assert_eq!(recovered.diagnostics.len(), 1);
 }
 #[test]
-fn unqualified_explicit_backends_are_never_silently_substituted() {
+fn unqualified_cmg_is_never_silently_substituted() {
     let sample = support::prepared(&[3, 2], false, 5, 0);
     let design = Design::new(&sample, Weights::Unit).unwrap();
     let team = ThreadTeam::new(1).unwrap();
-    for solver in [Solver::Lsmr, Solver::Cmg] {
-        let options = Options {
-            solver,
-            ..Options::for_estimator(Estimator::Ols)
-        };
-        assert_eq!(
-            Engine::new(&design, Estimator::Ols, &options, &team)
-                .err()
-                .unwrap()
-                .code,
-            ErrorCode::Unsupported
-        );
-    }
+    let options = Options {
+        solver: Solver::Cmg,
+        ..Options::for_estimator(Estimator::Ols)
+    };
+    assert_eq!(
+        Engine::new(&design, Estimator::Ols, &options, &team)
+            .err()
+            .unwrap()
+            .code,
+        ErrorCode::Unsupported
+    );
 }
+
 #[test]
 fn changed_weights_rebuild_one_shared_frame_with_exact_worker_identity() {
     let sample = support::prepared(&[5, 3, 2], true, 18, 0);

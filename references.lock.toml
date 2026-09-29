@@ -1,5 +1,5 @@
 schema_version = 2
-pinned_at_utc = "2026-08-31"
+pinned_at_utc = "2026-09-29"
 policy = "Exact immutable commits and local SHA-256 hashes; no floating branch is a parity oracle."
 
 [ols_v1_capture]
@@ -34,12 +34,22 @@ use = "Development reference for model-matrix, OLS, PPML, and tests; not a runti
 [[reference]]
 name = "within"
 repository = "https://github.com/johannes-schmieder/within"
-commit = "1ac3522a251c2622dbeab451415924f9ebe117b9"
+commit = "b80e2991084a13bd4bea0715ababdf5f0824b8a1"
 version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
+relevant_test_paths = ["crates/within/tests/", "crates/schwarz-precond/src/lsmr/tests/", "bench/history/"]
+use = "New-engine LSMR runtime and oracle dependency: current-parent port, fixed arithmetic for explicit ParallelReduction, compensated weighted Gram assembly, and raw-coordinate construction that leaves rank authority with fereg. Draft upstream PR 441; automatic solver policy unchanged."
+
+[[reference]]
+name = "within-legacy"
+repository = "https://github.com/johannes-schmieder/within"
+commit = "1ac3522a251c2622dbeab451415924f9ebe117b9"
+version = "commit-pinned legacy tree"
+license = "MIT"
+relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/src/**/tests/", "benchmarks/"]
-use = "Exact runtime dependency for certified LSMR and Schwarz preconditioning; weighted categorical assembly repair and fixed LSMR parallel norm/dot reduction order on the prior pinned base."
+use = "Frozen legacy core and comparator only, preserved unchanged until M7; not the new engine's LSMR adapter."
 
 [[reference]]
 name = "cmg"

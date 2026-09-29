@@ -8,6 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+within = { git = "https://github.com/johannes-schmieder/within", rev = "b80e2991084a13bd4bea0715ababdf5f0824b8a1", package = "within" }
 rayon = "=1.12.0"
 
 [lints]

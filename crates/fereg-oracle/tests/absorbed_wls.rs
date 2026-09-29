@@ -2,7 +2,7 @@
 use fereg_engine::{
     data::DenseMatrix,
     fe::{Design, Engine, Weights},
-    spec::{Estimator, Options},
+    spec::{Estimator, Options, Solver},
     threads::ThreadTeam,
     wls::{self, Policy, Role},
 };
@@ -19,6 +19,11 @@ fn close(a: f64, b: f64, seed: usize) {
     );
 }
 fn campaign(start: usize, count: usize) {
+    for solver in [Solver::Auto, Solver::Lsmr] {
+        campaign_solver(start, count, solver);
+    }
+}
+fn campaign_solver(start: usize, count: usize, solver: Solver) {
     let one = ThreadTeam::new(1).unwrap();
     let eight = ThreadTeam::new(8).unwrap();
     for seed in start..start + count {
@@ -62,10 +67,11 @@ fn campaign(start: usize, count: usize) {
                 .collect();
             let design = Design::new(&sample, Weights::Provided(&weights)).unwrap();
             let options = Options {
+                solver,
                 tolerance: 1e-12,
-                ..Options::for_estimator(Estimator::Ppml)
+                ..Options::for_estimator(Estimator::Ols)
             };
-            let mut engine = Engine::new(&design, Estimator::Ppml, &options, &one).unwrap();
+            let mut engine = Engine::new(&design, Estimator::Ols, &options, &one).unwrap();
             let roles = vec![Role::Ordinary; raw.ncols()];
             let actual = wls::solve_absorbed_with_basis(
                 &mut engine,
@@ -120,7 +126,7 @@ fn campaign(start: usize, count: usize) {
             assert_eq!(actual.projection_diagnostics.len(), raw.ncols() + 1);
             assert!(actual.recovery_diagnostics.len() <= 1);
             if seed % 19 == 0 {
-                let mut engine = Engine::new(&design, Estimator::Ppml, &options, &eight).unwrap();
+                let mut engine = Engine::new(&design, Estimator::Ols, &options, &eight).unwrap();
                 let parallel = wls::solve_absorbed_with_basis(
                     &mut engine,
                     &raw,

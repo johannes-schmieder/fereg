@@ -160,12 +160,20 @@ adapter used for explicit requests; transfer cannot reset iteration accounting.
 
 ### Retained LSMR and CMG
 
-The LSMR adapter uses pinned `within::Effect`/`Solver` batch interfaces and
-maps its coefficient layout back to `FeTopology`. The pinned API exposes
-coefficient vectors as well as demeaned vectors: retain the coefficients and
-reconstruct residuals independently instead of accepting its demeaned output
-as a span witness. Use Schwarz preconditioning where supported and stable
-reduction choices; no second implementation for automatic fallback.
+The LSMR adapter uses pinned `within::Effect`/`Solver::new_raw` batch interfaces
+and maps coefficients back to `FeTopology`. Raw construction preserves the
+original slope span; upstream whitening/rank truncation cannot make fereg's
+rank decisions. Retain coefficients and reconstruct residuals independently.
+Use static additive Schwarz with explicit `ParallelReduction` in the call-owned
+team; no nested pool or upstream worker-dependent Auto policy.
+
+The preconditioned recurrence's stopping metric differs from the shared FE
+span target. A stopped candidate can continue through same-factor residual
+corrections at the same tolerance, measured against the original RHS. Each
+correction consumes the remaining per-RHS budget and increments the attempt's
+refinement count; stagnation/breakdown/exhaustion fails closed. This remains
+one LSMR backend attempt. Only the shared final certificate accepts a projection;
+automatic fallback uses this same adapter.
 
 CMG maps the supported two-intercept core to a weighted bipartite Laplacian,
 anchors components, and eliminates supported nuisance intercept columns using

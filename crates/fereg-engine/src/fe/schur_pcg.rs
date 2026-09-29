@@ -164,6 +164,7 @@ impl Recurrences {
             rho.push(value);
             active.push(!converged);
             progress.push(Attempt {
+                refinements: 0,
                 backend: Backend::SchurPcg,
                 iterations: 0,
                 stop: if converged {

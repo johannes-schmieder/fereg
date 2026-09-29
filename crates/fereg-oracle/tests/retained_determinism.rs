@@ -1,10 +1,9 @@
-//! Qualification diagnostic for the retained dependency, not a relaxed engine contract.
+//! The formerly failing retained-dependency probe now enforces exact worker identity.
 use fereg_engine::threads::ThreadTeam;
 use within::{Effect, LocalSolverConfig, LsmrOptions, PreconditionerConfig, ReductionStrategy};
 
 #[test]
-#[ignore = "known pinned dependency rounding diagnostic; M3.5 acceptance requires an upstream decision"]
-fn pinned_lsmr_thread_rounding_is_reproduced() {
+fn pinned_lsmr_thread_rounding_regression_is_fixed() {
     let n = 20_000;
     let a: Vec<u32> = (0..n).map(|i| (i % 311) as u32).collect();
     let b: Vec<u32> = (0..n).map(|i| ((i / 3 + i % 7) % 97) as u32).collect();
@@ -14,9 +13,7 @@ fn pinned_lsmr_thread_rounding_is_reproduced() {
         .collect();
     let weights: Vec<f64> = (0..n).map(|i| 0.7 + (i % 13) as f64 / 7.).collect();
     for additive in [false, true] {
-        let mut reference: Option<Vec<f64>> = None;
-        let mut observed_difference = false;
-        let mut fitted_reference: Option<Vec<f64>> = None;
+        let mut reference = None;
         for workers in [1, 2, 4, 8] {
             let team = ThreadTeam::new(workers).unwrap();
             let result = team.install(|| {
@@ -54,46 +51,21 @@ fn pinned_lsmr_thread_rounding_is_reproduced() {
                         + result.x[408 + c[row] as usize]
                 })
                 .collect();
-            if let Some(reference) = &fitted_reference {
-                let changed = reference
-                    .iter()
-                    .zip(&fitted)
-                    .filter(|(a, b)| a.to_bits() != b.to_bits())
-                    .count();
-                let maximum = reference
-                    .iter()
-                    .zip(&fitted)
-                    .map(|(a, b)| (a - b).abs())
-                    .fold(0., f64::max);
-                println!("additive={additive} workers={workers}: {changed}/{n} fitted sums changed; max_abs={maximum:.16e}");
-                observed_difference |= changed > 0;
-            } else {
-                fitted_reference = Some(fitted);
-            }
-
-            if let Some(reference) = &reference {
-                let changed = reference
-                    .iter()
-                    .zip(&result.x)
-                    .filter(|(a, b)| a.to_bits() != b.to_bits())
-                    .count();
-                let maximum = reference
-                    .iter()
-                    .zip(&result.x)
-                    .map(|(a, b)| (a - b).abs())
-                    .fold(0., f64::max);
-                println!("additive={additive} workers={workers}: {changed}/{} changed; max_abs={maximum:.16e}", reference.len());
+            let bits = |values: Vec<f64>| values.into_iter().map(f64::to_bits).collect::<Vec<_>>();
+            let actual = (
+                bits(result.x),
+                bits(fitted),
+                bits(result.demeaned),
+                result.iterations,
+            );
+            if let Some(expected) = &reference {
                 assert!(
-                    maximum < 1e-10,
-                    "the known rounding discrepancy became a larger numerical error"
+                    expected == &actual,
+                    "additive={additive}, workers={workers}"
                 );
             } else {
-                reference = Some(result.x);
+                reference = Some(actual);
             }
         }
-        assert!(
-            observed_difference,
-            "reassess the pinned-dependency blocker: this diagnostic no longer reproduces it"
-        );
     }
 }

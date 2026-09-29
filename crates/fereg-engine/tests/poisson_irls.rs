@@ -210,23 +210,21 @@ fn unsupported_requests_and_invalid_final_samples_never_return_a_partial_fit() {
     let mut sample = support::prepared(&[3, 2], false, 6, 0);
     let n = sample.n_active();
     let raw = DenseMatrix::zeros(n, 0).unwrap();
-    for solver in [Solver::Lsmr, Solver::Cmg] {
-        assert_eq!(
-            run(
-                &sample,
-                &raw,
-                &[],
-                Options {
-                    solver,
-                    ..options()
-                },
-                1
-            )
-            .unwrap_err()
-            .code,
-            ErrorCode::Unsupported
-        );
-    }
+    assert_eq!(
+        run(
+            &sample,
+            &raw,
+            &[],
+            Options {
+                solver: Solver::Cmg,
+                ..options()
+            },
+            1
+        )
+        .unwrap_err()
+        .code,
+        ErrorCode::Unsupported
+    );
     sample.adjustment = PreparedAdjustment::Exposure(vec![0.; n]);
     assert_eq!(
         run(&sample, &raw, &[], options(), 1).unwrap_err().code,
@@ -268,4 +266,49 @@ fn strict_basis_change_is_represented_and_committed_before_bounded_resumption() 
         fit,
         run(&sample, &raw, &[Role::Ordinary; 2], options(), 8).unwrap()
     );
+}
+
+#[test]
+fn explicit_lsmr_keeps_ppml_means_and_fresh_hessians_identical_across_workers() {
+    for levels in [&[5, 3][..], &[5, 3, 2][..], &[7, 5, 3, 2][..]] {
+        let mut sample = support::prepared(levels, false, 40, 0);
+        let n = sample.n_active();
+        let x: Vec<_> = (0..n).map(|i| (i as f64 * 0.31).sin()).collect();
+        let offset: Vec<_> = (0..n).map(|i| (i as f64 * 0.17).cos() * 0.2).collect();
+        sample.outcome = (0..n)
+            .map(|i| {
+                let fe: f64 = levels.iter().map(|l| (i % l) as f64 * 0.07).sum();
+                (0.3 - 0.4 * x[i] + fe + offset[i]).exp()
+            })
+            .collect();
+        sample.weights = PreparedWeights::Provided {
+            kind: WeightKind::Probability,
+            values: (0..n).map(|i| 0.4 + (i % 13) as f64 / 3.).collect(),
+        };
+        sample.adjustment = PreparedAdjustment::Offset(offset);
+        let raw = DenseMatrix::from_columns(&[x]).unwrap();
+        let options = Options {
+            solver: Solver::Lsmr,
+            ..options()
+        };
+        let fit = run(&sample, &raw, &[Role::Ordinary], options, 1).unwrap();
+        close(fit.point.finite[0], -0.4);
+        for (mean, truth) in fit.evaluation.mean.iter().zip(&sample.outcome) {
+            close(*mean, *truth);
+        }
+        assert!(fit
+            .linear
+            .projection_diagnostics
+            .iter()
+            .all(|d| d.requested == Solver::Lsmr
+                && d.used == fereg_engine::fe::Backend::Lsmr
+                && d.attempts.len() == 1
+                && d.fallback.is_none()));
+        for workers in [2, 4, 8] {
+            assert_eq!(
+                fit,
+                run(&sample, &raw, &[Role::Ordinary], options, workers).unwrap()
+            );
+        }
+    }
 }

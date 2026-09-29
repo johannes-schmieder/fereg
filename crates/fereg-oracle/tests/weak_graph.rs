@@ -184,3 +184,77 @@ fn independent_projection_audit_detects_remaining_fe_content() {
         .check(audit.maximum_relative_two_norm, 1.0)
         .unwrap();
 }
+
+#[path = "support/engine.rs"]
+mod engine_inputs;
+#[test]
+fn retained_lsmr_matches_hundred_digit_weak_graph_fixtures() {
+    use fereg_engine::{
+        data::DenseMatrix as EngineMatrix,
+        fe::{Design, LsmrSession, StopReason, Weights},
+        threads::ThreadTeam,
+    };
+    let fixtures = parse_fixtures();
+    assert_eq!(fixtures.len(), 6);
+    for fixture in fixtures {
+        let explicit = design(&fixture);
+        let sample = engine_inputs::prepare(explicit.effects(), &fixture.inputs[0]);
+        let design = Design::new(&sample, Weights::Provided(&fixture.weights)).unwrap();
+        let rhs = EngineMatrix::from_columns(&fixture.inputs).unwrap();
+        let mut reference = None;
+        for workers in [1, 2, 4, 8] {
+            let team = ThreadTeam::new(workers).unwrap();
+            let mut candidate = LsmrSession::new(&design, &team)
+                .unwrap_or_else(|e| panic!("{} build: {e}", fixture.id))
+                .solve(&rhs, 16_000, 1e-12, &team)
+                .unwrap_or_else(|e| panic!("{} solve: {e}", fixture.id));
+            assert!(
+                candidate
+                    .progress
+                    .iter()
+                    .all(|p| p.stop == StopReason::Converged),
+                "{}: {:?}",
+                fixture.id,
+                candidate.progress
+            );
+            design
+                .normalize_coefficients(&mut candidate.coefficients, 1e-10, &team)
+                .unwrap();
+            let residuals = design
+                .reconstruct(&rhs, &candidate.coefficients, &team)
+                .unwrap();
+            let certificate = design
+                .certify(&rhs, &candidate.coefficients, &residuals, 1e-10, &team)
+                .unwrap_or_else(|e| panic!("{} certificate: {e}", fixture.id));
+            for column in 0..rhs.ncols() {
+                let residual = residuals.column(column).unwrap();
+                let fitted: Vec<_> = fixture.inputs[column]
+                    .iter()
+                    .zip(&residual)
+                    .map(|(y, r)| y - r)
+                    .collect();
+                PREDICTION
+                    .check_slice(&residual, &fixture.residuals[column])
+                    .unwrap_or_else(|e| panic!("{} residuals: {e}", fixture.id));
+                PREDICTION
+                    .check_slice(&fitted, &fixture.fitted[column])
+                    .unwrap_or_else(|e| panic!("{} fitted: {e}", fixture.id));
+                let objective: f64 = fixture
+                    .weights
+                    .iter()
+                    .zip(&residual)
+                    .map(|(w, r)| w * r * r)
+                    .sum();
+                PREDICTION
+                    .check(objective, fixture.objectives[column])
+                    .unwrap();
+            }
+            let actual = (candidate, residuals, certificate);
+            if let Some(expected) = &reference {
+                assert_eq!(expected, &actual, "{} workers={workers}", fixture.id);
+            } else {
+                reference = Some(actual);
+            }
+        }
+    }
+}

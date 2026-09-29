@@ -12,6 +12,7 @@ import subprocess
 import sys
 import tarfile
 import tempfile
+import tomllib
 import unittest
 
 
@@ -303,24 +304,26 @@ echo '{c_libraries / 'ld-linux-x86-64.so.2'} (0x00000002)'
         self.assertEqual([item["vendor_name"] for item in result["registry_packages"]], ["registry-fixture-1.2.3"])
         self.assertEqual([item["revision"] for item in result["git_packages"]], [self.revision])
 
-    def test_repository_lock_has_the_frozen_cmg_and_within_revisions(self) -> None:
-        lock = CLOSURE.load_cargo_lock(ROOT / "Cargo.lock")
-        revisions = {
-            item["repository_url"]: item["revision"] for item in lock["git"]
+    def test_repository_lock_keeps_frozen_and_repaired_solver_identities(self) -> None:
+        packages = tomllib.loads((ROOT / "Cargo.lock").read_text())["package"]
+        identities = {
+            (item["name"], item["source"].rsplit("#", 1)[1])
+            for item in packages if item.get("source", "").startswith("git+")
         }
-        self.assertEqual(
-            revisions,
-            {
-                "https://github.com/johannes-schmieder/CMG": (
-                    "1d39c113f0c397f29653d92672090e5a42f80921"
-                ),
-                "https://github.com/johannes-schmieder/within": (
-                    "1ac3522a251c2622dbeab451415924f9ebe117b9"
-                ),
-            },
-        )
-        self.assertEqual(len(lock["registry"]), 51)
-        self.assertEqual(len(lock["git"]), 3)
+        self.assertEqual(identities, {
+            ("cmg", "1d39c113f0c397f29653d92672090e5a42f80921"),
+            ("within", "1ac3522a251c2622dbeab451415924f9ebe117b9"),
+            ("schwarz-precond", "1ac3522a251c2622dbeab451415924f9ebe117b9"),
+            ("within", "b80e2991084a13bd4bea0715ababdf5f0824b8a1"),
+            ("schwarz-precond", "b80e2991084a13bd4bea0715ababdf5f0824b8a1"),
+        })
+
+    def test_frozen_vendor_protocol_rejects_mixed_solver_versions(self) -> None:
+        # This historical protocol has one shared directory source and cannot
+        # distinguish same-name/version Git packages. Never certify a mixed
+        # rebuild capture through it; M7 removes the frozen legacy dependency.
+        with self.assertRaisesRegex(CLOSURE.ClosureError, "colliding versioned vendor name"):
+            CLOSURE.load_cargo_lock(ROOT / "Cargo.lock")
 
     def test_registry_archive_and_checksum_substitution_fail_closed(self) -> None:
         vendor = self._manual_vendor()

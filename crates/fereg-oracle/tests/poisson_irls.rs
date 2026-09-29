@@ -2,7 +2,7 @@
 use fereg_engine::{
     data::*,
     ppml::irls::{fit_final_sample, Problem},
-    spec::{Estimator, Options},
+    spec::{Estimator, Options, Solver},
     threads::ThreadTeam,
     wls::Role,
 };
@@ -116,34 +116,48 @@ fn campaign(start: usize, count: usize) {
             raw: &raw,
             roles: &roles,
         };
-        let options = Options::for_estimator(Estimator::Ppml);
-        let fit = fit_final_sample(&problem, options, &one)
-            .unwrap_or_else(|e| panic!("engine seed {seed}: {e}"));
-        close(fit.evaluation.objective.deviance, oracle.deviance, seed);
-        for row in 0..n {
-            close(fit.point.eta[row], oracle.eta[row], seed);
-            close(fit.evaluation.mean[row], oracle.mean[row], seed);
-            assert_eq!(
-                fit.hessian_weights[row],
-                q.value(row) * fit.evaluation.mean[row]
-            );
-            assert_eq!(fit.evaluation.mean[row], fit.point.eta[row].exp());
+        let mut solvers = vec![Solver::Auto];
+        if generated.effects.len() >= 2
+            && generated
+                .effects
+                .iter()
+                .all(|effect| effect.slopes().is_empty())
+        {
+            solvers.push(Solver::Lsmr);
         }
-        for col in 0..raw.ncols() {
-            close(fit.point.finite[col], oracle.coefficients[col], seed);
-            for other in 0..raw.ncols() {
-                close(
-                    fit.linear.finite.bread[(col, other)],
-                    oracle.bread[col][other],
-                    seed,
+        for solver in solvers {
+            let options = Options {
+                solver,
+                ..Options::for_estimator(Estimator::Ppml)
+            };
+            let fit = fit_final_sample(&problem, options, &one)
+                .unwrap_or_else(|e| panic!("engine seed {seed}, {solver:?}: {e}"));
+            close(fit.evaluation.objective.deviance, oracle.deviance, seed);
+            for row in 0..n {
+                close(fit.point.eta[row], oracle.eta[row], seed);
+                close(fit.evaluation.mean[row], oracle.mean[row], seed);
+                assert_eq!(
+                    fit.hessian_weights[row],
+                    q.value(row) * fit.evaluation.mean[row]
                 );
+                assert_eq!(fit.evaluation.mean[row], fit.point.eta[row].exp());
             }
-        }
-        assert!(fit.scores.passed);
-        assert!(fit.diagnostics.accepted_iterations >= 2);
-        assert!(fit.diagnostics.strict_checks >= 2);
-        if seed % 19 == 0 {
-            assert_eq!(fit, fit_final_sample(&problem, options, &eight).unwrap());
+            for col in 0..raw.ncols() {
+                close(fit.point.finite[col], oracle.coefficients[col], seed);
+                for other in 0..raw.ncols() {
+                    close(
+                        fit.linear.finite.bread[(col, other)],
+                        oracle.bread[col][other],
+                        seed,
+                    );
+                }
+            }
+            assert!(fit.scores.passed);
+            assert!(fit.diagnostics.accepted_iterations >= 2);
+            assert!(fit.diagnostics.strict_checks >= 2);
+            if seed % 19 == 0 {
+                assert_eq!(fit, fit_final_sample(&problem, options, &eight).unwrap());
+            }
         }
     }
 }
@@ -155,4 +169,12 @@ fn cold_irls_matches_independent_explicit_dummy_newton() {
 #[ignore = "long cold PPML IRLS campaign"]
 fn two_thousand_cold_irls_fits() {
     campaign(200, 2000);
+}
+
+#[test]
+fn preconditioned_stopping_does_not_bypass_the_original_fe_target() {
+    // These weights/IRLS frames formerly reported LSMR convergence before the
+    // independent local-span target; residual corrections retain that target.
+    campaign(7, 1);
+    campaign(203, 1);
 }

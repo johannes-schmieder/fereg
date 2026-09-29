@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dev-dependencies]
-within = { git = "https://github.com/johannes-schmieder/within", rev = "1ac3522a251c2622dbeab451415924f9ebe117b9", package = "within" }
+within = { git = "https://github.com/johannes-schmieder/within", rev = "b80e2991084a13bd4bea0715ababdf5f0824b8a1", package = "within" }
 fereg-engine = { path = "../fereg-engine" }
 fereg-core = { path = "../../legacy/fereg-core" }
 

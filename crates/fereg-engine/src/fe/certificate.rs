@@ -18,6 +18,33 @@ impl Design<'_> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<Certificate> {
+        let certificate =
+            self.measure_certificate(rhs, coefficients, residuals, tolerance, team)?;
+        for (kind, errors) in [
+            ("local-span", &certificate.relative_score),
+            ("reconstruction", &certificate.relative_reconstruction),
+        ] {
+            if let Some((column, value)) = errors
+                .iter()
+                .enumerate()
+                .find(|(_, value)| !value.is_finite() || **value > tolerance)
+            {
+                return Err(numerical(&format!(
+                    "FE {kind} certificate failed for RHS {column}: {value:.17e} > {tolerance:.17e}"
+                )));
+            }
+        }
+        Ok(certificate)
+    }
+    /// Unaccepted score evidence for an in-progress backend's residual refinement.
+    pub(super) fn measure_certificate(
+        &self,
+        rhs: &DenseMatrix,
+        coefficients: &DenseMatrix,
+        residuals: &DenseMatrix,
+        tolerance: f64,
+        team: &ThreadTeam,
+    ) -> Result<Certificate> {
         check_tolerance(tolerance)?;
         validate_matrix(residuals, self.nobs())?;
         let reconstructed = self.reconstruct(rhs, coefficients, team)?;
@@ -64,15 +91,6 @@ impl Design<'_> {
             for value in &mut aggregate {
                 *value /= (groups as f64).sqrt();
             }
-        }
-        if score
-            .iter()
-            .chain(&reconstruction)
-            .any(|value| !value.is_finite() || *value > tolerance)
-        {
-            return Err(numerical(
-                "FE reconstruction or weighted local-span certificate failed",
-            ));
         }
         Ok(Certificate {
             relative_score: score,

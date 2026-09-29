@@ -5,6 +5,8 @@ mod certificate_basis;
 mod design;
 mod direct;
 mod engine;
+mod lsmr;
+mod lsmr_refine;
 mod normalize;
 mod plan;
 mod schur_pcg;
@@ -14,6 +16,7 @@ use crate::spec::Solver;
 pub use design::{CoefficientLayout, Design, EffectLayout};
 pub use direct::DirectCandidate;
 pub use engine::Engine;
+pub use lsmr::{LsmrCandidate, LsmrSession};
 pub use plan::{Backend, Plan, PlanOverride};
 pub use schur_pcg::{SchurCandidate, SchurSession};
 
@@ -36,6 +39,8 @@ pub enum FallbackReason {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Attempt {
+    /// Residual corrections within this backend; their work is included in iterations.
+    pub refinements: usize,
     pub backend: Backend,
     pub iterations: usize,
     pub stop: StopReason,
