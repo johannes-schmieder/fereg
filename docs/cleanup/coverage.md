@@ -43,8 +43,8 @@ route counts and byte constants are not automatically new-engine contracts.
 
 The SPEC section numbers below are the twenty required sections in plan M1.1.
 Replacement descriptions are requirements, not assertions of passing coverage.
-M1.1 must reconcile each source document; M1.3/M3–M6 must execute the named
-families before deletion is allowed. The legacy path inventory preserves every
+The source reconciliation below defines the migration; M1.3/M3–M6 must execute
+the named replacement families before deletion is allowed. The legacy path inventory preserves every
 tracked source/test/harness path and Git blob identity at the rebuild snapshot.
 
 | Requirement | SPEC | Existing executable evidence | Required replacement |
@@ -70,6 +70,54 @@ tracked source/test/harness path and Git blob identity at the rebuild snapshot.
 | Whole-call sizing and fallible allocation | 19 | constrained-memory core tests; plugin allocator audits | Checked arithmetic, early r(909), allocation-failure rollback under one mode |
 | Reference pins and independent tolerances | 20 | references.lock.toml; tests/python reference/weak-graph oracles | Frozen reference identities plus independent tests at unchanged scientific tolerances |
 | Packaging and installed public behavior | 1, 11, 17 | tests/stata/installation/ and documentation/; mock plugin loader | Clean install, help/examples, native ABI and source/notices packaging |
+
+## Source reconciliation
+
+[SPEC](../SPEC.md) consolidates the following sources. "Superseded" below
+means their stated target policy is replaced by the approved plan, not that
+the source or its scientific tests can already be deleted. All sources remain
+reachable in the working tree and the inventory. Numerical optimizations in
+legacy documents are implementation history; their accepted sample, rank,
+certificate, inference and output invariants survive in the listed sections.
+
+| Source | Retained destination | Explicitly superseded or reconciled content |
+|---|---|---|
+| scientific_contracts.md | SPEC §§2–20; every independent-oracle and accuracy row above | Historical activation/qualification statements remain source-bound; old per-route memory/performance gate becomes PLAN §7, single memory mode and declared suite. Multi-FE starts become global plus analytic one-FE only under M6.1. |
+| weight_semantics.md | §§2–4, 7, 9–11 | No scientific change; FW u32 domain, literal replication and AW/PW reference scales retained. |
+| ols_core.md | §§5, 7–12, 16–19 | Fast/low duplication and size/thread route guards are replaced; automatic 1e-14 derived-output solve is superseded by PLAN §3.5. Positive DoF and score/inverse/covariance checks remain. |
+| data_plane.md | §§2–6, 12, 17–19 | Old scheduling/width thresholds and duplicate representations are not target routing rules; main-thread SPI, one row map, no ado design expansion and failure atomicity remain. |
+| factor_protocol.md | §§2, 5–6, 17 | Its old action/result minor numbers are descriptive history; exact current table in plugin_protocol.md and source constants governs the migration seam. |
+| plugin_protocol.md | §§11, 15–17, 19 | Current versions remain until seam changes; M7 replaces result layout with v2 and removes legacy memory/allocation/route rows. Scientific fields, COMPLETE-last and request framing survive. |
+| compatibility_matrix.md | §§1–20 | Old auto envelopes, fast-only PPML explicit solvers, optional determinism, fixed route rows and release-status claims are superseded. Mathematical backend support and named limitations remain. Windows receives build/mock checks only. |
+| user_guide.md | §§1–15, 18–20 | Old tuning options and route descriptions remain legacy-only until M7; retained syntax, examples, predictions and optional mean correction survive. |
+| ppml_bias_correction.md | §15 | Both increments, support screen, anchors, Philox identity, exact/randomized results and diagnostics retained. Old route-dependent reproducibility becomes cross-worker identity. Cached-factor/memory-mode thresholds are implementation history, not new routing policy. |
+| upstream_map.md | THIRD_PARTY_NOTICES.md | Provenance folded without deleting the source; within and CMG runtime roles distinguished from behavioral references. G-LICENSE remains separate. |
+| ADR 0003 | §§1, 16–17 | Historical all-estimators-fail-closed staging was already superseded by activation; unsupported features still fail closed. |
+| ADR 0004 | §17 | Main-thread-only SPI unchanged. |
+| ADR 0005 | §§2, 6, 17 | Stata metadata ownership and narrow TS materialization retained; no broad dummy expansion. |
+| ADR 0006 | §§7–10, 16, 20 | Positive DoF, no negative IID variance, 48-row success/24-row failure retained; obsolete activation checkpoint is historical. |
+| ADR 0016 | §§1–3, 8–15, 20 | PPML sample, family, inference and output semantics retained; public activation already occurred; M6.1 explicitly simplifies starts only. |
+| ADR 0017 | §§4, 14, 17, 19 | Certified proposals, generation ordering, mandatory IR and explicit simplex-cap behavior retained under single top-level memory planning. |
+| ADR 0019 | §§11, 17, 20 | Additive PPML action and atomic transaction retained during seam; old stub/activation and receipt-campaign procedure superseded by PLAN cutover gates. No scientific OLS non-regression exemption. |
+| ADR 0026 | §20 | Reported comparator objective and feasibility/stationarity requirements unchanged. |
+| ADR 0055 | §17 | Inline/local crossover, fixed macro name, cap, exact NUL/UTF-8/truncation checks unchanged. |
+| ADR 0182 | §17 | Metadata-only framing, byte identity and temporary cleanup retained; historical timing claims remain source-bound. |
+| ADR 0201 | §17 | Bounded independent result validation, oldest-compiler object identity, missing-helper rollback retained if compiled helpers remain; M7 may regenerate or remove them. |
+| ADR 0227 | §15 | Full-system correction, units, both increments, separate outputs and numerical uncertainty retained. |
+| ADR 0246 | §15 | Two distinct units in every level of both FEs, support summaries and interpretation retained. |
+| Other scientific ADR requirements referenced by these sources | Relevant SPEC sections and mapping rows above | Only implementation-specific routes, caches, layout thresholds and historical acceptance procedures are superseded. Original ADRs are inventoried; M7 must review every proposed deletion against executable replacement coverage. |
+| stata/fereg.sthlp; fereg_postestimation.sthlp | §§1–12, 16–20 | Removed options listed explicitly in §1; installed diagnostics, prediction prerequisites, test/summarize and runnable examples retained. |
+| stata/feppml.sthlp | §§1–6, 8–20 | PPML options, solver support, residual aliases/formulas, all drop codes, statistical results and correction controls retained; fast/low and legacy solver rows removed only at M7. |
+| Other stata/*.sthlp | §§1, 6, 17 and packaging row | Diagnostic/parser/example-runner help remains supported only in its documented role; hidden developer interfaces do not become public estimation options. |
+
+The fallback budget in SPEC §1 instantiates PLAN §5's required finite budget:
+at most one transfer to LSMR, no recursive/reset-budget attempt, and explicit
+fatal classes. It is a target engine requirement, not a claim that the legacy
+fallback code has that policy. M3 tests must enforce accounting independently.
+The requested-tolerance output change does not waive tighter PPML accepted
+Hessian checks or independent numerical tolerances. M7 must also verify final
+wire-v2 field mapping and installed help before removing the corresponding
+legacy transport fixtures. No replacement passes are implied by this table.
 
 ## Source inventory and commands
 

@@ -1,0 +1,804 @@
+# fereg behavioral specification
+
+This is the contract for the clean-core rebuild in [PLAN](cleanup/PLAN.md).
+It specifies results and failure behavior, not a claim that the new engine is
+implemented or qualified. [MILESTONES](../MILESTONES.md) records implementation
+and evidence. Until cutover, the legacy engine retains its existing interface
+except the M0 safety repairs. Source-by-source reconciliation and replacement
+checks are in [coverage](cleanup/coverage.md); source documents remain until M7.
+
+In this document N is retained physical rows, N_eff is effective observations,
+D is the complete absorbed design, X the finite design, and W positive fitting
+weights. All row identities refer to the original dataset. "Tests" names
+existing executable checks to carry forward, not unexecuted replacement claims.
+Native test names below are relative to `crates/fereg-core` or
+`crates/fereg-testkit`; Stata names are relative to `tests/stata`.
+
+## 1. Public syntax and options
+
+Both commands accept `depvar [indepvars] [if] [in] [weight], [options]`.
+The dependent variable is plain numeric; the finite list can be empty.
+Stata 18 is the minimum host. Installed diagnostic calls remain
+`fereg, version`, `fereg, doctor [threads(#) verbose]`, and
+`fereg, selftest [threads(#)]`; developer actions are not public commands.
+
+| Option | OLS (`fereg`) | PPML (`feppml`) |
+|---|---|---|
+| `absorb(terms)`; named saved channels | Yes | Yes |
+| `keepsingletons` | Yes; default prune | Yes; default prune |
+| Weights | none, aw, fw, pw | none, fw, pw |
+| `vce()` | unadjusted/iid/ols, robust, cluster | robust, unadjusted mapped to robust, cluster |
+| `dof()` | pairwise (default), firstpair, continuous, none | No public DoF-policy override |
+| `noconstant` | Suppress reported constant | Unsupported; structural constant required |
+| `residuals(newvar)` | Response residual | Formula selected by `residualtype()` |
+| `solver()` | auto (default), lsmr, cmg | auto (default), lsmr, cmg |
+| `threads(#)` | Nonnegative integer; 0 resolves native default | Same |
+| `tolerance(#)` | Finite 0 < t < 1; default 1e-8 | Same, outer convergence tolerance |
+| `iterate(#)` | Positive integer; default 16,000 | Positive integer; default 10,000 outer iterations |
+| `timeit` | Runtime diagnostics | Runtime diagnostics |
+| `verbose(#)` | Existing verbosity control; default 0 | No new public verbosity option |
+| `offset(var)` / `exposure(var)` | Unsupported | Mutually exclusive |
+| `separation(methods)` | Unsupported | Default `fe simplex ir`; optional mu or none |
+| `xb()`, `d()`, `eta()`/`xbd()`, `mu()`, `dropreason()` | Through documented postestimation | Saved outputs (§12) |
+| `biascorrection(exact|randomized)` | Unsupported | Optional mean correction (§15) |
+| `biasunit()`, `biasfe()`, `biasprobes()`, `biasseed()`, `biasstream()` | Unsupported | Correction controls (§15) |
+
+Removed at the specified migration/cleanup boundary: public
+`solver(map|cg|it|squarem)`, `preconditioner()` (including aliases), `poolsize()`,
+`memory()`, and `deterministic`. Determinism becomes unconditional.
+`solver(cg)` already returns r(198) under the M0 safety repair. Unknown or removed
+syntax is rejected explicitly, never translated to auto. During migration only,
+hidden `engine(legacy|next)` overrides the developer `FEREG_ENGINE` global,
+which overrides the current default; next ignores `memory()` with a note.
+The engine selector and global lookup disappear at M7.
+
+The model capabilities below are preserved. IV/GMM, new categorical-continuous
+or continuous-continuous RHS interactions, group outcomes with individual FEs,
+HAC/Driscoll–Kraay, other GLMs and GPU execution remain unsupported.
+Hidden separation tuning, allocation injection and plan overrides are test
+interfaces, not additions to the public options above.
+
+### Solver support and dispatch
+
+`within` names the pinned modified-LSMR library, not a fourth public solver.
+Every backend uses the same sample, weights, FE span, coefficient/residual
+interface, finite solve, inference and certificate. Supplied weights do not
+disable an otherwise supported backend. No memory-mode restriction survives.
+
+| Request | OLS support to preserve | PPML support to preserve |
+|---|---|---|
+| auto | No FE, one/multiple intercept or slope-bearing FEs, disconnected designs | Same model grammar with changing positive IRLS weights |
+| lsmr | General supported FE grammar, including slopes and multiple RHSs | At least two categorical intercept FEs, including more than three; no absorbed slopes |
+| cmg | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
+
+The legacy OLS CMG adapter also handles zero/one categorical effects by exact
+no-work/direct projection; preserve this degenerate support and identify that
+no graph iteration occurred. PPML explicit requests outside its supported
+envelope return r(498), including zero/one FE. A valid graph formulation,
+component anchoring and certified nuisance elimination are required for CMG;
+the 64-column bound is an explicit adapter support limit, not an auto-routing
+threshold. Retain all saved-output and bias-correction capabilities on supported
+solver/model combinations. Tests force each supported backend independently.
+
+The initial auto candidate uses no-work for no FE, exact per-level projection
+for one FE, and Schur-PCG for multiple FEs. Adoption requires G-M3 and estimator
+gates. Auto may transfer unfinished columns to LSMR on measured stagnation or
+projected iteration exhaustion. CMG is selectable explicitly; adding it to auto
+requires comparative evidence and a documented structural/convergence rule.
+Routing cannot depend on row count, finite-regressor count, worker count,
+weight kind or available memory.
+
+For each linear RHS/frame, the new engine permits at most two backend attempts:
+the selected backend followed, only after numerical nonconvergence, by LSMR.
+Explicit LSMR has one attempt. Explicit CMG starts with CMG and can use that
+same visible LSMR fallback; unsupported topology, invalid data, allocation,
+interruption and internal errors are fatal. All attempts share the original
+linear iteration budget; remaining budget, not a reset budget, transfers.
+Completed RHSs are retained only after independent certification. Certification
+is always recomputed from original inputs and returned coefficients.
+If no budget remains, return r(430). There is no recursive fallback.
+
+OLS `iterate()` bounds Krylov work per RHS in each required linear projection;
+iteration reports distinguish maximum-per-RHS from summed work. PPML `iterate()`
+bounds outer steps, not total inner work. Each PPML linear frame has the fixed
+16,000-iteration per-RHS budget, shared across attempts; strict and final-Hessian
+frames are separately counted. Two consecutive accepted outer passes and the
+strict/final checks remain mandatory (§13). Direct solves report zero Krylov
+iterations. Backend setup, retries and final recovery cannot disappear from
+diagnostics. Record requested, selected and actually used backend, checkpoint
+backend, attempts, iteration counts, stop reason and fallback reason. Preserve
+legacy solver macros through the seam; M7 result-wire v2 can simplify obsolete
+rows but must retain these meanings.
+
+Tests: `tests/model_wire_{roundtrip,adversarial}.rs`, `parser/`,
+`parity_ppmlhdfe/feppml_command_contract.do`,
+`development/ols_cmg_raw_residual_oracle.do`, `tests/prepared_fit_oracle.rs`.
+M3/M5/M6 add forced support/rejection, exhaustion and fallback identity checks.
+
+## 2. Sample construction, missingness and restrictions
+
+Stata evaluates `if`/`in` once. Candidate exclusion precedes scientific domain
+validation: excluded invalid values cannot cause a data-domain failure.
+On candidates, apply outcome, finite regressors, weights, FE sources, cluster
+sources, then PPML adjustment availability/domain rules in that order. Stata
+numeric missing values, including extended missings, and string missingness
+retain their host meaning. Missing required sources exclude rows; fatal domain
+errors are not converted to exclusions. Cluster availability precedes singleton
+pruning; cluster counts never define FE singletons.
+
+Rust owns classification, collision-safe factorization and stable compaction.
+The same original-row map compacts every source, recipe, weight, offset and
+topology. After deletions, rebuild final codes and factor recipes; preserve
+canonical coefficient slots when levels vanish. Dataset order never changes.
+Time-series materialization respects the full declared panel/time settings;
+a retained lag/lead can use a source outside `if`/`in`, and gaps remain missing.
+Empty or insufficient final samples fail, with no public sample posted.
+
+Tests: `tests/numeric_sample_oracle.rs`,
+`tests/categorical_final_sample_rebase_oracle.rs`,
+`parity_ppmlhdfe/feppml_native_preparation.do`, `feppml_time_series.do`.
+
+## 3. Weights
+
+| Kind | Candidate rule | N_eff | Reference objective weight |
+|---|---|---|---|
+| none | Structural unit weight; no pseudo-column | N | 1 |
+| aw, OLS only | Zero/missing excludes; negative r(402); otherwise finite positive | N | raw × N / sum(raw) |
+| fw | Missing excludes; otherwise positive exact supported integer; invalid r(401) | Checked exact frequency sum | raw multiplicity |
+| pw | Missing excludes; otherwise finite positive; invalid r(459) | N | raw × N / sum(raw) |
+| iw | r(101) | — | — |
+
+PPML also rejects aw with r(101). Each fweight must be an integer in
+1 through 2^32−1. Accumulate effective N with checked integer arithmetic
+within the platform's supported index range; reference-statistic conversions
+also enforce exact floating-point integer representability. Rounding must
+not silently admit an out-of-domain multiplicity.
+Raw weight expression/sum remain metadata. Common aw/pw rescaling leaves
+estimates, reference-scale bread, covariance and fit statistics unchanged.
+Internal common rescaling is permitted only with explicit conversion back to
+reference scale. Recompute normalization after sample mutation. Fweights match
+literal row replication for objective, singleton multiplicity, N_eff, DoF,
+scores and covariance; repeats do not create independent bias units.
+
+OLS pw selects robust when VCE is omitted; explicit IID is rejected. HC1 meat
+uses squared normalized aw/pw weights, but fw multiplicity rather than fw².
+PPML prior weights q follow this table, while Hessian weights are q×mu.
+
+Tests: `tests/numeric_sample_oracle.rs`, weighted `tests/ols_oracle.rs`,
+`tests/prepared_robust_oracle.rs`,
+`parity_ppmlhdfe/feppml_weights_inference.do`, frequency-expansion fixtures.
+
+## 4. Singletons
+
+Prune FE singletons to a fixed point unless `keepsingletons` is requested.
+FW uses checked integer multiplicity; other weights use physical membership.
+Removal counts remain physical rows. Apply the rule to the final available
+model sources and all absorbed partitions, with deterministic original-row
+identity. Separation can start another singleton cascade (§14). Singleton and
+separated counts/reasons remain distinct. `keepsingletons` does not exempt a
+model from positive DoF, finite-rank or convergence requirements.
+
+Tests: `src/fe/singleton.rs`, weighted singleton-cascade Stata fixtures,
+`parity_ppmlhdfe/feppml_separation_outputs.do`.
+
+## 5. Absorbed terms and saved normalization
+
+Support numeric/fixed-width-string categorical sources; `g h` for separate
+effects; `g#h` for observed-tuple interactions; `g#c.x` and `g#c.(x z)` for
+slope-only channels; `g##c.x` and `g##c.(x z)` for intercept plus slopes.
+Repeated sources share coding without changing declared term order. `strL`
+and categorical `##` expansion inside absorb are unsupported. Disconnected
+components, duplicate terms and locally rank-deficient slope channels retain
+their exact span and reported redundancy; do not manufacture extra rank.
+
+`name=term` saves normalized observation contributions. An intercept uses
+`name`; slope channels use `name_Slope1`, `name_Slope2`, etc. Slope-only terms
+have only suffixed channels. These are channel contributions (coefficient
+times slope), not bare slope coefficients. Names must be new and distinct
+from every other requested output and input binding. `savefes()` is not an alias.
+Within each connected component, center every intercept effect after the
+first in declared absorb order to weighted mean zero, transferring each
+removed mean to the first intercept effect so the total is unchanged. Use
+OLS fitting weights or PPML's accepted final Hessian weights q×mu. With zero
+or one intercept effect there is no between-effect centering transfer. Slope
+channels retain their rank-aware representative; arbitrary nonidentified
+contrasts are not accuracy targets. Preserve the reported constant gauge and
+compare nonunique FE solutions by fitted sums and identified contrasts. Apply
+the same normalization to all backends. The distinct bias anchor in §15 must
+not replace this ordinary saved-FE gauge.
+
+Output recovery reconstructs the declared FE sum from coefficients, checks
+each row, and certifies at the requested tolerance. PLAN §3.5 explicitly
+supersedes the legacy automatic 1e-14 output re-solve. Independent tighter
+test oracles remain required; reducing output work cannot relax their accuracy
+envelopes. No output request may change the sample, rank, VCE or coefficient
+status. Unsupported explicit backend structures fail before publication.
+
+Tests: `tests/intercept_slope_oracle.rs`, `tests/fe_certificate_oracle.rs`,
+`parity_reghdfe/estimate_ols_saved_outputs_parity.do`,
+`parity_ppmlhdfe/feppml_saved_slopes.do`, `bias/final_recovery_precision.do`.
+
+## 6. Regressors and canonical status
+
+Support numeric continuous columns, numeric factor main effects,
+all-categorical factor interactions, and Stata lag/lead/difference operators
+on continuous variables. Stata supplies authoritative base/omission flags and
+canonical names through `fvexpand`/`_ms_parse_parts`; Rust must not infer these
+flags from spelling. Do not broadly expand design columns in ado/Mata.
+Explicit RHS base overrides (`ib#`, `fvset`) with interacted or sloped
+absorption remain unsupported until a separately approved extension.
+
+Preserve input-order slots and stripes for kept, base, explicitly omitted,
+FE-collinear and numerically rank-deficient columns. A vanished level becomes
+an all-zero/omitted recipe without shifting subsequent slots. Omitted slots
+and covariance coordinates remain consistently zero. No-regressor models use
+an explicit empty graph, never the dataset's implicit full variable list.
+Unknown operators, orphaned/gapped metadata, invalid flags, nonzero reserved
+fields and pending time-series work are errors before observation access.
+
+Tests: `parser/ordinary_factor_terms.do`, `parser/model_wire_v2_capture.do`,
+`tests/model_wire_adversarial.rs`, final-sample rebase and TS dummy oracles.
+
+## 7. OLS estimation
+
+Minimize `(y-Xb-Dalpha)'W(y-Xb-Dalpha)` on the retained sample. Project y
+and X using the same FE span/weights, solve finite WLS on the identified
+coordinates, and reconstruct residuals from original sources. Independently
+certify FE orthogonality, finite score, bread/inverse, covariance and fit.
+No iterative recurrence status alone permits publication.
+
+Where an absorbed intercept exists, the reported constant is
+`mean_w(y) - mean_w(X)'b`. It is a normalization coordinate, not an extra
+finite/absorbed rank direction. With within bread B its extended bread has
+side `-B mean_w(X)` and corner `1/N_ref + mean_w(X)'B mean_w(X)`, using the
+reference weights and their N_ref=N_eff. Pure slope-only absorbed models do
+not automatically have a structural OLS constant. No-FE models retain the
+ordinary constant unless suppressed. `noconstant` preserves its accepted
+model/reporting semantics; it does not delete an intercept already in D.
+
+Tests: `tests/ols_oracle.rs`, `tests/prepared_fit_oracle.rs`,
+`tests/categorical_iid_oracle.rs`, normalized-intercept Stata parity fixtures.
+
+## 8. Rank and collinearity
+
+Use deterministic scaled rank decisions and canonical tie breaking. Guarded
+diagonal-pivoted Cholesky is permitted only when pivots clear the stronger
+square-root rank guard and independent score/inverse checks pass. Otherwise
+scaled column-pivoted Householder QR owns omission decisions; never invert
+an unpivoted singular cross-product. Solve only identified coordinates.
+Local FE block rank is the weighted span rank, including constant/zero or
+dependent slope channels; a singular local Gram block is not automatically
+an invalid model. Weak-graph tests retain identified combinations even where
+individual FE coordinates are not unique.
+
+PPML freezes canonical finite rank/status after the final separation/singleton
+sample. Positive changing IRLS weights cannot silently change public omission
+decisions. Revalidate that basis against the accepted final Hessian; a final
+rank loss or inconsistent rank decision is fatal. Starts, warm states and
+ordinary iteration-specific factorizations have no canonical-rank authority.
+
+Tests: `src/ols/rank.rs`, `src/ols/finite_wls_kernel.rs`,
+`tests/intercept_slope_oracle.rs`, `tests/prepared_fit_oracle.rs`,
+`parity_ppmlhdfe/feppml_scientific_contract.do`.
+
+## 9. Degrees of freedom and nesting
+
+Preserve the pinned reference's absorbed-category/redundancy rules, not a
+generic count of FE labels. `pairwise` applies pairwise mobility reductions;
+`firstpair` adjusts only the first eligible pair; `continuous` applies slope
+redundancy without categorical mobility searches; `none` disables those
+adjustments but still charges absorbed coefficients. Two-way graph components
+give exact rank; multiway approximations remain explicitly marked. Constant
+and locally redundant slope channels follow the accepted continuous rules.
+Report categories, redundancy, rank, exactness/approximation and nesting per
+declared channel. Nesting uses complete collision-safe final cluster tuples.
+
+For OLS let K_f be finite model DoF and A the nesting-adjusted absorbed rank.
+Unclustered residual DoF is N_eff−K_f−A and must be positive. With clusters,
+at least two groups per dimension are required, reported residual DoF is
+`min(N_eff−K_f−A, G_min−1)`, fit-statistic DoF subtracts the nested absorbed
+category count as well, and the covariance correction denominator is
+`N_eff−K_f−A−1{nested categories > 0}`. Each required denominator must be
+positive. The normalized absorbed constant is not charged twice. Retain the
+48-row positive-DoF slope fixture and the original 24-row failure regression;
+negative IID variance is never a successful result.
+
+PPML has its own policy: structural DoF is N_eff minus finite within rank
+minus absorbed rank; clustered reported DoF additionally caps at G_min−1.
+Positive reported DoF and at least two groups per declared cluster dimension
+are required. PPML does not borrow OLS finite-sample corrections or t/F laws.
+
+Tests: `src/ols/{dof,topology_dof,prepared_dof}.rs`,
+`tests/categorical_clustered_oracle.rs`, positive-DoF slope Stata fixtures,
+`parity_ppmlhdfe/feppml_weights_inference.do`.
+
+## 10. Covariance
+
+Let B be the identified bread and s_i the within-regressor score. OLS IID is
+`RSS/df_r × B`; HC1 is `N_eff/df_r × B meat B`. OLS cluster scores are
+`sum_g omega_i r_i x_tilde_i`; combine every nonempty declared-cluster subset
+by inclusion–exclusion and apply one common correction
+`(N_eff−1)/correction_df × G_min/(G_min−1)` from §9. Support up to ten
+OLS cluster dimensions. `#` defines one interaction dimension; `##` is invalid.
+FW robust meat uses multiplicity, while cluster scores use full weighted sums.
+
+PPML supports one through five cluster dimensions. Its bread is the inverse
+of `sum q_i mu_i x_tilde_i x_tilde_i'` at the accepted Hessian.
+Robust scores use `q_i(y_i−mu_i)x_tilde_i`; FW meat uses f_i times the
+unweighted score outer product, not f_i². Robust correction is
+`N_eff/(N_eff−1)`. Cluster scores sum the weighted scores within groups;
+one common `G_min/(G_min−1)` multiplies the complete inclusion–exclusion
+meat. No OLS residual-DoF or subset-specific multiplier applies.
+
+Grouping is collision-safe and deterministic. Apply the registered symmetric
+CGM PSD repair only after the complete multiway covariance has been formed;
+retain repair diagnostics, symmetry/finite/diagonal checks and independent
+covariance reconstruction. Multiway repair sets negative covariance
+eigenvalues to zero and independently checks the eigensystem and reconstructed
+matrix. Robust and one-way clustered covariance must already satisfy the
+strict PSD policy; they do not receive that multiway repair. Do not clip individual scores, coefficients or
+subset meats. Wald rank and missing/undefined test statistics preserve the
+canonical identified coordinates. OLS uses t/F; PPML uses z/Wald chi-squared.
+
+Tests: `tests/prepared_{robust,clustered}_oracle.rs`,
+`tests/categorical_{iid,robust,clustered}_oracle.rs`, `src/ppml/psd.rs`,
+`tests/oracles/ppml_multiway_cluster_oracle.py`, Stata weight/VCE fixtures.
+
+## 11. Fit statistics and posted results
+
+OLS RSS is the reference-weighted residual sum of squares; TSS uses centered
+y when a structural intercept exists and raw y otherwise. Within TSS is the
+FE-projected outcome norm. R² and within R² are `1−RSS/TSS` using their
+respective denominators. Adjusted R² is
+`1−(RSS/fit_df)/(TSS/(N_eff−1{structural intercept}))`; adjusted within R²
+uses within TSS and baseline DoF `fit_df+K_f`. RMSE is `sqrt(RSS/fit_df)`.
+Preserve the corresponding Gaussian ll/ll_0, model F/Wald, MSS and undefined
+statistic behavior; zero denominators yield documented missing/absent fields,
+never invented zeros or infinities. The cluster fit DoF is distinct from the
+reported test DoF (§9).
+
+PPML deviance is `2 sum q_i[mu_i−y_i+y_i log(y_i/mu_i)]`, with zero-outcome
+contribution `2q_i mu_i`. Log likelihood is
+`sum q_i[y_i eta_i−mu_i−lgamma(y_i+1)]`, including fractional outcomes.
+The reference null mean is `sum(qy)/sum(q)` irrespective of FE/offset;
+ll_0 uses that mean and pseudo-R² is `1−ll/ll_0` when defined. Publish outer
+and inner counts, halvings and convergence. Do not post OLS RSS/TSS/MSS,
+R²/adjusted R², RMSE, F or e(df_r) for PPML.
+
+Both estimators preserve e(b), e(V), e(sample), coefficient/equation stripes,
+model/command/weight/cluster metadata, effective and physical N, candidate/full
+counts, ranks, absorbed metadata, singleton accounting, prediction binding
+and requested output names. Sample/status/count/DoF fields are exact.
+Required OLS families include `fereg_status`, `fereg_dof`, `fereg_fe`,
+`fereg_cluster`, `fereg_subset`, `fereg_solver`, `fereg_certificate` and
+`fereg_runtime`. Required PPML information includes:
+
+- N_physical, N_effective, N_candidate, N_full; rank, feppml_model_rank,
+  df_m, df_resid, df_structural, df_a, N_hdfe, N_hdfe_extended;
+- deviance, ll, ll_0, r2_p, mu_0, sum_y, ic, inner_iterations,
+  step_halvings, converged; chi2/df_chi2 when defined;
+- num_singletons, drop_singletons, separated, sumweights and applicable
+  raw_sumweights/weight_multiplier and logarithms; N_clustervars,
+  N_clust1 through N_clust5, N_clust and G_min when clustered;
+- feppml_status, fit, dof, fe, cluster, subset, separation, inference,
+  drop_counts, separation_sequence, certificate, solver, runtime and receipt
+  matrices (all names after the first have the `feppml_` prefix);
+- `dof_table` when applicable; requested/selected/effective/checkpoint solver
+  macros, concrete engine identity, fallback count and reason;
+- `cmd=feppml`, `model=poisson`, command line, depvar, indepvars, vce, absvars,
+  separation, adjustment, predict=feppml_p, requested output bindings and
+  bias-correction results when requested (§15).
+
+Migration adapters retain the existing result layouts. M7 explicitly replaces
+legacy memory/allocation tables and redundant route rows with result wire v2;
+this permits deleting implementation telemetry, not scientific fields or solver
+identity/failure evidence. Preserve runtime input/native/total measurements
+needed by the benchmark suite, with defined boundaries. Undefined, unavailable
+and absent remain distinct; validators reject stale/malformed matrices.
+
+Tests: `parity_reghdfe/`, `parity_ppmlhdfe/feppml_scientific_contract.do`,
+`estimate_ppml_runtime_validator.do`, native result-wire and statistic tests.
+
+## 12. Outputs and prediction
+
+Requested observation outputs use original-row identity and are missing
+outside e(sample), except `dropreason()` which covers the whole dataset.
+Do not retain hidden O(N) prediction caches when outputs are not requested.
+All outputs belong to the same estimation transaction.
+
+OLS predict defaults to xb. xbd, d and residuals require the estimation's
+retained residual variable: xbd=y−r and d=xbd−xb. Missing retained state is
+r(498); deletion of its named variable is r(111). `test` uses posted b/V;
+`estat summarize` uses the estimation sample.
+
+PPML xb includes the current finite predictor and offset/log exposure;
+eta=xb+d and mu=exp(eta). Predict defaults to mu and intersects its own
+if/in with e(sample). No-FE d is zero and all predictions are reconstructible.
+With FEs, d/absorbed requires retained d. Eta/xbd, mu and residual predictions
+require compatible retained d, eta or mu, otherwise r(498) before target
+creation. Retained d is authoritative and combines with current xb; absent d,
+eta then mu are snapshot fallbacks and do not track edited covariates.
+Deleting the authoritative variable is r(111). Duplicate alias pairs or
+multiple statistics are r(198). Estimation eta()/xbd() are aliases too.
+
+| PPML residual type | Unweighted per-observation value |
+|---|---|
+| response, score | y−mu |
+| pearson | (y−mu)/sqrt(mu) |
+| working | (y−mu)/mu |
+| deviance | 2[mu−y+y log(y/mu)], with zero-y limit 2mu; nonnegative contribution |
+| anscombe | 1.5(y^(2/3)−mu^(2/3))/mu^(1/6) |
+
+`residualtype()` requires `residuals()` and defaults to response.
+Full-axis drop codes are 0 retained, 1 if/in, 2 missing outcome, 3 regressor,
+4 weight availability, 5 FE, 6 cluster, 7 adjustment, 8 singleton,
+9 FE separation, 10 simplex, 11 IR, 12 Mu, 13 other model exclusion.
+Invalid retained domains cause errors, not successful drop codes. Report all
+14 counts; separated sums 9–12. No dropped output can masquerade as a fitted
+zero. Named FE channels follow §5; bias channels follow §15.
+
+Tests: `postestimation/fail_closed.do`,
+`parity_reghdfe/estimate_ols_postestimation_parity.do`,
+`parity_ppmlhdfe/feppml_separation_outputs.do`, saved-output/alias fixtures.
+
+## 13. PPML family, starts and IRLS
+
+The model is eta=offset+Xb+Dalpha, mu=exp(eta), score q(y−mu).
+Nonnegative fractional outcomes are valid; negative finite candidates fail
+r(459). Empty/all-zero weighted final outcomes fail r(2001). PPML always has
+a structural constant; an absorbed constant is not counted twice.
+Offset/exposure are mutually exclusive (r(198)); missing excludes, finite
+offset is required, and exposure must be finite positive (r(459)). Log
+exposure exactly once. Adjustments affect fit/prediction but not the
+homogeneous separation cone.
+
+Start from `c0=log(sum qy)−log(sum q exp(offset))` using stable logarithmic
+sums. PLAN M6.1 permits global plus analytic one-FE group start only,
+superseding legacy multi-FE coordinate/slope start optimizations. A declined
+or invalid start proposal restores a finite global state. Starts never certify
+rank, optimality or the final Hessian. Do not clip eta/mu to artificial bounds.
+
+At an accepted state h=qmu and z=eta−offset+(y−mu)/mu, with exact zero-y
+expression eta−offset−1. Stable evaluation may use exp(log(y)−eta).
+Full Fisher steps are tried first; halve coefficient/predictor steps together
+until values are representable and deviance nonincreasing within registered
+roundoff slack. Exhausted steps or iteration budgets are fatal.
+Relative deviance change is `abs(D_new−D_old)/max(min(D_new,D_old),0.1)`.
+Require two consecutive accepted passes satisfying this and independently
+recomputed normalized finite and FE scores. A small objective change alone
+is insufficient, particularly near small coefficients.
+
+Apparent convergence triggers fresh strict WLS at
+`min(1e-12,0.1×outer_tolerance)`. If beta, eta, basis/rank or objective moves
+beyond the registered publication envelope, resume bounded IRLS. Publish
+only after exact accepted-h=qmu Hessian/bread, basis, projection, score,
+objective replay and eta reconstruction checks. Refresh/invalidate numerical
+backend state whenever weights change; sample mutation invalidates all reuse.
+Warm starts are guesses, never certificates. Final inference and correction
+use this same accepted state. Output tolerance (§5) does not remove the
+strict PPML/final-Hessian requirements.
+
+Tests: `src/ppml/{family,certificate}.rs`,
+`tests/oracles/ppml_explicit_dummy_oracle.py`,
+`parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do`,
+`feppml_multipartition_slope_oracle.do`, final-Hessian/line-search fixtures.
+
+## 14. PPML separation and ledger
+
+The ledger alone owns deletion. Detectors read immutable generation views
+and propose sorted unique original-row IDs plus method/status/counts and a
+certificate. Validate bounds, membership, uniqueness, eligibility and all
+certificate fields before accepting any row; one invalid row rejects the
+whole proposal. Detector traversal order must not choose public drop reasons.
+
+A numerical recession direction z lies in the finite-plus-FE span, is zero
+on positive outcomes, nonpositive on zeros, and strictly negative on every
+proposed row. Independently check span distance, normalized equality/sign
+margins, nonzero scale and finiteness. Exact zero-only intercept-FE levels
+use a combinatorial certificate. Slope-only channels do not prove that rule.
+Tiny fitted means, extreme eta and stagnation are not deletion evidence.
+
+Accept nonrepeated method subsets in canonical `fe simplex ir mu` order;
+default is `fe simplex ir`, mu is opt-in, and `none` alone disables proactive
+separation only. Each round prunes singletons, applies requested exact FE
+zero-level pruning to a fixed point, then simplex, IR, optional Mu. After a
+certified deletion, apply its singleton cascade and requested FE fixed point,
+commit the union as one generation, compact all sources together, rebase
+topology once and restart the chain. First certified reason in canonical
+method order wins; singleton counts remain separate.
+
+Full-model simplex includes finite columns, every FE level and slope channel
+in its explicit width; checked capacity includes design, null-space/tableau,
+topology and certificates. A capacity skip is permitted only if later requested
+comprehensive IR on the same generation certifies no unhandled separation.
+A simplex-only or unresolved over-cap request fails r(909). An IR drop
+restarts the chain and cannot certify a prior generation's skipped simplex.
+Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
+a fitted start and the same independent cone certificate; accepted Mu drops
+discard that entire fitted session.
+
+No prior-generation projected design, warm state, rank, cluster subset,
+bread or output is reusable. Recompute canonical finite rank on the final
+sample and verify positive weighted outcome. Report requested/executed
+sequence, method status/iterations, generation identities and deterministic
+trace digest independently of timing. Bound public diagnostic tables; no
+observation-sized trace crosses the result wire. Separation proves a sample
+decision, not estimator convergence.
+
+Tests: `src/ppml_separation/`,
+`tests/oracles/ppml_recession_cone_oracle.py`,
+`parity_ppmlhdfe/feppml_separation_methods.do`,
+`feppml_separation_outputs.do`, full-model simplex capacity/oracle fixtures.
+
+## 15. PPML coefficient mean bias correction
+
+Retain `biascorrection(exact|randomized)` as an optional calculation on the
+unchanged accepted fit. Require exactly two categorical intercept FE sets,
+ordinary numeric controls, explicit numeric `biasunit()`, and none/fw/pw
+weights; offset/exposure are allowed. Slopes, finite factors, other FE
+topologies and multiway bias-unit dependence are unsupported. The score unit
+comes from the declared dependence experiment, not VCE cluster settings.
+
+Every retained level of both FE sets must contain at least two distinct units,
+even without `biasfe()`. Count actual IDs, never FW copies. A missing unit on
+a retained row is an error, not a sample exclusion. Any outcome-dependent
+separation deletion rejects the entire correction transaction. Unit relabeling
+does not change support; restrictions can change it. More probes, exact
+calculation or splitting dependent units cannot establish valid independence.
+This necessary support screen does not certify statistical adequacy.
+
+For complete identified FE-plus-control row x, fitting weight a, accepted mu
+and independent unit g, compute
+
+```text
+S_g = sum_g a x (y−mu)        J_g = sum_g a mu x x'
+J = sum_g J_g                K = sum_g S_g S_g'
+V = J^-1 K J^-1
+c_D = J^-1 sum_g J_g J^-1 S_g
+c_C = (1/2) J^-1 sum_rows a mu x (x' V x)
+beta_bc = beta_hat + c_D + c_C
+```
+
+Both increments include all identified nuisance coordinates. Do not substitute
+the public VCE, add HC1/DoF/PSD corrections or cap coefficients. This empirical
+second-order mean correction is an approximation for interior fits; it is not
+a correction for confidence intervals, predicted rates or effect variances.
+Ordinary e(b), e(V), objective, sample, means and predict remain unchanged.
+No leave-one-unit-out refits or observation selection enter this calculation.
+
+Exact mode streams units without storing K, V or all scores; retain limits of
+10,000 units and one billion observation-unit contributions. Randomized mode
+has a fixed prespecified B≥2 (default 256), seed 739391 and stream 0;
+seed/stream/probe controls are unsigned 32-bit integers. Exact mode rejects
+explicit randomization controls. Ancillary bias options require correction.
+
+Use Philox4x32-10 with key=(seed,stream), counter=(low/high IEEE-754 numeric
+unit bits, low/high zero-based probe index). Normalize −0 to +0. The first
+output word's low bit maps to −1/+1. One sign per unit/probe is shared across
+both increments; no Stata RNG mutation. Signs are stable under row ordering,
+grouping, worker count and route; renumbering units changes randomness.
+Retain pinned Random123 known-answer vectors from the source contract.
+Their source is commit `d8a0c25e49992685c0b9d91b553c1d04f81b6b4b`,
+`DEShawResearch/random123/tests/kat_vectors`, SHA-256
+`aab5ebabf40003f63d6d87b24cbd2c8a02652e00cf8bad64226fd50586929183`.
+
+Point calculation uses B probe solves plus two final solves. Up to eight
+predetermined independent groups use the same probes and probe-count weights;
+at most fourteen extra final solves estimate numerical variation. For group
+sizes m_j and increments d_j,c_j, covariance of the full means is
+`sum m_j(d_j−dbar)(c_j−cbar) / [B(groups−1)]`. Analogous squares give each
+variance; total variance includes twice covariance. These are conditional
+Monte Carlo diagnostics, not sampling standard errors. Exact mode reports
+zero probe uncertainty, not zero solver error.
+
+Anchor the smallest canonical second-FE level to zero in each component and
+put the component constant in the first FE. Apply that same linear map to raw,
+derivative, curvature and corrected channels; do not Hessian-center each
+channel differently. Recover raw effects from accepted eta minus offset and
+unchanged finite contribution. Independently check row reconstruction,
+including tiny means and disconnected branches. Ordinary saved FEs retain
+their separate existing normalization.
+
+Publish ordinary-stripe matrices `b_bias_raw`, `b_bias_d`, `b_bias_c`,
+`b_bias_total`, `b_bc`, `bias_mcse_d`, `bias_mcse_c`, `bias_cov_dc`,
+`bias_mcse_total` under e(). Omitted and normalized absorbed-constant slots
+are zero. `biasfe(stub)` creates `stub_1_*` and `stub_2_*` with suffixes
+raw,d,c,total,bc,sed,sec,covdc,setotal, missing outside e(sample).
+Numerical SE channels are tied to this anchor; omitted cross-level covariance
+prevents arbitrary SE renormalization.
+
+Retain the 21×1 `e(bias_diagnostics)` named fields: method, units, probes,
+seed, stream, independent groups, solves, maximum solve score, maximum FE
+reconstruction error, seconds, workspace bound, maximum absolute total
+increment, minimum/maximum mu, minimum/maximum rows per unit, route, validity,
+certificate tolerance, minimum level information and maximum FE-leverage
+lower bound. The last is max row h divided by its FE-level information, across
+both effects; it is not the full leverage or unit-information concentration.
+
+`e(bias_support)` has rows fe1/fe2 in absorb order and columns levels,
+min_units,p25_units,median_units,p75_units,max_units,single_unit_levels,
+single_unit_fraction,min_info_units,median_info_units,max_unit_info_share.
+Quantiles are unweighted nearest rank across levels. With
+I_level,g=sum a×mu and p_g=I_level,g/sum_g I_level,g, information equivalents
+are `1/sum p_g²`; these are not certified effective sample sizes. Successful
+single-unit counts/fractions are zero. `bias_validity=interior-retained-sample`
+and numeric valid=1 mean necessary support and numerical checks only.
+
+All solves use the accepted full-system basis and final a×mu, with independent
+normal-equation and reconstruction certificates. Reuse bounded workspaces and
+one worker team; count all probe/recovery work. Option-off allocates/solves none
+of this. Missing IDs, support, rank, allocation, solve or Break failures roll
+back the whole estimate. Error diagnostics identify channel, block/probe and
+recovery discrepancy without posting partial matrices.
+
+Tests: `tests/python/test_ppml_bias_oracle.py`, `src/ppml/bias*.rs`,
+`parity_ppmlhdfe/feppml_bias_correction.do`,
+`bias/final_recovery_precision.do`, duration reconstruction and Philox vectors.
+M6.4 must carry both increments, exact/randomized and support-refusal tests.
+
+## 16. Certificates and errors
+
+Every FE backend reconstructs r=v−Dalpha explicitly. Independently validate
+finite coefficients, row reconstruction and D'Wr. Use the legacy invariant
+weighted local-span certificate: for each level's orthonormal basis Q_g of
+sqrt(W)D_g, measure `||Q_g' sqrt(W) r_g|| / s`, where
+`s=max(||sqrt(W)v||,||sqrt(W)r||)` for that RHS. A zero scale accepts only
+zero projections. The maximum across effects/levels/RHS must meet tolerance;
+retain raw moment and aggregate norm diagnostics. Recompute from declared
+design/weights, not a recurrence's own residual or stale weighted factor.
+Local rank-aware bases prevent slope scaling/rotation from changing the span
+test. Residual reconstruction and small D'Wr are necessary, not a universal
+forward-accuracy bound; §20 independently tests weak graphs.
+
+OLS additionally certifies finite scores, bread/inverse, fit and covariance.
+PPML additionally certifies model-space feasibility, scores, accepted objective,
+final Hessian/rank, output reconstruction and any bias calculation. Finite but
+uncertified candidates cannot be posted or relabeled as convergence.
+
+| Failure class | Return code |
+|---|---:|
+| Syntax/removed option or duplicate incompatible syntax | 198 |
+| Unsupported/invalid native argument or unavailable prediction state | 498 |
+| Protocol mismatch | 499 |
+| Unsupported weight | 101 |
+| Invalid FW / negative AW | 401 / 402 |
+| Empty/insufficient observations or required residual DoF | 2001 |
+| Invalid data | 459 |
+| Numerical nonconvergence | 430 |
+| Allocation/checked size overflow | 909 |
+| User Break | 1 |
+| Self-test failure | 3498 |
+| Internal failure/caught panic | 3499 |
+
+Preserve more specific Stata binding errors (for example deleted variable 111)
+and pinned fixture error precedence; a failed covariance validity check is
+not successful missing inference. No errors are converted to a different
+estimator, different sample or silently weaker tolerance.
+
+Tests: `tests/fe_certificate_oracle.rs`, `tests/weak_graph_decimal_oracle.rs`,
+`tests/prepared_fit_oracle.rs`, native error/wire tests, public rollback fixtures.
+
+## 17. Transaction, transport and Break
+
+One substantive plugin call owns estimation. Stata parses syntax/metadata,
+holds prior estimates, creates private shadows and publishes only after native
+completion and independent bounded transport validation. Rust loads observations,
+prepares the sample, estimates, certifies and validates all N/K/K² products
+before the first SPI store. All source/output identities, dimensions and
+nonaliasing bindings are checked before observations. SPI calls and Break
+polling occur only on Stata's main thread; workers touch Rust-owned memory.
+Catch Rust panics at FFI; no unwind crosses C. Safe crates forbid unsafe code.
+
+COMPLETE is the last native operation; no allocation, polling, display,
+computation or store follows it. A partial physical SPI write has no logical
+meaning. The final ado commit protects posting and public output renames.
+Any error, Break, store failure, bad receipt or missing helper restores prior
+e(), named/null estimates, data, order and output names. No correction or
+postestimation path makes an extra substantive estimation call.
+
+Retain independently versioned exact estimation handshakes. Current migration
+versions are action 1.6, model 2.1, OLS result 1.5, PPML request 1.8, PPML
+result 1.5, ado identity 0.5.0 and SPI 3.0. Diagnostics accept same-major,
+not-newer-minor action callers. Model 2.0 is readable only for the bounded
+no-absorbed-metadata shape. M7 introduces result v2 with matching validators;
+unknown/newer identities and malformed framing fail before observation access.
+
+Use canonical byte-length/count framing inline through 4,000 payload bytes;
+larger requests use only `bundle_local=<byte-count>` and fixed caller-local
+`fereg_request_bundle` (SPI name `_fereg_request_bundle`). No arbitrary macro
+lookup. Cap native metadata at 16 MiB, reserve extra content and NUL bytes,
+and validate exact NUL position, UTF-8 and closed decoder before observations.
+Drop transport storage after decoding. Metadata-only Mata framing preserves
+UTF-8 byte lengths and cleans all temporary externals independently on error.
+
+Bounded compiled Mata validation/publication may remain in the control plane;
+no observation-scale design/estimation work enters Mata. If retained, ship
+objects compiled by Stata 18 and verify source/object identity. A `version 18`
+statement in a newer compiler does not suffice. Missing/stale helpers fail
+atomically; no runtime source-compilation fallback.
+
+Tests: `tests/mock_spi/`, native FFI transaction tests, `tests/licensed_stata/`,
+`parity_ppmlhdfe/estimate_ppml_hidden_transaction.do`,
+`estimate_ppml_runtime_validator.do`, installation and framing failure fixtures.
+
+## 18. Threads and determinism
+
+One call-owned team obeys threads(); 0 resolves the native default. Scientific
+results must be bit-identical across worker counts on the same machine,
+including within and CMG adapters, rank ties, factor codes, separation reasons,
+saved outputs and randomized bias results with fixed seed/stream. Partition
+and merge order are fixed independently of worker count. Timing, resolved
+thread counts and process resource observations are diagnostics and excluded
+from scientific identity. Cross-platform bit identity is not promised;
+scientific tolerances still apply. Any temporary host-processor restriction
+introduced at M8 must restore on success, every error and Break.
+
+Tests: existing `src/parallel.rs`/thread fixtures; M3/M4/M6 force identical
+scientific outputs over 1/2/4/8 workers locally and 1/2/4/8/14/28 on SCC,
+including dependency execution and bias probes. Legacy determinism tests
+alone do not establish this stronger cross-worker contract.
+
+## 19. Memory behavior
+
+The new engine has one memory mode and one whole-call estimate, checked for
+size overflow and clearly insufficient capacity before large allocation.
+Include loaded state, topology, all live solver/inference/output/bias work and
+publication overlap. Otherwise use fallible reservations and deterministic
+error cleanup. Insufficient memory returns r(909); it cannot silently veto
+a supported explicit solver or route to an alternate estimator pipeline.
+No nested optional-memory admission. The explicit simplex resource-cap rule
+in §14 is a scientific detector policy, with visible skip and mandatory IR
+coverage, not permission for silent backend substitution.
+
+Requested outputs alone require their O(N) banks. Release temporary owners
+at their actual lifetime boundaries; no persistent cross-fit cache or leaked
+worker/foreign owner. Report estimates as estimates, not process RSS or strict
+OS bounds. M7 removes the legacy tracking allocator, route-specific admission
+tables and fast/low audits after replacement allocation-failure and one-mode
+checks pass. Historical measured receipts remain attached to their source.
+
+Tests: `tests/feppml_constrained_memory_contract.rs`, plugin allocator/failure
+audits during migration; M2–M6 replace these with checked-size, allocation
+failure, repeated-call and atomic-output tests for the one-mode engine.
+
+## 20. Accuracy tolerances and independent evidence
+
+For well-conditioned comparisons, require coefficients rtol=1e-7/atol=1e-10,
+SE/VCE rtol=1e-6/atol=1e-10, and residual/fitted values
+rtol=1e-7/atol=1e-9. Preserve stronger named regression thresholds, including
+the 2e-8 CMG dense-oracle check. Exact equality is required for success/error,
+sample, omission/status, VCE/DoF policy, clusters, singleton accounting and
+all discrete metadata. Runtime tolerance is not permission to weaken these
+independent accuracy checks. Adjudicate nonunique FE coordinates through
+identified combinations, fitted values, residuals and objectives.
+
+Retain the sealed 100-digit `tests/reference/weak_graph_decimal_oracle_v1`
+CSV/JSON with original identity. Test chains, barbells, AKM weak mobility,
+disconnected graphs, unequal weights, slopes and multiple RHSs against the
+explicit design, with one grounded coordinate per component. Exercise every
+supported backend, not just auto. Preserve the CMG raw-residual regression
+and a legacy-only demonstration that the old CG certificate could pass a
+wrong result. Large LSMR stability comparisons include a 100-times-tighter
+solve; reference residual distance is diagnostic when independent accuracy
+and runtime certificates pass, while exact fields and coefficient/VCE/fit
+envelopes remain binding.
+
+Pinned reghdfe/ppmlhdfe closures in `references.lock.toml` are compatibility
+references; dense weighted dummy OLS, Poisson, sandwich and recession-cone
+oracles remain independent authorities. For PPML the pinned comparator's
+reported ll/deviance are the reference objective. Its predicted state is an
+additional witness only if independently feasible and stationary; projection
+alone is insufficient. Fereg's own mean must replay its objective and pass
+all score/model-space/final-Hessian checks. A reference-error exception needs
+an independent optimum enclosure proving the discrepancy; it does not alter
+runtime acceptance or rewrite historical failed pairs.
+
+Legacy performance/receipt workflows are superseded by PLAN gates and the
+new declared benchmark suite, not by weaker science. Preserve the historical
+149 pair discrepancies/eight timeouts as findings at their original source.
+Do not count missing/timeout pairs as successes. Licensed checks require
+application return codes and terminal sentinels in addition to process status.
+Tests: `tests/weak_graph_decimal_oracle.rs`,
+`tests/python/test_weak_graph_decimal_oracle.py`, the independent Python
+oracles and native/Stata parity families above; M3 requires at least 2,000
+random designs, with G-OLS/G-PPML differential and public-surface gates.
