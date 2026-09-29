@@ -164,3 +164,13 @@ relevant_test_paths = ["tests/mock_spi/"]
 use = "Compiled into each platform plugin."
 local_stplugin_c_sha256 = "7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a"
 local_stplugin_h_sha256 = "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1"
+
+[[reference]]
+name = "fixest"
+repository = "https://github.com/lrberge/fixest"
+version = "0.14.2"
+license = "GPL-3.0"
+source_archive_url = "https://cran.r-project.org/src/contrib/fixest_0.14.2.tar.gz"
+source_archive_fallback_url = "https://cran.r-project.org/src/contrib/Archive/fixest/fixest_0.14.2.tar.gz"
+source_archive_sha256 = "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9"
+use = "Benchmark comparator at defaults and matched accuracy; installed from the verified archive into the private run library, never called by fereg."

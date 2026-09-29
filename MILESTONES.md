@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M1.4; benchmark suite and Mac smoke.
+Current task: M1.5; SCC tooling and one smoke job.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -18,7 +18,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.1 `docs/SPEC.md`; source reconciliation and provenance consolidated
 - [x] M1.2 `docs/ARCHITECTURE.md`; legacy source and readers preserved
 - [x] M1.3 `crates/fereg-oracle`; dense oracles, seeded designs and legacy comparisons
-- [ ] M1.4 `bench/` suite
+- [x] M1.4 `bench/` suite; 22 cells, pinned comparators and Mac smoke
 - [ ] M1.5 SCC tooling
 - [ ] M1.6 Legacy baseline
 - [ ] M2.1 Move legacy
@@ -74,14 +74,15 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   did not start: failed account payment or spending-limit restriction. Johannes
   was asked to resolve billing; no repository fix or retry can supply this check.
   Local Rust/FFI checks pass; committed-source Stata quick passes all 32 fixtures
-  at b5a95266 (application rc=0 and sentinels). M1 documentation work is independent.
+  at b5a95266 (application rc=0 and sentinels). Independent rebuild work continues.
   Local diagnostic logs: `target/rebuild-m0/`.
 - Stata/SPI licensing disposition remains a planned
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M1.3 (this task commit) — 27 regular oracle tests, 2,000-design long differential suite and ignored CG-defect diagnostic pass; six 100-digit fixtures, direct CMG/LSMR, weighted inference and Poisson self-checks pass; files <1,500 lines, Clippy 150-line function limit brought forward from M2; local lean harness passes.
+- 2026-09-29 M1.4 (this task commit) — 22 cells/three tiers; verified fixest 0.14.2 and Stata pins; Mac smoke 16/16 groups, 80/80 measured fits accurate, zero failures/timeouts, 48.0s <300s; [dirty-source diagnostic summary](bench/history/2026-09-29-60da973a-dirty-darwin-smoke.csv); 27 additional option comparisons, five harness tests, universal build/self-test and lean harness pass.
+- 2026-09-29 M1.3 60da973a — 27 regular oracle tests, 2,000-design long differential suite and ignored CG-defect diagnostic pass; six 100-digit fixtures, direct CMG/LSMR, weighted inference and Poisson self-checks pass; files <1,500 lines, Clippy 150-line function limit brought forward from M2; local lean harness passes.
 - 2026-09-29 M1.2 1bb169fc — 286-line architecture, 24,500-line engine budgets, shared FE/seam/ownership rules; case-colliding legacy doc preserved with readers/links updated; four source-contract checks and local lean harness pass.
 - 2026-09-29 M1.1 d176dcd9 — twenty SPEC sections with executable-test mappings; all named source contracts/ADRs reconciled; LSMR/CMG and both PPML bias increments retained; notices folded; link/option/section audit and local lean checks pass.
 - 2026-09-29 M0.8 b5a95266 — b41f18e/tag core identical; Low raw residual used CG polish (max error 7.733e-4); full CMG projection passes Auto/CMG/LSMR dense oracles; public CG rejection and rollback pass; committed b5a95266 passes ./ci/run_stata_ci.sh quick: 32/32, rc=0, sentinels.

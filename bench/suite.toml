@@ -1,0 +1,178 @@
+schema = 1
+seed = 739391
+# Set true at M5 when the public estimation seam accepts engine().
+engine_option = false
+
+[protocol]
+warmups = 1
+repetitions = 5
+coefficient_rtol = 1e-7
+coefficient_atol = 1e-10
+reference_tolerance = 1e-12
+fresh_process_per_command = true
+
+[comparators]
+ols = ["fereg", "reghdfe", "fixest", "fixest-matched"]
+ppml = ["fereg", "ppmlhdfe", "fixest", "fixest-matched"]
+
+[tiers.smoke]
+cells = ["ols-1fe", "ols-2fe-dense", "ppml-1fe", "ppml-2fe-gravity"]
+rows = 100000
+threads = [4]
+timeout_seconds = 300
+wall_budget_seconds = 300
+
+[tiers.standard]
+non_scc = true
+threads = [1, 8]
+timeout_seconds = 1800
+wall_budget_seconds = 3600
+
+[tiers.full]
+all_cells = true
+threads = [1, 8]
+timeout_seconds = 7200
+ladder_cells = ["ols-2fe-akm-strong", "ols-3fe", "ppml-3fe-gravity"]
+ladder_threads = [1, 2, 4, 8, 14, 28]
+
+[defaults]
+rows = 1000000
+regressors = 10
+weights = "unit"
+vce = "iid"
+outputs = false
+scc = false
+
+[[cells]]
+id = "ols-1fe"
+model = "ols"
+design = "dense"
+effects = 1
+[[cells]]
+id = "ols-2fe-dense"
+model = "ols"
+design = "dense"
+effects = 2
+[[cells]]
+id = "ols-2fe-akm-strong"
+model = "ols"
+design = "akm-strong"
+effects = 2
+[[cells]]
+id = "ols-2fe-akm-weak"
+model = "ols"
+design = "akm-weak"
+effects = 2
+[[cells]]
+id = "ols-3fe"
+model = "ols"
+design = "akm-strong"
+effects = 3
+[[cells]]
+id = "ols-2fe-k2"
+model = "ols"
+design = "dense"
+effects = 2
+regressors = 2
+[[cells]]
+id = "ols-2fe-k50"
+model = "ols"
+design = "dense"
+effects = 2
+regressors = 50
+[[cells]]
+id = "ols-2fe-aw"
+model = "ols"
+design = "dense"
+effects = 2
+weights = "analytic"
+[[cells]]
+id = "ols-2fe-cluster"
+model = "ols"
+design = "dense"
+effects = 2
+vce = "cluster"
+[[cells]]
+id = "ols-2fe-outputs"
+model = "ols"
+design = "dense"
+effects = 2
+outputs = true
+[[cells]]
+id = "ols-1fe-slope"
+model = "ols"
+design = "dense"
+effects = 1
+slopes = true
+[[cells]]
+id = "ols-2fe-slope"
+model = "ols"
+design = "dense"
+effects = 2
+slopes = true
+[[cells]]
+id = "ols-2fe-n1e5"
+model = "ols"
+design = "dense"
+effects = 2
+rows = 100000
+[[cells]]
+id = "ols-2fe-n1e7"
+model = "ols"
+design = "dense"
+effects = 2
+rows = 10000000
+scc = true
+[[cells]]
+id = "ppml-1fe"
+model = "ppml"
+design = "gravity"
+effects = 1
+vce = "robust"
+[[cells]]
+id = "ppml-2fe-gravity"
+model = "ppml"
+design = "gravity"
+effects = 2
+vce = "robust"
+[[cells]]
+id = "ppml-3fe-gravity"
+model = "ppml"
+design = "gravity"
+effects = 3
+vce = "robust"
+[[cells]]
+id = "ppml-3fe-cluster"
+model = "ppml"
+design = "gravity"
+effects = 3
+vce = "cluster"
+[[cells]]
+id = "ppml-2fe-zeros-separation"
+model = "ppml"
+design = "gravity"
+effects = 2
+vce = "robust"
+separation = true
+[[cells]]
+id = "ppml-2fe-slope"
+model = "ppml"
+design = "gravity"
+effects = 2
+vce = "robust"
+slopes = true
+[[cells]]
+id = "ppml-3fe-n1e7"
+model = "ppml"
+design = "gravity"
+effects = 3
+vce = "robust"
+rows = 10000000
+scc = true
+[[cells]]
+id = "veneto-akm"
+model = "ols"
+design = "veneto"
+effects = 2
+regressors = 1
+scc = true
