@@ -127,7 +127,7 @@ fn campaign(start: usize, count: usize) {
             vec![0.; sample.n_active()],
         ];
         let rhs = DenseMatrix::from_columns(&columns).unwrap();
-        let result = SchurSession::new(&design, &plan, &one)
+        let mut result = SchurSession::new(&design, &plan, &one)
             .unwrap()
             .solve(&rhs, &one)
             .unwrap_or_else(|e| panic!("seed {seed}: {e}"));
@@ -150,6 +150,18 @@ fn campaign(start: usize, count: usize) {
                 "seed {seed}: worker identity"
             );
         }
+        design
+            .certify(&rhs, &result.coefficients, &result.residuals, 1e-10, &one)
+            .unwrap_or_else(|e| panic!("certificate seed {seed}: {e}"));
+        design
+            .normalize_coefficients(&mut result.coefficients, 1e-10, &one)
+            .unwrap();
+        result.residuals = design
+            .reconstruct(&rhs, &result.coefficients, &one)
+            .unwrap();
+        design
+            .certify(&rhs, &result.coefficients, &result.residuals, 1e-10, &one)
+            .unwrap_or_else(|e| panic!("normalized certificate seed {seed}: {e}"));
         for (column, outcome) in columns.into_iter().take(2).enumerate() {
             let expected = fit_explicit_ols(&ExplicitOlsProblem {
                 outcome,

@@ -62,3 +62,47 @@ pub fn prepared(
     };
     prepare_fixed_effects(&model, sample).unwrap()
 }
+
+pub fn slope_sample(intercept: bool, codes: &[u32], slopes: &[Vec<f64>]) -> Prepared {
+    let mut columns = vec![codes.iter().map(|&c| f64::from(c)).collect()];
+    columns.extend_from_slice(slopes);
+    let model = ModelSpec {
+        model: CompiledTermGraph {
+            sources: (0..columns.len())
+                .map(|i| SourceEntry {
+                    id: SourceId::new(i as u32 + 1).unwrap(),
+                    canonical_name: format!("s{i}"),
+                })
+                .collect(),
+            terms: vec![],
+        },
+        absorbed_terms: vec![AbsorbedTerm {
+            id: AbsorbTermId::new(1).unwrap(),
+            intercept,
+            categorical_sources: vec![SourceId::new(1).unwrap()],
+            slope_sources: (1..columns.len())
+                .map(|i| SourceId::new(i as u32 + 1).unwrap())
+                .collect(),
+            label: "g".into(),
+            saved_name: String::new(),
+        }],
+        clusters: vec![],
+        include_intercept: intercept,
+        keep_singletons: true,
+    };
+    prepare_fixed_effects(
+        &model,
+        Prepared {
+            topology: None,
+            n_original: codes.len(),
+            n_candidate: codes.len(),
+            original_row_by_active: (0..codes.len()).collect(),
+            outcome: vec![1.; codes.len()],
+            regressors: columns,
+            weights: PreparedWeights::None,
+            adjustment: PreparedAdjustment::None,
+            drop_reasons: vec![DropReason::Retained; codes.len()],
+        },
+    )
+    .unwrap()
+}

@@ -111,6 +111,15 @@ fn campaign(start: usize, count: usize) {
             design.direct_candidate(&rhs, &multi).unwrap(),
             "seed {seed}: worker determinism"
         );
+        design
+            .certify(
+                &rhs,
+                &result.coefficients,
+                &result.residuals,
+                2e-10,
+                &single,
+            )
+            .unwrap_or_else(|e| panic!("certificate seed {seed}: {e}"));
         for (column, outcome) in columns.into_iter().enumerate() {
             let expected = fit_explicit_ols(&ExplicitOlsProblem {
                 outcome,

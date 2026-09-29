@@ -1,7 +1,10 @@
 //! Shared FE design, plan and coefficient/residual contract for all backends.
 mod blocks;
+mod certificate;
+mod certificate_basis;
 mod design;
 mod direct;
+mod normalize;
 mod plan;
 mod schur_pcg;
 use crate::data::DenseMatrix;
@@ -49,6 +52,10 @@ pub struct RhsDiagnostics {
 #[derive(Debug, Clone, PartialEq)]
 pub struct Certificate {
     pub relative_score: Vec<f64>,
+    pub relative_score_rms: Vec<f64>,
+    pub raw_score_max: Vec<f64>,
+    pub weighted_rhs_norm: Vec<f64>,
+    pub weighted_residual_norm: Vec<f64>,
     pub relative_reconstruction: Vec<f64>,
     pub tolerance: f64,
 }
