@@ -74,7 +74,19 @@ impl Design<'_> {
             }
         }
         let after = self.multiply(&normalized, team)?;
-        let amplitude = self.contribution_amplitudes(coefficients)?;
+        let mut amplitude = self.contribution_amplitudes(coefficients)?;
+        let normalized_amplitude = self.contribution_amplitudes(&normalized)?;
+        // Centering can move a nonzero component mean onto a row whose old
+        // contributions were all tiny. Its subtracting terms then round at
+        // the new gauge's scale. Audit both representations symmetrically;
+        // the final original-RHS/local-span certificate remains unchanged.
+        for (scale, &other) in amplitude
+            .as_mut_slice()
+            .iter_mut()
+            .zip(normalized_amplitude.as_slice())
+        {
+            *scale = scale.max(other);
+        }
         if reconstruction_errors(&amplitude, &before, &after)?
             .iter()
             .any(|&error| !error.is_finite() || error > tolerance)

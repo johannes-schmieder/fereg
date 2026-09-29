@@ -2,6 +2,7 @@
 mod blocks;
 mod certificate;
 mod certificate_basis;
+mod cmg;
 mod cmg_core;
 mod design;
 mod direct;
@@ -14,6 +15,7 @@ mod schur_pcg;
 use crate::data::DenseMatrix;
 pub use crate::data::Weights;
 use crate::spec::Solver;
+pub use cmg::CmgSession;
 pub use cmg_core::{CmgCore, CmgCoreCandidate};
 pub use design::{CoefficientLayout, Design, EffectLayout};
 pub use direct::DirectCandidate;

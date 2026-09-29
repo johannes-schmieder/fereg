@@ -189,23 +189,31 @@ fn independent_projection_audit_detects_remaining_fe_content() {
 mod engine_inputs;
 #[test]
 fn retained_lsmr_matches_hundred_digit_weak_graph_fixtures() {
-    check_retained_fixtures(false);
+    check_retained_fixtures(false, false);
 }
 #[test]
 fn cmg_core_matches_hundred_digit_categorical_weak_graph_fixtures() {
-    check_retained_fixtures(true);
+    check_retained_fixtures(true, false);
 }
-fn check_retained_fixtures(cmg: bool) {
+#[test]
+fn redundant_cmg_nuisance_effects_preserve_hundred_digit_weak_graph_fixtures() {
+    check_retained_fixtures(true, true);
+}
+fn check_retained_fixtures(cmg: bool, nuisance: bool) {
     use fereg_engine::{
         data::DenseMatrix as EngineMatrix,
-        fe::{CmgCore, Design, LsmrSession, StopReason, Weights},
+        fe::{CmgCore, CmgSession, Design, LsmrSession, StopReason, Weights},
         threads::ThreadTeam,
     };
     let fixtures = parse_fixtures();
     assert_eq!(fixtures.len(), 6);
     for fixture in fixtures {
         let explicit = design(&fixture);
-        let sample = engine_inputs::prepare(explicit.effects(), &fixture.inputs[0]);
+        let mut effects = explicit.effects().to_vec();
+        if nuisance {
+            effects.extend_from_slice(explicit.effects());
+        }
+        let sample = engine_inputs::prepare(&effects, &fixture.inputs[0]);
         let design = Design::new(&sample, Weights::Provided(&fixture.weights)).unwrap();
         if cmg && explicit.effects().iter().any(|e| !e.slopes().is_empty()) {
             assert_eq!(
@@ -218,7 +226,17 @@ fn check_retained_fixtures(cmg: bool) {
         let mut reference = None;
         for workers in [1, 2, 4, 8] {
             let team = ThreadTeam::new(workers).unwrap();
-            let (mut coefficients, progress) = if cmg {
+            let mut setup = vec![];
+            let (mut coefficients, progress) = if nuisance {
+                let mut session = CmgSession::new(&design, [0, 1]).unwrap();
+                session
+                    .prepare(16_000, 1e-12, &team)
+                    .unwrap_or_else(|e| panic!("{} nuisance setup: {e}", fixture.id));
+                assert_eq!(session.nuisance_rank(), Some(0), "{}", fixture.id);
+                setup.extend_from_slice(session.setup_progress());
+                let candidate = session.solve(&rhs, 16_000, 1e-12, &team).unwrap();
+                (candidate.coefficients, candidate.progress)
+            } else if cmg {
                 let candidate = CmgCore::new(&design, [0, 1])
                     .unwrap()
                     .solve(&rhs, 16_000, 1e-12, &team)
@@ -267,7 +285,7 @@ fn check_retained_fixtures(cmg: bool) {
                     .check(objective, fixture.objectives[column])
                     .unwrap();
             }
-            let actual = (coefficients, progress, residuals, certificate);
+            let actual = (coefficients, progress, residuals, certificate, setup);
             if let Some(expected) = &reference {
                 assert_eq!(expected, &actual, "{} workers={workers}", fixture.id);
             } else {

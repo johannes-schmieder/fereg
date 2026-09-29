@@ -168,6 +168,32 @@ fn disconnected_normalization_preserves_fits_slopes_and_weighted_centers() {
     assert_eq!(normalized, parallel);
 }
 #[test]
+fn normalization_checks_roundoff_in_both_gauges_on_zero_fitted_rows() {
+    let sample = support::prepared(&[7, 5, 3], false, 10, 0);
+    let design = Design::new(&sample, Weights::Unit).unwrap();
+    let team = ThreadTeam::new(1).unwrap();
+    let mut coefficients = DenseMatrix::zeros(design.layout().total, 1).unwrap();
+    for coefficient in 0..design.layout().effects[2].offset {
+        coefficients[(coefficient, 0)] = 1e-20;
+    }
+    let third = design.layout().effects[2].offset;
+    coefficients[(third + 1, 0)] = 1.;
+    coefficients[(third + 2, 0)] = 2.;
+    let rhs = design.multiply(&coefficients, &team).unwrap();
+    assert_eq!(rhs[(0, 0)], 2e-20);
+    design
+        .normalize_coefficients(&mut coefficients, 1e-12, &team)
+        .unwrap();
+    let after = design.multiply(&coefficients, &team).unwrap();
+    for (old, new) in rhs.as_slice().iter().zip(after.as_slice()) {
+        assert!((old - new).abs() <= 4. * f64::EPSILON);
+    }
+    let residuals = design.reconstruct(&rhs, &coefficients, &team).unwrap();
+    design
+        .certify(&rhs, &coefficients, &residuals, 1e-12, &team)
+        .unwrap();
+}
+#[test]
 fn span_witness_is_invariant_to_channel_rotation_and_units() {
     let u = vec![1.; 4];
     let v = vec![-3., -1., 1., 3.];

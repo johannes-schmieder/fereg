@@ -1,7 +1,8 @@
 #![deny(clippy::too_many_lines)]
 use fereg_engine::{
     data::DenseMatrix,
-    fe::{CmgCore, Design, StopReason, Weights},
+    fe::{Attempt, CmgCoreCandidate, CmgSession, Design, Plan, StopReason, Weights},
+    spec::{Estimator, Options, Solver},
     threads::ThreadTeam,
     wls::{self, Policy, Role, Slot},
 };
@@ -20,6 +21,20 @@ fn close(a: f64, b: f64, context: &str) {
         "{context}: {a:.17e} != {b:.17e}"
     );
 }
+fn project(
+    design: &Design<'_>,
+    rhs: &DenseMatrix,
+    core: [usize; 2],
+    team: &ThreadTeam,
+) -> (CmgCoreCandidate, Vec<Attempt>) {
+    let mut session = CmgSession::new(design, core).unwrap();
+    session.prepare(16_000, 1e-12, team).unwrap();
+    let setup = session.setup_progress().to_vec();
+    assert!(setup.iter().all(|p| p.stop == StopReason::Converged));
+    let result = session.solve(rhs, 16_000, 1e-12, team).unwrap();
+    assert_eq!(session.setup_progress(), setup);
+    (result, setup)
+}
 fn check_design(generated: &Generated, weights: &[f64], context: &str, parallel: bool) {
     let sample = engine_inputs::prepare(&generated.effects, &generated.outcome);
     let design = Design::new(&sample, Weights::Provided(weights)).unwrap();
@@ -28,8 +43,17 @@ fn check_design(generated: &Generated, weights: &[f64], context: &str, parallel:
     columns.push(vec![0.; sample.n_active()]);
     let rhs = DenseMatrix::from_columns(&columns).unwrap();
     let team = ThreadTeam::new(1).unwrap();
-    let mut core = CmgCore::new(&design, [0, 1]).unwrap();
-    let mut candidate = core.solve(&rhs, 16_000, 1e-12, &team).unwrap();
+    let plan = Plan::new(
+        &design,
+        Estimator::Ols,
+        &Options {
+            solver: Solver::Cmg,
+            ..Options::for_estimator(Estimator::Ols)
+        },
+    )
+    .unwrap();
+    let core = plan.cmg_core().unwrap();
+    let (mut candidate, setup) = project(&design, &rhs, core, &team);
     assert!(
         candidate
             .progress
@@ -50,18 +74,13 @@ fn check_design(generated: &Generated, weights: &[f64], context: &str, parallel:
         .unwrap();
     if parallel {
         let eight = ThreadTeam::new(8).unwrap();
-        let mut other = CmgCore::new(&design, [0, 1])
-            .unwrap()
-            .solve(&rhs, 16_000, 1e-12, &eight)
-            .unwrap();
+        let (mut other, other_setup) = project(&design, &rhs, core, &eight);
+        assert_eq!(setup, other_setup);
         design
             .normalize_coefficients(&mut other.coefficients, 1e-10, &eight)
             .unwrap();
         assert_eq!(candidate, other);
-        let swapped = CmgCore::new(&design, [1, 0])
-            .unwrap()
-            .solve(&rhs, 16_000, 1e-12, &eight)
-            .unwrap();
+        let (swapped, _) = project(&design, &rhs, [core[1], core[0]], &eight);
         let swapped = design
             .reconstruct(&rhs, &swapped.coefficients, &eight)
             .unwrap();
@@ -155,13 +174,17 @@ fn compare_finite(
         }
     }
 }
-fn campaign(start: usize, count: usize) {
+fn campaign(start: usize, count: usize, nuisance: bool) {
     for seed in start..start + count {
-        let generated = generate(
+        let mut generated = generate(
             seed as u64,
             &DesignSpec {
                 rows: 120 + seed % 71,
-                levels: vec![9, 7],
+                levels: if nuisance {
+                    [vec![9, 7, 3], vec![5, 9, 7, 3], vec![9, 2, 7, 3, 4]][seed % 3].clone()
+                } else {
+                    vec![9, 7]
+                },
                 graph: [
                     Graph::DensePanel,
                     Graph::AkmStrong,
@@ -180,6 +203,9 @@ fn campaign(start: usize, count: usize) {
             },
         )
         .unwrap();
+        if nuisance && seed % 7 == 0 {
+            generated.effects.push(generated.effects[0].clone());
+        }
         for frame in 0..2 {
             let weights: Vec<_> = generated
                 .weights
@@ -198,12 +224,69 @@ fn campaign(start: usize, count: usize) {
 }
 #[test]
 fn cmg_core_projection_and_wls_match_dense_oracles() {
-    campaign(0, 200);
+    campaign(0, 200, false);
 }
 #[test]
 #[ignore = "long changing-weight CMG core campaign"]
 fn two_thousand_cmg_core_designs() {
-    campaign(200, 2000);
+    campaign(200, 2000, false);
+}
+
+#[test]
+fn cmg_nuisance_projection_and_wls_match_dense_oracles() {
+    campaign(0, 200, true);
+}
+#[test]
+#[ignore = "long changing-weight CMG nuisance campaign"]
+fn two_thousand_cmg_nuisance_designs() {
+    campaign(200, 2000, true);
+}
+
+#[test]
+fn weak_identified_nuisance_direction_is_retained_at_original_column_scale() {
+    use fereg_oracle::explicit_ols::DummyEffect;
+    let n = 24;
+    let left: Vec<_> = (0..n).map(|i| (i / 6 % 2) as u32).collect();
+    let right: Vec<_> = (0..n).map(|i| (i / 3 % 2) as u32).collect();
+    let mut weak = left.clone();
+    weak[0] = 1;
+    let effects = [left, right, weak.clone(), weak.clone()]
+        .into_iter()
+        .map(|codes| DummyEffect::new(codes, 2, true, vec![]).unwrap())
+        .collect::<Vec<_>>();
+    let outcome: Vec<_> = weak.iter().map(|&x| f64::from(x)).collect();
+    let mut weights = vec![1.; n];
+    weights[0] = 1e-16;
+    let sample = engine_inputs::prepare(&effects, &outcome);
+    let design = Design::new(&sample, Weights::Provided(&weights)).unwrap();
+    let rhs = DenseMatrix::from_columns(&[outcome.clone()]).unwrap();
+    let expected = fit_explicit_ols(&ExplicitOlsProblem {
+        outcome,
+        effects,
+        regressors: vec![],
+        weights: OracleWeights::Wls(weights.clone()),
+        clusters: vec![],
+    })
+    .unwrap();
+    for workers in [1, 2, 4, 8] {
+        let team = ThreadTeam::new(workers).unwrap();
+        let mut session = CmgSession::new(&design, [0, 1]).unwrap();
+        session.prepare(1000, 1e-12, &team).unwrap();
+        assert_eq!(session.nuisance_rank(), Some(1));
+        let candidate = session.solve(&rhs, 1000, 1e-12, &team).unwrap();
+        let residuals = design
+            .reconstruct(&rhs, &candidate.coefficients, &team)
+            .unwrap();
+        design
+            .certify(&rhs, &candidate.coefficients, &residuals, 1e-10, &team)
+            .unwrap();
+        // Normal equations alone can miss this direction: even the downweighted
+        // row must fit the exact nuisance indicator, independently of its score.
+        for (&actual, &oracle) in residuals.as_slice().iter().zip(&expected.residuals) {
+            assert!(actual.abs() < 1e-10);
+            assert!((actual - oracle).abs() < 1e-10);
+        }
+    }
 }
 
 #[path = "support/counterexample.rs"]

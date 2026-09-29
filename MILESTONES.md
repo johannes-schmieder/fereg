@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.5 CMG two-effect graph core passes independent qualification and full local lean/long checks. Nuisance-effect elimination and bounded monitored fallback remain before retained-backend integration is complete. Explicit LSMR is qualified. M4.4 factor precedence follows built-in Stata; M6.2 detectors/terminal replay/orchestration remain open.
+Current task: M3.5 CMG nuisance elimination passes independent qualification and full local lean/long checks. Engine integration, shared setup diagnostics and bounded monitored fallback remain. Explicit LSMR is qualified. M4.4 factor precedence follows built-in Stata; M6.2 detectors/terminal replay/orchestration remain open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -79,8 +79,10 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   unchanged acceptance scales. Candidate normal equations do not decide rank
   or publication. OLS projection/WLS and eligible PPML oracle qualification
   and full lean/long checks pass. The CMG two-effect core now passes independent
-  dense/high-precision checks without legacy CG polish. Nuisance elimination,
-  engine integration, monitored fallback and M3.6 performance admission remain. No public default changes.
+  dense/high-precision checks without legacy CG polish. Nuisance elimination
+  now uses shared QR with original-column rank scales and visible setup work;
+  full lean/long checks pass. Engine integration, monitored fallback and M3.6
+  performance admission remain. No public default changes.
   The historical formal-vendor protocol deliberately rejects the temporary
   mixed same-version within pins: no current-tree capture may claim that old
   protocol's certification. Its identity/fail-closed tests pass; the rebuild's
@@ -104,6 +106,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M3.5 CMG nuisance elimination (this commit) — factored small Schur/FWL elimination uses shared weighted QR and original indicator scales; all-noise nested columns cannot acquire artificial rank, while an identified direction supported by weight 1e-16 is retained with independent row accuracy. Setup work remains visible after failure and cannot silently reset. Checks pass: 2,200 multi-effect designs × two weight frames, duplicate effects, swapped cores, dense projection/finite WLS/bread/saved-output comparisons, and five categorical 100-digit fixtures with redundant nuisance effects at 1/2/4/8 workers. Engine checks cover fully nested and duplicate effects, the 64-column cap, failed setup and exact worker identity. A zero-fitted-row regression localizes a gauge-normalization rounding check that only used the old contributions; symmetric old/new contribution scales repair that check, leaving the original-RHS/local-span certificate unchanged. Full lean/long checks pass; engine dispatch, shared setup diagnostics and monitored fallback remain open.
 
 - 2026-09-29 M3.5 CMG core (this commit) — pinned CMG graph/hierarchy over shared categorical codes and current weights; no dependency executor or legacy routing/polish. The absolute graph residual limit is derived from the original weighted RHS norm and minimum level mass, preventing coefficient-sized backward tolerances from relaxing FE acceptance. Independent dense projection/finite-WLS comparisons pass on 2,200 designs × two weight frames; the unchanged 800-row failure generator is shared with the retained legacy regression, and all five categorical 100-digit fixtures pass (slopes reject explicitly). A 1,504-vertex test exercises multilevel CMG and exact 1/2/4/8-worker identity, reusable RHS banks, zero RHSs and one-step exhaustion. Full lean/long checks pass. The core returns unaccepted coefficient candidates; nuisance elimination, public new-engine CMG integration and bounded fallback remain open.
 

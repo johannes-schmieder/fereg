@@ -23,6 +23,15 @@ impl WeightedQr {
         Self::from_scaled(ScaledDesign::new(matrix, weights)?, threshold)
     }
     pub(crate) fn from_scaled(scaled: ScaledDesign, threshold: f64) -> Result<Self> {
+        Self::factor_with_reference(scaled, threshold, 0.)
+    }
+    /// Projected columns keep their original unit reference even if every
+    /// surviving column is tiny. Renormalizing the rank test to projection
+    /// noise would manufacture identified directions in a nested effect.
+    pub(crate) fn from_reference_scaled(scaled: ScaledDesign, threshold: f64) -> Result<Self> {
+        Self::factor_with_reference(scaled, threshold, 1.)
+    }
+    fn factor_with_reference(scaled: ScaledDesign, threshold: f64, reference: f64) -> Result<Self> {
         if !threshold.is_finite() || threshold <= 0. {
             return Err(invalid("invalid QR rank threshold"));
         }
@@ -34,13 +43,13 @@ impl WeightedQr {
             scaling: scaled.scaling,
             permutation,
         };
-        factor.factor_scaled(threshold)?;
+        factor.factor_scaled(threshold, reference)?;
         Ok(factor)
     }
-    fn factor_scaled(&mut self, threshold: f64) -> Result<()> {
+    fn factor_scaled(&mut self, threshold: f64, reference: f64) -> Result<()> {
         let initial = (0..self.qr.ncols())
             .map(|c| column_norm(&self.qr, c, 0))
-            .fold(0., f64::max);
+            .fold(reference, f64::max);
         for step in 0..self.qr.nrows().min(self.qr.ncols()) {
             let mut pivot = step;
             let mut pivot_norm = column_norm(&self.qr, self.permutation[step], step);
@@ -261,7 +270,34 @@ fn numerical(message: &str) -> FeregError {
 
 #[cfg(test)]
 mod tests {
-    use super::scale_ratio;
+    use super::{scale_ratio, ScaledDesign, WeightedQr};
+    use crate::data::{DenseMatrix, Weights};
+    #[test]
+    fn projected_rank_keeps_original_scale_when_every_column_is_small() {
+        let scaled = |size: f64| {
+            let values = DenseMatrix::from_columns(&[vec![size, -size, size, -size]]).unwrap();
+            let mut scaled = ScaledDesign::new(values, Weights::Unit).unwrap();
+            scaled.reference_scales(&[2.]).unwrap();
+            scaled
+        };
+        // Relative-only pivoting promotes an all-noise projected bank to rank one.
+        assert_eq!(
+            WeightedQr::from_scaled(scaled(1e-16), 1e-12)
+                .unwrap()
+                .rank(),
+            1
+        );
+        assert_eq!(
+            WeightedQr::from_reference_scaled(scaled(1e-16), 1e-12)
+                .unwrap()
+                .rank(),
+            0
+        );
+        let factor = WeightedQr::from_reference_scaled(scaled(1e-8), 1e-12).unwrap();
+        assert_eq!(factor.rank(), 1);
+        let rhs = DenseMatrix::from_columns(&[vec![1., -1., 1., -1.]]).unwrap();
+        assert!((factor.solve(rhs).unwrap()[(0, 0)] - 1e8).abs() < 1e-7);
+    }
     #[test]
     fn exponent_rescaling_does_not_lose_representable_values() {
         assert_eq!(scale_ratio(1e-200, 1e200, 1e-200, 1.), 1e200);

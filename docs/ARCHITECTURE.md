@@ -186,6 +186,16 @@ original weighted RHS norm and minimum core level mass, with zero relative
 backward-error tolerance. Growing coefficient norms on weak graphs cannot
 loosen that target. Common FE acceptance remains independently authoritative.
 No slopes or unsupported multiway graph can be smuggled through a graph adapter.
+The small nuisance Schur block is represented by the core-projected indicator
+columns, factored with the shared weighted pivoted QR instead of squaring their
+condition number. Rank is measured against the original weighted indicator
+norms, including a unit reference when every projected column is tiny. The
+guard is `8*epsilon*max(rows,columns,1)`; setup core solves target the smaller
+of the requested tolerance and one sixteenth of that guard. This does not
+change final acceptance scales. Recover nuisance coefficients and subtract
+their stored core projections from the core solution. Each setup indicator
+has a visible attempt and the same per-RHS budget; failed setup retains these
+counts and cannot be retried implicitly. Numerical state belongs to one frame.
 Preserve SPEC's OLS/PPML support distinction, including nuisance limits and trivial
 OLS direct cases. Changing PPML weights invalidates numerical Laplacian,
 hierarchy/preconditioner, nuisance factor and certificate state; immutable
