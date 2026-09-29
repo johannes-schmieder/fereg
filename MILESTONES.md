@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M4.4 factor precedence follows built-in Stata; M3.5 upstream within determinism repair authorized and in progress. M6.2 detectors/terminal replay/orchestration remain open; exact-FE ledger and cone/span certificates verified. M6.1 IRLS direct/Schur verified; retained backends await M3.5. M1.6 baselines captured with comparator failures preserved.
+Current task: M3.5 within determinism repair pushed as upstream draft PR #441; port to current upstream and weighted-build/performance qualification remain. M4.4 factor precedence resolved and pushed. M6.2 detectors/terminal replay/orchestration remain open; exact-FE ledger and cone/span certificates verified. M6.1 IRLS direct/Schur verified; retained backends await M3.5.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -79,9 +79,17 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   documents width-dependent reductions. Nested/single-thread secondary pools
   and vendored patches conflict with accepted architecture/dependency rules.
   Johannes authorized fixing within upstream on 2026-09-29. The separate
-  upstream branch `codex/thread-determinism` starts at 0319e7a; deterministic
-  operator/preconditioner reductions and a qualified dependency pin are in
-  progress. The reproducibility contract remains unchanged.
+  upstream branch `codex/thread-determinism` starts at the fork's 0319e7a;
+  repair 12b6df0 and microbenchmark summary dcdc0b3 are pushed in
+  [upstream draft PR #441](https://github.com/py-econometrics/within/pull/441).
+  Off/diagonal/explicit ParallelReduction now pass worker-identity checks on
+  that lineage; AtomicScatter/Auto remain outside the guarantee. Current
+  parent main 1b5c85d has substantial newer design/LSMR API changes: porting
+  and downstream qualification are still required. A million-row weighted
+  low-cardinality intercept design fails the preconditioner build on both
+  baseline and candidate; its unchanged Laplacian validation guard and
+  accumulation error need localization. Small-case timing overhead also
+  remains to assess. No new pin or relaxed reproducibility contract is accepted.
 
 - SCC inspection on 2026-09-29 reports 6,963.31 GB used against the 6,950 GB
   `/projectnb/welfgr` quota; Johannes was asked about freeing space. The live
@@ -98,6 +106,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M3.5 upstream repair (this commit) — [draft PR #441](https://github.com/py-econometrics/within/pull/441), fork source 12b6df0/summary dcdc0b3: fixed LSMR arithmetic trees, shared stable level membership, and compact Schwarz contributions summed in subdomain order. Baseline failures reproduced independently; exact 1/2/4/8-worker weighted four-way batches, large sloped adjoints, scalar chunk boundaries/odd worker counts and concurrent cloned preconditioners pass. Full upstream-lineage Rust tests, all-feature strict Clippy/fmt, Python 106 passed/2 skipped, and the fereg local lean suite pass. [Microbenchmark summary](https://github.com/johannes-schmieder/within/blob/dcdc0b3/bench/history/2026-09-29-thread-determinism.csv) preserves both failed weighted-build cells and small-case overhead, with no performance gate claimed. Parent main is now 1b5c85d, substantially ahead of the dependency-era fork: current-upstream port, weighted-build localization and fereg qualification remain; pinned 1ac3522 is unchanged.
 
 - 2026-09-29 M4.4 factor precedence (this commit) — Johannes chose built-in Stata behavior; ADR 0009 resolves the SPEC/legacy conflict. Stata 19 regress excludes the invalid-factor row in all six availability/restriction/aw cases, while pinned reghdfe 6.14.1 returns r(3598); both reject eligible negatives/fractions with r(452). All 28 executable reference checks pass, with fresh-process comparator confirmations. Shared source preparation now validates ordinary factors after availability and before singleton/separation/rank deletion, returns r(452) with original observation identity, and preserves unrestricted FE/cluster categories. Eight preparation regressions, full lean and long oracle suites pass. Stata seam integration and full M4.4 controller remain open; public defaults stay legacy. Upstream within repair is authorized and under way.
 
