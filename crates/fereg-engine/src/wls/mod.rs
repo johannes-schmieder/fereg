@@ -4,6 +4,7 @@ mod basis;
 mod certificate;
 mod cholesky;
 mod moments;
+mod recovery;
 mod work;
 use crate::{
     data::{DenseMatrix, Weights},

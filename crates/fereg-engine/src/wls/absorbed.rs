@@ -1,5 +1,5 @@
 //! Shared FWL assembly for OLS responses and PPML working/final-Hessian frames.
-use super::{work::Phase, Fit, FrozenBasis, Policy, Problem, Role, Slot, Work};
+use super::{recovery, work::Phase, Fit, FrozenBasis, Policy, Problem, Role, Slot, Work};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
@@ -17,9 +17,11 @@ pub struct AbsorbedFit {
     pub model_certificate: Certificate,
     pub projection_diagnostics: Vec<RhsDiagnostics>,
     pub setup_diagnostics: Vec<SetupDiagnostics>,
-    /// Extra derived-RHS solve when cancellation prevents the combined alpha
-    /// from passing the unchanged final-model FE certificate.
+    /// Derived-RHS solves when combined coefficients fail the final-model FE
+    /// certificate or the original-response finite-score guard.
     pub recovery_diagnostics: Vec<RhsDiagnostics>,
+    /// Bounded FE corrections needed by the original finite-score scale.
+    pub model_refinements: usize,
     pub relative_residual_reconstruction: f64,
     pub relative_original_finite_score: f64,
 }
@@ -137,35 +139,30 @@ pub fn solve_absorbed_recorded(
     for row in 0..n {
         target[(row, 0)] = outcome[row] - raw.row_combination(row, &finite.coefficients, 0.);
     }
-    let mut residual = design.reconstruct(&target, &absorbed_coefficients, team)?;
-    let mut recovery_diagnostics = Vec::new();
-    let model_certificate =
-        match design.certify(&target, &absorbed_coefficients, &residual, tolerance, team) {
-            Ok(certificate) => certificate,
-            Err(error) if error.code == ErrorCode::NonConvergence => {
-                // Separate projections can cancel to a much smaller final RHS.
-                // Its own SPEC scale, not the pre-fit scales, must certify.
-                let recovery = recorded_projection(engine, &target, Phase::Recovery, work, team)?;
-                projection
-                    .setup_diagnostics
-                    .try_reserve(recovery.setup_diagnostics.len())
-                    .map_err(|_| {
-                        FeregError::new(
-                            ErrorCode::Allocation,
-                            "unable to reserve recovery setup diagnostics",
-                        )
-                    })?;
-                projection
-                    .setup_diagnostics
-                    .extend(recovery.setup_diagnostics);
-                absorbed_coefficients = recovery.coefficients;
-                residual = recovery.residuals;
-                recovery_diagnostics = recovery.diagnostics;
-                recovery.certificate
-            }
-            Err(error) => return Err(error),
-        };
-    let residuals = residual.into_row_major();
+    let recovered = recovery::finish(
+        engine,
+        recovery::Model {
+            raw,
+            outcome,
+            finite: &finite,
+            policy,
+        },
+        target,
+        absorbed_coefficients,
+        work,
+        team,
+    )?;
+    projection
+        .setup_diagnostics
+        .try_reserve(recovered.setup.len())
+        .map_err(|_| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve recovery setup diagnostics",
+            )
+        })?;
+    projection.setup_diagnostics.extend(recovered.setup);
+    let residuals = recovered.residual.into_row_major();
     let mut reconstruction = 0_f64;
     for row in 0..n {
         let scale = outcome[row]
@@ -184,28 +181,23 @@ pub fn solve_absorbed_recorded(
             "absorbed WLS original and within residuals disagree",
         ));
     }
-    let original_score = original_score(engine, raw, outcome, &finite.kept, &residuals)?;
-    if original_score > tolerance.max(policy.score_tolerance) {
-        return Err(numerical(
-            "absorbed WLS original finite score did not certify",
-        ));
-    }
     Ok(AbsorbedFit {
         finite,
         within,
         within_outcome,
-        absorbed_coefficients,
+        absorbed_coefficients: recovered.coefficients,
         residuals,
         projection_certificate: projection.certificate,
-        model_certificate,
+        model_certificate: recovered.certificate,
         projection_diagnostics: projection.diagnostics,
         setup_diagnostics: projection.setup_diagnostics,
-        recovery_diagnostics,
+        recovery_diagnostics: recovered.diagnostics,
+        model_refinements: recovered.refinements,
         relative_residual_reconstruction: reconstruction,
-        relative_original_finite_score: original_score,
+        relative_original_finite_score: recovered.original_score,
     })
 }
-fn recorded_projection(
+pub(super) fn recorded_projection(
     engine: &mut Engine<'_, '_>,
     rhs: &DenseMatrix,
     phase: Phase,
@@ -228,7 +220,7 @@ fn recorded_projection(
     )?;
     result
 }
-fn original_score(
+pub(super) fn original_score(
     engine: &Engine<'_, '_>,
     raw: &DenseMatrix,
     outcome: &[f64],
@@ -280,7 +272,7 @@ fn original_score(
 fn invalid(message: &str) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)
 }
-fn numerical(message: &str) -> FeregError {
+pub(super) fn numerical(message: &str) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
 }
 

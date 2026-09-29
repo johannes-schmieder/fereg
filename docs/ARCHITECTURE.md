@@ -250,6 +250,17 @@ One result type carries identified coefficients, bread and slot mapping.
 Reuse its information-operator solves for PPML bias; do not build another
 estimator or substitute ordinary e(V) for full-system information.
 
+Shared FWL assembly reconstructs the original residual and checks both its FE
+certificate and finite score. Cancellation may require a derived FE-target
+solve. When the original response is much smaller than y-Xb, that target's
+certificate alone does not control the original finite score. At most three
+additional FE projections of the freshly reconstructed residual may correct
+the combined coefficients, reusing only the exact immutable weight frame.
+Each correction is normalized and independently recertified; nonimprovement,
+exhaustion or any remaining score failure rejects the result. These solves
+retain their full recovery reports and counts. Rank, finite coefficients and
+all mathematical acceptance limits remain unchanged.
+
 `vce` uses the same fitted view for IID/HC1/cluster scores, deterministic subset
 aggregation and PSD policy. OLS and PPML supply their distinct weight, DoF
 and finite-sample policies from SPEC; shared mechanics do not erase those
