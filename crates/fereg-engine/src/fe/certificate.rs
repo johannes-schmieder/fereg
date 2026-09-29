@@ -116,6 +116,19 @@ impl Design<'_> {
             return Err(invalid("FE diagnostics and RHS counts differ"));
         }
         self.normalize_coefficients(&mut coefficients, tolerance, team)?;
+        self.certified_projection(rhs, coefficients, diagnostics, tolerance, team)
+    }
+    pub(super) fn certified_projection(
+        &self,
+        rhs: &DenseMatrix,
+        coefficients: DenseMatrix,
+        diagnostics: Vec<RhsDiagnostics>,
+        tolerance: f64,
+        team: &ThreadTeam,
+    ) -> Result<Projection> {
+        if diagnostics.len() != rhs.ncols() {
+            return Err(invalid("FE diagnostics and RHS counts differ"));
+        }
         let residuals = self.reconstruct(rhs, &coefficients, team)?;
         let certificate = self.certify(rhs, &coefficients, &residuals, tolerance, team)?;
         Ok(Projection {
@@ -123,6 +136,7 @@ impl Design<'_> {
             residuals,
             certificate,
             diagnostics,
+            setup_diagnostics: reserved(0)?,
         })
     }
 }

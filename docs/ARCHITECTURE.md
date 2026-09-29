@@ -157,6 +157,14 @@ not make one RHS's stop decide another's. Warm starts are coefficients in the
 same declared layout and generation. A monitor uses observed progress and the
 remaining SPEC budget. Stagnating columns can transfer once to the same LSMR
 adapter used for explicit requests; transfer cannot reset iteration accounting.
+The initial monitor checks the best preconditioned residual norm every eight
+iterations, requiring two complete windows. Less than one percent improvement
+over the latest window signals stagnation. Otherwise, the fastest observed
+log-linear rate predicts the work needed to meet the recurrence target;
+transfer is permitted when that exceeds the remaining budget. Converged columns
+are excluded. These are progress rules, not model-size routes. Their performance
+admission belongs to G-M3; qualification can disable the monitor or force a
+checkpoint through explicit internal controls.
 
 ### Retained LSMR and CMG
 
@@ -203,6 +211,21 @@ membership can be retained. Any permitted reuse must bind exact current weights.
 
 Explicit requests start with that backend. SPEC bounds one numerical transfer
 to LSMR and makes topology/input/allocation/Break/internal errors fatal.
+The engine checks each completed candidate against original inputs after
+normalization. A failed certificate or numerical stop can transfer that RHS
+once to the same refined LSMR adapter, solving its original RHS with the exact
+remaining budget. Certified columns stay on their original backend. OLS CMG's
+zero/one-effect cases report actual no-work/direct execution and retain the
+CMG request. Numerical CMG setup failure is visible separately from each model
+RHS; setup RHS budgets are not repeatedly charged to all model columns.
+
+Projection diagnostics retain requested/selected/used/checkpoint backends,
+each attempt, total per-RHS work and the fallback reason. Auxiliary setup work
+is reported once per immutable frame and forwarded through shared WLS and
+separation span checks. Reports remain inspectable on engine errors, including
+the full primary bank if resolving an earlier RHS aborts publication. Reusing
+a factor cannot repeat setup work or implicitly retry failed setup. Final
+projection construction still requires the common original-input certificate.
 Diagnostics identify every attempt and the backend that actually produced each
 accepted frame. CMG automatic selection needs separate comparative admission.
 Both dependencies must pass cross-worker determinism and independent weak-graph

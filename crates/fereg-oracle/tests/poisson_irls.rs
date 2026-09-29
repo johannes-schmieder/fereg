@@ -124,6 +124,7 @@ fn campaign(start: usize, count: usize) {
                 .all(|effect| effect.slopes().is_empty())
         {
             solvers.push(Solver::Lsmr);
+            solvers.push(Solver::Cmg);
         }
         for solver in solvers {
             let options = Options {

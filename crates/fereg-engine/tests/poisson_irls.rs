@@ -207,7 +207,7 @@ fn slope_only_effects_retain_the_finite_structural_constant() {
 }
 #[test]
 fn unsupported_requests_and_invalid_final_samples_never_return_a_partial_fit() {
-    let mut sample = support::prepared(&[3, 2], false, 6, 0);
+    let mut sample = support::prepared(&[3, 2, 3, 2], false, 6, 0);
     let n = sample.n_active();
     let raw = DenseMatrix::zeros(n, 0).unwrap();
     assert_eq!(

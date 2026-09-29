@@ -199,6 +199,66 @@ fn cmg_core_matches_hundred_digit_categorical_weak_graph_fixtures() {
 fn redundant_cmg_nuisance_effects_preserve_hundred_digit_weak_graph_fixtures() {
     check_retained_fixtures(true, true);
 }
+#[test]
+fn dispatched_cmg_preserves_hundred_digit_results_with_and_without_nuisance() {
+    use fereg_engine::{
+        data::DenseMatrix as Matrix,
+        fe::{Backend, Design, Engine, Weights},
+        spec::{Estimator, Options, Solver},
+        threads::ThreadTeam,
+    };
+    for fixture in parse_fixtures() {
+        let explicit = design(&fixture);
+        if explicit.effects().iter().any(|e| !e.slopes().is_empty()) {
+            continue;
+        }
+        for nuisance in [false, true] {
+            let mut effects = explicit.effects().to_vec();
+            if nuisance {
+                effects.extend_from_slice(explicit.effects());
+            }
+            let sample = engine_inputs::prepare(&effects, &fixture.inputs[0]);
+            let design = Design::new(&sample, Weights::Provided(&fixture.weights)).unwrap();
+            let rhs = Matrix::from_columns(&fixture.inputs).unwrap();
+            let options = Options {
+                solver: Solver::Cmg,
+                tolerance: 1e-10,
+                ..Options::for_estimator(Estimator::Ols)
+            };
+            let mut reference = None;
+            for workers in [1, 2, 4, 8] {
+                let team = ThreadTeam::new(workers).unwrap();
+                let actual = Engine::new(&design, Estimator::Ols, &options, &team)
+                    .unwrap()
+                    .project(&rhs, &team)
+                    .unwrap_or_else(|e| panic!("{}: {e}", fixture.id));
+                assert!(actual
+                    .diagnostics
+                    .iter()
+                    .all(|d| d.attempts[0].backend == Backend::Cmg));
+                for column in 0..rhs.ncols() {
+                    let residual = actual.residuals.column(column).unwrap();
+                    PREDICTION
+                        .check_slice(&residual, &fixture.residuals[column])
+                        .unwrap_or_else(|e| panic!("{}: {e}", fixture.id));
+                    let objective: f64 = residual
+                        .iter()
+                        .zip(&fixture.weights)
+                        .map(|(r, w)| w * r * r)
+                        .sum();
+                    PREDICTION
+                        .check(objective, fixture.objectives[column])
+                        .unwrap();
+                }
+                if let Some(expected) = &reference {
+                    assert_eq!(expected, &actual);
+                } else {
+                    reference = Some(actual);
+                }
+            }
+        }
+    }
+}
 fn check_retained_fixtures(cmg: bool, nuisance: bool) {
     use fereg_engine::{
         data::DenseMatrix as EngineMatrix,

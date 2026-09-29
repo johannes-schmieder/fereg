@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.5 CMG nuisance elimination passes independent qualification and full local lean/long checks. Engine integration, shared setup diagnostics and bounded monitored fallback remain. Explicit LSMR is qualified. M4.4 factor precedence follows built-in Stata; M6.2 detectors/terminal replay/orchestration remain open.
+Current task: M3.6 property coverage and FE-only benchmark admission. M3.5 shared CMG dispatch, setup diagnostics and monitored per-RHS LSMR transfer pass independent qualification and full lean/long checks. M4.4 factor precedence follows built-in Stata; M6.1 accumulated IRLS work reporting and M6.2 detectors/terminal replay/orchestration remain open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -29,7 +29,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M3.2 Direct projection for Q = 1
 - [x] M3.3 Schur-PCG for Q ≥ 2
 - [x] M3.4 Certificate and coefficients
-- [ ] M3.5 Retained backends and convergence monitor
+- [x] M3.5 Retained backends and convergence monitor
 - [ ] M3.6 Property tests and micro-benchmarks
 - [x] M4.1 `wls`
 - [x] M4.2 `vce` and fit statistics
@@ -40,7 +40,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M5.2 Stata fixtures with `engine(next)`
 - [ ] M5.3 Benchmarks
 - [ ] M5.4 G-OLS, then flip the `fereg` default to `engine(next)`
-- [~] M6.1 `ppml::family` and IRLS; direct/Schur verified, retained backends await M3.5
+- [~] M6.1 `ppml::family` and IRLS; all backends match Newton oracles, accumulated frame-work reporting remains
 - [ ] M6.2 Separation (ledger and numerical certificates verified; detectors/orchestration pending)
 - [ ] M6.3 PPML inference and outputs
 - [ ] M6.4 Bias correction
@@ -81,8 +81,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   and full lean/long checks pass. The CMG two-effect core now passes independent
   dense/high-precision checks without legacy CG polish. Nuisance elimination
   now uses shared QR with original-column rank scales and visible setup work;
-  full lean/long checks pass. Engine integration, monitored fallback and M3.6
-  performance admission remain. No public default changes.
+  engine dispatch and monitored fallback pass independent qualification, including
+  setup/attempt accounting and explicit CMG OLS/PPML comparisons. Full lean/long
+  checks pass; M3.6 performance admission remains. No public default changes.
   The historical formal-vendor protocol deliberately rejects the temporary
   mixed same-version within pins: no current-tree capture may claim that old
   protocol's certification. Its identity/fail-closed tests pass; the rebuild's
@@ -106,6 +107,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M3.5 engine dispatch (this commit) — explicit CMG uses the shared engine for supported OLS/PPML structures, including OLS no-work/direct cases; setup diagnostics survive numerical failure and are reported once per frame through WLS/separation. One per-RHS acceptance/transfer path retains certified columns and permits one refined LSMR attempt within the remaining budget. The Schur monitor uses two eight-iteration progress windows, stagnation and conservative projected exhaustion; numerical recurrence failures retain consumed work. Checks pass: 4,400 CMG WLS frames, 733 eligible CMG PPML/Newton fits, 2,200 forced-transfer dense-QR designs, five dispatched categorical 100-digit fixtures with/without nuisance effects, and 1/2/4/8-worker identity. A real weak graph transfers after 16 Schur iterations and finishes with one LSMR iteration under a 32-iteration budget; certificate-floor failure, exhausted transfer, retained zero RHSs and failed CMG setup remain executable regressions. Full lean/long checks pass. G-M3 performance admission and public cutover remain open; PPML currently retains final-frame diagnostics and needs accumulation across discarded IRLS/checkpoint frames.
 
 - 2026-09-29 M3.5 CMG nuisance elimination (this commit) — factored small Schur/FWL elimination uses shared weighted QR and original indicator scales; all-noise nested columns cannot acquire artificial rank, while an identified direction supported by weight 1e-16 is retained with independent row accuracy. Setup work remains visible after failure and cannot silently reset. Checks pass: 2,200 multi-effect designs × two weight frames, duplicate effects, swapped cores, dense projection/finite WLS/bread/saved-output comparisons, and five categorical 100-digit fixtures with redundant nuisance effects at 1/2/4/8 workers. Engine checks cover fully nested and duplicate effects, the 64-column cap, failed setup and exact worker identity. A zero-fitted-row regression localizes a gauge-normalization rounding check that only used the old contributions; symmetric old/new contribution scales repair that check, leaving the original-RHS/local-span certificate unchanged. Full lean/long checks pass; engine dispatch, shared setup diagnostics and monitored fallback remain open.
 

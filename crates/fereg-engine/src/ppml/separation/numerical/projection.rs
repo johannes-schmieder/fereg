@@ -73,5 +73,6 @@ pub(super) fn certify(
         span_residual_relative,
         projection_diagnostics: fit.projection_diagnostics,
         recovery_diagnostics: fit.recovery_diagnostics,
+        setup_diagnostics: fit.setup_diagnostics,
     })
 }

@@ -101,8 +101,8 @@ fn perfect_fit_coefficient_cancellation_is_not_accepted_at_pre_fit_scales() {
     assert_eq!(recovered.diagnostics.len(), 1);
 }
 #[test]
-fn unqualified_cmg_is_never_silently_substituted() {
-    let sample = support::prepared(&[3, 2], false, 5, 0);
+fn unsupported_cmg_slopes_are_never_silently_substituted() {
+    let sample = support::prepared(&[3, 2], true, 5, 0);
     let design = Design::new(&sample, Weights::Unit).unwrap();
     let team = ThreadTeam::new(1).unwrap();
     let options = Options {

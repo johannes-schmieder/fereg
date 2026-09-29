@@ -19,7 +19,7 @@ fn close(a: f64, b: f64, seed: usize) {
     );
 }
 fn campaign(start: usize, count: usize) {
-    for solver in [Solver::Auto, Solver::Lsmr] {
+    for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
         campaign_solver(start, count, solver);
     }
 }
@@ -38,7 +38,7 @@ fn campaign_solver(start: usize, count: usize, solver: Solver) {
                 } else {
                     Graph::DensePanel
                 },
-                slopes: seed % 3 == 0,
+                slopes: seed % 3 == 0 && solver != Solver::Cmg,
                 weights: [
                     WeightKind::Unit,
                     WeightKind::Analytic,
@@ -145,6 +145,7 @@ fn campaign_solver(start: usize, count: usize, solver: Solver) {
                     parallel.projection_diagnostics
                 );
                 assert_eq!(actual.recovery_diagnostics, parallel.recovery_diagnostics);
+                assert_eq!(actual.setup_diagnostics, parallel.setup_diagnostics);
             }
             if basis.is_none() {
                 basis = Some(wls::FrozenBasis::from_fit(&actual.finite).unwrap());

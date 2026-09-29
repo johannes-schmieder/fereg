@@ -5,10 +5,12 @@ mod certificate_basis;
 mod cmg;
 mod cmg_core;
 mod design;
+mod diagnostics;
 mod direct;
 mod engine;
 mod lsmr;
 mod lsmr_refine;
+mod monitor;
 mod normalize;
 mod plan;
 mod schur_pcg;
@@ -18,9 +20,11 @@ use crate::spec::Solver;
 pub use cmg::CmgSession;
 pub use cmg_core::{CmgCore, CmgCoreCandidate};
 pub use design::{CoefficientLayout, Design, EffectLayout};
+pub use diagnostics::SetupDiagnostics;
 pub use direct::DirectCandidate;
 pub use engine::Engine;
 pub use lsmr::{LsmrCandidate, LsmrSession};
+pub use monitor::MonitorControl;
 pub use plan::{Backend, Plan, PlanOverride};
 pub use schur_pcg::{SchurCandidate, SchurSession};
 
@@ -30,6 +34,7 @@ pub enum StopReason {
     Direct,
     Converged,
     Stagnation,
+    ProjectedExhaustion,
     BudgetExhausted,
     NumericalBreakdown,
     CertificateFailure,
@@ -78,4 +83,6 @@ pub struct Projection {
     pub residuals: DenseMatrix,
     pub certificate: Certificate,
     pub diagnostics: Vec<RhsDiagnostics>,
+    /// Work performed for numerical setup during this call, excluding reused factors.
+    pub setup_diagnostics: Vec<SetupDiagnostics>,
 }

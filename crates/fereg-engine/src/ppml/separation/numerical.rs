@@ -71,6 +71,7 @@ pub struct SpanValidation {
     pub span_residual_relative: f64,
     pub projection_diagnostics: Vec<RhsDiagnostics>,
     pub recovery_diagnostics: Vec<RhsDiagnostics>,
+    pub setup_diagnostics: Vec<crate::fe::SetupDiagnostics>,
 }
 #[derive(Debug, PartialEq)]
 pub struct NumericalCommit {

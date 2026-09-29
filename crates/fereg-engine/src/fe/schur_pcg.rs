@@ -1,5 +1,8 @@
 //! Matrix-free Schur complement with independent, batched PCG recurrences.
-use super::{blocks::Blocks, design::validate_matrix, Attempt, Backend, Design, Plan, StopReason};
+use super::{
+    blocks::Blocks, design::validate_matrix, monitor::Monitor, Attempt, Backend, Design,
+    MonitorControl, Plan, StopReason,
+};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
@@ -71,7 +74,20 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         Ok(())
     }
     pub fn solve(&mut self, rhs: &DenseMatrix, team: &ThreadTeam) -> Result<SchurCandidate> {
+        self.solve_monitored(rhs, MonitorControl::Disabled, team)
+    }
+    pub fn solve_monitored(
+        &mut self,
+        rhs: &DenseMatrix,
+        control: MonitorControl,
+        team: &ThreadTeam,
+    ) -> Result<SchurCandidate> {
         validate_matrix(rhs, self.design.nobs())?;
+        if control == MonitorControl::StopAfter(0) {
+            return Err(invalid(
+                "a forced monitor checkpoint requires positive work",
+            ));
+        }
         let initial = self.project_eliminated(rhs, team)?;
         let mut b = self.design.transpose_weighted(&initial, team)?;
         zero_effect(self.design, self.eliminated, &mut b);
@@ -95,31 +111,97 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             targets.push(self.tolerance * norm);
         }
         let mut state = Recurrences::new(x, r, z, targets)?;
+        let mut monitors = reserved(rhs.ncols())?;
+        monitors.extend(state.rho.iter().map(|rho| Monitor::new(rho.sqrt())));
         for _ in 0..self.budget {
             if !state.active.iter().any(|&active| active) {
                 break;
             }
-            let applied = self.apply(&state.p, team)?;
-            state.advance(&applied)?;
-            let z = self.precondition(&state.r, team)?;
-            state.redirect(z)?;
+            let applied = match self.apply(&state.p, team) {
+                Ok(applied) => applied,
+                Err(error) if error.code == ErrorCode::NonConvergence => {
+                    state.fail_active(true);
+                    break;
+                }
+                Err(error) => return Err(error),
+            };
+            state.advance(&applied);
+            let z = match self.precondition(&state.r, team) {
+                Ok(z) => z,
+                Err(error) if error.code == ErrorCode::NonConvergence => {
+                    state.fail_active(false);
+                    break;
+                }
+                Err(error) => return Err(error),
+            };
+            state.redirect(z);
+            for (column, monitor) in monitors.iter_mut().enumerate() {
+                if state.active[column] {
+                    if let Some(stop) = monitor.observe(
+                        state.rho[column].sqrt(),
+                        state.targets[column],
+                        state.progress[column].iterations,
+                        self.budget,
+                        control,
+                    ) {
+                        state.finish(column, stop);
+                    }
+                }
+            }
+            state.mask_finished();
         }
         // Reconstruct eliminated coordinates from the original RHS and current
         // reduced coefficients; a recursive PCG residual never becomes output.
-        let remaining = self.design.reconstruct(rhs, &state.x, team)?;
-        let eliminated =
-            self.blocks
-                .observation_solve(self.design, self.eliminated, &remaining, team)?;
-        for (value, &addition) in state.x.as_mut_slice().iter_mut().zip(eliminated.as_slice()) {
-            *value += addition;
-        }
-        let residuals = self.design.reconstruct(rhs, &state.x, team)?;
-        self.warm = Some(copy_matrix(&state.x)?);
+        let residuals = match self.recover(rhs, &mut state.x, team) {
+            Ok(residuals) => {
+                self.warm = Some(copy_matrix(&state.x)?);
+                residuals
+            }
+            Err(error) if error.code == ErrorCode::NonConvergence => {
+                // Failed recovery is not a fresh zero-work failure. Keep every
+                // completed recurrence's cost while discarding its unsafe candidate.
+                for progress in &mut state.progress {
+                    progress.stop = StopReason::NumericalBreakdown;
+                }
+                state.x.as_mut_slice().fill(0.);
+                self.warm = None;
+                copy_matrix(rhs)?
+            }
+            Err(error) => return Err(error),
+        };
         Ok(SchurCandidate {
             coefficients: state.x,
             residuals,
             progress: state.progress,
         })
+    }
+    fn recover(
+        &self,
+        rhs: &DenseMatrix,
+        coefficients: &mut DenseMatrix,
+        team: &ThreadTeam,
+    ) -> Result<DenseMatrix> {
+        let remaining = self.design.reconstruct(rhs, coefficients, team)?;
+        let eliminated =
+            self.blocks
+                .observation_solve(self.design, self.eliminated, &remaining, team)?;
+        for (value, &addition) in coefficients
+            .as_mut_slice()
+            .iter_mut()
+            .zip(eliminated.as_slice())
+        {
+            *value += addition;
+        }
+        if coefficients
+            .as_slice()
+            .iter()
+            .any(|value| !value.is_finite())
+        {
+            return Err(numerical(
+                "Schur recovered coefficients are not representable",
+            ));
+        }
+        self.design.reconstruct(rhs, coefficients, team)
     }
     fn project_eliminated(&self, rhs: &DenseMatrix, team: &ThreadTeam) -> Result<DenseMatrix> {
         let coefficients =
@@ -186,7 +268,7 @@ impl Recurrences {
         result.mask_finished();
         Ok(result)
     }
-    fn advance(&mut self, applied: &DenseMatrix) -> Result<()> {
+    fn advance(&mut self, applied: &DenseMatrix) {
         for column in 0..self.x.ncols() {
             if !self.active[column] {
                 continue;
@@ -199,22 +281,18 @@ impl Recurrences {
                 continue;
             }
             for row in 0..self.x.nrows() {
-                self.x[(row, column)] += alpha * self.p[(row, column)];
-                self.r[(row, column)] -= alpha * applied[(row, column)];
+                let x = self.x[(row, column)] + alpha * self.p[(row, column)];
+                let r = self.r[(row, column)] - alpha * applied[(row, column)];
+                if !x.is_finite() || !r.is_finite() {
+                    self.finish(column, StopReason::NumericalBreakdown);
+                    break;
+                }
+                self.x[(row, column)] = x;
+                self.r[(row, column)] = r;
             }
         }
-        if self
-            .x
-            .as_slice()
-            .iter()
-            .chain(self.r.as_slice())
-            .any(|v| !v.is_finite())
-        {
-            return Err(numerical("Schur recurrence is not representable"));
-        }
-        Ok(())
     }
-    fn redirect(&mut self, z: DenseMatrix) -> Result<()> {
+    fn redirect(&mut self, z: DenseMatrix) {
         for column in 0..self.x.ncols() {
             if !self.active[column] {
                 continue;
@@ -234,15 +312,25 @@ impl Recurrences {
                 continue;
             }
             for row in 0..self.p.nrows() {
-                self.p[(row, column)] = z[(row, column)] + beta * self.p[(row, column)];
+                let direction = z[(row, column)] + beta * self.p[(row, column)];
+                if !direction.is_finite() {
+                    self.finish(column, StopReason::NumericalBreakdown);
+                    break;
+                }
+                self.p[(row, column)] = direction;
             }
             self.rho[column] = next;
         }
         self.mask_finished();
-        if self.p.as_slice().iter().any(|v| !v.is_finite()) {
-            return Err(numerical("Schur direction is not representable"));
+    }
+    fn fail_active(&mut self, charge_iteration: bool) {
+        for column in 0..self.active.len() {
+            if self.active[column] {
+                self.progress[column].iterations += usize::from(charge_iteration);
+                self.finish(column, StopReason::NumericalBreakdown);
+            }
         }
-        Ok(())
+        self.mask_finished();
     }
     fn finish(&mut self, column: usize, stop: StopReason) {
         self.active[column] = false;
@@ -284,4 +372,27 @@ fn invalid(message: &str) -> FeregError {
 }
 fn numerical(message: &str) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn a_nonrepresentable_update_retains_work_and_other_rhs_completion() {
+        let matrix = |first| DenseMatrix::from_columns(&[vec![first], vec![0.]]).unwrap();
+        let mut state = Recurrences::new(
+            matrix(f64::MAX * 0.75),
+            matrix(1.),
+            matrix(1.),
+            vec![1e-10; 2],
+        )
+        .unwrap();
+        state.advance(&matrix(1e-308));
+        assert_eq!(state.progress[0].stop, StopReason::NumericalBreakdown);
+        assert_eq!(state.progress[0].iterations, 1);
+        assert!(!state.active[0]);
+        assert!(state.x.as_slice().iter().all(|x| x.is_finite()));
+        assert_eq!(state.progress[1].stop, StopReason::Converged);
+        assert_eq!(state.progress[1].iterations, 0);
+    }
 }

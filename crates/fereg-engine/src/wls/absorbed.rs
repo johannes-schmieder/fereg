@@ -3,7 +3,7 @@ use super::{Fit, FrozenBasis, Policy, Problem, Role, Slot};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    fe::{Certificate, Engine, RhsDiagnostics},
+    fe::{Certificate, Engine, RhsDiagnostics, SetupDiagnostics},
     threads::{compensated_sum, ThreadTeam},
 };
 #[derive(Debug, PartialEq)]
@@ -16,6 +16,7 @@ pub struct AbsorbedFit {
     pub projection_certificate: Certificate,
     pub model_certificate: Certificate,
     pub projection_diagnostics: Vec<RhsDiagnostics>,
+    pub setup_diagnostics: Vec<SetupDiagnostics>,
     /// Extra derived-RHS solve when cancellation prevents the combined alpha
     /// from passing the unchanged final-model FE certificate.
     pub recovery_diagnostics: Vec<RhsDiagnostics>,
@@ -64,7 +65,7 @@ pub fn solve_absorbed_with_basis(
             rhs[(row, column + 1)] = raw[(row, column)];
         }
     }
-    let projection = engine.project(&rhs, team)?;
+    let mut projection = engine.project(&rhs, team)?;
     let mut within = DenseMatrix::zeros(n, k)?;
     let within_outcome = projection.residuals.column(0)?;
     for row in 0..n {
@@ -112,6 +113,18 @@ pub fn solve_absorbed_with_basis(
                 // Separate projections can cancel to a much smaller final RHS.
                 // Its own SPEC scale, not the pre-fit scales, must certify.
                 let recovery = engine.project(&target, team)?;
+                projection
+                    .setup_diagnostics
+                    .try_reserve(recovery.setup_diagnostics.len())
+                    .map_err(|_| {
+                        FeregError::new(
+                            ErrorCode::Allocation,
+                            "unable to reserve recovery setup diagnostics",
+                        )
+                    })?;
+                projection
+                    .setup_diagnostics
+                    .extend(recovery.setup_diagnostics);
                 absorbed_coefficients = recovery.coefficients;
                 residual = recovery.residuals;
                 recovery_diagnostics = recovery.diagnostics;
@@ -153,6 +166,7 @@ pub fn solve_absorbed_with_basis(
         projection_certificate: projection.certificate,
         model_certificate,
         projection_diagnostics: projection.diagnostics,
+        setup_diagnostics: projection.setup_diagnostics,
         recovery_diagnostics,
         relative_residual_reconstruction: reconstruction,
         relative_original_finite_score: original_score,
