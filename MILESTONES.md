@@ -9,7 +9,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 ## Tasks
 - [x] M0.1 Tag, plan, milestones
 - [x] M0.2 New `AGENTS.md` (verbatim; local harness passes with pending M0.7–M0.8 repairs)
-- [~] M0.3 Stage rebuild ADRs (structural checks pass; baseline checks pending)
+- [x] M0.3 Stage rebuild ADRs (structural and local lean checks pass)
 - [~] M0.4 Transfer the resume record (links/frozen-source checks pass)
 - [~] M0.5 Inventory and prepare the lean harness; preserve scientific coverage
 - [~] M0.6 CI (configured; baseline checks pending before push)
@@ -83,6 +83,6 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - 2026-09-29 M0.6 (uncommitted) — optimized CI profile/workflow and concise licensed runner guide prepared; remote CI pending.
 - 2026-09-29 M0.5 (uncommitted) — 97 generator/reference inputs copied unchanged; example paths made portable; legacy harness preserved; mock SPI bridge passes.
 - 2026-09-29 M0.4 (uncommitted) — resume links moved; historical numerical findings mapped; STATUS retained unchanged.
-- 2026-09-29 M0.3 (uncommitted) — eight staged ADRs plus README/TEMPLATE; original ADRs unchanged; GPL linking disposition explicitly unresolved.
-- 2026-09-29 M0.2 (this task commit) — AGENTS matches plan §4.1 verbatim; lean checks pass in the working tree with pending M0.7–M0.8 repairs; legacy layout guards remain callable.
+- 2026-09-29 M0.3 (this task commit) — eight one-page staged ADRs plus README/TEMPLATE; original ADRs unchanged; GPL disposition explicitly unresolved; local lean checks pass.
+- 2026-09-29 M0.2 33c10a3e — AGENTS matches plan §4.1 verbatim; lean checks pass in the working tree with pending M0.7–M0.8 repairs; legacy layout guards remain callable.
 - 2026-09-29 M0.1 afbcfd2d — issue copy verified verbatim; all 52 tasks/five gates listed; annotated origin tag verified at e61cb9ee; pushed.
