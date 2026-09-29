@@ -2,4 +2,5 @@
 pub mod checkpoint;
 pub mod control;
 pub mod family;
+pub mod irls;
 pub mod step;

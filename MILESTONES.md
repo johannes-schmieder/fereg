@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.1 IRLS controller integration; frozen WLS bases, strict Fisher checks and accepted-state final-Hessian checkpoints verified; M4.4/M3.5 qualification decisions pending; M1.6 Mac and SCC baselines captured, with comparator failures preserved.
+Current task: M6.2 separation ledger, generations and certified detectors; M6.1 final-sample IRLS verified for direct/Schur, with retained-backend qualification pending M3.5; M4.4/M3.5 qualification decisions pending; M1.6 Mac and SCC baselines captured, with comparator failures preserved.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -40,7 +40,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M5.2 Stata fixtures with `engine(next)`
 - [ ] M5.3 Benchmarks
 - [ ] M5.4 G-OLS, then flip the `fereg` default to `engine(next)`
-- [ ] M6.1 `ppml::family` and IRLS
+- [~] M6.1 `ppml::family` and IRLS; direct/Schur verified, retained backends await M3.5
 - [ ] M6.2 Separation
 - [ ] M6.3 PPML inference and outputs
 - [ ] M6.4 Bias correction
@@ -107,6 +107,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M6.1 IRLS controller (this commit) — bounded final-sample IRLS integrates global/analytic one-FE starts, canonical basis freezing, fresh weighted FE/WLS frames, coefficient-only warm seeds, joint step halving, two-pass convergence and strict resumption without resetting the outer budget. Basis changes re-express the accepted predictor before atomic adoption; final coefficients/gauge are checked against the exact accepted eta/mu and qmu bread frame. Prepared weights/offsets stay authoritative and exposure is logged once. Nine new regressions cover difficult halvings, strict/basis resumption, budget exhaustion, offsets/exposure, slope-only FEs, implicit/aliased constants, malformed/unsupported inputs and fresh-weight seeds; 2,200 cold fits match independent dense Newton coefficients, means, deviance and bread, with exact 1/2/4/8-worker checks. All 187 engine tests and full lean/long suites pass. M6.1 remains verification-pending for M3.5 retained backends; public defaults stay legacy and M6.2 preparation/separation is next.
 
 - 2026-09-29 M6.1 strict checkpoints (this commit) — fresh strict Fisher/final-Hessian solves use shared FE/WLS, recertify the frozen basis on the refreshed projection and compare full canonical omissions. Harvested near-zero coefficient/predictor/objective envelopes, fresh identified-column/FE scores and model/objective replay leave accepted inputs immutable; unrepresentable Poisson trials resume, final-Hessian basis changes fail. Eight integration regressions and exact 1/2/4/8-worker identity pass; 2,200 independent Newton states across zero to three FEs, slopes, disconnected graphs, offsets and prior weights pass both stages (4,400 checkpoints), including finite bread comparisons. All 178 engine tests and full lean/long suites pass; the independent oracle now exposes its already-computed accepted inverse. Bounded IRLS resumption and final publication orchestration remain open.
 

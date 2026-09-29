@@ -49,6 +49,21 @@ impl<'a, 'data> Engine<'a, 'data> {
     pub fn plan(&self) -> &Plan {
         &self.plan
     }
+    /// A first-RHS guess only. Direct solves ignore valid guesses; iterative
+    /// backends must reconstruct and certify under this engine's fresh weights.
+    pub fn seed_response(&mut self, coefficients: &DenseMatrix, rhs_count: usize) -> Result<()> {
+        super::design::validate_matrix(coefficients, self.design.layout().total)?;
+        if coefficients.ncols() != 1 || rhs_count == 0 {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "FE response seed requires one coefficient RHS and a positive bank width",
+            ));
+        }
+        if let Some(session) = &mut self.schur {
+            session.seed_response(coefficients, rhs_count)?;
+        }
+        Ok(())
+    }
     pub fn project(&mut self, rhs: &DenseMatrix, team: &ThreadTeam) -> Result<Projection> {
         let (coefficients, progress) = match self.schur.as_mut() {
             Some(session) => {

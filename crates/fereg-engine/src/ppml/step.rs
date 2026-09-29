@@ -80,6 +80,9 @@ impl<'family, 'data> Accepted<'family, 'data> {
             "PPML step-halving exhausted 25 halvings without an acceptable finite objective",
         ))
     }
+    pub(crate) fn into_parts(self) -> (Point, Evaluation) {
+        (self.point, self.evaluation)
+    }
     #[must_use]
     pub fn point(&self) -> &Point {
         &self.point

@@ -189,7 +189,7 @@ impl Checkpoint<'_, '_> {
         })
     }
 }
-fn score_columns(raw: &DenseMatrix, kept: &[usize]) -> Result<DenseMatrix> {
+pub(super) fn score_columns(raw: &DenseMatrix, kept: &[usize]) -> Result<DenseMatrix> {
     if kept.iter().any(|&column| column >= raw.ncols()) {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,

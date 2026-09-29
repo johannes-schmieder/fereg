@@ -1,0 +1,86 @@
+use super::*;
+use crate::{
+    error::reserved,
+    fe::Engine,
+    wls::{self, Policy},
+};
+impl<'a, 'data> Context<'a, 'data> {
+    pub(super) fn frame(
+        &self,
+        accepted: &Accepted<'_, '_>,
+        tolerance: f64,
+        basis: Option<&FrozenBasis>,
+        stage: Stage,
+    ) -> Result<AbsorbedFit> {
+        let n = self.problem.sample.n_active();
+        let mut h = reserved(n)?;
+        h.resize(n, 0.);
+        let mut response = reserved(n)?;
+        response.resize(n, 0.);
+        match stage {
+            Stage::Fisher => self.family.working_into(
+                &accepted.point().eta,
+                accepted.evaluation(),
+                &mut h,
+                &mut response,
+                self.team,
+            )?,
+            Stage::FinalHessian => self.family.hessian_into(
+                &accepted.point().eta,
+                accepted.evaluation(),
+                &mut h,
+                &mut response,
+                self.team,
+            )?,
+        }
+        let design = Design::new(self.problem.sample, Weights::Provided(&h))?;
+        let options = Options {
+            tolerance,
+            ..self.options
+        };
+        let mut engine = Engine::new(&design, Estimator::Ppml, &options, self.team)?;
+        if stage == Stage::Fisher {
+            let width = self
+                .problem
+                .raw
+                .ncols()
+                .checked_add(1)
+                .ok_or_else(|| invalid("PPML RHS bank width overflows"))?;
+            engine.seed_response(&accepted.point().absorbed, width)?;
+        }
+        let policy = Policy {
+            score_tolerance: Policy::default().score_tolerance.max(tolerance),
+            ..Policy::default()
+        };
+        wls::solve_absorbed_with_basis(
+            &mut engine,
+            self.problem.raw,
+            &response,
+            self.problem.roles,
+            policy,
+            basis,
+            self.team,
+        )
+    }
+    pub(super) fn represent(
+        &self,
+        accepted: &Accepted<'_, '_>,
+        linear: &AbsorbedFit,
+    ) -> Result<Accepted<'a, 'data>> {
+        let mut point =
+            self.family
+                .point_from_linear(linear, self.problem.raw, self.design, self.team)?;
+        let mut eta = reserved(accepted.point().eta.len())?;
+        eta.extend_from_slice(&accepted.point().eta);
+        point.eta = eta;
+        self.family.certify_state(
+            &point,
+            accepted.evaluation(),
+            self.problem.raw,
+            self.design,
+            self.controls.publication_tolerance(),
+            self.team,
+        )?;
+        Accepted::start(self.family, point, self.team)
+    }
+}

@@ -194,3 +194,79 @@ fn malformed_frames_and_exhausted_projection_budgets_fail_clearly() {
         ErrorCode::NonConvergence
     );
 }
+
+#[test]
+fn response_seeds_carry_only_coefficients_across_weight_frames() {
+    for levels in [vec![5], vec![5, 3, 2]] {
+        let sample = support::prepared(&levels, true, 25, 0);
+        let n = sample.n_active();
+        let raw =
+            DenseMatrix::from_columns(&[(0..n).map(|i| ((i * 7) % 17) as f64 / 17.).collect()])
+                .unwrap();
+        let y: Vec<_> = (0..n).map(|i| (i % 7) as f64 + (i as f64).sin()).collect();
+        let one = ThreadTeam::new(1).unwrap();
+        let options = Options {
+            tolerance: 1e-12,
+            ..Options::for_estimator(Estimator::Ppml)
+        };
+        let old = Design::new(&sample, Weights::Unit).unwrap();
+        let mut engine = Engine::new(&old, Estimator::Ppml, &options, &one).unwrap();
+        let previous = wls::solve_absorbed(
+            &mut engine,
+            &raw,
+            &y,
+            &[Role::Ordinary],
+            Policy::default(),
+            &one,
+        )
+        .unwrap();
+        let weights: Vec<_> = (0..n).map(|i| 1. + (i % 11) as f64 * 0.3).collect();
+        let fresh = Design::new(&sample, Weights::Provided(&weights)).unwrap();
+        let mut cold = Engine::new(&fresh, Estimator::Ppml, &options, &one).unwrap();
+        let reference = wls::solve_absorbed(
+            &mut cold,
+            &raw,
+            &y,
+            &[Role::Ordinary],
+            Policy::default(),
+            &one,
+        )
+        .unwrap();
+        let mut expected = None;
+        for workers in [1, 2, 4, 8] {
+            let team = ThreadTeam::new(workers).unwrap();
+            let mut warm = Engine::new(&fresh, Estimator::Ppml, &options, &team).unwrap();
+            warm.seed_response(&previous.absorbed_coefficients, 2)
+                .unwrap();
+            assert!(warm
+                .seed_response(&DenseMatrix::zeros(1, 1).unwrap(), 2)
+                .is_err());
+            assert!(warm
+                .seed_response(&previous.absorbed_coefficients, 0)
+                .is_err());
+            let fit = wls::solve_absorbed(
+                &mut warm,
+                &raw,
+                &y,
+                &[Role::Ordinary],
+                Policy::default(),
+                &team,
+            )
+            .unwrap();
+            assert!((fit.finite.coefficients[0] - reference.finite.coefficients[0]).abs() < 2e-9);
+            for (&a, &b) in fit.residuals.iter().zip(&reference.residuals) {
+                assert!((a - b).abs() < 2e-9);
+            }
+            assert!(fit
+                .projection_certificate
+                .relative_score
+                .iter()
+                .all(|v| *v <= 1e-12));
+            if let Some(expected) = &expected {
+                assert_eq!(&fit, expected);
+            } else {
+                expected = Some(fit);
+            }
+        }
+    }
+}

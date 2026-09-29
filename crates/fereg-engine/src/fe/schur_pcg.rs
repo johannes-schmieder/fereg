@@ -56,6 +56,20 @@ impl<'a, 'data> SchurSession<'a, 'data> {
     pub fn clear_warm_start(&mut self) {
         self.warm = None;
     }
+    /// Carry coefficient guesses only; all factors belong to this new weight
+    /// frame. The remaining RHSs begin at zero and share no prior certificate.
+    pub fn seed_response(&mut self, coefficients: &DenseMatrix, rhs_count: usize) -> Result<()> {
+        validate_matrix(coefficients, self.design.layout().total)?;
+        if coefficients.ncols() != 1 || rhs_count == 0 {
+            return Err(invalid("Schur response seed requires one coefficient RHS"));
+        }
+        let mut warm = DenseMatrix::zeros(self.design.layout().total, rhs_count)?;
+        for row in 0..warm.nrows() {
+            warm[(row, 0)] = coefficients[(row, 0)];
+        }
+        self.warm = Some(warm);
+        Ok(())
+    }
     pub fn solve(&mut self, rhs: &DenseMatrix, team: &ThreadTeam) -> Result<SchurCandidate> {
         validate_matrix(rhs, self.design.nobs())?;
         let initial = self.project_eliminated(rhs, team)?;
