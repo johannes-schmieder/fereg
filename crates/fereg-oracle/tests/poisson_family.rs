@@ -62,6 +62,22 @@ fn campaign(start: usize, count: usize) {
         };
         let expected = fit_explicit_ppml(&problem).unwrap_or_else(|e| panic!("seed {seed}: {e}"));
         let family = Family::new(&y, q, Some(&offset)).unwrap();
+        let sum_q: f64 = (0..n).map(|i| q.value(i)).sum();
+        let sum_qy: f64 = (0..n).map(|i| q.value(i) * y[i]).sum();
+        let sum_q_offset: f64 = (0..n).map(|i| q.value(i) * offset[i].exp()).sum();
+        close(
+            family.global_start().unwrap(),
+            (sum_qy / sum_q_offset).ln(),
+            seed,
+        );
+        let null = family.null_objective().unwrap();
+        close(null.mean, sum_qy / sum_q, seed);
+        let null_ll: f64 = (0..n)
+            .map(|i| {
+                q.value(i) * (y[i] * (sum_qy / sum_q).ln() - sum_qy / sum_q - log_factorial(y[i]))
+            })
+            .sum();
+        close(null.log_likelihood, null_ll, seed);
         let actual = family.evaluate(&expected.eta, &one).unwrap();
         let mut h = vec![0.; n];
         let mut z = vec![0.; n];

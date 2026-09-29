@@ -1,11 +1,13 @@
 //! Immutable Poisson inputs; trial evaluation never mutates an accepted state.
 mod math;
+mod start;
 use crate::{
     data::{ReferenceWeights, WeightKind},
     error::{reserved, ErrorCode, FeregError, Result},
     threads::{CompensatedSum, ThreadTeam, REDUCTION_CHUNK},
 };
 use rayon::prelude::*;
+pub use start::NullObjective;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Objective {
     pub deviance: f64,
