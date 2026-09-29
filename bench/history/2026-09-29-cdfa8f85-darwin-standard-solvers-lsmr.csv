@@ -1,0 +1,7 @@
+date,source_sha,dirty,platform,tier,partial,comparison,engine,solver,cell,threads,arm,status,accuracy,repetitions,seconds,input_seconds,native_seconds,total_seconds,max_scaled_error,ratio_fereg
+2026-09-29,cdfa8f854c98bc8ba4aef11cb67c653c5d30f0e7,False,darwin,standard,False,solver,legacy,lsmr,ols-2fe-akm-strong,1,fereg,ok,pass,5,0.272,0.008779,0.25262670800000003,0.261540125,5.1412740491421684e-08,1.0
+2026-09-29,cdfa8f854c98bc8ba4aef11cb67c653c5d30f0e7,False,darwin,standard,False,solver,legacy,lsmr,ols-2fe-akm-strong,8,fereg,ok,pass,5,0.119,0.005873292,0.10075695800000001,0.106758875,5.1412740491421684e-08,1.0
+2026-09-29,cdfa8f854c98bc8ba4aef11cb67c653c5d30f0e7,False,darwin,standard,False,solver,legacy,lsmr,ols-2fe-akm-weak,1,fereg,ok,pass,5,0.262,0.008792791,0.24209770899999997,0.251086084,5.232973298440057e-08,1.0
+2026-09-29,cdfa8f854c98bc8ba4aef11cb67c653c5d30f0e7,False,darwin,standard,False,solver,legacy,lsmr,ols-2fe-akm-weak,8,fereg,ok,pass,5,0.116,0.006038792,0.097855083,0.103873916,5.232973298440057e-08,1.0
+2026-09-29,cdfa8f854c98bc8ba4aef11cb67c653c5d30f0e7,False,darwin,standard,False,solver,legacy,lsmr,ppml-3fe-gravity,1,fereg,ok,pass,5,0.379,,,0.351785625,1.294978164064665e-05,1.0
+2026-09-29,cdfa8f854c98bc8ba4aef11cb67c653c5d30f0e7,False,darwin,standard,False,solver,legacy,lsmr,ppml-3fe-gravity,8,fereg,ok,pass,5,0.211,,,0.181944042,1.2945466844598123e-05,1.0

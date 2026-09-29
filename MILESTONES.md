@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M4.4 OLS orchestration on the shared engine; M3.5 dependency determinism decision pending; M1.6 SCC full array running (7779872), Mac standard and all three solver cohorts finished; compact baseline collection pending.
+Current task: M4.4 OLS orchestration on the shared engine; M3.5 dependency determinism decision pending; M1.6 SCC full array running (7779872), Mac standard and auto/LSMR/CMG baselines captured.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -20,7 +20,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.3 `crates/fereg-oracle`; dense oracles, seeded designs and legacy comparisons
 - [x] M1.4 `bench/` suite; 22 cells, pinned comparators and Mac smoke
 - [x] M1.5 SCC tooling; compute-node smoke passed and summary collected
-- [~] M1.6 Legacy baseline; frozen Mac standard and SCC full campaigns running
+- [~] M1.6 Legacy baseline; Mac cohorts captured, SCC full campaign running
 - [x] M2.1 Move legacy; Rust checks, path checks and universal plugin/ABI build pass
 - [x] M2.2 Create `crates/fereg-engine`; safe skeleton, wire parser and deterministic team
 - [x] M2.3 Shared data/factor harvest; exact legacy sample/weight parity on 2,400 designs
@@ -99,7 +99,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M4.4 preparation (this commit) — authoritative finite-column compiler retains omitted/base/vanished slots and literal factor/interaction levels without another code bank; pending TS and unsupported grammar fail before reads; the pinned hidden no-absorb structural constant uses the shared one-level FE engine and identical implicit DoF metadata; 119 engine tests, focused Clippy, full lean and long oracle suites pass; estimator orchestration remains open.
+- 2026-09-29 M1.6 Mac capture (this commit) — frozen-source [standard](bench/history/2026-09-29-3a931afe-darwin-standard.csv): 152 groups, 150 completed groups, 148 accurate; all 38 fereg groups pass, weak-graph fixest disagrees and fixest-matched fails convergence at T1/T8; wall 10,765s including launcher pauses exceeds the 3,600s budget, with raw failures retained and no retries. Separate [auto](bench/history/2026-09-29-cdfa8f85-darwin-standard-solvers-auto.csv), [LSMR](bench/history/2026-09-29-cdfa8f85-darwin-standard-solvers-lsmr.csv) and [CMG](bench/history/2026-09-29-cdfa8f85-darwin-standard-solvers-cmg.csv) cohorts each pass 6/6 groups and 30/30 measured fits; plugin hash be208844176c58a85485b79d9c97c421fc378058dbb7f4b9117fddf30f4ad5d5; summary source/schema/coverage checks and full lean suite pass; SCC 51/56 application markers, full collection pending.
+
+- 2026-09-29 M4.4 preparation 8a640981 — authoritative finite-column compiler retains omitted/base/vanished slots and literal factor/interaction levels without another code bank; pending TS and unsupported grammar fail before reads; the pinned hidden no-absorb structural constant uses the shared one-level FE engine and identical implicit DoF metadata; 119 engine tests, focused Clippy, full lean and long oracle suites pass; estimator orchestration remains open.
 
 - 2026-09-29 M4.3 cb932c6f — requested-only original-axis residual/xb/xbd/d/drop-reason/saved-channel banks from returned coefficients, no output re-solve; original-equation certification plus checked reported-constant transfer preserves scales when y equals the constant; disconnected weighted/sloped gauges, missing scatter, request invariance, malformed/stale-frame rejection and 1/2/4/8-worker identity pass; all 4,400 direct/Schur oracle designs now check saved-output sums; 115 engine tests and full lean/long suites pass; Mac postprocessing paused 14:04:49–14:08:14 UTC (205s), timed fits already finished; SCC 48/56 application markers.
 
