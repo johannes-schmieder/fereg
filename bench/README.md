@@ -4,8 +4,10 @@
 `generate.py` ports the preserved synthetic generators and writes a single
 numeric DTA for every estimator. The first controls are invariant to K. Seeds,
 data hashes and generator versions are stored beside the temporary datasets.
-Veneto uses an external prepared DTA with `obs_id y x1 g1 g2`; its source data
-and preparation stay outside Git (see `real/veneto/prepare.py`).
+Veneto uses an external prepared DTA with `obs_id y x1 x2 x3 x4 g1 g2`; its source data
+and preparation stay outside Git (see `real/veneto/prepare.py`). The original
+3,159,720-row, four-control model input is hash-pinned; a lossless DTA-format
+conversion lets Stata and base R read the same rows and controls.
 
 Prerequisites: Python 3.11+ with NumPy and pandas, R with its base `foreign`
 package, the pinned Rust toolchain, and licensed Stata/MP. Use a private run root:
@@ -42,7 +44,10 @@ The current legacy ado has no `engine()` selector. `--engine legacy` selects its
 only implementation. `--engine next` fails before running until M5 enables the
 manifest's explicit engine switch, after which both choices are passed through.
 `--solver lsmr|cmg` is for the separately declared supported-case comparisons;
-its results are labeled and must not enter the default-policy aggregate.
+use it together with `--solver-comparison` for the manifest's strong/weak AKM
+and three-FE PPML subset at 100,000 rows and 1/8 threads. Run each of auto,
+LSMR and CMG in a separate root. These summaries carry `comparison=solver`
+and separate filenames; they do not enter the default-policy aggregate.
 
 `standard` uses all 19 non-SCC cells at 1/8 threads; `full` adds the three SCC
 cells and the declared 1/2/4/8/14/28 thread ladder. Use `--plan-only` to inspect

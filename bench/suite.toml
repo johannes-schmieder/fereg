@@ -174,5 +174,14 @@ id = "veneto-akm"
 model = "ols"
 design = "veneto"
 effects = 2
-regressors = 1
+regressors = 4
+rows = 3159720
+input_sha256 = "d50dcfb78b7bb87fe8a48d384dd486f194bf1bf1442849619b0f8328f2fa79a0"
 scc = true
+
+# Separate from default-policy aggregate scores (M1.6).
+[solver_comparison]
+cells = ["ols-2fe-akm-strong", "ols-2fe-akm-weak", "ppml-3fe-gravity"]
+rows = 100000
+threads = [1, 8]
+solvers = ["auto", "lsmr", "cmg"]

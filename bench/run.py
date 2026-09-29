@@ -2,7 +2,7 @@
 """One untimed warm-up and five fresh-process measurements per declared command."""
 from __future__ import annotations
 import argparse
-import csv
+import copy
 import json
 import os
 from pathlib import Path
@@ -12,13 +12,23 @@ import signal
 import subprocess
 import time
 import tomllib
-from generate import generate, sha256
+from generate import generate, prepare_external, sha256
 
 ROOT = Path(__file__).resolve().parents[1]
 
 
 def load_suite():
     return tomllib.loads((ROOT / "bench/suite.toml").read_text())
+
+
+def solver_comparison_suite(suite, tier):
+    selected = copy.deepcopy(suite)
+    subset = selected["solver_comparison"]
+    selected["tiers"][tier] = {"cells": subset["cells"], "rows": subset["rows"],
+                               "threads": subset["threads"],
+                               "timeout_seconds": suite["tiers"][tier]["timeout_seconds"]}
+    selected["comparators"] = {"ols": ["fereg"], "ppml": ["fereg"]}
+    return selected
 
 
 def selected_cells(suite, tier):
@@ -132,6 +142,10 @@ def validate_environment(environment):
 
 def run(args):
     suite = load_suite()
+    if args.solver != "auto" and not args.solver_comparison:
+        raise ValueError("explicit solvers require --solver-comparison to keep baseline counts separate")
+    if args.solver_comparison:
+        suite = solver_comparison_suite(suite, args.tier)
     if args.engine == "next" and not suite["engine_option"]:
         raise ValueError("engine(next) is unavailable before the M5 seam; it cannot run as legacy")
     cells = selected_cells(suite, args.tier)
@@ -155,7 +169,7 @@ def run(args):
     records = []
     source_sha, source_dirty = source_identity(ROOT)
     campaign = {"source_sha": source_sha, "source_dirty": source_dirty, "platform": platform.system().lower(),
-                "tier": args.tier, "partial": bool(args.cells or args.threads_only is not None), "engine": args.engine, "solver": args.solver,
+                "tier": args.tier, "comparison": "solver" if args.solver_comparison else "default", "partial": bool(args.cells or args.threads_only is not None), "engine": args.engine, "solver": args.solver,
                 "protocol": suite["protocol"], "suite_sha256": sha256(ROOT / "bench/suite.toml"),
                 "environment": environment["source_hashes"], "records": records,
                 "expected_groups": [[cell["id"], threads, arm] for cell, threads in plan
@@ -164,7 +178,8 @@ def run(args):
         if cell["design"] == "veneto":
             if args.veneto_data is None:
                 raise ValueError("full tier requires --veneto-data with the prepared external dataset")
-            dataset = args.veneto_data
+            dataset = args.root / "data" / (cell["id"] + ".dta")
+            prepare_external(cell, args.veneto_data, dataset)
         else:
             dataset = args.root / "data" / (cell["id"] + ".dta")
             generate(cell, suite["seed"], dataset)
@@ -191,6 +206,7 @@ def arguments():
     parser.add_argument("--environment", type=Path, required=True)
     parser.add_argument("--summary", type=Path)
     parser.add_argument("--engine", choices=["legacy","next"], default="legacy")
+    parser.add_argument("--solver-comparison", action="store_true")
     parser.add_argument("--solver", choices=["auto","lsmr","cmg"], default="auto")
     parser.add_argument("--stata", default=os.environ.get("STATA_BIN", "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp" if platform.system()=="Darwin" else "stata-mp"))
     parser.add_argument("--rscript", default="Rscript")

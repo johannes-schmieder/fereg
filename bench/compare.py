@@ -76,7 +76,7 @@ def summarize(path, destination=None):
         seconds = median_metadata(measured,"seconds") if complete else ""
         rows.append({"date": date.today().isoformat(), "source_sha": campaign["source_sha"],
                      "dirty": campaign["source_dirty"], "platform": campaign["platform"], "tier": campaign["tier"],
-                     "partial": campaign["partial"], "engine": campaign["engine"], "solver": campaign["solver"],
+                     "partial": campaign["partial"], "comparison": campaign.get("comparison", "default"), "engine": campaign["engine"], "solver": campaign["solver"],
                      "cell": cell, "threads": threads, "arm": arm, "status": status, "accuracy": verdict,
                      "repetitions": len(measured), "seconds": seconds,
                      "input_seconds": median_metadata(measured,"input_seconds") if complete else "",
@@ -99,6 +99,8 @@ def summarize(path, destination=None):
     if destination is None:
         suffix = "-dirty" if campaign["source_dirty"] else ""
         partial = "-partial" if campaign["partial"] else ""
+        if campaign.get("comparison") == "solver":
+            partial += "-solvers-" + campaign["solver"]
         destination = ROOT / "bench/history" / f"{date.today()}-{campaign['source_sha'][:8]}{suffix}-{campaign['platform']}-{campaign['tier']}{partial}.csv"
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)

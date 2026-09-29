@@ -91,6 +91,31 @@ def generate(cell, seed, path):
     return metadata
 
 
+def prepare_external(cell, source, destination):
+    """Convert the pinned model input losslessly for base R; never change its model/sample."""
+    source, destination = Path(source), Path(destination)
+    source_hash = sha256(source)
+    if source_hash != cell["input_sha256"]:
+        raise ValueError("external model input differs from the declared source hash")
+    frame = pd.read_stata(source, convert_categoricals=False)
+    required = ["obs_id", "y", *[f"g{j}" for j in range(1, cell["effects"]+1)],
+                *[f"x{j}" for j in range(1, cell["regressors"]+1)]]
+    if len(frame) != cell["rows"] or not set(required) <= set(frame):
+        raise ValueError("external input dimensions do not match the declared model")
+    if not frame.obs_id.is_unique:
+        raise ValueError("external observation IDs are not unique")
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    frame.to_stata(destination, write_index=False, version=114, time_stamp=datetime(2000,1,1))
+    decoded = pd.read_stata(destination, convert_categoricals=False)
+    for name in frame:
+        if not np.array_equal(frame[name].to_numpy(), decoded[name].to_numpy()):
+            raise ValueError(f"external DTA conversion changed {name}")
+    metadata = {"cell": cell, "source_sha256": source_hash, "sha256": sha256(destination),
+                "rows": len(frame), "numpy": np.__version__, "pandas": pd.__version__}
+    destination.with_suffix(".json").write_text(json.dumps(metadata,indent=2)+"\n")
+    return metadata
+
+
 if __name__ == "__main__":
     from run import load_suite, selected_cells
     parser = argparse.ArgumentParser()

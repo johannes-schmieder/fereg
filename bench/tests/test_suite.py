@@ -7,11 +7,12 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compare import accuracy, summarize
-from generate import generate, sha256
-from run import launch, load_suite, selected_cells, thread_counts
+from generate import generate, prepare_external, sha256
+from run import launch, load_suite, selected_cells, thread_counts, solver_comparison_suite, run
 
 
 class SuiteTests(unittest.TestCase):
@@ -43,6 +44,41 @@ class SuiteTests(unittest.TestCase):
             data = pd.read_stata(b)
             self.assertTrue((data.loc[data.g1<=2,"y"]==0).all())
             self.assertTrue((data.y>0).any())
+
+    def test_external_format_conversion_preserves_model_rows_and_controls(self):
+        import pandas as pd
+        import numpy as np
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp)
+            original=root/'original.dta'
+            converted=root/'converted.dta'
+            frame=pd.DataFrame({'obs_id':[1,2,3,4], 'y':[0.3,1.2,-0.2,3.1],
+                                'g1':[1,1,2,2], 'g2':[1,2,1,2],
+                                'x1':[0.1,0.2,0.3,0.4], 'x2':[1.1,1.2,1.3,1.4],
+                                'x3':[0,1,0,1], 'x4':[1,0,0,0]})
+            frame.to_stata(original,write_index=False,version=118)
+            cell={'id':'veneto-test','rows':4,'effects':2,'regressors':4,'input_sha256':sha256(original)}
+            prepare_external(cell,original,converted)
+            decoded=pd.read_stata(converted,convert_categoricals=False)
+            self.assertTrue(np.array_equal(frame.to_numpy(),decoded.to_numpy()))
+            cell['input_sha256']='0'*64
+            with self.assertRaises(ValueError):
+                prepare_external(cell,original,converted)
+
+    def test_solver_subset_is_separate_and_mathematically_supported(self):
+        original=load_suite()
+        suite=solver_comparison_suite(original,'standard')
+        self.assertEqual(len(selected_cells(original,'standard')),19)
+        cells=selected_cells(suite,'standard')
+        self.assertEqual(len(cells),3)
+        self.assertEqual(suite['comparators'],{'ols':['fereg'],'ppml':['fereg']})
+        self.assertTrue(all(cell['rows']==100000 and not cell.get('slopes') for cell in cells))
+        self.assertEqual(original['solver_comparison']['solvers'],['auto','lsmr','cmg'])
+        veneto=next(cell for cell in selected_cells(original,'full') if cell['id']=='veneto-akm')
+        self.assertEqual((veneto['rows'],veneto['regressors']),(3159720,4))
+        for solver in ['lsmr','cmg']:
+            with self.assertRaisesRegex(ValueError, 'keep baseline counts separate'):
+                run(SimpleNamespace(solver=solver,solver_comparison=False))
 
     def test_timeout_terminates_the_command_without_retry(self):
         with tempfile.TemporaryDirectory() as temp:
