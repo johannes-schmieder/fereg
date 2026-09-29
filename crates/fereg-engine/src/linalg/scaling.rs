@@ -1,7 +1,7 @@
 //! Shared weighted column/RHS scaling for FE blocks and finite WLS.
 use super::qr::scale_ratio;
 use crate::{
-    data::DenseMatrix,
+    data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
 };
 #[derive(Debug)]
@@ -17,24 +17,20 @@ pub(crate) struct ScaledDesign {
     pub(crate) scaling: ColumnScaling,
 }
 impl ScaledDesign {
-    pub(crate) fn new(mut matrix: DenseMatrix, weights: &[f64]) -> Result<Self> {
-        if weights.len() != matrix.nrows() {
-            return Err(FeregError::new(
-                ErrorCode::InvalidArgument,
-                "weighted matrix and weight lengths differ",
-            ));
-        }
-        if weights.iter().any(|w| !w.is_finite() || *w <= 0.)
-            || matrix.as_slice().iter().any(|v| !v.is_finite())
-        {
+    pub(crate) fn new(mut matrix: DenseMatrix, weights: Weights<'_>) -> Result<Self> {
+        weights.validate(matrix.nrows())?;
+        if matrix.as_slice().iter().any(|v| !v.is_finite()) {
             return Err(FeregError::new(
                 ErrorCode::InvalidData,
-                "nonfinite weighted matrix or invalid weight",
+                "nonfinite weighted matrix",
             ));
         }
-        let root_scale = weights.iter().copied().fold(0., f64::max).sqrt();
-        let mut roots = reserved(weights.len())?;
-        roots.extend(weights.iter().map(|w| w.sqrt() / root_scale));
+        let root_scale = (0..matrix.nrows())
+            .map(|row| weights.at(row))
+            .fold(0., f64::max)
+            .sqrt();
+        let mut roots = reserved(matrix.nrows())?;
+        roots.extend((0..matrix.nrows()).map(|row| weights.at(row).sqrt() / root_scale));
         let mut maxima = reserved(matrix.ncols())?;
         let mut norms = reserved(matrix.ncols())?;
         for column in 0..matrix.ncols() {

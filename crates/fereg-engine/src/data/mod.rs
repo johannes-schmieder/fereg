@@ -20,7 +20,7 @@ pub use sample::{
     NumericPreparationInput, NumericSourceUse, Prepared, PreparedAdjustment, PreparedWeights,
     WeightInput,
 };
-pub use weights::WeightKind;
+pub use weights::{WeightKind, Weights};
 
 pub fn prepare_numeric_sample<P: NumericDomainPolicy>(
     input: &NumericPreparationInput<'_>,

@@ -37,7 +37,7 @@ fn campaign(start: usize, count: usize) {
         let problem = Problem {
             design: &matrix,
             outcome: &generated.outcome,
-            weights: &generated.weights,
+            weights: fereg_engine::data::Weights::Provided(&generated.weights),
             slots: &slots,
             has_absorbed_intercept: false,
         };

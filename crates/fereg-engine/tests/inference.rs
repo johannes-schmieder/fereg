@@ -181,7 +181,7 @@ fn covariance_and_statistics_match_literal_frequency_replication() {
             &wls::Problem {
                 design: &x,
                 outcome: &y,
-                weights: &w,
+                weights: fereg_engine::data::Weights::Provided(&w),
                 slots: &slots,
                 has_absorbed_intercept: false,
             },

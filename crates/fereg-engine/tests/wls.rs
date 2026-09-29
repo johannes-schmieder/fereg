@@ -23,7 +23,7 @@ fn hand_computed_fit_and_bread_match_both_factorizations_and_workers() {
     let problem = Problem {
         design: &matrix,
         outcome: &[2., 0., 4.],
-        weights: &weights,
+        weights: fereg_engine::data::Weights::Provided(&weights),
         slots: &slots,
         has_absorbed_intercept: false,
     };
@@ -69,7 +69,7 @@ fn rank_deficiency_uses_qr_and_preserves_slot_positions() {
     let problem = Problem {
         design: &matrix,
         outcome: &[-4., 0., 4., 8.],
-        weights: &weights,
+        weights: fereg_engine::data::Weights::Provided(&weights),
         slots: &slots,
         has_absorbed_intercept: false,
     };
@@ -117,7 +117,7 @@ fn fe_collinearity_uses_squared_norm_ratio_and_defers_the_absorbed_constant() {
     let problem = Problem {
         design: &matrix,
         outcome: &[-6., -2., 2., 6.],
-        weights: &weights,
+        weights: fereg_engine::data::Weights::Provided(&weights),
         slots: &slots,
         has_absorbed_intercept: true,
     };
@@ -146,7 +146,7 @@ fn weak_identified_direction_falls_back_without_losing_rank() {
     let problem = Problem {
         design: &matrix,
         outcome: &z,
-        weights: &weights,
+        weights: fereg_engine::data::Weights::Provided(&weights),
         slots: &slots,
         has_absorbed_intercept: false,
     };
@@ -170,7 +170,7 @@ fn common_weight_scaling_changes_bread_only_and_empty_design_is_valid() {
             &Problem {
                 design: &matrix,
                 outcome: &[2., 0., 3., 2., 7.],
-                weights: &weights,
+                weights: fereg_engine::data::Weights::Provided(&weights),
                 slots: &slots,
                 has_absorbed_intercept: false,
             },
@@ -194,7 +194,7 @@ fn common_weight_scaling_changes_bread_only_and_empty_design_is_valid() {
         &Problem {
             design: &matrix,
             outcome: &[1., 2., 3.],
-            weights: &[1.; 3],
+            weights: fereg_engine::data::Weights::Provided(&[1.; 3]),
             slots: &[],
             has_absorbed_intercept: false,
         },
@@ -224,7 +224,7 @@ fn fwl_rank_pivots_use_pre_projection_reference_norms() {
         &Problem {
             design: &matrix,
             outcome: &[-2., 2., -2., 2.],
-            weights: &[1.; 4],
+            weights: fereg_engine::data::Weights::Provided(&[1.; 4]),
             slots: &slots,
             has_absorbed_intercept: true,
         },

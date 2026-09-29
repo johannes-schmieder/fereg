@@ -3,7 +3,7 @@ mod certificate;
 mod cholesky;
 mod moments;
 use crate::{
-    data::DenseMatrix,
+    data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
     linalg::{ColumnScaling, ScaledDesign, WeightedQr},
     threads::ThreadTeam,
@@ -68,7 +68,7 @@ impl Default for Policy {
 pub struct Problem<'a> {
     pub design: &'a DenseMatrix,
     pub outcome: &'a [f64],
-    pub weights: &'a [f64],
+    pub weights: Weights<'a>,
     pub slots: &'a [Slot],
     pub has_absorbed_intercept: bool,
 }
@@ -281,9 +281,10 @@ fn select(
 fn validate(problem: &Problem<'_>, policy: Policy) -> Result<f64> {
     let n = problem.design.nrows();
     let p = problem.design.ncols();
-    if problem.outcome.len() != n || problem.weights.len() != n || problem.slots.len() != p {
+    if problem.outcome.len() != n || problem.slots.len() != p {
         return Err(invalid("finite WLS dimensions differ"));
     }
+    problem.weights.validate(n)?;
     if n == 0 {
         return Err(FeregError::new(
             ErrorCode::InsufficientObservations,

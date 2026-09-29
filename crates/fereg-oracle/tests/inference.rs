@@ -100,7 +100,7 @@ fn campaign(start: usize, count: usize) {
             &wls::Problem {
                 design: &design,
                 outcome: &g.outcome,
-                weights: &w,
+                weights: fereg_engine::data::Weights::Provided(&w),
                 slots: &slots,
                 has_absorbed_intercept: false,
             },

@@ -2,7 +2,7 @@
 //! Local FE blocks and finite WLS use the same factorization primitive.
 use super::scaling::{ColumnScaling, ScaledDesign};
 use crate::{
-    data::DenseMatrix,
+    data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
     threads::compensated_sum,
 };
@@ -15,7 +15,11 @@ pub(crate) struct WeightedQr {
     taus: Vec<f64>,
 }
 impl WeightedQr {
-    pub(crate) fn factor(matrix: DenseMatrix, weights: &[f64], threshold: f64) -> Result<Self> {
+    pub(crate) fn factor(
+        matrix: DenseMatrix,
+        weights: Weights<'_>,
+        threshold: f64,
+    ) -> Result<Self> {
         Self::from_scaled(ScaledDesign::new(matrix, weights)?, threshold)
     }
     pub(crate) fn from_scaled(scaled: ScaledDesign, threshold: f64) -> Result<Self> {

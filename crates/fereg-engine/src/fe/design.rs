@@ -1,42 +1,11 @@
 //! Matrix-free D and D'W over the one prepared topology and current weight frame.
 use crate::{
-    data::{DenseMatrix, Prepared},
+    data::{DenseMatrix, Prepared, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
     threads::{compensated_sum, ThreadTeam},
     topology::FeTopology,
 };
 use rayon::prelude::*;
-#[derive(Debug, Clone, Copy)]
-pub enum Weights<'a> {
-    Unit,
-    Provided(&'a [f64]),
-}
-impl Weights<'_> {
-    #[must_use]
-    pub fn at(self, row: usize) -> f64 {
-        match self {
-            Self::Unit => 1.,
-            Self::Provided(values) => values[row],
-        }
-    }
-    fn validate(self, nobs: usize) -> Result<()> {
-        if let Self::Provided(values) = self {
-            if values.len() != nobs {
-                return Err(invalid("FE weights and observations differ"));
-            }
-            if values
-                .iter()
-                .any(|value| !value.is_finite() || *value <= 0.)
-            {
-                return Err(FeregError::new(
-                    ErrorCode::InvalidData,
-                    "FE weights must be positive and finite",
-                ));
-            }
-        }
-        Ok(())
-    }
-}
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct EffectLayout {
     pub offset: usize,

@@ -1,7 +1,7 @@
 //! One numerical factor per declared level, bound to an immutable weight frame.
 use super::Design;
 use crate::{
-    data::DenseMatrix,
+    data::{DenseMatrix, Weights},
     error::{reserved, Result},
     linalg::WeightedQr,
     threads::ThreadTeam,
@@ -121,7 +121,7 @@ pub(super) fn factor_level(design: &Design<'_>, effect: usize, level: usize) -> 
         }
     }
     let threshold = 8. * f64::EPSILON * members.len().max(channels).max(1) as f64;
-    WeightedQr::factor(matrix, &weights, threshold)
+    WeightedQr::factor(matrix, Weights::Provided(&weights), threshold)
 }
 pub(super) fn solve_level(
     design: &Design<'_>,
