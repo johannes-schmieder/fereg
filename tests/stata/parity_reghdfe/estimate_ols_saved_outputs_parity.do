@@ -101,7 +101,7 @@ clonevar __frg_base_worker = __frg_fe_worker
 clonevar __frg_base_firm = __frg_fe_firm
 scalar __frg_base_b = _b[x1]
 scalar __frg_base_rss = e(rss)
-foreach solver in map cg it squarem lsmr cmg {
+foreach solver in map it squarem lsmr cmg {
     capture drop __frg_route_*
     fereg y c.x1, ///
         absorb(__frg_route_worker=worker __frg_route_firm=firm) ///

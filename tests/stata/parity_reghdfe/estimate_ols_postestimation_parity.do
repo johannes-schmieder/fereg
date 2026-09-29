@@ -49,7 +49,7 @@ assert _rc == 321
 * reduction-order identity is not required for accelerated/LSMR paths.
 matrix __frg_b_auto = e(b)
 matrix __frg_V_auto = e(V)
-foreach method in map cg it squarem {
+foreach method in map it squarem {
     quietly fereg y c.x1 c.x2, absorb(worker firm) ///
         memory(fast) threads(2) solver(`method')
     assert `"`e(fereg_solver_requested)'"' == "`method'"

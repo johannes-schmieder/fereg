@@ -23,8 +23,12 @@ program define _fereg_estimate_public, eclass
     }
     local solver_mode = lower(strtrim(`"`solver'"'))
     if `"`solver_mode'"' == "" local solver_mode "auto"
-    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg", "cg", "it", "squarem") {
-        di as error "solver() must be auto, map, lsmr, cmg, cg, it, or squarem"
+    if `"`solver_mode'"' == "cg" {
+        di as error "solver(cg) is disabled because its residual certificate does not ensure projection accuracy; use solver(lsmr) or solver(cmg)"
+        exit 198
+    }
+    if !inlist(`"`solver_mode'"', "auto", "map", "lsmr", "cmg", "it", "squarem") {
+        di as error "solver() must be auto, map, lsmr, cmg, it, or squarem"
         exit 198
     }
     local preconditioner_mode = lower(strtrim(`"`preconditioner'"'))

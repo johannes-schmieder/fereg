@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M0.7; infrastructure commits and hosted Linux verification.
+Current task: M0.8; infrastructure commits and hosted Linux verification.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -14,7 +14,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M0.5 Inventory and prepare the lean harness; preserve scientific coverage
 - [~] M0.6 CI (configured; baseline checks pending before push)
 - [x] M0.7 Make the legacy suite pass
-- [ ] M0.8 Minimal legacy safety fixes
+- [x] M0.8 Minimal legacy safety fixes
 - [ ] M1.1 `docs/SPEC.md`
 - [ ] M1.2 `docs/ARCHITECTURE.md`
 - [ ] M1.3 `crates/fereg-oracle`
@@ -78,8 +78,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M0.8 (in progress) — b41f18e and legacy tag have identical core/testkit; Low raw-residual adapter called CG polish (error 7.733e-4 versus Fast 1.915e-13); full CMG projection repairs it; Auto/CMG/LSMR dense-oracle regression passes both modes.
-- 2026-09-29 M0.7 (this task commit) — 1429 workspace tests, 164 serial FFI tests and nine isolated audits pass; three existing core tests remain ignored; native CMG adapter repair required for green baseline included; byte growth traced to d6c18ccb/d9e9d2f7.
+- 2026-09-29 M0.8 (this task commit) — b41f18e/tag core identical; Low raw residual used CG polish (max error 7.733e-4); full CMG projection passes Auto/CMG/LSMR dense oracles; public CG rejection and rollback pass among 32 Mac quick fixtures.
+- 2026-09-29 M0.7 30725d78 — 1429 workspace tests, 164 serial FFI tests and nine isolated audits pass; three existing core tests remain ignored; native CMG adapter repair required for green baseline included; byte growth traced to d6c18ccb/d9e9d2f7.
 - 2026-09-29 M0.6 (uncommitted) — optimized CI profile/workflow and concise licensed runner guide prepared; remote CI pending.
 - 2026-09-29 M0.5 88ac3129 — generator/oracle identities verified; legacy harness retained; ci profile included for harness dependency; lean checks, universal build and 32 Mac quick fixtures pass.
 - 2026-09-29 M0.4 db69cce4 — links and frozen STATUS/ADRs verified; requirement mapping retained; local lean checks and 32 Stata quick fixtures pass.

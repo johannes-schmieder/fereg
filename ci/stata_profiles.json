@@ -76,6 +76,7 @@
       "build_plugin": true,
       "fixtures": [
         "ci/fereg_smoke.do",
+        "tests/stata/development/ols_cmg_raw_residual_oracle.do",
         "tests/stata/installation/installation_smoke.do",
         "tests/stata/documentation/help_examples.do",
         "tests/stata/installation/reload_loop.do",

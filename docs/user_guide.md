@@ -156,7 +156,7 @@ dimension. Cluster interactions use `#`, not `##`.
 | Option | Default | Meaning |
 |---|---|---|
 | `solver(auto)` | `auto` | Select topology-qualified CMG before the bounded MAP pilot; otherwise select a certified direct, MAP, CG, or LSMR route. |
-| `solver(map|cg|it|squarem|lsmr|cmg)` | — | Request a specific fixed-effect solver. `cmg` is the sparse AKM graph route for categorical intercept effects. |
+| `solver(map|it|squarem|lsmr|cmg)` | — | Request a specific fixed-effect solver. `cmg` is the sparse AKM graph route for categorical intercept effects. |
 | `preconditioner(auto|off|diagonal|schwarz)` | `auto` with `auto`/`lsmr` | Select the LSMR preconditioner. `none` aliases `off`; `additive` aliases `schwarz`. |
 | `threads(#)` | `0` | Request a native thread team. Zero uses the native default. |
 | `memory(auto|fast|low)` | `auto` | Choose automatically, retain dense workspaces, or use blockwise work and bounded scratch storage. |
@@ -168,8 +168,11 @@ dimension. Cluster interactions use `#`, not `##`.
 | `verbose(#)` | `0` | Record the requested verbosity level. In the current beta, `timeit` is the printed execution diagnostic. |
 
 `preconditioner()` is valid only with `solver(auto)` or `solver(lsmr)`.
-Explicit MAP, CG, Irons--Tuck, SQUAREM, and CMG requests therefore use
+Explicit MAP, Irons--Tuck, SQUAREM, and CMG requests therefore use
 `preconditioner(off)`.
+
+Explicit `solver(cg)` is disabled with error 198: its residual certificate
+does not establish projection accuracy. Use `solver(lsmr)` or `solver(cmg)`.
 
 `solver(cmg)` selects the two absorbed effects with the most levels as a
 bipartite graph core, reuses one CMG hierarchy across the fit, and handles
@@ -185,7 +188,8 @@ core effects. The route is available in `memory(fast)` and `memory(low)`. CMG
 setup is included in memory preflight and timing; setup failure returns visibly
 to the existing auto route, while a solve failure selects certified CG for the
 rest of that fit. The final OLS residual is certified directly and skips graph
-PCG when it is already within-transformed.
+PCG when it is already within-transformed. Low-memory OLS instead reconstructs
+raw residuals and performs the full CMG projection before final certification.
 
 ## Absorbed-term grammar
 

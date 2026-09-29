@@ -59,7 +59,7 @@ observations are removed to a fixed point.
     {cmd:dof(continuous|none)}{col 38}slope-only or no redundancy adjustment
 
   {ul:Solver and execution}
-    {cmd:solver(auto|map|cg|it|squarem|lsmr|cmg)}{col 38}fixed-effect solver
+    {cmd:solver(auto|map|it|squarem|lsmr|cmg)}{col 38}fixed-effect solver
     {cmd:preconditioner(auto|off|diagonal|schwarz)}{col 38}LSMR preconditioner
     {cmd:threads(}{it:#}{cmd:)}{col 38}native threads; default 0 (automatic)
     {cmd:memory(auto|fast|low)}{col 38}memory plan; default auto
@@ -187,8 +187,8 @@ fallback to certified CG. The result matrix records the selected method,
 pilot, iterations, fallback, and final certificate.
 
 {pstd}
-Explicit methods are unaccelerated symmetric {cmd:map}, conjugate-gradient
-accelerated MAP {cmd:cg}, Irons--Tuck {cmd:it}, {cmd:squarem}, and modified
+Explicit methods are unaccelerated symmetric {cmd:map},
+Irons--Tuck {cmd:it}, {cmd:squarem}, and modified
 {cmd:lsmr}. {cmd:cmg} constructs one worker--firm graph for the two
 largest categorical intercept effects and uses CMG-preconditioned PCG for all
 right-hand sides. Additional absorbed intercept effects are supported when
@@ -196,6 +196,12 @@ their combined non-base dimension is at most 64. Absorbed slopes are not
 supported by {cmd:cmg}. A failed CMG construction or solve falls back visibly
 to certified CG; a successful bulk solve is polished by CG when needed. All
 explicit methods fail closed on a failed independent fixed-effect certificate.
+
+{pstd}
+Explicit {cmd:solver(cg)} returns error 198 because its residual certificate
+does not establish projection accuracy. Use {cmd:solver(lsmr)} or
+{cmd:solver(cmg)}. Low-memory CMG projects raw residuals through the full graph
+solve before final certification.
 
 {pstd}
 The automatic CMG route is available in both memory modes, includes hierarchy
