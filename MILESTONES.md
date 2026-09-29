@@ -19,7 +19,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.2 `docs/ARCHITECTURE.md`; legacy source and readers preserved
 - [x] M1.3 `crates/fereg-oracle`; dense oracles, seeded designs and legacy comparisons
 - [x] M1.4 `bench/` suite; 22 cells, pinned comparators and Mac smoke
-- [ ] M1.5 SCC tooling
+- [~] M1.5 SCC tooling implemented and checked locally; compute-node smoke pending
 - [ ] M1.6 Legacy baseline
 - [ ] M2.1 Move legacy
 - [ ] M2.2 Create `crates/fereg-engine`
@@ -70,6 +70,11 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Blockers / questions for Johannes
 
+- SCC inspection on 2026-09-29 reports 6,963.31 GB used against the 6,950 GB
+  `/projectnb/welfgr` quota; Johannes was asked about freeing space. The live
+  filesystem reports 93,084,188,672 bytes available, sufficient for the bounded
+  build/smoke with a 10 GiB preflight floor. Recheck capacity before the full
+  baseline. Existing runs and other active jobs have not been modified.
 - GitHub Actions run [36546517277](https://github.com/johannes-schmieder/fereg/actions/runs/36546517277)
   did not start: failed account payment or spending-limit restriction. Johannes
   was asked to resolve billing; no repository fix or retry can supply this check.
@@ -81,7 +86,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M1.4 (this task commit) — 22 cells/three tiers; verified fixest 0.14.2 and Stata pins; Mac smoke 16/16 groups, 80/80 measured fits accurate, zero failures/timeouts, 48.0s <300s; [dirty-source diagnostic summary](bench/history/2026-09-29-60da973a-dirty-darwin-smoke.csv); 27 additional option comparisons, five harness tests, universal build/self-test and lean harness pass.
+- 2026-09-29 M1.5 preparation (this task commit) — commit snapshots, private offline native build, pinned comparator setup, 28-slot jobs, task manifests and strict collection; ten harness tests, shell syntax and local lean checks pass; SCC Python/R/Stata modules and both Rust dependency pins verified; remote smoke still pending.
+- 2026-09-29 M1.4 d47a91b5 — 22 cells/three tiers; verified fixest 0.14.2 and Stata pins; Mac smoke 16/16 groups, 80/80 measured fits accurate, zero failures/timeouts, 48.0s <300s; [dirty-source diagnostic summary](bench/history/2026-09-29-60da973a-dirty-darwin-smoke.csv); 27 additional option comparisons, five harness tests, universal build/self-test and lean harness pass.
 - 2026-09-29 M1.3 60da973a — 27 regular oracle tests, 2,000-design long differential suite and ignored CG-defect diagnostic pass; six 100-digit fixtures, direct CMG/LSMR, weighted inference and Poisson self-checks pass; files <1,500 lines, Clippy 150-line function limit brought forward from M2; local lean harness passes.
 - 2026-09-29 M1.2 1bb169fc — 286-line architecture, 24,500-line engine budgets, shared FE/seam/ownership rules; case-colliding legacy doc preserved with readers/links updated; four source-contract checks and local lean harness pass.
 - 2026-09-29 M1.1 d176dcd9 — twenty SPEC sections with executable-test mappings; all named source contracts/ADRs reconciled; LSMR/CMG and both PPML bias increments retained; notices folded; link/option/section audit and local lean checks pass.

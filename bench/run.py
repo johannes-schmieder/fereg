@@ -7,6 +7,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import signal
 import subprocess
 import time
@@ -35,6 +36,25 @@ def selected_cells(suite, tier):
 def thread_counts(suite, tier, cell):
     spec = suite["tiers"][tier]
     return sorted(set(spec["threads"] + (spec.get("ladder_threads", []) if cell["id"] in spec.get("ladder_cells", []) else [])))
+
+
+def source_identity(root):
+    snapshot = root / ".fereg-source.json"
+    if snapshot.exists():
+        source = json.loads(snapshot.read_text())
+        if not re.fullmatch(r"[0-9a-f]{40}", source["commit"]) or not re.fullmatch(r"[0-9a-f]{64}", source["archive_sha256"]):
+            raise ValueError("invalid staged source identity")
+        return source["commit"], False
+    sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
+    dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True).strip())
+    return sha, dirty
+
+
+def selected_threads(suite, tier, cell, only):
+    declared = thread_counts(suite, tier, cell)
+    if only is not None and only not in declared:
+        raise ValueError("thread selection is outside the declared cell/tier")
+    return [only] if only is not None else declared
 
 
 def read_metadata(path):
@@ -120,7 +140,7 @@ def run(args):
         if not names <= {cell["id"] for cell in cells}:
             raise ValueError("unknown cell or cell outside this tier")
         cells = [cell for cell in cells if cell["id"] in names]
-    plan = [(cell, threads) for cell in cells for threads in thread_counts(suite, args.tier, cell)]
+    plan = [(cell, threads) for cell in cells for threads in selected_threads(suite, args.tier, cell, args.threads_only)]
     if platform.system() == "Darwin" and any(threads > 16 for _, threads in plan):
         raise ValueError("Mac timings must use at most 16 native threads; full tier belongs on SCC")
     if args.plan_only:
@@ -133,10 +153,9 @@ def run(args):
     args.root.mkdir(parents=True)
     started = time.monotonic()
     records = []
-    source_sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=ROOT, text=True).strip()
-    source_dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=ROOT, text=True).strip())
+    source_sha, source_dirty = source_identity(ROOT)
     campaign = {"source_sha": source_sha, "source_dirty": source_dirty, "platform": platform.system().lower(),
-                "tier": args.tier, "partial": bool(args.cells), "engine": args.engine, "solver": args.solver,
+                "tier": args.tier, "partial": bool(args.cells or args.threads_only is not None), "engine": args.engine, "solver": args.solver,
                 "protocol": suite["protocol"], "suite_sha256": sha256(ROOT / "bench/suite.toml"),
                 "environment": environment["source_hashes"], "records": records,
                 "expected_groups": [[cell["id"], threads, arm] for cell, threads in plan
@@ -150,7 +169,7 @@ def run(args):
             dataset = args.root / "data" / (cell["id"] + ".dta")
             generate(cell, suite["seed"], dataset)
         records.append(measure(args, suite, cell, "fereg", 1, "reference", dataset, environment, reference=True))
-        for threads in thread_counts(suite, args.tier, cell):
+        for threads in selected_threads(suite, args.tier, cell, args.threads_only):
             for arm in suite["comparators"][cell["model"]]:
                 for repetition in ["warmup", *range(1, suite["protocol"]["repetitions"]+1)]:
                     record = measure(args, suite, cell, arm, threads, repetition, dataset, environment)
@@ -178,6 +197,7 @@ def arguments():
     parser.add_argument("--stata-processors", type=int, default=8 if platform.system()=="Darwin" else 4)
     parser.add_argument("--veneto-data", type=Path)
     parser.add_argument("--cells")
+    parser.add_argument("--threads-only", type=int)
     parser.add_argument("--plan-only", action="store_true")
     args = parser.parse_args()
     for name in ["root", "environment", "summary", "veneto_data"]:
