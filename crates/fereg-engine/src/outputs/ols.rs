@@ -5,7 +5,7 @@ use crate::{
     data::DenseMatrix,
     error::{reserved, Result},
     fe::Design,
-    threads::{compensated_sum, ThreadTeam},
+    threads::ThreadTeam,
 };
 
 #[derive(Debug)]
@@ -93,15 +93,9 @@ pub fn ols(
     Ok(output)
 }
 fn finite_row(frame: &OlsFrame<'_, '_>, row: usize, constant: f64) -> f64 {
-    compensated_sum(
-        std::iter::once(constant).chain(
-            frame
-                .coefficients
-                .iter()
-                .enumerate()
-                .map(|(column, beta)| frame.finite_design[(row, column)] * beta),
-        ),
-    )
+    frame
+        .finite_design
+        .row_combination(row, frame.coefficients, constant)
 }
 fn normalized_alpha(
     frame: &OlsFrame<'_, '_>,

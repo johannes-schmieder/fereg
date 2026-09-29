@@ -220,7 +220,7 @@ fn campaign(start: usize, count: usize) {
                     .score_certificate(&eta, &raw, &fe, 1e-8, &eight)
                     .unwrap()
             );
-            check_newton(&columns, &raw, &fe, &y, &prepared, &eight);
+            check_newton(&columns, &raw, &fe, &y, &prepared, &effects, &eight);
         }
     }
 }
@@ -230,6 +230,7 @@ fn check_newton(
     fe: &Design<'_>,
     y: &[f64],
     weights: &PreparedWeights,
+    effects: &[DummyEffect],
     team: &ThreadTeam,
 ) {
     let n = y.len();
@@ -260,6 +261,7 @@ fn check_newton(
         certificate.passed,
         "independent Newton state: {certificate:?}"
     );
+    certify_newton_state(&family, raw, fe, &fit, effects, team);
     let eta: Vec<_> = fit.eta.iter().map(|v| v + 0.1).collect();
     assert!(
         !family
@@ -267,6 +269,50 @@ fn check_newton(
             .unwrap()
             .passed
     );
+}
+fn certify_newton_state(
+    family: &Family<'_>,
+    raw: &DenseMatrix,
+    fe: &Design<'_>,
+    fit: &fereg_oracle::explicit_ppml::PpmlResult,
+    effects: &[DummyEffect],
+    team: &ThreadTeam,
+) {
+    use fereg_engine::ppml::step::Point;
+    let mut absorbed = DenseMatrix::zeros(fe.layout().total, 1).unwrap();
+    let mut base = raw.ncols();
+    for (index, effect) in effects.iter().enumerate() {
+        let layout = &fe.layout().effects[index];
+        for level in 0..layout.levels {
+            let representative = fe
+                .topology()
+                .effect_partition(index)
+                .unwrap()
+                .membership()
+                .members(level)
+                .unwrap()[0];
+            let original_level = effect.codes()[representative] as usize;
+            for channel in 0..layout.channels {
+                absorbed[(layout.offset + channel * layout.levels + level, 0)] =
+                    fit.coefficients[base + original_level * layout.channels + channel];
+            }
+        }
+        base += effect.n_levels() * layout.channels;
+    }
+    let mut point = Point {
+        finite: fit.coefficients[..raw.ncols()].to_vec(),
+        absorbed,
+        eta: fit.eta.clone(),
+    };
+    let evaluation = family.evaluate(&point.eta, team).unwrap();
+    let certificate = family
+        .certify_state(&point, &evaluation, raw, fe, 1e-12, team)
+        .unwrap();
+    assert!(certificate.predictor_relative_max < 2e-14);
+    point.finite[0] += 0.01;
+    assert!(family
+        .certify_state(&point, &evaluation, raw, fe, 1e-12, team)
+        .is_err());
 }
 #[test]
 fn score_certificate_matches_independent_explicit_dummy_and_slope_moments() {

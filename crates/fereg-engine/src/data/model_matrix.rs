@@ -76,6 +76,18 @@ impl DenseMatrix {
         self.data
     }
 
+    /// Callers validate row/coefficient dimensions before iterating a frame.
+    pub(crate) fn row_combination(&self, row: usize, coefficients: &[f64], constant: f64) -> f64 {
+        crate::threads::compensated_sum(
+            std::iter::once(constant).chain(
+                coefficients
+                    .iter()
+                    .enumerate()
+                    .map(|(column, beta)| self[(row, column)] * beta),
+            ),
+        )
+    }
+
     pub fn column(&self, column: usize) -> Result<Vec<f64>> {
         if column >= self.ncols {
             return Err(FeregError::new(

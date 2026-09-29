@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.1 independent PPML score and accepted-state certification; M4.4/M3.5 qualification decisions pending; M1.6 SCC full array running (7779872), Mac standard and auto/LSMR/CMG baselines captured.
+Current task: M6.1 strict/final-Hessian acceptance and IRLS integration; fresh scores and original-model replay implemented; M4.4/M3.5 qualification decisions pending; M1.6 SCC full array running (7779872), Mac standard and auto/LSMR/CMG baselines captured.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -108,7 +108,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M6.1 fresh scores (this commit) — original-column and FE-channel moments use freshly reconstructed mu/qmu, the pinned residual/outcome normalization and canonical direction order; scaled norms avoid spurious square overflow/underflow, unrepresentable moments fail closed; six regressions, 2,200 independent explicit-design score comparisons and 110 independent Newton solutions pass, with perturbed predictors rejected and exact 1/2/4/8-worker identity; 154 engine tests and full lean/long suites pass; SCC 54/56 application markers, two tasks running; strict/final-Hessian and model-space integration remain open.
+- 2026-09-29 M6.1 state replay (this commit) — reconstruct eta directly from original finite/FE coefficients and offset, replay mu/deviance/likelihood, and fail closed on stale or inconsistent state; common finite-predictor accumulation preserves OLS arithmetic; five regressions include zero-score/wrong-coefficient rejection, sloped multiway models, offsets and unclipped extreme means; 110 explicit-Newton coefficient reconstructions and exact 1/2/4/8-worker identity pass; 159 engine tests and full lean/long suites pass; SCC 55/56 application markers, task 53 still running; strict/final-Hessian checks and full IRLS remain open.
+
+- 2026-09-29 M6.1 fresh scores 7010884d — original-column and FE-channel moments use freshly reconstructed mu/qmu, the pinned residual/outcome normalization and canonical direction order; scaled norms avoid spurious square overflow/underflow, unrepresentable moments fail closed; six regressions, 2,200 independent explicit-design score comparisons and 110 independent Newton solutions pass, with perturbed predictors rejected and exact 1/2/4/8-worker identity; 154 engine tests and full lean/long suites pass; SCC 54/56 application markers, two tasks running; strict/final-Hessian and model-space integration remain open.
 
 - 2026-09-29 M6.1 step control c71b56ff — immutable accepted family/parameter states, exact full proposals and joint coefficient/predictor halvings under the pinned 25-step/1e-12-slack policy; only numerical trial failures are retried, allocation/argument failures remain fatal; two accepted objective-and-score passes request strict checks, rejected checkpoints preserve the outer budget, and the harvested inner target tightens monotonically; six control regressions, 110 sampled independent Newton proposals, 148 engine tests and full lean/long suites pass; SCC 53/56 application markers, all remaining tasks running.
 

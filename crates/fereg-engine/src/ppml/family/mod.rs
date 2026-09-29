@@ -2,6 +2,7 @@
 mod math;
 mod score;
 mod start;
+mod state;
 use crate::{
     data::{ReferenceWeights, WeightKind},
     error::{reserved, ErrorCode, FeregError, Result},
@@ -10,6 +11,7 @@ use crate::{
 use rayon::prelude::*;
 pub use score::{ScoreCertificate, ScoreNorms};
 pub use start::NullObjective;
+pub use state::StateCertificate;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Objective {
     pub deviance: f64,

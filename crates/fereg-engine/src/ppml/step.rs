@@ -1,8 +1,9 @@
 //! Transactional objective acceptance; publication still requires strict scientific checks.
-use super::family::{Evaluation, Family};
+use super::family::{Evaluation, Family, StateCertificate};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
+    fe::Design,
     threads::ThreadTeam,
 };
 const MAX_HALVINGS: usize = 25;
@@ -95,9 +96,19 @@ impl<'family, 'data> Accepted<'family, 'data> {
     pub fn halvings(&self) -> usize {
         self.halvings
     }
+    pub fn certify_state(
+        &self,
+        raw: &DenseMatrix,
+        fe: &Design<'_>,
+        tolerance: f64,
+        team: &ThreadTeam,
+    ) -> Result<StateCertificate> {
+        self.family
+            .certify_state(&self.point, &self.evaluation, raw, fe, tolerance, team)
+    }
 }
 impl Point {
-    fn validate(&self) -> Result<()> {
+    pub(crate) fn validate(&self) -> Result<()> {
         if self.absorbed.ncols() != 1 {
             return Err(invalid("PPML FE parameters require one coefficient RHS"));
         }
