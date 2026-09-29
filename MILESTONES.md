@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.1 strict/final-Hessian acceptance and IRLS integration through shared absorbed WLS; M4.4/M3.5 qualification decisions pending; M1.6 SCC full array finished (7779872), compact collection pending; Mac baselines captured.
+Current task: M6.1 strict/final-Hessian acceptance and IRLS integration through shared absorbed WLS; M4.4/M3.5 qualification decisions pending; M1.6 Mac and SCC baselines captured, with comparator failures preserved.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -20,7 +20,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.3 `crates/fereg-oracle`; dense oracles, seeded designs and legacy comparisons
 - [x] M1.4 `bench/` suite; 22 cells, pinned comparators and Mac smoke
 - [x] M1.5 SCC tooling; compute-node smoke passed and summary collected
-- [~] M1.6 Legacy baseline; Mac cohorts captured, SCC full campaign running
+- [x] M1.6 Legacy baseline; Mac cohorts and SCC full campaign captured, exceptions retained
 - [x] M2.1 Move legacy; Rust checks, path checks and universal plugin/ABI build pass
 - [x] M2.2 Create `crates/fereg-engine`; safe skeleton, wire parser and deterministic team
 - [x] M2.3 Shared data/factor harvest; exact legacy sample/weight parity on 2,400 designs
@@ -108,7 +108,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M6.1 shared linear frames (this commit) — immutable-weight direct/Schur FE engine feeds one FWL/finite-WLS assembly, original residual/score checks and coefficient reconstruction; perfect-fit cancellation reproduced and repaired by at most one reported derived-RHS recovery at unchanged SPEC scales; 4,400 independent dense WLS fits across changing weights and five engine regressions pass, with exact 1/2/4/8-worker identity. Sampling now covers every FE topology; seed 304 exposed false convergence in the independent Newton oracle, repaired with full-step stopping and stable directional likelihood gains (production tolerance unchanged), with a retained regression and 116 distinct Newton states; 164 engine tests and full lean/long suites pass. Retained adapters/fallback remain explicitly unqualified; all 56 SCC tasks and setup have SGE failed=0/exit=0/28 slots, collection pending.
+- 2026-09-29 M1.6 SCC capture (this commit) — [full baseline](bench/history/2026-09-29-cdfa8f85-linux-full.csv), frozen cdfa8f85: 56/56 task markers, complete unique group/thread-ladder coverage and source identity; setup 7779871 and every array 7779872 task have failed=0/exit=0/28 slots. All 56 fereg groups (280 measured fits), 38 reghdfe and 18 ppmlhdfe groups pass; 224 groups total, 222 completed, 218 accurate, with 1,110 completed measured fits. Preserve fixest weak-graph and Veneto disagreements at T1/T8, plus the two fixest-matched weak-graph convergence failures; no retries or removed failures. Largest task wall 5,352s, maxvmem 13.917G (setup 6.059G); raw outputs stay in runs/20260929-rebuild-m16-cdfa8f85. Collector/accounting/source/schema/coverage validation and full lean checks pass; Mac/explicit-solver summaries are already committed at 1f79ce0c; this completes baseline capture, not later performance gates.
+
+- 2026-09-29 M6.1 shared linear frames 5e5e781f — immutable-weight direct/Schur FE engine feeds one FWL/finite-WLS assembly, original residual/score checks and coefficient reconstruction; perfect-fit cancellation reproduced and repaired by at most one reported derived-RHS recovery at unchanged SPEC scales; 4,400 independent dense WLS fits across changing weights and five engine regressions pass, with exact 1/2/4/8-worker identity. Sampling now covers every FE topology; seed 304 exposed false convergence in the independent Newton oracle, repaired with full-step stopping and stable directional likelihood gains (production tolerance unchanged), with a retained regression and 116 distinct Newton states; 164 engine tests and full lean/long suites pass. Retained adapters/fallback remain explicitly unqualified; all 56 SCC tasks and setup have SGE failed=0/exit=0/28 slots, collection pending.
 
 - 2026-09-29 M6.1 state replay b214992b — reconstruct eta directly from original finite/FE coefficients and offset, replay mu/deviance/likelihood, and fail closed on stale or inconsistent state; common finite-predictor accumulation preserves OLS arithmetic; five regressions include zero-score/wrong-coefficient rejection, sloped multiway models, offsets and unclipped extreme means; 110 explicit-Newton coefficient reconstructions and exact 1/2/4/8-worker identity pass; 159 engine tests and full lean/long suites pass; SCC 55/56 application markers, task 53 still running; strict/final-Hessian checks and full IRLS remain open.
 
