@@ -310,7 +310,11 @@ pub(super) fn validate_input(input: &NumericPreparationInput<'_>, n: usize) -> R
     Ok(())
 }
 
-fn validate_column(name: &str, column: NumericColumnView<'_>, expected: usize) -> Result<()> {
+pub(super) fn validate_column(
+    name: &str,
+    column: NumericColumnView<'_>,
+    expected: usize,
+) -> Result<()> {
     if column.values.len() != expected {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,

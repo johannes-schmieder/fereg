@@ -70,6 +70,15 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Blockers / questions for Johannes
 
+- M4.4 ordinary factors: SPEC §2 orders outcome processing before finite
+  regressor domain handling, but legacy `ols/prepared.rs` explicitly validates
+  ordinary factor domains on every candidate before sample construction
+  (`categorical_domain_is_candidate_scoped_and_fails_before_sample_construction`).
+  A negative/fractional factor value with a missing outcome therefore errors
+  in legacy. Johannes is asked whether to retain this behavior or follow SPEC's
+  outcome-first order. New-engine ordinary factor preparation fails explicitly
+  as unqualified until this decision; all other preparation work continues.
+
 - M3.5: pinned `within` 1ac3522 violates SPEC §18 / architecture's same-arithmetic
   thread contract: a 20,000-row weighted three-FE probe changes 407/419
   Schwarz-LSMR coefficients at T8 versus T1 (max 9.16e-16), and
@@ -99,7 +108,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M4.4 weight frame (this commit) — projection and finite WLS share borrowed unit/provided/reference objective weights; final-sample normalization needs no materialized copy, and IRLS can borrow working weights through the same interface; weighted FWL results match materialized inputs bit-for-bit at 1/2/4/8 workers across unweighted/fw/aw/pw, with malformed-frame rejection; 121 engine tests and full lean/long oracle suites pass; orchestration remains open.
+- 2026-09-29 M4.4 sample integration (this commit) — metadata-derived source roles, aligned banks and numeric slope requirements; OLS preparation applies pinned weight/error rules, shared missingness and singleton pruning, and the implicit constant to the existing Prepared owner; ordinary factor preparation explicitly remains unqualified pending the SPEC/legacy domain-order decision below; omitted continuous sources, original-row precedence, final normalization, frequency multiplicity, string categories and malformed inputs are covered; 127 engine tests and full lean/long oracle suites pass; complete fit controller remains open.
+
+- 2026-09-29 M4.4 weight frame 84e4f4f9 — projection and finite WLS share borrowed unit/provided/reference objective weights; final-sample normalization needs no materialized copy, and IRLS can borrow working weights through the same interface; weighted FWL results match materialized inputs bit-for-bit at 1/2/4/8 workers across unweighted/fw/aw/pw, with malformed-frame rejection; 121 engine tests and full lean/long oracle suites pass; orchestration remains open.
 
 - 2026-09-29 M1.6 Mac capture 1f79ce0c — frozen-source [standard](bench/history/2026-09-29-3a931afe-darwin-standard.csv): 152 groups, 150 completed groups, 148 accurate; all 38 fereg groups pass, weak-graph fixest disagrees and fixest-matched fails convergence at T1/T8; wall 10,765s including launcher pauses exceeds the 3,600s budget, with raw failures retained and no retries. Separate [auto](bench/history/2026-09-29-cdfa8f85-darwin-standard-solvers-auto.csv), [LSMR](bench/history/2026-09-29-cdfa8f85-darwin-standard-solvers-lsmr.csv) and [CMG](bench/history/2026-09-29-cdfa8f85-darwin-standard-solvers-cmg.csv) cohorts each pass 6/6 groups and 30/30 measured fits; plugin hash be208844176c58a85485b79d9c97c421fc378058dbb7f4b9117fddf30f4ad5d5; summary source/schema/coverage checks and full lean suite pass; SCC 51/56 application markers, full collection pending.
 

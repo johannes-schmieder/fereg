@@ -42,6 +42,34 @@ pub struct Loaded {
     pub adjustment: LoadedAdjustment,
 }
 impl Loaded {
+    /// Validate all row banks before candidate-domain checks or string encoding.
+    pub fn validate_alignment(&self) -> Result<()> {
+        use super::sample::validate_column;
+        let n = self.candidate.len();
+        validate_column("outcome", self.outcome.view(), n)?;
+        for source in &self.sources {
+            match source {
+                LoadedSource::Numeric(column) => validate_column("source", column.view(), n)?,
+                LoadedSource::Strings(values) if values.len() != n => {
+                    return Err(FeregError::new(
+                        ErrorCode::InvalidArgument,
+                        "string source has the wrong length",
+                    ));
+                }
+                LoadedSource::Strings(_) => {}
+            }
+        }
+        if let Some((_, column)) = &self.weights {
+            validate_column("weight", column.view(), n)?;
+        }
+        match &self.adjustment {
+            LoadedAdjustment::None => {}
+            LoadedAdjustment::Offset(column) | LoadedAdjustment::Exposure(column) => {
+                validate_column("adjustment", column.view(), n)?;
+            }
+        }
+        Ok(())
+    }
     pub fn prepare<P: NumericDomainPolicy>(
         &self,
         uses: &[NumericSourceUse],
@@ -53,6 +81,7 @@ impl Loaded {
                 "loaded source roles have the wrong length",
             ));
         }
+        self.validate_alignment()?;
         let mut encoded = reserved(self.sources.len())?;
         for (source, usage) in self.sources.iter().zip(uses) {
             encoded.push(match source {
@@ -62,12 +91,6 @@ impl Loaded {
                         return Err(FeregError::new(
                             ErrorCode::Unsupported,
                             "string ordinary regressors are unsupported",
-                        ));
-                    }
-                    if values.len() != self.candidate.len() {
-                        return Err(FeregError::new(
-                            ErrorCode::InvalidArgument,
-                            "string source has the wrong length",
                         ));
                     }
                     Some(encode_strings(values)?)
