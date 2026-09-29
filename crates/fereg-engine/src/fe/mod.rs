@@ -1,9 +1,11 @@
 //! Shared FE design, plan and coefficient/residual contract for all backends.
 mod design;
+mod direct;
 mod plan;
 use crate::data::DenseMatrix;
 use crate::spec::Solver;
 pub use design::{CoefficientLayout, Design, EffectLayout, Weights};
+pub use direct::DirectCandidate;
 pub use plan::{Backend, Plan, PlanOverride};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

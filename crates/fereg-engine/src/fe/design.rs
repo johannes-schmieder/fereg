@@ -255,7 +255,7 @@ impl<'a> Design<'a> {
         finite_result(residual)
     }
 }
-fn validate_matrix(matrix: &DenseMatrix, rows: usize) -> Result<()> {
+pub(super) fn validate_matrix(matrix: &DenseMatrix, rows: usize) -> Result<()> {
     if matrix.nrows() != rows {
         return Err(invalid("FE matrix has an incompatible row count"));
     }

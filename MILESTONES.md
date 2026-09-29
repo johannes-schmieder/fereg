@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.2 direct per-level FE projection; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
+Current task: M3.3 Schur-PCG with shared rank-aware level blocks; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -26,7 +26,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M2.3 Shared data/factor harvest; exact legacy sample/weight parity on 2,400 designs
 - [x] M2.4 Shared FE topology, singleton fixed point, components and DoF; exact legacy parity
 - [x] M3.1 Shared FE design, structural solver plan and coefficient/residual diagnostics
-- [ ] M3.2 Direct projection for Q = 1
+- [x] M3.2 Direct projection for Q = 1
 - [ ] M3.3 Schur-PCG for Q ≥ 2
 - [ ] M3.4 Certificate and coefficients
 - [ ] M3.5 Retained backends and convergence monitor
@@ -86,7 +86,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M3.1 (this commit) — shared matrix-free D/D'W, weighted level blocks and canonical channel/level layout; structural auto candidate, explicit LSMR/CMG support and bounded fallback plans, common result diagnostics; 74 engine tests, full lean and long oracle suites pass; explicit-matrix equality and 1/2/4/8-worker bit identity; 546 FE lines; Mac launcher pause 12:34:14–12:37:43 UTC (209s), fit clocks unaffected.
+- 2026-09-29 M3.2 (this commit) — direct weighted per-level projection with shared scaled pivoted QR, canonical deficient-rank representatives and multi-RHS factors; 81 engine tests and 2,200 independent dense-dummy comparisons (6,600 RHSs) pass, exact 1/8-worker identity; full lean and long oracle checks pass; candidates remain explicitly unaccepted until M3.4 shared certification; Mac launcher pause 12:47:36–12:51:46 UTC (250s), fits unaffected; SCC 33/56 completed, strict fixest weak-graph failures at T1/T8 retained.
+
+- 2026-09-29 M3.1 47a1ed0c — shared matrix-free D/D'W, weighted level blocks and canonical channel/level layout; structural auto candidate, explicit LSMR/CMG support and bounded fallback plans, common result diagnostics; 74 engine tests, full lean and long oracle suites pass; explicit-matrix equality and 1/2/4/8-worker bit identity; 546 FE lines; Mac launcher pause 12:34:14–12:37:43 UTC (209s), fit clocks unaffected.
 
 - 2026-09-29 M2.4 acad66ae — one owned topology with canonical deduplicated partitions, certified CSR membership, borrowed slope channels, frequency-aware singleton cascades and reference DoF/nesting; 66 engine tests, 2,200 topology/sample/component comparisons, 35,200 intercept and 512 slope DoF comparisons pass; full lean and long oracle suites pass; topology 834 lines, DoF 324; Mac launcher pause 12:19:01–12:25:36 UTC (395s), fits unaffected.
 
