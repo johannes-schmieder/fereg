@@ -95,6 +95,29 @@ should use different streams, such as 1 and 2, under a prespecified common FE
 anchor. The RNG does not modify Stata's random state. Frequency copies remain
 in their supplied independent unit; common pweight scaling changes no correction.
 
+`biasunit()` defines independent score units, not deletion units. No PPML
+refits are performed. Every retained level of both FE sets must contain at least
+two distinct units, including when you request only corrected control coefficients.
+
+| Configuration | Support interpretation |
+| --- | --- |
+| Worker-group FE; individual worker units | Can pass when every group has multiple workers and every firm level also has multiple units |
+| Individual worker FE; worker units | Rejected: every worker FE has only one supporting unit |
+| Individual worker FE; spell units | Can pass with multiple spells per FE, but requires defensible independence across spells |
+| Units crossing FE categories | Allowed when every level has multiple units; nesting is not the criterion |
+
+The check uses actual retained membership, so copied/relabelled IDs and repeated
+frequency copies do not change the conclusion. Sample restrictions can make a
+previously supported configuration fail. Do not split dependent units merely
+to pass the check. More probes or exact calculation do not repair this problem.
+
+Inspect `matrix list e(bias_support)` for each FE set's unit-count distribution,
+minimum/median information concentration equivalents, and maximum unit information
+share. Small counts or concentrated information merit substantive review; passing
+the screen does not certify statistical adequacy. `valid=1` in
+`e(bias_diagnostics)` records successful numerical checks and the necessary
+support screen. Exact mode evaluates an approximate statistical correction.
+
 A missing unit ID on a retained row or any outcome-dependent separation
 deletion rejects the requested transaction. No rows are silently discarded and
 no zero-coefficient fallback is substituted. The approximation does not correct

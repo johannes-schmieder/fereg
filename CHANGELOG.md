@@ -2,6 +2,12 @@
 
 ## 0.5.0 beta — unreleased
 
+- Require at least two distinct bias units within every retained level of both
+  FE sets for PPML coefficient mean correction. Add `e(bias_support)` count and
+  information-concentration summaries, explain independent-score-unit assumptions
+  in the help, and preserve ordinary estimates and atomic rollback. PPML request
+  and result wires are now 1.8 and 1.5; the plugin and ado files must match.
+
 - Activated public `feppml` as a one-call wrapper over the guarded PPML
   transaction; packaged its syntax, transaction, and prediction ado files;
   published the reviewed help contract; and added the public scientific and

@@ -78,7 +78,10 @@ a witness. Fereg's own published mean must still replay its reported objective,
 lie in its declared model space, and pass every registered score, solver, rank,
 sample, and result certificate.
 
-The optional two-FE coefficient mean correction is governed by
+The optional two-FE coefficient mean correction requires at least two distinct
+independent score units per retained level of both FE sets (ADR 0246). The
+support screen and information concentration diagnostics do not certify
+statistical adequacy. The correction is governed by
 [ADR 0227](adr/0227-native-ppml-mean-bias-correction.md) and
 [its statistical contract](ppml_bias_correction.md). It uses the accepted full
 FE-plus-control information operator, explicit independent score units, both

@@ -3,6 +3,9 @@ use super::PpmlInterruptPoint;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::ols::CertifiedLinearSession;
 use crate::prepared_fit_view::PreparedOlsFitView;
+#[path = "bias_support.rs"]
+mod support;
+pub use support::PpmlBiasSupport;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PpmlBiasMethod {
@@ -24,6 +27,7 @@ pub struct PpmlBiasResult {
     pub request: PpmlBiasRequest,
     pub observations: usize,
     pub units: usize,
+    pub support: [PpmlBiasSupport; 2],
     pub minimum_unit_rows: usize,
     pub maximum_unit_rows: usize,
     pub minimum_mean: f64,
@@ -60,9 +64,9 @@ pub(super) fn memory_bound(
 ) -> Result<u128> {
     let n = rows as u128;
     let p = (levels as u128) + columns as u128;
-    n.checked_mul(if saves { 384 } else { 224 })
+    n.checked_mul(if saves { 400 } else { 240 })
         .and_then(|v| v.checked_add(p.min(256) * p.min(256) * 16))
-        .and_then(|v| p.checked_mul(192).and_then(|q| v.checked_add(q)))
+        .and_then(|v| p.checked_mul(208).and_then(|q| v.checked_add(q)))
         .and_then(|v| {
             (columns as u128)
                 .checked_mul(columns as u128)
@@ -89,6 +93,9 @@ pub(super) fn compute<P: PreparedOlsFitView + Sync + ?Sized>(
 ) -> Result<PpmlBiasResult> {
     let started = std::time::Instant::now();
     interrupt(PpmlInterruptPoint::BiasCorrection)?;
+    let support = support::check(
+        session.fe_design(), session.bias_weights(), frame.units, interrupt,
+    )?;
     let mut fixed = session.bias_information(certificate_tolerance)?;
     let dimension = session.bias_dimension();
     let first = session.fe_design().effects()[0].n_levels();
@@ -107,6 +114,7 @@ pub(super) fn compute<P: PreparedOlsFitView + Sync + ?Sized>(
         },
     )?;
     result.raw = raw;
+    result.support = support;
     result
         .finite_columns
         .try_reserve_exact(session.bias_finite_columns().len())
@@ -226,6 +234,8 @@ impl PpmlBiasResult {
     }
 
     pub(crate) fn validate(&self) -> Result<()> {
+        self.support[0].validate(self.first_levels, self.units)?;
+        self.support[1].validate(self.second_levels, self.units)?;
         let p = self.raw.len();
         let expected_groups = if self.request.method == PpmlBiasMethod::Exact {
             1
@@ -399,6 +409,7 @@ fn calculate(
         request,
         observations: n,
         units: g,
+        support: [PpmlBiasSupport::default(); 2],
         minimum_unit_rows: *unit_rows.iter().min().unwrap(),
         maximum_unit_rows: *unit_rows.iter().max().unwrap(),
         minimum_mean: mu.iter().copied().fold(f64::INFINITY, f64::min),

@@ -29,9 +29,9 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         self.assertEqual(text.count("plugin call __fereg_estimate_plugin"), 1)
         for field in (
             "request_major=1",
-            "request_minor=7",
+            "request_minor=8",
             "result_major=1",
-            "result_minor=4",
+            "result_minor=5",
             "model_major=`model_major'",
             "model_minor=`model_minor'",
             "output_inference_matrix=`inference_shadow'",
@@ -153,11 +153,11 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         rust_keys = set(re.findall(r'"([a-z_]+)"', allowed.group("body")))
         self.assertEqual(ado_keys, rust_keys)
 
-    def test_protocol_uses_ppml_request_17_and_result_14(self) -> None:
+    def test_protocol_uses_ppml_request_18_and_result_15(self) -> None:
         protocol = PROTOCOL.read_text(encoding="utf-8")
         for token in (
-            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 7)",
-            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4)",
+            "PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 8)",
+            "PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5)",
             "PPML_RESULT_INFERENCE_ROWS: usize = 16",
             "PPML_RESULT_DROP_COUNT_ROWS: usize = 14",
             "PPML_RESULT_SEPARATION_SEQUENCE_ROWS: usize = 5",
@@ -180,7 +180,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "rows(separation_sequence) != 5 | cols(separation_sequence) != 13",
             "rows(solver) != 4 | cols(solver) != 22",
             "rows(receipt) != 1 | cols(receipt) != 33",
-            "receipt[1,3] != 4",
+            "receipt[1,3] != 5",
             "receipt[1,33] != 1",
         ):
             self.assertIn(token, text)
@@ -930,7 +930,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
             "requestedsolvercode(7)",
             "matrix `runtime' = J(108,1,.)",
             "matrix `receipt' = J(1,33,0)",
-            "matrix `receipt'[1,3] = 4",
+            "matrix `receipt'[1,3] = 5",
             "matrix `receipt'[1,33] = 1",
             "requestedvcecode(2)",
             "dropsingletons(1)",

@@ -60,6 +60,24 @@ def correction(x, y, weight, mu, unit):
     return derivative, curvature
 
 
+def support_summary(fe, unit, information):
+    """Independent per-level table, then nearest-rank public summaries."""
+    fe, unit, information = map(np.asarray, (fe, unit, information))
+    counts, effective, shares = [], [], []
+    for level in np.unique(fe):
+        keep = fe == level
+        ids, inverse = np.unique(unit[keep], return_inverse=True)
+        mass = np.bincount(inverse, weights=information[keep])
+        share = mass / mass.sum()
+        counts.append(len(ids))
+        effective.append(1. / np.sum(share ** 2))
+        shares.append(share.max())
+    counts = np.asarray(counts)
+    return np.r_[len(counts), np.quantile(counts, [0, .25, .5, .75, 1], method="inverted_cdf"),
+                 np.sum(counts == 1), np.mean(counts == 1),
+                 np.min(effective), np.quantile(effective, .5, method="inverted_cdf"), max(shares)]
+
+
 def two_fe_design(data):
     first = np.sort(data.sb_sworker.unique())
     second = np.sort(data.sb_sfirm.unique())

@@ -4,6 +4,7 @@ use fereg_core::ppml::{PpmlBiasMethod, PpmlBiasRequest};
 
 pub(super) const CHANNELS: usize = 9;
 pub(super) const DIAGNOSTICS: usize = 21;
+pub(super) const SUPPORT_COLUMNS: usize = 11;
 
 pub(super) fn parse(values: &BTreeMap<String, String>) -> Result<Option<PpmlBiasRequest>> {
     let method = match values
@@ -49,6 +50,7 @@ pub(crate) struct Shadow<'a> {
     pub(crate) request: PpmlBiasRequest,
     pub(crate) coefficients: Vec<f64>,
     pub(crate) diagnostics: Vec<f64>,
+    pub(crate) support: [f64; 2 * SUPPORT_COLUMNS],
     pub(crate) saved: &'a [Vec<f64>],
 }
 
@@ -107,14 +109,19 @@ pub(crate) fn shadow(result: &fereg_core::ppml::CertifiedPpmlResult) -> Result<O
         bias.minimum_unit_rows as f64,
         bias.maximum_unit_rows as f64,
         f64::from(bias.route), // 1: reused sparse operator; 2: bounded cached information factor.
-        1.,                    // Interior retained-sample correction certified.
+        1.,                    // Numerical checks and the necessary support screen passed.
         bias.certificate_tolerance,
         bias.minimum_level_information,
         bias.maximum_fe_leverage_lower_bound,
     ]);
+    let mut support = [0.; 2 * SUPPORT_COLUMNS];
+    for (row, summary) in support.chunks_exact_mut(SUPPORT_COLUMNS).zip(&bias.support) {
+        row.copy_from_slice(&summary.values());
+    }
     if coefficients
         .iter()
         .chain(&diagnostics)
+        .chain(&support)
         .chain(bias.saved_effects.iter().flatten())
         .any(|v| !crate::ppml_result::is_stata_publishable(*v))
     {
@@ -127,6 +134,7 @@ pub(crate) fn shadow(result: &fereg_core::ppml::CertifiedPpmlResult) -> Result<O
         request: bias.request,
         coefficients,
         diagnostics,
+        support,
         saved: &bias.saved_effects,
     }))
 }
@@ -141,6 +149,7 @@ pub(super) fn validate(
             if !action.outputs.bias_channels.is_empty()
                 || action.matrices.bias.is_some()
                 || action.matrices.bias_diagnostics.is_some()
+                || action.matrices.bias_support.is_some()
             {
                 return Err(internal("option-off PPML has correction outputs"));
             }
@@ -158,7 +167,7 @@ pub(super) fn validate(
             {
                 return Err(internal("bias publication is not request-aligned"));
             }
-            for matrix in [&action.matrices.bias, &action.matrices.bias_diagnostics] {
+            for matrix in [&action.matrices.bias, &action.matrices.bias_diagnostics, &action.matrices.bias_support] {
                 let matrix = matrix
                     .as_ref()
                     .ok_or_else(|| internal("bias matrix is absent"))?;
@@ -170,6 +179,7 @@ pub(super) fn validate(
                 .coefficients
                 .iter()
                 .chain(&result.diagnostics)
+                .chain(&result.support)
                 .chain(result.saved.iter().flatten())
                 .any(|v| !crate::ppml_result::is_stata_publishable(*v))
             {

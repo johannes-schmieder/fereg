@@ -108,6 +108,7 @@ impl Drop for PublicationPhaseScope {
 struct ResultMatrices {
     bias: Option<String>,
     bias_diagnostics: Option<String>,
+    bias_support: Option<String>,
     b: String,
     covariance: String,
     coefficient_status: String,
@@ -131,6 +132,7 @@ struct ResultMatrices {
 struct PreparedResultMatrices {
     bias: Option<PreparedMatrixStoreName>,
     bias_diagnostics: Option<PreparedMatrixStoreName>,
+    bias_support: Option<PreparedMatrixStoreName>,
     b: PreparedMatrixStoreName,
     covariance: PreparedMatrixStoreName,
     coefficient_status: PreparedMatrixStoreName,
@@ -650,6 +652,7 @@ impl EstimatePpmlSpec {
                     .bias_diagnostics
                     .as_ref()
                     .map_or(0, |v| v.capacity() as u128)
+                + self.matrices.bias_support.as_ref().map_or(0, |v| v.capacity() as u128)
                 + self.outputs.bias_channels.capacity() as u128
                     * std::mem::size_of::<Option<u32>>() as u128
                 + self.outputs.saved_channels.capacity() as u128
@@ -813,6 +816,7 @@ impl EstimatePpmlSpec {
             matrices: ResultMatrices {
                 bias: values.get("output_bias_matrix").cloned(),
                 bias_diagnostics: values.get("output_bias_diagnostics").cloned(),
+                bias_support: values.get("output_bias_support").cloned(),
                 b: required(&values, "output_b_matrix")?.to_owned(),
                 covariance: required(&values, "output_v_matrix")?.to_owned(),
                 coefficient_status: required(&values, "output_status_matrix")?.to_owned(),
@@ -928,6 +932,7 @@ impl EstimatePpmlSpec {
             "output_bias_channels",
             "output_bias_matrix",
             "output_bias_diagnostics",
+            "output_bias_support",
             "output_b_matrix",
             "output_v_matrix",
             "output_status_matrix",
@@ -1085,6 +1090,7 @@ impl EstimatePpmlSpec {
         validate_variable_layout(&request, adjustment, self.bias_unit, &outputs, spi)?;
         if self.bias.is_some() != self.matrices.bias.is_some()
             || self.bias.is_some() != self.matrices.bias_diagnostics.is_some()
+            || self.bias.is_some() != self.matrices.bias_support.is_some()
         {
             return Err(syntax("bias request and output matrices disagree"));
         }
@@ -2428,6 +2434,11 @@ fn store_shadow_prefix(
             1,
             &bias.diagnostics,
         )?;
+        store_matrix(
+            spi,
+            action.matrices.bias_support.as_ref().ok_or_else(|| internal("bias support missing"))?,
+            2, bias::SUPPORT_COLUMNS, &bias.support,
+        )?;
     }
     store_matrix(spi, &action.matrices.b, 1, shadow.b.len(), &shadow.b)?;
     let dimension = shadow.coefficient_count.max(1);
@@ -2879,6 +2890,7 @@ fn validate_matrix_layout(
                 .as_ref()
                 .map(|name| (name, bias::DIAGNOSTICS, 1)),
         )
+        .chain(matrices.bias_support.as_ref().map(|name| (name, 2, bias::SUPPORT_COLUMNS)))
     {
         if name.is_empty() || input_names.contains(name.as_str()) || !output_names.insert(name) {
             return Err(invalid(
@@ -2908,6 +2920,9 @@ fn validate_matrix_layout(
             .bias_diagnostics
             .as_ref()
             .map(|name| PreparedMatrixStoreName::try_new(name, bias::DIAGNOSTICS, 1))
+            .transpose()?,
+        bias_support: matrices.bias_support.as_ref()
+            .map(|name| PreparedMatrixStoreName::try_new(name, 2, bias::SUPPORT_COLUMNS))
             .transpose()?,
         b: PreparedMatrixStoreName::try_new(&matrices.b, 1, dimension)?,
         covariance: PreparedMatrixStoreName::try_new(&matrices.covariance, dimension, dimension)?,
@@ -2990,6 +3005,7 @@ fn prepared_matrix_names(
     .into_iter()
     .chain(matrices.bias.iter())
     .chain(matrices.bias_diagnostics.iter())
+    .chain(matrices.bias_support.iter())
 }
 
 fn parse_separation_methods(value: &str) -> Result<SeparationMethods> {
@@ -4126,6 +4142,7 @@ mod tests {
             ("RFE", 2, FE_COLUMNS),
             ("RBIAS", bias::CHANNELS, 2),
             ("RBDIAG", bias::DIAGNOSTICS, 1),
+            ("RBSUPPORT", 2, bias::SUPPORT_COLUMNS),
         ] {
             spi.matrices
                 .insert(name.to_owned(), zero_matrix(rows, cols));
@@ -4133,7 +4150,7 @@ mod tests {
         spi.nvars = if saved { 34 } else { 16 };
         for row in 1..=spi.nobs {
             spi.numeric
-                .insert((16, row), (((row - 1) / 4 + 1) as f64, false));
+                .insert((16, row), (((row - 1) / 2 + 1) as f64, false));
             spi.numeric
                 .insert((2, row), (1. + ((row * 7 + row / 4) % 9) as f64, false));
             if saved {
@@ -4151,6 +4168,7 @@ mod tests {
                 "bias_stream=0",
                 "output_bias_matrix=RBIAS",
                 "output_bias_diagnostics=RBDIAG",
+                "output_bias_support=RBSUPPORT",
             ]
             .into_iter()
             .map(str::to_owned),
@@ -4175,7 +4193,8 @@ mod tests {
         let (args, mut spi) = bias_fixture(true);
         estimate_ppml_test(&args, &mut spi).unwrap();
         assert_eq!(spi.matrices["RBDIAG"][0][0], 1.);
-        assert_eq!(spi.matrices["RBDIAG"][1][0], 8.);
+        assert_eq!(spi.matrices["RBDIAG"][1][0], 16.);
+        assert_eq!(spi.matrices["RBSUPPORT"][0][1], 2.);
         assert_eq!(
             spi.matrices["RREC"][0][PPML_RESULT_RECEIPT_COMPLETE_COLUMN - 1],
             1.
@@ -4195,6 +4214,27 @@ mod tests {
             );
             assert_eq!(failed.receipt_complete(), 0., "store {ordinal}");
         }
+    }
+
+    #[test]
+    fn bias_support_failure_is_before_any_publication_and_destinations_are_guarded() {
+        for saved in [false, true] {
+            let (args, mut spi) = bias_fixture(saved);
+            for row in 1..=spi.nobs {
+                spi.numeric.insert((16, row), (((row - 1) / 4 + 71) as f64, false));
+            }
+            let error = estimate_ppml_test(&args, &mut spi).unwrap_err();
+            assert!(error.message.contains("FE1: 8/8"), "{error}");
+            assert_eq!(spi.store_calls, 0);
+        }
+        let (mut args, mut spi) = bias_fixture(false);
+        args.retain(|s| !s.starts_with("output_bias_support="));
+        assert!(estimate_ppml_test(&args, &mut spi).is_err());
+        assert_eq!(spi.reads, 0);
+        let (mut args, mut spi) = bias_fixture(false);
+        replace_argument(&mut args, "output_bias_support", "output_bias_support=RBDIAG".to_owned());
+        assert!(estimate_ppml_test(&args, &mut spi).is_err());
+        assert_eq!(spi.reads, 0);
     }
 
     #[cfg(feature = "ffi")]

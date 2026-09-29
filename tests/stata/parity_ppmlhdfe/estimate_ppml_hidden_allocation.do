@@ -79,7 +79,7 @@ assert colsof(e(b)) == 2
 assert rowsof(e(V)) == 2 & colsof(e(V)) == 2
 assert e(feppml_receipt)[1,1] == 5354602
 assert e(feppml_receipt)[1,2] == 1
-assert e(feppml_receipt)[1,3] == 4
+assert e(feppml_receipt)[1,3] == 5
 assert e(feppml_receipt)[1,4] == 2
 assert e(feppml_receipt)[1,13] == 1
 assert e(feppml_receipt)[1,14] == 1

@@ -29,6 +29,54 @@ leverage, weak support and sparse outcomes can limit the approximation. It
 does not provide corrected confidence intervals, unbiased rates, or unbiased
 variances of estimated effects. Split Branch and FEVC remain external.
 
+## Independent units and FE support
+
+`biasunit()` identifies independent **score units**, not deletion units: the
+correction uses the accepted fit without leave-one-unit-out refits. Nesting
+within an FE set is neither required nor a sufficient validity condition.
+Choose units from the sampling/dependence assumptions, independently of the
+VCE cluster option. Finer units are appropriate only if their independence is
+substantively defensible.
+
+Every retained level in **both** FE sets must contain at least two distinct
+bias units. Otherwise both exact and randomized requests fail, even when
+`biasfe()` is omitted, because both nuisance FE sets enter the full-system
+correction. The diagnostic error reports single-unit level counts in absorb
+order. This is a conservative restriction on supported configurations, not a
+claim that every individual slope increment must be wrong. Ordinary estimation
+without correction remains available.
+
+For example, absorbing individual `workerid` while supplying
+`biasunit(workerid)` fails. At the fitted solution the worker indicator has
+score `sum_worker a*(y-mu)=0`. If its support lies entirely in that unit, the
+corresponding coordinate of each unit score is zero. The empirical score
+covariance can therefore miss estimation noise in that FE. Cross-coupling with
+other coordinates can still generate nonzero corrections; zero increments are
+not a necessary symptom. Absorbing worker **groups** with several independent
+workers per group can pass this screen.
+
+A simple analytic example makes the problem visible without a solver: with
+k independent completed exponential durations per person and an individual
+log-rate FE, the estimate is `log(k/sum T)`. Its exact mean bias is
+`log(k)-digamma(k)>0`. If the entire person is treated as one score unit, its
+fitted score is zero and both empirical contractions vanish in this diagonal
+model. Independent duration units produce nonzero contractions, but that finer
+choice is justified only under independent-duration sampling. This example
+explains the limitation; it does not authorize splitting dependent spells.
+
+The screen counts actual distinct IDs on the final retained sample, including
+ordinary exclusions and singleton processing. It is invariant to relabelling
+IDs and ignores frequency multiplicity as a source of independence. More rows
+within one unit, more probes, or exact computation cannot repair unsupported
+levels. Exact refers to evaluation of the empirical contraction, not exact
+removal of statistical bias.
+
+Passing is necessary for the supported implementation, not sufficient for
+accurate bias reduction. Few units, concentrated information, graph bottlenecks,
+and contrasts identified by a single unit can still undermine the approximation.
+The implementation does not certify independence, test all graph/rank conditions,
+or impose an arbitrary minimum such as 20 or 50 units.
+
 ## Requested interface and normalization
 
 `biascorrection(exact|randomized)` requires `biasunit(numeric_variable)` and exactly
@@ -44,7 +92,7 @@ Missing IDs on retained rows are errors. Any outcome-dependent separation
 deletion rejects the entire requested transaction. Other exclusions retain the
 ordinary sample ledger; the correction describes that retained sample and
 does not establish an unconditional target for outcome-related missingness.
-At least two retained score units are required.
+At least two distinct retained score units per level of both FE sets are required.
 
 Frequency multiplicity repeats rows within the supplied unit; it never creates
 new independent units. Probability weights use the ordinary final-sample
@@ -126,9 +174,9 @@ bounded cached factor. Each route certifies the full normal equations.
 The diagnostic `max_fe_leverage_lb` is the maximum, across rows and both FE
 indicators, of h_r divided by that level's information sum. It is a lower
 bound on maximum full-system leverage, not an estimate of all hat diagonals.
-`min_level_information` uses the effective final h=a*mu scale. Together with
-unit support and mean ranges these expose weak support without imposing an
-arbitrary coefficient cap or leverage cutoff.
+`min_level_information` uses the effective final h=a*mu scale. The leverage
+lower bound describes rows, not bias-unit information concentration. The
+separate support summaries below use unit aggregates.
 
 ## Results and reproducible checks
 
@@ -152,6 +200,30 @@ Validity 1 means the retained interior calculation passed its numerical
 checks; it does not certify the observation-process assumptions or statistical
 accuracy of the approximation. Failed requests return an error instead of a
 partially valid correction.
+
+`e(bias_support)` has two rows, `fe1` and `fe2`, in absorb order, and
+11 columns:
+
+| Column | Definition over retained levels of that FE |
+| --- | --- |
+| `levels` | Number of levels |
+| `min_units`, `p25_units`, `median_units`, `p75_units`, `max_units` | Distribution of distinct bias-unit counts |
+| `single_unit_levels`, `single_unit_fraction` | Count and fraction with one unit; both zero for successful requests |
+| `min_info_units`, `median_info_units` | Minimum and median information concentration equivalents |
+| `max_unit_info_share` | Largest unit share of any level's information |
+
+Quantiles are unweighted across FE levels and use nearest rank (the smallest
+ordered value whose empirical CDF reaches the requested fraction). For level
+ell and unit g, define `I_ell,g = sum_(ell,g) a*mu`, unit shares
+`p_ell,g = I_ell,g / sum_g I_ell,g`, and the information concentration equivalent
+`1 / sum_g p_ell,g^2`. This equals the unit count under equal information and
+approaches one under dominance by a single unit. It is not a certified effective
+sample size. Inspect these summaries for small counts and information dominance;
+there is no universal cutoff that establishes adequacy. Failed requests publish
+no new results, so the error, rather than a partial matrix, supplies the number
+of unsupported levels. `e(bias_validity)="interior-retained-sample"` and the
+numeric `valid=1` denote numerical checks plus this necessary support screen,
+not statistical validity of the selected units or correction.
 
 Install the pinned test requirements in `scripts/requirements-ppml-bias.txt`.
 The independent checks are `tests/python/test_ppml_bias_oracle.py`,

@@ -652,9 +652,10 @@ program define _fereg_estimate_ppml, eclass
         }
     }
     if `has_bias' {
-        tempname bias_shadow bias_diagnostics_shadow
+        tempname bias_shadow bias_diagnostics_shadow bias_support_shadow
         matrix `bias_shadow' = J(9, `matrix_dimension', .)
         matrix `bias_diagnostics_shadow' = J(21, 1, .)
+        matrix `bias_support_shadow' = J(2, 11, .)
     }
 
     tempname b_shadow v_shadow status_shadow fit_shadow dof_shadow
@@ -708,9 +709,9 @@ program define _fereg_estimate_ppml, eclass
     quietly _fereg_memory_baseline
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
-    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=4;request_major=1;request_minor=7;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=feppml-estimation;plugin=0.5.0;result_major=1;result_minor=5;request_major=1;request_minor=8;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=1;candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';adjustment=`adjustment_kind';adjustment_position=`adjustment_position';residual=`residual_wire';vce=`vce_request_wire';memory=`memory_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';allocation_audit=`allocation_audit_wire';solver=`solver_mode';tolerance=`tolerance';iterate=`iterate';separation=`separation_wire';separation_tolerance=`septolerance';separation_max_iterations=`sepiterate';simplex_max_iterations=`simplexiterate';simplex_max_tableau_cells=`simplexcells';output_sample=`output_sample';output_residual=`output_residual';output_xb=`output_xb';output_absorbed=`output_absorbed';output_eta=`output_eta';output_mean=`output_mu';output_drop_reason=`output_dropreason';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_separation_matrix=`separation_shadow';output_inference_matrix=`inference_shadow';output_drop_counts_matrix=`drop_counts_shadow';output_separation_sequence_matrix=`separation_sequence_shadow';output_certificate_matrix=`certificate_shadow';output_solver_matrix=`solver_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
     if `has_bias' {
-        local request_arguments `"`request_arguments'bias_method=`bias_method';bias_unit=`bias_unit_position';bias_probes=`biasprobes';bias_seed=`biasseed';bias_stream=`biasstream';output_bias_count=`output_bias_count';output_bias_channels=`output_bias_registry';output_bias_matrix=`bias_shadow';output_bias_diagnostics=`bias_diagnostics_shadow';"'
+        local request_arguments `"`request_arguments'bias_method=`bias_method';bias_unit=`bias_unit_position';bias_probes=`biasprobes';bias_seed=`biasseed';bias_stream=`biasstream';output_bias_count=`output_bias_count';output_bias_channels=`output_bias_registry';output_bias_matrix=`bias_shadow';output_bias_diagnostics=`bias_diagnostics_shadow';output_bias_support=`bias_support_shadow';"'
     }
     if `"`plugin_inject'"' != "" {
         local request_arguments `"`request_arguments'inject=`plugin_inject';"'
@@ -802,6 +803,27 @@ program define _fereg_estimate_ppml, eclass
             `bias_diagnostics_shadow'[4,1] != `biasseed' | ///
             `bias_diagnostics_shadow'[5,1] != `biasstream' | ///
             `bias_diagnostics_shadow'[18,1] != 1 | `receipt_shadow'[1,16] != 0 exit 3499
+        forvalues effect = 1/2 {
+            forvalues col = 1/11 {
+                if missing(`bias_support_shadow'[`effect',`col']) exit 3499
+            }
+            if `bias_support_shadow'[`effect',1] != `fe_shadow'[`effect',4] | ///
+                `bias_support_shadow'[`effect',1] < 1 | ///
+                `bias_support_shadow'[`effect',2] < 2 | ///
+                `bias_support_shadow'[`effect',6] > `bias_diagnostics_shadow'[2,1] | ///
+                `bias_support_shadow'[`effect',7] != 0 | `bias_support_shadow'[`effect',8] != 0 | ///
+                `bias_support_shadow'[`effect',9] < 1 | ///
+                `bias_support_shadow'[`effect',9] > `bias_support_shadow'[`effect',2] | ///
+                `bias_support_shadow'[`effect',10] < `bias_support_shadow'[`effect',9] | ///
+                `bias_support_shadow'[`effect',10] > `bias_support_shadow'[`effect',6] | ///
+                `bias_support_shadow'[`effect',11] <= 0 | `bias_support_shadow'[`effect',11] > 1 exit 3499
+            forvalues col = 1/7 {
+                if `bias_support_shadow'[`effect',`col'] != floor(`bias_support_shadow'[`effect',`col']) exit 3499
+            }
+            forvalues col = 2/5 {
+                if `bias_support_shadow'[`effect',`col'] > `bias_support_shadow'[`effect',`=`col'+1'] exit 3499
+            }
+        }
         forvalues slot = 1/`coefficient_count' {
             forvalues row = 1/9 {
                 if missing(`bias_shadow'[`row',`slot']) exit 3499
@@ -1026,6 +1048,10 @@ program define _fereg_estimate_ppml, eclass
             tolerance min_level_information max_fe_leverage_lb
         matrix colnames `bias_diagnostics_shadow' = value
         ereturn matrix bias_diagnostics = `bias_diagnostics_shadow', copy
+        matrix rownames `bias_support_shadow' = fe1 fe2
+        matrix colnames `bias_support_shadow' = levels min_units p25_units median_units p75_units max_units ///
+            single_unit_levels single_unit_fraction min_info_units median_info_units max_unit_info_share
+        ereturn matrix bias_support = `bias_support_shadow', copy
         ereturn local bias_method "`bias_method'"
         ereturn local bias_unit "`biasunit'"
         ereturn local bias_rng "philox4x32-10"
@@ -1335,8 +1361,8 @@ program define _fereg_estimate_ppml, eclass
     ereturn local feppml_solver_fallback_reason "`solver_fallback_reason'"
     ereturn local feppml_action_protocol "1.6"
     ereturn local feppml_model_wire "2.1"
-    ereturn local feppml_request_wire "1.7"
-    ereturn local feppml_result_wire "1.4"
+    ereturn local feppml_request_wire "1.8"
+    ereturn local feppml_result_wire "1.5"
     ereturn local feppml_plugin "0.5.0"
     if `"`inject'"' == "breakpostpublic" {
         di as result "FEPPML_BREAK_ARMED"

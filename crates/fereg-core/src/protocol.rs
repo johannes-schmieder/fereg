@@ -32,15 +32,17 @@ pub const MODEL_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(2, 1);
 pub const OLS_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5);
 /// Version of the PPML-specific request layout, independent of the action,
 /// model, OLS-result, and PPML-result wires.
+/// Minor 8 requires the per-FE bias-unit support destination for corrections.
 /// Minor 7 adds the optional coefficient bias request and separate output bindings.
 /// Minor 6 adds the shared Stata memory baseline/result contract.
 /// Minor 5 replaced the private solver-development cross-product with the
 /// single public `solver(auto|map|lsmr|cmg)` family field.
-pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 7);
+pub const PPML_REQUEST_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 8);
 /// Version of the separately versioned PPML shadow-result layout.
+/// Minor 5 adds the separate per-FE independent-unit support matrix.
 /// Minor 4 adds optional bias coefficient, numerical-variation and diagnostic matrices.
 /// Minor 3 adds the shared memory report; minor 2 added the solver report.
-pub const PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 4);
+pub const PPML_RESULT_WIRE_VERSION: ProtocolVersion = ProtocolVersion::new(1, 5);
 
 /// Exact integer magic stored in the first column of every PPML result receipt.
 ///
@@ -607,10 +609,9 @@ mod tests {
         assert_eq!(ACTION_PROTOCOL_VERSION, ProtocolVersion::new(1, 6));
         assert_eq!(MODEL_WIRE_VERSION, ProtocolVersion::new(2, 1));
         assert_eq!(OLS_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 5));
-        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 7));
-        assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 4));
+        assert_eq!(PPML_REQUEST_WIRE_VERSION, ProtocolVersion::new(1, 8));
+        assert_eq!(PPML_RESULT_WIRE_VERSION, ProtocolVersion::new(1, 5));
         assert_ne!(ACTION_PROTOCOL_VERSION, MODEL_WIRE_VERSION);
-        assert_ne!(OLS_RESULT_WIRE_VERSION, PPML_RESULT_WIRE_VERSION);
     }
 
     #[test]
@@ -633,7 +634,7 @@ mod tests {
             [
                 5_354_602.0,
                 1.0,
-                4.0,
+                5.0,
                 3.0,
                 5.0,
                 4.0,

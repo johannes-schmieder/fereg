@@ -33,8 +33,8 @@ assert `"`e(feppml_gate)'"' == "public_ppml_v1"
 assert `"`e(feppml_memory_requested)'"' == "auto"
 assert `"`e(feppml_action_protocol)'"' == "1.6"
 assert `"`e(feppml_model_wire)'"' == "2.1"
-assert `"`e(feppml_request_wire)'"' == "1.7"
-assert `"`e(feppml_result_wire)'"' == "1.4"
+assert `"`e(feppml_request_wire)'"' == "1.8"
+assert `"`e(feppml_result_wire)'"' == "1.5"
 assert `"`e(feppml_plugin)'"' == "0.5.0"
 assert `"`e(solver)'"' == "auto"
 assert `"`e(feppml_solver_requested)'"' == "auto"
@@ -247,7 +247,8 @@ forvalues row = 1/4 {
 assert e(feppml_solver)[2,8] == 0
 assert e(feppml_solver)[3,8] > 0
 assert e(feppml_solver)[2,9] > 0
-assert e(feppml_linear_route) == 2
+* The compatibility alias identifies the accepted LSMR checkpoint.
+assert e(feppml_linear_route) == 3
 
 `feppml_test_command' y c.x, absorb(cl1 cl2 cl3) separation(none) ///
     memory(fast) threads(1) deterministic solver(lsmr)

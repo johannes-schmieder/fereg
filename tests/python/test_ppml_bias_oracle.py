@@ -6,7 +6,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 try:
     import numpy as np
-    from ppml_bias_oracle import correction, fit_poisson, randomized_correction, philox_signs
+    from ppml_bias_oracle import correction, fit_poisson, randomized_correction, philox_signs, support_summary
 except ImportError:
     np = None
 
@@ -21,6 +21,36 @@ class PpmlBiasOracleTests(unittest.TestCase):
         self.assertAlmostEqual(float(np.exp(beta[0])), .1, places=14)
         self.assertAlmostEqual(float(d[0]), -.095, places=14)
         self.assertAlmostEqual(float(c[0]), .0475, places=14)
+
+    def test_fe_aligned_unit_collapses_despite_nonzero_mean_bias(self):
+        # Four independent completed exponential durations per person. The
+        # individual-FE estimate is log(4/sum T); its exact log-rate bias is
+        # log(4)-digamma(4), regardless of the true rate.
+        from scipy.special import digamma
+        worker = np.repeat(np.arange(3), 4)
+        x = np.eye(3)[worker]
+        exposure = np.tile([4., 6., 10., 20.], 3)
+        y = w = np.ones(12)
+        _, mu, _ = fit_poisson(x, y, w, exposure)
+        aligned = correction(x, y, w, mu, worker)
+        independent = correction(x, y, w, mu, np.arange(12))
+        np.testing.assert_allclose(aligned, 0., atol=1e-14)
+        np.testing.assert_allclose(independent[0] + independent[1], -.0475, atol=1e-14)
+        self.assertGreater(np.log(4)-digamma(4), .13)
+        self.assertEqual(support_summary(worker, worker, mu)[6], 3)
+        self.assertEqual(support_summary(worker, np.arange(12), mu)[1], 4)
+
+    def test_support_counts_and_information_concentration_are_distinct(self):
+        fe = np.repeat([0, 1], 4)
+        unit = np.array([1, 2, 1, 2, 2, 1, 2, 1])
+        h = np.array([9., 1., 9., 1., 1., 9., 1., 9.])
+        summary = support_summary(fe, unit, h)
+        np.testing.assert_allclose(summary, [2, 2, 2, 2, 2, 2, 0, 0, 100/82, 100/82, .9])
+        multiplicity = np.arange(1, 9)
+        expected = support_summary(fe, unit, h*multiplicity)
+        actual = support_summary(np.repeat(fe, multiplicity), np.repeat(unit, multiplicity),
+                                 np.repeat(h, multiplicity))
+        np.testing.assert_allclose(actual, expected, atol=1e-14)
 
     def test_probe_identities_and_batch_partition(self):
         # Zero counter/key matches the public Random123 known-answer vector.

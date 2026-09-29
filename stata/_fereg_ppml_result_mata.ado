@@ -95,7 +95,7 @@ real scalar _fereg_ppml_validate_result()
     }
     coefficients = receipt[1,5]
     if (receipt[1,1] != 5354602 | receipt[1,2] != 1 |
-        receipt[1,3] != 4 | receipt[1,20] != 16 |
+        receipt[1,3] != 5 | receipt[1,20] != 16 |
         receipt[1,21] != 14 | receipt[1,22] != 5 |
         receipt[1,33] != 1) {
         return(_fereg_ppml_validation_error("PPML receipt wire header or COMPLETE marker is invalid", 499))

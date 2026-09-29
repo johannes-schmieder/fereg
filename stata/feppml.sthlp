@@ -317,6 +317,31 @@ outcomes can limit its accuracy. It does not supply corrected confidence
 intervals, unbiased rates, or unbiased variances of estimated effects.
 
 {pstd}
+{bf:Choosing bias units and FE support.} {cmd:biasunit()} defines independent
+score units, not deletion units; no leave-one-unit-out PPML refits are used.
+Units need not nest within either FE set. Every retained level of {bf:both}
+FE sets must contain at least two distinct bias units. Otherwise the whole
+requested correction fails, including when {cmd:biasfe()} is omitted.
+
+{pstd}
+Absorbing individual {cmd:workerid} and using {cmd:biasunit(workerid)} is
+rejected: each worker FE has one supporting unit and its fitted unit score
+is forced to zero. The empirical score covariance can miss its estimation
+noise. Worker-group FEs with multiple independent workers per group can pass,
+provided the other FE set also has multiple units per level. Finer spell units
+are defensible only under appropriate independence assumptions. Crossing units
+are allowed; nesting alone does not establish validity.
+
+{pstd}
+The screen uses actual membership on the final retained sample. Copying or
+relabelling IDs, frequency copies, or more rows within the same unit do not
+create independent support. Sample restrictions can remove support. More probes
+or exact computation cannot repair it; exact evaluates an approximate statistical
+correction. Do not split dependent units merely to pass. This conservative
+supported-scope restriction does not claim that every slope increment must be
+wrong, and passing does not guarantee adequate bias reduction.
+
+{pstd}
 The ordinary sample is preserved. A missing bias-unit ID on any retained row
 rejects the transaction, rather than dropping that row. Any outcome-dependent
 separation deletion also rejects a requested correction. Other ordinary
@@ -371,12 +396,31 @@ unit count, probes, seed, stream, numerical groups, solve count, maximum
 normalized score error, maximum reconstruction error, correction seconds,
 workspace bound in bytes, maximum absolute total increment, minimum/maximum
 mean, minimum/maximum rows per unit, route (1 sparse, 2 cached factor), validity
-(1 certified interior retained sample), certificate tolerance, minimum FE-level
+(1 numerical checks and necessary support screen passed), certificate tolerance, minimum FE-level
 information, and maximum FE-indicator leverage lower bound. The leverage field
 is a lower bound on maximum full-system leverage, not a full hat-diagonal
 estimate. Exact mode uses G+2 solves; numerical diagnostics make randomized
 mode use B+2*min(8,B) solves. Allocation, solve, interruption, or validation
 failure restores prior results and creates no requested output variables.
+
+{pstd}
+{cmd:e(bias_support)} has rows {cmd:fe1} and {cmd:fe2} in absorb order and
+columns {cmd:levels}, {cmd:min_units}, {cmd:p25_units}, {cmd:median_units},
+{cmd:p75_units}, {cmd:max_units}, {cmd:single_unit_levels},
+{cmd:single_unit_fraction}, {cmd:min_info_units}, {cmd:median_info_units}, and
+{cmd:max_unit_info_share}. Quantiles are unweighted across retained levels and
+use nearest rank. Single-unit counts and fractions are zero on success;
+refusals report affected level counts in the error and publish no new results.
+
+{pstd}
+For each level, aggregate information a*mu within each bias unit, divide by
+that level's total to obtain unit shares p_g, and compute 1/sum_g(p_g^2).
+The minimum and median of these concentration equivalents are returned along
+with the largest unit share across levels. This is not a certified effective
+sample size. Inspect small counts and dominant shares; no universal cutoff is
+imposed. Graph bottlenecks or single-unit-dependent contrasts may remain even
+when every level has two units. Neither {cmd:e(bias_validity)} nor the
+{cmd:valid} diagnostic certifies independence or statistical accuracy.
 
 {marker execution}
 {title:Memory, iterations, and threads}
@@ -888,6 +932,9 @@ contract, and the fitted-mean prediction on the final sample.
               biasstream(0) biasfe(bf) mu(saved_mu)
           assert `"`e(cmd)'"' == "feppml"
           assert e(converged) == 1
+          assert e(bias_support)[1,2] == 10
+          assert e(bias_support)[2,2] == 40
+          matrix list e(bias_support)
           assert e(bias_diagnostics)[2,1] == 40
           assert e(bias_diagnostics)[5,1] == 0
           assert reldif(bf_1_bc,bf_1_raw+bf_1_total) < 1e-12

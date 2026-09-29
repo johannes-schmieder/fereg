@@ -11,7 +11,7 @@ import subprocess
 import numpy as np
 import pandas as pd
 
-from ppml_bias_oracle import correction, fit_poisson
+from ppml_bias_oracle import correction, fit_poisson, support_summary
 from run_stata_tests import run_fixture, sha256_file
 
 
@@ -90,6 +90,10 @@ def main():
                   "assert mreldif(ordinary_b,e(b))==0", "assert mreldif(ordinary_v,e(V))==0",
                   "assert ordinary_sample==e(sample)",
                   "assert e(bias_diagnostics)[2,1]==60", "assert e(bias_diagnostics)[7,1]==62"]
+        for effect, values in enumerate((data.g, data.h), 1):
+            expected_support = support_summary(values, data.unit, fitting_weight*mu)
+            for col, expected in enumerate(expected_support, 1):
+                lines.append(f"assert reldif(e(bias_support)[{effect},{col}],{expected:.17g})<1e-7")
         for label, mat in (("raw", "b_bias_raw"), ("d", "b_bias_d"), ("c", "b_bias_c"), ("bc", "b_bc")):
             for j, control in enumerate(("x", "z"), 1):
                 lines.append(f"generate double {label}_{control} = e({mat})[1,{j}]")

@@ -3956,7 +3956,7 @@ mod tests {
             stream: 0,
             save_effects: true,
         });
-        loaded.bias_units = Some(column(&[1., 1., 2., 2., 3., 3., 4., 4., 5., 5., 6., 6.]));
+        loaded.bias_units = Some(column(&[1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]));
         let corrected = fit_prepared_ppml(request, loaded).unwrap();
         assert_eq!(ordinary.coefficients(), corrected.coefficients());
         assert_eq!(ordinary.output(), corrected.output());
@@ -3979,26 +3979,14 @@ mod tests {
             -0.42003238012408883,
         ];
         let derivative = [
-            -0.01909666805655696,
-            -0.01071031916277665,
-            -0.00290078385380488,
-            0.0018358318161324,
-            0.01085112865422022,
-            0.01747847379608403,
-            0.,
-            0.01273111203775312,
-            -0.01273111203764854,
+            -0.013673707941541657, -0.03641436939328413, -0.0033508271882589646,
+            -0.004078391875716949, 0.004277300708386278, 0.014184178816249116,
+            0., 0.009115805294373391, -0.009115805294346302,
         ];
         let curvature = [
-            -3.0998338180983354e-4,
-            -3.2113525834674694e-5,
-            1.1516708375668497e-4,
-            1.6404813626804408e-4,
-            3.122_760_522_483_309e-4,
-            4.0773501865865036e-4,
-            0.,
-            2.0665558787372196e-4,
-            -2.0665558787245908e-4,
+            -0.0001930213526394886, 0.006785593330410039, 0.00038634085112329575,
+            0.00034917161236207284, 0.000364088184233044, 0.00026489290492318074,
+            0., 0.00012868090176021418, -0.0001286809017592705,
         ];
         for (got, expected) in [
             (&bias.raw, raw),
@@ -4013,7 +4001,7 @@ mod tests {
             }
         }
         assert_eq!(bias.saved_effects.len(), 18);
-        assert_eq!(bias.solves, 8);
+        assert_eq!(bias.solves, 14);
         assert_eq!(bias.route, 2);
         assert!((0. ..=1.).contains(&bias.maximum_fe_leverage_lower_bound));
     }
@@ -4031,7 +4019,7 @@ mod tests {
             stream: if randomized { 7 } else { 0 },
             save_effects: true,
         });
-        loaded.bias_units = Some(column(&[1., 1., 2., 2., 3., 3., 4., 4., 5., 5., 6., 6.]));
+        loaded.bias_units = Some(column(&[1., 2., 3., 4., 5., 6., 7., 8., 9., 10., 11., 12.]));
         (request, loaded)
     }
 
@@ -4065,6 +4053,12 @@ mod tests {
             }
             let result = fit_prepared_ppml(request, loaded).unwrap();
             assert_eq!(result.bias().unwrap().route, if mode == 1 { 1 } else { 2 });
+            for (got, expected) in result.bias().unwrap().support.iter()
+                .zip(&reference.bias().unwrap().support) {
+                for (a, b) in got.values().into_iter().zip(expected.values()) {
+                    assert!((a - b).abs() < 1e-8, "support mode {mode}: {a} vs {b}");
+                }
+            }
             for (got, expected) in [
                 &result.bias().unwrap().raw,
                 &result.bias().unwrap().derivative,
@@ -4083,6 +4077,34 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn bias_rejects_fe_aligned_relabelled_and_partially_supported_units() {
+        for randomized in [false, true] {
+            for save_effects in [false, true] {
+                for effect in [1, 2] {
+                    let (mut request, mut loaded) = bias_fixture(randomized);
+                    request.bias.as_mut().unwrap().save_effects = save_effects;
+                    loaded.bias_units.as_mut().unwrap().values = loaded.ols.numeric_sources[effect]
+                        .1.values.iter().map(|x| 103. - 7. * x).collect();
+                    let e = fit_prepared_ppml(request, loaded).unwrap_err();
+                    assert!(e.message.contains("at least two distinct bias units per retained FE level"), "{e}");
+                }
+            }
+        }
+        let (request, mut loaded) = bias_fixture(false);
+        loaded.bias_units.as_mut().unwrap().values[1] = 1.;
+        let e = fit_prepared_ppml(request, loaded).unwrap_err();
+        assert!(e.message.contains("FE1: 1/6 and FE2: 0/2"), "{e}");
+        // A row restriction can create one-unit support even when the original
+        // data passed. Retain singleton FEs so this tests the final-sample gate.
+        let (mut request, mut loaded) = bias_fixture(false);
+        request.ols.keep_singletons = true;
+        request.separation.drop_singletons = false;
+        loaded.ols.candidate[0] = false;
+        let e = fit_prepared_ppml(request, loaded).unwrap_err();
+        assert!(e.message.contains("FE1: 1/6 and FE2: 0/2"), "{e}");
     }
 
     #[test]
@@ -4229,6 +4251,12 @@ mod tests {
             original.bias().unwrap().units,
             repeated.bias().unwrap().units
         );
+        for (got, expected) in repeated.bias().unwrap().support.iter()
+            .zip(&original.bias().unwrap().support) {
+            for (a, b) in got.values().into_iter().zip(expected.values()) {
+                assert!((a - b).abs() < 1e-8, "frequency support: {a} vs {b}");
+            }
+        }
         for channel in [0, 1, 2, 3, 4] {
             for j in 0..original.bias().unwrap().raw.len() {
                 assert!(

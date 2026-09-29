@@ -14,8 +14,8 @@ request/result layouts are independently versioned:
 | Action protocol | 1.6 |
 | Model wire | 2.1 |
 | OLS result wire | 1.5 |
-| PPML request wire | 1.7 |
-| PPML result wire | 1.4 |
+| PPML request wire | 1.8 |
+| PPML result wire | 1.5 |
 
 Estimation requires the exact action and estimator-specific request/result
 versions. Diagnostic `doctor` and `selftest` callers retain the action
@@ -183,13 +183,16 @@ matrices retain their layout and observation boundaries.
 
 ## Optional PPML coefficient mean correction
 
-PPML request 1.7/result 1.4 adds an optional correction inside the same
+PPML request 1.8/result 1.5 adds an optional correction inside the same
 transaction. `bias_method`, `bias_unit`, `bias_probes`, `bias_seed`, and
 `bias_stream` identify its calculation. `output_bias_count`,
-`output_bias_channels`, `output_bias_matrix`, and `output_bias_diagnostics`
+`output_bias_channels`, `output_bias_matrix`, `output_bias_diagnostics`, and
+`output_bias_support`
 identify private destinations. The saved-channel count is zero or eighteen;
 coefficient and diagnostic matrices have dimensions 9 by ordinary coefficient
-count and 21 by 1. Option-off requests allocate none of these outputs.
+count and 21 by 1; the support matrix is 2 by 11 in absorb order.
+All three matrix destinations are mandatory for a correction request.
+Option-off requests allocate none of these outputs.
 
 All destinations, values, dimensions, sample identities and request bindings
 are validated before publication. Correction columns and matrices precede the

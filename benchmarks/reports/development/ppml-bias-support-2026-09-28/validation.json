@@ -1,0 +1,397 @@
+{
+  "base_head": "94459a1420923cffe5bcb87d8e2b54bbdd2d8b4b",
+  "build": {
+    "actual_plugin_abi_selftest": true,
+    "binary_audit": true,
+    "mata_receipt": {
+      "compiler_release": "18",
+      "objects": {
+        "_fereg_ppml_post_scalars.mo": "6e5a5bafbbfb445f6dd1bcc90e01bc0c84d41e2d0863d0c11ec9b38310ee6d6a",
+        "_fereg_ppml_validate_result.mo": "54a1e9d67776b0730371b91b87aeef0c750d0fcc0eed0141df48ad1be3131588",
+        "_fereg_ppml_validation_error.mo": "e36fd7b93bc94dc599d6b276add6fdf0eb611d1fc6d8369da41e63d953cf9106"
+      },
+      "schema": "fereg-ppml-mata-v1",
+      "source_sha256": "9c610ef8c6f18a5c4e288fdd08e2f07ac91af17a11af886db9df0d306118fc08"
+    },
+    "stata_mata_compiler": "18",
+    "universal_macos": true
+  },
+  "build_snapshot_note": "After the pre-build snapshot, only documentation and test expectations changed. The sole Rust-file change was the cfg(test) PPML receipt minor golden (4 to 5). Production logic is unchanged across these snapshots.",
+  "checks": [
+    "aligned and relabelled IDs on either FE; both methods and save/no-save",
+    "partially unsupported levels and support lost on retained sample",
+    "crossing units accepted without nesting",
+    "dense/sparse, row-order and probability-scale invariance",
+    "frequency copies preserve independent unit counts and information summaries",
+    "all publication store failure ordinals; missing and aliased support destination",
+    "analytic exponential-duration example: zero unit score despite nonzero log-coefficient bias",
+    "ordinary b, V, fitted means and saved effects unchanged",
+    "executable public help and staged installation"
+  ],
+  "date": "2026-09-28",
+  "fixture_maintenance": "Updated stale accepted-LSMR-route and installation action-wire expectations to existing documented behavior; no solver or inference change.",
+  "historical_evidence": "Prior Monte Carlo and SCC receipts unchanged. No new SCC work or broad Monte Carlo campaign was run.",
+  "installation": {
+    "error": null,
+    "metadata": {
+      "completed": "1",
+      "schema_version": "1",
+      "stata_edition": "MP",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_os": "Unix",
+      "stata_processors": "8",
+      "stata_rc": "0",
+      "stata_version": "18"
+    },
+    "plugin_sha256": "6890c5bf8845d5ac19e2d11e228f441baef6805306904fa55336203e718f7044",
+    "process_returncode": 0,
+    "stata_rc": 0
+  },
+  "oracle": {
+    "cases": [
+      {
+        "case": "counts_none",
+        "maximum_errors": {
+          "bc_controls": 4.524158825347513e-15,
+          "bc_first": 2.5002222514558525e-13,
+          "bc_second": 5.625500065775668e-13,
+          "c_controls": 2.7915495436070525e-16,
+          "c_first": 4.052314039881821e-15,
+          "c_second": 5.790940643679576e-15,
+          "d_controls": 4.232508440948912e-15,
+          "d_first": 1.0435147754575547e-14,
+          "d_second": 2.629667317233242e-14,
+          "raw_controls": 5.551115123125783e-17,
+          "raw_first": 2.6201263381153694e-13,
+          "raw_second": 5.947464742916964e-13
+        },
+        "passed": true
+      },
+      {
+        "case": "counts_fw",
+        "maximum_errors": {
+          "bc_controls": 4.7156722970953524e-14,
+          "bc_first": 1.5287771049088406e-12,
+          "bc_second": 6.831202270518588e-13,
+          "c_controls": 2.0151455916266048e-15,
+          "c_first": 1.3485740302243698e-14,
+          "c_second": 1.108314828801582e-14,
+          "d_controls": 4.583475526204195e-14,
+          "d_first": 4.809954518014692e-14,
+          "d_second": 3.448283325546697e-14,
+          "raw_controls": 1.3877787807814457e-16,
+          "raw_first": 1.5267787034645153e-12,
+          "raw_second": 6.666889262874065e-13
+        },
+        "passed": true
+      },
+      {
+        "case": "counts_pw",
+        "maximum_errors": {
+          "bc_controls": 5.377642775528102e-15,
+          "bc_first": 1.653122083666858e-13,
+          "bc_second": 1.2290168882600483e-13,
+          "c_controls": 3.931723653247121e-16,
+          "c_first": 1.8041124150158794e-15,
+          "c_second": 2.729587389449506e-15,
+          "d_controls": 5.023325505559839e-15,
+          "d_first": 3.1242369802342296e-15,
+          "d_second": 4.621303340002214e-15,
+          "raw_controls": 8.326672684688674e-17,
+          "raw_first": 1.6553425297161084e-13,
+          "raw_second": 1.2945200467129325e-13
+        },
+        "passed": true
+      },
+      {
+        "case": "duration_none",
+        "maximum_errors": {
+          "bc_controls": 1.875721800104202e-13,
+          "bc_first": 4.54036808150704e-12,
+          "bc_second": 4.175104706405364e-12,
+          "c_controls": 1.316850274657444e-14,
+          "c_first": 6.144043607214655e-14,
+          "c_second": 1.9904217163357885e-14,
+          "d_controls": 2.0098571244797636e-13,
+          "d_first": 2.1500856650646938e-13,
+          "d_second": 2.2943799637964446e-13,
+          "raw_controls": 1.942890293094024e-16,
+          "raw_first": 4.6083137306141e-12,
+          "raw_second": 4.420130927940136e-12
+        },
+        "passed": true
+      },
+      {
+        "case": "duration_fw",
+        "maximum_errors": {
+          "bc_controls": 5.744016373654404e-14,
+          "bc_first": 1.52478030202019e-12,
+          "bc_second": 1.2718714970105793e-12,
+          "c_controls": 1.9461428996114805e-15,
+          "c_first": 1.3052059433249497e-14,
+          "c_second": 1.0902737046514233e-14,
+          "d_controls": 5.941167696699168e-14,
+          "d_first": 1.069422328470182e-13,
+          "d_second": 1.0860756738395594e-13,
+          "raw_controls": 2.7755575615628914e-17,
+          "raw_first": 1.5705214906347464e-12,
+          "raw_second": 1.3913314944602462e-12
+        },
+        "passed": true
+      },
+      {
+        "case": "duration_pw",
+        "maximum_errors": {
+          "bc_controls": 1.1607381722456012e-13,
+          "bc_first": 3.2107649872159527e-12,
+          "bc_second": 2.952693645141835e-12,
+          "c_controls": 4.303415263029464e-15,
+          "c_first": 5.843242556480277e-14,
+          "c_second": 1.555960221777397e-14,
+          "d_controls": 1.203127224583267e-13,
+          "d_first": 1.4023504579796509e-13,
+          "d_second": 2.3084312239518567e-13,
+          "raw_controls": 2.220446049250313e-16,
+          "raw_first": 3.1235014574804154e-12,
+          "raw_second": 3.0510038939723927e-12
+        },
+        "passed": true
+      },
+      {
+        "case": "duration_pw_high_leverage",
+        "maximum_errors": {
+          "bc_controls": 4.3826053897078054e-13,
+          "bc_first": 7.389422407300117e-12,
+          "bc_second": 4.75441908065477e-12,
+          "c_controls": 4.9653206893318647e-14,
+          "c_first": 2.439298762979547e-13,
+          "c_second": 1.7142884334298003e-13,
+          "d_controls": 4.881390430755417e-13,
+          "d_first": 7.288115423664809e-13,
+          "d_second": 3.79737907785227e-13,
+          "raw_controls": 1.6653345369377348e-16,
+          "raw_first": 7.399192369916818e-12,
+          "raw_second": 4.546141241235091e-12
+        },
+        "passed": true
+      },
+      {
+        "case": "counts_none_sparse",
+        "maximum_errors": {
+          "bc_controls": 7.816663982751493e-14,
+          "bc_first": 9.007239398783895e-13,
+          "bc_second": 1.2972400931232642e-12,
+          "c_controls": 1.7945280678111075e-14,
+          "c_first": 5.623279619726418e-14,
+          "c_second": 1.1847467451531202e-13,
+          "d_controls": 6.034398241511196e-14,
+          "d_first": 6.578418365599248e-14,
+          "d_second": 3.0715013865645346e-14,
+          "raw_controls": 1.3183898417423734e-16,
+          "raw_first": 9.181266857893888e-13,
+          "raw_second": 1.3166689960542044e-12
+        },
+        "passed": true
+      },
+      {
+        "case": "counts_none_collinear",
+        "maximum_errors": {
+          "bc_controls": 1.5543122344752192e-15,
+          "bc_first": 7.185363415374013e-13,
+          "bc_second": 1.1642353747731704e-12,
+          "c_controls": 1.3612158275555508e-16,
+          "c_first": 1.1358969320696133e-14,
+          "c_second": 1.0949791420800103e-14,
+          "d_controls": 2.27227091309512e-15,
+          "d_first": 4.377798308325548e-14,
+          "d_second": 7.075243169119005e-14,
+          "raw_controls": 5.828670879282072e-16,
+          "raw_first": 7.678302438307583e-13,
+          "raw_second": 1.245947789385582e-12
+        },
+        "passed": true
+      },
+      {
+        "case": "duration_pw_imbalanced",
+        "maximum_errors": {
+          "bc_controls": 1.9984014443252818e-14,
+          "bc_first": 7.531752999057062e-13,
+          "bc_second": 2.1447288389708774e-12,
+          "c_controls": 2.030320356283255e-14,
+          "c_first": 8.326672684688674e-14,
+          "c_second": 8.150251307181833e-14,
+          "d_controls": 4.032364719908088e-14,
+          "d_first": 2.019773237549316e-13,
+          "d_second": 6.797895579779833e-13,
+          "raw_controls": 1.1102230246251565e-16,
+          "raw_first": 9.636735853746359e-13,
+          "raw_second": 2.866595849582154e-12
+        },
+        "passed": true
+      }
+    ],
+    "fixture_sha256": "d89f068f8e3f9aa653eb6d17871c752c0e552f2cb8f4e91e02e35dae09bd0158",
+    "maximum_coefficient_absolute_error": 7.399192369916818e-12,
+    "passed": true,
+    "support_comparison_relative_tolerance": 1e-07
+  },
+  "passed": true,
+  "plugin_sha256": "6890c5bf8845d5ac19e2d11e228f441baef6805306904fa55336203e718f7044",
+  "prebuild_source_manifest_sha256": "441c02432fec706324a371e046a93088829151bdc247d41f89815b7eb47ea13a",
+  "prebuild_to_validation_changes": [
+    "CHANGELOG.md",
+    "crates/fereg-core/src/protocol.rs",
+    "docs/ppml_bias_correction.md",
+    "tests/stata/documentation/feppml_public.sthlp",
+    "tests/stata/installation/feppml_installation_smoke.do",
+    "tests/stata/parity_ppmlhdfe/feppml_command_contract.do"
+  ],
+  "python": {
+    "failed": 0,
+    "passed": 64,
+    "patterns": [
+      "test_ppml_bias*.py",
+      "test_feppml_help_contract.py",
+      "test_ppml_protocol_contract.py",
+      "test_ppml_stata_transaction_contract.py",
+      "test_parse_feppml_stata_protocol.py",
+      "test_pragmatic_memory_audit.py"
+    ],
+    "release_staging_note": "All runtime packaging checks included; the broad source-archive test is excluded from this focused final run."
+  },
+  "rust": {
+    "core_passed": 465,
+    "failed": 0,
+    "ignored_timing_test_run_separately": true,
+    "plugin_passed": 52,
+    "test_threads": 1
+  },
+  "schema": 1,
+  "scope": "Local development checks of the independent bias-unit support restriction; not release qualification",
+  "stata": {
+    "completed": true,
+    "failure_detail": null,
+    "failure_kind": null,
+    "results": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_runtime_validator.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/documentation/feppml_help_examples.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/bias/final_recovery_precision.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "schema_version": 1,
+    "stata_edition": "MP",
+    "stata_machine_type": "Mac (Apple Silicon)",
+    "stata_os": "Unix",
+    "stata_processors": 8,
+    "stata_rc": 0,
+    "stata_version": "18",
+    "status": "success",
+    "tests_failed": 0,
+    "tests_passed": 6
+  },
+  "support_timing": {
+    "design": "128 levels per FE; four physical rows per unit; deterministic unequal positive information; screen only, topology preparation excluded",
+    "measurements": [
+      {
+        "repetition": 0,
+        "rows": 120000,
+        "scratch_bound_bytes": 1922048,
+        "seconds": 0.002429584
+      },
+      {
+        "repetition": 1,
+        "rows": 120000,
+        "scratch_bound_bytes": 1922048,
+        "seconds": 0.002214792
+      },
+      {
+        "repetition": 2,
+        "rows": 120000,
+        "scratch_bound_bytes": 1922048,
+        "seconds": 0.002242916
+      },
+      {
+        "repetition": 3,
+        "rows": 120000,
+        "scratch_bound_bytes": 1922048,
+        "seconds": 0.002224
+      },
+      {
+        "repetition": 0,
+        "rows": 1000000,
+        "scratch_bound_bytes": 16002048,
+        "seconds": 0.025723833
+      },
+      {
+        "repetition": 1,
+        "rows": 1000000,
+        "scratch_bound_bytes": 16002048,
+        "seconds": 0.024066209
+      },
+      {
+        "repetition": 2,
+        "rows": 1000000,
+        "scratch_bound_bytes": 16002048,
+        "seconds": 0.024603625
+      },
+      {
+        "repetition": 3,
+        "rows": 1000000,
+        "scratch_bound_bytes": 16002048,
+        "seconds": 0.023967625
+      }
+    ],
+    "mode": "release, diagnostic microbenchmark; no cross-platform or end-to-end speed claim"
+  },
+  "validation_source_manifest_sha256": "d0a0f6e8624ae50546a7f6e233bd7e6e64f9ae9fa82cdea99257f5c9ba5830e8",
+  "wire": {
+    "action": "1.6",
+    "ppml_request": "1.8",
+    "ppml_result": "1.5"
+  },
+  "working_tree_dirty": true
+}

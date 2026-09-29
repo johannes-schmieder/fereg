@@ -10,6 +10,44 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The broad scientific/performance follow-up and
 <=0.90-stock goal remain active.
 
+## Completed follow-up: PPML bias-unit support — 2026-09-28
+
+Johannes approved implementing the independent-unit support restriction. Both
+exact and randomized corrections now reject if any final retained level in
+either FE set has only one distinct bias unit, including requests without
+`biasfe()`. Membership, not variable names or frequency multiplicity, determines
+support. Native `e(bias_support)` summaries expose unit-count distributions and
+information concentration. Ordinary estimates are unchanged; all requested
+outputs remain atomic. [ADR 0246](docs/adr/0246-ppml-bias-unit-support.md), the
+scientific contract, user guide, canonical/public help and changelog are updated.
+
+The [local validation receipt](benchmarks/reports/development/ppml-bias-support-2026-09-28/validation.json)
+records **465 core + 52 plugin Rust passes, 64 Python passes, seven licensed
+Stata 18 fixtures, and ten independent explicit-design oracle cases**. Maximum
+coefficient discrepancy is 7.40e-12; support summaries also match the independent
+oracle. Coverage includes both numerical routes, row order, weight scaling,
+frequency replication, crossing units, retained-sample refusals and rollback.
+The analytic duration example demonstrates zero empirical correction despite
+nonzero mean bias under individual-FE-aligned score units. Stale LSMR checkpoint
+and installation action-wire test expectations were aligned with existing
+observable behavior; no solver policy or tolerance changed.
+
+The universal Mac plugin and actual Stata 18 transport objects are rebuilt;
+binary audit and actual-plugin ABI checks pass. Plugin SHA-256:
+`6890c5bf8845d5ac19e2d11e228f441baef6805306904fa55336203e718f7044`.
+PPML request/result wires are 1.8/1.5. A separate release-mode screen-only
+microbenchmark observes 2.21–2.43 ms at 120,000 rows and 23.97–25.72 ms at
+one million; this is diagnostic, not an end-to-end or cross-platform speed claim.
+The support screen is necessary, not a statistical certificate; stronger
+unit-dependent graph/rank diagnostics remain outside this approved scope.
+
+This follow-up did not modify FEVC, Separations production files, historical
+Monte Carlo receipts, or the frozen SCC jobs below. No new SCC work, release,
+commit or push was performed. The existing SCC handover refers to its own
+frozen source snapshots, which predate this local follow-up.
+
+## Existing frozen SCC validation handover
+
 **Pause requested:** finish the current validation handover, then pause local
 development while already authorized SCC jobs continue. The scheduler check at
 handover confirms all four **7766045** benchmark tasks running and the five

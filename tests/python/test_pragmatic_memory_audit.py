@@ -59,7 +59,7 @@ class MemoryAuditTests(unittest.TestCase):
         self.assertIn('"memory_result_schema": 2', package)
         for filename, prefix, fields in [
             ('_fereg_estimate_ols.ado', 'fereg', {'action_protocol': '1.6', 'result_wire': '1.5'}),
-            ('_fereg_estimate_ppml.ado', 'feppml', {'action_protocol': '1.6', 'request_wire': '1.7', 'result_wire': '1.4'}),
+            ('_fereg_estimate_ppml.ado', 'feppml', {'action_protocol': '1.6', 'request_wire': '1.8', 'result_wire': '1.5'}),
         ]:
             source = (root/'stata'/filename).read_text()
             for key, version in fields.items():

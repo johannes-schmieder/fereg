@@ -5,7 +5,7 @@
 //! success additionally requires independently recomputed finite and FE scores.
 
 mod bias;
-pub use bias::{PpmlBiasMethod, PpmlBiasRequest, PpmlBiasResult};
+pub use bias::{PpmlBiasMethod, PpmlBiasRequest, PpmlBiasResult, PpmlBiasSupport};
 mod categorical_fwl_cmg;
 mod categorical_lsmr;
 mod certificate;
