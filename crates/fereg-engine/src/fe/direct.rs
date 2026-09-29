@@ -3,7 +3,6 @@ use super::Design;
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    linalg::WeightedQr,
     threads::ThreadTeam,
 };
 use rayon::prelude::*;
@@ -65,27 +64,8 @@ impl Design<'_> {
         })
     }
     fn solve_level(&self, rhs: &DenseMatrix, level: usize) -> Result<(DenseMatrix, usize)> {
-        let members = self
-            .topology()
-            .effect_partition(0)?
-            .membership()
-            .members(level)?;
-        let channels = self.layout().effects[0].channels;
-        let mut matrix = DenseMatrix::zeros(members.len(), channels)?;
-        let mut local_rhs = DenseMatrix::zeros(members.len(), rhs.ncols())?;
-        let mut weights = reserved(members.len())?;
-        for (local, &row) in members.iter().enumerate() {
-            weights.push(self.weights().at(row));
-            for channel in 0..channels {
-                matrix[(local, channel)] = self.basis_value(0, channel, row)?;
-            }
-            for column in 0..rhs.ncols() {
-                local_rhs[(local, column)] = rhs[(row, column)];
-            }
-        }
-        // Matches the local-span rank scale; independent of solver convergence tolerance.
-        let threshold = 8. * f64::EPSILON * members.len().max(channels).max(1) as f64;
-        let factor = WeightedQr::factor(matrix, &weights, threshold)?;
-        Ok((factor.solve(local_rhs)?, factor.rank()))
+        let factor = super::blocks::factor_level(self, 0, level)?;
+        let block = super::blocks::solve_level(self, 0, level, &factor, rhs)?;
+        Ok((block, factor.rank()))
     }
 }

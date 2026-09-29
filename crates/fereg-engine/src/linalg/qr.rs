@@ -13,6 +13,7 @@ pub(crate) struct WeightedQr {
     maxima: Vec<f64>,
     norms: Vec<f64>,
     roots: Vec<f64>,
+    root_scale: f64,
     taus: Vec<f64>,
 }
 impl WeightedQr {
@@ -68,6 +69,7 @@ impl WeightedQr {
             maxima,
             norms,
             roots,
+            root_scale: largest_root,
         };
         factor.factor_scaled(threshold)?;
         Ok(factor)
@@ -122,6 +124,55 @@ impl WeightedQr {
             return Err(numerical("QR factor is not finite"));
         }
         Ok(())
+    }
+    /// Identified principal-block inverse of X'WX. Dropped coordinates remain
+    /// zero; compatible normal RHSs yield the same weighted projection as QR.
+    pub(crate) fn solve_normal(&self, rhs: &DenseMatrix) -> Result<DenseMatrix> {
+        if rhs.nrows() != self.qr.ncols() {
+            return Err(invalid("QR normal RHS row count differs"));
+        }
+        let mut result = DenseMatrix::zeros(rhs.nrows(), rhs.ncols())?;
+        for step in 0..self.rank() {
+            let basis = self.permutation[step];
+            for column in 0..rhs.ncols() {
+                let value = scale_ratio(
+                    rhs[(basis, column)],
+                    1.,
+                    self.maxima[basis],
+                    self.norms[basis],
+                );
+                let value = scale_ratio(value, 1., self.root_scale, 1.);
+                let tail = compensated_sum((0..step).map(|previous| {
+                    self.qr[(previous, basis)] * result[(self.permutation[previous], column)]
+                }));
+                result[(basis, column)] = (value - tail) / self.qr[(step, basis)];
+            }
+        }
+        for step in (0..self.rank()).rev() {
+            let basis = self.permutation[step];
+            for column in 0..rhs.ncols() {
+                let tail = compensated_sum((step + 1..self.rank()).map(|next| {
+                    self.qr[(step, self.permutation[next])]
+                        * result[(self.permutation[next], column)]
+                }));
+                result[(basis, column)] = (result[(basis, column)] - tail) / self.qr[(step, basis)];
+            }
+        }
+        for &basis in &self.permutation[..self.rank()] {
+            for column in 0..rhs.ncols() {
+                let value = scale_ratio(
+                    result[(basis, column)],
+                    1.,
+                    self.maxima[basis],
+                    self.norms[basis],
+                );
+                result[(basis, column)] = scale_ratio(value, 1., self.root_scale, 1.);
+            }
+        }
+        if result.as_slice().iter().any(|value| !value.is_finite()) {
+            return Err(numerical("QR normal solve is not representable"));
+        }
+        Ok(result)
     }
     pub(crate) fn rank(&self) -> usize {
         self.taus.len()
