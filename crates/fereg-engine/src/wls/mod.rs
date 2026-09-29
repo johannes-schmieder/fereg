@@ -1,4 +1,5 @@
 //! One finite weighted least-squares solve and canonical coefficient-slot map.
+mod absorbed;
 mod certificate;
 mod cholesky;
 mod moments;
@@ -8,6 +9,7 @@ use crate::{
     linalg::{ColumnScaling, ScaledDesign, WeightedQr},
     threads::ThreadTeam,
 };
+pub use absorbed::{solve_absorbed, AbsorbedFit};
 use cholesky::Cholesky;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

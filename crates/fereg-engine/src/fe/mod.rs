@@ -4,6 +4,7 @@ mod certificate;
 mod certificate_basis;
 mod design;
 mod direct;
+mod engine;
 mod normalize;
 mod plan;
 mod schur_pcg;
@@ -12,6 +13,7 @@ pub use crate::data::Weights;
 use crate::spec::Solver;
 pub use design::{CoefficientLayout, Design, EffectLayout};
 pub use direct::DirectCandidate;
+pub use engine::Engine;
 pub use plan::{Backend, Plan, PlanOverride};
 pub use schur_pcg::{SchurCandidate, SchurSession};
 

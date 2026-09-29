@@ -234,27 +234,6 @@ fn iterate(
             .iter()
             .map(|row| dot(row, &gradient))
             .collect::<Vec<_>>();
-        let gain = dot(&gradient, &step);
-        let mut scale = 1.0;
-        let mut accepted = None;
-        while scale >= 2.0_f64.powi(-40) {
-            let candidate = beta
-                .iter()
-                .zip(&step)
-                .map(|(b, d)| b + scale * d)
-                .collect::<Vec<_>>();
-            let state = evaluate(problem, prepared, &candidate);
-            if state.objective.is_finite()
-                && state.objective >= current.objective + 1e-4 * scale * gain
-            {
-                accepted = Some((candidate, state));
-                break;
-            }
-            scale *= 0.5;
-        }
-        let (candidate, state) = accepted.ok_or("Poisson oracle could not improve objective")?;
-        beta = candidate;
-        current = state;
         let score_scale = (0..beta.len())
             .map(|j| {
                 prepared
@@ -266,14 +245,48 @@ fn iterate(
                     .sum::<f64>()
             })
             .fold(1.0, f64::max);
-        let new_score = score(&prepared.x, &problem.outcome, &current.mean, &prepared.q);
-        if scale * max_abs(&step) <= config.tolerance * (1.0 + max_abs(&beta))
-            && max_abs(&new_score) <= config.tolerance.sqrt() * score_scale
+        // Halving can make a failed step arbitrarily small; convergence needs
+        // a small full Newton correction at the point actually being returned.
+        if max_abs(&step) <= config.tolerance * (1.0 + max_abs(&beta))
+            && max_abs(&gradient) <= config.tolerance.sqrt() * score_scale
         {
             return Ok((beta, current, iteration));
         }
+        let gain = dot(&gradient, &step);
+        let mut scale = 1.0;
+        let mut accepted = None;
+        while scale >= 2.0_f64.powi(-40) {
+            let candidate = beta
+                .iter()
+                .zip(&step)
+                .map(|(b, d)| b + scale * d)
+                .collect::<Vec<_>>();
+            let state = evaluate(problem, prepared, &candidate);
+            if state.objective.is_finite()
+                && objective_gain(prepared, &current, &step, scale, gain) >= 1e-4 * scale * gain
+            {
+                accepted = Some((candidate, state));
+                break;
+            }
+            scale *= 0.5;
+        }
+        let (candidate, state) = accepted.ok_or("Poisson oracle could not improve objective")?;
+        beta = candidate;
+        current = state;
     }
     Err("Poisson oracle did not converge".into())
+}
+
+fn objective_gain(prepared: &Prepared, old: &State, step: &[f64], scale: f64, gain: f64) -> f64 {
+    // Directly subtracting two log likelihoods loses the small Newton gain.
+    // This independent Poisson identity keeps the linear and curvature terms.
+    let curvature: f64 = (0..prepared.x.len())
+        .map(|i| {
+            let delta = scale * dot(&prepared.x[i], step);
+            prepared.q[i] * old.mean[i] * (delta.exp_m1() - delta)
+        })
+        .sum();
+    scale * gain - curvature
 }
 
 pub fn poisson_deviance(y: &[f64], mu: &[f64], q: &[f64]) -> f64 {
