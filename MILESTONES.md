@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.1 strict/final-Hessian acceptance and IRLS integration through shared absorbed WLS; M4.4/M3.5 qualification decisions pending; M1.6 Mac and SCC baselines captured, with comparator failures preserved.
+Current task: M6.1 strict acceptance and IRLS controller integration; frozen WLS bases and accepted-state Hessian frames verified; M4.4/M3.5 qualification decisions pending; M1.6 Mac and SCC baselines captured, with comparator failures preserved.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -107,6 +107,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M6.1 frozen/Hessian frames (this commit) — one shared WLS path retains canonical slot identities under changing weights and fails on numerical rank loss; fresh canonical comparisons detect same-rank pivot/status changes. Final-Hessian frames reconstruct exact qmu and eta-minus-offset without a Fisher update, retaining stale-mean rejection. Six new regressions and exact 1/2/4/8-worker identity pass; 4,400 dense WLS comparisons include 2,200 frozen changed-weight frames with fresh basis revalidation, and 2,200 independent PPML states match final Hessian/bread. All 170 engine tests, full lean and long oracle suites pass; strict publication decisions and the IRLS controller remain open.
 
 - 2026-09-29 M1.6 SCC capture (this commit) — [full baseline](bench/history/2026-09-29-cdfa8f85-linux-full.csv), frozen cdfa8f85: 56/56 task markers, complete unique group/thread-ladder coverage and source identity; setup 7779871 and every array 7779872 task have failed=0/exit=0/28 slots. All 56 fereg groups (280 measured fits), 38 reghdfe and 18 ppmlhdfe groups pass; 224 groups total, 222 completed, 218 accurate, with 1,110 completed measured fits. Preserve fixest weak-graph and Veneto disagreements at T1/T8, plus the two fixest-matched weak-graph convergence failures; no retries or removed failures. Largest task wall 5,352s, maxvmem 13.917G (setup 6.059G); raw outputs stay in runs/20260929-rebuild-m16-cdfa8f85. Collector/accounting/source/schema/coverage validation and full lean checks pass; Mac/explicit-solver summaries are already committed at 1f79ce0c; this completes baseline capture, not later performance gates.
 

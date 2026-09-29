@@ -51,6 +51,7 @@ fn campaign(start: usize, count: usize) {
         } else {
             DenseMatrix::from_columns(&generated.regressors).unwrap()
         };
+        let mut basis = None;
         // Changes represent distinct IRLS/Hessian frames over the same immutable sample.
         for frame in 0..2 {
             let weights: Vec<_> = generated
@@ -66,15 +67,32 @@ fn campaign(start: usize, count: usize) {
             };
             let mut engine = Engine::new(&design, Estimator::Ppml, &options, &one).unwrap();
             let roles = vec![Role::Ordinary; raw.ncols()];
-            let actual = wls::solve_absorbed(
+            let actual = wls::solve_absorbed_with_basis(
                 &mut engine,
                 &raw,
                 &generated.outcome,
                 &roles,
                 Policy::default(),
+                basis.as_ref(),
                 &one,
             )
             .unwrap_or_else(|e| panic!("seed {seed}, frame {frame}: {e}"));
+            if let Some(basis) = &basis {
+                assert!(basis.matches(&actual.finite));
+                let fresh = wls::solve_absorbed(
+                    &mut engine,
+                    &raw,
+                    &generated.outcome,
+                    &roles,
+                    Policy::default(),
+                    &one,
+                )
+                .unwrap();
+                assert!(
+                    basis.matches(&fresh.finite),
+                    "canonical basis changed at seed {seed}"
+                );
+            }
             let expected = fit_explicit_ols(&ExplicitOlsProblem {
                 outcome: generated.outcome.clone(),
                 regressors: generated.regressors.clone(),
@@ -103,12 +121,13 @@ fn campaign(start: usize, count: usize) {
             assert!(actual.recovery_diagnostics.len() <= 1);
             if seed % 19 == 0 {
                 let mut engine = Engine::new(&design, Estimator::Ppml, &options, &eight).unwrap();
-                let parallel = wls::solve_absorbed(
+                let parallel = wls::solve_absorbed_with_basis(
                     &mut engine,
                     &raw,
                     &generated.outcome,
                     &roles,
                     Policy::default(),
+                    basis.as_ref(),
                     &eight,
                 )
                 .unwrap();
@@ -120,6 +139,9 @@ fn campaign(start: usize, count: usize) {
                     parallel.projection_diagnostics
                 );
                 assert_eq!(actual.recovery_diagnostics, parallel.recovery_diagnostics);
+            }
+            if basis.is_none() {
+                basis = Some(wls::FrozenBasis::from_fit(&actual.finite).unwrap());
             }
         }
     }

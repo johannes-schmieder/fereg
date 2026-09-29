@@ -79,6 +79,7 @@ fn campaign(start: usize, count: usize) {
             .sum();
         close(null.log_likelihood, null_ll, seed);
         let actual = family.evaluate(&expected.eta, &one).unwrap();
+        check_hessian(&family, &expected, &problem, &actual, &one, seed);
         if seed % 20 == 0 {
             check_full_step(&family, &expected, &offset, &eight);
         }
@@ -166,4 +167,63 @@ fn check_full_step(
     let accepted = current.try_step(&proposed, team).unwrap();
     assert_eq!(accepted.step(), 1.);
     assert_eq!(accepted.point(), &proposed);
+}
+
+fn check_hessian(
+    family: &Family<'_>,
+    expected: &fereg_oracle::explicit_ppml::PpmlResult,
+    problem: &PpmlProblem,
+    evaluation: &fereg_engine::ppml::family::Evaluation,
+    team: &ThreadTeam,
+    seed: usize,
+) {
+    use fereg_engine::{
+        data::{DenseMatrix, Weights},
+        wls::{self, Policy, Problem, Role, Slot},
+    };
+    let n = expected.eta.len();
+    let mut h = vec![0.; n];
+    let mut target = vec![0.; n];
+    family
+        .hessian_into(&expected.eta, evaluation, &mut h, &mut target, team)
+        .unwrap();
+    for (row, &value) in target.iter().enumerate() {
+        assert_eq!(value, expected.eta[row] - problem.offset[row]);
+    }
+    let x = DenseMatrix::from_row_major(n, 2, problem.design.iter().flatten().copied().collect())
+        .unwrap();
+    let slots: Vec<_> = (0..2)
+        .map(|col| Slot {
+            role: Role::Ordinary,
+            reference_norm: (0..n)
+                .fold(0_f64, |norm, row| norm.hypot(h[row].sqrt() * x[(row, col)])),
+        })
+        .collect();
+    let fit = wls::solve(
+        &Problem {
+            design: &x,
+            outcome: &target,
+            weights: Weights::Provided(&h),
+            slots: &slots,
+            has_absorbed_intercept: false,
+        },
+        Policy::default(),
+        team,
+    )
+    .unwrap();
+    let oracle_h = &expected.hessian;
+    let determinant = oracle_h[0][0] * oracle_h[1][1] - oracle_h[0][1] * oracle_h[1][0];
+    for col in 0..2 {
+        close(fit.coefficients[col], expected.coefficients[col], seed);
+        close(
+            fit.bread[(col, col)],
+            oracle_h[1 - col][1 - col] / determinant,
+            seed,
+        );
+        close(
+            fit.bread[(col, 1 - col)],
+            -oracle_h[col][1 - col] / determinant,
+            seed,
+        );
+    }
 }

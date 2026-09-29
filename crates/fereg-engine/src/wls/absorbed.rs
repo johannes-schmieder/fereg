@@ -1,5 +1,5 @@
 //! Shared FWL assembly for OLS responses and PPML working/final-Hessian frames.
-use super::{Fit, Policy, Problem, Role, Slot};
+use super::{Fit, FrozenBasis, Policy, Problem, Role, Slot};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
@@ -29,6 +29,19 @@ pub fn solve_absorbed(
     outcome: &[f64],
     roles: &[Role],
     policy: Policy,
+    team: &ThreadTeam,
+) -> Result<AbsorbedFit> {
+    solve_absorbed_with_basis(engine, raw, outcome, roles, policy, None, team)
+}
+
+/// The same FWL assembly with an optional, sample-aligned canonical basis.
+pub fn solve_absorbed_with_basis(
+    engine: &mut Engine<'_, '_>,
+    raw: &DenseMatrix,
+    outcome: &[f64],
+    roles: &[Role],
+    policy: Policy,
+    basis: Option<&FrozenBasis>,
     team: &ThreadTeam,
 ) -> Result<AbsorbedFit> {
     let design = engine.design();
@@ -73,7 +86,7 @@ pub fn solve_absorbed(
             reference_norm: norm,
         });
     }
-    let finite = super::solve(
+    let finite = super::solve_with_basis(
         &Problem {
             design: &within,
             outcome: &within_outcome,
@@ -82,6 +95,7 @@ pub fn solve_absorbed(
             has_absorbed_intercept: design.topology().effects().iter().any(|e| e.intercept),
         },
         policy,
+        basis,
         team,
     )?;
     let mut absorbed_coefficients = DenseMatrix::zeros(design.layout().total, 1)?;

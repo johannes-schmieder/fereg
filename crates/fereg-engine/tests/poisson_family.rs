@@ -160,3 +160,82 @@ fn domains_and_stale_working_frames_fail_without_changing_the_accepted_evaluatio
     assert_eq!(accepted.objective, before);
     assert_eq!(accepted.mean, vec![1.; 2]);
 }
+
+#[test]
+fn final_hessian_uses_exact_accepted_weights_without_a_fisher_step() {
+    let n = 2051;
+    let y: Vec<_> = (0..n).map(|i| (i % 7) as f64).collect();
+    let offset: Vec<_> = (0..n).map(|i| (i % 5) as f64 * 0.2).collect();
+    let eta: Vec<_> = offset
+        .iter()
+        .enumerate()
+        .map(|(i, o)| o + (i % 11) as f64 * 0.1)
+        .collect();
+    let raw = PreparedWeights::Provided {
+        kind: WeightKind::Frequency,
+        values: (0..n).map(|i| (1 + i % 3) as f64).collect(),
+    };
+    let q = ReferenceWeights::new(&raw, n, Estimator::Ppml).unwrap();
+    let family = Family::new(&y, q, Some(&offset)).unwrap();
+    let mut baseline = None;
+    for workers in [1, 2, 4, 8] {
+        let team = ThreadTeam::new(workers).unwrap();
+        let accepted = family.evaluate(&eta, &team).unwrap();
+        let mut h = vec![f64::NAN; n];
+        let mut target = h.clone();
+        family
+            .hessian_into(&eta, &accepted, &mut h, &mut target, &team)
+            .unwrap();
+        for row in 0..n {
+            assert_eq!(h[row], q.value(row) * eta[row].exp());
+            assert_eq!(target[row], eta[row] - offset[row]);
+        }
+        if let Some(ref expected) = baseline {
+            assert_eq!(&(h.clone(), target.clone()), expected);
+        } else {
+            baseline = Some((h.clone(), target.clone()));
+        }
+        let mut fisher_h = vec![0.; n];
+        let mut fisher_z = vec![0.; n];
+        family
+            .working_into(&eta, &accepted, &mut fisher_h, &mut fisher_z, &team)
+            .unwrap();
+        assert_eq!(h, fisher_h);
+        assert_ne!(target, fisher_z);
+        let mut changed = eta.clone();
+        changed[1024] += 0.25;
+        assert_eq!(
+            family
+                .hessian_into(&changed, &accepted, &mut h, &mut target, &team)
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidArgument
+        );
+        assert_eq!(accepted, family.evaluate(&eta, &team).unwrap());
+    }
+}
+#[test]
+fn final_hessian_does_not_evaluate_unneeded_overflowing_fisher_corrections() {
+    let q = ReferenceWeights::new(&PreparedWeights::None, 2, Estimator::Ppml).unwrap();
+    let family = Family::new(&[0., 1.], q, None).unwrap();
+    let team = ThreadTeam::new(1).unwrap();
+    let eta = [-744., -744.];
+    let accepted = family.evaluate(&eta, &team).unwrap();
+    let mut h = [0.; 2];
+    let mut target = [0.; 2];
+    family
+        .hessian_into(&eta, &accepted, &mut h, &mut target, &team)
+        .unwrap();
+    assert_eq!(target, eta);
+    assert!(h.iter().all(|w| *w > 0.));
+    assert_eq!(
+        family
+            .working_into(&eta, &accepted, &mut h, &mut target, &team)
+            .unwrap_err()
+            .code,
+        ErrorCode::NonConvergence
+    );
+    assert!(family
+        .hessian_into(&eta, &accepted, &mut h[..1], &mut target, &team)
+        .is_err());
+}

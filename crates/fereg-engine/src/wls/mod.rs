@@ -1,5 +1,6 @@
 //! One finite weighted least-squares solve and canonical coefficient-slot map.
 mod absorbed;
+mod basis;
 mod certificate;
 mod cholesky;
 mod moments;
@@ -9,7 +10,8 @@ use crate::{
     linalg::{ColumnScaling, ScaledDesign, WeightedQr},
     threads::ThreadTeam,
 };
-pub use absorbed::{solve_absorbed, AbsorbedFit};
+pub use absorbed::{solve_absorbed, solve_absorbed_with_basis, AbsorbedFit};
+pub use basis::FrozenBasis;
 use cholesky::Cholesky;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -105,9 +107,23 @@ struct Products {
 }
 
 pub fn solve(problem: &Problem<'_>, policy: Policy, team: &ThreadTeam) -> Result<Fit> {
+    solve_with_basis(problem, policy, None, team)
+}
+
+/// Reuse omission identities without granting changing weights rank authority.
+/// A final publication checkpoint must also compare a fresh canonical solve.
+pub fn solve_with_basis(
+    problem: &Problem<'_>,
+    policy: Policy,
+    basis: Option<&FrozenBasis>,
+    team: &ThreadTeam,
+) -> Result<Fit> {
     let threshold = validate(problem, policy)?;
     let scaled = ScaledDesign::new(copy_matrix(problem.design)?, problem.weights)?;
-    let (columns, mut statuses) = select(problem, &scaled.scaling, policy)?;
+    let (columns, mut statuses) = match basis {
+        Some(basis) => basis.select(problem)?,
+        None => select(problem, &scaled.scaling, policy)?,
+    };
     let mut scaled = scaled.select_columns(&columns)?;
     let mut references = reserved(columns.len())?;
     references.extend(
@@ -159,6 +175,11 @@ pub fn solve(problem: &Problem<'_>, policy: Policy, team: &ThreadTeam) -> Result
         }
     }
     let factor = WeightedQr::from_scaled(scaled, threshold)?;
+    if basis.is_some() && factor.rank() != columns.len() {
+        return Err(numerical(
+            "frozen finite WLS basis lost rank in the current weight frame",
+        ));
+    }
     let mut kept = reserved(factor.rank())?;
     kept.extend_from_slice(factor.kept());
     let mut candidate = Candidate {

@@ -1,4 +1,5 @@
 //! Immutable Poisson inputs; trial evaluation never mutates an accepted state.
+mod frame;
 mod math;
 mod score;
 mod start;
@@ -123,68 +124,6 @@ impl<'a> Family<'a> {
             deviance: deviance.total(),
             log_likelihood: likelihood.total(),
         })
-    }
-    /// Fill private scratch only. Any error invalidates the entire proposed frame.
-    pub fn working_into(
-        &self,
-        eta: &[f64],
-        evaluation: &Evaluation,
-        h: &mut [f64],
-        z: &mut [f64],
-        team: &ThreadTeam,
-    ) -> Result<()> {
-        let n = self.outcome.len();
-        if [eta.len(), evaluation.mean.len(), h.len(), z.len()]
-            .iter()
-            .any(|&length| length != n)
-        {
-            return Err(invalid("Poisson working-frame lengths differ"));
-        }
-        let mut errors = reserved(n.div_ceil(REDUCTION_CHUNK))?;
-        errors.resize_with(n.div_ceil(REDUCTION_CHUNK), || None);
-        team.install(|| {
-            h.par_chunks_mut(REDUCTION_CHUNK)
-                .zip(z.par_chunks_mut(REDUCTION_CHUNK))
-                .zip(errors.par_iter_mut())
-                .enumerate()
-                .for_each(|(block, ((h, z), error))| {
-                    *error =
-                        Some(self.working_block(eta, evaluation, block * REDUCTION_CHUNK, h, z));
-                });
-        });
-        for error in errors {
-            error.expect("visited working block")?;
-        }
-        Ok(())
-    }
-    fn working_block(
-        &self,
-        eta: &[f64],
-        evaluation: &Evaluation,
-        start: usize,
-        h: &mut [f64],
-        z: &mut [f64],
-    ) -> Result<()> {
-        for (local, (weight, response)) in h.iter_mut().zip(z).enumerate() {
-            let row = start + local;
-            let mu = mean_from_eta(eta[row])?;
-            if mu.to_bits() != evaluation.mean[row].to_bits() {
-                return Err(invalid(
-                    "Poisson means belong to a different predictor frame",
-                ));
-            }
-            *weight = self.prior.value(row) * mu;
-            let adjustment = if self.outcome[row] == 0. {
-                -1.
-            } else {
-                (self.terms[row][0] - eta[row]).exp() - 1.
-            };
-            *response = eta[row] - self.offset.map_or(0., |values| values[row]) + adjustment;
-            if !weight.is_finite() || *weight <= 0. || !response.is_finite() {
-                return Err(numerical("Poisson working state is not representable"));
-            }
-        }
-        Ok(())
     }
 }
 pub fn mean_from_eta(eta: f64) -> Result<f64> {
