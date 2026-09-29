@@ -88,6 +88,10 @@ impl<'a> Design<'a> {
         })
     }
     #[must_use]
+    pub fn sample(&self) -> &'a Prepared {
+        self.sample
+    }
+    #[must_use]
     pub fn nobs(&self) -> usize {
         self.sample.n_active()
     }

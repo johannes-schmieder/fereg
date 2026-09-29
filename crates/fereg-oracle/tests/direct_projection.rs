@@ -1,4 +1,6 @@
 #![deny(clippy::too_many_lines)]
+#[path = "support/outputs.rs"]
+mod output_checks;
 use fereg_engine::{
     data::*,
     fe::{Design, Weights},
@@ -134,6 +136,15 @@ fn campaign(start: usize, count: usize) {
                 expected.explicit_dummy_rank,
                 "seed {seed}: rank"
             );
+            if column == 0 {
+                output_checks::check(
+                    &design,
+                    &result.coefficients,
+                    &result.residuals,
+                    &expected.residuals,
+                    &single,
+                );
+            }
             for (row, &expected) in expected.residuals.iter().enumerate() {
                 let actual = result.residuals[(row, column)];
                 assert!(

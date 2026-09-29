@@ -1,4 +1,6 @@
 #![deny(clippy::too_many_lines)]
+#[path = "support/outputs.rs"]
+mod output_checks;
 use fereg_engine::{
     data::*,
     fe::{Design, Plan, SchurSession, StopReason, Weights},
@@ -171,6 +173,15 @@ fn campaign(start: usize, count: usize) {
                 clusters: vec![],
             })
             .unwrap_or_else(|e| panic!("oracle seed {seed}: {e}"));
+            if column == 0 {
+                output_checks::check(
+                    &design,
+                    &result.coefficients,
+                    &result.residuals,
+                    &expected.residuals,
+                    &one,
+                );
+            }
             for (row, &expected) in expected.residuals.iter().enumerate() {
                 let actual = result.residuals[(row, column)];
                 assert!(

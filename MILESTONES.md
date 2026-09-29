@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M4.3 certified OLS observation and saved-FE outputs; M3.5 dependency determinism decision pending; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
+Current task: M4.4 OLS orchestration on the shared engine; M3.5 dependency determinism decision pending; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -33,7 +33,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M3.6 Property tests and micro-benchmarks
 - [x] M4.1 `wls`
 - [x] M4.2 `vce` and fit statistics
-- [ ] M4.3 Outputs
+- [x] M4.3 Outputs
 - [ ] M4.4 `ols::fit(&ModelSpec, &Loaded, &Options) -> Result<OlsFit>`
 - [ ] M4.5 Oracle and differential tests
 - [ ] M5.1 Engine switch
@@ -99,7 +99,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M4.2 (this commit) — shared IID/HC1/multiway sandwich with reverse influence replay, harvested certified CGM PSD policy, distinct OLS/PPML DoF/corrections, reference weights, fit statistics and canonical Wald tests; 2,200 dense-oracle inference designs including independent closed-form PSD repairs, literal frequency replication, ten-way tuple coverage, rescued subnormal weights and exact 1/2/4/8-worker identity pass; full lean/long suites pass; Mac launcher pause 13:46:53–13:57:24 UTC (631s), no active fit; SCC 45/56 application markers, two comparator failures retained.
+- 2026-09-29 M4.3 (this commit) — requested-only original-axis residual/xb/xbd/d/drop-reason/saved-channel banks from returned coefficients, no output re-solve; original-equation certification plus checked reported-constant transfer preserves scales when y equals the constant; disconnected weighted/sloped gauges, missing scatter, request invariance, malformed/stale-frame rejection and 1/2/4/8-worker identity pass; all 4,400 direct/Schur oracle designs now check saved-output sums; 115 engine tests and full lean/long suites pass; Mac postprocessing paused 14:04:49–14:08:14 UTC (205s), timed fits already finished; SCC 48/56 application markers.
+
+- 2026-09-29 M4.2 e96bb84f — shared IID/HC1/multiway sandwich with reverse influence replay, harvested certified CGM PSD policy, distinct OLS/PPML DoF/corrections, reference weights, fit statistics and canonical Wald tests; 2,200 dense-oracle inference designs including independent closed-form PSD repairs, literal frequency replication, ten-way tuple coverage, rescued subnormal weights and exact 1/2/4/8-worker identity pass; full lean/long suites pass; Mac launcher pause 13:46:53–13:57:24 UTC (631s), no active fit; SCC 45/56 application markers, two comparator failures retained.
 
 - 2026-09-29 M4.1 25f7cf7b — one finite WLS kernel with fixed-block moments, guarded pivoted Cholesky/shared scaled QR, pre-projection FWL rank scales, full slot/status/bread mapping and independent score/two-sided inverse checks; weak-direction score failure localized and repaired by bounded same-factor residual refinement at unchanged tolerances; 96 engine tests, 2,200 dense-oracle WLS cases, all FE regressions, full lean/long suites pass; exact 1/2/4/8-worker identity; Mac launcher pause 13:27:17–13:37:13 UTC (596s), fit clocks unaffected; SCC 43/56 application markers.
 
