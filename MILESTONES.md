@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.6 committed-source timing of the first focused shared-bank certification repair. The million-row FE-only baseline passes all 30 accuracy/determinism groups and 150 measured fits, but auto misses every timing pair (geometric-mean ratio 11.256). Shared normalization/certification geometry, component weight totals and fixed-partition parallel kernels pass the full lean/long suites; a binding-cell rerun remains before the required G-M3 decision. M4.4 factor precedence follows built-in Stata; M6.1 accumulated IRLS work reporting and M6.2 detectors/terminal replay/orchestration remain open.
+Current task: M3.6 G-M3 decision after the first focused repair. The committed strong-two-FE rerun passes all eight accuracy/determinism groups and 40 measured fits; auto improves 19.5%/29.2% at T1/T8 but remains 2.188/18.655 times legacy, failing the 1.1 limit. The full lean/long suites pass; PLAN requires asking Johannes before another FE performance attempt. Recommended next step: bring M8.3 shared-operator work forward, retaining the gate and all scientific/API rules. M4.4 factor precedence follows built-in Stata; M6.1 accumulated IRLS work reporting and M6.2 detectors/terminal replay/orchestration remain open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -73,13 +73,22 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - M3.6: the [million-row FE baseline](bench/history/2026-09-29-b7486de6-darwin-fe-projection.csv)
   passes every supported backend's accuracy checks and exact 1/8-worker output
   identity, but the initial auto candidate costs 1.704–94.921 times legacy auto
-  across the eight timing pairs. The first focused repair consolidates shared
-  acceptance work without changing backends, budgets or tolerance. A
+  across the eight timing pairs. The first focused repair at 870a1200 consolidates
+  shared acceptance work without changing backends, budgets or tolerance. Its
+  [committed-source strong-two-FE rerun](bench/history/2026-09-29-870a1200-darwin-fe-projection-focus.csv)
+  passes all eight groups and 50 processes (40 measured, eight warm-ups, two
+  tight references), including exact new-engine repeat/1–8-worker hashes.
+  Auto improves 19.5% at T1 and 29.2% at T8, but costs 2.188/18.655 times
+  legacy. This partial cohort proves the per-cell requirement still fails;
+  it cannot establish a new overall geometric mean or admit G-M3. A
   [diagnostic profile](bench/history/2026-09-29-b7486de6-darwin-fe-profile.csv)
   also identifies substantial iterative Schur work; inclusive counts overlap
-  and are not timing-gate evidence. The full lean and long oracle checks pass;
-  measure the committed repair before deciding G-M3. If it still fails, PLAN
-  requires stopping to ask Johannes.
+  and are not timing-gate evidence. The full lean and long oracle checks pass.
+  PLAN's one focused attempt is now exhausted: ask Johannes before further
+  FE optimization. Recommendation: bring M8.3's shared-operator work forward,
+  preserving all supported solvers, accuracy checks, deterministic reductions
+  and timing gates. An alternative is independent OLS/PPML integration with
+  performance admission deferred and both public defaults still legacy.
 
 - M3.5: Johannes authorized repairing within upstream. [Draft PR #441](https://github.com/py-econometrics/within/pull/441)
   is pushed at b80e299, including current-parent port, fixed parallel reductions,
@@ -108,9 +117,10 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   filesystem reports 92,530,540,544 bytes available at the full-baseline
   preflight, sufficient for its estimated <50 GB including build and raw
   outputs. Existing runs and other active jobs have not been modified.
-- GitHub Actions run [36546517277](https://github.com/johannes-schmieder/fereg/actions/runs/36546517277)
+- GitHub Actions run [36639076022](https://github.com/johannes-schmieder/fereg/actions/runs/36639076022)
   did not start: failed account payment or spending-limit restriction. Johannes
-  was asked to resolve billing; no repository fix or retry can supply this check.
+  was asked to resolve billing; the 870a1200 run confirms this is still blocked,
+  with no started steps. No repository fix or retry can supply this check.
   Local Rust/FFI checks pass; committed-source Stata quick passes all 32 fixtures
   at b5a95266 (application rc=0 and sentinels). Independent rebuild work continues.
   Local diagnostic logs: `target/rebuild-m0/`.
@@ -118,6 +128,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M3.6 focused timing decision (this commit) — frozen 870a1200: all eight strong-two-FE groups and 50 processes succeed; five measured repetitions per group, both tight references, source/Cargo.lock/binary/input identities and byte-identical collector replay audit pass. Auto medians 11.0188/3.4235 seconds at T1/T8 versus legacy 5.0352/0.1835; ratios 2.188/18.655 miss G-M3's 1.1 limit despite 19.5%/29.2% improvement over the baseline. Explicit LSMR medians 8.0564/2.3284 and CMG 5.9658/1.4010 seconds; all coefficient/objective checks and exact new-engine repeat/worker hashes pass. The [partial summary](bench/history/2026-09-29-870a1200-darwin-fe-projection-focus.csv) retains dispersion/provenance and establishes failure of the all-cell requirement, not a new full-suite geometric mean. Full lean checks pass again; the repair's long oracle suite already passed. M3.6/G-M3 remain open; ask Johannes as PLAN requires after one focused attempt, recommending M8.3 shared-operator work before cutover. No public default changes.
 
 - 2026-09-29 M3.6 focused acceptance repair (this commit) — successful primary banks use the same shared normalization/certificate once across all RHSs; numerical rejection retains the raw bank for column-specific certification and the existing single bounded fallback. Component weight totals are shared, coefficient maxima traverse observed levels once, and independent centering/row-amplitude work uses the caller's team. Weighted norms retain range-safe hypot with fixed 1,024-row partitions and an ordered merge; no backend policy, budget, rank or tolerance changes. Exact single-column certificate agreement, mixed successful/failed-bank reports, zero-fitted-row gauges, overflow/subnormal-scale norms and 1/2/4/8-worker identity pass. Full lean (fmt/strict Clippy/workspace/FFI/size/mock-SPI) and long oracle suites pass, including all 2,200 forced-backend designs and 100-digit fixtures. A committed-source binding-cell timing rerun remains; this is the one focused G-M3 attempt, not performance admission. Bank-shaped normalization scratch remains fallible and must be included in M4.4's top-level memory estimate.
 
