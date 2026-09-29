@@ -29,6 +29,7 @@ pub enum Status {
     Base,
     ExplicitlyOmitted,
     AbsorbedInterceptDeferred,
+    NormalizedAbsorbedIntercept,
     CollinearWithFixedEffects,
     NumericallyRankDeficient,
 }

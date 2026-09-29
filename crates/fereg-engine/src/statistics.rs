@@ -38,7 +38,7 @@ pub fn ols(
         return Err(invalid("OLS statistic inputs are not final-sample aligned"));
     }
     let mean = if structural_intercept {
-        weighted_mean(outcome, weights)?
+        weights.mean(outcome)?
     } else {
         0.
     };
@@ -92,21 +92,6 @@ pub(crate) fn squares(values: &[f64], center: f64, weights: ReferenceWeights<'_>
         Ok(result)
     } else {
         Err(invalid("weighted sum of squares is not representable"))
-    }
-}
-fn weighted_mean(values: &[f64], weights: ReferenceWeights<'_>) -> Result<f64> {
-    let scale = values.iter().copied().map(f64::abs).fold(0., f64::max);
-    if scale == 0. {
-        return Ok(0.);
-    }
-    let sum_w = blocked_sum(values.len(), |i| weights.value(i));
-    let mean = blocked_sum(values.len(), |i| {
-        weights.value(i) / sum_w * (values[i] / scale)
-    }) * scale;
-    if mean.is_finite() {
-        Ok(mean)
-    } else {
-        Err(invalid("weighted mean is not representable"))
     }
 }
 fn ratio(numerator: f64, denominator: f64) -> Result<Option<f64>> {

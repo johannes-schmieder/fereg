@@ -104,6 +104,34 @@ impl<'a> ReferenceWeights<'a> {
             }
         })
     }
+    pub fn mean(self, values: &[f64]) -> Result<f64> {
+        if values.len() != self.physical {
+            return Err(invalid("weighted mean and sample lengths differ"));
+        }
+        self.mean_by(|row| values[row])
+    }
+    pub fn mean_by(self, value: impl Fn(usize) -> f64) -> Result<f64> {
+        let mut scale = 0_f64;
+        for row in 0..self.physical {
+            let value = value(row);
+            if !value.is_finite() {
+                return Err(invalid("weighted mean contains a nonfinite value"));
+            }
+            scale = scale.max(value.abs());
+        }
+        if scale == 0. {
+            return Ok(0.);
+        }
+        let sum_w = blocked_sum(self.physical, |row| self.value(row));
+        let mean = blocked_sum(self.physical, |row| {
+            self.value(row) / sum_w * (value(row) / scale)
+        }) * scale;
+        if mean.is_finite() {
+            Ok(mean)
+        } else {
+            Err(invalid("weighted mean is not representable"))
+        }
+    }
     /// HC meat treats a frequency row as independent repeated observations.
     #[must_use]
     pub fn robust_root(self, row: usize) -> f64 {
