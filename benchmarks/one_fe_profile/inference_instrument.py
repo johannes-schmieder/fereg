@@ -2,7 +2,7 @@
 
 
 def instrument(source):
-    path = source / 'crates/fereg-core/src/ols/prepared_clustered.rs'
+    path = source / 'legacy/fereg-core/src/ols/prepared_clustered.rs'
     text = path.read_text()
     start = text.index('fn compose_clustered_view<')
     end = text.index('\nfn ', start + 1)

@@ -695,7 +695,7 @@ def _legacy_route_violations(
         source_root,
         [
             "ls-tree", "-r", "--name-only", commit, "--",
-            "crates/fereg-core/src", "crates/fereg-plugin/src",
+            "legacy/fereg-core/src", "crates/fereg-plugin/src",
         ],
     ).decode("utf-8", errors="strict")
     paths = [path for path in listed.splitlines() if path.endswith(".rs")]
@@ -1712,7 +1712,7 @@ def _verify_candidate_archive_tree(
         path: data.decode("utf-8", errors="strict")
         for path, (data, _mode) in files.items()
         if path.endswith(".rs")
-        and path.startswith(("crates/fereg-core/src/", "crates/fereg-plugin/src/"))
+        and path.startswith(("legacy/fereg-core/src/", "crates/fereg-plugin/src/"))
     }
     found = [str(value) for value in audit_ppml_legacy_documents(documents)]
     observed_audit = {

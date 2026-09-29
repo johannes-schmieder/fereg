@@ -145,7 +145,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_new_memory_helper_is_in_closed_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            helper = candidate / "crates/fereg-core/src/memory/hidden.rs"
+            helper = candidate / "legacy/fereg-core/src/memory/hidden.rs"
             helper.write_text("fn hidden(n: usize) { let _x = vec![0.; n]; }\n")
             self.assertTrue(any("source set changed" in v for v in
                                 CONTRACT.audit_repository(candidate, MANIFEST)))
@@ -197,7 +197,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_public_fereg_error_path_allocation_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            error = candidate / "crates/fereg-core/src/error.rs"
+            error = candidate / "legacy/fereg-core/src/error.rs"
             self._replace(
                 error,
                 "    pub fn new(code: ErrorCode, message: impl Into<String>) -> Self {\n"
@@ -209,12 +209,12 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             violations = CONTRACT.audit_repository(candidate, MANIFEST)
             self.assertIn(
                 "allocation syntax inventory changed: "
-                "crates/fereg-core/src/error.rs",
+                "legacy/fereg-core/src/error.rs",
                 violations,
             )
             self.assertIn(
                 "guarded production token structure changed: "
-                "crates/fereg-core/src/error.rs",
+                "legacy/fereg-core/src/error.rs",
                 violations,
             )
 
@@ -371,7 +371,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_core_module_path_cannot_replace_compiled_ols_graph(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            lib = candidate / "crates/fereg-core/src/lib.rs"
+            lib = candidate / "legacy/fereg-core/src/lib.rs"
             self._replace(
                 lib,
                 "pub mod ols;",
@@ -386,7 +386,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_existing_core_module_path_literal_cannot_retarget_to_ppml(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            lib = candidate / "crates/fereg-core/src/lib.rs"
+            lib = candidate / "legacy/fereg-core/src/lib.rs"
             self._replace(
                 lib,
                 '#[path = "ols/prepared_fit_view.rs"]\n'
@@ -394,10 +394,10 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
                 '#[path = "ppml/alt_fit_view.rs"]\n'
                 "pub(crate) mod prepared_fit_view;",
             )
-            alternate = candidate / "crates/fereg-core/src/ppml/alt_fit_view.rs"
+            alternate = candidate / "legacy/fereg-core/src/ppml/alt_fit_view.rs"
             alternate.parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(
-                candidate / "crates/fereg-core/src/ols/prepared_fit_view.rs",
+                candidate / "legacy/fereg-core/src/ols/prepared_fit_view.rs",
                 alternate,
             )
             alternate.write_text(
@@ -407,11 +407,11 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             )
             violations = CONTRACT.audit_repository(candidate, MANIFEST)
             self.assertIn(
-                "module-path binding changed: crates/fereg-core/src/lib.rs",
+                "module-path binding changed: legacy/fereg-core/src/lib.rs",
                 violations,
             )
             self.assertIn(
-                "production literal payload changed: crates/fereg-core/src/lib.rs",
+                "production literal payload changed: legacy/fereg-core/src/lib.rs",
                 violations,
             )
 
@@ -491,7 +491,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_retained_session_call_on_one_shot_boundary_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            fit = candidate / "crates/fereg-core/src/ols/prepared_fit.rs"
+            fit = candidate / "legacy/fereg-core/src/ols/prepared_fit.rs"
             self._replace(
                 fit,
                 "    fit_prepared_weighted_linear_once(prepared, frame, config, false, None, None)",
@@ -511,7 +511,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_allocation_in_session_guard_executed_by_public_ols_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            session = candidate / "crates/fereg-core/src/ols/linear_session.rs"
+            session = candidate / "legacy/fereg-core/src/ols/linear_session.rs"
             self._replace(
                 session,
                 "    ) -> Self {\n        if let Some(probe) = probe {",
@@ -522,12 +522,12 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             violations = CONTRACT.audit_repository(candidate, MANIFEST)
             self.assertIn(
                 "fereg-shared source region changed: "
-                "crates/fereg-core/src/ols/linear_session.rs",
+                "legacy/fereg-core/src/ols/linear_session.rs",
                 violations,
             )
             self.assertIn(
                 "fereg-shared allocation syntax inventory changed: "
-                "crates/fereg-core/src/ols/linear_session.rs",
+                "legacy/fereg-core/src/ols/linear_session.rs",
                 violations,
             )
 
@@ -535,7 +535,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
         self.assertEqual(CONTRACT._retained_session_route_violations(ROOT), [])
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            fit = candidate / "crates/fereg-core/src/ols/prepared_fit.rs"
+            fit = candidate / "legacy/fereg-core/src/ols/prepared_fit.rs"
             fit.write_text(
                 fit.read_text(encoding="utf-8")
                 + "\nfn forbidden_public_session_constructor<\'a, "
@@ -558,19 +558,19 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
             violations = CONTRACT.audit_repository(candidate, MANIFEST)
             self.assertIn(
                 "retained QR/session symbol escaped PPML-only route: "
-                "crates/fereg-core/src/ols/prepared_fit.rs:CertifiedLinearSession",
+                "legacy/fereg-core/src/ols/prepared_fit.rs:CertifiedLinearSession",
                 violations,
             )
             self.assertIn(
                 "retained QR/session symbol escaped PPML-only route: "
-                "crates/fereg-core/src/ols/prepared_fit.rs:new_with_ppml_fe_design",
+                "legacy/fereg-core/src/ols/prepared_fit.rs:new_with_ppml_fe_design",
                 violations,
             )
 
     def test_retained_session_call_in_transitive_ols_helper_is_rejected(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            fit = candidate / "crates/fereg-core/src/ols/prepared_fit.rs"
+            fit = candidate / "legacy/fereg-core/src/ols/prepared_fit.rs"
             self._replace(
                 fit,
                 "    let mut trace = PhaseTrace::new();",
@@ -660,7 +660,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_opaque_matrix_constructor_is_rejected_by_exact_structure(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            fit = candidate / "crates/fereg-core/src/ols/prepared_fit.rs"
+            fit = candidate / "legacy/fereg-core/src/ols/prepared_fit.rs"
             fit.write_text(
                 fit.read_text(encoding="utf-8")
                 + "\nfn hidden_design(rows: usize, columns: usize) {\n"
@@ -677,7 +677,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_cfg_test_comparison_and_char_cannot_hide_following_production(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            fit = candidate / "crates/fereg-core/src/ols/prepared_fit.rs"
+            fit = candidate / "legacy/fereg-core/src/ols/prepared_fit.rs"
             fit.write_text(
                 fit.read_text(encoding="utf-8")
                 + "\n#[cfg(test)]\nconst TEST_ORDER: bool = 1 < 2;\n"
@@ -704,7 +704,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
                 '"begin event must not mint a decision receipt"',
                 '"test-only wording may change"',
             )
-            sandwich = candidate / "crates/fereg-core/src/sandwich.rs"
+            sandwich = candidate / "legacy/fereg-core/src/sandwich.rs"
             self._replace(
                 sandwich,
                 "#[derive(Debug, Clone, Copy)]\n#[cfg(test)]\n"
@@ -736,7 +736,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_new_ols_helper_file_is_not_outside_the_closed_inventory(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            new_helper = candidate / "crates/fereg-core/src/ols/nested/new_buffer.rs"
+            new_helper = candidate / "legacy/fereg-core/src/ols/nested/new_buffer.rs"
             new_helper.parent.mkdir(parents=True, exist_ok=True)
             new_helper.write_text(
                 "fn allocate_rows(rows: usize) -> Vec<f64> { vec![0.0; rows] }\n",
@@ -751,7 +751,7 @@ class FeregAllocationSourceContractTests(unittest.TestCase):
     def test_ppml_session_allocations_are_excluded_until_fereg_enters_session(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             candidate = self._source_root(Path(directory))
-            session = candidate / "crates/fereg-core/src/ols/linear_session.rs"
+            session = candidate / "legacy/fereg-core/src/ols/linear_session.rs"
             session.write_text(
                 session.read_text(encoding="utf-8")
                 + "\nfn ppml_only_buffer(rows: usize) -> Vec<f64> { vec![0.0; rows] }\n",

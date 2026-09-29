@@ -21,10 +21,10 @@ def instrument(root):
         body = body.replace(points[-1][1], report + points[-1][1])
         path.write_text(text[:first] + body + text[last:])
 
-    prepared_source = (root / "crates/fereg-core/src/ols/prepared_categorical_data.rs").read_text()
+    prepared_source = (root / "legacy/fereg-core/src/ols/prepared_categorical_data.rs").read_text()
     prepared_validation = ("let sample = validated_sample::ValidatedSample::new(sample)?;"
                           if "mod validated_sample {" in prepared_source else "prepared.validate()?;")
-    phases("crates/fereg-core/src/ols/prepared_categorical_data.rs",
+    phases("legacy/fereg-core/src/ols/prepared_categorical_data.rs",
            "fn finish_prepare_categorical_ols_data(", "\n#[derive(Debug)]", "categorical_prepare", [
         ("pruning", "let bound_effects ="),
         ("topology", "let rebuilt_topology ="),
@@ -33,17 +33,17 @@ def instrument(root):
         ("validation", prepared_validation),
         ("end", "Ok(prepared)"),
     ])
-    phases("crates/fereg-core/src/ols/prepared_categorical_data.rs",
+    phases("legacy/fereg-core/src/ols/prepared_categorical_data.rs",
            "fn recover_absorbed_effects_fast_with_weights_inner(",
            "\n    /// Compute absorbed rank", "recovery_setup", [
         ("validation", "let validation_bytes ="),
         ("planning", "let effects ="),
         ("end", "let fits ="),
     ])
-    recovery_source = (root / "crates/fereg-core/src/fe/topology_slope_map.rs").read_text()
+    recovery_source = (root / "legacy/fereg-core/src/fe/topology_slope_map.rs").read_text()
     recovery_validation = ("let validated_single =" if "let validated_single =" in recovery_source
                            else "validate_recovery_inputs(")
-    phases("crates/fereg-core/src/fe/topology_slope_map.rs",
+    phases("legacy/fereg-core/src/fe/topology_slope_map.rs",
            "pub(crate) fn recover_finalized_categorical_effects_sd_lsmr_certified(",
            "\n/// Recover intercept-only effects with", "recovery_direct", [
         ("validation_design", recovery_validation),

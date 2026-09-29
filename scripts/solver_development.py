@@ -279,7 +279,7 @@ def _sha256(path: Path) -> str:
 
 
 def _source_identity() -> dict[str, Any]:
-    tracked_roots = [ROOT / "crates", ROOT / "stata"]
+    tracked_roots = [ROOT / "crates", ROOT / "legacy", ROOT / "stata"]
     files = [ROOT / "Cargo.toml", ROOT / "Cargo.lock"]
     for directory in tracked_roots:
         files.extend(path for path in directory.rglob("*") if path.is_file())

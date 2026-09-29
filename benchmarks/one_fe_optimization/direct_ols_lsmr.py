@@ -7,7 +7,7 @@ remain active. Public fast two-intercept OLS alone enters the diagnostic.
 
 
 def instrument(source):
-    path = source / 'crates/fereg-core/src/ols/prepared_fit.rs'
+    path = source / 'legacy/fereg-core/src/ols/prepared_fit.rs'
     text = path.read_text()
     anchor = '''    if allow_single_slope && config.absorb.solver == FeSolverKind::Auto'''
     assert text.count(anchor) == 1, 'Inspect the OLS owner before applying the route diagnostic.'

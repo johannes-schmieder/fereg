@@ -43,11 +43,11 @@ def main():
         archive = subprocess.check_output(["git", "archive", base, "Cargo.toml", "Cargo.lock", "crates", "tests/fixtures"], cwd=repo)
         with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
             bundle.extractall(source, filter="data")
-        destination = source / "crates/fereg-core/src/ols/canonical_products_probe"
+        destination = source / "legacy/fereg-core/src/ols/canonical_products_probe"
         destination.mkdir()
         for name in ["kernel.rs", "probe.rs"]:
             shutil.copy2(Path(__file__).parent / name, destination / name)
-        with (source / "crates/fereg-core/src/ols/mod.rs").open("a") as out:
+        with (source / "legacy/fereg-core/src/ols/mod.rs").open("a") as out:
             out.write('\n#[cfg(test)]\nmod canonical_products_probe {\n'
                       '    #[path = "kernel.rs"] mod kernel;\n'
                       '    include!("canonical_products_probe/probe.rs");\n}\n')

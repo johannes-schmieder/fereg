@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-OLS = ROOT / "crates/fereg-core/src/ols"
+OLS = ROOT / "legacy/fereg-core/src/ols"
 
 
 class OlsSourceContractTests(unittest.TestCase):

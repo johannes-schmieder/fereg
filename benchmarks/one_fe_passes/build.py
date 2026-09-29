@@ -27,7 +27,7 @@ def build(root, names):
             run(["codesign", "--force", "--sign", "-", "dist/fereg_macos.plugin"])
             run(["bash", "tests/mock_spi/run_actual_unix_plugin_test.sh", "dist/fereg_macos.plugin"])
         sha = lambda p: hashlib.sha256(p.read_bytes()).hexdigest()
-        (root / ("identity-" + name + ".json")).write_text(json.dumps(dict(plugin=sha(source / "dist/fereg_macos.plugin"), rust_archive=sha(archive), changed_source={str(p.relative_to(source)): sha(p) for p in [source / "crates/fereg-core/src/ols/prepared_fit.rs", source / "crates/fereg-core/src/ols/prepared_rhs.rs"]}, abi="pass"), indent=2)+"\n")
+        (root / ("identity-" + name + ".json")).write_text(json.dumps(dict(plugin=sha(source / "dist/fereg_macos.plugin"), rust_archive=sha(archive), changed_source={str(p.relative_to(source)): sha(p) for p in [source / "legacy/fereg-core/src/ols/prepared_fit.rs", source / "legacy/fereg-core/src/ols/prepared_rhs.rs"]}, abi="pass"), indent=2)+"\n")
         print("BUILD_PASS", name, flush=True)
 
 

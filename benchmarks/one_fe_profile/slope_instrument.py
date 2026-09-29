@@ -9,7 +9,7 @@ def instrument(source):
         ("fe/map.rs", "pub fn absorb_map(", "map", "values"),
     ]
     for relative, marker, label, values in probes:
-        path = source / "crates/fereg-core/src" / relative
+        path = source / "legacy/fereg-core/src" / relative
         text = path.read_text()
         assert text.count(marker) == 1, relative
         position = text.index("{", text.index(marker)) + 1
@@ -21,7 +21,7 @@ def instrument(source):
     let _slope_timer = SlopeTimer(std::time::Instant::now(), VALUES.nrows(), VALUES.ncols());
 '''.replace("LABEL", label).replace("VALUES", values)
         path.write_text(text[:position] + timer + text[position:])
-    path = source / "crates/fereg-core/src/ols/prepared_fit_view.rs"
+    path = source / "legacy/fereg-core/src/ols/prepared_fit_view.rs"
     text = path.read_text()
     start = "        let design = self.fit_owned_fe_design()?;"
     end = "        let mut report = absorb_fixed_effects(&design, weights, &mut residualized, config)?;"
@@ -29,7 +29,7 @@ def instrument(source):
     text = text.replace(start, "        let owned_started = std::time::Instant::now();\n" + start)
     text = text.replace(end, '        eprintln!("SLOPE_PROFILE|owned_design|n={}|rhs={}|seconds={:.9}", residualized.nrows(), residualized.ncols(), owned_started.elapsed().as_secs_f64());\n' + end)
     path.write_text(text)
-    path = source / "crates/fereg-core/src/fe/single_slope.rs"
+    path = source / "legacy/fereg-core/src/fe/single_slope.rs"
     if path.exists():
         text = path.read_text()
         if "check_input: bool" in text:
@@ -121,7 +121,7 @@ def instrument(source):
         text = text[:first] + section + text[last:]
         path.write_text(text)
 
-    path = source / "crates/fereg-core/src/fe/topology_slope_map.rs"
+    path = source / "legacy/fereg-core/src/fe/topology_slope_map.rs"
     text = path.read_text()
     marker = "pub(crate) fn recover_finalized_single_slope_direct_certified("
     if marker in text:
@@ -150,7 +150,7 @@ def instrument(source):
         text = text[:first] + section + text[last:]
         path.write_text(text)
 
-    path = source / "crates/fereg-core/src/ols/prepared_fit.rs"
+    path = source / "legacy/fereg-core/src/ols/prepared_fit.rs"
     text = path.read_text()
     first = text.index("fn build_fast_score_cache<")
     last = text.index("fn build_strided_fast_score_cache<", first)

@@ -26,8 +26,8 @@ class PpmlLegacyBoundaryTests(unittest.TestCase):
             f"{BOUNDARY.SEPARATION_RUNNER}/mod.rs",
             f"{BOUNDARY.SEPARATION_RUNNER}/detect.rs",
             f"{BOUNDARY.SEPARATION_RUNNER}/accounting.rs",
-            "crates/fereg-core/src/lib.rs",
-            "crates/fereg-core/src/ppml/prepared_irls.rs",
+            "legacy/fereg-core/src/lib.rs",
+            "legacy/fereg-core/src/ppml/prepared_irls.rs",
             "crates/fereg-plugin/src/ppml_estimate.rs",
         }
         self.documents = {
@@ -74,7 +74,7 @@ class PpmlLegacyBoundaryTests(unittest.TestCase):
         self.assertIn("legacy PPML token `PpmlStart` is reachable", messages)
 
         documents = dict(self.documents)
-        documents["crates/fereg-core/src/lib.rs"] += "\npub use ppml::PpmlStart;\n"
+        documents["legacy/fereg-core/src/lib.rs"] += "\npub use ppml::PpmlStart;\n"
         self.assertIn(
             "legacy PPML token `PpmlStart` is reachable",
             self.messages(documents),
@@ -93,7 +93,7 @@ class PpmlLegacyBoundaryTests(unittest.TestCase):
 
     def test_production_wrapper_alias_is_rejected(self) -> None:
         documents = dict(self.documents)
-        path = "crates/fereg-core/src/lib.rs"
+        path = "legacy/fereg-core/src/lib.rs"
         documents[path] += "\nuse crate::ppml::fit_ppml as production_fit;\n"
         messages = self.messages(documents)
         self.assertIn("legacy PPML token `fit_ppml` is reachable", messages)
@@ -120,7 +120,7 @@ class PpmlLegacyBoundaryTests(unittest.TestCase):
         for name in BOUNDARY.FORBIDDEN_CRATE_ROOT_PPML_EXPORTS:
             with self.subTest(export=name):
                 documents = dict(self.documents)
-                documents["crates/fereg-core/src/lib.rs"] += f"\npub use ppml::{name};\n"
+                documents["legacy/fereg-core/src/lib.rs"] += f"\npub use ppml::{name};\n"
                 self.assertIn(
                     f"internal PPML numerical symbol `{name}` is re-exported",
                     self.messages(documents),
@@ -149,14 +149,14 @@ class PpmlLegacyBoundaryTests(unittest.TestCase):
 
     def test_macro_built_textual_include_cannot_hide_legacy_module(self) -> None:
         documents = dict(self.documents)
-        path = "crates/fereg-core/src/lib.rs"
+        path = "legacy/fereg-core/src/lib.rs"
         documents[path] += '\ninclude!(concat!("ppml/", "irls.rs"));\n'
         messages = self.messages(documents)
         self.assertIn("textual Rust include can bypass cfg(test) module gates", messages)
 
     def test_text_and_test_only_aliases_do_not_trigger_false_positives(self) -> None:
         documents = dict(self.documents)
-        path = "crates/fereg-core/src/lib.rs"
+        path = "legacy/fereg-core/src/lib.rs"
         documents[path] += r'''
 const LEGACY_DESCRIPTION: &str = "fit_ppml and ppml_separation::runner";
 // fit_ppml_with_start is allowed in comments.

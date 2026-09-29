@@ -4,7 +4,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CORE = ROOT / "crates/fereg-core/src"
+CORE = ROOT / "legacy/fereg-core/src"
 VIEW = CORE / "ols/prepared_fit_view.rs"
 FIT = CORE / "ols/prepared_fit.rs"
 SESSION = CORE / "ols/linear_session.rs"

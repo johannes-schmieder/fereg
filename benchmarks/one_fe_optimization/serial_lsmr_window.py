@@ -7,7 +7,7 @@ def replace_once(text, before, after):
 
 
 def instrument(source):
-    path = source / 'crates/fereg-core/src/memory.rs'
+    path = source / 'legacy/fereg-core/src/memory.rs'
     text = path.read_text()
     text = replace_once(text,
         '    if rhs <= 64 || rhs <= threads.saturating_mul(4) {',
@@ -22,7 +22,7 @@ def instrument(source):
                         'assert_eq!(lsmr_rhs_window(rhs, threads), if threads == 1 { 1 } else { rhs });')
     path.write_text(text)
 
-    path = source / 'crates/fereg-core/src/fe/lsmr_batch.rs'
+    path = source / 'legacy/fereg-core/src/fe/lsmr_batch.rs'
     text = path.read_text()
     text = replace_once(text,
         '                        let oracle = solver.solve_batch(&rhs, &options).unwrap();',

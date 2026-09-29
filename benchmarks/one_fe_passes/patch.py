@@ -9,7 +9,7 @@ def replace(text, old, new):
 
 
 def patch(root, direct, overlap):
-    rhs = root / "crates/fereg-core/src/ols/prepared_rhs.rs"
+    rhs = root / "legacy/fereg-core/src/ols/prepared_rhs.rs"
     text = rhs.read_text()
     if direct:
         first = text.index('        // The caller already reserved the complete matrix fallibly.')
@@ -41,7 +41,7 @@ def patch(root, direct, overlap):
     rhs.write_text(text)
     if not overlap:
         return
-    path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
+    path = root / "legacy/fereg-core/src/ols/prepared_fit.rs"
     text = path.read_text()
     text = replace(text, 'trait FitReservation {', 'trait FitReservation: Send {')
     first = text.index('fn fit_with_controls_internal_mode_with_frame<')

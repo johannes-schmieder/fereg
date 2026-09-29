@@ -4,8 +4,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-REBASE = ROOT / "crates/fereg-core/src/ols/prepared_categorical_rebase.rs"
-DATA = ROOT / "crates/fereg-core/src/ols/prepared_categorical_data.rs"
+REBASE = ROOT / "legacy/fereg-core/src/ols/prepared_categorical_rebase.rs"
+DATA = ROOT / "legacy/fereg-core/src/ols/prepared_categorical_data.rs"
 RESULT_VIEW = ROOT / "crates/fereg-plugin/src/result_view.rs"
 
 

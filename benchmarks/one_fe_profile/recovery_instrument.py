@@ -3,7 +3,7 @@ import re
 
 
 def instrument(source):
-    path = source / 'crates/fereg-core/src/ols/prepared_categorical_data.rs'
+    path = source / 'legacy/fereg-core/src/ols/prepared_categorical_data.rs'
     text = path.read_text()
     start = text.index('    fn recover_absorbed_effects_fast_with_weights_inner(')
     end = text.index('\n    /// Compute absorbed rank', start)

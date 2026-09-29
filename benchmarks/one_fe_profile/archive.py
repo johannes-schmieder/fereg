@@ -112,7 +112,7 @@ def archive(root, output):
     patches.mkdir(exist_ok=True)
     for label, a, b, files in [
         ("fixest", root / "fixest", root / "stock-src/fixest", ["R/estimation.R", "src/demeaning.cpp"]),
-        ("fereg", root / "baseline", root / "detailed", ["crates/fereg-plugin/src/estimate.rs", "crates/fereg-core/src/ols/prepared.rs", "crates/fereg-core/src/ols/prepared_fit.rs", "stata/_fereg_estimate_ols.ado"]),
+        ("fereg", root / "baseline", root / "detailed", ["crates/fereg-plugin/src/estimate.rs", "legacy/fereg-core/src/ols/prepared.rs", "legacy/fereg-core/src/ols/prepared_fit.rs", "stata/_fereg_estimate_ols.ado"]),
     ]:
         patch = ""
         for file in files:

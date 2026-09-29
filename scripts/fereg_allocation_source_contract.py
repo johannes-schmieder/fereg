@@ -30,16 +30,16 @@ SCHEMA_VERSION = 21
 # PPML mechanism and is intentionally excluded from allocation-site hashing;
 # the exact one-shot boundaries below prove that fereg cannot enter it.
 WATCHED_EXACT_FILES = (
-    "crates/fereg-core/build.rs",
-    "crates/fereg-core/src/error.rs",
-    "crates/fereg-core/src/factorize.rs",
-    "crates/fereg-core/src/lib.rs",
-    "crates/fereg-core/src/memory.rs",
-    "crates/fereg-core/src/metadata.rs",
-    "crates/fereg-core/src/options.rs",
-    "crates/fereg-core/src/parallel.rs",
-    "crates/fereg-core/src/protocol.rs",
-    "crates/fereg-core/src/sandwich.rs",
+    "legacy/fereg-core/build.rs",
+    "legacy/fereg-core/src/error.rs",
+    "legacy/fereg-core/src/factorize.rs",
+    "legacy/fereg-core/src/lib.rs",
+    "legacy/fereg-core/src/memory.rs",
+    "legacy/fereg-core/src/metadata.rs",
+    "legacy/fereg-core/src/options.rs",
+    "legacy/fereg-core/src/parallel.rs",
+    "legacy/fereg-core/src/protocol.rs",
+    "legacy/fereg-core/src/sandwich.rs",
     "crates/fereg-plugin/src/estimate.rs",
     "crates/fereg-plugin/src/ffi.rs",
     "crates/fereg-plugin/src/input.rs",
@@ -50,7 +50,7 @@ WATCHED_CARGO_FILES = (
     ".cargo/config.toml",
     "Cargo.lock",
     "Cargo.toml",
-    "crates/fereg-core/Cargo.toml",
+    "legacy/fereg-core/Cargo.toml",
     "crates/fereg-plugin/Cargo.toml",
 )
 NATIVE_ROUTE_FILES = (
@@ -66,62 +66,62 @@ NATIVE_ROUTE_FILES = (
     {"path": "scripts/build_windows.ps1", "normalization": "exact_text"},
 )
 WATCHED_GLOBS = (
-    "crates/fereg-core/src/data/**/*.rs",
-    "crates/fereg-core/src/fe/**/*.rs",
-    "crates/fereg-core/src/linalg/**/*.rs",
-    "crates/fereg-core/src/memory/**/*.rs",
-    "crates/fereg-core/src/ols/**/*.rs",
-    "crates/fereg-core/src/sandwich/**/*.rs",
+    "legacy/fereg-core/src/data/**/*.rs",
+    "legacy/fereg-core/src/fe/**/*.rs",
+    "legacy/fereg-core/src/linalg/**/*.rs",
+    "legacy/fereg-core/src/memory/**/*.rs",
+    "legacy/fereg-core/src/ols/**/*.rs",
+    "legacy/fereg-core/src/sandwich/**/*.rs",
     "crates/fereg-plugin/src/**/*.rs",
 )
 EXCLUDED_SOURCE_PREFIXES: tuple[str, ...] = ()
 EXCLUDED_SOURCE_FILES: frozenset[str] = frozenset()
 BOUNDARY_ONLY_SOURCE_FILES = frozenset(
     {
-        "crates/fereg-core/src/ols/linear_session.rs",
+        "legacy/fereg-core/src/ols/linear_session.rs",
         "crates/fereg-plugin/src/ppml_estimate.rs",
         "crates/fereg-plugin/src/ppml_result.rs",
     }
 )
 FEREG_SHARED_SOURCE_REGIONS = (
     {
-        "path": "crates/fereg-core/src/ols/linear_session.rs",
+        "path": "legacy/fereg-core/src/ols/linear_session.rs",
         "name": "phase_allocation_guard",
     },
 )
 
 BOUNDARY_FUNCTIONS = (
     ("crates/fereg-plugin/src/estimate.rs", "estimate_ols_test"),
-    ("crates/fereg-core/src/ols/prepared_unadjusted.rs", "fit_prepared_ols_unadjusted_map"),
+    ("legacy/fereg-core/src/ols/prepared_unadjusted.rs", "fit_prepared_ols_unadjusted_map"),
     (
-        "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+        "legacy/fereg-core/src/ols/prepared_unadjusted.rs",
         "fit_prepared_categorical_ols_unadjusted_map",
     ),
-    ("crates/fereg-core/src/ols/prepared_robust.rs", "fit_prepared_ols_robust_map"),
+    ("legacy/fereg-core/src/ols/prepared_robust.rs", "fit_prepared_ols_robust_map"),
     (
-        "crates/fereg-core/src/ols/prepared_robust.rs",
+        "legacy/fereg-core/src/ols/prepared_robust.rs",
         "fit_prepared_categorical_ols_robust_map",
     ),
-    ("crates/fereg-core/src/ols/prepared_clustered.rs", "fit_prepared_ols_clustered_map"),
+    ("legacy/fereg-core/src/ols/prepared_clustered.rs", "fit_prepared_ols_clustered_map"),
     (
-        "crates/fereg-core/src/ols/prepared_clustered.rs",
+        "legacy/fereg-core/src/ols/prepared_clustered.rs",
         "fit_prepared_categorical_ols_clustered_map",
     ),
-    ("crates/fereg-core/src/ols/prepared_fit.rs", "fit_prepared_ols_coefficients_map"),
+    ("legacy/fereg-core/src/ols/prepared_fit.rs", "fit_prepared_ols_coefficients_map"),
     (
-        "crates/fereg-core/src/ols/prepared_fit.rs",
+        "legacy/fereg-core/src/ols/prepared_fit.rs",
         "fit_prepared_categorical_ols_coefficients_map",
     ),
     (
-        "crates/fereg-core/src/ols/prepared_fit.rs",
+        "legacy/fereg-core/src/ols/prepared_fit.rs",
         "fit_prepared_ols_coefficients_view_map",
     ),
     (
-        "crates/fereg-core/src/ols/prepared_fit.rs",
+        "legacy/fereg-core/src/ols/prepared_fit.rs",
         "fit_prepared_ols_coefficients_view_map_with_frame",
     ),
     (
-        "crates/fereg-core/src/ols/prepared_fit.rs",
+        "legacy/fereg-core/src/ols/prepared_fit.rs",
         "fit_prepared_weighted_linear_once",
     ),
 )
@@ -260,13 +260,13 @@ RETAINED_ROUTE_SYMBOLS = frozenset(
     }
 )
 RETAINED_ROUTE_ALLOWED_NON_PPML = {
-    "crates/fereg-core/src/ols/finite_wls_kernel.rs": frozenset(
+    "legacy/fereg-core/src/ols/finite_wls_kernel.rs": frozenset(
         {"factor_rank_revealing_retained_qr"}
     ),
-    "crates/fereg-core/src/ols/linear_session.rs": RETAINED_ROUTE_SYMBOLS,
-    "crates/fereg-core/src/ols/mod.rs": frozenset({"CertifiedLinearSession"}),
+    "legacy/fereg-core/src/ols/linear_session.rs": RETAINED_ROUTE_SYMBOLS,
+    "legacy/fereg-core/src/ols/mod.rs": frozenset({"CertifiedLinearSession"}),
 }
-RETAINED_ROUTE_PPML_CALLER = "crates/fereg-core/src/ppml/prepared_irls.rs"
+RETAINED_ROUTE_PPML_CALLER = "legacy/fereg-core/src/ppml/prepared_irls.rs"
 
 # These are architectural route violations, not merely allocation-inventory
 # changes.  Token matching avoids comments and string literals.
@@ -982,7 +982,7 @@ def _fereg_shared_regions(
     source: str,
     tokens: Sequence[Token],
 ) -> list[dict[str, Any]]:
-    if relative != "crates/fereg-core/src/ols/linear_session.rs":
+    if relative != "legacy/fereg-core/src/ols/linear_session.rs":
         return []
     region_tokens = _linear_session_phase_guard_tokens(tokens)
     sites = _allocation_sites(region_tokens)
@@ -1452,7 +1452,7 @@ def _retained_session_route_violations(root: Path) -> list[str]:
     violations: list[str] = []
     rust_files = sorted(
         {
-            *root.glob("crates/fereg-core/src/**/*.rs"),
+            *root.glob("legacy/fereg-core/src/**/*.rs"),
             *root.glob("crates/fereg-plugin/src/**/*.rs"),
         }
     )
@@ -1467,7 +1467,7 @@ def _retained_session_route_violations(root: Path) -> list[str]:
             )
             continue
         token_cache[relative] = tokens
-        if relative.startswith("crates/fereg-core/src/ppml/"):
+        if relative.startswith("legacy/fereg-core/src/ppml/"):
             continue
         allowed = RETAINED_ROUTE_ALLOWED_NON_PPML.get(relative, frozenset())
         values = {token.value for token in tokens}
@@ -1477,19 +1477,19 @@ def _retained_session_route_violations(root: Path) -> list[str]:
                 f"{relative}:{symbol}"
             )
 
-    finite_relative = "crates/fereg-core/src/ols/finite_wls_kernel.rs"
+    finite_relative = "legacy/fereg-core/src/ols/finite_wls_kernel.rs"
     finite_values = [
         token.value for token in token_cache.get(finite_relative, [])
     ]
     if finite_values.count("factor_rank_revealing_retained_qr") != 1:
         violations.append("retained QR implementation identity changed")
 
-    mod_relative = "crates/fereg-core/src/ols/mod.rs"
+    mod_relative = "legacy/fereg-core/src/ols/mod.rs"
     mod_values = [token.value for token in token_cache.get(mod_relative, [])]
     if mod_values.count("CertifiedLinearSession") != 1:
         violations.append("retained session crate-private re-export identity changed")
 
-    session_relative = "crates/fereg-core/src/ols/linear_session.rs"
+    session_relative = "legacy/fereg-core/src/ols/linear_session.rs"
     session_tokens = token_cache.get(session_relative)
     if session_tokens is None:
         violations.append("retained session implementation is missing")
@@ -1691,7 +1691,9 @@ def audit_repository(
         # Historical preparation/input excerpts remain independently checked; the newer
         # exact-source review supplies the current implementation boundary.
         live_digest = REVIEWED_BOUNDARY_HASHES.get(key, live_digest)
-        observed_boundary = observed_boundaries.get(key)
+        # Keep the F0 commit's path pins intact while comparing relocated source.
+        live_key = (key[0].replace("crates/fereg-core/", "legacy/fereg-core/"), key[1])
+        observed_boundary = observed_boundaries.get(live_key)
         if (
             observed_boundary is None
             or observed_boundary.get("body_tokens_sha256") != live_digest

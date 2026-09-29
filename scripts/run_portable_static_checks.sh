@@ -20,7 +20,7 @@ from pathlib import Path
 import sys
 import tomllib
 root = Path(sys.argv[1])
-for path in [root / "Cargo.toml", root / "references.lock.toml", root / "rust-toolchain.toml", *sorted((root / "crates").glob("*/Cargo.toml"))]:
+for path in [root / "Cargo.toml", root / "references.lock.toml", root / "rust-toolchain.toml", *sorted((root / "crates").glob("*/Cargo.toml")), *sorted((root / "legacy").glob("*/Cargo.toml"))]:
     with path.open("rb") as handle:
         tomllib.load(handle)
 print("portable check: TOML parse PASS")

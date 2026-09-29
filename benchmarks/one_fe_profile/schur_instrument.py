@@ -2,7 +2,7 @@
 
 
 def instrument(source):
-    path = source / 'crates/fereg-core/src/fe/borrowed_map.rs'
+    path = source / 'legacy/fereg-core/src/fe/borrowed_map.rs'
     text = path.read_text()
     for name, end_marker in [
         ('schur_probe_reusing', '\nfn schur_probe_narrow_continuation('),

@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def instrument(root):
-    path = Path(root) / 'crates/fereg-core/src/ols/prepared_unadjusted.rs'
+    path = Path(root) / 'legacy/fereg-core/src/ols/prepared_unadjusted.rs'
     text = path.read_text()
 
     def replace(before, after):

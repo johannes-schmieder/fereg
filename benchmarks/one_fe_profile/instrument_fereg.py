@@ -54,7 +54,7 @@ def instrument(root):
         return body
     scoped(path, 'pub(crate) fn load_ols_input_with_memory(', '\nfn ', input_laps)
 
-    path = root / "crates/fereg-core/src/ols/prepared.rs"
+    path = root / "legacy/fereg-core/src/ols/prepared.rs"
     def preparation(body):
         body = replace(body, '    let model = request.validate_and_compile_with_cluster_sources',
                        '    let profile_start = std::time::Instant::now();\n    let model = request.validate_and_compile_with_cluster_sources')
@@ -73,7 +73,7 @@ def instrument(root):
     scoped(path, 'pub(crate) fn prepare_ols_data_owned_with_cluster_sources(',
            '\npub(crate) fn prepare_ols_data_with_cluster_sources(', preparation)
 
-    path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
+    path = root / "legacy/fereg-core/src/ols/prepared_fit.rs"
     def finite(body):
         body = replace(body, '    let nrows = within.nrows();',
                        '    let profile_start = Instant::now();\n    let nrows = within.nrows();')

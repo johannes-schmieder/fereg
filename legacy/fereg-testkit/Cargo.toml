@@ -11,7 +11,7 @@ path = "src/lib.rs"
 
 [dependencies]
 fereg-core = { path = "../fereg-core" }
-fereg-plugin = { path = "../fereg-plugin", default-features = false }
+fereg-plugin = { path = "../../crates/fereg-plugin", default-features = false }
 
 [lints]
 workspace = true

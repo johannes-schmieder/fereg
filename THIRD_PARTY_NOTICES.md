@@ -13,7 +13,7 @@ The Rust `within` dependency is MIT licensed, pinned to
 `1ac3522a251c2622dbeab451415924f9ebe117b9` in
 `references.lock.toml`. It supplies modified LSMR and Schwarz preconditioning,
 not another public solver family. The legacy adapter in
-`crates/fereg-core/src/fe/lsmr.rs` maps native `EffectTerm` values to
+`legacy/fereg-core/src/fe/lsmr.rs` maps native `EffectTerm` values to
 `within::Effect`, calls `within::solve_batch`, and copies returned demeaned
 vectors into fereg storage. Prepared adapters reuse native categorical views.
 `fe/certificate.rs` independently recomputes the weighted FE certificate;

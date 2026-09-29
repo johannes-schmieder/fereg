@@ -6,7 +6,7 @@ import re
 def instrument(source):
     from cycle_probe_memory import instrument as instrument_memory
     instrument_memory(source)
-    path = source / 'crates/fereg-core/src/ols/prepared_fit.rs'
+    path = source / 'legacy/fereg-core/src/ols/prepared_fit.rs'
     text = path.read_text()
     field = "    single_slope: Option<crate::fe::SingleSlopeAbsorber<'a>>,"
     assert text.count(field) == 1

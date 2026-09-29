@@ -148,6 +148,11 @@ legacy transport fixtures. No replacement passes are implied by this table.
   `./ci/run_stata_ci.sh <profile>` as listed in ci/stata_profiles.json.
 - The lean `./scripts/run_tests.sh` runs Rust and mock-SPI checks. Larger
   property/legacy and licensed checks are additional, not replaced by linting.
+- The legacy crates now live under `legacy/`, with their source and tests
+  unchanged. Current path readers follow that relocation; source-bound Git
+  pins, historical manifests and `legacy-inputs.tsv` retain their original
+  paths and hashes. Run old campaign controllers at their recorded revisions
+  when reproducing those historical artifacts.
 - Copied benchmark sources retain their bytes for M1.4 porting; their old
   controllers are not new campaign launchers. The original 100-digit fixtures
   and scientific receipts remain untouched.

@@ -8,7 +8,7 @@ license.workspace = true
 publish = false
 
 [dev-dependencies]
-fereg-core = { path = "../fereg-core" }
+fereg-core = { path = "../../legacy/fereg-core" }
 
 [lints]
 workspace = true

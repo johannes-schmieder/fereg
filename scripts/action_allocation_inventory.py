@@ -22,7 +22,7 @@ else:
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INVENTORY = ROOT / "benchmarks/manifests/action_allocation_inventory_v24.json"
 SOURCE_GLOBS = (
-    "crates/fereg-core/src/**/*.rs",
+    "legacy/fereg-core/src/**/*.rs",
     "crates/fereg-plugin/src/**/*.rs",
     "vendor/*/src/**/*.rs",
 )
@@ -34,6 +34,8 @@ BUILD_INPUT_GLOBS = (
     "rust-toolchain.toml",
     "crates/*/Cargo.toml",
     "crates/*/build.rs",
+    "legacy/*/Cargo.toml",
+    "legacy/*/build.rs",
     "vendor/*/Cargo.toml",
     "vendor/*/Cargo.lock",
     "vendor/*/build.rs",

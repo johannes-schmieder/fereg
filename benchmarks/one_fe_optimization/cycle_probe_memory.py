@@ -3,7 +3,7 @@ from pathlib import Path
 
 
 def instrument(source):
-    base = source / 'crates/fereg-core/src'
+    base = source / 'legacy/fereg-core/src'
     def edit(relative, before, after):
         path = base / relative
         text = path.read_text()

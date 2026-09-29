@@ -6,8 +6,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WORKFLOW = ROOT / ".github/workflows/validate-final-sample-rebase.yml"
 TRANSFORM = ROOT / "ci/source-transforms/activate_final_sample_rebase.py"
-CORE = ROOT / "crates/fereg-core/src/lib.rs"
-DATA = ROOT / "crates/fereg-core/src/ols/prepared_categorical_data.rs"
+CORE = ROOT / "legacy/fereg-core/src/lib.rs"
+DATA = ROOT / "legacy/fereg-core/src/ols/prepared_categorical_data.rs"
 STATA = ROOT / "stata/_fereg_estimate_ols.ado"
 PROFILES = ROOT / "ci/stata_profiles.json"
 

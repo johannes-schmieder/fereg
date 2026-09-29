@@ -22,8 +22,9 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
     source = root / name
     source.mkdir(parents=True, exist_ok=False)
     commit = subprocess.check_output(["/opt/homebrew/bin/git", "rev-parse", revision], cwd=REPO, text=True).strip()
-    archive = subprocess.check_output(["/opt/homebrew/bin/git", "archive", commit,
-        "Cargo.toml", "Cargo.lock", "crates", "plugin", "stata", "tests", "scripts", "references.lock.toml"], cwd=REPO)
+    roots = ["Cargo.toml", "Cargo.lock", "crates", "legacy", "plugin", "stata", "tests", "scripts", "references.lock.toml"]
+    paths = subprocess.check_output(["/opt/homebrew/bin/git", "ls-tree", "--name-only", commit, "--", *roots], cwd=REPO, text=True).splitlines()
+    archive = subprocess.check_output(["/opt/homebrew/bin/git", "archive", commit, "--", *paths], cwd=REPO)
     with tarfile.open(fileobj=io.BytesIO(archive)) as bundle:
         bundle.extractall(source, filter="data")
     for relative in overlays:
@@ -48,7 +49,7 @@ def build(root, name, revision, overlays, profile_preparation=False, profile_com
         instrument(source)
     if schur_narrow_cap is not None:
         assert 0 < schur_narrow_cap <= 64
-        path = source / 'crates/fereg-core/src/fe/borrowed_map.rs'
+        path = source / 'legacy/fereg-core/src/fe/borrowed_map.rs'
         original = 'try_absorb_ols_schur_narrow_at_cap(design, weights, values, config, OLS_SCHUR_MAX_ITERATIONS)'
         text = path.read_text()
         assert text.count(original) == 1, 'Narrow OLS entry point changed; inspect before instrumenting.'

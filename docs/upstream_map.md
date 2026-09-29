@@ -18,7 +18,7 @@ provenance.
 
 ## Active within adapter
 
-`crates/fereg-core/src/fe/lsmr.rs` maps each native `EffectTerm` to
+`legacy/fereg-core/src/fe/lsmr.rs` maps each native `EffectTerm` to
 `within::Effect`, calls `within::solve_batch`, and copies only the returned
 demeaned observation vectors back into fereg storage. The adapter uses the
 exact commit in `references.lock.toml`. Numerical convergence is not accepted
@@ -28,7 +28,7 @@ copied or modified.
 
 ## Native borrowed-intercept MAP path
 
-`crates/fereg-core/src/fe/borrowed_map.rs` is native fereg code. It
+`legacy/fereg-core/src/fe/borrowed_map.rs` is native fereg code. It
 operates directly on the prepared-data borrowed intercept design and does not
 call or adapt `within`, PyFixest, `reghdfe`, or another numerical solver. The
 independent explicit-dummy test oracle is used only in `fereg-testkit`.

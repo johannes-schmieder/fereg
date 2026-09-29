@@ -101,8 +101,8 @@ def main(root, output):
     # show only prototype changes; never rewrite a measured source snapshot.
     reference = root / 'archive-reference'
     reference.mkdir()
-    changed = ['crates/fereg-core/src/ols/prepared_fit.rs', 'crates/fereg-core/src/ols/prepared_rhs.rs',
-               'crates/fereg-core/src/fe/borrowed_map.rs', 'plugin/stata_bridge.c']
+    changed = ['legacy/fereg-core/src/ols/prepared_fit.rs', 'legacy/fereg-core/src/ols/prepared_rhs.rs',
+               'legacy/fereg-core/src/fe/borrowed_map.rs', 'plugin/stata_bridge.c']
     for relative in changed:
         destination = reference / relative
         destination.parent.mkdir(parents=True, exist_ok=True)
@@ -122,7 +122,7 @@ def main(root, output):
         identity_path = root / ('identity-' + name + '.json')
         identity = json.loads(identity_path.read_text()) if identity_path.exists() else {}
         identity['plugin'] = sha(source / 'dist/fereg_macos.plugin')
-        identity['source_files'] = {str(p.relative_to(source)): sha(p) for folder in ['crates', 'plugin', 'stata'] for p in (source / folder).rglob('*') if p.is_file() and p.suffix in ['.rs', '.c', '.h', '.toml', '.ado', '.mata']}
+        identity['source_files'] = {str(p.relative_to(source)): sha(p) for folder in ['crates', 'legacy', 'plugin', 'stata'] for p in (source / folder).rglob('*') if p.is_file() and p.suffix in ['.rs', '.c', '.h', '.toml', '.ado', '.mata']}
         if name in ['fastfinal', 'pipelinefit']:
             identity['rust_source_variant'] = 'final'
         identities[name] = identity

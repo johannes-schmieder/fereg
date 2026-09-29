@@ -7,9 +7,9 @@ from scripts.feppml_help_contract import require_public_help_bytes
 
 
 ROOT = Path(__file__).resolve().parents[2]
-SEPARATION = ROOT / "crates/fereg-core/src/ppml/prepared_separation.rs"
-SEPARATION_MOD = ROOT / "crates/fereg-core/src/ppml_separation/mod.rs"
-SIMPLEX = ROOT / "crates/fereg-core/src/ppml_separation/simplex/mod.rs"
+SEPARATION = ROOT / "legacy/fereg-core/src/ppml/prepared_separation.rs"
+SEPARATION_MOD = ROOT / "legacy/fereg-core/src/ppml_separation/mod.rs"
+SIMPLEX = ROOT / "legacy/fereg-core/src/ppml_separation/simplex/mod.rs"
 ADR = ROOT / "docs/adr/0017-certified-ppml-separation-ledger.md"
 ARCHITECTURE = ROOT / "docs/cleanup/legacy-architecture.md"
 PERFORMANCE = ROOT / "docs/performance_contract.md"

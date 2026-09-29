@@ -2,7 +2,7 @@
 
 
 def instrument(root):
-    path = root / "crates/fereg-core/src/fe/borrowed_map.rs"
+    path = root / "legacy/fereg-core/src/fe/borrowed_map.rs"
     text = path.read_text()
     start = text.index("fn run_borrowed_lsmr_with_prepared<'a>(")
     end = text.index("\nfn resolve_borrowed_lsmr_preconditioner", start)
@@ -28,7 +28,7 @@ def instrument(root):
 
 
 def instrument_ppml(root):
-    path = root / "crates/fereg-core/src/ols/linear_session.rs"
+    path = root / "legacy/fereg-core/src/ols/linear_session.rs"
     text = path.read_text()
     text += '''
 struct DevelopmentSessionLap(&'static str, usize, std::time::Instant);
@@ -65,7 +65,7 @@ impl Drop for DevelopmentSessionLap {
     text = text[:start] + body + text[end:]
     path.write_text(text)
 
-    path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
+    path = root / "legacy/fereg-core/src/ols/prepared_fit.rs"
     text = path.read_text()
     start = text.index("pub(super) fn assemble_retained_weighted_linear_fit")
     end = text.index("/// Canonical finite-plus-FE projection", start)
@@ -99,7 +99,7 @@ impl Drop for DevelopmentSessionLap {
     path.write_text(text[:start] + body + text[end:])
 
 
-    path = root / "crates/fereg-core/src/fe/map.rs"
+    path = root / "legacy/fereg-core/src/fe/map.rs"
     text = path.read_text()
     for function, label, values in (
         ("    pub(crate) fn absorb(", "absorb", "values"),
@@ -122,7 +122,7 @@ impl Drop for DevelopmentSessionLap {
 
 
 def instrument_low_qr(root):
-    path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
+    path = root / "legacy/fereg-core/src/ols/prepared_fit.rs"
     text = path.read_text()
 
     def phases(text, start_marker, end_marker, entry, family, rows, columns, points):
@@ -188,7 +188,7 @@ fn development_low_profile_lap(family: &str, phase: &str, rows: usize, columns: 
 
 
 def instrument_serial_sandwich(root):
-    path = root / "crates/fereg-core/src/sandwich.rs"
+    path = root / "legacy/fereg-core/src/sandwich.rs"
     text = path.read_text()
     start = text.index("pub(crate) fn reduce_serial_influence_covariance<")
     end = text.index("/// Multiway clustered", start)
@@ -216,7 +216,7 @@ def instrument_owned_fe(root):
         ("projection.rs", "pub fn project_effect_in_place(", "values"),
         ("certificate.rs", "pub(crate) fn certify_residuals_with_reference_norms(", "residuals"),
     ):
-        path = root / "crates/fereg-core/src/fe" / file
+        path = root / "legacy/fereg-core/src/fe" / file
         text = path.read_text()
         if file == "certificate.rs" and "fn certify_with_bases(" in text:
             function = "fn certify_with_bases("
@@ -236,7 +236,7 @@ def instrument_owned_fe(root):
 ''' + text[body:]
         path.write_text(text)
 
-    path = root / "crates/fereg-core/src/fe/certificate.rs"
+    path = root / "legacy/fereg-core/src/fe/certificate.rs"
     text = path.read_text()
     def replace(before, after):
         nonlocal text
@@ -294,7 +294,7 @@ def instrument_owned_fe(root):
         text = text[:start] + region + text[end:]
     path.write_text(text)
 
-    path = root / "crates/fereg-core/src/fe/projection.rs"
+    path = root / "legacy/fereg-core/src/fe/projection.rs"
     text, tests = path.read_text().split("\n#[cfg(test)]", 1)
     if "fn group_coefficients(" in text:
         # Each successful projection is timed once. The parallel timer starts
@@ -352,7 +352,7 @@ def instrument_owned_fe(root):
 
 def instrument_reusable_certificate_parts(root):
     """Separate current-weight geometry, projection and raw moments diagnostically."""
-    path = root / 'crates/fereg-core/src/fe/map.rs'
+    path = root / 'legacy/fereg-core/src/fe/map.rs'
     text = path.read_text()
     start = text.index('    fn certify(', text.index('impl ReusableMapAbsorber'))
     end = text.index('\nfn reusable_map_report(', start)

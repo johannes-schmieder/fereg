@@ -12,7 +12,7 @@ from run import ROOT, selected_cells, thread_counts
 from generate import sha256
 
 PATHS = ['Cargo.toml','Cargo.lock','rust-toolchain.toml','clippy.toml','references.lock.toml',
-         'crates','vendor','plugin','stata','scripts','ci/reference-bundles','tests/mock_spi',
+         'crates','legacy','vendor','plugin','stata','scripts','ci/reference-bundles','tests/mock_spi',
          'bench','AGENTS.md','docs/SPEC.md','docs/ARCHITECTURE.md']
 
 
@@ -20,11 +20,12 @@ def prepare(root, tier, environment, revision, veneto):
     if root.exists():
         raise ValueError('staging root already exists')
     commit=subprocess.check_output(['git','rev-parse',revision+'^{commit}'],cwd=ROOT,text=True).strip()
+    paths=subprocess.check_output(['git','ls-tree','--name-only',commit,'--',*PATHS],cwd=ROOT,text=True).splitlines()
     root.mkdir(parents=True)
     source=root/'source.tar'
     with source.open('wb') as output:
-        subprocess.run(['git','archive','--format=tar',commit,'--',*PATHS],cwd=ROOT,stdout=output,check=True)
-    metadata={'commit':commit,'archive_sha256':sha256(source),'paths':PATHS}
+        subprocess.run(['git','archive','--format=tar',commit,'--',*paths],cwd=ROOT,stdout=output,check=True)
+    metadata={'commit':commit,'archive_sha256':sha256(source),'paths':paths}
     (root/'source.json').write_text(json.dumps(metadata,indent=2)+'\n')
     suite=tomllib.loads(subprocess.check_output(["git","show",commit+":bench/suite.toml"],cwd=ROOT,text=True))
     lock=tomllib.loads(subprocess.check_output(["git","show",commit+":references.lock.toml"],cwd=ROOT,text=True))

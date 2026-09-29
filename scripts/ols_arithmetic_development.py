@@ -346,7 +346,7 @@ def source_identity(source):
         name = str(path.relative_to(source))
         if name.startswith("vendor/") and name.split("/", 3)[2:3] == ["target"]:
             continue
-        if path.is_file() and (name.startswith(("crates/", "vendor/", "plugin/", "stata/"))
+        if path.is_file() and (name.startswith(("crates/", "legacy/", "vendor/", "plugin/", "stata/"))
                 or name in ("Cargo.lock", "Cargo.toml", "references.lock.toml")):
             files[name] = SHA(path)
     return files

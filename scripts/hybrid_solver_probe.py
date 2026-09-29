@@ -171,7 +171,7 @@ def _git_head(path: Path) -> str | None:
 
 
 def _source_tree_sha256(path: Path) -> str | None:
-    roots = [path / "crates", path / "stata"]
+    roots = [path / "crates", path / "legacy", path / "stata"]
     fixed = [path / "Cargo.toml", path / "Cargo.lock"]
     if any(not item.exists() for item in [*roots, *fixed]):
         return None

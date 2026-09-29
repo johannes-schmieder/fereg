@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M1.6 baseline and solver comparisons; Mac standard paused between fits at frozen 3a931afe; M1.5 focused SCC retest queued (7779824/7779825).
+Current task: M2.1 verified legacy relocation ready to commit; M1.5 SCC smoke passed, collection pending; frozen M1.6 Mac baseline paused for checks.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -21,7 +21,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.4 `bench/` suite; 22 cells, pinned comparators and Mac smoke
 - [~] M1.5 SCC tooling implemented and checked locally; compute-node smoke pending
 - [~] M1.6 Legacy baseline; Mac standard running, SCC full pending smoke
-- [ ] M2.1 Move legacy
+- [x] M2.1 Move legacy; Rust checks, path checks and universal plugin/ABI build pass
 - [ ] M2.2 Create `crates/fereg-engine`
 - [ ] M2.3 Harvest `data`
 - [ ] M2.4 Harvest `topology`
@@ -86,7 +86,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M1.6 preparation (this commit) — declared separate auto/LSMR/CMG cohort; pinned original Veneto N=3,159,720/K=4 and lossless DTA conversion; 12 benchmark tests and full local lean harness pass; Mac baseline paused between fits from 10:52:56 UTC for required checks, fit clocks unaffected.
+- 2026-09-29 M2.1 (this commit) — moved 155 legacy files; all numerical source/test blobs unchanged, one testkit Cargo path adjusted; workspace/plugin/oracle/fuzz and live path readers updated; historical pins preserved; 36 path/harness tests, full lean checks and universal plugin/ABI tests pass.
+- 2026-09-29 M1.6 preparation cdfa8f85 — declared separate auto/LSMR/CMG cohort; pinned original Veneto N=3,159,720/K=4 and lossless DTA conversion; 12 benchmark tests, full local lean harness and frozen universal build/ABI tests pass; Mac launcher paused 10:52:56–11:01:32 UTC (516s) for checks/build, fit clocks unaffected.
 - 2026-09-29 M1.5 repair 242f5201 — build from source/; controllers extracted from the verified commit archive; owner-only run roots; shell checks, 12 benchmark tests and full local lean harness pass; focused retest setup 7779824/smoke 7779825 queued in dev/20260929-rebuild-m15-242f5201.
 - 2026-09-29 M1.5 preparation 3a931afe — local checks pass; archive hashes verified; setup 7779802 exited 101 before compilation because Cargo ran above source/; dependent 7779803 exited 1 at its setup guard without estimation; failed logs preserved in dev/20260929-rebuild-m15-3a931afe.
 - 2026-09-29 M1.4 d47a91b5 — 22 cells/three tiers; verified fixest 0.14.2 and Stata pins; Mac smoke 16/16 groups, 80/80 measured fits accurate, zero failures/timeouts, 48.0s <300s; [dirty-source diagnostic summary](bench/history/2026-09-29-60da973a-dirty-darwin-smoke.csv); 27 additional option comparisons, five harness tests, universal build/self-test and lean harness pass.

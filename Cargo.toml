@@ -1,9 +1,9 @@
 [workspace]
 exclude = ["vendor/rayon-core"]
 members = [
-    "crates/fereg-core",
+    "legacy/fereg-core",
     "crates/fereg-plugin",
-    "crates/fereg-testkit",
+    "legacy/fereg-testkit",
     "crates/fereg-oracle",
 ]
 resolver = "2"

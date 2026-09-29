@@ -2,7 +2,7 @@
 
 
 def instrument(root):
-    path = root / "crates/fereg-core/src/ols/prepared.rs"
+    path = root / "legacy/fereg-core/src/ols/prepared.rs"
     text = path.read_text()
 
     def change(start, end, edits):
@@ -77,7 +77,7 @@ def instrument(root):
         ])
     path.write_text(text)
 
-    path = root / "crates/fereg-core/src/ols/prepared_fit.rs"
+    path = root / "legacy/fereg-core/src/ols/prepared_fit.rs"
     text = path.read_text()
     first = text.index("fn fill_raw_moment_cache_fused<")
     last = text.index("fn fill_raw_moment_cache_blocked<", first)
@@ -111,7 +111,7 @@ def instrument(root):
     ])
     path.write_text(text)
 
-    path = root / "crates/fereg-core/src/ols/prepared_rhs.rs"
+    path = root / "legacy/fereg-core/src/ols/prepared_rhs.rs"
     text = path.read_text()
     change("pub(crate) fn build_prepared_ols_rhs_with_loaded_rows_and_reuse(",
            "\nfn build_prepared_ols_rhs_with_reservation", [
