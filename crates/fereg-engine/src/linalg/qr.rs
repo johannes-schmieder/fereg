@@ -1,5 +1,6 @@
 //! Rectangular, multi-RHS adaptation of legacy finite_wls_kernel's pivoted QR.
 //! Local FE blocks and finite WLS use the same factorization primitive.
+use super::scaling::{ColumnScaling, ScaledDesign};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
@@ -10,66 +11,24 @@ use crate::{
 pub(crate) struct WeightedQr {
     qr: DenseMatrix,
     permutation: Vec<usize>,
-    maxima: Vec<f64>,
-    norms: Vec<f64>,
-    roots: Vec<f64>,
-    root_scale: f64,
+    scaling: ColumnScaling,
     taus: Vec<f64>,
 }
 impl WeightedQr {
-    pub(crate) fn factor(mut matrix: DenseMatrix, weights: &[f64], threshold: f64) -> Result<Self> {
-        if weights.len() != matrix.nrows() || !threshold.is_finite() || threshold <= 0. {
-            return Err(invalid("QR weights or rank threshold are invalid"));
+    pub(crate) fn factor(matrix: DenseMatrix, weights: &[f64], threshold: f64) -> Result<Self> {
+        Self::from_scaled(ScaledDesign::new(matrix, weights)?, threshold)
+    }
+    pub(crate) fn from_scaled(scaled: ScaledDesign, threshold: f64) -> Result<Self> {
+        if !threshold.is_finite() || threshold <= 0. {
+            return Err(invalid("invalid QR rank threshold"));
         }
-        if weights.iter().any(|w| !w.is_finite() || *w <= 0.)
-            || matrix.as_slice().iter().any(|v| !v.is_finite())
-        {
-            return Err(FeregError::new(
-                ErrorCode::InvalidData,
-                "nonfinite QR input or invalid weight",
-            ));
-        }
-        // A common weight scale preserves the objective and prevents root-weight overflow.
-        let largest_root = weights.iter().copied().fold(0., f64::max).sqrt();
-        let mut roots = reserved(weights.len())?;
-        roots.extend(weights.iter().map(|w| w.sqrt() / largest_root));
-        let mut maxima = reserved(matrix.ncols())?;
-        let mut norms = reserved(matrix.ncols())?;
-        for column in 0..matrix.ncols() {
-            let maximum = (0..matrix.nrows())
-                .map(|r| matrix[(r, column)].abs())
-                .fold(0., f64::max);
-            maxima.push(maximum);
-            for row in 0..matrix.nrows() {
-                let original = matrix[(row, column)];
-                let value = if maximum == 0. {
-                    0.
-                } else {
-                    original / maximum * roots[row]
-                };
-                if original != 0. && value == 0. {
-                    return Err(numerical("weighted QR column scale underflow"));
-                }
-                matrix[(row, column)] = value;
-            }
-            let norm = column_norm(&matrix, column, 0);
-            norms.push(norm);
-            if norm != 0. {
-                for row in 0..matrix.nrows() {
-                    matrix[(row, column)] /= norm;
-                }
-            }
-        }
-        let mut permutation = reserved(matrix.ncols())?;
-        permutation.extend(0..matrix.ncols());
+        let mut permutation = reserved(scaled.matrix.ncols())?;
+        permutation.extend(0..scaled.matrix.ncols());
         let mut factor = Self {
-            taus: reserved(matrix.nrows().min(matrix.ncols()))?,
-            qr: matrix,
+            taus: reserved(scaled.matrix.nrows().min(scaled.matrix.ncols()))?,
+            qr: scaled.matrix,
+            scaling: scaled.scaling,
             permutation,
-            maxima,
-            norms,
-            roots,
-            root_scale: largest_root,
         };
         factor.factor_scaled(threshold)?;
         Ok(factor)
@@ -135,13 +94,7 @@ impl WeightedQr {
         for step in 0..self.rank() {
             let basis = self.permutation[step];
             for column in 0..rhs.ncols() {
-                let value = scale_ratio(
-                    rhs[(basis, column)],
-                    1.,
-                    self.maxima[basis],
-                    self.norms[basis],
-                );
-                let value = scale_ratio(value, 1., self.root_scale, 1.);
+                let value = self.scaling.normal_coordinate(rhs[(basis, column)], basis);
                 let tail = compensated_sum((0..step).map(|previous| {
                     self.qr[(previous, basis)] * result[(self.permutation[previous], column)]
                 }));
@@ -160,13 +113,9 @@ impl WeightedQr {
         }
         for &basis in &self.permutation[..self.rank()] {
             for column in 0..rhs.ncols() {
-                let value = scale_ratio(
-                    result[(basis, column)],
-                    1.,
-                    self.maxima[basis],
-                    self.norms[basis],
-                );
-                result[(basis, column)] = scale_ratio(value, 1., self.root_scale, 1.);
+                result[(basis, column)] = self
+                    .scaling
+                    .normal_coordinate(result[(basis, column)], basis);
             }
         }
         if result.as_slice().iter().any(|value| !value.is_finite()) {
@@ -174,30 +123,43 @@ impl WeightedQr {
         }
         Ok(result)
     }
+    pub(crate) fn kept(&self) -> &[usize] {
+        &self.permutation[..self.rank()]
+    }
+    pub(crate) fn scaling(&self) -> &ColumnScaling {
+        &self.scaling
+    }
+    pub(crate) fn scaled_inverse(&self) -> Result<DenseMatrix> {
+        let p = self.qr.ncols();
+        let mut inverse = DenseMatrix::zeros(p, p)?;
+        for column in 0..self.rank() {
+            for row in (0..=column).rev() {
+                let tail = compensated_sum((row + 1..=column).map(|next| {
+                    self.qr[(row, self.permutation[next])]
+                        * inverse[(self.permutation[next], self.permutation[column])]
+                }));
+                inverse[(self.permutation[row], self.permutation[column])] =
+                    ((if row == column { 1. } else { 0. }) - tail)
+                        / self.qr[(row, self.permutation[row])];
+            }
+        }
+        let mut bread = DenseMatrix::zeros(p, p)?;
+        for &left in self.kept() {
+            for &right in self.kept() {
+                bread[(left, right)] = compensated_sum(
+                    self.kept()
+                        .iter()
+                        .map(|&column| inverse[(left, column)] * inverse[(right, column)]),
+                );
+            }
+        }
+        Ok(bread)
+    }
     pub(crate) fn rank(&self) -> usize {
         self.taus.len()
     }
-    pub(crate) fn solve(&self, mut rhs: DenseMatrix) -> Result<DenseMatrix> {
-        if rhs.nrows() != self.qr.nrows() {
-            return Err(invalid("QR RHS row count differs"));
-        }
-        if rhs.as_slice().iter().any(|v| !v.is_finite()) {
-            return Err(FeregError::new(ErrorCode::InvalidData, "nonfinite QR RHS"));
-        }
-        let mut scales = reserved(rhs.ncols())?;
-        for column in 0..rhs.ncols() {
-            let scale = (0..rhs.nrows())
-                .map(|r| rhs[(r, column)].abs())
-                .fold(0., f64::max);
-            scales.push(scale);
-            for row in 0..rhs.nrows() {
-                rhs[(row, column)] = if scale == 0. {
-                    0.
-                } else {
-                    rhs[(row, column)] / scale * self.roots[row]
-                };
-            }
-        }
+    pub(crate) fn solve(&self, rhs: DenseMatrix) -> Result<DenseMatrix> {
+        let (mut rhs, scales) = self.scaling.rhs(rhs)?;
         for (step, &tau) in self.taus.iter().enumerate() {
             let basis = self.permutation[step];
             for column in 0..rhs.ncols() {
@@ -227,12 +189,9 @@ impl WeightedQr {
         }
         for &basis in &self.permutation[..self.rank()] {
             for column in 0..rhs.ncols() {
-                result[(basis, column)] = scale_ratio(
-                    result[(basis, column)],
-                    scales[column],
-                    self.maxima[basis],
-                    self.norms[basis],
-                );
+                result[(basis, column)] =
+                    self.scaling
+                        .coefficient(result[(basis, column)], basis, scales[column]);
             }
         }
         if result.as_slice().iter().any(|v| !v.is_finite()) {
@@ -246,7 +205,7 @@ fn column_norm(matrix: &DenseMatrix, column: usize, start: usize) -> f64 {
 }
 // Split exponents before rescaling: neither an intermediate overflow nor an
 // intermediate underflow may discard an otherwise representable coefficient.
-fn scale_ratio(value: f64, numerator: f64, denominator: f64, norm: f64) -> f64 {
+pub(super) fn scale_ratio(value: f64, numerator: f64, denominator: f64, norm: f64) -> f64 {
     if value == 0. || numerator == 0. {
         return 0.;
     }

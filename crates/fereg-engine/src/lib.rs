@@ -11,6 +11,7 @@ mod linalg;
 pub mod spec;
 pub mod threads;
 pub mod topology;
+pub mod wls;
 
 pub use error::{ErrorCode, FeregError, Result};
 pub use spec::metadata::*;
