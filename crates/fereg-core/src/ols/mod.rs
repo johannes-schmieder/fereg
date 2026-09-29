@@ -1,12 +1,12 @@
 //! Certified Frisch-Waugh-Lovell OLS core.
 
+mod canonical_products;
 mod dof;
 mod finite_wls_kernel;
-mod canonical_products;
 pub(crate) use canonical_products::canonical_three_workspace_bytes;
 mod fit;
-mod linear_session;
 mod implicit_centered;
+mod linear_session;
 mod prepared;
 mod prepared_categorical_clusters;
 mod prepared_clustered;
@@ -25,8 +25,8 @@ mod slope_absorber;
 mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
-pub use fit::FitStatistics;
 pub(crate) use finite_wls_kernel::RETAINED_MOMENT_TILE_ELEMENTS;
+pub use fit::FitStatistics;
 pub(crate) use implicit_centered::ImplicitCenteredDesign;
 #[cfg(test)]
 pub(crate) use linear_session::{
@@ -35,20 +35,24 @@ pub(crate) use linear_session::{
 };
 #[allow(unused_imports)]
 pub(crate) use linear_session::{
-    classify_frozen_linear_fallback, PpmlOrdinaryLinearOutput, CertifiedLinearSession,
-    CertifiedLinearSessionOutput, CertifiedLinearSessionProducts, CertifiedLinearWithinDesign,
-    FrozenLinearBasis, FrozenLinearBasisSlot, FrozenLinearFallbackKind,
-    FrozenLinearSolveCertificate, LinearReconstructionCertificate, LinearSessionGenerations,
+    classify_frozen_linear_fallback, CertifiedLinearSession, CertifiedLinearSessionOutput,
+    CertifiedLinearSessionProducts, CertifiedLinearWithinDesign, FrozenLinearBasis,
+    FrozenLinearBasisSlot, FrozenLinearFallbackKind, FrozenLinearSolveCertificate,
+    LinearReconstructionCertificate, LinearSessionGenerations,
     LinearSessionPhaseAllocationObservation, LinearSessionReuseReport, LinearSessionSolveKind,
     LinearSessionWorkspaceCapacities, LinearWithinDesignCertificate, LinearWithinMemoryReport,
+    PpmlOrdinaryLinearOutput,
 };
 #[doc(hidden)]
 pub use linear_session::{
     LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
     LinearSessionPhaseAllocatorProbe,
 };
-pub(crate) use prepared::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources,
-    prepare_ols_numeric_sample, prepare_ols_numeric_sample_owned, finish_prepare_with_early_factor};
+pub(crate) use prepared::{
+    finish_prepare_with_early_factor, prepare_ols_data_owned_with_cluster_sources,
+    prepare_ols_data_with_cluster_sources, prepare_ols_numeric_sample,
+    prepare_ols_numeric_sample_owned,
+};
 pub use prepared::{
     prepare_ols_data, prepare_ols_data_owned, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
     OlsInputRole, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
@@ -58,18 +62,21 @@ pub use prepared::{
 };
 pub(crate) use prepared_categorical_clusters::prepare_ppml_categorical_ols_clustered_data;
 pub use prepared_categorical_clusters::{
-    prepare_categorical_ols_clustered_data, prepare_categorical_ols_clustered_data_owned, PreparedCategoricalOlsClusteredData,
+    prepare_categorical_ols_clustered_data, prepare_categorical_ols_clustered_data_owned,
+    PreparedCategoricalOlsClusteredData,
 };
 pub use prepared_clustered::{
-    fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_clustered_map_with_loaded_moments, fit_prepared_ols_clustered_map, fit_prepared_ols_clustered_map_with_loaded_moments,
-    CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedOlsClustered,
-    PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
-    PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport,
-    PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
+    fit_prepared_categorical_ols_clustered_map,
+    fit_prepared_categorical_ols_clustered_map_with_loaded_moments, fit_prepared_ols_clustered_map,
+    fit_prepared_ols_clustered_map_with_loaded_moments, CertifiedPreparedCategoricalOlsClustered,
+    CertifiedPreparedOlsClustered, PreparedOlsClusterSubsetCertificate,
+    PreparedOlsClusteredCertificate, PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance,
+    PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
 };
 pub use prepared_clusters::{
-    prepare_ols_clustered_data, prepare_ols_clustered_data_owned, OlsClusterTermV1, OlsClusteredRequestV1, PreparedOlsClusterDesign,
-    PreparedOlsClusterDimension, PreparedOlsClusteredData,
+    prepare_ols_clustered_data, prepare_ols_clustered_data_owned, OlsClusterTermV1,
+    OlsClusteredRequestV1, PreparedOlsClusterDesign, PreparedOlsClusterDimension,
+    PreparedOlsClusteredData,
 };
 pub use prepared_dof::{
     compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,
@@ -98,16 +105,20 @@ pub(crate) use prepared_rhs::{
     numeric_sources_are_finite, NumericOlsColumns, MAX_BOUND_NUMERIC_COLUMNS,
 };
 pub use prepared_robust::{
-    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_robust_map_with_loaded_moments, fit_prepared_ols_robust_map, fit_prepared_ols_robust_map_with_loaded_moments,
-    CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedOlsRobust,
-    PreparedOlsRobustCertificate, PreparedOlsRobustConfig, PreparedOlsRobustCovariance,
+    fit_prepared_categorical_ols_robust_map,
+    fit_prepared_categorical_ols_robust_map_with_loaded_moments, fit_prepared_ols_robust_map,
+    fit_prepared_ols_robust_map_with_loaded_moments, CertifiedPreparedCategoricalOlsRobust,
+    CertifiedPreparedOlsRobust, PreparedOlsRobustCertificate, PreparedOlsRobustConfig,
+    PreparedOlsRobustCovariance,
 };
 pub use prepared_unadjusted::{
-    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments, fit_prepared_ols_unadjusted_map,
-    fit_prepared_ols_unadjusted_map_with_loaded_rows, fit_prepared_ols_unadjusted_map_with_loaded_moments,
-    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsUnadjusted,
-    PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
-    PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig, PreparedOlsUnadjustedCovariance,
+    fit_prepared_categorical_ols_unadjusted_map,
+    fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments,
+    fit_prepared_ols_unadjusted_map, fit_prepared_ols_unadjusted_map_with_loaded_moments,
+    fit_prepared_ols_unadjusted_map_with_loaded_rows, CertifiedPreparedCategoricalOlsUnadjusted,
+    CertifiedPreparedOlsUnadjusted, PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport,
+    PreparedOlsResidualDofReport, PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig,
+    PreparedOlsUnadjustedCovariance,
 };
 pub use rank::{solve_rank_revealing, FiniteSolver, RankSolve};
 pub use vce::{ClusterSubsetReport, VceKind, VceReport};

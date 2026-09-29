@@ -11,6 +11,7 @@ use fereg_core::MemoryEstimate;
 pub(crate) struct OlsFrameMemory {
     pub fast_bytes: u128,
     pub low_bytes: u128,
+    #[cfg(test)]
     pub cluster_reduction_bytes: u128,
 }
 
@@ -98,6 +99,7 @@ impl OlsFrameMemory {
         Ok(Self {
             fast_bytes: add(fast_rows, sequential)?,
             low_bytes: add(low_rows, sequential)?,
+            #[cfg(test)]
             cluster_reduction_bytes,
         })
     }

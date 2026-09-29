@@ -61,6 +61,7 @@ impl Stage {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct Gaps(u16);
 impl Gaps {
+    #[cfg(test)]
     pub(crate) const NONE: Self = Self(0);
     pub(crate) const TRANSPORT_COMPILER: Self = Self(1 << 0);
     pub(crate) const STRING_LOADING: Self = Self(1 << 1);
@@ -220,6 +221,7 @@ pub(crate) fn emit(ledger: &Ledger, observed_bytes: u64) -> Result<()> {
 /// (or unwound), before error reporting. It supplies the terminal half of the
 /// opt-in trace; it cannot turn an incomplete model into complete coverage.
 #[derive(Debug, Clone, Copy)]
+#[cfg(any(test, feature = "ffi"))]
 pub(crate) struct TerminalObservation {
     pub(crate) estimator: &'static str,
     pub(crate) return_code: i32,
@@ -228,7 +230,9 @@ pub(crate) struct TerminalObservation {
     pub(crate) peak_bytes: u64,
 }
 
+#[cfg(any(test, feature = "ffi"))]
 impl TerminalObservation {
+    #[cfg(feature = "ffi")]
     pub(crate) fn write_whole_action(self, mut writer: impl std::io::Write) -> std::io::Result<()> {
         writeln!(writer,
             "FEREG_WHOLE_ACTION_MEMORY_TERMINAL|version=1|estimator={}|return_code={}|observation=abi_return|start_bytes={}|current_bytes={}|peak_bytes={}|peak_delta_bytes={}",

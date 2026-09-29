@@ -652,7 +652,11 @@ impl EstimatePpmlSpec {
                     .bias_diagnostics
                     .as_ref()
                     .map_or(0, |v| v.capacity() as u128)
-                + self.matrices.bias_support.as_ref().map_or(0, |v| v.capacity() as u128)
+                + self
+                    .matrices
+                    .bias_support
+                    .as_ref()
+                    .map_or(0, |v| v.capacity() as u128)
                 + self.outputs.bias_channels.capacity() as u128
                     * std::mem::size_of::<Option<u32>>() as u128
                 + self.outputs.saved_channels.capacity() as u128
@@ -1153,7 +1157,10 @@ impl EstimatePpmlSpec {
                 automatic_solver: solver == PpmlSolverFamily::Auto,
                 memory: self.memory,
                 effects: request.absorbed_terms.len(),
-                intercept_only: request.absorbed_terms.iter().all(|term| term.intercept && term.slope_sources.is_empty()),
+                intercept_only: request
+                    .absorbed_terms
+                    .iter()
+                    .all(|term| term.intercept && term.slope_sources.is_empty()),
                 // The wire terms include omitted/base coordinates, so this
                 // is a conservative width before observation-dependent rank.
                 finite_columns: request.model.terms.len(),
@@ -2436,8 +2443,14 @@ fn store_shadow_prefix(
         )?;
         store_matrix(
             spi,
-            action.matrices.bias_support.as_ref().ok_or_else(|| internal("bias support missing"))?,
-            2, bias::SUPPORT_COLUMNS, &bias.support,
+            action
+                .matrices
+                .bias_support
+                .as_ref()
+                .ok_or_else(|| internal("bias support missing"))?,
+            2,
+            bias::SUPPORT_COLUMNS,
+            &bias.support,
         )?;
     }
     store_matrix(spi, &action.matrices.b, 1, shadow.b.len(), &shadow.b)?;
@@ -2605,17 +2618,15 @@ fn parse_ppml_vce(value: &str, clusters: &[OlsClusterTermV1]) -> Result<PpmlVceR
 }
 
 fn publication_matrix_cells(matrices: &PreparedResultMatrices) -> Result<usize> {
-    prepared_matrix_names(matrices)
-        .into_iter()
-        .try_fold(0_usize, |total, matrix| {
-            let cells = matrix
-                .rows()
-                .checked_mul(matrix.columns())
-                .ok_or_else(|| allocation("PPML publication matrix cell count overflows"))?;
-            total
-                .checked_add(cells)
-                .ok_or_else(|| allocation("PPML publication matrix cell count overflows"))
-        })
+    prepared_matrix_names(matrices).try_fold(0_usize, |total, matrix| {
+        let cells = matrix
+            .rows()
+            .checked_mul(matrix.columns())
+            .ok_or_else(|| allocation("PPML publication matrix cell count overflows"))?;
+        total
+            .checked_add(cells)
+            .ok_or_else(|| allocation("PPML publication matrix cell count overflows"))
+    })
 }
 
 fn read_ppml_clusters(
@@ -2890,7 +2901,12 @@ fn validate_matrix_layout(
                 .as_ref()
                 .map(|name| (name, bias::DIAGNOSTICS, 1)),
         )
-        .chain(matrices.bias_support.as_ref().map(|name| (name, 2, bias::SUPPORT_COLUMNS)))
+        .chain(
+            matrices
+                .bias_support
+                .as_ref()
+                .map(|name| (name, 2, bias::SUPPORT_COLUMNS)),
+        )
     {
         if name.is_empty() || input_names.contains(name.as_str()) || !output_names.insert(name) {
             return Err(invalid(
@@ -2921,7 +2937,9 @@ fn validate_matrix_layout(
             .as_ref()
             .map(|name| PreparedMatrixStoreName::try_new(name, bias::DIAGNOSTICS, 1))
             .transpose()?,
-        bias_support: matrices.bias_support.as_ref()
+        bias_support: matrices
+            .bias_support
+            .as_ref()
             .map(|name| PreparedMatrixStoreName::try_new(name, 2, bias::SUPPORT_COLUMNS))
             .transpose()?,
         b: PreparedMatrixStoreName::try_new(&matrices.b, 1, dimension)?,
@@ -3600,7 +3618,10 @@ mod tests {
 
         fn display(&mut self, message: &str) -> Result<()> {
             if let Some(path) = &self.interrupt_when_marker_exists {
-                assert!(!path.exists(), "the controller must not interrupt SPI display");
+                assert!(
+                    !path.exists(),
+                    "the controller must not interrupt SPI display"
+                );
             }
             self.displays.push(message.to_owned());
             if self.interrupt_after_display {
@@ -4221,7 +4242,8 @@ mod tests {
         for saved in [false, true] {
             let (args, mut spi) = bias_fixture(saved);
             for row in 1..=spi.nobs {
-                spi.numeric.insert((16, row), (((row - 1) / 4 + 71) as f64, false));
+                spi.numeric
+                    .insert((16, row), (((row - 1) / 4 + 71) as f64, false));
             }
             let error = estimate_ppml_test(&args, &mut spi).unwrap_err();
             assert!(error.message.contains("FE1: 8/8"), "{error}");
@@ -4232,7 +4254,11 @@ mod tests {
         assert!(estimate_ppml_test(&args, &mut spi).is_err());
         assert_eq!(spi.reads, 0);
         let (mut args, mut spi) = bias_fixture(false);
-        replace_argument(&mut args, "output_bias_support", "output_bias_support=RBDIAG".to_owned());
+        replace_argument(
+            &mut args,
+            "output_bias_support",
+            "output_bias_support=RBDIAG".to_owned(),
+        );
         assert!(estimate_ppml_test(&args, &mut spi).is_err());
         assert_eq!(spi.reads, 0);
     }
@@ -4796,6 +4822,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn core_publication_observation_has_no_obsolete_fit_or_generation_owner() {
         let _guard = crate::instrumentation::lock_action_observation();
         let (separated_args, mut separated_spi) =
@@ -4856,6 +4883,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn publication_owners_match_independent_deallocation_and_exact_admission() {
         let _guard = crate::instrumentation::lock_action_observation();
         let (separated_args, mut separated_spi) =

@@ -607,6 +607,8 @@ impl PreparedCoupling {
                 }
                 y[start..start + 4].copy_from_slice(&sums);
             }
+            // Keep the legacy matrix indices and numerical traversal order explicit.
+            #[allow(clippy::needless_range_loop)]
             for i in whole..p {
                 y[i] = product_dot(&self.schur[i * p..(i + 1) * p], x);
             }
@@ -688,6 +690,8 @@ impl PreparedCoupling {
                 let rc = pair.right_channels;
                 for edge in pair.offsets[group]..pair.offsets[group + 1] {
                     let right = pair.right_start + pair.targets[edge] * rc;
+                    // Keep the legacy matrix indices and numerical traversal order explicit.
+                    #[allow(clippy::needless_range_loop)]
                     for a in 0..lc {
                         for b in 0..rc {
                             local[a] = product_sum(
@@ -703,6 +707,8 @@ impl PreparedCoupling {
                 let rc = pair.right_channels;
                 for edge in pair.offsets[group]..pair.offsets[group + 1] {
                     let right = pair.right_start + pair.targets[edge] * rc;
+                    // Keep the legacy matrix indices and numerical traversal order explicit.
+                    #[allow(clippy::needless_range_loop)]
                     for a in 0..lc {
                         for b in 0..rc {
                             y[right + b] = product_sum(
@@ -740,14 +746,22 @@ impl PreparedCoupling {
                 self.compact_base(input, output);
                 self.subtract_eliminated(input, output, scratch, 0..chunk + usize::from(extra > 0));
             },
-            || helpers.par_iter_mut().enumerate().for_each(|(index, worker)| {
-                worker.product.fill(0.);
-                let first = chunk * (index + 1) + extra.min(index + 1);
-                let last = chunk * (index + 2) + extra.min(index + 2);
-                self.subtract_eliminated(
-                    input, &mut worker.product, &mut worker.eliminated_scratch, first..last,
-                );
-            }),
+            || {
+                helpers
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(index, worker)| {
+                        worker.product.fill(0.);
+                        let first = chunk * (index + 1) + extra.min(index + 1);
+                        let last = chunk * (index + 2) + extra.min(index + 2);
+                        self.subtract_eliminated(
+                            input,
+                            &mut worker.product,
+                            &mut worker.eliminated_scratch,
+                            first..last,
+                        );
+                    })
+            },
         );
         for worker in helpers {
             for (value, partial) in output.iter_mut().zip(&worker.product) {
@@ -765,7 +779,6 @@ impl PreparedCoupling {
     pub(super) fn force_compact_for_test(&mut self) {
         self.representation = Representation::Coupling;
     }
-
 }
 
 #[cfg(test)]

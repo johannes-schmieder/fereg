@@ -196,7 +196,7 @@ fn absorb_auto(
             if let Ok(peak) = attempted_peak.with_retained(bytes) {
                 if config
                     .solver_memory_budget
-                    .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
+                    .is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128))
                 {
                     attempted_peak = peak;
                     match context.cache() {
@@ -214,7 +214,7 @@ fn absorb_auto(
             if let Ok(peak) = attempted_peak.with_retained(bytes) {
                 if config
                     .solver_memory_budget
-                    .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
+                    .is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128))
                 {
                     context.set_parallel_rhs(values.ncols());
                     parallel_bytes = bytes;
@@ -353,7 +353,7 @@ fn absorb_auto(
         .filter(|peak| {
             config
                 .solver_memory_budget
-                .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
+                .is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128))
         }) {
         if let Some(parallel_peak) = cached_peak
             .with_retained(parallel_bytes)
@@ -361,7 +361,7 @@ fn absorb_auto(
             .filter(|peak| {
                 config
                     .solver_memory_budget
-                    .map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128))
+                    .is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128))
             })
         {
             parallel_peak
@@ -425,7 +425,7 @@ fn admit_parallel_projection(
 ) -> (Option<ParallelProjectionPlan>, SolverWorkspacePeak) {
     if let Some(plan) = plan {
         if let Ok(peak) = plan.bytes().and_then(|bytes| base.with_retained(bytes)) {
-            if budget.map_or(true, |budget| budget.fits(peak.bytes().unwrap() as u128)) {
+            if budget.is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128)) {
                 return (Some(plan), peak);
             }
         }

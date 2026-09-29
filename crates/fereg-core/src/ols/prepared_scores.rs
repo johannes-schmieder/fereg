@@ -644,6 +644,8 @@ fn build_dense_score_storage<
     Ok((PreparedOlsScoreStorage::Dense(within), means, 0))
 }
 
+// Keep the legacy workspace and ownership boundaries explicit during migration.
+#[allow(clippy::too_many_arguments)]
 fn build_scratch_score_storage<
     'a,
     P: PreparedOlsFitView + ?Sized,
@@ -1063,8 +1065,11 @@ fn certify_strided_score_gram<R: PreparedInferenceReservation>(
             let end = start + rows_per_chunk + usize::from(chunk < remainder);
             accumulate_strided_score_gram_rows(
                 &storage.within.as_slice()[start * matrix_columns..end * matrix_columns],
-                matrix_columns, &storage.generated_columns, &storage.reference_norms,
-                multiplier, partial,
+                matrix_columns,
+                &storage.generated_columns,
+                &storage.reference_norms,
+                multiplier,
+                partial,
             );
             if partial.iter().all(|value| value.is_finite()) {
                 Ok(())
@@ -1129,15 +1134,18 @@ fn accumulate_strided_score_gram_rows(
         // observation order, multiplication order, or reduction tree.
         if (8..=reconstructed.len()).contains(&rank) {
             let reconstructed = &mut reconstructed[..rank];
-            for ((value, &generated), &norm) in reconstructed.iter_mut()
-                .zip(generated_columns).zip(reference_norms)
+            for ((value, &generated), &norm) in reconstructed
+                .iter_mut()
+                .zip(generated_columns)
+                .zip(reference_norms)
             {
                 *value = values[generated + 1] * norm;
             }
             for left in 0..rank {
                 let scaled_left = multiplier * reconstructed[left];
                 for (destination, &right_value) in partial[left * rank + left..(left + 1) * rank]
-                    .iter_mut().zip(&reconstructed[left..])
+                    .iter_mut()
+                    .zip(&reconstructed[left..])
                 {
                     *destination += scaled_left * right_value;
                 }
@@ -1145,12 +1153,10 @@ fn accumulate_strided_score_gram_rows(
             continue;
         }
         for left in 0..rank {
-            let left_value =
-                values[generated_columns[left] + 1] * reference_norms[left];
+            let left_value = values[generated_columns[left] + 1] * reference_norms[left];
             let scaled_left = multiplier * left_value;
             for right in left..rank {
-                let right_value = values[generated_columns[right] + 1]
-                    * reference_norms[right];
+                let right_value = values[generated_columns[right] + 1] * reference_norms[right];
                 partial[left * rank + right] += scaled_left * right_value;
             }
         }
@@ -1205,9 +1211,10 @@ fn certify_dense_score_gram<R: PreparedInferenceReservation>(
                 let score = &values[row * rank..(row + 1) * rank];
                 for left in 0..rank {
                     let scaled_left = weight * score[left];
-                    for (destination, &right_value) in
-                        partial[left * rank + left..(left + 1) * rank]
-                            .iter_mut().zip(&score[left..])
+                    for (destination, &right_value) in partial
+                        [left * rank + left..(left + 1) * rank]
+                        .iter_mut()
+                        .zip(&score[left..])
                     {
                         *destination += scaled_left * right_value;
                     }
@@ -1416,12 +1423,14 @@ mod tests {
     fn scratch_score_reads_preserve_bits_without_repeated_full_tile_decoding() {
         let nrows = 65_537;
         for rank in [1, 6, 50] {
-            let values: Vec<_> = (0..nrows * rank).map(|i| match i % 7 {
-                0 => -0.0,
-                1 => 1e-300,
-                2 => -1e300,
-                _ => (i as f64 * 0.17).sin(),
-            }).collect();
+            let values: Vec<_> = (0..nrows * rank)
+                .map(|i| match i % 7 {
+                    0 => -0.0,
+                    1 => 1e-300,
+                    2 => -1e300,
+                    _ => (i as f64 * 0.17).sin(),
+                })
+                .collect();
             let mut scratch = PreparedOlsScratch::create(nrows, rank).unwrap();
             scratch.write_linear(0, &values).unwrap();
             let cache_rows = (TRANSPOSE_BUFFER_BYTES / 8 / rank).min(nrows);
@@ -1444,14 +1453,19 @@ mod tests {
                         row < cache.start_row || row >= cache.start_row.saturating_add(cache.rows)
                     };
                     storage.fill_row(nrows, rank, row, &mut row_values).unwrap();
-                    assert!(row_values.iter().zip(&values[row * rank..(row + 1) * rank])
+                    assert!(row_values
+                        .iter()
+                        .zip(&values[row * rank..(row + 1) * rank])
                         .all(|(actual, expected)| actual.to_bits() == expected.to_bits()));
                     if misses {
                         decoded_rows += storage.cache.borrow().rows;
                         reads += 1;
                     }
                 }
-                assert!(decoded_rows <= 2 * nrows, "rank={rank}, stride={stride}, decoded={decoded_rows}");
+                assert!(
+                    decoded_rows <= 2 * nrows,
+                    "rank={rank}, stride={stride}, decoded={decoded_rows}"
+                );
                 if stride == 1 {
                     assert!(reads <= nrows.div_ceil(cache_rows) + 1);
                 }
@@ -1465,28 +1479,49 @@ mod tests {
         for rank in [1, 7, 8, 10, 50, 64, 65] {
             let columns = 2 * rank + 1;
             let generated: Vec<_> = (0..rank).rev().map(|column| 2 * column).collect();
-            let norms: Vec<_> = (0..rank).map(|column| 10.0_f64.powi(column as i32 % 9 - 4)).collect();
+            let norms: Vec<_> = (0..rank)
+                .map(|column| 10.0_f64.powi(column as i32 % 9 - 4))
+                .collect();
             let mut rows: Vec<_> = (0..257 * columns)
-                .map(|index| ((index * 37 % 101) as f64 - 50.0) / 17.0).collect();
+                .map(|index| ((index * 37 % 101) as f64 - 50.0) / 17.0)
+                .collect();
             for multiplier in [1.0, 0.17, 3.7, 1e-120, 1e120] {
                 let mut expected = vec![0.0; rank * rank];
                 for values in rows.chunks_exact(columns) {
                     for left in 0..rank {
                         let scaled = multiplier * (values[generated[left] + 1] * norms[left]);
                         for right in left..rank {
-                            expected[left * rank + right] += scaled * (values[generated[right] + 1] * norms[right]);
+                            expected[left * rank + right] +=
+                                scaled * (values[generated[right] + 1] * norms[right]);
                         }
                     }
                 }
                 let mut actual = vec![0.0; rank * rank];
-                accumulate_strided_score_gram_rows(&rows, columns, &generated, &norms, multiplier, &mut actual);
-                assert_eq!(actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
-                    expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(), "rank={rank}, multiplier={multiplier}");
+                accumulate_strided_score_gram_rows(
+                    &rows,
+                    columns,
+                    &generated,
+                    &norms,
+                    multiplier,
+                    &mut actual,
+                );
+                assert_eq!(
+                    actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                    expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                    "rank={rank}, multiplier={multiplier}"
+                );
             }
             for nonfinite in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, f64::MAX] {
                 rows[generated[0] + 1] = nonfinite;
                 let mut partial = vec![0.0; rank * rank];
-                accumulate_strided_score_gram_rows(&rows, columns, &generated, &norms, 1.0, &mut partial);
+                accumulate_strided_score_gram_rows(
+                    &rows,
+                    columns,
+                    &generated,
+                    &norms,
+                    1.0,
+                    &mut partial,
+                );
                 assert!(partial.iter().any(|value| !value.is_finite()));
             }
         }

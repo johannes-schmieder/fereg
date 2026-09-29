@@ -9,8 +9,8 @@
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{factorize_code_interaction, CategoricalCodeView};
 use crate::prepared_categorical_data::{
-    prepare_categorical_ols_data_with_cluster_sources, prepare_ppml_categorical_ols_data,
     prepare_categorical_ols_data_owned_with_cluster_sources,
+    prepare_categorical_ols_data_with_cluster_sources, prepare_ppml_categorical_ols_data,
     PreparedCategoricalOlsData,
 };
 
@@ -128,7 +128,11 @@ pub fn prepare_categorical_ols_clustered_data_owned(
     loaded: LoadedOlsInput,
 ) -> Result<PreparedCategoricalOlsClusteredData> {
     let cluster_sources = validate_request(request)?;
-    let ols = prepare_categorical_ols_data_owned_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
+    let ols = prepare_categorical_ols_data_owned_with_cluster_sources(
+        &request.ols,
+        loaded,
+        &cluster_sources,
+    )?;
     finish_prepare_categorical_ols_clusters(request, ols)
 }
 

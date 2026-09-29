@@ -15,15 +15,15 @@ mod interaction;
 mod lsmr;
 mod lsmr_batch;
 mod map;
-pub(crate) mod slope_coefficients;
 mod partition;
 mod partition_registry;
 mod partition_singleton;
 mod partition_validation;
 mod projection;
 mod report;
-mod singleton;
 mod single_slope;
+mod singleton;
+pub(crate) mod slope_coefficients;
 pub(crate) use single_slope::{SingleSlopeAbsorber, SingleSlopeAttempt};
 mod topology_adapter;
 mod topology_finalize;
@@ -53,13 +53,13 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
     absorb_borrowed_intercept_map_retaining_certified,
     absorb_borrowed_intercept_map_with_structural_constant_certified, absorb_ols_schur_certified,
-    absorb_ols_schur_reusing_probe_certified,
-    try_absorb_ols_schur_narrow, NarrowOlsSchurAttempt,
-    borrowed_cg_recovery_workspace_bytes, recover_borrowed_intercept_sd_lsmr_coefficients,
-    schur_ols_probe_with_workspace, schur_ols_workspace_bytes, BorrowedInterceptRecoveryMethod,
-    BorrowedLsmrAbsorber, ReusableCategoricalMapAbsorber, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS,
-    FUSED_PARALLEL_MAX_RHS, OLS_SCHUR_MAX_CONTRACTION, OLS_SCHUR_MAX_ITERATIONS,
-    OLS_SCHUR_PROBE_ITERATIONS, PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
+    absorb_ols_schur_reusing_probe_certified, borrowed_cg_recovery_workspace_bytes,
+    recover_borrowed_intercept_sd_lsmr_coefficients, schur_ols_probe_with_workspace,
+    schur_ols_workspace_bytes, try_absorb_ols_schur_narrow, BorrowedInterceptRecoveryMethod,
+    BorrowedLsmrAbsorber, NarrowOlsSchurAttempt, ReusableCategoricalMapAbsorber,
+    CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS, OLS_SCHUR_MAX_CONTRACTION,
+    OLS_SCHUR_MAX_ITERATIONS, OLS_SCHUR_PROBE_ITERATIONS, PARALLEL_DOT_CHUNK_ROWS,
+    PARALLEL_PROJECTION_MIN_ROWS,
 };
 pub use categorical_request::{
     plan_categorical_absorbed_request, BoundCategoricalAbsorbEffect,
@@ -68,8 +68,8 @@ pub use categorical_request::{
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub(crate) use cmg::{
-    explicit_cmg_components, CmgAbsorber, CmgAutoBuildOutcome, CmgConfig, CmgControlSeed, CmgTopologyProfile,
-    CmgUnpolishedProjectionReport, PreparedCmgTopology,
+    explicit_cmg_components, CmgAbsorber, CmgAutoBuildOutcome, CmgConfig, CmgControlSeed,
+    CmgTopologyProfile, CmgUnpolishedProjectionReport, PreparedCmgTopology,
     MAX_NUISANCE_COLUMNS as CMG_MAX_NUISANCE_COLUMNS,
 };
 pub(crate) use components::connected_components_all_fallible;
@@ -127,12 +127,12 @@ pub use topology_slope_map::{
 pub(crate) use topology_slope_map::{
     absorb_finalized_categorical_slope_map_with_budget_certified,
     recover_finalized_categorical_effects_cg_certified,
-    recover_finalized_two_effects_graph_certified,
     recover_finalized_categorical_effects_from_coefficients_selected_certified,
     recover_finalized_categorical_effects_lsmr_certified,
-    recover_finalized_categorical_effects_sd_lsmr_certified, slope_map_workspace_bytes,
-    recover_finalized_single_slope_direct_certified, single_slope_recovery_extra_bytes,
-    single_slope_recovery_geometry_bytes,
+    recover_finalized_categorical_effects_sd_lsmr_certified,
+    recover_finalized_single_slope_direct_certified, recover_finalized_two_effects_graph_certified,
+    single_slope_recovery_extra_bytes, single_slope_recovery_geometry_bytes,
+    slope_map_workspace_bytes,
 };
 pub use topology_source::CategoricalTopologySource;
 

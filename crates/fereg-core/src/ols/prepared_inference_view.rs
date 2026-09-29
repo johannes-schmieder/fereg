@@ -517,7 +517,9 @@ const fn summary(
     }
 }
 
-pub(super) const fn categorical_policy(policy: PreparedOlsAbsorbedDofPolicy) -> CategoricalTopologyDofPolicy {
+pub(super) const fn categorical_policy(
+    policy: PreparedOlsAbsorbedDofPolicy,
+) -> CategoricalTopologyDofPolicy {
     match policy {
         PreparedOlsAbsorbedDofPolicy::None => CategoricalTopologyDofPolicy::None,
         PreparedOlsAbsorbedDofPolicy::FirstPair => CategoricalTopologyDofPolicy::FirstPair,

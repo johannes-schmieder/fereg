@@ -235,24 +235,36 @@ impl SlopeCoefficientWorkspace {
         geometry: &mut ReusableCertificateGeometry,
     ) -> Result<bool> {
         let workers = self.workers.len().min(self.groups.len());
-        if workers < 2 || self.groups.iter().any(|g| {
-            design.effects()[g.effect].level_index().members(g.level).len()
-                > design.nobs() / g.channels
-        }) {
+        if workers < 2
+            || self.groups.iter().any(|g| {
+                design.effects()[g.effect]
+                    .level_index()
+                    .members(g.level)
+                    .len()
+                    > design.nobs() / g.channels
+            })
+        {
             // A very large local block can exceed an observation workspace.
             // Its original serial scratch remains admitted and available.
             return Ok(false);
         }
         prepare_geometry_blocks(
-            design, weights, &self.groups, &mut self.workers[..workers],
-            &mut geometry.basis, &mut geometry.ranks,
+            design,
+            weights,
+            &self.groups,
+            &mut self.workers[..workers],
+            &mut geometry.basis,
+            &mut geometry.ranks,
         )?;
         Ok(true)
     }
 
     #[cfg(test)]
     pub(super) fn force_compact_coupling_for_test(&mut self) {
-        self.coupling.as_mut().expect("prepared coupling").force_compact_for_test();
+        self.coupling
+            .as_mut()
+            .expect("prepared coupling")
+            .force_compact_for_test();
     }
 
     #[cfg(test)]
@@ -419,6 +431,8 @@ impl SlopeCoefficientWorkspace {
         }
     }
 
+    // Keep the legacy workspace and ownership boundaries explicit during migration.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn solve(
         &mut self,
         design: &FeDesign,
@@ -526,7 +540,11 @@ fn prepare_geometry_blocks(
             let start = group.basis_start - base;
             let size = members.len() * group.channels;
             *rank = super::map::prepare_reusable_group_basis(
-                effect, members, weights, members.len(), &mut scratch[..size],
+                effect,
+                members,
+                weights,
+                members.len(),
+                &mut scratch[..size],
                 &mut basis[start..start + size],
             )?;
         }
@@ -535,15 +553,34 @@ fn prepare_geometry_blocks(
     let left_workers = workers.len() / 2;
     let right_workers = workers.len() - left_workers;
     let target = base + basis.len() / workers.len() * left_workers;
-    let middle = groups.partition_point(|g| g.basis_start < target)
+    let middle = groups
+        .partition_point(|g| g.basis_start < target)
         .clamp(left_workers, groups.len() - right_workers);
     let split = groups[middle].basis_start - base;
     let (left_basis, right_basis) = basis.split_at_mut(split);
     let (left_ranks, right_ranks) = ranks.split_at_mut(middle);
     let (left, right) = workers.split_at_mut(left_workers);
     let (a, b) = rayon::join(
-        || prepare_geometry_blocks(design, weights, &groups[..middle], left, left_basis, left_ranks),
-        || prepare_geometry_blocks(design, weights, &groups[middle..], right, right_basis, right_ranks),
+        || {
+            prepare_geometry_blocks(
+                design,
+                weights,
+                &groups[..middle],
+                left,
+                left_basis,
+                left_ranks,
+            )
+        },
+        || {
+            prepare_geometry_blocks(
+                design,
+                weights,
+                &groups[middle..],
+                right,
+                right_basis,
+                right_ranks,
+            )
+        },
     );
     a?;
     b
@@ -623,6 +660,8 @@ impl Operator<'_> {
             let rows = self.design.effects()[group.effect]
                 .level_index()
                 .members(group.level);
+            // Keep the legacy matrix indices and numerical traversal order explicit.
+            #[allow(clippy::needless_range_loop)]
             for basis in 0..self.geometry.ranks[index] {
                 let q =
                     &self.geometry.basis[group.basis_start + basis * rows.len()..][..rows.len()];
@@ -634,6 +673,8 @@ impl Operator<'_> {
             }
             for (local, &row) in rows.iter().enumerate() {
                 let mut value = 0.;
+                // Keep the legacy matrix indices and numerical traversal order explicit.
+                #[allow(clippy::needless_range_loop)]
                 for basis in 0..self.geometry.ranks[index] {
                     value = self.geometry.basis[group.basis_start + basis * rows.len() + local]
                         .mul_add(scratch[basis], value);
@@ -667,7 +708,10 @@ impl Worker {
             && self.projection_max.is_finite()
     }
     fn solve<const SHARE_PRODUCT: bool>(
-        &mut self, op: &Operator<'_>, original: &mut [f64], config: MapConfig,
+        &mut self,
+        op: &Operator<'_>,
+        original: &mut [f64],
+        config: MapConfig,
         helpers: &mut [Worker],
     ) -> Result<()> {
         self.coefficients.fill(0.);
@@ -700,11 +744,17 @@ impl Worker {
                 // even when no worker is available to share its work.
                 if SHARE_PRODUCT {
                     c.apply_with_helpers(
-                        &self.direction, &mut self.product,
-                        &mut self.eliminated_scratch, helpers,
+                        &self.direction,
+                        &mut self.product,
+                        &mut self.eliminated_scratch,
+                        helpers,
                     )
                 } else {
-                    c.apply(&self.direction, &mut self.product, &mut self.eliminated_scratch)
+                    c.apply(
+                        &self.direction,
+                        &mut self.product,
+                        &mut self.eliminated_scratch,
+                    )
                 }
             }) {
                 Some(curvature) => curvature,

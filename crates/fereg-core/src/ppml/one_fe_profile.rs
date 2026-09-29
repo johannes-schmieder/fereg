@@ -469,6 +469,8 @@ impl ProfiledOneFe {
 
     /// A centered Hessian is assembled directly, avoiding subtraction of two
     /// large raw cross-products. Partitioned reductions have fixed boundaries.
+    // Keep the legacy workspace and ownership boundaries explicit during migration.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn prepare_direction(
         &mut self,
         data: impl ProfiledDesign,
@@ -496,6 +498,8 @@ impl ProfiledOneFe {
         })
     }
 
+    // Keep the legacy workspace and ownership boundaries explicit during migration.
+    #[allow(clippy::too_many_arguments)]
     fn prepare_direction_in_team(
         &mut self,
         data: impl ProfiledDesign,
@@ -639,6 +643,8 @@ impl ProfiledOneFe {
         Ok(error)
     }
 
+    // Keep the legacy workspace and ownership boundaries explicit during migration.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn accept(
         &mut self,
         data: impl ProfiledDesign,
@@ -665,14 +671,15 @@ impl ProfiledOneFe {
                 }
                 Err(e) => return Err(e),
             }
-            let objective = match workspace.evaluate_external_objective(inputs, &self.eta, &self.mean) {
-                Ok(value) => value,
-                Err(e) if e.code == ErrorCode::NonConvergence => {
-                    step *= 0.5;
-                    continue;
-                }
-                Err(e) => return Err(e),
-            };
+            let objective =
+                match workspace.evaluate_external_objective(inputs, &self.eta, &self.mean) {
+                    Ok(value) => value,
+                    Err(e) if e.code == ErrorCode::NonConvergence => {
+                        step *= 0.5;
+                        continue;
+                    }
+                    Err(e) => return Err(e),
+                };
             if objective.deviance <= allowed {
                 workspace.set_candidate_eta(&self.eta)?;
                 for i in 0..workspace.coefficients().len() {
@@ -683,7 +690,12 @@ impl ProfiledOneFe {
                     workspace.candidate_coefficients_mut()[slot] =
                         step.mul_add(self.direction[j], self.base[j]);
                 }
-                workspace.fill_prepared_line_search_trial_with(1., config.bounds, inputs, |_| Ok(()))?;
+                workspace.fill_prepared_line_search_trial_with(
+                    1.,
+                    config.bounds,
+                    inputs,
+                    |_| Ok(()),
+                )?;
                 workspace.accept_trial()?;
                 return Ok(PpmlLineSearchAcceptance {
                     objective,
@@ -876,6 +888,8 @@ mod tests {
                     solve_linear_system(&mut a, &mut b, width, 1, 1e-14).unwrap(),
                     width
                 );
+                // Keep the legacy matrix indices and numerical traversal order explicit.
+                #[allow(clippy::needless_range_loop)]
                 for j in 0..k {
                     assert!(
                         (p.direction[j] - b[j]).abs() < 3e-10,

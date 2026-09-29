@@ -87,10 +87,19 @@ pub struct CategoricalTopologyDofReport {
 impl CategoricalTopologyDofReport {
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         crate::memory::vec_capacity_bytes(&self.effects)
-            + self.effects.iter().map(|effect| effect.label.capacity() as u128 + match &effect.identity {
-                CategoricalTopologyDofEffectIdentity::Explicit { sources, .. } => crate::memory::vec_capacity_bytes(sources),
-                CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb => 0,
-            }).sum::<u128>()
+            + self
+                .effects
+                .iter()
+                .map(|effect| {
+                    effect.label.capacity() as u128
+                        + match &effect.identity {
+                            CategoricalTopologyDofEffectIdentity::Explicit { sources, .. } => {
+                                crate::memory::vec_capacity_bytes(sources)
+                            }
+                            CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb => 0,
+                        }
+                })
+                .sum::<u128>()
     }
 }
 
@@ -182,6 +191,8 @@ impl TopologyDofReservation for SystemTopologyDofReservation {
     }
 }
 
+// Keep the legacy workspace and ownership boundaries explicit during migration.
+#[allow(clippy::too_many_arguments)]
 fn compute_with_reservation<R: TopologyDofReservation>(
     topology: &FinalizedCategoricalTopology,
     effect_specs: &[CategoricalTopologyDofEffectSpec],
@@ -194,7 +205,9 @@ fn compute_with_reservation<R: TopologyDofReservation>(
 ) -> Result<CategoricalTopologyDofReport> {
     if let Some(validated) = validated_single {
         if !validated.matches_owner(topology) {
-            return Err(invalid_argument("absorbed-DoF validation receipt belongs to another topology"));
+            return Err(invalid_argument(
+                "absorbed-DoF validation receipt belongs to another topology",
+            ));
         }
     } else {
         topology.validate()?;
@@ -949,32 +962,52 @@ mod tests {
     fn same_owner_receipt_preserves_dof_nesting_slopes_and_errors() {
         let groups = [0, 0, 1, 1, 2, 2];
         let topology = finalize_categorical_topology(
-            &[CategoricalCodeView::new(&groups, 3)], &[&[0]], &[true; 6],
-        ).unwrap();
+            &[CategoricalCodeView::new(&groups, 3)],
+            &[&[0]],
+            &[true; 6],
+        )
+        .unwrap();
         let crossing = [0, 1, 0, 1, 0, 1];
         let slope_values = vec![vec![0.0, 1.0, 2.0, 2.0, 0.0, 0.0]];
-        for policy in [CategoricalTopologyDofPolicy::None, CategoricalTopologyDofPolicy::FirstPair,
-            CategoricalTopologyDofPolicy::Pairwise, CategoricalTopologyDofPolicy::Continuous]
-        {
-            for clusters in [vec![], vec![groups.as_slice()], vec![crossing.as_slice()],
-                vec![groups.as_slice(), crossing.as_slice()], vec![&groups[..5]]]
-            {
+        for policy in [
+            CategoricalTopologyDofPolicy::None,
+            CategoricalTopologyDofPolicy::FirstPair,
+            CategoricalTopologyDofPolicy::Pairwise,
+            CategoricalTopologyDofPolicy::Continuous,
+        ] {
+            for clusters in [
+                vec![],
+                vec![groups.as_slice()],
+                vec![crossing.as_slice()],
+                vec![groups.as_slice(), crossing.as_slice()],
+                vec![&groups[..5]],
+            ] {
                 for with_slope in [false, true] {
                     let mut effect = CategoricalTopologyDofEffectSpec {
                         term_id: AbsorbTermId::new(1).unwrap(),
                         sources: vec![SourceId::new(1).unwrap()],
-                        intercept: true, label: "g".to_owned(), slopes: Vec::new(),
+                        intercept: true,
+                        label: "g".to_owned(),
+                        slopes: Vec::new(),
                     };
                     if with_slope {
                         effect.slopes.push(CategoricalTopologyDofSlopeSpec {
-                            source: SourceId::new(1).unwrap(), label: "g#c.t".to_owned(),
+                            source: SourceId::new(1).unwrap(),
+                            label: "g#c.t".to_owned(),
                         });
                     }
                     for values in [slope_values.as_slice(), &[]] {
-                        let run = |receipt| compute_categorical_topology_absorbed_dof_with_slopes(
-                            &topology, std::slice::from_ref(&effect), true, policy,
-                            &clusters, values, receipt,
-                        );
+                        let run = |receipt| {
+                            compute_categorical_topology_absorbed_dof_with_slopes(
+                                &topology,
+                                std::slice::from_ref(&effect),
+                                true,
+                                policy,
+                                &clusters,
+                                values,
+                                receipt,
+                            )
+                        };
                         assert_eq!(run(None), run(topology.validate_single_source().unwrap()));
                     }
                 }
@@ -982,9 +1015,15 @@ mod tests {
         }
         let other = topology.clone();
         let error = compute_categorical_topology_absorbed_dof_with_slopes(
-            &topology, &[], true, CategoricalTopologyDofPolicy::Pairwise, &[], &[],
+            &topology,
+            &[],
+            true,
+            CategoricalTopologyDofPolicy::Pairwise,
+            &[],
+            &[],
             other.validate_single_source().unwrap(),
-        ).unwrap_err();
+        )
+        .unwrap_err();
         assert_eq!(error.code, ErrorCode::InvalidArgument);
         assert!(error.message.contains("another topology"));
     }

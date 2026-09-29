@@ -57,7 +57,8 @@ impl SharedPreparedOlsData {
     // stack. Its nested buffers remain charged once to the prepared generation.
     pub(crate) const fn allocation_bytes(clustered: bool) -> u128 {
         if clustered {
-            std::mem::size_of::<(usize, usize, super::PreparedCategoricalOlsClusteredData)>() as u128
+            std::mem::size_of::<(usize, usize, super::PreparedCategoricalOlsClusteredData)>()
+                as u128
         } else {
             std::mem::size_of::<(usize, usize, PreparedCategoricalOlsData)>() as u128
         }
@@ -78,22 +79,46 @@ pub(crate) fn visit_prepared_column_range<P: PreparedOlsFitView + ?Sized>(
     mut visit: impl FnMut(usize, f64) -> Result<()>,
 ) -> Result<()> {
     use crate::ols::PreparedOlsColumnKind;
-    let invalid = || FeregError::new(ErrorCode::InvalidArgument,
-        "prepared column scan is not aligned on the active row axis");
+    let invalid = || {
+        FeregError::new(
+            ErrorCode::InvalidArgument,
+            "prepared column scan is not aligned on the active row axis",
+        )
+    };
     if range.start > range.end || range.end > prepared.fit_sample().n_active() {
         return Err(invalid());
     }
-    let kind = &prepared.fit_model().columns.get(column).ok_or_else(invalid)?.kind;
+    let kind = &prepared
+        .fit_model()
+        .columns
+        .get(column)
+        .ok_or_else(invalid)?
+        .kind;
     match kind {
         PreparedOlsColumnKind::Intercept => {
-            for row in range { visit(row, 1.)?; }
+            for row in range {
+                visit(row, 1.)?;
+            }
         }
-        PreparedOlsColumnKind::Continuous { prepared_source_index, .. } => {
-            let values = prepared.fit_sample().regressors.get(*prepared_source_index)
-                .and_then(|v| v.get(range.clone())).ok_or_else(invalid)?;
-            for (offset, &value) in values.iter().enumerate() { visit(range.start + offset, value)?; }
+        PreparedOlsColumnKind::Continuous {
+            prepared_source_index,
+            ..
+        } => {
+            let values = prepared
+                .fit_sample()
+                .regressors
+                .get(*prepared_source_index)
+                .and_then(|v| v.get(range.clone()))
+                .ok_or_else(invalid)?;
+            for (offset, &value) in values.iter().enumerate() {
+                visit(range.start + offset, value)?;
+            }
         }
-        PreparedOlsColumnKind::Categorical { categorical_source_index, level_code, .. } => {
+        PreparedOlsColumnKind::Categorical {
+            categorical_source_index,
+            level_code,
+            ..
+        } => {
             if let Some(level) = level_code {
                 let codes = prepared.fit_categorical_codes(*categorical_source_index)?;
                 let codes = codes.get(range.clone()).ok_or_else(invalid)?;
@@ -101,7 +126,9 @@ pub(crate) fn visit_prepared_column_range<P: PreparedOlsFitView + ?Sized>(
                     visit(range.start + offset, f64::from(code == level))?;
                 }
             } else {
-                for row in range { visit(row, 0.)?; }
+                for row in range {
+                    visit(row, 0.)?;
+                }
             }
         }
         PreparedOlsColumnKind::CategoricalInteraction { components } => {
@@ -109,18 +136,23 @@ pub(crate) fn visit_prepared_column_range<P: PreparedOlsFitView + ?Sized>(
             let mut present = [true; ROWS];
             for start in (range.start..range.end).step_by(ROWS) {
                 let end = (start + ROWS).min(range.end);
-                let values = &mut present[..end-start];
+                let values = &mut present[..end - start];
                 values.fill(true);
                 for component in components {
                     let Some(level) = component.level_code else {
                         values.fill(false);
                         break;
                     };
-                    let codes = prepared.fit_categorical_codes(component.categorical_source_index)?;
+                    let codes =
+                        prepared.fit_categorical_codes(component.categorical_source_index)?;
                     let codes = codes.get(start..end).ok_or_else(invalid)?;
-                    for (value, &code) in values.iter_mut().zip(codes) { *value &= code == level; }
+                    for (value, &code) in values.iter_mut().zip(codes) {
+                        *value &= code == level;
+                    }
                 }
-                for (offset, &value) in values.iter().enumerate() { visit(start + offset, f64::from(value))?; }
+                for (offset, &value) in values.iter().enumerate() {
+                    visit(start + offset, f64::from(value))?;
+                }
             }
         }
     }
@@ -175,11 +207,14 @@ pub(crate) fn add_generated_predictor<P: PreparedOlsFitView + ?Sized>(
     let fill = |(tile, destination): (usize, &mut [f64])| -> Result<()> {
         let start = tile * TILE_ROWS;
         let end = start + destination.len();
-        for c in coefficients.iter().filter(|c| c.status == PreparedOlsFitStatus::Kept) {
+        for c in coefficients
+            .iter()
+            .filter(|c| c.status == PreparedOlsFitStatus::Kept)
+        {
             let column = c.generated_column_index.ok_or_else(invalid)?;
             let coefficient = c.value.ok_or_else(invalid)?;
             visit_prepared_column_range(prepared, column, start..end, |row, value| {
-                destination[row-start] = coefficient.mul_add(value, destination[row-start]);
+                destination[row - start] = coefficient.mul_add(value, destination[row - start]);
                 Ok(())
             })?;
         }
@@ -218,13 +253,24 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_has_absorbed_intercept(&self) -> bool;
 
-    fn fit_single_slope_view(&self) -> Result<Option<(crate::fe::BorrowedInterceptEffect<'_>, crate::fe::CategoricalAbsorbedEffectView<'_>)>> {
+    fn fit_single_slope_view(
+        &self,
+    ) -> Result<
+        Option<(
+            crate::fe::BorrowedInterceptEffect<'_>,
+            crate::fe::CategoricalAbsorbedEffectView<'_>,
+        )>,
+    > {
         Ok(None)
     }
 
-    fn fit_has_one_slope_effect(&self) -> bool { false }
+    fn fit_has_one_slope_effect(&self) -> bool {
+        false
+    }
 
-    fn fit_has_two_effects_with_slopes(&self) -> bool { false }
+    fn fit_has_two_effects_with_slopes(&self) -> bool {
+        false
+    }
 
     fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
         false
@@ -277,19 +323,30 @@ pub(crate) trait PreparedOlsFitView: Sync {
     /// response. Implementations retain their layout-specific hot path.
     fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix>;
 
-    fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<(DenseMatrix, bool)> {
+    fn fit_build_rhs_with_loaded_rows(
+        &self,
+        response: &[f64],
+        rows: Option<Vec<f64>>,
+    ) -> Result<(DenseMatrix, bool)> {
         if let Some(rows) = rows {
-            if let Some(columns) = crate::ols::NumericOlsColumns::bind_loaded_rhs(self.fit_model(), self.fit_sample())? {
+            if let Some(columns) =
+                crate::ols::NumericOlsColumns::bind_loaded_rhs(self.fit_model(), self.fit_sample())?
+            {
                 if columns.matches_rhs(response, &rows) {
-                    return Ok((DenseMatrix::from_row_major(
-                        response.len(), self.fit_model().columns.len() + 1, rows,
-                    )?, true));
+                    return Ok((
+                        DenseMatrix::from_row_major(
+                            response.len(),
+                            self.fit_model().columns.len() + 1,
+                            rows,
+                        )?,
+                        true,
+                    ));
                 }
             }
         }
-        self.fit_build_rhs_with_response(response).map(|matrix| (matrix, false))
+        self.fit_build_rhs_with_response(response)
+            .map(|matrix| (matrix, false))
     }
-
 
     /// Build a bounded contiguous block of generated columns. The outcome is
     /// included as column zero only when requested.
@@ -788,11 +845,15 @@ impl PreparedOlsFitView for PreparedOlsData {
         Ok(build_prepared_ols_rhs_with_response(self, response)?.into_values())
     }
 
-    fn fit_build_rhs_with_loaded_rows(&self, response: &[f64], rows: Option<Vec<f64>>) -> Result<(DenseMatrix, bool)> {
-        let (rhs, reused) = crate::ols::build_prepared_ols_rhs_with_loaded_rows_and_reuse(self, response, rows)?;
+    fn fit_build_rhs_with_loaded_rows(
+        &self,
+        response: &[f64],
+        rows: Option<Vec<f64>>,
+    ) -> Result<(DenseMatrix, bool)> {
+        let (rhs, reused) =
+            crate::ols::build_prepared_ols_rhs_with_loaded_rows_and_reuse(self, response, rows)?;
         Ok((rhs.into_values(), reused))
     }
-
 
     fn fit_absorb_map(
         &self,
@@ -987,15 +1048,27 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         self.effect_specs().len() == 1 && !self.effect_specs()[0].slopes.is_empty()
     }
 
-    fn fit_single_slope_view(&self) -> Result<Option<(crate::fe::BorrowedInterceptEffect<'_>, crate::fe::CategoricalAbsorbedEffectView<'_>)>> {
+    fn fit_single_slope_view(
+        &self,
+    ) -> Result<
+        Option<(
+            crate::fe::BorrowedInterceptEffect<'_>,
+            crate::fe::CategoricalAbsorbedEffectView<'_>,
+        )>,
+    > {
         if self.effect_specs().len() != 1 || self.effect_specs()[0].slopes.is_empty() {
             return Ok(None);
         }
-        let Some(validated) = self.validated_single_topology()? else { return Ok(None); };
+        let Some(validated) = self.validated_single_topology()? else {
+            return Ok(None);
+        };
         // This descriptor supplies only partition membership; the separate
         // slope view defines the scientific basis used by the absorber.
         let partition = validated.into_design(self.fit_sample().n_active())?;
-        let effect = self.effect_views()?.pop().ok_or_else(|| allocation("single slope effect is missing"))?;
+        let effect = self
+            .effect_views()?
+            .pop()
+            .ok_or_else(|| allocation("single slope effect is missing"))?;
         Ok(Some((partition.effects()[0], effect)))
     }
 

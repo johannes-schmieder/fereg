@@ -123,7 +123,10 @@ pub trait SpiApi {
         _first_observation: usize,
         _values: &mut [f64],
     ) -> Result<f64> {
-        Err(FeregError::new(ErrorCode::Unsupported, "raw numeric row transport is unavailable"))
+        Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "raw numeric row transport is unavailable",
+        ))
     }
     /// Read numeric coordinates in observation order into native value and
     /// missing-status buffers. The default retains authoritative scalar SPI

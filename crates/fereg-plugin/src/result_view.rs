@@ -6,12 +6,12 @@
 //! without cloning observation-scale state or changing result-wire dimensions.
 
 use fereg_core::error::Result;
-use rayon::prelude::*;
 use fereg_core::{
     PreparedCategoricalOlsClusteredData, PreparedCategoricalOlsData, PreparedNumericSample,
     PreparedOlsClusterDesign, PreparedOlsClusteredData, PreparedOlsData, PreparedOlsModel,
     PreparedOlsSingletons,
 };
+use rayon::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum PreparedOlsResultData<'a> {
@@ -50,13 +50,17 @@ impl<'a> PreparedOlsResultData<'a> {
     }
 
     pub(crate) fn add_fitted_terms(self, terms: &[(usize, f64)], output: &mut [f64]) -> Result<()> {
-        if !fereg_core::ols::add_numeric_ols_predictor(self.model(), self.sample(), terms, output)? {
-            output.par_iter_mut().enumerate().try_for_each(|(row, value)| -> Result<()> {
-                for &(column, coefficient) in terms {
-                    *value = coefficient.mul_add(self.column_value(column, row)?, *value);
-                }
-                Ok(())
-            })?;
+        if !fereg_core::ols::add_numeric_ols_predictor(self.model(), self.sample(), terms, output)?
+        {
+            output
+                .par_iter_mut()
+                .enumerate()
+                .try_for_each(|(row, value)| -> Result<()> {
+                    for &(column, coefficient) in terms {
+                        *value = coefficient.mul_add(self.column_value(column, row)?, *value);
+                    }
+                    Ok(())
+                })?;
         }
         Ok(())
     }

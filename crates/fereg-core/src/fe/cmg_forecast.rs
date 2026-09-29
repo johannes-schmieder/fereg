@@ -18,8 +18,11 @@ pub(super) fn hierarchy_peak(
     // edge banks plus an Option<Edge> gather bank for contraction, and 48
     // bytes/vertex for simultaneous old/new labels, diagonals and transfers.
     // nnz/2 safely includes edges even when some diagonals are zero.
-    for (&vertices, &nnz) in report.vertex_counts().iter()
-        .zip(report.matrix_nonzeros()).take(report.vertex_counts().len().saturating_sub(1))
+    for (&vertices, &nnz) in report
+        .vertex_counts()
+        .iter()
+        .zip(report.matrix_nonzeros())
+        .take(report.vertex_counts().len().saturating_sub(1))
     {
         let n = vertices as u128;
         let edges = (nnz / 2) as u128;
@@ -38,12 +41,15 @@ pub(super) fn hierarchy_peak(
         let numeric = if components {
             32 * nnz + 8 * terminal_nnz + 64 * n
         } else {
-            active.checked_mul(active).and_then(|v| v.checked_mul(16))
+            active
+                .checked_mul(active)
+                .and_then(|v| v.checked_mul(16))
                 .and_then(|v| v.checked_add(96 * n))
                 .ok_or_else(|| allocation("CMG factor heap forecast overflows"))?
         };
         scratch = scratch.max(numeric);
     }
-    retained.checked_add(scratch)
+    retained
+        .checked_add(scratch)
         .ok_or_else(|| allocation("CMG construction heap forecast overflows"))
 }

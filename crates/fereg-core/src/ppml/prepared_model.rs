@@ -21,8 +21,8 @@ use crate::data::{
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::ols::{
     prepare_ppml_categorical_ols_clustered_data, LoadedNumericColumn, LoadedOlsInput,
-    OlsClusterTermV1, OlsClusteredRequestV1, OlsRequestV1,
-    PreparedOlsClusterDesign, PreparedOlsModel, PreparedOlsSingletons,
+    OlsClusterTermV1, OlsClusteredRequestV1, OlsRequestV1, PreparedOlsClusterDesign,
+    PreparedOlsModel, PreparedOlsSingletons,
 };
 use crate::ppml_separation::{PreparedSeparationRebuilder, SeparationDropReason};
 use crate::prepared_categorical_data::{
@@ -109,15 +109,24 @@ impl PreparedPpmlModelGeneration {
     /// All generation-owned heap capacities. The shared initial-drop-reason
     /// Arc belongs to the immutable raw owner and is counted there exactly once.
     pub(super) fn owned_buffer_bytes(&self) -> u128 {
-        let prepared = self.prepared.shared_allocation_bytes() + self.fit_view().owned_buffer_bytes()
-            + self.cluster_design().map_or(0, PreparedOlsClusterDesign::owned_buffer_bytes);
-        prepared + crate::memory::vec_capacity_bytes(&self.offset)
-            + self.unit_prior_weights.as_ref().map_or(0, crate::memory::vec_capacity_bytes)
+        let prepared = self.prepared.shared_allocation_bytes()
+            + self.fit_view().owned_buffer_bytes()
+            + self
+                .cluster_design()
+                .map_or(0, PreparedOlsClusterDesign::owned_buffer_bytes);
+        prepared
+            + crate::memory::vec_capacity_bytes(&self.offset)
+            + self
+                .unit_prior_weights
+                .as_ref()
+                .map_or(0, crate::memory::vec_capacity_bytes)
     }
 
     fn validate_memory_bound(&self, bound: Option<u128>) -> Result<()> {
         if bound.is_some_and(|bound| self.owned_buffer_bytes() > bound) {
-            return Err(allocation("PPML prepared generation capacities exceed admission"));
+            return Err(allocation(
+                "PPML prepared generation capacities exceed admission",
+            ));
         }
         Ok(())
     }
@@ -1098,12 +1107,20 @@ mod tests {
         let initial = owner.rebuild_generation(&rows, 0).unwrap();
         let exact = initial.owned_buffer_bytes();
         initial.validate_memory_bound(Some(exact)).unwrap();
-        assert_eq!(initial.validate_memory_bound(Some(exact - 1)).unwrap_err().code,
-            ErrorCode::Allocation);
+        assert_eq!(
+            initial
+                .validate_memory_bound(Some(exact - 1))
+                .unwrap_err()
+                .code,
+            ErrorCode::Allocation
+        );
         let candidate = owner.loaded.candidate.clone();
         let probability = owner.loaded.probability_weight.clone();
         owner.generation_memory_bound = Some(exact - 1);
-        assert_eq!(owner.rebuild_generation(&rows, 1).unwrap_err().code, ErrorCode::Allocation);
+        assert_eq!(
+            owner.rebuild_generation(&rows, 1).unwrap_err().code,
+            ErrorCode::Allocation
+        );
         assert_eq!(owner.loaded.candidate, candidate);
         assert_eq!(owner.loaded.probability_weight, probability);
         owner.generation_memory_bound = Some(exact);
@@ -1115,8 +1132,10 @@ mod tests {
         let mut spare = initial;
         spare.offset.reserve_exact(37);
         assert!(spare.owned_buffer_bytes() > exact);
-        assert_eq!(spare.validate_memory_bound(Some(exact)).unwrap_err().code,
-            ErrorCode::Allocation);
+        assert_eq!(
+            spare.validate_memory_bound(Some(exact)).unwrap_err().code,
+            ErrorCode::Allocation
+        );
     }
 
     #[test]
@@ -1126,9 +1145,12 @@ mod tests {
         let h = SourceId::new(3).unwrap();
         fixture.request.absorbed_terms[0].slope_sources = vec![x];
         fixture.request.absorbed_terms.push(AbsorbedTerm {
-            id: AbsorbTermId::new(2).unwrap(), intercept: true,
-            categorical_sources: vec![h], slope_sources: vec![x],
-            label: "h##c.x".into(), saved_name: String::new(),
+            id: AbsorbTermId::new(2).unwrap(),
+            intercept: true,
+            categorical_sources: vec![h],
+            slope_sources: vec![x],
+            label: "h##c.x".into(),
+            saved_name: String::new(),
         });
         let numeric = fixture.prepare_numeric();
         let mut owner = fixture.into_owner(numeric);
@@ -1143,14 +1165,22 @@ mod tests {
         assert_eq!(rebased.fit_view().effect_specs().len(), 2);
         assert!((rebased.prior_weights().iter().sum::<f64>() - subset.len() as f64).abs() < 1e-12);
         for (position, &row) in subset.iter().enumerate() {
-            assert_eq!(rebased.outcome()[position], owner.loaded.outcome.values[row]);
-            assert_eq!(rebased.fit_view().sample().regressors[0][position],
-                owner.loaded.numeric_sources[0].1.values[row]);
+            assert_eq!(
+                rebased.outcome()[position],
+                owner.loaded.outcome.values[row]
+            );
+            assert_eq!(
+                rebased.fit_view().sample().regressors[0][position],
+                owner.loaded.numeric_sources[0].1.values[row]
+            );
         }
         assert_eq!(owner.loaded.candidate, candidate);
         assert_eq!(owner.loaded.probability_weight, raw_weights);
         owner.generation_memory_bound = Some(rebased.owned_buffer_bytes() - 1);
-        assert_eq!(owner.rebuild_generation(&subset, 2).unwrap_err().code, ErrorCode::Allocation);
+        assert_eq!(
+            owner.rebuild_generation(&subset, 2).unwrap_err().code,
+            ErrorCode::Allocation
+        );
         assert_eq!(owner.loaded.candidate, candidate);
         assert_eq!(owner.loaded.probability_weight, raw_weights);
         owner.generation_memory_bound = Some(initial.owned_buffer_bytes());

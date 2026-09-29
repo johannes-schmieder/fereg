@@ -1,7 +1,7 @@
-pub(super) use crate::sandwich::compensated_add_scaled_row;
 use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
+pub(super) use crate::sandwich::compensated_add_scaled_row;
 use crate::topology_dof::CategoricalTopologyDofReport;
 use std::time::Instant;
 
@@ -143,7 +143,8 @@ impl CertifiedPreparedOlsUnadjusted {
     /// Heap owners retained after inference, excluding the borrowed prepared data.
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
-        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+        self.fit.owned_buffer_bytes()
+            + self.absorbed_dof.owned_buffer_bytes()
             + crate::memory::vec_capacity_bytes(&self.covariance.values)
             + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
     }
@@ -210,7 +211,8 @@ impl CertifiedPreparedCategoricalOlsUnadjusted {
     /// Heap owners retained after inference, excluding the borrowed prepared data.
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
-        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+        self.fit.owned_buffer_bytes()
+            + self.absorbed_dof.owned_buffer_bytes()
             + crate::memory::vec_capacity_bytes(&self.covariance.values)
             + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
     }
@@ -348,8 +350,9 @@ impl IndependentOutcome<'_> {
             && self.has_intercept == prepared.fit_structural_intercept()
             && match (&sample.weights, self.source_weights) {
                 (PreparedWeights::None, None) => self.facts.kind.is_none(),
-                (PreparedWeights::Provided { kind, values }, Some(source)) =>
-                    self.facts.kind == Some(*kind) && std::ptr::eq(source, values.as_slice()),
+                (PreparedWeights::Provided { kind, values }, Some(source)) => {
+                    self.facts.kind == Some(*kind) && std::ptr::eq(source, values.as_slice())
+                }
                 _ => false,
             }
     }
@@ -361,19 +364,32 @@ impl IndependentOutcome<'_> {
     }
 }
 
-fn independent_outcome_scan<P: PreparedOlsInferenceView + ?Sized>(prepared: &P) -> Result<IndependentOutcome<'_>> {
+fn independent_outcome_scan<P: PreparedOlsInferenceView + ?Sized>(
+    prepared: &P,
+) -> Result<IndependentOutcome<'_>> {
     let facts = scan_reference_weight_facts(prepared, true)?;
     let source = prepared.fit_sample().outcome.as_slice();
     let source_weights = match &prepared.fit_sample().weights {
         PreparedWeights::None => None,
         PreparedWeights::Provided { values, .. } => Some(values.as_slice()),
     };
-    let view = ReferenceWeightView { values: source_weights, kind: facts.kind,
-        divisor: facts.divisor, multiplier: facts.anticipated_multiplier };
+    let view = ReferenceWeightView {
+        values: source_weights,
+        kind: facts.kind,
+        divisor: facts.divisor,
+        multiplier: facts.anticipated_multiplier,
+    };
     let reference_sum = reference_weight_sum(view, facts.physical);
     let has_intercept = prepared.fit_structural_intercept();
     let tss = independent_outcome_sum(source, view, has_intercept);
-    Ok(IndependentOutcome { source, source_weights, has_intercept, facts, reference_sum, tss })
+    Ok(IndependentOutcome {
+        source,
+        source_weights,
+        has_intercept,
+        facts,
+        reference_sum,
+        tss,
+    })
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -479,7 +495,9 @@ fn fit_with_outcome_overlap(
     validate_config(config)?;
     reject_probability_iid(prepared)?;
     let fit = || match rows {
-        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows),
+        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(
+            prepared, config.fit, rows,
+        ),
         None => fit_prepared_ols_coefficients_map(prepared, config.fit),
     };
     // Independent weight and outcome scans use immutable prepared sources,
@@ -492,13 +510,14 @@ fn fit_with_outcome_overlap(
         && config.fit.execution.mode == super::PreparedOlsExecutionMode::Fast
         && config.fit.execution.threads.resolved() >= 8
     {
-        let (fit, (tss, topology)) = crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-            rayon::join(fit, || {
-                let topology = super::prepared_dof::validate_dof_topology_for_overlap(prepared);
-                let tss = independent_outcome_scan(prepared);
-                (tss, topology)
-            })
-        })?;
+        let (fit, (tss, topology)) =
+            crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
+                rayon::join(fit, || {
+                    let topology = super::prepared_dof::validate_dof_topology_for_overlap(prepared);
+                    let tss = independent_outcome_scan(prepared);
+                    (tss, topology)
+                })
+            })?;
         (fit?, Some(tss), Some(topology))
     } else {
         (fit()?, None, None)
@@ -510,15 +529,17 @@ fn fit_with_outcome_overlap(
         None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
     };
     let mut reservation = SystemInferenceReservation;
-    crate::ThreadTeam::new(config.fit.execution.threads).install(|| compose_internal(
-        prepared,
-        fit,
-        absorbed_dof,
-        config.certificate_tolerance,
-        &mut reservation,
-        InferencePerturbations::default(),
-        outcome_tss,
-    ))?
+    crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
+        compose_internal(
+            prepared,
+            fit,
+            absorbed_dof,
+            config.certificate_tolerance,
+            &mut reservation,
+            InferencePerturbations::default(),
+            outcome_tss,
+        )
+    })?
 }
 
 /// Fit and certify categorical-interaction OLS/WLS with conventional
@@ -548,20 +569,30 @@ fn fit_categorical_with_outcome_overlap(
     validate_config(config)?;
     reject_probability_iid(prepared)?;
     let fit = || match rows {
-        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(prepared, config.fit, rows),
+        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(
+            prepared, config.fit, rows,
+        ),
         None => fit_prepared_categorical_ols_coefficients_map(prepared, config.fit),
     };
     let (fit, outcome_tss, dof_inputs) = fit_with_independent_outcome_and_check(
-        prepared, config.fit, fit, || prepared.validate_dof_inputs_for_overlap(), overlap,
+        prepared,
+        config.fit,
+        fit,
+        || prepared.validate_dof_inputs_for_overlap(),
+        overlap,
     )?;
     // Surface prefix-validation errors after the fit. Metadata validation and
     // DoF report allocation retain their original position on the same team.
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
         let absorbed_dof = match dof_inputs.transpose()?.flatten() {
-            Some(inputs) => inputs.compute(super::prepared_inference_view::categorical_policy(config.absorbed_dof), &[])?,
+            Some(inputs) => inputs.compute(
+                super::prepared_inference_view::categorical_policy(config.absorbed_dof),
+                &[],
+            )?,
             None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
         };
-        let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+        let summary =
+            prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
         let mut reservation = SystemInferenceReservation;
         let components = compose_view_internal(
             prepared,
@@ -587,30 +618,31 @@ fn fit_categorical_with_outcome_overlap(
 /// Overlap independent source statistics with a bounded intercept-FE fit.
 /// Retain only source borrows and scalar results; consume each check at its
 /// original error boundary after fitting and absorbed-DoF preparation.
-pub(super) fn fit_with_independent_outcome<'a, P, T, F>(
-    prepared: &'a P,
+pub(super) fn fit_with_independent_outcome<P, T, F>(
+    prepared: &P,
     config: PreparedOlsFitConfig,
     fit: F,
     overlap: bool,
-) -> Result<(T, DeferredOutcome<'a>)>
+) -> Result<(T, DeferredOutcome<'_>)>
 where
     P: PreparedOlsInferenceView + ?Sized,
     T: Send,
     F: FnOnce() -> Result<T> + Send,
 {
-    let (fit, tss, _) = fit_with_independent_outcome_and_check(prepared, config, fit, || (), overlap)?;
+    let (fit, tss, _) =
+        fit_with_independent_outcome_and_check(prepared, config, fit, || (), overlap)?;
     Ok((fit, tss))
 }
 
 /// The caller consumes the deferred check only at its original error boundary.
 /// Successful checks must retain no allocation beside the running fit.
-pub(super) fn fit_with_independent_outcome_and_check<'a, P, T, F, C, H>(
-    prepared: &'a P,
+pub(super) fn fit_with_independent_outcome_and_check<P, T, F, C, H>(
+    prepared: &P,
     config: PreparedOlsFitConfig,
     fit: F,
     check: H,
     overlap: bool,
-) -> Result<(T, DeferredOutcome<'a>, Option<C>)>
+) -> Result<(T, DeferredOutcome<'_>, Option<C>)>
 where
     P: PreparedOlsInferenceView + ?Sized,
     T: Send,
@@ -620,19 +652,21 @@ where
 {
     if overlap
         && prepared.inference_has_explicit_absorbed_effects()
-        && prepared.fit_has_absorbed_intercept() && prepared.fit_supports_cmg_auto()
+        && prepared.fit_has_absorbed_intercept()
+        && prepared.fit_supports_cmg_auto()
         && prepared.fit_sample().n_active() >= 16_384
         && prepared.fit_model().columns.len() <= 64
         && config.execution.mode == super::PreparedOlsExecutionMode::Fast
         && config.execution.threads.resolved() >= 8
     {
-        let (fit, (tss, checked)) = crate::ThreadTeam::new(config.execution.threads).install(|| {
-            rayon::join(fit, || {
-                let checked = check();
-                let tss = independent_outcome_scan(prepared);
-                (tss, checked)
-            })
-        })?;
+        let (fit, (tss, checked)) =
+            crate::ThreadTeam::new(config.execution.threads).install(|| {
+                rayon::join(fit, || {
+                    let checked = check();
+                    let tss = independent_outcome_scan(prepared);
+                    (tss, checked)
+                })
+            })?;
         Ok((fit?, Some(tss), Some(checked)))
     } else {
         Ok((fit()?, None, None))
@@ -644,7 +678,9 @@ pub(super) fn independent_residual_sum(
     weight_view: ReferenceWeightView<'_>,
 ) -> Result<f64> {
     if weight_view.kind.is_none() && weight_view.values.is_none() {
-        if let Some(rss) = fit.independent_unit_residual_sum() { return Ok(rss); }
+        if let Some(rss) = fit.independent_unit_residual_sum() {
+            return Ok(rss);
+        }
     }
     weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)
 }
@@ -708,7 +744,13 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
     let phase_started = Instant::now();
     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
     let (weights, weight_view, weight_sum_relative_error) =
-        build_reference_weight_report_with_outcome(prepared, &fit, tolerance, false, &mut outcome_tss)?;
+        build_reference_weight_report_with_outcome(
+            prepared,
+            &fit,
+            tolerance,
+            false,
+            &mut outcome_tss,
+        )?;
     let mut dof = build_residual_dof_view(prepared, &fit, absorbed_dof, weights)?;
     if perturbations.residual_dof {
         dof.residual_dof = dof
@@ -721,11 +763,22 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
         let tss = tss?.tss?;
         let rss = if weight_view.kind.is_none() && weight_view.values.is_none() {
             fit.independent_unit_residual_sum()
-        } else { None };
-        (tss, match rss { Some(rss) => rss, None => weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)? })
+        } else {
+            None
+        };
+        (
+            tss,
+            match rss {
+                Some(rss) => rss,
+                None => weighted_sum_of_squares(fit.residuals(), weight_view, 0.0)?,
+            },
+        )
     } else {
         independent_fit_sums(
-            &prepared.fit_sample().outcome, fit.residuals(), weight_view, dof.has_structural_intercept,
+            &prepared.fit_sample().outcome,
+            fit.residuals(),
+            weight_view,
+            dof.has_structural_intercept,
         )?
     };
     let certified_within_tss = if prepared.inference_has_explicit_absorbed_effects() {
@@ -988,108 +1041,131 @@ pub(super) fn build_reference_weight_report_view<'a, P: PreparedOlsInferenceView
     ReferenceWeightView<'a>,
     f64,
 )> {
-    build_reference_weight_report_with_outcome(prepared, fit, tolerance, allow_probability, &mut None)
+    build_reference_weight_report_with_outcome(
+        prepared,
+        fit,
+        tolerance,
+        allow_probability,
+        &mut None,
+    )
 }
 
 fn scan_reference_weight_facts<P: PreparedOlsInferenceView + ?Sized>(
-    prepared: &P, allow_probability: bool,
+    prepared: &P,
+    allow_probability: bool,
 ) -> Result<ReferenceWeightFacts> {
     let nobs = prepared.fit_sample().n_active();
     let nobs_f64 = exact_integer_as_f64(nobs as u128)?;
-    let (kind, effective, raw_weight_sum, expected_divisor, expected_multiplier, anticipated_multiplier) =
-        match &prepared.fit_sample().weights {
-            PreparedWeights::None => (None, nobs, None, 1.0, 1.0, 1.0),
-            PreparedWeights::Provided { kind, values } => {
-                if values.len() != nobs
-                    || values
-                        .iter()
-                        .any(|weight| !weight.is_finite() || *weight <= 0.0)
-                {
-                    return Err(invalid_data(
-                        "prepared iid weights are not finite, positive, and aligned",
+    let (
+        kind,
+        effective,
+        raw_weight_sum,
+        expected_divisor,
+        expected_multiplier,
+        anticipated_multiplier,
+    ) = match &prepared.fit_sample().weights {
+        PreparedWeights::None => (None, nobs, None, 1.0, 1.0, 1.0),
+        PreparedWeights::Provided { kind, values } => {
+            if values.len() != nobs
+                || values
+                    .iter()
+                    .any(|weight| !weight.is_finite() || *weight <= 0.0)
+            {
+                return Err(invalid_data(
+                    "prepared iid weights are not finite, positive, and aligned",
+                ));
+            }
+            let divisor = values.iter().copied().fold(0.0_f64, f64::max);
+            if !divisor.is_finite()
+                || divisor <= 0.0
+                || values.iter().any(|weight| *weight / divisor == 0.0)
+            {
+                return Err(invalid_data("prepared iid weight normalization is invalid"));
+            }
+            let (raw_sum, normalized_sum) = positive_weight_sums(values, divisor)?;
+            match kind {
+                WeightKind::Frequency => {
+                    let mut sum = 0_u128;
+                    for value in values {
+                        if value.fract() != 0.0 || *value > f64::from(u32::MAX) {
+                            return Err(invalid_data(
+                                "prepared iid frequency weight is not a positive u32 integer",
+                            ));
+                        }
+                        sum = sum.checked_add(u128::from(*value as u32)).ok_or_else(|| {
+                            allocation("prepared iid frequency effective N overflows")
+                        })?;
+                    }
+                    let effective = usize::try_from(sum).map_err(|_| {
+                        allocation("prepared iid frequency effective N exceeds usize")
+                    })?;
+                    let exact_sum = exact_integer_as_f64(sum)?;
+                    (
+                        Some(*kind),
+                        effective,
+                        Some(exact_sum),
+                        divisor,
+                        divisor,
+                        divisor,
+                    )
+                }
+                WeightKind::Analytic => {
+                    let solver_sum = raw_sum / divisor;
+                    let multiplier = nobs_f64 / solver_sum;
+                    (
+                        Some(*kind),
+                        nobs,
+                        Some(raw_sum),
+                        divisor,
+                        multiplier,
+                        nobs_f64 / normalized_sum,
+                    )
+                }
+                WeightKind::Probability if allow_probability => {
+                    let solver_sum = raw_sum / divisor;
+                    let multiplier = nobs_f64 / solver_sum;
+                    (
+                        Some(*kind),
+                        nobs,
+                        Some(raw_sum),
+                        divisor,
+                        multiplier,
+                        nobs_f64 / normalized_sum,
+                    )
+                }
+                WeightKind::Probability => {
+                    return Err(unsupported(
+                        "prepared iid covariance is unavailable for probability weights",
                     ));
                 }
-                let divisor = values.iter().copied().fold(0.0_f64, f64::max);
-                if !divisor.is_finite()
-                    || divisor <= 0.0
-                    || values.iter().any(|weight| *weight / divisor == 0.0)
-                {
-                    return Err(invalid_data("prepared iid weight normalization is invalid"));
-                }
-                let (raw_sum, normalized_sum) = positive_weight_sums(values, divisor)?;
-                match kind {
-                    WeightKind::Frequency => {
-                        let mut sum = 0_u128;
-                        for value in values {
-                            if value.fract() != 0.0 || *value > f64::from(u32::MAX) {
-                                return Err(invalid_data(
-                                    "prepared iid frequency weight is not a positive u32 integer",
-                                ));
-                            }
-                            sum = sum.checked_add(u128::from(*value as u32)).ok_or_else(|| {
-                                allocation("prepared iid frequency effective N overflows")
-                            })?;
-                        }
-                        let effective = usize::try_from(sum).map_err(|_| {
-                            allocation("prepared iid frequency effective N exceeds usize")
-                        })?;
-                        let exact_sum = exact_integer_as_f64(sum)?;
-                        (
-                            Some(*kind),
-                            effective,
-                            Some(exact_sum),
-                            divisor,
-                            divisor,
-                            divisor,
-                        )
-                    }
-                    WeightKind::Analytic => {
-                        let solver_sum = raw_sum / divisor;
-                        let multiplier = nobs_f64 / solver_sum;
-                        (
-                            Some(*kind),
-                            nobs,
-                            Some(raw_sum),
-                            divisor,
-                            multiplier,
-                            nobs_f64 / normalized_sum,
-                        )
-                    }
-                    WeightKind::Probability if allow_probability => {
-                        let solver_sum = raw_sum / divisor;
-                        let multiplier = nobs_f64 / solver_sum;
-                        (
-                            Some(*kind),
-                            nobs,
-                            Some(raw_sum),
-                            divisor,
-                            multiplier,
-                            nobs_f64 / normalized_sum,
-                        )
-                    }
-                    WeightKind::Probability => {
-                        return Err(unsupported(
-                            "prepared iid covariance is unavailable for probability weights",
-                        ));
-                    }
-                    WeightKind::Importance => {
-                        return Err(unsupported(
-                            "prepared iid covariance does not support importance weights",
-                        ));
-                    }
+                WeightKind::Importance => {
+                    return Err(unsupported(
+                        "prepared iid covariance does not support importance weights",
+                    ));
                 }
             }
-        };
+        }
+    };
     if effective == 0 {
         return Err(invalid_data(
             "prepared iid effective observation count is zero",
         ));
     }
-    Ok(ReferenceWeightFacts { kind, physical: nobs, effective, raw_weight_sum,
-        divisor: expected_divisor, expected_multiplier, anticipated_multiplier })
+    Ok(ReferenceWeightFacts {
+        kind,
+        physical: nobs,
+        effective,
+        raw_weight_sum,
+        divisor: expected_divisor,
+        expected_multiplier,
+        anticipated_multiplier,
+    })
 }
 
-pub(super) fn build_reference_weight_report_with_outcome<'a, P: PreparedOlsInferenceView + ?Sized>(
+pub(super) fn build_reference_weight_report_with_outcome<
+    'a,
+    P: PreparedOlsInferenceView + ?Sized,
+>(
     prepared: &'a P,
     fit: &CertifiedPreparedOlsFit,
     tolerance: f64,
@@ -1102,14 +1178,24 @@ pub(super) fn build_reference_weight_report_with_outcome<'a, P: PreparedOlsInfer
 )> {
     let nobs = prepared.fit_sample().n_active();
     let bread_scale = fit.bread().weight_scale();
-    let cached = outcome.as_ref().and_then(|result| result.as_ref().ok())
+    let cached = outcome
+        .as_ref()
+        .and_then(|result| result.as_ref().ok())
         .filter(|cache| cache.matches_source(prepared));
     let facts = match cached {
-        Some(cache) if allow_probability || cache.facts.kind != Some(WeightKind::Probability) => cache.facts,
+        Some(cache) if allow_probability || cache.facts.kind != Some(WeightKind::Probability) => {
+            cache.facts
+        }
         _ => scan_reference_weight_facts(prepared, allow_probability)?,
     };
-    let ReferenceWeightFacts { kind, effective, raw_weight_sum, divisor: expected_divisor,
-        expected_multiplier, .. } = facts;
+    let ReferenceWeightFacts {
+        kind,
+        effective,
+        raw_weight_sum,
+        divisor: expected_divisor,
+        expected_multiplier,
+        ..
+    } = facts;
     let values = match &prepared.fit_sample().weights {
         PreparedWeights::None => None,
         PreparedWeights::Provided { values, .. } => Some(values.as_slice()),
@@ -1870,7 +1956,8 @@ fn independent_fit_sums(
     // These certificates use separate source/residual scans. Overlap their
     // work without changing either reduction or the established error order.
     let (tss_result, rss_result) = if outcome.len() >= 16_384
-        && rayon::current_thread_index().is_some() && rayon::current_num_threads() > 1
+        && rayon::current_thread_index().is_some()
+        && rayon::current_num_threads() > 1
     {
         rayon::join(tss, rss)
     } else {
@@ -1910,9 +1997,16 @@ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) ->
     let mut numerator_correction = 0.0_f64;
     // Unit mass sums exactly to N through 2^53; keep the value reduction's
     // scale, compensation and observation order unchanged.
-    let denominator = if weights.kind.is_none() && weights.values.is_none() && (values.len() as u128) <= (1_u128 << 53) {
+    let denominator = if weights.kind.is_none()
+        && weights.values.is_none()
+        && (values.len() as u128) <= (1_u128 << 53)
+    {
         for value in values {
-            compensated_add(*value / value_scale, &mut numerator, &mut numerator_correction)?;
+            compensated_add(
+                *value / value_scale,
+                &mut numerator,
+                &mut numerator_correction,
+            )?;
         }
         values.len() as f64
     } else {
@@ -1938,8 +2032,16 @@ pub(super) fn weighted_mean(values: &[f64], weights: ReferenceWeightView<'_>) ->
 }
 
 pub(super) fn independent_unit_residual_sum(values: &[f64]) -> Result<f64> {
-    weighted_sum_of_squares(values,
-        ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 }, 0.0)
+    weighted_sum_of_squares(
+        values,
+        ReferenceWeightView {
+            values: None,
+            kind: None,
+            divisor: 1.0,
+            multiplier: 1.0,
+        },
+        0.0,
+    )
 }
 
 pub(super) fn weighted_sum_of_squares(
@@ -1957,14 +2059,18 @@ pub(super) fn weighted_sum_of_squares(
     if weights.kind.is_none() && weights.values.is_none() {
         for value in values.iter().copied() {
             if !value.is_finite() {
-                return Err(invalid_data("prepared iid sum-of-squares value is not finite"));
+                return Err(invalid_data(
+                    "prepared iid sum-of-squares value is not finite",
+                ));
             }
             update_scaled_sum_of_squares(value - center, &mut scale, &mut scaled_square_sum)?;
         }
     } else {
         for (row, value) in values.iter().copied().enumerate() {
             if !value.is_finite() {
-                return Err(invalid_data("prepared iid sum-of-squares value is not finite"));
+                return Err(invalid_data(
+                    "prepared iid sum-of-squares value is not finite",
+                ));
             }
             let weighted = weights.value(row)?.sqrt() * (value - center);
             update_scaled_sum_of_squares(weighted, &mut scale, &mut scaled_square_sum)?;
@@ -2270,8 +2376,17 @@ mod tests {
     fn unit_sum_of_squares_preserves_bits_and_errors() {
         for n in [0, 1, 127, 16_387] {
             let ones = vec![1.0; n];
-            let unit = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
-            let explicit = ReferenceWeightView { values: Some(&ones), kind: Some(WeightKind::Frequency), ..unit };
+            let unit = ReferenceWeightView {
+                values: None,
+                kind: None,
+                divisor: 1.0,
+                multiplier: 1.0,
+            };
+            let explicit = ReferenceWeightView {
+                values: Some(&ones),
+                kind: Some(WeightKind::Frequency),
+                ..unit
+            };
             for magnitude in [0.0, 1e-200, 1.0, 1e150, 1e300] {
                 let mut values: Vec<_> = (0..n).map(|r| (r as f64).sin() * magnitude).collect();
                 for center in [-0.0, 0.3 * magnitude, f64::NAN] {
@@ -2281,8 +2396,10 @@ mod tests {
                 }
                 if n > 0 {
                     values[n / 2] = f64::INFINITY;
-                    assert_eq!(weighted_sum_of_squares(&values, unit, 0.0),
-                        weighted_sum_of_squares(&values, explicit, 0.0));
+                    assert_eq!(
+                        weighted_sum_of_squares(&values, unit, 0.0),
+                        weighted_sum_of_squares(&values, explicit, 0.0)
+                    );
                 }
             }
         }
@@ -2292,16 +2409,42 @@ mod tests {
     fn unit_reference_mass_matches_explicit_weights_and_preserves_limits() {
         for n in [0, 1, 127, 16_384, 16_387] {
             let values = vec![1.0; n];
-            let unit = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
-            let explicit = ReferenceWeightView { values: Some(&values), kind: Some(WeightKind::Frequency), ..unit };
-            assert_eq!(reference_weight_sum(unit, n), reference_weight_sum(explicit, n));
+            let unit = ReferenceWeightView {
+                values: None,
+                kind: None,
+                divisor: 1.0,
+                multiplier: 1.0,
+            };
+            let explicit = ReferenceWeightView {
+                values: Some(&values),
+                kind: Some(WeightKind::Frequency),
+                ..unit
+            };
+            assert_eq!(
+                reference_weight_sum(unit, n),
+                reference_weight_sum(explicit, n)
+            );
             if n > 0 {
-                let malformed = ReferenceWeightView { values: Some(&values), ..unit };
-                assert_eq!(reference_weight_sum(malformed, n).unwrap_err(), malformed.value(0).unwrap_err());
+                let malformed = ReferenceWeightView {
+                    values: Some(&values),
+                    ..unit
+                };
+                assert_eq!(
+                    reference_weight_sum(malformed, n).unwrap_err(),
+                    malformed.value(0).unwrap_err()
+                );
             }
         }
-        let unit = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
-        assert_eq!(reference_weight_sum(unit, 1_usize << 53).unwrap(), (1_u64 << 53) as f64);
+        let unit = ReferenceWeightView {
+            values: None,
+            kind: None,
+            divisor: 1.0,
+            multiplier: 1.0,
+        };
+        assert_eq!(
+            reference_weight_sum(unit, 1_usize << 53).unwrap(),
+            (1_u64 << 53) as f64
+        );
         assert!(reference_weight_sum(unit, (1_usize << 53) + 1).is_err());
     }
 
@@ -2310,15 +2453,25 @@ mod tests {
         for n in [16_383, 16_384, 32_769] {
             let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
             let x: Vec<_> = (0..n).map(|r| ((r % 131) as f64 - 60.0) / 7.0).collect();
-            let y: Vec<_> = (0..n).map(|r| 1.7 * x[r] + groups[r] + 0.03 * (r as f64).sin()).collect();
-            let raw = (0..n).map(|r| 0.125 + (r % 17) as f64 / 11.0).collect::<Vec<_>>();
+            let y: Vec<_> = (0..n)
+                .map(|r| 1.7 * x[r] + groups[r] + 0.03 * (r as f64).sin())
+                .collect();
+            let raw = (0..n)
+                .map(|r| 0.125 + (r % 17) as f64 / 11.0)
+                .collect::<Vec<_>>();
             let frequency = (0..n).map(|r| 1 + (r % 7) as u32).collect::<Vec<_>>();
-            for kind in [TestWeights::Unit, TestWeights::Analytic(&raw), TestWeights::Frequency(&frequency)] {
+            for kind in [
+                TestWeights::Unit,
+                TestWeights::Analytic(&raw),
+                TestWeights::Frequency(&frequency),
+            ] {
                 let mut prepared = prepared(&y, &[x.clone()], Some(&groups), true, kind);
                 for threads in [1, 4, 8, 16] {
                     let mut config = PreparedOlsUnadjustedConfig::default();
-                    config.fit.execution.threads = crate::ThreadConfig::from_requested(threads, true).unwrap();
-                    let expected = fit_with_outcome_overlap(&prepared, config, None, false).unwrap();
+                    config.fit.execution.threads =
+                        crate::ThreadConfig::from_requested(threads, true).unwrap();
+                    let expected =
+                        fit_with_outcome_overlap(&prepared, config, None, false).unwrap();
                     let actual = fit_with_outcome_overlap(&prepared, config, None, true).unwrap();
                     assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
                     assert_eq!(expected.weights, actual.weights);
@@ -2333,9 +2486,18 @@ mod tests {
                     assert_eq!(a.bread(), b.bread());
                     assert_eq!(a.execution(), b.execution());
                     assert_eq!(a.residuals().len(), b.residuals().len());
-                    assert!(a.residuals().iter().zip(b.residuals()).all(|(a, b)| a.to_bits() == b.to_bits()));
-                    for (a, b) in [(a.absorption_report(), b.absorption_report()),
-                        (a.residual_absorption_report(), b.residual_absorption_report())] {
+                    assert!(a
+                        .residuals()
+                        .iter()
+                        .zip(b.residuals())
+                        .all(|(a, b)| a.to_bits() == b.to_bits()));
+                    for (a, b) in [
+                        (a.absorption_report(), b.absorption_report()),
+                        (
+                            a.residual_absorption_report(),
+                            b.residual_absorption_report(),
+                        ),
+                    ] {
                         let (mut a, mut b) = (a.clone(), b.clone());
                         for report in [&mut a, &mut b] {
                             report.setup_seconds = 0.0;
@@ -2347,9 +2509,12 @@ mod tests {
                 }
                 prepared.sample.outcome[1] = f64::NAN;
                 let mut config = PreparedOlsUnadjustedConfig::default();
-                config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
-                assert_eq!(fit_with_outcome_overlap(&prepared, config, None, false).unwrap_err(),
-                    fit_with_outcome_overlap(&prepared, config, None, true).unwrap_err());
+                config.fit.execution.threads =
+                    crate::ThreadConfig::from_requested(16, true).unwrap();
+                assert_eq!(
+                    fit_with_outcome_overlap(&prepared, config, None, false).unwrap_err(),
+                    fit_with_outcome_overlap(&prepared, config, None, true).unwrap_err()
+                );
             }
         }
     }
@@ -2362,29 +2527,57 @@ mod tests {
             (0..n).map(|r| ((r / 41) % 37) as f64).collect::<Vec<_>>(),
             (0..n).map(|r| ((r * 13) % 29) as f64).collect::<Vec<_>>(),
         ];
-        let columns = (0..10).map(|c| (0..n)
-            .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect::<Vec<_>>()).collect::<Vec<_>>();
-        let y = (0..n).map(|r| 1.7 * columns[0][r] + groups[0][r] + groups[1][r]
-            + 0.03 * (r as f64).sin()).collect::<Vec<_>>();
-        let raw = (0..n).map(|r| 0.125 + (r % 17) as f64 / 11.0).collect::<Vec<_>>();
+        let columns = (0..10)
+            .map(|c| {
+                (0..n)
+                    .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin())
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let y = (0..n)
+            .map(|r| 1.7 * columns[0][r] + groups[0][r] + groups[1][r] + 0.03 * (r as f64).sin())
+            .collect::<Vec<_>>();
+        let raw = (0..n)
+            .map(|r| 0.125 + (r % 17) as f64 / 11.0)
+            .collect::<Vec<_>>();
         let frequency = (0..n).map(|r| 1 + (r % 7) as u32).collect::<Vec<_>>();
         for effects in [2, 3] {
-            for kind in [TestWeights::Unit, TestWeights::Analytic(&raw), TestWeights::Frequency(&frequency)] {
-                let (mut request, mut input) = prepared_input(&y, &columns, Some(&groups[0]), true, kind);
+            for kind in [
+                TestWeights::Unit,
+                TestWeights::Analytic(&raw),
+                TestWeights::Frequency(&frequency),
+            ] {
+                let (mut request, mut input) =
+                    prepared_input(&y, &columns, Some(&groups[0]), true, kind);
+                // Keep the legacy matrix indices and numerical traversal order explicit.
+                #[allow(clippy::needless_range_loop)]
                 for effect in 1..effects {
                     let source = SourceId::new(request.model.sources.len() as u32 + 1).unwrap();
-                    request.model.sources.push(SourceEntry { id: source, canonical_name: format!("g{effect}") });
-                    request.bindings.push(OlsInputBinding { stata_var_position: request.bindings.len() as u32 + 1,
-                        role: OlsInputRole::NumericSource(source) });
-                    request.absorbed_terms.push(AbsorbedTerm { id: AbsorbTermId::new(effect as u32 + 1).unwrap(),
-                        intercept: true, categorical_sources: vec![source], slope_sources: Vec::new(),
-                        label: format!("g{effect}"), saved_name: String::new() });
-                    input.numeric_sources.push((source, loaded(&groups[effect])));
+                    request.model.sources.push(SourceEntry {
+                        id: source,
+                        canonical_name: format!("g{effect}"),
+                    });
+                    request.bindings.push(OlsInputBinding {
+                        stata_var_position: request.bindings.len() as u32 + 1,
+                        role: OlsInputRole::NumericSource(source),
+                    });
+                    request.absorbed_terms.push(AbsorbedTerm {
+                        id: AbsorbTermId::new(effect as u32 + 1).unwrap(),
+                        intercept: true,
+                        categorical_sources: vec![source],
+                        slope_sources: Vec::new(),
+                        label: format!("g{effect}"),
+                        saved_name: String::new(),
+                    });
+                    input
+                        .numeric_sources
+                        .push((source, loaded(&groups[effect])));
                 }
                 let ordinary = prepare_ols_data(&request, &input).unwrap();
                 let categorical = crate::prepare_categorical_ols_data(&request, &input).unwrap();
                 let mut config = PreparedOlsUnadjustedConfig::default();
-                config.fit.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
+                config.fit.execution.threads =
+                    crate::ThreadConfig::from_requested(8, true).unwrap();
                 let expected = fit_with_outcome_overlap(&ordinary, config, None, false).unwrap();
                 let actual = fit_with_outcome_overlap(&ordinary, config, None, true).unwrap();
                 assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
@@ -2394,8 +2587,11 @@ mod tests {
                 assert_eq!(expected.certificate, actual.certificate);
                 assert_eq!(expected.fit.coefficients(), actual.fit.coefficients());
                 assert_eq!(expected.fit.residuals(), actual.fit.residuals());
-                let expected = fit_categorical_with_outcome_overlap(&categorical, config, None, false).unwrap();
-                let actual = fit_categorical_with_outcome_overlap(&categorical, config, None, true).unwrap();
+                let expected =
+                    fit_categorical_with_outcome_overlap(&categorical, config, None, false)
+                        .unwrap();
+                let actual =
+                    fit_categorical_with_outcome_overlap(&categorical, config, None, true).unwrap();
                 assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
                 assert_eq!(expected.dof, actual.dof);
                 assert_eq!(expected.statistics, actual.statistics);
@@ -2413,38 +2609,79 @@ mod tests {
         for n in [47, 53, 97] {
             let group = (0..n).map(|r| (r % 7) as f64).collect::<Vec<_>>();
             let x = (0..n).map(|r| (r as f64 * 0.7).sin()).collect::<Vec<_>>();
-            let y = (0..n).map(|r| x[r] + group[r] + (r as f64 * 0.3).cos()).collect::<Vec<_>>();
+            let y = (0..n)
+                .map(|r| x[r] + group[r] + (r as f64 * 0.3).cos())
+                .collect::<Vec<_>>();
             let frequency = (0..n).map(|r| 1 + (r % 7) as u32).collect::<Vec<_>>();
             for scale in [1e-100, 0.3, 1.0, 1e100] {
-                let raw = (0..n).map(|r| scale * (0.125 + (r % 17) as f64 / 11.0)).collect::<Vec<_>>();
-                for kind in [TestWeights::Analytic(&raw), TestWeights::Probability(&raw), TestWeights::Frequency(&frequency)] {
+                let raw = (0..n)
+                    .map(|r| scale * (0.125 + (r % 17) as f64 / 11.0))
+                    .collect::<Vec<_>>();
+                for kind in [
+                    TestWeights::Analytic(&raw),
+                    TestWeights::Probability(&raw),
+                    TestWeights::Frequency(&frequency),
+                ] {
                     let prepared = prepared(&y, &[x.clone()], Some(&group), true, kind);
-                    let fit = fit_prepared_ols_coefficients_map(&prepared, PreparedOlsFitConfig::default()).unwrap();
-                    let expected = build_reference_weight_report_view(&prepared, &fit, 5e-10, true).unwrap();
+                    let fit = fit_prepared_ols_coefficients_map(
+                        &prepared,
+                        PreparedOlsFitConfig::default(),
+                    )
+                    .unwrap();
+                    let expected =
+                        build_reference_weight_report_view(&prepared, &fit, 5e-10, true).unwrap();
                     let scan = independent_outcome_scan(&prepared).unwrap();
                     assert!(scan.matches_source(&prepared) && scan.matches_scale(expected.1));
-                    round_trip_differs |= scan.facts.expected_multiplier.to_bits() != scan.facts.anticipated_multiplier.to_bits();
-                    assert_eq!(scan.tss.as_ref().unwrap().to_bits(), independent_outcome_sum(&prepared.sample.outcome, expected.1, true).unwrap().to_bits());
+                    round_trip_differs |= scan.facts.expected_multiplier.to_bits()
+                        != scan.facts.anticipated_multiplier.to_bits();
+                    assert_eq!(
+                        scan.tss.as_ref().unwrap().to_bits(),
+                        independent_outcome_sum(&prepared.sample.outcome, expected.1, true)
+                            .unwrap()
+                            .to_bits()
+                    );
                     let mut cached = Some(Ok(scan));
-                    let actual = build_reference_weight_report_with_outcome(&prepared, &fit, 5e-10, true, &mut cached).unwrap();
+                    let actual = build_reference_weight_report_with_outcome(
+                        &prepared,
+                        &fit,
+                        5e-10,
+                        true,
+                        &mut cached,
+                    )
+                    .unwrap();
                     assert!(cached.is_some());
                     assert_eq!(actual.0, expected.0);
                     assert_eq!(actual.2.to_bits(), expected.2.to_bits());
 
                     let marker = invalid_data("unused speculative statistics must not escape");
                     let mut scan = independent_outcome_scan(&prepared).unwrap();
-                    scan.facts.anticipated_multiplier = f64::from_bits(scan.facts.anticipated_multiplier.to_bits() + 1);
+                    scan.facts.anticipated_multiplier =
+                        f64::from_bits(scan.facts.anticipated_multiplier.to_bits() + 1);
                     scan.tss = Err(marker.clone());
                     scan.reference_sum = Err(marker.clone());
                     let mut cached = Some(Ok(scan));
-                    let actual = build_reference_weight_report_with_outcome(&prepared, &fit, 5e-10, true, &mut cached).unwrap();
+                    let actual = build_reference_weight_report_with_outcome(
+                        &prepared,
+                        &fit,
+                        5e-10,
+                        true,
+                        &mut cached,
+                    )
+                    .unwrap();
                     assert!(cached.is_none());
                     assert_eq!(actual.0, expected.0);
                     assert_eq!(actual.2.to_bits(), expected.2.to_bits());
 
                     let second = super::tests::prepared(&y, &[x.clone()], Some(&group), true, kind);
                     let mut cached = Some(Ok(independent_outcome_scan(&prepared).unwrap()));
-                    let actual = build_reference_weight_report_with_outcome(&second, &fit, 5e-10, true, &mut cached).unwrap();
+                    let actual = build_reference_weight_report_with_outcome(
+                        &second,
+                        &fit,
+                        5e-10,
+                        true,
+                        &mut cached,
+                    )
+                    .unwrap();
                     assert!(cached.is_none());
                     assert_eq!(actual.0, expected.0);
                     assert_eq!(actual.2.to_bits(), expected.2.to_bits());
@@ -2452,11 +2689,24 @@ mod tests {
                     let mut scan = independent_outcome_scan(&prepared).unwrap();
                     scan.reference_sum = Err(marker.clone());
                     scan.tss = Err(invalid_data("TSS must fail after weight validation"));
-                    assert_eq!(build_reference_weight_report_with_outcome(&prepared, &fit, 5e-10, true, &mut Some(Ok(scan))).unwrap_err(), marker);
+                    assert_eq!(
+                        build_reference_weight_report_with_outcome(
+                            &prepared,
+                            &fit,
+                            5e-10,
+                            true,
+                            &mut Some(Ok(scan))
+                        )
+                        .unwrap_err(),
+                        marker
+                    );
                 }
             }
         }
-        assert!(round_trip_differs, "fixture must distinguish raw-sum round trips from the fit scale");
+        assert!(
+            round_trip_differs,
+            "fixture must distinguish raw-sum round trips from the fit scale"
+        );
     }
 
     #[test]
@@ -2469,18 +2719,30 @@ mod tests {
         let frequency = vec![3; n];
         let mut config = PreparedOlsUnadjustedConfig::default();
         config.fit.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
-        for kind in [TestWeights::Analytic(&raw), TestWeights::Frequency(&frequency), TestWeights::Probability(&raw)] {
+        for kind in [
+            TestWeights::Analytic(&raw),
+            TestWeights::Frequency(&frequency),
+            TestWeights::Probability(&raw),
+        ] {
             for invalid in [0.0, -1.0, 0.5, f64::NAN, f64::INFINITY] {
                 let mut prepared = prepared(&y, &[x.clone()], Some(&groups), true, kind);
-                let PreparedWeights::Provided { values, .. } = &mut prepared.sample.weights else { unreachable!() };
+                let PreparedWeights::Provided { values, .. } = &mut prepared.sample.weights else {
+                    unreachable!()
+                };
                 values[3] = invalid;
                 prepared.sample.outcome[5] = f64::NAN;
-                let expected = fit_with_outcome_overlap(&prepared, config, None, false).unwrap_err();
+                let expected =
+                    fit_with_outcome_overlap(&prepared, config, None, false).unwrap_err();
                 let actual = fit_with_outcome_overlap(&prepared, config, None, true).unwrap_err();
                 assert_eq!(actual, expected);
                 let fit_error = invalid_data("fit must precede speculative source errors");
-                let result = fit_with_independent_outcome_and_check(&prepared, config.fit,
-                    || Err::<(), _>(fit_error.clone()), || Err::<(), _>(invalid_data("deferred DoF error")), true);
+                let result = fit_with_independent_outcome_and_check(
+                    &prepared,
+                    config.fit,
+                    || Err::<(), _>(fit_error.clone()),
+                    || Err::<(), _>(invalid_data("deferred DoF error")),
+                    true,
+                );
                 assert_eq!(result.unwrap_err(), fit_error);
             }
         }
@@ -2498,25 +2760,44 @@ mod tests {
         let fit_error = invalid_data("fit must fail first");
         let check_error = invalid_data("deferred validation failure");
         let error = fit_with_independent_outcome_and_check(
-            &prepared, config, || Err::<(), _>(fit_error.clone()),
-            || Err::<(), _>(check_error.clone()), true,
-        ).unwrap_err();
+            &prepared,
+            config,
+            || Err::<(), _>(fit_error.clone()),
+            || Err::<(), _>(check_error.clone()),
+            true,
+        )
+        .unwrap_err();
         assert_eq!(error, fit_error);
         let (_, tss, checked) = fit_with_independent_outcome_and_check(
-            &prepared, config, || Ok(()), || Err::<(), _>(check_error.clone()), true,
-        ).unwrap();
+            &prepared,
+            config,
+            || Ok(()),
+            || Err::<(), _>(check_error.clone()),
+            true,
+        )
+        .unwrap();
         assert!(tss.unwrap().is_ok());
         assert_eq!(checked.unwrap().unwrap_err(), check_error);
         config.execution.threads = crate::ThreadConfig::from_requested(4, true).unwrap();
         let (_, tss, checked) = fit_with_independent_outcome_and_check(
-            &prepared, config, || Ok(()), || panic!("sequential fit ran the speculative check"), true,
-        ).unwrap();
+            &prepared,
+            config,
+            || Ok(()),
+            || panic!("sequential fit ran the speculative check"),
+            true,
+        )
+        .unwrap();
         assert!(tss.is_none() && checked.is_none());
         let no_effect = super::tests::prepared(&y, &[vec![0.0; n]], None, true, TestWeights::Unit);
         config.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
         let (_, tss, checked) = fit_with_independent_outcome_and_check(
-            &no_effect, config, || Ok(()), || panic!("no-FE fit ran the speculative check"), true,
-        ).unwrap();
+            &no_effect,
+            config,
+            || Ok(()),
+            || panic!("no-FE fit ran the speculative check"),
+            true,
+        )
+        .unwrap();
         assert!(tss.is_none() && checked.is_none());
     }
 
@@ -2524,10 +2805,17 @@ mod tests {
     fn wide_outcome_overlap_preserves_numeric_and_categorical_inference() {
         let n = 16_385;
         let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
-        let mut columns: Vec<Vec<f64>> = (0..50).map(|c| (0..n)
-            .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin()).collect()).collect();
+        let mut columns: Vec<Vec<f64>> = (0..50)
+            .map(|c| {
+                (0..n)
+                    .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin())
+                    .collect()
+            })
+            .collect();
         columns[49] = columns[0].clone();
-        let y: Vec<_> = (0..n).map(|r| 1.7 * columns[0][r] + groups[r] + 0.03 * (r as f64).sin()).collect();
+        let y: Vec<_> = (0..n)
+            .map(|r| 1.7 * columns[0][r] + groups[r] + 0.03 * (r as f64).sin())
+            .collect();
         let mut config = PreparedOlsUnadjustedConfig::default();
         config.fit.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
         let data = prepared(&y, &columns, Some(&groups), true, TestWeights::Unit);
@@ -2541,10 +2829,19 @@ mod tests {
         assert_eq!(expected.certificate, actual.certificate);
         assert_eq!(expected.fit.coefficients(), actual.fit.coefficients());
         assert_eq!(expected.fit.bread(), actual.fit.bread());
-        assert_eq!(expected.fit.score_certificate(), actual.fit.score_certificate());
-        assert!(expected.fit.residuals().iter().zip(actual.fit.residuals()).all(|(a,b)| a.to_bits()==b.to_bits()));
+        assert_eq!(
+            expected.fit.score_certificate(),
+            actual.fit.score_certificate()
+        );
+        assert!(expected
+            .fit
+            .residuals()
+            .iter()
+            .zip(actual.fit.residuals())
+            .all(|(a, b)| a.to_bits() == b.to_bits()));
 
-        let (mut request, input) = prepared_input(&y, &columns, Some(&groups), true, TestWeights::Unit);
+        let (mut request, input) =
+            prepared_input(&y, &columns, Some(&groups), true, TestWeights::Unit);
         request.absorbed_terms[0].saved_name = "saved_g".to_owned();
         let data = crate::prepare_categorical_ols_data(&request, &input).unwrap();
         config.fit.allow_final_fe_recovery = true;
@@ -2559,8 +2856,16 @@ mod tests {
         assert_eq!(expected.certificate, actual.certificate);
         assert_eq!(expected.fit.coefficients(), actual.fit.coefficients());
         assert_eq!(expected.fit.bread(), actual.fit.bread());
-        assert_eq!(expected.fit.score_certificate(), actual.fit.score_certificate());
-        assert!(expected.fit.residuals().iter().zip(actual.fit.residuals()).all(|(a,b)| a.to_bits()==b.to_bits()));
+        assert_eq!(
+            expected.fit.score_certificate(),
+            actual.fit.score_certificate()
+        );
+        assert!(expected
+            .fit
+            .residuals()
+            .iter()
+            .zip(actual.fit.residuals())
+            .all(|(a, b)| a.to_bits() == b.to_bits()));
     }
 
     #[test]
@@ -2568,19 +2873,27 @@ mod tests {
         for n in [16_383, 16_385] {
             let groups: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
             let x: Vec<_> = (0..n).map(|r| ((r % 131) as f64 - 60.0) / 7.0).collect();
-            let y: Vec<_> = (0..n).map(|r| 1.7 * x[r] + groups[r] + 0.03 * (r as f64).sin()).collect();
+            let y: Vec<_> = (0..n)
+                .map(|r| 1.7 * x[r] + groups[r] + 0.03 * (r as f64).sin())
+                .collect();
             let weights: Vec<_> = (0..n).map(|r| 1.0 + (r % 5) as f64).collect();
             for weight in [TestWeights::Unit, TestWeights::Analytic(&weights)] {
-                let (mut request, input) = prepared_input(&y, &[x.clone(), x.clone()], Some(&groups), true, weight);
+                let (mut request, input) =
+                    prepared_input(&y, &[x.clone(), x.clone()], Some(&groups), true, weight);
                 request.absorbed_terms[0].saved_name = "saved_g".to_owned();
                 let prepared = crate::prepare_categorical_ols_data(&request, &input).unwrap();
                 for threads in [1, 8, 16] {
                     let mut config = PreparedOlsUnadjustedConfig::default();
                     config.fit.allow_final_fe_recovery = true;
                     config.fit.absorb.retain_coefficients = true;
-                    config.fit.execution.threads = crate::ThreadConfig::from_requested(threads, true).unwrap();
-                    let expected = fit_categorical_with_outcome_overlap(&prepared, config, None, false).unwrap();
-                    let actual = fit_categorical_with_outcome_overlap(&prepared, config, None, true).unwrap();
+                    config.fit.execution.threads =
+                        crate::ThreadConfig::from_requested(threads, true).unwrap();
+                    let expected =
+                        fit_categorical_with_outcome_overlap(&prepared, config, None, false)
+                            .unwrap();
+                    let actual =
+                        fit_categorical_with_outcome_overlap(&prepared, config, None, true)
+                            .unwrap();
                     assert_eq!(expected.absorbed_dof, actual.absorbed_dof);
                     assert_eq!(expected.weights, actual.weights);
                     assert_eq!(expected.dof, actual.dof);
@@ -2594,11 +2907,17 @@ mod tests {
                     assert_eq!(a.bread(), b.bread());
                     assert_eq!(a.execution(), b.execution());
                     assert_eq!(a.residuals().len(), b.residuals().len());
-                    assert!(a.residuals().iter().zip(b.residuals()).all(|(a, b)| a.to_bits() == b.to_bits()));
+                    assert!(a
+                        .residuals()
+                        .iter()
+                        .zip(b.residuals())
+                        .all(|(a, b)| a.to_bits() == b.to_bits()));
                     config.fit.score_tolerance = f64::NAN;
                     assert_eq!(
-                        fit_categorical_with_outcome_overlap(&prepared, config, None, false).unwrap_err(),
-                        fit_categorical_with_outcome_overlap(&prepared, config, None, true).unwrap_err(),
+                        fit_categorical_with_outcome_overlap(&prepared, config, None, false)
+                            .unwrap_err(),
+                        fit_categorical_with_outcome_overlap(&prepared, config, None, true)
+                            .unwrap_err(),
                     );
                 }
             }
@@ -2609,12 +2928,29 @@ mod tests {
     fn unit_mean_shortcut_matches_explicit_frequency_unit_mass_bits() {
         for n in [0, 1, 127, 16384, 16387] {
             let ones = vec![1.0; n];
-            let unit = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
-            let frequency = ReferenceWeightView { values: Some(&ones), kind: Some(WeightKind::Frequency), divisor: 1.0, multiplier: 1.0 };
+            let unit = ReferenceWeightView {
+                values: None,
+                kind: None,
+                divisor: 1.0,
+                multiplier: 1.0,
+            };
+            let frequency = ReferenceWeightView {
+                values: Some(&ones),
+                kind: Some(WeightKind::Frequency),
+                divisor: 1.0,
+                multiplier: 1.0,
+            };
             for scale in [1e-200, 1.0, 1e200] {
                 for offset in [0.0, 1e6] {
-                    let mut values: Vec<_> = (0..n).map(|r| if r == 0 { -0.0 }
-                        else { (offset + (r % 101) as f64 - 50.0) * scale }).collect();
+                    let mut values: Vec<_> = (0..n)
+                        .map(|r| {
+                            if r == 0 {
+                                -0.0
+                            } else {
+                                (offset + (r % 101) as f64 - 50.0) * scale
+                            }
+                        })
+                        .collect();
                     let compare = |values: &[f64]| {
                         let a = weighted_mean(values, unit).map(f64::to_bits);
                         let b = weighted_mean(values, frequency).map(f64::to_bits);
@@ -2638,22 +2974,47 @@ mod tests {
             let mut outcome: Vec<_> = (0..n).map(|i| ((i % 97) as f64 - 43.0) * 1e90).collect();
             let mut residuals: Vec<_> = (0..n).map(|i| ((i % 41) as f64 - 17.0) * 1e-90).collect();
             let values: Vec<_> = (0..n).map(|i| 1.0 + (i % 7) as f64).collect();
-            for kind in [None, Some(WeightKind::Frequency), Some(WeightKind::Analytic)] {
-                let weights = ReferenceWeightView { values: kind.map(|_| values.as_slice()), kind, divisor: 4.0, multiplier: 1.5 };
+            for kind in [
+                None,
+                Some(WeightKind::Frequency),
+                Some(WeightKind::Analytic),
+            ] {
+                let weights = ReferenceWeightView {
+                    values: kind.map(|_| values.as_slice()),
+                    kind,
+                    divisor: 4.0,
+                    multiplier: 1.5,
+                };
                 for intercept in [false, true] {
-                    let expected = independent_fit_sums(&outcome, &residuals, weights, intercept).unwrap();
-                    let actual = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(4, true).unwrap())
-                        .install(|| independent_fit_sums(&outcome, &residuals, weights, intercept)).unwrap().unwrap();
+                    let expected =
+                        independent_fit_sums(&outcome, &residuals, weights, intercept).unwrap();
+                    let actual = crate::ThreadTeam::new(
+                        crate::ThreadConfig::from_requested(4, true).unwrap(),
+                    )
+                    .install(|| independent_fit_sums(&outcome, &residuals, weights, intercept))
+                    .unwrap()
+                    .unwrap();
                     assert_eq!(expected.0.to_bits(), actual.0.to_bits());
                     assert_eq!(expected.1.to_bits(), actual.1.to_bits());
                 }
             }
             outcome[1] = f64::NAN;
             residuals[0] = f64::INFINITY;
-            let weights = ReferenceWeightView { values: None, kind: None, divisor: 1.0, multiplier: 1.0 };
-            let error = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(4, true).unwrap())
-                .install(|| independent_fit_sums(&outcome, &residuals, weights, true)).unwrap().unwrap_err();
-            assert_eq!(error.message, "prepared iid weighted-mean value is not finite");
+            let weights = ReferenceWeightView {
+                values: None,
+                kind: None,
+                divisor: 1.0,
+                multiplier: 1.0,
+            };
+            let error =
+                crate::ThreadTeam::new(crate::ThreadConfig::from_requested(4, true).unwrap())
+                    .install(|| independent_fit_sums(&outcome, &residuals, weights, true))
+                    .unwrap()
+                    .unwrap_err();
+            assert_eq!(
+                error.message,
+                "prepared iid weighted-mean value is not finite"
+            );
         }
     }
 
@@ -3411,7 +3772,13 @@ mod tests {
         include_intercept: bool,
         weights: TestWeights<'_>,
     ) -> PreparedOlsData {
-        let (request, input) = prepared_input(outcome, regressors, fixed_effect, include_intercept, weights);
+        let (request, input) = prepared_input(
+            outcome,
+            regressors,
+            fixed_effect,
+            include_intercept,
+            weights,
+        );
         prepare_ols_data(&request, &input).expect("prepared iid test case")
     }
 

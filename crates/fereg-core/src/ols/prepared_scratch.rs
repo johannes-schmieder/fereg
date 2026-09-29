@@ -6,11 +6,11 @@
 //! create row-major storage so absorbed blocks can be patched and compacted in
 //! place without owning a second observation-by-parameter scratch file.
 
+use rayon::prelude::*;
 use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
-use rayon::prelude::*;
 
 use crate::error::{ErrorCode, FeregError, Result};
 
@@ -995,14 +995,34 @@ mod tests {
             let mut scratch = PreparedOlsScratch::create_row_major(rows, 3).unwrap();
             path = scratch.path.clone();
             let capacity = scratch.io_buffer_capacity();
-            scratch.rewrite_row_major_with(|i, j| Ok((i * 3 + j) as f64)).unwrap();
+            scratch
+                .rewrite_row_major_with(|i, j| Ok((i * 3 + j) as f64))
+                .unwrap();
             assert_eq!(scratch.encoded_tile_reads, 0);
-            assert_eq!(scratch.encoded_tile_writes, rows.div_ceil(scratch.row_major_tile_rows().unwrap()) as u64);
+            assert_eq!(
+                scratch.encoded_tile_writes,
+                rows.div_ceil(scratch.row_major_tile_rows().unwrap()) as u64
+            );
             assert_eq!(scratch.io_buffer_capacity(), capacity);
             let mut row = [0.; 3];
-            scratch.read_linear_shared((rows - 1) * 3, &mut row).unwrap();
-            assert_eq!(row, [((rows - 1) * 3) as f64, ((rows - 1) * 3 + 1) as f64, ((rows - 1) * 3 + 2) as f64]);
-            assert!(scratch.rewrite_row_major_with(|i, _| if i == rows - 1 { Err(invalid("injected callback refusal")) } else { Ok(0.) }).is_err());
+            scratch
+                .read_linear_shared((rows - 1) * 3, &mut row)
+                .unwrap();
+            assert_eq!(
+                row,
+                [
+                    ((rows - 1) * 3) as f64,
+                    ((rows - 1) * 3 + 1) as f64,
+                    ((rows - 1) * 3 + 2) as f64
+                ]
+            );
+            assert!(scratch
+                .rewrite_row_major_with(|i, _| if i == rows - 1 {
+                    Err(invalid("injected callback refusal"))
+                } else {
+                    Ok(0.)
+                })
+                .is_err());
             assert!(scratch.poisoned);
             assert!(scratch.read_linear_shared(0, &mut row).is_err());
             assert!(scratch.rewrite_row_major_with(|_, _| Ok(1.)).is_err());

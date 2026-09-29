@@ -5,10 +5,11 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::sandwich::{
-    bread_meat_bread, prepare_cluster_score_batch, reduce_qualified_cluster_subset, reduce_qualified_clustered_score_meats,
-    QualifiedClusterCertificateRoute, QualifiedClusterRoutePolicy, QualifiedClusterScoreBatch,
-    QualifiedClusterSubsetMeatProvider, QualifiedClusterSubsetMeats, SandwichCorrectionPolicy,
-    SandwichProductMode, SandwichScoreMultiplier, SandwichScorePair,
+    bread_meat_bread, prepare_cluster_score_batch, reduce_qualified_cluster_subset,
+    reduce_qualified_clustered_score_meats, QualifiedClusterCertificateRoute,
+    QualifiedClusterRoutePolicy, QualifiedClusterScoreBatch, QualifiedClusterSubsetMeatProvider,
+    QualifiedClusterSubsetMeats, SandwichCorrectionPolicy, SandwichProductMode,
+    SandwichScoreMultiplier, SandwichScorePair,
 };
 use crate::topology_dof::CategoricalTopologyDofReport;
 #[cfg(test)]
@@ -25,9 +26,9 @@ use super::prepared_scores::{
 use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
     build_reference_weight_report_with_outcome, build_residual_dof_view, build_statistics,
-    checked_square, DeferredOutcome,
-    compensated_add, exact_integer_as_f64, relative_difference, validate_sum_of_squares,
-    fit_with_independent_outcome, independent_outcome_sum, independent_residual_sum, ReferenceWeightView,
+    checked_square, compensated_add, exact_integer_as_f64, fit_with_independent_outcome,
+    independent_outcome_sum, independent_residual_sum, relative_difference,
+    validate_sum_of_squares, DeferredOutcome, ReferenceWeightView,
 };
 use super::{
     CertifiedPreparedOlsFit, PreparedCategoricalOlsClusteredData, PreparedOlsAbsorbedDofPolicy,
@@ -210,9 +211,12 @@ impl CertifiedPreparedOlsClustered {
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
         use crate::memory::vec_capacity_bytes as bytes;
-        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
-            + bytes(&self.cluster_counts) + bytes(&self.subsets)
-            + bytes(&self.covariance.raw_values) + bytes(&self.covariance.values)
+        self.fit.owned_buffer_bytes()
+            + self.absorbed_dof.owned_buffer_bytes()
+            + bytes(&self.cluster_counts)
+            + bytes(&self.subsets)
+            + bytes(&self.covariance.raw_values)
+            + bytes(&self.covariance.values)
             + bytes(&self.covariance.standard_errors)
     }
 
@@ -287,9 +291,12 @@ impl CertifiedPreparedCategoricalOlsClustered {
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
         use crate::memory::vec_capacity_bytes as bytes;
-        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
-            + bytes(&self.cluster_counts) + bytes(&self.subsets)
-            + bytes(&self.covariance.raw_values) + bytes(&self.covariance.values)
+        self.fit.owned_buffer_bytes()
+            + self.absorbed_dof.owned_buffer_bytes()
+            + bytes(&self.cluster_counts)
+            + bytes(&self.subsets)
+            + bytes(&self.covariance.raw_values)
+            + bytes(&self.covariance.values)
             + bytes(&self.covariance.standard_errors)
     }
 
@@ -632,8 +639,14 @@ fn fit_clustered_view_with_reservation<
 {
     validate_config(prepared, config)?;
     let ols = prepared.clustered_ols();
-    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(ols, config.fit, ||
-        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(ols, config.fit, rows), true)?;
+    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(
+        ols,
+        config.fit,
+        || {
+            super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(ols, config.fit, rows)
+        },
+        true,
+    )?;
     compose_clustered_view(
         prepared,
         fit,
@@ -653,8 +666,15 @@ fn compose<R: PreparedInferenceReservation>(
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
 ) -> Result<CertifiedPreparedOlsClustered> {
-    let components =
-        compose_clustered_view(prepared, fit, config, reservation, perturbations, None, None)?;
+    let components = compose_clustered_view(
+        prepared,
+        fit,
+        config,
+        reservation,
+        perturbations,
+        None,
+        None,
+    )?;
     Ok(CertifiedPreparedOlsClustered {
         fit: components.fit,
         absorbed_dof: components.absorbed_dof,
@@ -690,8 +710,13 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     let absorbed_summary =
         ols.inference_clustered_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
 
-    let (weights, weight_view, weight_error) =
-        build_reference_weight_report_with_outcome(ols, &fit, config.certificate_tolerance, true, &mut outcome_tss)?;
+    let (weights, weight_view, weight_error) = build_reference_weight_report_with_outcome(
+        ols,
+        &fit,
+        config.certificate_tolerance,
+        true,
+        &mut outcome_tss,
+    )?;
     let base_dof = build_residual_dof_view(ols, &fit, absorbed_summary, weights)?;
     let expected_dof = build_clustered_dof(prepared, weights, base_dof, absorbed_summary)?;
     let mut dof = expected_dof;
@@ -709,7 +734,11 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
 
     let tss = match outcome_tss {
         Some(tss) => tss?.tss?,
-        None => independent_outcome_sum(&ols.fit_sample().outcome, weight_view, dof.has_structural_intercept)?,
+        None => independent_outcome_sum(
+            &ols.fit_sample().outcome,
+            weight_view,
+            dof.has_structural_intercept,
+        )?,
     };
     let within_tss = if ols.inference_has_explicit_absorbed_effects() {
         fit.initial_absorbed_outcome_sum_of_squares()
@@ -3444,8 +3473,8 @@ fn allocation(message: impl Into<String>) -> FeregError {
 mod tests {
     use super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit;
     use super::*;
-    use crate::ols::prepare_ols_clustered_data;
     use crate::data::WeightKind;
+    use crate::ols::prepare_ols_clustered_data;
 
     struct CountingReservation {
         calls: usize,
@@ -3509,9 +3538,12 @@ mod tests {
         let (mut request, mut loaded) = super::super::prepared_clusters::tests::fixture();
         request.ols.include_intercept = true;
         request.ols.absorbed_terms = vec![crate::metadata::AbsorbedTerm {
-            id: crate::metadata::AbsorbTermId::new(1).unwrap(), intercept: true,
-            categorical_sources: vec![request.ols.model.sources[1].id], slope_sources: Vec::new(),
-            label: "a".to_owned(), saved_name: String::new(),
+            id: crate::metadata::AbsorbTermId::new(1).unwrap(),
+            intercept: true,
+            categorical_sources: vec![request.ols.model.sources[1].id],
+            slope_sources: Vec::new(),
+            label: "a".to_owned(),
+            saved_name: String::new(),
         }];
         loaded.candidate = loaded.candidate.repeat(2049);
         loaded.outcome.values = loaded.outcome.values.repeat(2049);
@@ -3521,33 +3553,70 @@ mod tests {
             column.missing = column.missing.repeat(2049);
         }
         let n = loaded.candidate.len();
-        for kind in [None, Some(WeightKind::Analytic), Some(WeightKind::Probability), Some(WeightKind::Frequency)] {
+        for kind in [
+            None,
+            Some(WeightKind::Analytic),
+            Some(WeightKind::Probability),
+            Some(WeightKind::Frequency),
+        ] {
             let (mut request, mut loaded) = (request.clone(), loaded.clone());
             if let Some(kind) = kind {
                 let column = super::super::LoadedNumericColumn {
-                    values: (0..n).map(|r| if kind == WeightKind::Frequency { (1 + r % 7) as f64 }
-                        else { 0.125 + (r % 17) as f64 / 11.0 }).collect(),
+                    values: (0..n)
+                        .map(|r| {
+                            if kind == WeightKind::Frequency {
+                                (1 + r % 7) as f64
+                            } else {
+                                0.125 + (r % 17) as f64 / 11.0
+                            }
+                        })
+                        .collect(),
                     missing: vec![false; n],
                 };
                 let role = match kind {
-                    WeightKind::Analytic => { loaded.analytic_weight = Some(column); super::super::OlsInputRole::AnalyticWeight },
-                    WeightKind::Probability => { loaded.probability_weight = Some(column); super::super::OlsInputRole::ProbabilityWeight },
-                    WeightKind::Frequency => { loaded.frequency_weight = Some(column); super::super::OlsInputRole::FrequencyWeight },
+                    WeightKind::Analytic => {
+                        loaded.analytic_weight = Some(column);
+                        super::super::OlsInputRole::AnalyticWeight
+                    }
+                    WeightKind::Probability => {
+                        loaded.probability_weight = Some(column);
+                        super::super::OlsInputRole::ProbabilityWeight
+                    }
+                    WeightKind::Frequency => {
+                        loaded.frequency_weight = Some(column);
+                        super::super::OlsInputRole::FrequencyWeight
+                    }
                     _ => unreachable!(),
                 };
-                request.ols.bindings.push(super::super::OlsInputBinding { stata_var_position: request.ols.bindings.len() as u32 + 1, role });
+                request.ols.bindings.push(super::super::OlsInputBinding {
+                    stata_var_position: request.ols.bindings.len() as u32 + 1,
+                    role,
+                });
             }
             let prepared = prepare_ols_clustered_data(&request, &loaded).unwrap();
             let mut config = PreparedOlsClusteredConfig::default();
             config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
             let actual = fit_prepared_ols_clustered_map(&prepared, config).unwrap();
-            let (fit, scratch) = super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference(
-                prepared.ols(), config.fit,
-            ).unwrap();
-            let expected = ThreadTeam::new(config.fit.execution.threads).install(|| compose_clustered_view(
-                &prepared, fit, config, &mut SystemPreparedInferenceReservation,
-                ClusteredPerturbations::default(), scratch, None,
-            )).unwrap().unwrap();
+            let (fit, scratch) =
+                super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference(
+                    prepared.ols(),
+                    config.fit,
+                )
+                .unwrap();
+            let expected = ThreadTeam::new(config.fit.execution.threads)
+                .install(|| {
+                    compose_clustered_view(
+                        &prepared,
+                        fit,
+                        config,
+                        &mut SystemPreparedInferenceReservation,
+                        ClusteredPerturbations::default(),
+                        scratch,
+                        None,
+                    )
+                })
+                .unwrap()
+                .unwrap();
             assert_eq!(actual.statistics, expected.statistics);
             assert_eq!(actual.covariance, expected.covariance);
             assert_eq!(actual.certificate, expected.certificate);

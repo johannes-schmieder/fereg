@@ -143,29 +143,47 @@ pub fn poisson_null_objective(
     let (mean, log_mean) = poisson_null_mean(outcome, prior_weights)?;
     let mut likelihood = CompensatedSum::default();
     for row in 0..outcome.len() {
-        likelihood.add(null_likelihood_row(outcome[row], prior_weights[row], mean, log_mean,
-            log_gamma(outcome[row] + 1.0), row)?);
+        likelihood.add(null_likelihood_row(
+            outcome[row],
+            prior_weights[row],
+            mean,
+            log_mean,
+            log_gamma(outcome[row] + 1.0),
+            row,
+        )?);
     }
     finish_null_objective(mean, likelihood)
 }
 
 #[cfg(test)]
 pub(super) fn replay_final_objectives(
-    outcome: &[f64], mean: &[f64], prior_weights: &[f64],
+    outcome: &[f64],
+    mean: &[f64],
+    prior_weights: &[f64],
 ) -> Result<(PoissonObjective, PoissonNullObjective)> {
-    replay_final_objectives_with_threads(outcome, mean, prior_weights,
-        ThreadConfig::from_requested(1, true)?, 0)
+    replay_final_objectives_with_threads(
+        outcome,
+        mean,
+        prior_weights,
+        ThreadConfig::from_requested(1, true)?,
+        0,
+    )
 }
 
 // Both published likelihoods are replayed from original outcomes and weights.
 // Fresh immutable terms are shared within a row, never borrowed from IRLS state.
 pub(super) fn replay_final_objectives_with_threads(
-    outcome: &[f64], mean: &[f64], prior_weights: &[f64],
-    threads: ThreadConfig, workspace_bytes: u128,
+    outcome: &[f64],
+    mean: &[f64],
+    prior_weights: &[f64],
+    threads: ThreadConfig,
+    workspace_bytes: u128,
 ) -> Result<(PoissonObjective, PoissonNullObjective)> {
     if outcome.len() != mean.len() || outcome.len() != prior_weights.len() {
-        return Err(FeregError::new(ErrorCode::InvalidArgument,
-            "Poisson objective inputs have inconsistent lengths"));
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "Poisson objective inputs have inconsistent lengths",
+        ));
     }
     let (null_mean, null_log_mean) = poisson_null_mean(outcome, prior_weights)?;
     let mut deviance = CompensatedSum::default();
@@ -174,9 +192,20 @@ pub(super) fn replay_final_objectives_with_threads(
     let row_values = |row: usize| -> Result<[f64; 3]> {
         let y = outcome[row];
         let terms = [if y > 0.0 { y.ln() } else { 0.0 }, log_gamma(y + 1.0)];
-        let values = objective_row_values(y, mean[row], prior_weights[row], None, Some(terms), row)?;
-        Ok([values[0], values[1], null_likelihood_row(y, prior_weights[row], null_mean, null_log_mean,
-            terms[1], row)?])
+        let values =
+            objective_row_values(y, mean[row], prior_weights[row], None, Some(terms), row)?;
+        Ok([
+            values[0],
+            values[1],
+            null_likelihood_row(
+                y,
+                prior_weights[row],
+                null_mean,
+                null_log_mean,
+                terms[1],
+                row,
+            )?,
+        ])
     };
     let rows = final_replay_tile_rows(outcome.len(), threads.resolved(), workspace_bytes);
     if rows == 0 {
@@ -191,18 +220,30 @@ pub(super) fn replay_final_objectives_with_threads(
         // scratch. Reuse that admitted phase allowance, never IRLS terms.
         let mut tile = fallible_output(rows, "unable to reserve fresh Poisson replay tile")?;
         if tile.capacity() as u128 * std::mem::size_of::<[f64; 3]>() as u128 > workspace_bytes {
-            return Err(FeregError::new(ErrorCode::Allocation,
-                "fresh Poisson replay capacity exceeds publication allowance"));
+            return Err(FeregError::new(
+                ErrorCode::Allocation,
+                "fresh Poisson replay capacity exceeds publication allowance",
+            ));
         }
         tile.resize(rows, [0.; 3]);
         let team = ThreadTeam::new(threads).acquire()?;
         for first in (0..outcome.len()).step_by(rows) {
             let count = rows.min(outcome.len() - first);
             let buffer = &mut tile[..count];
-            let failure = team.install(|| buffer.par_iter_mut().enumerate().with_min_len(256)
-                .map(|(i, output)| -> Result<()> { *output = row_values(first + i)?; Ok(()) })
-                .find_first(Result::is_err));
-            if let Some(result) = failure { result?; }
+            let failure = team.install(|| {
+                buffer
+                    .par_iter_mut()
+                    .enumerate()
+                    .with_min_len(256)
+                    .map(|(i, output)| -> Result<()> {
+                        *output = row_values(first + i)?;
+                        Ok(())
+                    })
+                    .find_first(Result::is_err)
+            });
+            if let Some(result) = failure {
+                result?;
+            }
             // All three compensated chains retain their scalar row order.
             for values in buffer {
                 deviance.add(values[0]);
@@ -211,20 +252,29 @@ pub(super) fn replay_final_objectives_with_threads(
             }
         }
     }
-    Ok((finish_objective(deviance, likelihood)?, finish_null_objective(null_mean, null_likelihood)?))
+    Ok((
+        finish_objective(deviance, likelihood)?,
+        finish_null_objective(null_mean, null_likelihood)?,
+    ))
 }
 
 fn final_replay_tile_rows(rows: usize, threads: usize, workspace_bytes: u128) -> usize {
     let affordable = (workspace_bytes / std::mem::size_of::<[f64; 3]>() as u128)
         .min(usize::MAX as u128) as usize;
     let tile = objective_tile_rows(rows, threads).min(affordable);
-    if tile < FAMILY_ROWS_PER_WORKER { 0 } else { tile }
+    if tile < FAMILY_ROWS_PER_WORKER {
+        0
+    } else {
+        tile
+    }
 }
 
 fn poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64)> {
     if outcome.is_empty() || outcome.len() != prior_weights.len() {
-        return Err(FeregError::new(ErrorCode::InvalidArgument,
-            "Poisson null-likelihood inputs are empty or misaligned"));
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "Poisson null-likelihood inputs are empty or misaligned",
+        ));
     }
     let mut maximum_weight = 0.0_f64;
     let mut maximum_outcome = 0.0_f64;
@@ -232,15 +282,19 @@ fn poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64
         let y = outcome[row];
         let weight = prior_weights[row];
         if !y.is_finite() || y < 0.0 || !weight.is_finite() || weight <= 0.0 {
-            return Err(FeregError::new(ErrorCode::InvalidData,
-                format!("invalid Poisson null-likelihood input at observation {row}")));
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                format!("invalid Poisson null-likelihood input at observation {row}"),
+            ));
         }
         maximum_weight = maximum_weight.max(weight);
         maximum_outcome = maximum_outcome.max(y);
     }
     if maximum_outcome == 0.0 {
-        return Err(FeregError::new(ErrorCode::InsufficientObservations,
-            "Poisson null model has no positive weighted outcome"));
+        return Err(FeregError::new(
+            ErrorCode::InsufficientObservations,
+            "Poisson null model has no positive weighted outcome",
+        ));
     }
     if let Some(mean) = scaled_null_mean(outcome, prior_weights, maximum_weight, maximum_outcome) {
         return Ok((mean, mean.ln()));
@@ -250,18 +304,26 @@ fn poisson_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, f64
 
 // Separate scaling avoids q*y overflow. Refuse subnormal intermediate products:
 // their lost digits can matter again after restoring the outcome scale.
-fn scaled_null_mean(outcome: &[f64], prior_weights: &[f64], maximum_weight: f64,
-    maximum_outcome: f64) -> Option<f64> {
+fn scaled_null_mean(
+    outcome: &[f64],
+    prior_weights: &[f64],
+    maximum_weight: f64,
+    maximum_outcome: f64,
+) -> Option<f64> {
     let mut weights = CompensatedSum::default();
     let mut outcomes = CompensatedSum::default();
     for row in 0..outcome.len() {
         let weight = prior_weights[row] / maximum_weight;
-        if !weight.is_normal() { return None; }
+        if !weight.is_normal() {
+            return None;
+        }
         weights.add(weight);
         if outcome[row] > 0.0 {
             let y = outcome[row] / maximum_outcome;
             let product = weight * y;
-            if !y.is_normal() || !product.is_normal() { return None; }
+            if !y.is_normal() || !product.is_normal() {
+                return None;
+            }
             outcomes.add(product);
         }
     }
@@ -310,12 +372,19 @@ fn log_scaled_null_mean(outcome: &[f64], prior_weights: &[f64]) -> Result<(f64, 
 }
 
 #[inline]
-fn null_likelihood_row(y: f64, weight: f64, mean: f64, log_mean: f64,
-    log_factorial: f64, row: usize) -> Result<f64> {
+fn null_likelihood_row(
+    y: f64,
+    weight: f64,
+    mean: f64,
+    log_mean: f64,
+    log_factorial: f64,
+    row: usize,
+) -> Result<f64> {
     let term = weight * (y * log_mean - mean - log_factorial);
     if !term.is_finite() {
         return Err(numerical_nonconvergence(format!(
-            "Poisson null likelihood overflowed at observation {row}")));
+            "Poisson null likelihood overflowed at observation {row}"
+        )));
     }
     Ok(term)
 }
@@ -323,9 +392,14 @@ fn null_likelihood_row(y: f64, weight: f64, mean: f64, log_mean: f64,
 fn finish_null_objective(mean: f64, likelihood: CompensatedSum) -> Result<PoissonNullObjective> {
     let log_likelihood = likelihood.total();
     if log_likelihood.is_finite() {
-        Ok(PoissonNullObjective { mean, log_likelihood })
+        Ok(PoissonNullObjective {
+            mean,
+            log_likelihood,
+        })
     } else {
-        Err(numerical_nonconvergence("Poisson null likelihood is not finite"))
+        Err(numerical_nonconvergence(
+            "Poisson null likelihood is not finite",
+        ))
     }
 }
 
@@ -355,19 +429,40 @@ pub(crate) struct PreparedPoissonInputs<'a> {
 
 impl<'a> PreparedPoissonInputs<'a> {
     #[cfg(test)]
-    pub(crate) fn new(outcome: &'a [f64], prior_weights: &'a [f64], offset: &'a [f64]) -> Result<Self> {
-        Self::new_with_threads(outcome, prior_weights, offset, ThreadConfig::from_requested(1, true)?)
+    pub(crate) fn new(
+        outcome: &'a [f64],
+        prior_weights: &'a [f64],
+        offset: &'a [f64],
+    ) -> Result<Self> {
+        Self::new_with_threads(
+            outcome,
+            prior_weights,
+            offset,
+            ThreadConfig::from_requested(1, true)?,
+        )
     }
 
-    pub(crate) fn new_with_threads(outcome: &'a [f64], prior_weights: &'a [f64], offset: &'a [f64], threads: ThreadConfig) -> Result<Self> {
+    pub(crate) fn new_with_threads(
+        outcome: &'a [f64],
+        prior_weights: &'a [f64],
+        offset: &'a [f64],
+        threads: ThreadConfig,
+    ) -> Result<Self> {
         if outcome.len() != prior_weights.len() || outcome.len() != offset.len() {
-            return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson immutable inputs are misaligned"));
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "Poisson immutable inputs are misaligned",
+            ));
         }
-        let mut terms = fallible_output(outcome.len(), "unable to reserve Poisson immutable terms")?;
+        let mut terms =
+            fallible_output(outcome.len(), "unable to reserve Poisson immutable terms")?;
         let row_terms = |row: usize| -> Result<[f64; 2]> {
             let (y, q, o) = (outcome[row], prior_weights[row], offset[row]);
             if !y.is_finite() || y < 0. || !q.is_finite() || q <= 0. || !o.is_finite() {
-                return Err(FeregError::new(ErrorCode::InvalidData, format!("invalid Poisson immutable input at observation {row}")));
+                return Err(FeregError::new(
+                    ErrorCode::InvalidData,
+                    format!("invalid Poisson immutable input at observation {row}"),
+                ));
             }
             // Zero keeps its existing exact working-response branch. A
             // nonfinite log-Gamma still fails at objective evaluation, with
@@ -381,28 +476,65 @@ impl<'a> PreparedPoissonInputs<'a> {
         };
         if let Some(team) = &team {
             terms.resize(outcome.len(), [0.; 2]);
-            let failure = team.install(|| terms.par_iter_mut().enumerate().with_min_len(256)
-                .map(|(row, output)| -> Result<()> { *output = row_terms(row)?; Ok(()) })
-                .find_first(Result::is_err));
-            if let Some(result) = failure { result?; }
+            let failure = team.install(|| {
+                terms
+                    .par_iter_mut()
+                    .enumerate()
+                    .with_min_len(256)
+                    .map(|(row, output)| -> Result<()> {
+                        *output = row_terms(row)?;
+                        Ok(())
+                    })
+                    .find_first(Result::is_err)
+            });
+            if let Some(result) = failure {
+                result?;
+            }
         } else {
-            for row in 0..outcome.len() { terms.push(row_terms(row)?); }
+            for row in 0..outcome.len() {
+                terms.push(row_terms(row)?);
+            }
         }
-        Ok(Self { outcome, prior_weights, offset, terms, team })
+        Ok(Self {
+            outcome,
+            prior_weights,
+            offset,
+            terms,
+            team,
+        })
     }
 
-    pub(crate) fn outcome(&self) -> &[f64] { self.outcome }
+    pub(crate) fn outcome(&self) -> &[f64] {
+        self.outcome
+    }
 
     pub(crate) fn evaluate(&self, eta: &[f64], mean: &[f64]) -> Result<PoissonObjective> {
-        poisson_objective_with_terms(self.outcome, Some(eta), mean, self.prior_weights, Some(&self.terms))
+        poisson_objective_with_terms(
+            self.outcome,
+            Some(eta),
+            mean,
+            self.prior_weights,
+            Some(&self.terms),
+        )
     }
 
-    pub(crate) fn evaluate_tiled(&self, eta: &[f64], mean: &[f64], partials_storage: &mut [f64]) -> Result<PoissonObjective> {
+    pub(crate) fn evaluate_tiled(
+        &self,
+        eta: &[f64],
+        mean: &[f64],
+        partials_storage: &mut [f64],
+    ) -> Result<PoissonObjective> {
         let Some(team) = self.team.as_ref().filter(|_| !partials_storage.is_empty()) else {
             return self.evaluate(eta, mean);
         };
-        if eta.len() != self.outcome.len() || mean.len() != self.outcome.len() || partials_storage.len() % 4 != 0 {
-            return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson objective partials or inputs are misaligned"));
+        if eta.len() != self.outcome.len()
+            || mean.len() != self.outcome.len()
+            || partials_storage.len() % 4 != 0
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "Poisson objective partials or inputs are misaligned",
+            ));
         }
         let blocks = self.outcome.len().div_ceil(FAMILY_ROWS_PER_WORKER);
         let bank_blocks = (partials_storage.len() / 4).min(blocks);
@@ -414,23 +546,42 @@ impl<'a> PreparedPoissonInputs<'a> {
         for first in (0..blocks).step_by(bank_blocks) {
             let count = bank_blocks.min(blocks - first);
             let partials = &mut partials_storage[..4 * count];
-            let failure = team.install(|| partials.par_chunks_mut(4).enumerate()
-                .map(|(block, output)| -> Result<()> {
-                    let begin = (first + block) * FAMILY_ROWS_PER_WORKER;
-                    let end = begin.saturating_add(FAMILY_ROWS_PER_WORKER).min(self.outcome.len());
-                    let mut deviance = CompensatedSum::default();
-                    let mut likelihood = CompensatedSum::default();
-                    for row in begin..end {
-                        let values = objective_row(self.outcome, Some(eta), mean, self.prior_weights,
-                            Some(&self.terms), row)?;
-                        deviance.add(values[0]);
-                        likelihood.add(values[1]);
-                    }
-                    output.copy_from_slice(&[deviance.sum, deviance.correction,
-                        likelihood.sum, likelihood.correction]);
-                    Ok(())
-                }).find_first(Result::is_err));
-            if let Some(result) = failure { result?; }
+            let failure = team.install(|| {
+                partials
+                    .par_chunks_mut(4)
+                    .enumerate()
+                    .map(|(block, output)| -> Result<()> {
+                        let begin = (first + block) * FAMILY_ROWS_PER_WORKER;
+                        let end = begin
+                            .saturating_add(FAMILY_ROWS_PER_WORKER)
+                            .min(self.outcome.len());
+                        let mut deviance = CompensatedSum::default();
+                        let mut likelihood = CompensatedSum::default();
+                        for row in begin..end {
+                            let values = objective_row(
+                                self.outcome,
+                                Some(eta),
+                                mean,
+                                self.prior_weights,
+                                Some(&self.terms),
+                                row,
+                            )?;
+                            deviance.add(values[0]);
+                            likelihood.add(values[1]);
+                        }
+                        output.copy_from_slice(&[
+                            deviance.sum,
+                            deviance.correction,
+                            likelihood.sum,
+                            likelihood.correction,
+                        ]);
+                        Ok(())
+                    })
+                    .find_first(Result::is_err)
+            });
+            if let Some(result) = failure {
+                result?;
+            }
             // Fixed observation blocks and an ordered compensated merge make
             // reduction independent of scheduling and workspace capacity. Keep
             // corrections separate until merging; no rounded partial totals.
@@ -449,51 +600,125 @@ impl<'a> PreparedPoissonInputs<'a> {
         finish_objective(deviance, likelihood).or_else(|_| self.evaluate(eta, mean))
     }
 
-    pub(crate) fn fill_means(&self, eta: &[f64], bounds: PoissonBounds, mean: &mut [f64]) -> Result<()> {
-        let Some(team) = &self.team else { return means_from_eta(eta, bounds, mean); };
+    pub(crate) fn fill_means(
+        &self,
+        eta: &[f64],
+        bounds: PoissonBounds,
+        mean: &mut [f64],
+    ) -> Result<()> {
+        let Some(team) = &self.team else {
+            return means_from_eta(eta, bounds, mean);
+        };
         bounds.validate()?;
         if eta.len() != mean.len() {
-            return Err(FeregError::new(ErrorCode::InvalidArgument, "eta and mean buffers have different lengths"));
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "eta and mean buffers have different lengths",
+            ));
         }
-        let failure = team.install(|| mean.par_iter_mut().zip(eta).enumerate().with_min_len(256)
-            .map(|(row, (output, &value))| -> Result<()> {
-                *output = mean_row(row, value, bounds)?;
-                Ok(())
-            }).find_first(Result::is_err));
-        if let Some(result) = failure { result?; }
+        let failure = team.install(|| {
+            mean.par_iter_mut()
+                .zip(eta)
+                .enumerate()
+                .with_min_len(256)
+                .map(|(row, (output, &value))| -> Result<()> {
+                    *output = mean_row(row, value, bounds)?;
+                    Ok(())
+                })
+                .find_first(Result::is_err)
+        });
+        if let Some(result) = failure {
+            result?;
+        }
         Ok(())
     }
 
-    pub(crate) fn fill_working_state_and_scores(&self, mean: &[f64], eta: &[f64], weights: &mut [f64], response: &mut [f64], scores: &mut [f64]) -> Result<()> {
+    pub(crate) fn fill_working_state_and_scores(
+        &self,
+        mean: &[f64],
+        eta: &[f64],
+        weights: &mut [f64],
+        response: &mut [f64],
+        scores: &mut [f64],
+    ) -> Result<()> {
         let n = self.outcome.len();
-        if [mean.len(), eta.len(), weights.len(), response.len(), scores.len()].iter().any(|&length| length != n) {
-            return Err(FeregError::new(ErrorCode::InvalidArgument, "Poisson working-state buffers have inconsistent lengths"));
+        if [
+            mean.len(),
+            eta.len(),
+            weights.len(),
+            response.len(),
+            scores.len(),
+        ]
+        .iter()
+        .any(|&length| length != n)
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "Poisson working-state buffers have inconsistent lengths",
+            ));
         }
-        let fill = |row: usize, weight: &mut f64, response: &mut f64, score: &mut f64| -> Result<()> {
-            let values = working_row(self.outcome, mean, self.prior_weights, eta, self.offset, Some(&self.terms), row)?;
-            let residual = self.outcome[row] - mean[row];
-            if !residual.is_finite() {
-                return Err(numerical_nonconvergence("PPML score residual is not finitely representable"));
-            }
-            *weight = values[0];
-            *response = values[1];
-            *score = residual;
-            Ok(())
-        };
+        let fill =
+            |row: usize, weight: &mut f64, response: &mut f64, score: &mut f64| -> Result<()> {
+                let values = working_row(
+                    self.outcome,
+                    mean,
+                    self.prior_weights,
+                    eta,
+                    self.offset,
+                    Some(&self.terms),
+                    row,
+                )?;
+                let residual = self.outcome[row] - mean[row];
+                if !residual.is_finite() {
+                    return Err(numerical_nonconvergence(
+                        "PPML score residual is not finitely representable",
+                    ));
+                }
+                *weight = values[0];
+                *response = values[1];
+                *score = residual;
+                Ok(())
+            };
         if let Some(team) = &self.team {
-            let failure = team.install(|| weights.par_iter_mut().zip(response).zip(scores).enumerate().with_min_len(256)
-                .map(|(row, ((weight, response), score))| fill(row, weight, response, score))
-                .find_first(Result::is_err));
-            if let Some(result) = failure { result?; }
+            let failure = team.install(|| {
+                weights
+                    .par_iter_mut()
+                    .zip(response)
+                    .zip(scores)
+                    .enumerate()
+                    .with_min_len(256)
+                    .map(|(row, ((weight, response), score))| fill(row, weight, response, score))
+                    .find_first(Result::is_err)
+            });
+            if let Some(result) = failure {
+                result?;
+            }
         } else {
-            for row in 0..n { fill(row, &mut weights[row], &mut response[row], &mut scores[row])?; }
+            for row in 0..n {
+                fill(row, &mut weights[row], &mut response[row], &mut scores[row])?;
+            }
         }
         Ok(())
     }
 
     #[cfg(test)]
-    pub(crate) fn fill_working_state(&self, mean: &[f64], eta: &[f64], weights: &mut [f64], response: &mut [f64]) -> Result<()> {
-        fill_poisson_working_state_with_terms(self.outcome, mean, self.prior_weights, eta, self.offset, weights, response, Some(&self.terms))
+    pub(crate) fn fill_working_state(
+        &self,
+        mean: &[f64],
+        eta: &[f64],
+        weights: &mut [f64],
+        response: &mut [f64],
+    ) -> Result<()> {
+        fill_poisson_working_state_with_terms(
+            self.outcome,
+            mean,
+            self.prior_weights,
+            eta,
+            self.offset,
+            weights,
+            response,
+            Some(&self.terms),
+        )
     }
 }
 
@@ -507,7 +732,10 @@ fn poisson_objective_impl(
 }
 
 fn poisson_objective_with_terms(
-    outcome: &[f64], eta: Option<&[f64]>, mean: &[f64], prior_weights: &[f64],
+    outcome: &[f64],
+    eta: Option<&[f64]>,
+    mean: &[f64],
+    prior_weights: &[f64],
     terms: Option<&[[f64; 2]]>,
 ) -> Result<PoissonObjective> {
     if outcome.len() != mean.len() || outcome.len() != prior_weights.len() {
@@ -533,14 +761,33 @@ fn poisson_objective_with_terms(
 }
 
 #[inline]
-fn objective_row(outcome: &[f64], eta: Option<&[f64]>, mean: &[f64], prior_weights: &[f64], terms: Option<&[[f64; 2]]>, row: usize) -> Result<[f64; 2]> {
-    objective_row_values(outcome[row], mean[row], prior_weights[row], eta.map(|values| values[row]),
-        terms.map(|values| values[row]), row)
+fn objective_row(
+    outcome: &[f64],
+    eta: Option<&[f64]>,
+    mean: &[f64],
+    prior_weights: &[f64],
+    terms: Option<&[[f64; 2]]>,
+    row: usize,
+) -> Result<[f64; 2]> {
+    objective_row_values(
+        outcome[row],
+        mean[row],
+        prior_weights[row],
+        eta.map(|values| values[row]),
+        terms.map(|values| values[row]),
+        row,
+    )
 }
 
 #[inline]
-fn objective_row_values(y: f64, mu: f64, weight: f64, eta: Option<f64>,
-    terms: Option<[f64; 2]>, row: usize) -> Result<[f64; 2]> {
+fn objective_row_values(
+    y: f64,
+    mu: f64,
+    weight: f64,
+    eta: Option<f64>,
+    terms: Option<[f64; 2]>,
+    row: usize,
+) -> Result<[f64; 2]> {
     if !y.is_finite() || y < 0.0 {
         return Err(FeregError::new(
             ErrorCode::InvalidData,
@@ -564,9 +811,11 @@ fn objective_row_values(y: f64, mu: f64, weight: f64, eta: Option<f64>,
             "Poisson linear predictor at observation {row} is nonfinite"
         )));
     }
-    let half_deviance = poisson_half_deviance_with_logs(y, mu, log_mean, terms.map(|values| values[0]))?;
+    let half_deviance =
+        poisson_half_deviance_with_logs(y, mu, log_mean, terms.map(|values| values[0]))?;
     let deviance_term = 2.0 * weight * half_deviance;
-    let log_likelihood_term = weight * (y * log_mean - mu - terms.map_or_else(|| log_gamma(y + 1.0), |values| values[1]));
+    let log_likelihood_term =
+        weight * (y * log_mean - mu - terms.map_or_else(|| log_gamma(y + 1.0), |values| values[1]));
     if !deviance_term.is_finite() || !log_likelihood_term.is_finite() {
         return Err(numerical_nonconvergence(format!(
             "Poisson objective overflowed at observation {row}"
@@ -575,7 +824,10 @@ fn objective_row_values(y: f64, mu: f64, weight: f64, eta: Option<f64>,
     Ok([deviance_term, log_likelihood_term])
 }
 
-fn finish_objective(deviance_sum: CompensatedSum, log_likelihood_sum: CompensatedSum) -> Result<PoissonObjective> {
+fn finish_objective(
+    deviance_sum: CompensatedSum,
+    log_likelihood_sum: CompensatedSum,
+) -> Result<PoissonObjective> {
     let objective = PoissonObjective {
         deviance: deviance_sum.total(),
         log_likelihood: log_likelihood_sum.total(),
@@ -603,14 +855,29 @@ pub(crate) fn fill_poisson_working_state(
     working_weights: &mut [f64],
     working_response: &mut [f64],
 ) -> Result<()> {
-    fill_poisson_working_state_with_terms(outcome, mean, prior_weights, eta, offset, working_weights, working_response, None)
+    fill_poisson_working_state_with_terms(
+        outcome,
+        mean,
+        prior_weights,
+        eta,
+        offset,
+        working_weights,
+        working_response,
+        None,
+    )
 }
 
 #[allow(clippy::too_many_arguments)]
 #[cfg(test)]
 fn fill_poisson_working_state_with_terms(
-    outcome: &[f64], mean: &[f64], prior_weights: &[f64], eta: &[f64], offset: &[f64],
-    working_weights: &mut [f64], working_response: &mut [f64], terms: Option<&[[f64; 2]]>,
+    outcome: &[f64],
+    mean: &[f64],
+    prior_weights: &[f64],
+    eta: &[f64],
+    offset: &[f64],
+    working_weights: &mut [f64],
+    working_response: &mut [f64],
+    terms: Option<&[[f64; 2]]>,
 ) -> Result<()> {
     let nrows = outcome.len();
     if mean.len() != nrows
@@ -634,7 +901,15 @@ fn fill_poisson_working_state_with_terms(
 }
 
 #[inline]
-fn working_row(outcome: &[f64], mean: &[f64], prior_weights: &[f64], eta: &[f64], offset: &[f64], terms: Option<&[[f64; 2]]>, row: usize) -> Result<[f64; 2]> {
+fn working_row(
+    outcome: &[f64],
+    mean: &[f64],
+    prior_weights: &[f64],
+    eta: &[f64],
+    offset: &[f64],
+    terms: Option<&[[f64; 2]]>,
+    row: usize,
+) -> Result<[f64; 2]> {
     let y = outcome[row];
     let mu = mean[row];
     let prior_weight = prior_weights[row];
@@ -728,7 +1003,12 @@ impl CompensatedSum {
     }
 }
 
-fn poisson_half_deviance_with_logs(y: f64, mu: f64, log_mean: f64, log_y: Option<f64>) -> Result<f64> {
+fn poisson_half_deviance_with_logs(
+    y: f64,
+    mu: f64,
+    log_mean: f64,
+    log_y: Option<f64>,
+) -> Result<f64> {
     if y == 0.0 {
         return Ok(mu);
     }
@@ -820,28 +1100,38 @@ mod tests {
     #[test]
     fn prepared_terms_and_fresh_replay_keep_scalar_bits_and_budget_boundaries() {
         for n in [4095, 4096, 4097, 17003, 65539] {
-            let y: Vec<_> = (0..n).map(|i| [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100][i%8]).collect();
-            let q: Vec<_> = (0..n).map(|i| [2., 0.3, 1., 0.01, 7., 2., 1e-4, 1e-80][i%8]).collect();
+            let y: Vec<_> = (0..n)
+                .map(|i| [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100][i % 8])
+                .collect();
+            let q: Vec<_> = (0..n)
+                .map(|i| [2., 0.3, 1., 0.01, 7., 2., 1e-4, 1e-80][i % 8])
+                .collect();
             let offset = vec![0.; n];
             let scalar = PreparedPoissonInputs::new(&y, &q, &offset).unwrap();
             for threads in [1, 2, 4, 8, 1] {
                 let config = ThreadConfig::from_requested(threads, true).unwrap();
-                let prepared = PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).unwrap();
+                let prepared =
+                    PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).unwrap();
                 assert_eq!(prepared.terms, scalar.terms);
                 for shift in [0.75, 1., 1.5] {
                     let mu: Vec<_> = y.iter().map(|&y| (y + 0.7) * shift).collect();
                     let direct = replay_final_objectives(&y, &mu, &q).unwrap();
-                    for bytes in [0, 24*4096-1, 24*4096, 24*16385, u128::MAX] {
-                        let actual = replay_final_objectives_with_threads(&y, &mu, &q, config, bytes).unwrap();
+                    for bytes in [0, 24 * 4096 - 1, 24 * 4096, 24 * 16385, u128::MAX] {
+                        let actual =
+                            replay_final_objectives_with_threads(&y, &mu, &q, config, bytes)
+                                .unwrap();
                         assert_eq!(actual, direct);
                         assert!(final_replay_tile_rows(n, threads, bytes) as u128 * 24 <= bytes);
                     }
                 }
             }
         }
-        assert_eq!(final_replay_tile_rows(usize::MAX, usize::MAX, u128::MAX), usize::MAX);
-        assert_eq!(final_replay_tile_rows(17003, 4, 24*4096-1), 0);
-        assert_eq!(final_replay_tile_rows(17003, 4, 24*4096), 4096);
+        assert_eq!(
+            final_replay_tile_rows(usize::MAX, usize::MAX, u128::MAX),
+            usize::MAX
+        );
+        assert_eq!(final_replay_tile_rows(17003, 4, 24 * 4096 - 1), 0);
+        assert_eq!(final_replay_tile_rows(17003, 4, 24 * 4096), 4096);
     }
 
     #[test]
@@ -850,24 +1140,40 @@ mod tests {
         for threads in [2, 4, 8] {
             let config = ThreadConfig::from_requested(threads, true).unwrap();
             for first in [3, 4095, 16401] {
-                let mut y = vec![2.; n]; let mut q = vec![1.; n]; let mut offset = vec![0.; n];
+                let mut y = vec![2.; n];
+                let mut q = vec![1.; n];
+                let mut offset = vec![0.; n];
                 for kind in 0..3 {
-                    match kind { 0 => y[first] = -1., 1 => q[first] = f64::NAN, _ => offset[first] = f64::INFINITY }
-                    y[first+50] = -1.;
+                    match kind {
+                        0 => y[first] = -1.,
+                        1 => q[first] = f64::NAN,
+                        _ => offset[first] = f64::INFINITY,
+                    }
+                    y[first + 50] = -1.;
                     let direct = PreparedPoissonInputs::new(&y, &q, &offset).err().unwrap();
-                    let actual = PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).err().unwrap();
-                    assert_eq!((actual.code,actual.message),(direct.code,direct.message));
-                    y.fill(2.);q.fill(1.);offset.fill(0.);
+                    let actual = PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config)
+                        .err()
+                        .unwrap();
+                    assert_eq!((actual.code, actual.message), (direct.code, direct.message));
+                    y.fill(2.);
+                    q.fill(1.);
+                    offset.fill(0.);
                 }
                 for bad in [0., f64::NAN, f64::INFINITY] {
-                    let mut mu = vec![1.; n];mu[first]=bad;mu[first+50]=0.;
-                    let direct = replay_final_objectives(&y,&mu,&q).unwrap_err();
-                    let actual = replay_final_objectives_with_threads(&y,&mu,&q,config,24*4096).unwrap_err();
-                    assert_eq!((actual.code,actual.message),(direct.code,direct.message));
+                    let mut mu = vec![1.; n];
+                    mu[first] = bad;
+                    mu[first + 50] = 0.;
+                    let direct = replay_final_objectives(&y, &mu, &q).unwrap_err();
+                    let actual =
+                        replay_final_objectives_with_threads(&y, &mu, &q, config, 24 * 4096)
+                            .unwrap_err();
+                    assert_eq!((actual.code, actual.message), (direct.code, direct.message));
                 }
-                let mu=vec![1.;n];
-                assert_eq!(replay_final_objectives_with_threads(&y,&mu,&q,config,24*4096).unwrap(),
-                    replay_final_objectives(&y,&mu,&q).unwrap());
+                let mu = vec![1.; n];
+                assert_eq!(
+                    replay_final_objectives_with_threads(&y, &mu, &q, config, 24 * 4096).unwrap(),
+                    replay_final_objectives(&y, &mu, &q).unwrap()
+                );
             }
         }
     }
@@ -881,7 +1187,12 @@ mod tests {
         assert_eq!(actual, poisson_objective(&y, &mu, &q).unwrap());
         assert_eq!(null, poisson_null_objective(&y, &q).unwrap());
         // Gamma(3/2) = sqrt(pi)/2; the other terms are integer factorials.
-        let factorial = [0.0, 0.0, 2.0_f64.ln(), (std::f64::consts::PI.sqrt() / 2.0).ln()];
+        let factorial = [
+            0.0,
+            0.0,
+            2.0_f64.ln(),
+            (std::f64::consts::PI.sqrt() / 2.0).ln(),
+        ];
         let expected_mean = 10.5 / 14.0;
         assert!((null.mean - expected_mean).abs() <= 2.0 * f64::EPSILON * expected_mean);
         let mut expected_ll = 0.0;
@@ -890,8 +1201,13 @@ mod tests {
         for i in 0..y.len() {
             expected_ll += q[i] * (y[i] * mu[i].ln() - mu[i] - factorial[i]);
             expected_null_ll += q[i] * (y[i] * expected_mean.ln() - expected_mean - factorial[i]);
-            expected_deviance += 2.0 * q[i] * (if y[i] == 0.0 { mu[i] }
-                else { y[i] * (y[i] / mu[i]).ln() - y[i] + mu[i] });
+            expected_deviance += 2.0
+                * q[i]
+                * (if y[i] == 0.0 {
+                    mu[i]
+                } else {
+                    y[i] * (y[i] / mu[i]).ln() - y[i] + mu[i]
+                });
         }
         assert!((actual.log_likelihood - expected_ll).abs() < 3e-14);
         assert!((null.log_likelihood - expected_null_ll).abs() < 3e-14);
@@ -924,7 +1240,10 @@ mod tests {
         assert!((mean / 1e-300 - 1.0).abs() < 2e-13);
         let subnormal = f64::from_bits(17);
         assert!(scaled_null_mean(&[subnormal], &[1.0], 1.0, subnormal).is_none());
-        assert_eq!(poisson_null_mean(&[subnormal], &[1.0]).unwrap().0, subnormal);
+        assert_eq!(
+            poisson_null_mean(&[subnormal], &[1.0]).unwrap().0,
+            subnormal
+        );
     }
 
     #[test]
@@ -937,41 +1256,69 @@ mod tests {
             (0.0, 1.0, 1.0, ErrorCode::InsufficientObservations),
             (1e307, 1.0, 1.0, ErrorCode::NonConvergence),
         ] {
-            assert_eq!(replay_final_objectives(&[y], &[mu], &[q]).unwrap_err().code, expected);
+            assert_eq!(
+                replay_final_objectives(&[y], &[mu], &[q]).unwrap_err().code,
+                expected
+            );
         }
-        assert_eq!(replay_final_objectives(&[1.0], &[], &[1.0]).unwrap_err().code,
-            ErrorCode::InvalidArgument);
+        assert_eq!(
+            replay_final_objectives(&[1.0], &[], &[1.0])
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidArgument
+        );
     }
 
     #[test]
     fn scheduled_family_rows_preserve_scalar_bits_across_tiles_and_teams() {
         for n in [4095, 4096, 4097, 17003] {
-            let y: Vec<_> = (0..n).map(|i| [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100][i % 8]).collect();
-            let q: Vec<_> = (0..n).map(|i| [2., 0.3, 1., 0.01, 7., 2., 1e-4, 1e-80][i % 8]).collect();
+            let y: Vec<_> = (0..n)
+                .map(|i| [0., 1e-100, 0.25, 1., 5., 100., 1e6, 1e100][i % 8])
+                .collect();
+            let q: Vec<_> = (0..n)
+                .map(|i| [2., 0.3, 1., 0.01, 7., 2., 1e-4, 1e-80][i % 8])
+                .collect();
             let offset: Vec<_> = (0..n).map(|i| (i % 13) as f64 - 5.).collect();
             for threads in [1, 4, 8, 1] {
                 let config = ThreadConfig::from_requested(threads, true).unwrap();
-                let inputs = PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).unwrap();
+                let inputs =
+                    PreparedPoissonInputs::new_with_threads(&y, &q, &offset, config).unwrap();
                 let mut tile = vec![f64::NAN; objective_partial_cells(n, threads)];
                 let allocation = (tile.as_ptr(), tile.capacity());
                 for shift in [-0.4_f64, 0., 0.3, 1.] {
                     let eta: Vec<_> = y.iter().map(|&y| (y + 0.7).ln() + shift).collect();
                     let mut mean = vec![0.; n];
-                    inputs.fill_means(&eta, PoissonBounds::default(), &mut mean).unwrap();
+                    inputs
+                        .fill_means(&eta, PoissonBounds::default(), &mut mean)
+                        .unwrap();
                     let mut direct_mean = vec![0.; n];
                     means_from_eta(&eta, PoissonBounds::default(), &mut direct_mean).unwrap();
                     assert_eq!(mean, direct_mean);
                     let direct = poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap();
                     let scheduled = inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap();
                     assert_eq!(direct.deviance.to_bits(), scheduled.deviance.to_bits());
-                    assert_eq!(direct.log_likelihood.to_bits(), scheduled.log_likelihood.to_bits());
+                    assert_eq!(
+                        direct.log_likelihood.to_bits(),
+                        scheduled.log_likelihood.to_bits()
+                    );
                     let (mut w, mut z, mut pw, mut pz, mut scores) = (
-                        vec![0.; n], vec![0.; n], vec![0.; n], vec![0.; n], vec![0.; n]);
-                    fill_poisson_working_state(&y, &mean, &q, &eta, &offset, &mut w, &mut z).unwrap();
-                    inputs.fill_working_state_and_scores(&mean, &eta, &mut pw, &mut pz, &mut scores).unwrap();
+                        vec![0.; n],
+                        vec![0.; n],
+                        vec![0.; n],
+                        vec![0.; n],
+                        vec![0.; n],
+                    );
+                    fill_poisson_working_state(&y, &mean, &q, &eta, &offset, &mut w, &mut z)
+                        .unwrap();
+                    inputs
+                        .fill_working_state_and_scores(&mean, &eta, &mut pw, &mut pz, &mut scores)
+                        .unwrap();
                     assert_eq!(w, pw);
                     assert_eq!(z, pz);
-                    assert!(scores.iter().enumerate().all(|(i, value)| value.to_bits() == (y[i] - mean[i]).to_bits()));
+                    assert!(scores
+                        .iter()
+                        .enumerate()
+                        .all(|(i, value)| value.to_bits() == (y[i] - mean[i]).to_bits()));
                     assert_eq!((tile.as_ptr(), tile.capacity()), allocation);
                 }
             }
@@ -993,16 +1340,28 @@ mod tests {
                 let mass = (28 * (n / 7) + remainder * (remainder + 1) / 2) as f64 * weight_scale;
                 let mut first = None;
                 for threads in [2, 3, 8] {
-                    let inputs = PreparedPoissonInputs::new_with_threads(&y, &q, &offset,
-                        ThreadConfig::from_requested(threads, true).unwrap()).unwrap();
+                    let inputs = PreparedPoissonInputs::new_with_threads(
+                        &y,
+                        &q,
+                        &offset,
+                        ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .unwrap();
                     for cells in [4, 8, 32, objective_partial_cells(n, threads)] {
                         let mut workspace = vec![f64::NAN; cells];
                         let allocation = (workspace.as_ptr(), workspace.capacity());
                         let actual = inputs.evaluate_tiled(&eta, &mean, &mut workspace).unwrap();
                         assert_eq!(actual.deviance, 2. * mass);
                         assert!((actual.log_likelihood + mass).abs() <= 16. * f64::EPSILON * mass);
-                        if let Some(expected) = first { assert_eq!(actual, expected); } else { first = Some(actual); }
-                        assert_eq!(inputs.evaluate_tiled(&eta, &mean, &mut workspace).unwrap(), actual);
+                        if let Some(expected) = first {
+                            assert_eq!(actual, expected);
+                        } else {
+                            first = Some(actual);
+                        }
+                        assert_eq!(
+                            inputs.evaluate_tiled(&eta, &mean, &mut workspace).unwrap(),
+                            actual
+                        );
                         assert_eq!((workspace.as_ptr(), workspace.capacity()), allocation);
                     }
                 }
@@ -1013,7 +1372,10 @@ mod tests {
         assert_eq!(objective_partial_cells(17003, 8), 20);
         assert_eq!(objective_partial_cells(1_000_000, 8), 32);
         assert_eq!(objective_partial_cells(usize::MAX, 1), 0);
-        assert_eq!(objective_partial_cells(usize::MAX, usize::MAX), 4 * usize::MAX.div_ceil(4096));
+        assert_eq!(
+            objective_partial_cells(usize::MAX, usize::MAX),
+            4 * usize::MAX.div_ceil(4096)
+        );
     }
 
     #[test]
@@ -1023,14 +1385,23 @@ mod tests {
         let q = vec![2_f64.powi(1015); n];
         let eta = vec![0.; n];
         let offset = vec![0.; n];
-        let inputs = PreparedPoissonInputs::new_with_threads(&y, &q, &offset,
-            ThreadConfig::from_requested(4, true).unwrap()).unwrap();
+        let inputs = PreparedPoissonInputs::new_with_threads(
+            &y,
+            &q,
+            &offset,
+            ThreadConfig::from_requested(4, true).unwrap(),
+        )
+        .unwrap();
         for bad_row in [None, Some(4097), Some(16_801)] {
             let mut mean = vec![1.; n];
-            if let Some(row) = bad_row { mean[row] = 0.; }
+            if let Some(row) = bad_row {
+                mean[row] = 0.;
+            }
             let expected = inputs.evaluate(&eta, &mean).unwrap_err();
             for cells in [4, 8, 32] {
-                let actual = inputs.evaluate_tiled(&eta, &mean, &mut vec![0.; cells]).unwrap_err();
+                let actual = inputs
+                    .evaluate_tiled(&eta, &mean, &mut vec![0.; cells])
+                    .unwrap_err();
                 assert_eq!(actual, expected);
             }
         }
@@ -1043,7 +1414,12 @@ mod tests {
         let q = vec![1.; n];
         let offset = vec![0.; n];
         let inputs = PreparedPoissonInputs::new_with_threads(
-            &y, &q, &offset, ThreadConfig::from_requested(4, true).unwrap()).unwrap();
+            &y,
+            &q,
+            &offset,
+            ThreadConfig::from_requested(4, true).unwrap(),
+        )
+        .unwrap();
         let mut tile = vec![0.; objective_partial_cells(n, 4)];
         for first in [300, 16401] {
             let mut mean = vec![1.; n];
@@ -1052,24 +1428,59 @@ mod tests {
             let eta = vec![0.; n];
             let direct = poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap_err();
             let scheduled = inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap_err();
-            assert_eq!((scheduled.code, scheduled.message), (direct.code, direct.message));
+            assert_eq!(
+                (scheduled.code, scheduled.message),
+                (direct.code, direct.message)
+            );
             let (mut w, mut z, mut pw, mut pz, mut scores) = (
-                vec![0.; n], vec![0.; n], vec![0.; n], vec![0.; n], vec![0.; n]);
-            let direct = fill_poisson_working_state(&y, &mean, &q, &eta, &offset, &mut w, &mut z).unwrap_err();
-            let scheduled = inputs.fill_working_state_and_scores(&mean, &eta, &mut pw, &mut pz, &mut scores).unwrap_err();
-            assert_eq!((scheduled.code, scheduled.message), (direct.code, direct.message));
+                vec![0.; n],
+                vec![0.; n],
+                vec![0.; n],
+                vec![0.; n],
+                vec![0.; n],
+            );
+            let direct = fill_poisson_working_state(&y, &mean, &q, &eta, &offset, &mut w, &mut z)
+                .unwrap_err();
+            let scheduled = inputs
+                .fill_working_state_and_scores(&mean, &eta, &mut pw, &mut pz, &mut scores)
+                .unwrap_err();
+            assert_eq!(
+                (scheduled.code, scheduled.message),
+                (direct.code, direct.message)
+            );
             let mut bad_eta = eta.clone();
             bad_eta[first] = f64::NAN;
             bad_eta[first + 50] = f64::INFINITY;
             let direct = means_from_eta(&bad_eta, PoissonBounds::default(), &mut mean).unwrap_err();
-            let scheduled = inputs.fill_means(&bad_eta, PoissonBounds::default(), &mut mean).unwrap_err();
-            assert_eq!((scheduled.code, scheduled.message), (direct.code, direct.message));
-            inputs.fill_means(&eta, PoissonBounds::default(), &mut mean).unwrap();
-            assert_eq!(inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap(),
-                poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap());
+            let scheduled = inputs
+                .fill_means(&bad_eta, PoissonBounds::default(), &mut mean)
+                .unwrap_err();
+            assert_eq!(
+                (scheduled.code, scheduled.message),
+                (direct.code, direct.message)
+            );
+            inputs
+                .fill_means(&eta, PoissonBounds::default(), &mut mean)
+                .unwrap();
+            assert_eq!(
+                inputs.evaluate_tiled(&eta, &mean, &mut tile).unwrap(),
+                poisson_objective_from_eta(&y, &eta, &mean, &q).unwrap()
+            );
         }
-        assert_eq!(inputs.evaluate_tiled(&[0.], &[1.], &mut tile).unwrap_err().code, ErrorCode::InvalidArgument);
-        assert_eq!(inputs.evaluate_tiled(&vec![0.; n], &vec![1.; n], &mut [0.; 3]).unwrap_err().code, ErrorCode::InvalidArgument);
+        assert_eq!(
+            inputs
+                .evaluate_tiled(&[0.], &[1.], &mut tile)
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidArgument
+        );
+        assert_eq!(
+            inputs
+                .evaluate_tiled(&vec![0.; n], &vec![1.; n], &mut [0.; 3])
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidArgument
+        );
     }
 
     #[test]
@@ -1095,10 +1506,16 @@ mod tests {
             let direct = poisson_objective_from_eta(&outcome, &eta, &mean, &prior).unwrap();
             let prepared = inputs.evaluate(&eta, &mean).unwrap();
             assert_eq!(direct.deviance.to_bits(), prepared.deviance.to_bits());
-            assert_eq!(direct.log_likelihood.to_bits(), prepared.log_likelihood.to_bits());
+            assert_eq!(
+                direct.log_likelihood.to_bits(),
+                prepared.log_likelihood.to_bits()
+            );
             let (mut w, mut z, mut pw, mut pz) = ([0.; 8], [0.; 8], [0.; 8], [0.; 8]);
-            fill_poisson_working_state(&outcome, &mean, &prior, &eta, &offset, &mut w, &mut z).unwrap();
-            inputs.fill_working_state(&mean, &eta, &mut pw, &mut pz).unwrap();
+            fill_poisson_working_state(&outcome, &mean, &prior, &eta, &offset, &mut w, &mut z)
+                .unwrap();
+            inputs
+                .fill_working_state(&mean, &eta, &mut pw, &mut pz)
+                .unwrap();
             assert_eq!(w.map(f64::to_bits), pw.map(f64::to_bits));
             assert_eq!(z.map(f64::to_bits), pz.map(f64::to_bits));
         }
@@ -1107,8 +1524,14 @@ mod tests {
         let other = PreparedPoissonInputs::new(&outcome, &q, &offset).unwrap();
         let eta = [0.; 8];
         let mean = [1.; 8];
-        assert_eq!(other.evaluate(&eta, &mean).unwrap(), poisson_objective_from_eta(&outcome, &eta, &mean, &q).unwrap());
-        assert_ne!(other.evaluate(&eta, &mean).unwrap(), inputs.evaluate(&eta, &mean).unwrap());
+        assert_eq!(
+            other.evaluate(&eta, &mean).unwrap(),
+            poisson_objective_from_eta(&outcome, &eta, &mean, &q).unwrap()
+        );
+        assert_ne!(
+            other.evaluate(&eta, &mean).unwrap(),
+            inputs.evaluate(&eta, &mean).unwrap()
+        );
     }
 
     #[test]
@@ -1127,7 +1550,9 @@ mod tests {
             assert_eq!(inputs.evaluate(&eta, &mean).unwrap_err().code, direct.code);
         }
         assert!(inputs.evaluate(&[0.], &[1.]).is_err());
-        assert!(inputs.fill_working_state(&[1.; 3], &[0.; 3], &mut [0.; 2], &mut [0.; 3]).is_err());
+        assert!(inputs
+            .fill_working_state(&[1.; 3], &[0.; 3], &mut [0.; 2], &mut [0.; 3])
+            .is_err());
     }
 
     #[test]

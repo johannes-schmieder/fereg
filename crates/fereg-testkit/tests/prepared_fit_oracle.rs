@@ -105,35 +105,33 @@ fn favorable_auto_topology_uses_cmg_without_a_map_pilot_in_fast_and_low_modes() 
         PreparedOlsExecutionMode::Fast,
         PreparedOlsExecutionMode::Low,
     ] {
-        let mut auto_config = PreparedOlsFitConfig::default();
-        auto_config.execution.mode = mode;
-        auto_config.execution.poolsize = 1;
-        let auto = fit_prepared_ols_coefficients_map(&prepared, auto_config).expect("auto CMG fit");
-        assert_eq!(
-            auto.absorption_report().requested_solver,
-            FeSolverKind::Auto
-        );
-        assert_eq!(
-            auto.absorption_report().used_solver,
-            FeSolverKind::Cmg,
-            "{:?}",
-            auto.absorption_report()
-        );
-        assert_eq!(auto.absorption_report().pilot_iterations, 0);
-        assert!(auto.residual_absorption_report().certified());
-        assert_eq!(
-            auto.residual_absorption_report().requested_solver,
-            FeSolverKind::Auto
-        );
-        assert_eq!(auto.residual_absorption_report().pilot_iterations, 0);
-        assert_slice_close(auto.residuals(), &oracle.residuals, RESIDUAL_TOLERANCE);
-        assert_close(
-            auto.coefficients()[0]
-                .value
-                .expect("automatic CMG coefficient"),
-            oracle.coefficients[0].expect("explicit-dummy coefficient"),
-            COEFFICIENT_TOLERANCE,
-        );
+        for solver in [FeSolverKind::Auto, FeSolverKind::Cmg, FeSolverKind::Lsmr] {
+            let mut config = PreparedOlsFitConfig::default();
+            config.execution.mode = mode;
+            config.execution.poolsize = 1;
+            config.absorb.solver = solver;
+            let fit = fit_prepared_ols_coefficients_map(&prepared, config)
+                .expect("supported solver oracle fit");
+            let expected = if solver == FeSolverKind::Auto {
+                FeSolverKind::Cmg
+            } else {
+                solver
+            };
+            assert_eq!(fit.absorption_report().requested_solver, solver);
+            assert_eq!(fit.absorption_report().used_solver, expected);
+            assert_eq!(fit.absorption_report().pilot_iterations, 0);
+            assert!(fit.residual_absorption_report().certified());
+            assert_eq!(fit.residual_absorption_report().requested_solver, solver);
+            assert_eq!(fit.residual_absorption_report().used_solver, expected);
+            assert!(!fit.residual_absorption_report().fallback_used);
+            assert_eq!(fit.residual_absorption_report().pilot_iterations, 0);
+            assert_slice_close(fit.residuals(), &oracle.residuals, RESIDUAL_TOLERANCE);
+            assert_close(
+                fit.coefficients()[0].value.expect("finite coefficient"),
+                oracle.coefficients[0].expect("explicit-dummy coefficient"),
+                COEFFICIENT_TOLERANCE,
+            );
+        }
     }
 }
 

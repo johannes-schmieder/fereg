@@ -2,10 +2,9 @@ use rayon::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
 
 use crate::data::{
-    classify_numeric_sample_into_mask, prepare_numeric_sample_with_source_uses,
-    AdjustmentInput, DomainDecision, DropReason, NumericColumnView,
-    NumericDomainPolicy, NumericPreparationInput, NumericSourceUse, PreparedNumericSample,
-    PreparedWeights, WeightInput, WeightKind,
+    classify_numeric_sample_into_mask, prepare_numeric_sample_with_source_uses, AdjustmentInput,
+    DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
+    NumericSourceUse, PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
 };
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::factorize::{factorize_f64, EncodedFactor};
@@ -309,11 +308,25 @@ impl PreparedOlsData {
         self.model.owned_buffer_bytes()
             + self.sample.owned_buffer_bytes()
             + bytes(&self.categorical_sources)
-            + self.categorical_sources.iter().map(|source| bytes(&source.encoded.codes) + bytes(&source.encoded.levels)).sum::<u128>()
+            + self
+                .categorical_sources
+                .iter()
+                .map(|source| bytes(&source.encoded.codes) + bytes(&source.encoded.levels))
+                .sum::<u128>()
             + bytes(&self.fe_topology.sources)
-            + self.fe_topology.sources.iter().map(|source| source.level_index.owned_buffer_bytes()).sum::<u128>()
+            + self
+                .fe_topology
+                .sources
+                .iter()
+                .map(|source| source.level_index.owned_buffer_bytes())
+                .sum::<u128>()
             + bytes(&self.fe_topology.effects)
-            + self.fe_topology.effects.iter().map(|effect| effect.label.capacity() as u128).sum::<u128>()
+            + self
+                .fe_topology
+                .effects
+                .iter()
+                .map(|effect| effect.label.capacity() as u128)
+                .sum::<u128>()
     }
 
     /// Borrow the current intercept-only FE design without copying codes or
@@ -731,7 +744,8 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
-    let (model, sample, early_factor) = prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?;
+    let (model, sample, early_factor) =
+        prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?;
     finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)
 }
 
@@ -742,27 +756,52 @@ pub(crate) fn prepare_ols_numeric_sample_owned(
     request: &OlsRequestV1,
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
-) -> Result<(PreparedOlsModel, PreparedNumericSample, Option<Result<PreparedCategoricalSource>>)> {
+) -> Result<(
+    PreparedOlsModel,
+    PreparedNumericSample,
+    Option<Result<PreparedCategoricalSource>>,
+)> {
     let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
     validate_loaded(request, &loaded)?;
     validate_candidate_categorical_domain(request, &loaded, cluster_sources)?;
     validate_candidate_weight_domain(&loaded)?;
     let early_source = if loaded.candidate.len() >= 16_384
-        && (8..=16).contains(&loaded.numeric_sources.len()) && rayon::current_thread_index().is_some()
-        && rayon::current_num_threads() >= 8 && loaded.analytic_weight.is_none()
-        && loaded.frequency_weight.is_none() && loaded.probability_weight.is_none()
-        && request.absorbed_terms.len() == 1 && request.absorbed_terms[0].intercept
+        && (8..=16).contains(&loaded.numeric_sources.len())
+        && rayon::current_thread_index().is_some()
+        && rayon::current_num_threads() >= 8
+        && loaded.analytic_weight.is_none()
+        && loaded.frequency_weight.is_none()
+        && loaded.probability_weight.is_none()
+        && request.absorbed_terms.len() == 1
+        && request.absorbed_terms[0].intercept
         && request.absorbed_terms[0].categorical_sources.len() == 1
         && request.absorbed_terms[0].slope_sources.is_empty()
-        && request.model.terms.iter().all(|term| term.components.iter()
-            .all(|component| component.kind == ComponentKind::Continuous))
-    { Some(request.absorbed_terms[0].categorical_sources[0]) } else { None };
+        && request.model.terms.iter().all(|term| {
+            term.components
+                .iter()
+                .all(|component| component.kind == ComponentKind::Continuous)
+        }) {
+        Some(request.absorbed_terms[0].categorical_sources[0])
+    } else {
+        None
+    };
     let (full, mut early_factor) = if let Some(source) = early_source {
         let index = source_index(source)?;
-        let (full, encoded) = rayon::join(|| is_full_retained_unweighted_sample(&loaded),
-            || factorize_f64(&loaded.numeric_sources[index].1.values));
-        (full, Some(encoded.map(|encoded| PreparedCategoricalSource { source, prepared_source_index: index, encoded })))
-    } else { (is_full_retained_unweighted_sample(&loaded), None) };
+        let (full, encoded) = rayon::join(
+            || is_full_retained_unweighted_sample(&loaded),
+            || factorize_f64(&loaded.numeric_sources[index].1.values),
+        );
+        (
+            full,
+            Some(encoded.map(|encoded| PreparedCategoricalSource {
+                source,
+                prepared_source_index: index,
+                encoded,
+            })),
+        )
+    } else {
+        (is_full_retained_unweighted_sample(&loaded), None)
+    };
     let sample = if full {
         // Ownership transfer preserves every input value used by the optional
         // factorization. Its errors remain behind sample allocation, as before.
@@ -859,12 +898,22 @@ fn finish_prepare_ols_data_with_membership(
     sample: PreparedNumericSample,
     reuse_membership: bool,
 ) -> Result<PreparedOlsData> {
-    finish_prepare_with_early_factor(request, cluster_sources, model, sample, reuse_membership, None)
+    finish_prepare_with_early_factor(
+        request,
+        cluster_sources,
+        model,
+        sample,
+        reuse_membership,
+        None,
+    )
 }
 
 pub(crate) fn finish_prepare_with_early_factor(
-    request: &OlsRequestV1, cluster_sources: &[SourceId], mut model: PreparedOlsModel,
-    sample: PreparedNumericSample, reuse_membership: bool,
+    request: &OlsRequestV1,
+    cluster_sources: &[SourceId],
+    mut model: PreparedOlsModel,
+    sample: PreparedNumericSample,
+    reuse_membership: bool,
     early_factor: Option<Result<PreparedCategoricalSource>>,
 ) -> Result<PreparedOlsData> {
     // Cluster-only sources are deliberately absent from this pre-singleton
@@ -872,23 +921,39 @@ pub(crate) fn finish_prepare_with_early_factor(
     // cluster coding is created only on the final singleton fixed point below.
     let pruning_categorical_sources = if let Some(factor) = early_factor {
         let mut sources = Vec::new();
-        sources.try_reserve_exact(1).map_err(|_| allocation("unable to reserve prepared categorical sources"))?;
+        sources
+            .try_reserve_exact(1)
+            .map_err(|_| allocation("unable to reserve prepared categorical sources"))?;
         sources.push(factor?);
         sources
-    } else { factorize_categorical_sources(request, &sample, &[])? };
+    } else {
+        factorize_categorical_sources(request, &sample, &[])?
+    };
     let pruning_fixed_effects = prepare_fixed_effects(request, &pruning_categorical_sources, &[])?;
     let prebuilt_index = if reuse_membership {
-        one_fe_fixed_point_index(request, &sample, &pruning_categorical_sources, &pruning_fixed_effects)?
+        one_fe_fixed_point_index(
+            request,
+            &sample,
+            &pruning_categorical_sources,
+            &pruning_fixed_effects,
+        )?
     } else {
         None
     };
-    let indexed_source = prebuilt_index.as_ref().map(|(index, _)| pruning_categorical_sources[*index].source);
+    let indexed_source = prebuilt_index
+        .as_ref()
+        .map(|(index, _)| pruning_categorical_sources[*index].source);
     let (sample, categorical_sources, fixed_effects, num_singletons, cascade_events) =
         if prebuilt_index.is_some() {
             let (sources, effects) = if cluster_sources.is_empty() {
                 (pruning_categorical_sources, pruning_fixed_effects)
             } else {
-                let sources = factorize_categorical_sources_reusing(request, &sample, cluster_sources, pruning_categorical_sources)?;
+                let sources = factorize_categorical_sources_reusing(
+                    request,
+                    &sample,
+                    cluster_sources,
+                    pruning_categorical_sources,
+                )?;
                 let effects = prepare_fixed_effects(request, &sources, cluster_sources)?;
                 (sources, effects)
             };
@@ -913,42 +978,68 @@ pub(crate) fn finish_prepare_with_early_factor(
                     .iter()
                     .any(|candidate| candidate.source == *source)
             });
-            let reusable_pruning = if num_singletons == 0 && (pruning_covers_final_sources || reuse_membership) {
-                Some((pruning_categorical_sources, pruning_fixed_effects))
-            } else {
-                // These codes/levels no longer describe the final sample. Release them
-                // before numeric compaction and final factorization allocate replacements.
-                drop(pruning_categorical_sources);
-                drop(pruning_fixed_effects);
-                None
-            };
-            let sample = sample.compact_active_rows(&singleton_result.active, crate::data::DropReason::Singleton)?;
+            let reusable_pruning =
+                if num_singletons == 0 && (pruning_covers_final_sources || reuse_membership) {
+                    Some((pruning_categorical_sources, pruning_fixed_effects))
+                } else {
+                    // These codes/levels no longer describe the final sample. Release them
+                    // before numeric compaction and final factorization allocate replacements.
+                    drop(pruning_categorical_sources);
+                    drop(pruning_fixed_effects);
+                    None
+                };
+            let sample = sample.compact_active_rows(
+                &singleton_result.active,
+                crate::data::DropReason::Singleton,
+            )?;
             drop(singleton_result.active);
             let (categorical_sources, fixed_effects) = if let Some(reusable) = reusable_pruning {
                 if pruning_covers_final_sources {
                     reusable
                 } else {
-                    let sources = factorize_categorical_sources_reusing(request, &sample, cluster_sources, reusable.0)?;
+                    let sources = factorize_categorical_sources_reusing(
+                        request,
+                        &sample,
+                        cluster_sources,
+                        reusable.0,
+                    )?;
                     let effects = prepare_fixed_effects(request, &sources, cluster_sources)?;
                     (sources, effects)
                 }
             } else {
-                let categorical_sources = factorize_categorical_sources(request, &sample, cluster_sources)?;
-                let fixed_effects = prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
+                let categorical_sources =
+                    factorize_categorical_sources(request, &sample, cluster_sources)?;
+                let fixed_effects =
+                    prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
                 (categorical_sources, fixed_effects)
             };
-            (sample, categorical_sources, fixed_effects, num_singletons, cascade_events)
+            (
+                sample,
+                categorical_sources,
+                fixed_effects,
+                num_singletons,
+                cascade_events,
+            )
         };
     // An earlier cluster-only source can move the FE within the final source
     // table. Its membership index is unchanged, but its source slot must move.
-    let prebuilt_index = prebuilt_index.map(|(_, index)| -> Result<_> {
-        let source = categorical_sources.iter().position(|source| Some(source.source) == indexed_source)
-            .ok_or_else(|| invalid("reused FE membership lost its final categorical source"))?;
-        Ok((source, index))
-    }).transpose()?;
+    let prebuilt_index = prebuilt_index
+        .map(|(_, index)| -> Result<_> {
+            let source = categorical_sources
+                .iter()
+                .position(|source| Some(source.source) == indexed_source)
+                .ok_or_else(|| invalid("reused FE membership lost its final categorical source"))?;
+            Ok((source, index))
+        })
+        .transpose()?;
     resolve_categorical_level_codes(&mut model, &categorical_sources)?;
-    let fe_topology =
-        build_prepared_fe_topology(request, &sample, &categorical_sources, fixed_effects, prebuilt_index)?;
+    let fe_topology = build_prepared_fe_topology(
+        request,
+        &sample,
+        &categorical_sources,
+        fixed_effects,
+        prebuilt_index,
+    )?;
     Ok(PreparedOlsData {
         model,
         sample,
@@ -978,21 +1069,27 @@ fn one_fe_fixed_point_index(
     sources: &[PreparedCategoricalSource],
     effects: &[PreparedOlsEffectRecipe],
 ) -> Result<Option<(usize, LevelIndex)>> {
-    if effects.len() != 1 || sample.n_active() < 16_384
+    if effects.len() != 1
+        || sample.n_active() < 16_384
         || !matches!(sample.weights, PreparedWeights::None)
     {
         return Ok(None);
     }
     let source_index = effects[0].categorical_source_index;
-    let source = sources.get(source_index)
+    let source = sources
+        .get(source_index)
         .ok_or_else(|| invalid("singleton fixed-effect source index is out of range"))?;
     if source.encoded.codes.len() != sample.n_active() {
-        return Err(invalid("singleton fixed-effect source is not aligned with the numeric sample"));
+        return Err(invalid(
+            "singleton fixed-effect source is not aligned with the numeric sample",
+        ));
     }
-    let index = match LevelIndex::try_from_ordered_codes(&source.encoded.codes, source.encoded.n_levels())? {
-        Some(index) => index,
-        None => LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?,
-    };
+    let index =
+        match LevelIndex::try_from_ordered_codes(&source.encoded.codes, source.encoded.n_levels())?
+        {
+            Some(index) => index,
+            None => LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?,
+        };
     for level in 0..index.n_levels() {
         if index.checked_members(level)?.len() == 1 && !request.keep_singletons {
             return Ok(None);
@@ -1222,7 +1319,11 @@ fn take_classified_sample(
         (Some(column), None, None) => Some((WeightKind::Analytic, column)),
         (None, Some(column), None) => Some((WeightKind::Frequency, column)),
         (None, None, Some(column)) => Some((WeightKind::Probability, column)),
-        _ => return Err(invalid("loaded OLS input cannot contain more than one weight column")),
+        _ => {
+            return Err(invalid(
+                "loaded OLS input cannot contain more than one weight column",
+            ))
+        }
     };
     if let Some((_, column)) = &mut weight {
         compact(column)?;
@@ -1244,7 +1345,10 @@ fn take_classified_sample(
         outcome: loaded.outcome.values,
         regressors,
         weights: weight.map_or(PreparedWeights::None, |(kind, column)| {
-            PreparedWeights::Provided { kind, values: column.values }
+            PreparedWeights::Provided {
+                kind,
+                values: column.values,
+            }
         }),
         adjustment: crate::data::PreparedAdjustment::None,
         drop_reasons,
@@ -1408,7 +1512,10 @@ fn factorize_categorical_sources_reusing(
         if !categorical.contains_key(&source.id) {
             continue;
         }
-        if previous.peek().is_some_and(|candidate| candidate.source == source.id) {
+        if previous
+            .peek()
+            .is_some_and(|candidate| candidate.source == source.id)
+        {
             output.push(previous.next().expect("peeked retained categorical source"));
             continue;
         }
@@ -1424,7 +1531,9 @@ fn factorize_categorical_sources_reusing(
         });
     }
     if previous.next().is_some() {
-        return Err(invalid("retained categorical source is absent from the final source plan"));
+        return Err(invalid(
+            "retained categorical source is absent from the final source plan",
+        ));
     }
     Ok(output)
 }
@@ -1577,10 +1686,14 @@ fn build_prepared_fe_topology_with_reservation<R: FeTopologyReservation>(
             total_levels = total_levels
                 .checked_add(n_levels)
                 .ok_or_else(|| allocation("prepared FE topology total level count overflows"))?;
-            let level_index = if prebuilt_index.as_ref()
+            let level_index = if prebuilt_index
+                .as_ref()
                 .is_some_and(|(source, _)| *source == recipe.categorical_source_index)
             {
-                prebuilt_index.take().expect("matched prepared membership").1
+                prebuilt_index
+                    .take()
+                    .expect("matched prepared membership")
+                    .1
             } else {
                 LevelIndex::from_codes(&categorical.encoded.codes, n_levels)?
             };
@@ -1612,7 +1725,9 @@ fn build_prepared_fe_topology_with_reservation<R: FeTopologyReservation>(
     }
 
     if prebuilt_index.is_some() {
-        return Err(invalid("prebuilt FE membership has no matching topology source"));
+        return Err(invalid(
+            "prebuilt FE membership has no matching topology source",
+        ));
     }
     let topology = PreparedOlsFeTopology {
         nobs: sample.n_active(),
@@ -2686,26 +2801,53 @@ mod tests {
             (WeightKind::Probability, OlsInputRole::ProbabilityWeight),
         ] {
             let mut request = request(16, true);
-            request.bindings.push(OlsInputBinding { stata_var_position: 19, role });
+            request.bindings.push(OlsInputBinding {
+                stata_var_position: 19,
+                role,
+            });
             for case in 0..5 {
                 let mut loaded = LoadedOlsInput {
                     candidate: (0..n).map(|row| case != 2 || row % 3 == 0).collect(),
-                    outcome: LoadedNumericColumn { values: vec![-0.0; n], missing: vec![false; n] },
-                    numeric_sources: (1..=16).map(|source| (SourceId::new(source).unwrap(),
-                        LoadedNumericColumn { values: vec![f64::from_bits(1); n], missing: vec![false; n] })).collect(),
-                    analytic_weight: None, frequency_weight: None, probability_weight: None,
+                    outcome: LoadedNumericColumn {
+                        values: vec![-0.0; n],
+                        missing: vec![false; n],
+                    },
+                    numeric_sources: (1..=16)
+                        .map(|source| {
+                            (
+                                SourceId::new(source).unwrap(),
+                                LoadedNumericColumn {
+                                    values: vec![f64::from_bits(1); n],
+                                    missing: vec![false; n],
+                                },
+                            )
+                        })
+                        .collect(),
+                    analytic_weight: None,
+                    frequency_weight: None,
+                    probability_weight: None,
                 };
                 let mut weight = LoadedNumericColumn {
-                    values: (0..n).map(|row| if kind == WeightKind::Frequency {
-                        (row % 3 + 1) as f64
-                    } else if row % 2 == 0 { 1e-100 } else { 1e100 }).collect(),
+                    values: (0..n)
+                        .map(|row| {
+                            if kind == WeightKind::Frequency {
+                                (row % 3 + 1) as f64
+                            } else if row % 2 == 0 {
+                                1e-100
+                            } else {
+                                1e100
+                            }
+                        })
+                        .collect(),
                     missing: vec![false; n],
                 };
                 if case > 0 {
                     loaded.outcome.missing[2] = true;
                     loaded.numeric_sources[15].1.missing[16_385] = true;
                     weight.missing[4] = true;
-                    if kind == WeightKind::Analytic { weight.values[5] = 0.0; }
+                    if kind == WeightKind::Analytic {
+                        weight.values[5] = 0.0;
+                    }
                 }
                 if case >= 3 {
                     // Weight-domain validation precedes availability, including
@@ -2723,18 +2865,40 @@ mod tests {
                 let expected = prepare_ols_data(&request, &loaded);
                 for threads in [1, 4] {
                     let input = loaded.clone();
-                    let actual = crate::ThreadTeam::new(crate::ThreadConfig::from_requested(threads, true).unwrap())
-                        .install(|| prepare_ols_data_owned(&request, input)).unwrap();
+                    let actual = crate::ThreadTeam::new(
+                        crate::ThreadConfig::from_requested(threads, true).unwrap(),
+                    )
+                    .install(|| prepare_ols_data_owned(&request, input))
+                    .unwrap();
                     match (&expected, actual) {
                         (Ok(expected), Ok(actual)) => {
                             assert_eq!(*expected, actual);
-                            let PreparedWeights::Provided { kind: actual_kind, values } = &actual.sample.weights else { panic!("weight lost") };
+                            let PreparedWeights::Provided {
+                                kind: actual_kind,
+                                values,
+                            } = &actual.sample.weights
+                            else {
+                                panic!("weight lost")
+                            };
                             assert_eq!(kind, *actual_kind);
                             assert!(values.capacity() <= actual.sample.n_candidate);
                             assert!(actual.sample.outcome.capacity() <= actual.sample.n_candidate);
-                            assert!(actual.sample.regressors.iter().all(|column| column.capacity() <= actual.sample.n_candidate));
-                            assert!(actual.sample.outcome.iter().all(|value| value.to_bits() == (-0.0_f64).to_bits()));
-                            assert!(actual.sample.regressors.iter().flatten().all(|value| value.to_bits() == 1));
+                            assert!(actual
+                                .sample
+                                .regressors
+                                .iter()
+                                .all(|column| column.capacity() <= actual.sample.n_candidate));
+                            assert!(actual
+                                .sample
+                                .outcome
+                                .iter()
+                                .all(|value| value.to_bits() == (-0.0_f64).to_bits()));
+                            assert!(actual
+                                .sample
+                                .regressors
+                                .iter()
+                                .flatten()
+                                .all(|value| value.to_bits() == 1));
                         }
                         (Err(expected), Err(actual)) => {
                             assert_eq!(expected.code, actual.code);
@@ -3528,7 +3692,10 @@ mod tests {
             probability_weight: None,
         };
         let prepared = prepare_ols_data(&request, &loaded).expect("FE preparation");
-        assert_eq!(prepared, prepare_ols_data_owned(&request, loaded).expect("owned FE preparation"));
+        assert_eq!(
+            prepared,
+            prepare_ols_data_owned(&request, loaded).expect("owned FE preparation")
+        );
         assert_eq!(
             prepared.sample.drop_reasons,
             vec![
@@ -3829,16 +3996,38 @@ mod tests {
         for n in [16383, 16384, 32769] {
             let mut request = request(9, false);
             request.absorbed_terms = vec![AbsorbedTerm {
-                id: AbsorbTermId::new(1).unwrap(), intercept: true,
-                categorical_sources: vec![SourceId::new(9).unwrap()], slope_sources: Vec::new(),
-                label: "g".into(), saved_name: String::new(),
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(9).unwrap()],
+                slope_sources: Vec::new(),
+                label: "g".into(),
+                saved_name: String::new(),
             }];
             let input = LoadedOlsInput {
-                candidate: vec![true; n], outcome: column(&vec![1.0; n], &vec![false; n]),
-                numeric_sources: (1..=9).map(|j| (SourceId::new(j).unwrap(),
-                    column(&(0..n).map(|r| if j == 9 { (r / 5) as f64 - 0.25 }
-                        else { ((r * j as usize) as f64).sin() }).collect::<Vec<_>>(), &vec![false; n]))).collect(),
-                analytic_weight: None, frequency_weight: None, probability_weight: None,
+                candidate: vec![true; n],
+                outcome: column(&vec![1.0; n], &vec![false; n]),
+                numeric_sources: (1..=9)
+                    .map(|j| {
+                        (
+                            SourceId::new(j).unwrap(),
+                            column(
+                                &(0..n)
+                                    .map(|r| {
+                                        if j == 9 {
+                                            (r / 5) as f64 - 0.25
+                                        } else {
+                                            ((r * j as usize) as f64).sin()
+                                        }
+                                    })
+                                    .collect::<Vec<_>>(),
+                                &vec![false; n],
+                            ),
+                        )
+                    })
+                    .collect(),
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
             };
             for case in 0..6 {
                 let mut input = input.clone();
@@ -3850,11 +4039,22 @@ mod tests {
                     5 => input.numeric_sources[8].1.values.reverse(),
                     _ => (),
                 }
-                let run = |threads| ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
-                    .install(|| prepare_ols_data_owned(&request, input.clone())).unwrap();
+                let run = |threads| {
+                    ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
+                        .install(|| prepare_ols_data_owned(&request, input.clone()))
+                        .unwrap()
+                };
                 let expected = run(1).expect("serial prepared fixture");
-                assert_eq!(expected, run(8).expect("eight-worker prepared fixture"), "N={n}, case={case}");
-                assert_eq!(expected, run(16).expect("sixteen-worker prepared fixture"), "N={n}, case={case}");
+                assert_eq!(
+                    expected,
+                    run(8).expect("eight-worker prepared fixture"),
+                    "N={n}, case={case}"
+                );
+                assert_eq!(
+                    expected,
+                    run(16).expect("sixteen-worker prepared fixture"),
+                    "N={n}, case={case}"
+                );
             }
         }
     }
@@ -3866,20 +4066,35 @@ mod tests {
                 for singleton in [false, true] {
                     let mut request = request(1, false);
                     request.absorbed_terms = vec![AbsorbedTerm {
-                        id: AbsorbTermId::new(1).unwrap(), intercept: true,
+                        id: AbsorbTermId::new(1).unwrap(),
+                        intercept: true,
                         categorical_sources: vec![SourceId::new(1).unwrap()],
-                        slope_sources: Vec::new(), label: "group".into(), saved_name: String::new(),
+                        slope_sources: Vec::new(),
+                        label: "group".into(),
+                        saved_name: String::new(),
                     }];
-                    let mut codes: Vec<_> = (0..n).map(|r| {
-                        let row = if shuffled { (r * 7919) % n } else { r };
-                        (row / 5) as f64 - 0.25
-                    }).collect();
-                    if singleton { codes[n / 2] = 1e12; }
+                    let mut codes: Vec<_> = (0..n)
+                        .map(|r| {
+                            let row = if shuffled { (r * 7919) % n } else { r };
+                            (row / 5) as f64 - 0.25
+                        })
+                        .collect();
+                    if singleton {
+                        codes[n / 2] = 1e12;
+                    }
                     let mut loaded = LoadedOlsInput {
                         candidate: vec![true; n],
-                        outcome: column(&(0..n).map(|r| (r % 97) as f64).collect::<Vec<_>>(), &vec![false; n]),
-                        numeric_sources: vec![(SourceId::new(1).unwrap(), column(&codes, &vec![false; n]))],
-                        analytic_weight: None, frequency_weight: None, probability_weight: None,
+                        outcome: column(
+                            &(0..n).map(|r| (r % 97) as f64).collect::<Vec<_>>(),
+                            &vec![false; n],
+                        ),
+                        numeric_sources: vec![(
+                            SourceId::new(1).unwrap(),
+                            column(&codes, &vec![false; n]),
+                        )],
+                        analytic_weight: None,
+                        frequency_weight: None,
+                        probability_weight: None,
                     };
                     for exclusions in [false, true] {
                         if exclusions {
@@ -3892,8 +4107,17 @@ mod tests {
                             } else {
                                 take_classified_sample(&request, loaded.clone(), &[]).unwrap()
                             };
-                            let model = request.validate_and_compile_with_cluster_sources(&[]).unwrap();
-                            finish_prepare_ols_data_with_membership(&request, &[], model, sample, reuse).unwrap()
+                            let model = request
+                                .validate_and_compile_with_cluster_sources(&[])
+                                .unwrap();
+                            finish_prepare_ols_data_with_membership(
+                                &request,
+                                &[],
+                                model,
+                                sample,
+                                reuse,
+                            )
+                            .unwrap()
                         };
                         let expected = finish(false);
                         let actual = finish(true);
@@ -3907,52 +4131,100 @@ mod tests {
     #[test]
     fn one_fe_and_multiway_cluster_reuse_preserves_source_order_weights_and_sample_changes() {
         for effect_count in [1, 2] {
-        for weight in [None, Some(WeightKind::Analytic), Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
-            for cluster_ids in [vec![2], vec![1], vec![9], vec![1, 9]] {
-                for (changed_sample, keep_singletons) in [(false, false), (true, false), (false, true), (true, true)] {
-                    let n = 16_387;
-                    let mut request = request(9, true);
-                    request.keep_singletons = keep_singletons;
-                    request.absorbed_terms = vec![AbsorbedTerm {
-                        id: AbsorbTermId::new(1).unwrap(), intercept: true,
-                        categorical_sources: vec![SourceId::new(2).unwrap()],
-                        slope_sources: Vec::new(), label: "group".into(), saved_name: String::new(),
-                    }];
-                    if effect_count == 2 {
-                        request.absorbed_terms.push(AbsorbedTerm {
-                            id: AbsorbTermId::new(2).unwrap(), intercept: true,
-                            categorical_sources: vec![SourceId::new(3).unwrap()],
-                            slope_sources: Vec::new(), label: "second group".into(), saved_name: String::new(),
-                        });
-                    }
-                    let clusters: Vec<_> = cluster_ids.iter().copied().map(|id| SourceId::new(id).unwrap()).collect();
-                    let mut loaded = LoadedOlsInput {
-                        candidate: vec![true; n],
-                        outcome: column(&(0..n).map(|r| (r % 97) as f64).collect::<Vec<_>>(), &vec![false; n]),
-                        numeric_sources: (1..=9).map(|id| {
-                            let values: Vec<_> = (0..n).map(|r| if id == 2 { (r / 5) as f64 - 0.25 }
-                                else { (r % (id as usize * 17)) as f64 }).collect();
-                            (SourceId::new(id).unwrap(), column(&values, &vec![false; n]))
-                        }).collect(),
-                        analytic_weight: None, frequency_weight: None, probability_weight: None,
-                    };
-                    if let Some(kind) = weight {
-                        let values = column(&(0..n).map(|r| (r % 3 + 1) as f64).collect::<Vec<_>>(), &vec![false; n]);
-                        let role = match kind {
-                            WeightKind::Analytic => { loaded.analytic_weight = Some(values); OlsInputRole::AnalyticWeight },
-                            WeightKind::Frequency => { loaded.frequency_weight = Some(values); OlsInputRole::FrequencyWeight },
-                            WeightKind::Probability => { loaded.probability_weight = Some(values); OlsInputRole::ProbabilityWeight },
-                            WeightKind::Importance => unreachable!("fixture selects supported OLS weights"),
+            for weight in [
+                None,
+                Some(WeightKind::Analytic),
+                Some(WeightKind::Frequency),
+                Some(WeightKind::Probability),
+            ] {
+                for cluster_ids in [vec![2], vec![1], vec![9], vec![1, 9]] {
+                    for (changed_sample, keep_singletons) in
+                        [(false, false), (true, false), (false, true), (true, true)]
+                    {
+                        let n = 16_387;
+                        let mut request = request(9, true);
+                        request.keep_singletons = keep_singletons;
+                        request.absorbed_terms = vec![AbsorbedTerm {
+                            id: AbsorbTermId::new(1).unwrap(),
+                            intercept: true,
+                            categorical_sources: vec![SourceId::new(2).unwrap()],
+                            slope_sources: Vec::new(),
+                            label: "group".into(),
+                            saved_name: String::new(),
+                        }];
+                        if effect_count == 2 {
+                            request.absorbed_terms.push(AbsorbedTerm {
+                                id: AbsorbTermId::new(2).unwrap(),
+                                intercept: true,
+                                categorical_sources: vec![SourceId::new(3).unwrap()],
+                                slope_sources: Vec::new(),
+                                label: "second group".into(),
+                                saved_name: String::new(),
+                            });
+                        }
+                        let clusters: Vec<_> = cluster_ids
+                            .iter()
+                            .copied()
+                            .map(|id| SourceId::new(id).unwrap())
+                            .collect();
+                        let mut loaded = LoadedOlsInput {
+                            candidate: vec![true; n],
+                            outcome: column(
+                                &(0..n).map(|r| (r % 97) as f64).collect::<Vec<_>>(),
+                                &vec![false; n],
+                            ),
+                            numeric_sources: (1..=9)
+                                .map(|id| {
+                                    let values: Vec<_> = (0..n)
+                                        .map(|r| {
+                                            if id == 2 {
+                                                (r / 5) as f64 - 0.25
+                                            } else {
+                                                (r % (id as usize * 17)) as f64
+                                            }
+                                        })
+                                        .collect();
+                                    (SourceId::new(id).unwrap(), column(&values, &vec![false; n]))
+                                })
+                                .collect(),
+                            analytic_weight: None,
+                            frequency_weight: None,
+                            probability_weight: None,
                         };
-                        request.bindings.push(OlsInputBinding { stata_var_position: 12, role });
-                    }
-                    if changed_sample {
-                        loaded.candidate[0] = false;
-                        loaded.outcome.missing[1] = true;
-                        loaded.numeric_sources[0].1.missing[3] = true;
-                        loaded.numeric_sources[1].1.values[10] = 1e12;
-                    }
-                    crate::ThreadTeam::new(crate::ThreadConfig::from_requested(16, true).unwrap()).install(|| {
+                        if let Some(kind) = weight {
+                            let values = column(
+                                &(0..n).map(|r| (r % 3 + 1) as f64).collect::<Vec<_>>(),
+                                &vec![false; n],
+                            );
+                            let role = match kind {
+                                WeightKind::Analytic => {
+                                    loaded.analytic_weight = Some(values);
+                                    OlsInputRole::AnalyticWeight
+                                }
+                                WeightKind::Frequency => {
+                                    loaded.frequency_weight = Some(values);
+                                    OlsInputRole::FrequencyWeight
+                                }
+                                WeightKind::Probability => {
+                                    loaded.probability_weight = Some(values);
+                                    OlsInputRole::ProbabilityWeight
+                                }
+                                WeightKind::Importance => {
+                                    unreachable!("fixture selects supported OLS weights")
+                                }
+                            };
+                            request.bindings.push(OlsInputBinding {
+                                stata_var_position: 12,
+                                role,
+                            });
+                        }
+                        if changed_sample {
+                            loaded.candidate[0] = false;
+                            loaded.outcome.missing[1] = true;
+                            loaded.numeric_sources[0].1.missing[3] = true;
+                            loaded.numeric_sources[1].1.values[10] = 1e12;
+                        }
+                        crate::ThreadTeam::new(crate::ThreadConfig::from_requested(16, true).unwrap()).install(|| {
                         let sample = if is_full_retained_unweighted_sample(&loaded) {
                             take_full_retained_unweighted_sample(loaded.clone()).unwrap()
                         } else { take_classified_sample(&request, loaded.clone(), &clusters).unwrap() };
@@ -3961,9 +4233,9 @@ mod tests {
                         let actual = prepare_ols_data_owned_with_cluster_sources(&request, loaded, &clusters).unwrap();
                         assert_eq!(actual, expected, "effects={effect_count}, weight={weight:?}, clusters={clusters:?}, changed={changed_sample}, keepsingletons={keep_singletons}");
                     }).unwrap();
+                    }
                 }
             }
-        }
         }
     }
 
@@ -3994,7 +4266,10 @@ mod tests {
             probability_weight: None,
         };
         let weighted = prepare_ols_data(&request, &loaded).expect("frequency singleton");
-        assert_eq!(weighted, prepare_ols_data_owned(&request, loaded.clone()).unwrap());
+        assert_eq!(
+            weighted,
+            prepare_ols_data_owned(&request, loaded.clone()).unwrap()
+        );
         assert_eq!(weighted.sample.retained_rows(), &[0]);
         assert_eq!(
             weighted.sample.drop_reasons,

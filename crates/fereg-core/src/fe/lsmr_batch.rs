@@ -64,7 +64,10 @@ pub(super) fn selected_rhs_columns(
     positions: &[usize],
 ) -> crate::error::Result<Vec<Vec<f64>>> {
     if positions.iter().any(|&column| column >= values.ncols()) {
-        return Err(FeregError::new(ErrorCode::InvalidArgument, "LSMR selected RHS is out of bounds"));
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "LSMR selected RHS is out of bounds",
+        ));
     }
     rhs_columns_mapped(values, positions.len(), |column| positions[column])
 }
@@ -133,9 +136,14 @@ pub(super) fn copy_selected_demeaned(
     let width = values.ncols();
     assert_eq!(columns.len(), rows * positions.len());
     assert!(positions.iter().all(|&column| column < width));
-    if width == 0 { return; }
-    values.as_mut_slice().par_chunks_mut(TRANSPORT_ROWS * width)
-        .enumerate().for_each(|(tile, destination)| {
+    if width == 0 {
+        return;
+    }
+    values
+        .as_mut_slice()
+        .par_chunks_mut(TRANSPORT_ROWS * width)
+        .enumerate()
+        .for_each(|(tile, destination)| {
             let start = tile * TRANSPORT_ROWS;
             for (source_column, &column) in positions.iter().enumerate() {
                 let source = &columns[source_column * rows + start
@@ -147,18 +155,25 @@ pub(super) fn copy_selected_demeaned(
         });
 }
 
-pub(super) fn solve_batch<'a>(
-    effects: Vec<Effect<'a>>,
+pub(super) fn solve_batch(
+    effects: Vec<Effect<'_>>,
     rhs: &[&[f64]],
     weights: Option<&[f64]>,
     options: &LsmrOptions,
     preconditioner: PreconditionerConfig,
 ) -> Result<BatchSolveResult, BatchError> {
-    solve_batch_with_policy(effects, rhs, weights, options, preconditioner, LsmrBatchPolicy::Default)
+    solve_batch_with_policy(
+        effects,
+        rhs,
+        weights,
+        options,
+        preconditioner,
+        LsmrBatchPolicy::Default,
+    )
 }
 
-pub(super) fn solve_batch_with_policy<'a>(
-    effects: Vec<Effect<'a>>,
+pub(super) fn solve_batch_with_policy(
+    effects: Vec<Effect<'_>>,
     rhs: &[&[f64]],
     weights: Option<&[f64]>,
     options: &LsmrOptions,
@@ -242,30 +257,50 @@ mod tests {
     #[test]
     fn selected_transport_preserves_other_columns_and_bits_at_tile_edges() {
         for threads in [1, 4] {
-            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
-                for rows in [1, 31, 32, 33, 257] {
-                    for width in [3, 8, 17, 67] {
-                        let mut values = DenseMatrix::from_row_major(rows, width,
-                            (0..rows * width).map(|i| f64::from_bits(
-                                (i as u64).wrapping_mul(0x9e3779b97f4a7c15))).collect()).unwrap();
-                        let original = values.as_slice().to_vec();
-                        let positions = [width - 1, 0, width / 2];
-                        let mut rhs = selected_rhs_columns(&values, &positions).unwrap();
-                        for (j, column) in rhs.iter_mut().enumerate() {
-                            for (row, value) in column.iter_mut().enumerate() {
-                                assert_eq!(value.to_bits(), original[row * width + positions[j]].to_bits());
-                                *value = f64::from_bits(value.to_bits() ^ 0x8000000000000000);
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for rows in [1, 31, 32, 33, 257] {
+                        for width in [3, 8, 17, 67] {
+                            let mut values = DenseMatrix::from_row_major(
+                                rows,
+                                width,
+                                (0..rows * width)
+                                    .map(|i| {
+                                        f64::from_bits((i as u64).wrapping_mul(0x9e3779b97f4a7c15))
+                                    })
+                                    .collect(),
+                            )
+                            .unwrap();
+                            let original = values.as_slice().to_vec();
+                            let positions = [width - 1, 0, width / 2];
+                            let mut rhs = selected_rhs_columns(&values, &positions).unwrap();
+                            for (j, column) in rhs.iter_mut().enumerate() {
+                                for (row, value) in column.iter_mut().enumerate() {
+                                    assert_eq!(
+                                        value.to_bits(),
+                                        original[row * width + positions[j]].to_bits()
+                                    );
+                                    *value = f64::from_bits(value.to_bits() ^ 0x8000000000000000);
+                                }
+                            }
+                            copy_selected_demeaned(&rhs.concat(), &mut values, &positions);
+                            for row in 0..rows {
+                                for column in 0..width {
+                                    let expected = original[row * width + column].to_bits()
+                                        ^ if positions.contains(&column) {
+                                            0x8000000000000000
+                                        } else {
+                                            0
+                                        };
+                                    assert_eq!(values[(row, column)].to_bits(), expected);
+                                }
                             }
                         }
-                        copy_selected_demeaned(&rhs.concat(), &mut values, &positions);
-                        for row in 0..rows { for column in 0..width {
-                            let expected = original[row * width + column].to_bits()
-                                ^ if positions.contains(&column) { 0x8000000000000000 } else { 0 };
-                            assert_eq!(values[(row, column)].to_bits(), expected);
-                        } }
                     }
-                }
-            });
+                });
         }
     }
 
@@ -367,7 +402,9 @@ mod tests {
                         .unwrap();
                         let oracle = solver.solve_batch(&rhs, &options).unwrap();
                         assert!(oracle.converged.iter().all(|&converged| converged));
-                        let result = solve_prepared_batch(&solver, &rhs, &options, LsmrBatchPolicy::Default).unwrap();
+                        let result =
+                            solve_prepared_batch(&solver, &rhs, &options, LsmrBatchPolicy::Default)
+                                .unwrap();
                         assert_eq!(result.x, oracle.x);
                         assert_eq!(result.demeaned, oracle.demeaned);
                         assert_eq!(result.unidentified, oracle.unidentified);
@@ -386,52 +423,103 @@ mod tests {
         let left: Vec<u32> = (0..rows).map(|r| (r % 32) as u32).collect();
         let right: Vec<u32> = (0..rows).map(|r| ((r / 7) % 19) as u32).collect();
         let weights: Vec<f64> = (0..rows).map(|r| 0.5 + (r % 13) as f64 / 13.0).collect();
-        let columns: Vec<Vec<f64>> = (0..64).map(|c| (0..rows)
-            .map(|r| ((r * 17 + c * 31) as f64 * 0.0031).sin()).collect()).collect();
+        let columns: Vec<Vec<f64>> = (0..64)
+            .map(|c| {
+                (0..rows)
+                    .map(|r| ((r * 17 + c * 31) as f64 * 0.0031).sin())
+                    .collect()
+            })
+            .collect();
         let views: Vec<&[f64]> = columns.iter().map(Vec::as_slice).collect();
-        let options = LsmrOptions { tol: 1e-10, maxiter: 500, local_size: Some(4) };
+        let options = LsmrOptions {
+            tol: 1e-10,
+            maxiter: 500,
+            local_size: Some(4),
+        };
         for threads in [1, 4] {
-            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
-                for weighted in [false, true] {
-                    for preconditioner in [PreconditionerConfig::Off, PreconditionerConfig::Diagonal,
-                        PreconditionerConfig::default()]
-                    {
-                        let effects = || vec![Effect::new(&left, true, []).unwrap(),
-                            Effect::new(&right, true, []).unwrap()];
-                        let w = weighted.then_some(weights.as_slice());
-                        let solver = Solver::new(effects(), w.map(<[f64]>::to_vec), preconditioner.clone()).unwrap();
-                        for width in [16, 52, 64] {
-                            let rhs = &views[..width];
-                            let expected = solver.solve_batch(rhs, &options).unwrap();
-                            assert!(expected.converged.iter().all(|&v| v));
-                            for actual in [
-                                solve_prepared_batch(&solver, rhs, &options, LsmrBatchPolicy::RetainedSerialOls).unwrap(),
-                                solve_batch_with_policy(effects(), rhs, w, &options, preconditioner.clone(),
-                                    LsmrBatchPolicy::RetainedSerialOls).unwrap(),
-                            ] {
-                                assert_eq!(actual.x, expected.x);
-                                assert_eq!(actual.demeaned, expected.demeaned);
-                                assert_eq!(actual.unidentified, expected.unidentified);
-                                assert_eq!(actual.converged, expected.converged);
-                                assert_eq!(actual.iterations, expected.iterations);
-                                assert_eq!(actual.residual, expected.residual);
-                                assert_eq!((actual.n_dofs, actual.n_obs), (expected.n_dofs, expected.n_obs));
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for weighted in [false, true] {
+                        for preconditioner in [
+                            PreconditionerConfig::Off,
+                            PreconditionerConfig::Diagonal,
+                            PreconditionerConfig::default(),
+                        ] {
+                            let effects = || {
+                                vec![
+                                    Effect::new(&left, true, []).unwrap(),
+                                    Effect::new(&right, true, []).unwrap(),
+                                ]
+                            };
+                            let w = weighted.then_some(weights.as_slice());
+                            let solver = Solver::new(
+                                effects(),
+                                w.map(<[f64]>::to_vec),
+                                preconditioner.clone(),
+                            )
+                            .unwrap();
+                            for width in [16, 52, 64] {
+                                let rhs = &views[..width];
+                                let expected = solver.solve_batch(rhs, &options).unwrap();
+                                assert!(expected.converged.iter().all(|&v| v));
+                                for actual in [
+                                    solve_prepared_batch(
+                                        &solver,
+                                        rhs,
+                                        &options,
+                                        LsmrBatchPolicy::RetainedSerialOls,
+                                    )
+                                    .unwrap(),
+                                    solve_batch_with_policy(
+                                        effects(),
+                                        rhs,
+                                        w,
+                                        &options,
+                                        preconditioner.clone(),
+                                        LsmrBatchPolicy::RetainedSerialOls,
+                                    )
+                                    .unwrap(),
+                                ] {
+                                    assert_eq!(actual.x, expected.x);
+                                    assert_eq!(actual.demeaned, expected.demeaned);
+                                    assert_eq!(actual.unidentified, expected.unidentified);
+                                    assert_eq!(actual.converged, expected.converged);
+                                    assert_eq!(actual.iterations, expected.iterations);
+                                    assert_eq!(actual.residual, expected.residual);
+                                    assert_eq!(
+                                        (actual.n_dofs, actual.n_obs),
+                                        (expected.n_dofs, expected.n_obs)
+                                    );
+                                }
                             }
-                        }
-                        if threads == 1 {
-                            let mut malformed = views[..16].to_vec();
-                            malformed[15] = &columns[15][..rows - 1];
-                            for attempt in [
-                                solve_prepared_batch(&solver, &malformed, &options, LsmrBatchPolicy::RetainedSerialOls),
-                                solve_batch_with_policy(effects(), &malformed, w, &options, preconditioner.clone(),
-                                    LsmrBatchPolicy::RetainedSerialOls),
-                            ] {
-                                assert!(matches!(attempt, Err(BatchError::Upstream(_))));
+                            if threads == 1 {
+                                let mut malformed = views[..16].to_vec();
+                                malformed[15] = &columns[15][..rows - 1];
+                                for attempt in [
+                                    solve_prepared_batch(
+                                        &solver,
+                                        &malformed,
+                                        &options,
+                                        LsmrBatchPolicy::RetainedSerialOls,
+                                    ),
+                                    solve_batch_with_policy(
+                                        effects(),
+                                        &malformed,
+                                        w,
+                                        &options,
+                                        preconditioner.clone(),
+                                        LsmrBatchPolicy::RetainedSerialOls,
+                                    ),
+                                ] {
+                                    assert!(matches!(attempt, Err(BatchError::Upstream(_))));
+                                }
                             }
                         }
                     }
-                }
-            });
+                });
         }
     }
 
@@ -451,7 +539,14 @@ mod tests {
             .num_threads(2)
             .build()
             .unwrap()
-            .install(|| solve_prepared_batch(&solver, &batch, &LsmrOptions::default(), LsmrBatchPolicy::Default))
+            .install(|| {
+                solve_prepared_batch(
+                    &solver,
+                    &batch,
+                    &LsmrOptions::default(),
+                    LsmrBatchPolicy::Default,
+                )
+            })
             .unwrap_err();
         assert!(matches!(
             &error,

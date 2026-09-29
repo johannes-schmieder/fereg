@@ -647,7 +647,9 @@ impl ReusableCategoricalFwlCmg {
         }
         let mut absorber = attempt?;
         self.expected_heap_peak = self.expected_heap_peak.max(
-            absorber.expected_heap_peak().with_retained(self.expected_parent_bytes)?,
+            absorber
+                .expected_heap_peak()
+                .with_retained(self.expected_parent_bytes)?,
         );
         let first = absorber.project_unpolished_with_seed(
             &mut self.projected,
@@ -714,7 +716,9 @@ impl ReusableCategoricalFwlCmg {
                 }
                 absorber = attempt?;
                 self.expected_heap_peak = self.expected_heap_peak.max(
-                    absorber.expected_heap_peak().with_retained(self.expected_parent_bytes)?,
+                    absorber
+                        .expected_heap_peak()
+                        .with_retained(self.expected_parent_bytes)?,
                 );
                 absorber.project_unpolished(&mut self.retry, retry_tolerance)?
             };

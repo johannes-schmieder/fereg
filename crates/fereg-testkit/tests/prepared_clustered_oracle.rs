@@ -1033,7 +1033,8 @@ fn prepare_case(
         weights,
     );
     let borrowed = prepare_ols_clustered_data(&request, &loaded).expect("prepare clustered case");
-    let owned = fereg_core::ols::prepare_ols_clustered_data_owned(&request, loaded).expect("owned clustered case");
+    let owned = fereg_core::ols::prepare_ols_clustered_data_owned(&request, loaded)
+        .expect("owned clustered case");
     assert_eq!(borrowed, owned);
     owned
 }

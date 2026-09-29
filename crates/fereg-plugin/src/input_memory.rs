@@ -241,6 +241,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn simultaneous_dictionaries_bound_independent_allocator_peak() {
         let _guard = crate::instrumentation::lock_action_observation();
         let mut values: [Vec<f64>; 3] = std::array::from_fn(|_| vec![0.0; 257]);
@@ -305,7 +306,7 @@ mod tests {
     #[test]
     fn exact_and_one_byte_short_growth_admission_is_transactional() {
         let key = b"first".to_vec();
-        let required = 8 * size_of::<u32>() + 4 * size_of::<Entry>() + key.capacity();
+        let required = size_of::<[u32; 8]>() + 4 * size_of::<Entry>() + key.capacity();
         for budget in [required - 1, required] {
             let mut memory = InputMemory::new(Some(budget as u128), 0).unwrap();
             let mut dictionary = StringDictionary::new();

@@ -239,7 +239,10 @@ fn begin_allocation_observation_inner(
     reset_ppml_phase_telemetry: bool,
 ) -> (AllocationUsage, Option<u64>) {
     if ABI_BASELINE_BYTES.load(Ordering::Relaxed) != u64::MAX {
-        ABI_PREFIX_PEAK_BYTES.fetch_max(ALLOCATION_PEAK_BYTES.load(Ordering::Relaxed), Ordering::Relaxed);
+        ABI_PREFIX_PEAK_BYTES.fetch_max(
+            ALLOCATION_PEAK_BYTES.load(Ordering::Relaxed),
+            Ordering::Relaxed,
+        );
     }
     ACTION_OBSERVATION_SEQUENCE.fetch_add(1, Ordering::Relaxed);
     let current = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
@@ -585,8 +588,12 @@ extern "C" {
         missing_value: *mut f64,
     ) -> c_int;
     fn fereg_spi_vstore(variable: c_int, observation: c_int, value: f64) -> c_int;
-    fn fereg_spi_vstore_columns(variables: *const c_int, variable_count: c_int,
-        observation_count: c_int, columns: *const *const f64) -> c_int;
+    fn fereg_spi_vstore_columns(
+        variables: *const c_int,
+        variable_count: c_int,
+        observation_count: c_int,
+        columns: *const *const f64,
+    ) -> c_int;
     fn fereg_spi_vdata_rows(
         variables: *const c_int,
         variable_count: c_int,
@@ -675,8 +682,12 @@ unsafe fn fereg_spi_vstore(_variable: c_int, _observation: c_int, _value: f64) -
     498
 }
 #[cfg(test)]
-unsafe fn fereg_spi_vstore_columns(_variables: *const c_int, _variable_count: c_int,
-    _observation_count: c_int, _columns: *const *const f64) -> c_int {
+unsafe fn fereg_spi_vstore_columns(
+    _variables: *const c_int,
+    _variable_count: c_int,
+    _observation_count: c_int,
+    _columns: *const *const f64,
+) -> c_int {
     498
 }
 #[cfg(test)]
@@ -915,10 +926,16 @@ impl SpiApi for SpiSession {
         first_observation: usize,
         values: &mut [f64],
     ) -> Result<f64, FeregError> {
-        if variables.is_empty() || variables.len() > 64 || values.is_empty()
-            || values.len() % variables.len() != 0 || values.len() / variables.len() > 4096
+        if variables.is_empty()
+            || variables.len() > 64
+            || values.is_empty()
+            || values.len() % variables.len() != 0
+            || values.len() / variables.len() > 4096
         {
-            return Err(FeregError::new(ErrorCode::InvalidArgument, "numeric SPI row batch has an invalid shape"));
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "numeric SPI row batch has an invalid shape",
+            ));
         }
         let mut positions = [0; 64];
         for (destination, variable) in positions.iter_mut().zip(variables) {
@@ -927,18 +944,33 @@ impl SpiApi for SpiSession {
         let first = Self::observation(first_observation)?;
         let count = (values.len() / variables.len()) as c_int;
         first.checked_add(count - 1).ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "numeric SPI observation index overflows")
+            FeregError::new(
+                ErrorCode::Allocation,
+                "numeric SPI observation index overflows",
+            )
         })?;
         let mut boundary = 0.0;
         // SAFETY: width, row count, index bounds and writable storage are
         // checked above. The C adapter also validates Stata coordinates and
         // rejects any thread other than the bound calling thread.
-        Self::spi_rc(unsafe {
-            fereg_spi_vdata_rows(positions.as_ptr(), variables.len() as c_int,
-                first, count, values.as_mut_ptr(), &mut boundary)
-        }, "numeric row read")?;
+        Self::spi_rc(
+            unsafe {
+                fereg_spi_vdata_rows(
+                    positions.as_ptr(),
+                    variables.len() as c_int,
+                    first,
+                    count,
+                    values.as_mut_ptr(),
+                    &mut boundary,
+                )
+            },
+            "numeric row read",
+        )?;
         if !boundary.is_finite() || boundary <= 0.0 {
-            return Err(FeregError::new(ErrorCode::Internal, "Stata SPI returned an invalid numeric missing boundary"));
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "Stata SPI returned an invalid numeric missing boundary",
+            ));
         }
         Ok(boundary)
     }
@@ -1090,11 +1122,16 @@ impl SpiApi for SpiSession {
         // SAFETY: the buffer is writable for `length` bytes; indices are checked
         // and the session remains confined to Stata's calling thread.
         Self::spi_rc(
-            unsafe { fereg_spi_read_string(variable, observation, buffer.as_mut_ptr().cast(), length) },
+            unsafe {
+                fereg_spi_read_string(variable, observation, buffer.as_mut_ptr().cast(), length)
+            },
             "string read",
         )?;
         let end = buffer.iter().position(|byte| *byte == 0).ok_or_else(|| {
-            FeregError::new(ErrorCode::Internal, "Stata string buffer lacks a terminator")
+            FeregError::new(
+                ErrorCode::Internal,
+                "Stata string buffer lacks a terminator",
+            )
         })?;
         buffer.truncate(end);
         Ok(buffer)
@@ -1151,10 +1188,14 @@ impl SpiApi for SpiSession {
             return Ok(false);
         }
         let rows = columns[0].1.len();
-        if rows == 0 || rows > c_int::MAX as usize
-            || columns.iter().any(|(position, values)| *position == 0
-                || *position > c_int::MAX as u32 || values.len() != rows)
-        { return Ok(false); }
+        if rows == 0
+            || rows > c_int::MAX as usize
+            || columns.iter().any(|(position, values)| {
+                *position == 0 || *position > c_int::MAX as u32 || values.len() != rows
+            })
+        {
+            return Ok(false);
+        }
         let mut positions = [0 as c_int; MAX];
         let mut pointers = [std::ptr::null(); MAX];
         for (i, (position, values)) in columns.iter().enumerate() {
@@ -1164,10 +1205,17 @@ impl SpiApi for SpiSession {
         // SAFETY: every borrowed column covers the checked row count and stays
         // live through this call. The C adapter validates all Stata coordinates
         // before any store and enforces the same caller-thread confinement.
-        Self::store_rc(unsafe {
-            fereg_spi_vstore_columns(positions.as_ptr(), columns.len() as c_int,
-                rows as c_int, pointers.as_ptr())
-        }, &mut self.numeric_store_error)?;
+        Self::store_rc(
+            unsafe {
+                fereg_spi_vstore_columns(
+                    positions.as_ptr(),
+                    columns.len() as c_int,
+                    rows as c_int,
+                    pointers.as_ptr(),
+                )
+            },
+            &mut self.numeric_store_error,
+        )?;
         Ok(true)
     }
 
@@ -1260,7 +1308,8 @@ fn begin_abi_memory_observation() {
 fn finish_abi_memory_observation() -> (u64, u64, u64) {
     let start = ABI_BASELINE_BYTES.swap(u64::MAX, Ordering::Relaxed);
     let current = ALLOCATION_CURRENT_BYTES.load(Ordering::Relaxed);
-    let peak = ABI_PREFIX_PEAK_BYTES.load(Ordering::Relaxed)
+    let peak = ABI_PREFIX_PEAK_BYTES
+        .load(Ordering::Relaxed)
         .max(ALLOCATION_PEAK_BYTES.load(Ordering::Relaxed));
     (start, current, peak)
 }
@@ -1347,8 +1396,12 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
             let _ = terminal.write(std::io::stderr().lock());
             let (start_bytes, current_bytes, peak_bytes) = whole_action;
             let _ = crate::action_memory::TerminalObservation {
-                start_bytes, current_bytes, peak_bytes, ..terminal
-            }.write_whole_action(std::io::stderr().lock());
+                start_bytes,
+                current_bytes,
+                peak_bytes,
+                ..terminal
+            }
+            .write_whole_action(std::io::stderr().lock());
         }));
     }
     return_code
@@ -1357,9 +1410,7 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
 /// Labels observation only; the frozen dispatch branches remain the sole
 /// authority for selecting and entering an estimation action.
 fn action_memory_audit_estimator(args: &[String]) -> Option<&'static str> {
-    if std::env::var_os("FEREG_ACTION_MEMORY_AUDIT").is_none() {
-        return None;
-    }
+    std::env::var_os("FEREG_ACTION_MEMORY_AUDIT")?;
     match args.first().map(String::as_str) {
         Some(action) if action.eq_ignore_ascii_case(ACTION_ESTIMATE_OLS) => Some("ols"),
         Some(action) if action.eq_ignore_ascii_case(ACTION_ESTIMATE_PPML) => Some("ppml"),
@@ -1385,21 +1436,30 @@ unsafe fn read_arguments(
     }
     let mut required = (argc as u128)
         .checked_mul(std::mem::size_of::<String>() as u128)
-        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "argument descriptor size overflows"))?;
+        .ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "argument descriptor size overflows")
+        })?;
     // Validate and count borrowed C strings before constructing the owned argv.
     // This is a metadata pass, independent of Stata observation loading.
     for index in 0..argc as usize {
         // SAFETY: the ABI promises argc pointers; each pointee is checked below.
         let pointer = unsafe { *argv.add(index) };
         if pointer.is_null() {
-            return Err(FeregError::new(ErrorCode::Syntax, format!("plugin argument {index} is null")));
+            return Err(FeregError::new(
+                ErrorCode::Syntax,
+                format!("plugin argument {index} is null"),
+            ));
         }
         // SAFETY: the caller supplies NUL-terminated strings for this call.
         let value = unsafe { CStr::from_ptr(pointer) }.to_str().map_err(|_| {
-            FeregError::new(ErrorCode::Syntax, format!("plugin argument {index} is not valid UTF-8"))
+            FeregError::new(
+                ErrorCode::Syntax,
+                format!("plugin argument {index} is not valid UTF-8"),
+            )
         })?;
-        required = required.checked_add(value.len() as u128)
-            .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "argument payload size overflows"))?;
+        required = required.checked_add(value.len() as u128).ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "argument payload size overflows")
+        })?;
     }
     if argc > 0 {
         // SAFETY: the complete argument array was validated above.
@@ -1407,8 +1467,12 @@ unsafe fn read_arguments(
         if action.eq_ignore_ascii_case(ACTION_ESTIMATE_OLS.as_bytes())
             || action.eq_ignore_ascii_case(ACTION_ESTIMATE_PPML.as_bytes())
         {
-            crate::metadata_memory::admit(required,
-                fereg_core::memory::usable_memory_bytes(crate::estimate::imposed_memory_limit_bytes()?))?;
+            crate::metadata_memory::admit(
+                required,
+                fereg_core::memory::usable_memory_bytes(
+                    crate::estimate::imposed_memory_limit_bytes()?,
+                ),
+            )?;
         }
     }
     let mut args = Vec::new();
@@ -1435,7 +1499,10 @@ unsafe fn read_arguments(
         })?;
         let mut owned = String::new();
         owned.try_reserve_exact(value.len()).map_err(|_| {
-            FeregError::new(ErrorCode::Allocation, "unable to reserve plugin argument payload")
+            FeregError::new(
+                ErrorCode::Allocation,
+                "unable to reserve plugin argument payload",
+            )
         })?;
         owned.push_str(value);
         args.push(owned);
@@ -1496,6 +1563,7 @@ mod tests {
     use std::ffi::CString;
 
     #[test]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn whole_action_stitches_prefix_and_legacy_reset_without_losing_early_peak() {
         let _guard = crate::instrumentation::lock_action_observation();
         begin_abi_memory_observation();

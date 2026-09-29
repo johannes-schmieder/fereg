@@ -39,22 +39,35 @@ impl Coefficients {
 
 // Shared by admission and construction: an impossible geometry must not
 // inflate the public optional-workspace forecast before falling back.
-pub(super) fn workspace_bytes(n: usize, width: usize, levels: [usize; 3], threads: usize) -> Option<u128> {
+pub(super) fn workspace_bytes(
+    n: usize,
+    width: usize,
+    levels: [usize; 3],
+    threads: usize,
+) -> Option<u128> {
     let plan = SchurPlan::new(n, width, levels, threads)?;
-    let groups = levels.iter().try_fold(0_usize, |sum, &v| sum.checked_add(v))?;
+    let groups = levels
+        .iter()
+        .try_fold(0_usize, |sum, &v| sum.checked_add(v))?;
     let workers = threads.min(width).max(1);
     let square = width.checked_mul(width)?;
-    let stride = groups.checked_mul(width)?.checked_add(square)?.checked_add(width)?;
+    let stride = groups
+        .checked_mul(width)?
+        .checked_add(square)?
+        .checked_add(width)?;
     let coefficient_stride = plan.eliminated.checked_add(plan.reduced)?;
     coefficient_stride.checked_mul(width)?;
     workers.checked_mul(stride)?;
     plan.reduced.checked_mul(4)?.checked_mul(workers)?;
     // Cumulative charge retains construction scratch after its physical death.
-    let doubles = 2 * n as u128 + groups as u128 + 7 * width as u128
+    let doubles = 2 * n as u128
+        + groups as u128
+        + 7 * width as u128
         + coefficient_stride as u128 * width as u128
         + workers as u128 * (4 * plan.reduced as u128 + stride as u128)
         + square as u128;
-    plan.geometry_bytes()?.checked_add(doubles.checked_mul(8)?)?
+    plan.geometry_bytes()?
+        .checked_add(doubles.checked_mul(8)?)?
         .checked_add((groups as u128 + width as u128).checked_mul(size_of::<usize>() as u128)?)?
         .checked_add(width as u128 * 32)?
         .checked_add(4096)
@@ -98,7 +111,11 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     };
     if coefficient_stride.checked_mul(width).is_none()
         || workers.checked_mul(stride).is_none()
-        || plan.reduced.checked_mul(4).and_then(|v| v.checked_mul(workers)).is_none()
+        || plan
+            .reduced
+            .checked_mul(4)
+            .and_then(|v| v.checked_mul(workers))
+            .is_none()
     {
         return Ok(None);
     }
@@ -299,6 +316,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         |(worker, partial)| -> Result<()> {
             let (gram, rest) = partial.split_at_mut(width * width);
             let (scores, row_values) = rest.split_at_mut(groups * width);
+            // Keep the legacy matrix indices and numerical traversal order explicit.
+            #[allow(clippy::needless_range_loop)]
             for row in worker * rows_per_worker..((worker + 1) * rows_per_worker).min(n) {
                 for j in 0..width {
                     // The checked value is exactly the later materialized residual,

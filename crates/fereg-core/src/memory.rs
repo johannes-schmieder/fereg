@@ -6,7 +6,6 @@ mod categorical_schwarz;
 mod owned_fe;
 mod slope_recovery;
 mod workspace_peak;
-pub(crate) use slope_recovery::estimate_slope_recovery_memory;
 pub(crate) use categorical_schwarz::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
     CategoricalSchwarzMemoryEstimate,
@@ -14,6 +13,7 @@ pub(crate) use categorical_schwarz::{
 pub(crate) use owned_fe::{
     generic_fe_solver_bytes, owned_fe_matrix_bytes, OwnedFeDesignMemoryEstimate,
 };
+pub(crate) use slope_recovery::estimate_slope_recovery_memory;
 pub use workspace_peak::SolverWorkspacePeak;
 
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
@@ -22,9 +22,8 @@ const LOW_MODE_TRANSPOSE_BUFFER_BYTES: u128 = 1024 * 1024;
 /// Apply the shared native headroom policy before any construction stage.
 #[must_use]
 pub fn usable_memory_bytes(available_bytes: Option<u128>) -> Option<u128> {
-    available_bytes.map(|available| {
-        available.saturating_sub(MINIMUM_HEADROOM_BYTES.max(available / 5))
-    })
+    available_bytes
+        .map(|available| available.saturating_sub(MINIMUM_HEADROOM_BYTES.max(available / 5)))
 }
 
 /// Heap payload of an owned vector, including unused capacity. The descriptor
@@ -292,8 +291,12 @@ pub fn estimate_fe_solver_memory(
     local_reorthogonalization_size: Option<usize>,
 ) -> Result<FeSolverMemoryEstimate> {
     estimate_fe_solver_memory_with_batch_policy(
-        observations, rhs_columns, effect_level_counts, threads,
-        local_reorthogonalization_size, LsmrBatchPolicy::Default,
+        observations,
+        rhs_columns,
+        effect_level_counts,
+        threads,
+        local_reorthogonalization_size,
+        LsmrBatchPolicy::Default,
     )
 }
 
@@ -306,8 +309,13 @@ pub(crate) fn estimate_fe_solver_memory_with_batch_policy(
     batch_policy: LsmrBatchPolicy,
 ) -> Result<FeSolverMemoryEstimate> {
     estimate_fe_solver_memory_for_channels_with_batch_policy(
-        observations, rhs_columns, effect_level_counts, threads,
-        local_reorthogonalization_size, false, batch_policy,
+        observations,
+        rhs_columns,
+        effect_level_counts,
+        threads,
+        local_reorthogonalization_size,
+        false,
+        batch_policy,
     )
 }
 
@@ -320,8 +328,13 @@ fn estimate_fe_solver_memory_for_channels(
     signed_cover: bool,
 ) -> Result<FeSolverMemoryEstimate> {
     estimate_fe_solver_memory_for_channels_with_batch_policy(
-        observations, rhs_columns, effect_level_counts, threads,
-        local_reorthogonalization_size, signed_cover, LsmrBatchPolicy::Default,
+        observations,
+        rhs_columns,
+        effect_level_counts,
+        threads,
+        local_reorthogonalization_size,
+        signed_cover,
+        LsmrBatchPolicy::Default,
     )
 }
 
@@ -967,32 +980,61 @@ mod tests {
     fn retained_serial_ols_window_model_preserves_other_admission_envelopes() {
         for threads in [1, 4, 16] {
             for rhs in [1, 7, 15, 16, 17, 52, 64, 65] {
-                let ordinary = estimate_fe_solver_memory(16_384, rhs, &[4096, 1024], threads, Some(4)).unwrap();
-                let default = estimate_fe_solver_memory_with_batch_policy(16_384, rhs, &[4096, 1024],
-                    threads, Some(4), LsmrBatchPolicy::Default).unwrap();
+                let ordinary =
+                    estimate_fe_solver_memory(16_384, rhs, &[4096, 1024], threads, Some(4))
+                        .unwrap();
+                let default = estimate_fe_solver_memory_with_batch_policy(
+                    16_384,
+                    rhs,
+                    &[4096, 1024],
+                    threads,
+                    Some(4),
+                    LsmrBatchPolicy::Default,
+                )
+                .unwrap();
                 assert_eq!(ordinary, default);
-                let windowed = estimate_fe_solver_memory_with_batch_policy(16_384, rhs, &[4096, 1024],
-                    threads, Some(4), LsmrBatchPolicy::RetainedSerialOls).unwrap();
+                let windowed = estimate_fe_solver_memory_with_batch_policy(
+                    16_384,
+                    rhs,
+                    &[4096, 1024],
+                    threads,
+                    Some(4),
+                    LsmrBatchPolicy::RetainedSerialOls,
+                )
+                .unwrap();
                 if threads == 1 && (16..=64).contains(&rhs) {
-                    assert_eq!(LsmrBatchPolicy::RetainedSerialOls.rhs_window(rhs, threads), 1);
-                    let one = estimate_fe_solver_memory(16_384, 1, &[4096, 1024], 1, Some(4)).unwrap();
+                    assert_eq!(
+                        LsmrBatchPolicy::RetainedSerialOls.rhs_window(rhs, threads),
+                        1
+                    );
+                    let one =
+                        estimate_fe_solver_memory(16_384, 1, &[4096, 1024], 1, Some(4)).unwrap();
                     assert_eq!(windowed.krylov_bytes, one.krylov_bytes);
                     assert_eq!(ordinary.krylov_bytes, rhs as u128 * one.krylov_bytes);
                     assert_eq!(windowed.cg_bytes, ordinary.cg_bytes);
-                    assert_eq!(windowed.coefficient_batch_bytes, ordinary.coefficient_batch_bytes);
+                    assert_eq!(
+                        windowed.coefficient_batch_bytes,
+                        ordinary.coefficient_batch_bytes
+                    );
                     assert_eq!(windowed.rhs_copy_bytes, ordinary.rhs_copy_bytes);
                     assert_eq!(windowed.topology_bytes, ordinary.topology_bytes);
-                    assert_eq!(windowed.lsmr_schwarz_retained_bytes, ordinary.lsmr_schwarz_retained_bytes);
+                    assert_eq!(
+                        windowed.lsmr_schwarz_retained_bytes,
+                        ordinary.lsmr_schwarz_retained_bytes
+                    );
                     assert!(windowed.lsmr_off_bytes < ordinary.lsmr_off_bytes);
                     assert!(windowed.lsmr_diagonal_bytes < ordinary.lsmr_diagonal_bytes);
                     assert!(windowed.lsmr_schwarz_bytes <= ordinary.lsmr_schwarz_bytes);
                     if windowed.lsmr_schwarz_bytes == ordinary.lsmr_schwarz_bytes {
                         // Windowing reduces live recurrences, but cannot
                         // reduce an unchanged preconditioner-construction peak.
-                        let construction = ordinary.rhs_copy_bytes + ordinary.topology_bytes
+                        let construction = ordinary.rhs_copy_bytes
+                            + ordinary.topology_bytes
                             + ordinary.lsmr_result_metadata_bytes;
                         assert_eq!(windowed.lsmr_schwarz_bytes, construction);
-                        eprintln!("SERIAL_WINDOW_CONSTRUCTION_DOMINATES rhs={rhs} bytes={construction}");
+                        eprintln!(
+                            "SERIAL_WINDOW_CONSTRUCTION_DOMINATES rhs={rhs} bytes={construction}"
+                        );
                     }
                 } else {
                     assert_eq!(ordinary, windowed);

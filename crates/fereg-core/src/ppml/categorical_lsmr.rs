@@ -463,7 +463,9 @@ impl ReusableCategoricalJointLsmr {
                 "joint PPML finite diagonal preconditioner",
             )?,
             finite_factor: fallible_filled(
-                active_generated.len().checked_mul(active_generated.len())
+                active_generated
+                    .len()
+                    .checked_mul(active_generated.len())
                     .ok_or_else(|| allocation("joint PPML finite factor dimensions overflow"))?,
                 0.0,
                 "joint PPML finite factor",
@@ -681,9 +683,8 @@ impl ReusableCategoricalJointLsmr {
         if !result.converged || !certificate.passed {
             continuation.recurrence = !result.converged;
             continuation.certificate = !certificate.passed;
-            let diagonal_promotion = !use_schwarz
-                && !rebuilt
-                && self.policy != CategoricalLsmrPolicy::Diagonal;
+            let diagonal_promotion =
+                !use_schwarz && !rebuilt && self.policy != CategoricalLsmrPolicy::Diagonal;
             if !rebuilt && self.policy != CategoricalLsmrPolicy::Diagonal {
                 let rebuild_started = Instant::now();
                 use_schwarz = self.rebuild_schwarz(fe_design, hessian_weights)?;
@@ -992,7 +993,9 @@ impl ReusableCategoricalJointLsmr {
         };
         Ok(BlockPreconditioner {
             finite_inverse: &self.finite_inverse,
-            finite_factor: self.finite_factor_ready.then_some(self.finite_factor.as_slice()),
+            finite_factor: self
+                .finite_factor_ready
+                .then_some(self.finite_factor.as_slice()),
             fe,
         })
     }
@@ -1120,36 +1123,47 @@ fn prepare_finite_factor(
     factor: &mut [f64],
 ) -> bool {
     let k = active.ncols();
-    if k < 2 || factor.len() != k.saturating_mul(k)
-        || inverse_diagonal.len() != k || weights.len() != active.nrows()
-        || inverse_diagonal.iter().any(|value| !value.is_finite() || *value <= 0.0)
+    if k < 2
+        || factor.len() != k.saturating_mul(k)
+        || inverse_diagonal.len() != k
+        || weights.len() != active.nrows()
+        || inverse_diagonal
+            .iter()
+            .any(|value| !value.is_finite() || *value <= 0.0)
     {
         return false;
     }
-    factor.par_chunks_mut(k).enumerate().for_each(|(i, destination)| {
-        destination.fill(0.0);
-        let scale_i = inverse_diagonal[i].sqrt();
-        for (row, &weight) in weights.iter().enumerate() {
-            let values = &active.as_slice()[row * k..(row + 1) * k];
-            let left = weight * values[i] * scale_i;
-            for j in 0..i {
-                destination[j] = left.mul_add(values[j], destination[j]);
+    factor
+        .par_chunks_mut(k)
+        .enumerate()
+        .for_each(|(i, destination)| {
+            destination.fill(0.0);
+            let scale_i = inverse_diagonal[i].sqrt();
+            for (row, &weight) in weights.iter().enumerate() {
+                let values = &active.as_slice()[row * k..(row + 1) * k];
+                let left = weight * values[i] * scale_i;
+                for j in 0..i {
+                    destination[j] = left.mul_add(values[j], destination[j]);
+                }
             }
-        }
-        for j in 0..i {
-            destination[j] *= inverse_diagonal[j].sqrt();
-        }
-        destination[i] = 1.0;
-    });
+            for j in 0..i {
+                destination[j] *= inverse_diagonal[j].sqrt();
+            }
+            destination[i] = 1.0;
+        });
     for i in 0..k {
         for j in 0..=i {
             let mut value = factor[i * k + j];
             for a in 0..j {
                 value -= factor[i * k + a] * factor[j * k + a];
             }
-            if !value.is_finite() { return false; }
+            if !value.is_finite() {
+                return false;
+            }
             if i == j {
-                if value <= 32.0 * f64::EPSILON { return false; }
+                if value <= 32.0 * f64::EPSILON {
+                    return false;
+                }
                 factor[i * k + j] = value.sqrt();
             } else {
                 factor[i * k + j] = value / factor[j * k + j];
@@ -1254,9 +1268,13 @@ impl<'a> AugmentedCategoricalOperator<'a> {
 #[inline]
 fn proposal_product_add(left: f64, right: f64, sum: f64) -> f64 {
     #[cfg(any(target_arch = "aarch64", target_feature = "fma"))]
-    { left.mul_add(right, sum) }
+    {
+        left.mul_add(right, sum)
+    }
     #[cfg(not(any(target_arch = "aarch64", target_feature = "fma")))]
-    { left * right + sum }
+    {
+        left * right + sum
+    }
 }
 
 impl Operator for AugmentedCategoricalOperator<'_> {
@@ -1307,11 +1325,14 @@ impl Operator for AugmentedCategoricalOperator<'_> {
                     let values = self.active_design.as_slice();
                     let full = x.len() / 8 * 8;
                     for row in (0..full).step_by(8) {
+                        // Keep the legacy matrix indices and numerical traversal order explicit.
+                        #[allow(clippy::needless_range_loop)]
                         for lane in 0..8 {
                             let r = row + lane;
                             sums[lane] = proposal_product_add(
                                 self.sqrt_weights[r] * values[r * finite + column],
-                                x[r], sums[lane],
+                                x[r],
+                                sums[lane],
                             );
                         }
                     }
@@ -1319,7 +1340,8 @@ impl Operator for AugmentedCategoricalOperator<'_> {
                     for row in full..x.len() {
                         sum = proposal_product_add(
                             self.sqrt_weights[row] * values[row * finite + column],
-                            x[row], sum,
+                            x[row],
+                            sum,
                         );
                     }
                     *output = sum;
@@ -1330,9 +1352,11 @@ impl Operator for AugmentedCategoricalOperator<'_> {
             for (row, &input) in x.iter().enumerate() {
                 let start = row * finite;
                 for (column, &value) in active_values[start..start + finite].iter().enumerate() {
-                    finite_output[column] =
-                        proposal_product_add(self.sqrt_weights[row] * value, input,
-                            finite_output[column]);
+                    finite_output[column] = proposal_product_add(
+                        self.sqrt_weights[row] * value,
+                        input,
+                        finite_output[column],
+                    );
                 }
             }
         }
@@ -1415,6 +1439,8 @@ impl Operator for BlockPreconditioner<'_> {
                 }
                 y[i] = value / factor[i * finite + i];
             }
+            // Keep the legacy matrix indices and numerical traversal order explicit.
+            #[allow(clippy::needless_range_loop)]
             for i in 0..finite {
                 y[i] *= self.finite_inverse[i].sqrt();
             }
@@ -2166,13 +2192,8 @@ pub(crate) fn estimate_checkpoint_lsmr_workspace_bytes(
     // This is the same borrowed categorical batch adapter used by OLS. Share
     // its guarded recurrence windows, scatter, output overlap and Schwarz
     // estimates; nested Rayon alone does not bound live frames by workers.
-    let solver = crate::memory::estimate_fe_solver_memory(
-        rows,
-        rhs,
-        effect_level_counts,
-        threads,
-        Some(4),
-    )?;
+    let solver =
+        crate::memory::estimate_fe_solver_memory(rows, rhs, effect_level_counts, threads, Some(4))?;
     checked_sum_memory(&[
         solver.lsmr_schwarz_bytes,
         // OLS charges its caller-owned input in the execution model. A PPML
@@ -2556,23 +2577,43 @@ mod tests {
     #[test]
     fn augmented_products_match_explicit_design_across_widths_and_teams() {
         for rows in [17, 131] {
-            let design = FeDesign::new(rows, vec![
-                EffectTerm::new((0..rows).map(|r| (r % 3) as u32).collect(),
-                    3, true, Vec::new()).unwrap(),
-                EffectTerm::new((0..rows).map(|r| ((r / 3) % 5) as u32).collect(),
-                    5, true, Vec::new()).unwrap(),
-            ]).unwrap();
+            let design = FeDesign::new(
+                rows,
+                vec![
+                    EffectTerm::new(
+                        (0..rows).map(|r| (r % 3) as u32).collect(),
+                        3,
+                        true,
+                        Vec::new(),
+                    )
+                    .unwrap(),
+                    EffectTerm::new(
+                        (0..rows).map(|r| ((r / 3) % 5) as u32).collect(),
+                        5,
+                        true,
+                        Vec::new(),
+                    )
+                    .unwrap(),
+                ],
+            )
+            .unwrap();
             for columns in [0, 1, 6, 17] {
-                let active = DenseMatrix::from_row_major(rows, columns,
-                    (0..rows * columns).map(|i| ((i * 17 + 3) as f64).sin()).collect(),
-                ).unwrap();
+                let active = DenseMatrix::from_row_major(
+                    rows,
+                    columns,
+                    (0..rows * columns)
+                        .map(|i| ((i * 17 + 3) as f64).sin())
+                        .collect(),
+                )
+                .unwrap();
                 let coefficients: Vec<_> = (0..columns + 8)
-                    .map(|i| ((i * 7 + 2) as f64).cos()).collect();
+                    .map(|i| ((i * 7 + 2) as f64).cos())
+                    .collect();
                 let input: Vec<_> = (0..rows).map(|r| ((r * 11 + 1) as f64).sin()).collect();
                 for generation in 0..2 {
-                    let roots: Vec<_> = (0..rows).map(|r|
-                        10.0_f64.powi(((r * 7 + generation * 3) % 13) as i32 - 6)
-                    ).collect();
+                    let roots: Vec<_> = (0..rows)
+                        .map(|r| 10.0_f64.powi(((r * 7 + generation * 3) % 13) as i32 - 6))
+                        .collect();
                     // Independently materialize the mathematical weighted design.
                     let mut explicit = vec![vec![0.0; columns + 8]; rows];
                     for row in 0..rows {
@@ -2582,30 +2623,48 @@ mod tests {
                         explicit[row][columns + row % 3] = roots[row];
                         explicit[row][columns + 3 + (row / 3) % 5] = roots[row];
                     }
-                    let expected_forward: Vec<f64> = explicit.iter().map(|row|
-                        row.iter().zip(&coefficients).map(|(a, b)| a * b).sum()).collect();
-                    let expected_adjoint: Vec<f64> = (0..columns + 8).map(|col|
-                        (0..rows).map(|r| explicit[r][col] * input[r]).sum()).collect();
+                    let expected_forward: Vec<f64> = explicit
+                        .iter()
+                        .map(|row| row.iter().zip(&coefficients).map(|(a, b)| a * b).sum())
+                        .collect();
+                    let expected_adjoint: Vec<f64> = (0..columns + 8)
+                        .map(|col| (0..rows).map(|r| explicit[r][col] * input[r]).sum())
+                        .collect();
                     for threads in [1, 4] {
-                        let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+                        let pool = rayon::ThreadPoolBuilder::new()
+                            .num_threads(threads)
+                            .build()
+                            .unwrap();
                         pool.install(|| {
                             let operator = AugmentedCategoricalOperator::new(
-                                &design, &active, &[0, 3, 8], &roots).unwrap();
+                                &design,
+                                &active,
+                                &[0, 3, 8],
+                                &roots,
+                            )
+                            .unwrap();
                             let mut forward = vec![0.0; rows];
                             let mut adjoint = vec![0.0; columns + 8];
                             operator.apply(&coefficients, &mut forward).unwrap();
                             operator.apply_adjoint(&input, &mut adjoint).unwrap();
                             for row in 0..rows {
-                                let scale: f64 = explicit[row].iter().zip(&coefficients)
-                                    .map(|(a, b)| (a * b).abs()).sum();
-                                assert!((forward[row] - expected_forward[row]).abs()
-                                    <= 1e-12 * scale.max(1.0));
+                                let scale: f64 = explicit[row]
+                                    .iter()
+                                    .zip(&coefficients)
+                                    .map(|(a, b)| (a * b).abs())
+                                    .sum();
+                                assert!(
+                                    (forward[row] - expected_forward[row]).abs()
+                                        <= 1e-12 * scale.max(1.0)
+                                );
                             }
                             for col in 0..columns + 8 {
-                                let scale: f64 = (0..rows)
-                                    .map(|r| (explicit[r][col] * input[r]).abs()).sum();
-                                assert!((adjoint[col] - expected_adjoint[col]).abs()
-                                    <= 1e-12 * scale.max(1.0));
+                                let scale: f64 =
+                                    (0..rows).map(|r| (explicit[r][col] * input[r]).abs()).sum();
+                                assert!(
+                                    (adjoint[col] - expected_adjoint[col]).abs()
+                                        <= 1e-12 * scale.max(1.0)
+                                );
                             }
                             let prior = adjoint.clone();
                             operator.apply_adjoint(&input, &mut adjoint).unwrap();
@@ -2765,48 +2824,87 @@ mod tests {
 
     #[test]
     fn full_finite_preconditioner_inverts_current_weight_gram_independently() {
-        let active = DenseMatrix::from_row_major(5, 3,
-            vec![1., -2., 0.5, 0.25, 3., -1.5, -0.75, 1.25, 2.,
-                 4., -0.5, 0.125, 1.5, 2.5, -3.]).unwrap();
+        let active = DenseMatrix::from_row_major(
+            5,
+            3,
+            vec![
+                1., -2., 0.5, 0.25, 3., -1.5, -0.75, 1.25, 2., 4., -0.5, 0.125, 1.5, 2.5, -3.,
+            ],
+        )
+        .unwrap();
         let mut factor = vec![0.; 9];
         let truth = [0.7, -1.2, 0.4];
         let mut prior = Vec::new();
         for weights in [vec![1.; 5], vec![0.01, 4., 2., 0.7, 9.]] {
             let mut gram = [0.; 9];
-            for i in 0..3 { for j in 0..3 {
-                gram[3*i+j] = (0..5).map(|r| weights[r]*active[(r,i)]*active[(r,j)]).sum();
-            }}
-            let diagonal: Vec<_> = (0..3).map(|i| 1./gram[3*i+i]).collect();
-            assert!(prepare_finite_factor(&active, &weights, &diagonal, &mut factor));
+            for i in 0..3 {
+                for j in 0..3 {
+                    gram[3 * i + j] = (0..5)
+                        .map(|r| weights[r] * active[(r, i)] * active[(r, j)])
+                        .sum();
+                }
+            }
+            let diagonal: Vec<_> = (0..3).map(|i| 1. / gram[3 * i + i]).collect();
+            assert!(prepare_finite_factor(
+                &active,
+                &weights,
+                &diagonal,
+                &mut factor
+            ));
             assert_ne!(factor, prior);
             prior = factor.clone();
-            let rhs: Vec<_> = (0..3).map(|i| (0..3).map(|j| gram[3*i+j]*truth[j]).sum()).collect();
+            let rhs: Vec<_> = (0..3)
+                .map(|i| (0..3).map(|j| gram[3 * i + j] * truth[j]).sum())
+                .collect();
             let preconditioner = BlockPreconditioner {
-                finite_inverse: &diagonal, finite_factor: Some(&factor),
+                finite_inverse: &diagonal,
+                finite_factor: Some(&factor),
                 fe: FePreconditioner::Diagonal(&[]),
             };
             let mut solved = vec![0.; 3];
             preconditioner.apply(&rhs, &mut solved).unwrap();
-            for j in 0..3 { assert!((solved[j]-truth[j]).abs() < 2e-12); }
+            for j in 0..3 {
+                assert!((solved[j] - truth[j]).abs() < 2e-12);
+            }
             let mut adjoint = vec![0.; 3];
             preconditioner.apply_adjoint(&rhs, &mut adjoint).unwrap();
             assert_eq!(solved, adjoint);
-            assert!(rhs.iter().zip(&solved).map(|(x,y)| x*y).sum::<f64>() > 0.);
+            assert!(rhs.iter().zip(&solved).map(|(x, y)| x * y).sum::<f64>() > 0.);
         }
     }
 
     #[test]
     fn full_finite_preconditioner_declines_singular_or_nonfinite_frames() {
-        let active = DenseMatrix::from_row_major(3, 2,
-            vec![1., 2., -1., -2., 2., 4.]).unwrap();
-        let diagonal = [1./6., 1./24.];
+        let active = DenseMatrix::from_row_major(3, 2, vec![1., 2., -1., -2., 2., 4.]).unwrap();
+        let diagonal = [1. / 6., 1. / 24.];
         let mut factor = vec![0.; 4];
-        assert!(!prepare_finite_factor(&active, &[1.; 3], &diagonal, &mut factor));
-        assert!(!prepare_finite_factor(&active, &[f64::INFINITY; 3], &diagonal, &mut factor));
-        assert!(!prepare_finite_factor(&active, &[1.; 3], &[0., 1.], &mut factor));
-        assert!(!prepare_finite_factor(&active, &[1.; 3], &diagonal, &mut []));
+        assert!(!prepare_finite_factor(
+            &active,
+            &[1.; 3],
+            &diagonal,
+            &mut factor
+        ));
+        assert!(!prepare_finite_factor(
+            &active,
+            &[f64::INFINITY; 3],
+            &diagonal,
+            &mut factor
+        ));
+        assert!(!prepare_finite_factor(
+            &active,
+            &[1.; 3],
+            &[0., 1.],
+            &mut factor
+        ));
+        assert!(!prepare_finite_factor(
+            &active,
+            &[1.; 3],
+            &diagonal,
+            &mut []
+        ));
         let preconditioner = BlockPreconditioner {
-            finite_inverse: &diagonal, finite_factor: None,
+            finite_inverse: &diagonal,
+            finite_factor: None,
             fe: FePreconditioner::Diagonal(&[]),
         };
         let mut result = [0.; 2];

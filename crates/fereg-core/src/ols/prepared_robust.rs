@@ -25,11 +25,10 @@ use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::build_reference_weight_report_view;
 use super::prepared_unadjusted::{
     build_reference_weight_report_with_outcome, build_residual_dof_view, build_statistics,
-    checked_square, DeferredOutcome,
-    compensated_add, compensated_add_scaled_row, exact_integer_as_f64, relative_difference,
-    validate_fit_and_absorbed_dof_view,
-    validate_sum_of_squares, fit_with_independent_outcome, independent_outcome_sum,
-    independent_residual_sum, ReferenceWeightView,
+    checked_square, compensated_add, compensated_add_scaled_row, exact_integer_as_f64,
+    fit_with_independent_outcome, independent_outcome_sum, independent_residual_sum,
+    relative_difference, validate_fit_and_absorbed_dof_view, validate_sum_of_squares,
+    DeferredOutcome, ReferenceWeightView,
 };
 use super::{
     compute_prepared_ols_absorbed_dof, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
@@ -127,7 +126,8 @@ impl CertifiedPreparedOlsRobust {
     /// Heap owners retained after inference, excluding the borrowed prepared data.
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
-        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+        self.fit.owned_buffer_bytes()
+            + self.absorbed_dof.owned_buffer_bytes()
             + crate::memory::vec_capacity_bytes(&self.covariance.values)
             + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
     }
@@ -191,7 +191,8 @@ impl CertifiedPreparedCategoricalOlsRobust {
     /// Heap owners retained after inference, excluding the borrowed prepared data.
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
-        self.fit.owned_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+        self.fit.owned_buffer_bytes()
+            + self.absorbed_dof.owned_buffer_bytes()
             + crate::memory::vec_capacity_bytes(&self.covariance.values)
             + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
     }
@@ -397,8 +398,14 @@ pub fn fit_prepared_ols_robust_map_with_loaded_moments(
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsRobust> {
     validate_config(config)?;
-    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(prepared, config.fit, ||
-        super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows), true)?;
+    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(
+        prepared,
+        config.fit,
+        || {
+            super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)
+        },
+        true,
+    )?;
     let absorbed_dof = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
     ThreadTeam::new(config.fit.execution.threads).install(|| {
         let mut reservation = SystemPreparedInferenceReservation;
@@ -432,12 +439,21 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
 ) -> Result<CertifiedPreparedCategoricalOlsRobust> {
     validate_config(config)?;
     let ((fit, score_scratch), outcome_tss, dof_inputs) =
-        super::prepared_unadjusted::fit_with_independent_outcome_and_check(prepared, config.fit, ||
-            super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows),
-            || prepared.validate_dof_inputs_for_overlap(), true)?;
+        super::prepared_unadjusted::fit_with_independent_outcome_and_check(
+            prepared,
+            config.fit,
+            || {
+                super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)
+            },
+            || prepared.validate_dof_inputs_for_overlap(),
+            true,
+        )?;
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
         let absorbed_dof = match dof_inputs.transpose()?.flatten() {
-            Some(inputs) => inputs.compute(super::prepared_inference_view::categorical_policy(config.absorbed_dof), &[])?,
+            Some(inputs) => inputs.compute(
+                super::prepared_inference_view::categorical_policy(config.absorbed_dof),
+                &[],
+            )?,
             None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
         };
         let absorbed_summary =
@@ -465,6 +481,8 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
     })?
 }
 
+// Keep the legacy workspace and ownership boundaries explicit during migration.
+#[allow(clippy::too_many_arguments)]
 fn compose_internal<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsData,
     fit: CertifiedPreparedOlsFit,
@@ -498,6 +516,8 @@ fn compose_internal<R: PreparedInferenceReservation>(
     })
 }
 
+// Keep the legacy workspace and ownership boundaries explicit during migration.
+#[allow(clippy::too_many_arguments)]
 fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInferenceReservation>(
     prepared: &P,
     mut fit: CertifiedPreparedOlsFit,
@@ -513,7 +533,13 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     let phase_started = Instant::now();
     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
     let (weights, weight_view, reference_weight_error) =
-        build_reference_weight_report_with_outcome(prepared, &fit, config.certificate_tolerance, true, &mut outcome_tss)?;
+        build_reference_weight_report_with_outcome(
+            prepared,
+            &fit,
+            config.certificate_tolerance,
+            true,
+            &mut outcome_tss,
+        )?;
     let mut dof = build_residual_dof_view(prepared, &fit, absorbed_dof, weights)?;
     if perturbations.residual_dof {
         dof.residual_dof = dof
@@ -525,7 +551,11 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
 
     let tss = match outcome_tss {
         Some(tss) => tss?.tss?,
-        None => independent_outcome_sum(&prepared.fit_sample().outcome, weight_view, dof.has_structural_intercept)?,
+        None => independent_outcome_sum(
+            &prepared.fit_sample().outcome,
+            weight_view,
+            dof.has_structural_intercept,
+        )?,
     };
     let within_tss = if !prepared.inference_has_explicit_absorbed_effects() {
         tss
@@ -1639,20 +1669,43 @@ mod tests {
         let n = 16_385;
         let group: Vec<_> = (0..n).map(|r| (r % 71) as f64).collect();
         let x: Vec<_> = (0..n).map(|r| (r as f64 * 0.7).sin()).collect();
-        let y: Vec<_> = (0..n).map(|r| 1.7 * x[r] + group[r] + 0.1 * (r as f64).cos()).collect();
-        let raw = (0..n).map(|r| 0.125 + (r % 17) as f64 / 11.0).collect::<Vec<_>>();
+        let y: Vec<_> = (0..n)
+            .map(|r| 1.7 * x[r] + group[r] + 0.1 * (r as f64).cos())
+            .collect();
+        let raw = (0..n)
+            .map(|r| 0.125 + (r % 17) as f64 / 11.0)
+            .collect::<Vec<_>>();
         let frequency = (0..n).map(|r| 1 + (r % 7) as u32).collect::<Vec<_>>();
-        for kind in [TestWeights::Unit, TestWeights::Analytic(&raw), TestWeights::Probability(&raw), TestWeights::Frequency(&frequency)] {
+        for kind in [
+            TestWeights::Unit,
+            TestWeights::Analytic(&raw),
+            TestWeights::Probability(&raw),
+            TestWeights::Frequency(&frequency),
+        ] {
             let prepared = prepared(&y, &[x.clone()], Some(&group), true, kind);
             let mut config = PreparedOlsRobustConfig::default();
             config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
             let actual = fit_prepared_ols_robust_map(&prepared, config).unwrap();
-            let (fit, scratch) = fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit).unwrap();
-            let absorbed = compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
-            let expected = ThreadTeam::new(config.fit.execution.threads).install(|| compose_internal(
-                &prepared, fit, absorbed, config, &mut SystemPreparedInferenceReservation,
-                RobustPerturbations::default(), scratch, None,
-            )).unwrap().unwrap();
+            let (fit, scratch) =
+                fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
+                    .unwrap();
+            let absorbed =
+                compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+            let expected = ThreadTeam::new(config.fit.execution.threads)
+                .install(|| {
+                    compose_internal(
+                        &prepared,
+                        fit,
+                        absorbed,
+                        config,
+                        &mut SystemPreparedInferenceReservation,
+                        RobustPerturbations::default(),
+                        scratch,
+                        None,
+                    )
+                })
+                .unwrap()
+                .unwrap();
             assert_eq!(actual.statistics, expected.statistics);
             assert_eq!(actual.covariance, expected.covariance);
             assert_eq!(actual.certificate, expected.certificate);
@@ -2492,10 +2545,19 @@ mod tests {
     }
 
     fn prepared(
-        outcome: &[f64], regressors: &[Vec<f64>], fixed_effect: Option<&[f64]>,
-        include_intercept: bool, weights: TestWeights<'_>,
+        outcome: &[f64],
+        regressors: &[Vec<f64>],
+        fixed_effect: Option<&[f64]>,
+        include_intercept: bool,
+        weights: TestWeights<'_>,
     ) -> PreparedOlsData {
-        let (request, input) = prepared_inputs(outcome, regressors, fixed_effect, include_intercept, weights);
+        let (request, input) = prepared_inputs(
+            outcome,
+            regressors,
+            fixed_effect,
+            include_intercept,
+            weights,
+        );
         prepare_ols_data(&request, &input).expect("prepared robust test case")
     }
 

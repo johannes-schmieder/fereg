@@ -57,9 +57,7 @@ impl ProfiledInterceptCurve {
             if has_slopes && effect.slopes().is_empty() {
                 continue;
             }
-            if selected.map_or(true, |old: usize| {
-                effect.n_levels() > effects[old].n_levels()
-            }) {
+            if selected.is_none_or(|old: usize| effect.n_levels() > effects[old].n_levels()) {
                 selected = Some(index);
             }
         }

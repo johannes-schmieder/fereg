@@ -1,6 +1,6 @@
+use crate::input_memory::{InputMemory, StringDictionary};
 use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS};
 use std::collections::{BTreeMap, BTreeSet};
-use crate::input_memory::{InputMemory, StringDictionary};
 use std::time::Instant;
 
 use crate::input::{PreparedMatrixStoreName, SpiApi};
@@ -21,17 +21,17 @@ use fereg_core::metadata::{
     ABSORB_TERM_ROW_WIDTH, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
 #[cfg(test)]
-use fereg_core::ols::{fit_prepared_categorical_ols_clustered_map,
-    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,
-    fit_prepared_ols_clustered_map, fit_prepared_ols_robust_map, fit_prepared_ols_unadjusted_map};
 use fereg_core::ols::{
-    fit_prepared_ols_unadjusted_map_with_loaded_moments, LoadedOlsRows, PreparedOlsColumnKind,
+    fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
+};
+use fereg_core::ols::{
+    fit_prepared_ols_unadjusted_map_with_loaded_moments,
     prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
     prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
-    OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsExecutionConfig,
-    PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
-    PreparedOlsUnadjustedConfig,
+    LoadedOlsRows, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole,
+    OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsColumnKind,
+    PreparedOlsExecutionConfig, PreparedOlsExecutionMode, PreparedOlsFitConfig,
+    PreparedOlsFitStatus, PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
 };
 use fereg_core::prepare_categorical_ols_data_owned;
 use fereg_core::protocol::{
@@ -223,7 +223,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let resources_start = instrumentation::begin_observation();
     let local_bundle = read_local_estimate_bundle(args, spi)?.map(|value| [value]);
     let mut specification = EstimateActionSpec::parse(
-        local_bundle.as_ref().map_or(args, |values| values.as_slice()),
+        local_bundle
+            .as_ref()
+            .map_or(args, |values| values.as_slice()),
     )?;
     // The expanded local bundle dies here; only the original ABI argv
     // remains live through numerical work and publication.
@@ -233,16 +235,35 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     drop(specification);
     let preflight_seconds = started.elapsed().as_secs_f64();
     let mut input_memory = loading_memory(
-        &action.request, spi.nobs()?, 0,
-        action.metadata_owner_bytes, action.memory_plan.usable_bytes,
+        &action.request,
+        spi.nobs()?,
+        0,
+        action.metadata_owner_bytes,
+        action.memory_plan.usable_bytes,
     )?;
     let input_team = (action.candidate_all && numeric_pipeline_effects_supported(&action.request))
         .then(|| ThreadTeam::new(action.fit.execution.threads));
     let mut loaded_rhs = None;
-    let rhs_budget = if action.fit.execution.mode != PreparedOlsExecutionMode::Fast { 0 } else { action.memory_plan.usable_bytes.map_or(usize::MAX, |usable| {
-        usize::try_from(usable.saturating_sub(action.metadata_owner_bytes)
-            .saturating_sub(action.preparation_memory.preparation_peak_bytes(0).unwrap_or(u128::MAX))).unwrap_or(usize::MAX)
-    }) };
+    let rhs_budget = if action.fit.execution.mode != PreparedOlsExecutionMode::Fast {
+        0
+    } else {
+        action
+            .memory_plan
+            .usable_bytes
+            .map_or(usize::MAX, |usable| {
+                usize::try_from(
+                    usable
+                        .saturating_sub(action.metadata_owner_bytes)
+                        .saturating_sub(
+                            action
+                                .preparation_memory
+                                .preparation_peak_bytes(0)
+                                .unwrap_or(u128::MAX),
+                        ),
+                )
+                .unwrap_or(usize::MAX)
+            })
+    };
     let loaded = load_ols_input_with_team(
         &action.request,
         action.candidate_all,
@@ -254,7 +275,9 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         rhs_budget,
         action.loaded_rhs_layout,
     )?;
-    action.loaded_fit_workspace_bytes = loaded_rhs.as_ref().map_or(0, |rows| rows.capacity() as u128 * 8);
+    action.loaded_fit_workspace_bytes = loaded_rhs
+        .as_ref()
+        .map_or(0, |rows| rows.capacity() as u128 * 8);
     action.input_peak_bytes = input_memory.peak();
     let input_load_seconds = started.elapsed().as_secs_f64() - preflight_seconds;
     let observation = ActionObservation {
@@ -273,7 +296,10 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
             let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded, loaded_rhs, &mut action, |request, loaded| prepare_ols_data_owned(request, loaded),
+                loaded,
+                loaded_rhs,
+                &mut action,
+                prepare_ols_data_owned,
             )?;
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
@@ -320,7 +346,10 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
             let trace_started = Instant::now();
             let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded, loaded_rhs, &mut action, |request, loaded| prepare_ols_data_owned(request, loaded),
+                loaded,
+                loaded_rhs,
+                &mut action,
+                prepare_ols_data_owned,
             )?;
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
             let prepare_seconds = trace_started.elapsed().as_secs_f64();
@@ -368,11 +397,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 ols: action.request.clone(),
                 clusters: action.clusters.clone(),
             };
-            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded, loaded_rhs, &mut action, |_, loaded| prepare_ols_clustered_data_owned(&request, loaded),
-            )?;
+            let (prepared, loaded_rows) =
+                prepare_loaded_ols_with_moments(loaded, loaded_rhs, &mut action, |_, loaded| {
+                    prepare_ols_clustered_data_owned(&request, loaded)
+                })?;
             drop(request);
-            action.admit_prepared_parent(prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes())?;
+            action.admit_prepared_parent(
+                prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes(),
+            )?;
             let inference = fereg_core::ols::fit_prepared_ols_clustered_map_with_loaded_moments(
                 &prepared,
                 PreparedOlsClusteredConfig {
@@ -403,18 +435,22 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         }
         (OlsVceKind::Iid, true) => {
             let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded, loaded_rhs, &mut action, |request, loaded| prepare_categorical_ols_data_owned(request, loaded),
+                loaded,
+                loaded_rhs,
+                &mut action,
+                prepare_categorical_ols_data_owned,
             )?;
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-            let inference = fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
-                &prepared,
-                PreparedOlsUnadjustedConfig {
-                    fit: action.fit,
-                    absorbed_dof: action.absorbed_dof,
-                    ..PreparedOlsUnadjustedConfig::default()
-                },
-                loaded_rows,
-            )?;
+            let inference =
+                fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
+                    &prepared,
+                    PreparedOlsUnadjustedConfig {
+                        fit: action.fit,
+                        absorbed_dof: action.absorbed_dof,
+                        ..PreparedOlsUnadjustedConfig::default()
+                    },
+                    loaded_rows,
+                )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(&prepared);
             let derived = build_derived_observation_outputs(
@@ -435,18 +471,22 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         }
         (OlsVceKind::Robust, true) => {
             let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded, loaded_rhs, &mut action, |request, loaded| prepare_categorical_ols_data_owned(request, loaded),
+                loaded,
+                loaded_rhs,
+                &mut action,
+                prepare_categorical_ols_data_owned,
             )?;
             action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-            let inference = fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-                &prepared,
-                PreparedOlsRobustConfig {
-                    fit: action.fit,
-                    absorbed_dof: action.absorbed_dof,
-                    ..PreparedOlsRobustConfig::default()
-                },
-                loaded_rows,
-            )?;
+            let inference =
+                fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
+                    &prepared,
+                    PreparedOlsRobustConfig {
+                        fit: action.fit,
+                        absorbed_dof: action.absorbed_dof,
+                        ..PreparedOlsRobustConfig::default()
+                    },
+                    loaded_rows,
+                )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(&prepared);
             let derived = build_derived_observation_outputs(
@@ -470,21 +510,25 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 ols: action.request.clone(),
                 clusters: action.clusters.clone(),
             };
-            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded, loaded_rhs, &mut action, |_, loaded| prepare_categorical_ols_clustered_data_owned(&request, loaded),
-            )?;
+            let (prepared, loaded_rows) =
+                prepare_loaded_ols_with_moments(loaded, loaded_rhs, &mut action, |_, loaded| {
+                    prepare_categorical_ols_clustered_data_owned(&request, loaded)
+                })?;
             drop(request);
-            action.admit_prepared_parent(prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes())?;
-            let inference = fereg_core::ols::fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
-                &prepared,
-                PreparedOlsClusteredConfig {
-                    fit: action.fit,
-                    absorbed_dof: action.absorbed_dof,
-                    account_cluster_nesting: action.account_cluster_nesting,
-                    ..PreparedOlsClusteredConfig::default()
-                },
-                loaded_rows,
+            action.admit_prepared_parent(
+                prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes(),
             )?;
+            let inference =
+                fereg_core::ols::fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
+                    &prepared,
+                    PreparedOlsClusteredConfig {
+                        fit: action.fit,
+                        absorbed_dof: action.absorbed_dof,
+                        account_cluster_nesting: action.account_cluster_nesting,
+                        ..PreparedOlsClusteredConfig::default()
+                    },
+                    loaded_rows,
+                )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let result_data = PreparedOlsResultData::categorical(prepared.ols());
             let derived = build_derived_observation_outputs(
@@ -516,15 +560,22 @@ fn prepare_loaded_ols_with_moments<T: Send>(
 ) -> Result<(T, Option<LoadedOlsRows>)> {
     let started = Instant::now();
     let nrows = loaded.candidate.len();
-    let columns = action.generated_columns.checked_add(1)
+    let columns = action
+        .generated_columns
+        .checked_add(1)
         .ok_or_else(|| allocation("loaded OLS moment width overflows"))?;
     let moment_bytes = LoadedOlsRows::moment_workspace_bytes(nrows, columns).filter(|bytes| {
-        loaded_rhs.is_some() && loaded.analytic_weight.is_none()
-            && loaded.frequency_weight.is_none() && loaded.probability_weight.is_none()
+        loaded_rhs.is_some()
+            && loaded.analytic_weight.is_none()
+            && loaded.frequency_weight.is_none()
+            && loaded.probability_weight.is_none()
             && action.fit.execution.threads.resolved() >= 8
             && action.memory_plan.usable_bytes.is_none_or(|usable| {
-                action.preparation_memory.preparation_peak_bytes(action.loaded_fit_workspace_bytes + *bytes as u128)
-                    .ok().and_then(|peak| peak.checked_add(action.metadata_owner_bytes))
+                action
+                    .preparation_memory
+                    .preparation_peak_bytes(action.loaded_fit_workspace_bytes + *bytes as u128)
+                    .ok()
+                    .and_then(|peak| peak.checked_add(action.metadata_owner_bytes))
                     .is_some_and(|peak| peak <= usable)
             })
     });
@@ -534,16 +585,25 @@ fn prepare_loaded_ols_with_moments<T: Send>(
         ThreadTeam::new(action.fit.execution.threads).install(|| {
             let (prepared, rows) = rayon::join(
                 || prepare(request, loaded),
-                || loaded_rhs.map(|rows| LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)),
+                || {
+                    loaded_rhs.map(|rows| {
+                        LoadedOlsRows::from(rows).with_unit_moments(nrows, columns, bytes)
+                    })
+                },
             );
             prepared.map(|prepared| (prepared, rows))
         })?
     } else {
-        let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| prepare(&action.request, loaded))?;
+        let prepared = prepare_loaded_ols(loaded, action.fit.execution.threads, |loaded| {
+            prepare(&action.request, loaded)
+        })?;
         Ok((prepared, loaded_rhs.map(LoadedOlsRows::from)))
     };
     if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
-        eprintln!("FEREG_PHASE|ols_prepare_moments|seconds={:.9}", started.elapsed().as_secs_f64());
+        eprintln!(
+            "FEREG_PHASE|ols_prepare_moments|seconds={:.9}",
+            started.elapsed().as_secs_f64()
+        );
     }
     result
 }
@@ -597,7 +657,9 @@ impl EstimateAction {
             Stage::Preparation,
             Frame {
                 parents: self.metadata_owner_bytes,
-                workspace: self.preparation_memory.preparation_peak_bytes(self.loaded_fit_workspace_bytes)?,
+                workspace: self
+                    .preparation_memory
+                    .preparation_peak_bytes(self.loaded_fit_workspace_bytes)?,
             },
             Gaps::CONSTRUCTION.union(Gaps::WORKER_RUNTIME),
         )?;
@@ -647,33 +709,64 @@ impl EstimateAction {
     /// Expected lifetime composition; conservative admission remains unchanged.
     /// A fast projection owns one RHS bank. Finite/inference banks are later
     /// sequential frames and must not all become the projection's live parent.
-    fn memory_forecast(&self, shadow: &OlsShadowResult<'_>) -> Result<Option<crate::memory_forecast::Forecast>> {
-        use crate::memory_forecast::{sum, Forecast, ols_projection_parent};
-        let Some(solver) = shadow.solver_expected_heap_peak else { return Ok(None); };
+    fn memory_forecast(
+        &self,
+        shadow: &OlsShadowResult<'_>,
+    ) -> Result<Option<crate::memory_forecast::Forecast>> {
+        use crate::memory_forecast::{ols_projection_parent, sum, Forecast};
+        let Some(solver) = shadow.solver_expected_heap_peak else {
+            return Ok(None);
+        };
         let fast = shadow.execution.mode == PreparedOlsExecutionMode::Fast;
         let fit = if fast {
-            let projection = sum(&[ols_projection_parent(self.prepared_owner_bytes,
-                self.metadata_owner_bytes, shadow.retained_rows.len(), self.generated_columns,
-                self.fit.execution.poolsize, true)?, u128::from(solver)])?;
-            let finite = sum(&[self.prepared_owner_bytes, self.metadata_owner_bytes,
-                self.preparation_memory.frame_metadata_bytes, self.frame_memory.fast_bytes])?;
+            let projection = sum(&[
+                ols_projection_parent(
+                    self.prepared_owner_bytes,
+                    self.metadata_owner_bytes,
+                    shadow.retained_rows.len(),
+                    self.generated_columns,
+                    self.fit.execution.poolsize,
+                    true,
+                )?,
+                u128::from(solver),
+            ])?;
+            let finite = sum(&[
+                self.prepared_owner_bytes,
+                self.metadata_owner_bytes,
+                self.preparation_memory.frame_metadata_bytes,
+                self.frame_memory.fast_bytes,
+            ])?;
             projection.max(finite)
         } else {
             // Low-memory score reconstruction has different retained parents;
             // retain its conservative composition until that case is calibrated.
             sum(&[self.execution_parent_bytes, u128::from(solver)])?
         };
-        let preparation = sum(&[self.metadata_owner_bytes,
-            self.preparation_memory.preparation_peak_bytes(self.loaded_fit_workspace_bytes)?])?;
-        let publication = sum(&[self.output_parent_bytes, self.publication_memory.peak_bytes()])?;
-        let native_peak = fit.max(preparation).max(publication)
-            .max(self.metadata_peak_bytes).max(self.input_peak_bytes);
+        let preparation = sum(&[
+            self.metadata_owner_bytes,
+            self.preparation_memory
+                .preparation_peak_bytes(self.loaded_fit_workspace_bytes)?,
+        ])?;
+        let publication = sum(&[
+            self.output_parent_bytes,
+            self.publication_memory.peak_bytes(),
+        ])?;
+        let native_peak = fit
+            .max(preparation)
+            .max(publication)
+            .max(self.metadata_peak_bytes)
+            .max(self.input_peak_bytes);
         let matrix_cells = self.publication_memory.shadow_bytes / 8
             + (crate::result::RUNTIME_ROWS * 2 + crate::memory_report::CELLS) as u128;
-        Ok(Some(Forecast { native_peak,
-            stata_growth: Forecast::publication_growth(shadow.drop_reasons.len(), matrix_cells,
+        Ok(Some(Forecast {
+            native_peak,
+            stata_growth: Forecast::publication_growth(
+                shadow.drop_reasons.len(),
+                matrix_cells,
                 crate::memory_forecast::has_factor_stripes(&self.request.model),
-                self.memory_baseline.before_allocated)? }))
+                self.memory_baseline.before_allocated,
+            )?,
+        }))
     }
 
     fn metadata_capacity_bytes(&self) -> u128 {
@@ -698,13 +791,20 @@ impl EstimateAction {
     /// its frames. Public base estimates retain their historical meaning.
     fn admit_prepared_parent(&mut self, owned_bytes: u128) -> Result<()> {
         let public_base = self.memory_plan.estimate;
-        let reconciled = self.preparation_memory.with_prepared_owner(public_base, owned_bytes)?;
-        let frame_parent = owned_bytes.checked_add(self.preparation_memory.frame_metadata_bytes)
+        let reconciled = self
+            .preparation_memory
+            .with_prepared_owner(public_base, owned_bytes)?;
+        let frame_parent = owned_bytes
+            .checked_add(self.preparation_memory.frame_metadata_bytes)
             .ok_or_else(|| allocation("OLS transient metadata parent overflows"))?;
         let mut execution = self.frame_memory.with_parent(reconciled, frame_parent)?;
-        execution.fast_bytes = execution.fast_bytes.checked_add(self.metadata_owner_bytes)
+        execution.fast_bytes = execution
+            .fast_bytes
+            .checked_add(self.metadata_owner_bytes)
             .ok_or_else(|| allocation("OLS execution metadata size overflows"))?;
-        execution.low_bytes = execution.low_bytes.checked_add(self.metadata_owner_bytes)
+        execution.low_bytes = execution
+            .low_bytes
+            .checked_add(self.metadata_owner_bytes)
             .ok_or_else(|| allocation("OLS execution metadata size overflows"))?;
         let mut plan = self.publication_memory.plan(
             self.memory_plan.requested,
@@ -717,11 +817,14 @@ impl EstimateAction {
             MemoryMode::Low => PreparedOlsExecutionMode::Low,
             MemoryMode::Auto => return Err(invalid("unresolved prepared OLS memory mode")),
         };
-        self.fit.absorb.solver_memory_budget = plan.usable_bytes.map(|usable_bytes| {
-            FeSolverMemoryBudget { execution_bytes, usable_bytes }
-        });
-        self.fit.absorb.retain_coefficients = self.outputs.saved_channels.iter().any(Option::is_some)
-            && plan.selected == MemoryMode::Fast;
+        self.fit.absorb.solver_memory_budget =
+            plan.usable_bytes.map(|usable_bytes| FeSolverMemoryBudget {
+                execution_bytes,
+                usable_bytes,
+            });
+        self.fit.absorb.retain_coefficients =
+            self.outputs.saved_channels.iter().any(Option::is_some)
+                && plan.selected == MemoryMode::Fast;
         plan.estimate = public_base;
         self.memory_plan = plan;
         self.prepared_owner_bytes = owned_bytes;
@@ -730,15 +833,21 @@ impl EstimateAction {
     }
 
     fn admit_output_parent(&mut self, inference_bytes: u128) -> Result<()> {
-        let owned = self.prepared_owner_bytes.checked_add(inference_bytes)
+        let owned = self
+            .prepared_owner_bytes
+            .checked_add(inference_bytes)
             .and_then(|bytes| bytes.checked_add(self.metadata_owner_bytes))
             .ok_or_else(|| allocation("OLS output parent size overflows"))?;
         self.output_parent_bytes = owned;
         if let Some(budget) = self.fit.absorb.solver_memory_budget.as_mut() {
             let parent = budget.execution_bytes.max(owned);
-            if !parent.checked_add(self.publication_memory.peak_bytes())
-                .is_some_and(|peak| peak <= budget.usable_bytes) {
-                return Err(allocation("OLS retained inference and publication exceed usable memory"));
+            if parent
+                .checked_add(self.publication_memory.peak_bytes())
+                .is_none_or(|peak| peak > budget.usable_bytes)
+            {
+                return Err(allocation(
+                    "OLS retained inference and publication exceed usable memory",
+                ));
             }
             budget.execution_bytes = parent;
         }
@@ -756,7 +865,10 @@ impl EstimateActionSpec {
             &self.absorb_labels,
             &self.absorb_saved_names,
             &self.cluster_labels,
-        ].into_iter().map(crate::metadata_memory::strings_bytes).sum::<u128>();
+        ]
+        .into_iter()
+        .map(crate::metadata_memory::strings_bytes)
+        .sum::<u128>();
         let string_bytes = [
             &self.source_matrix,
             &self.term_matrix,
@@ -781,14 +893,26 @@ impl EstimateActionSpec {
             &self.matrices.receipt,
             &self.matrices.omission_b_marker,
             &self.matrices.omission_v_marker,
-        ].into_iter().map(|value| value.capacity() as u128).sum::<u128>();
+        ]
+        .into_iter()
+        .map(|value| value.capacity() as u128)
+        .sum::<u128>();
         crate::metadata_memory::MetadataShape {
-            rows: [self.source_count, self.term_count, self.component_count,
-                self.absorb_term_count, self.absorb_component_count, self.cluster_term_count,
-                self.cluster_component_count, self.binding_count],
+            rows: [
+                self.source_count,
+                self.term_count,
+                self.component_count,
+                self.absorb_term_count,
+                self.absorb_component_count,
+                self.cluster_term_count,
+                self.cluster_component_count,
+                self.binding_count,
+            ],
             transport_parent_bytes: self.transport_parent_bytes,
-            specification_bytes: registry_bytes + string_bytes
-                + self.outputs.saved_channels.capacity() as u128 * std::mem::size_of::<Option<u32>>() as u128,
+            specification_bytes: registry_bytes
+                + string_bytes
+                + self.outputs.saved_channels.capacity() as u128
+                    * std::mem::size_of::<Option<u32>>() as u128,
         }
     }
 
@@ -1033,7 +1157,10 @@ impl EstimateActionSpec {
         }
         let available_bytes = available_bytes()?;
         let usable_bytes = fereg_core::memory::usable_memory_bytes(available_bytes);
-        let metadata_peak_bytes = self.metadata_shape().admit(usable_bytes)?.max(self.transport_peak_bytes);
+        let metadata_peak_bytes = self
+            .metadata_shape()
+            .admit(usable_bytes)?
+            .max(self.transport_peak_bytes);
         crate::metadata_memory::admit(metadata_peak_bytes, usable_bytes)?;
         let wire = ModelWireV2 {
             major: self.model_major,
@@ -1169,21 +1296,31 @@ impl EstimateActionSpec {
                     .count(),
             },
         )?;
-        let memory_plan =
-            publication_memory.plan(self.memory, memory_estimate, available_bytes)?;
+        let memory_plan = publication_memory.plan(self.memory, memory_estimate, available_bytes)?;
         let preparation_memory = crate::ols_preparation_memory::OlsPreparationMemory::estimate(
             spi.nobs()?,
             loaded_numeric_columns,
-            request.bindings.iter().any(|binding| matches!(binding.role,
-                OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)),
+            request.bindings.iter().any(|binding| {
+                matches!(
+                    binding.role,
+                    OlsInputRole::AnalyticWeight
+                        | OlsInputRole::FrequencyWeight
+                        | OlsInputRole::ProbabilityWeight
+                )
+            }),
             extended_fe_rows,
             clusters.len(),
         )?;
-        let preparation_memory = preparation_memory.with_construction(spi.nobs()?, &request, &clusters)?;
+        let preparation_memory =
+            preparation_memory.with_construction(spi.nobs()?, &request, &clusters)?;
         preparation_memory.admit_numeric_arrays(memory_plan.usable_bytes)?;
         let frame_memory = crate::ols_frame_memory::OlsFrameMemory::estimate(
-            spi.nobs()?, prepared_model.columns.len(), prepared_model.coefficients.len(),
-            clusters.len(), self.poolsize, self.vce != OlsVceKind::Iid,
+            spi.nobs()?,
+            prepared_model.columns.len(),
+            prepared_model.coefficients.len(),
+            clusters.len(),
+            self.poolsize,
+            self.vce != OlsVceKind::Iid,
         )?;
         let default_fit = PreparedOlsFitConfig::default();
         let thread_config = crate::thread_policy::plan(
@@ -1193,7 +1330,10 @@ impl EstimateActionSpec {
                 automatic_solver: self.solver == FeSolverKind::Auto,
                 memory: self.memory,
                 effects: request.absorbed_terms.len(),
-                intercept_only: request.absorbed_terms.iter().all(|term| term.intercept && term.slope_sources.is_empty()),
+                intercept_only: request
+                    .absorbed_terms
+                    .iter()
+                    .all(|term| term.intercept && term.slope_sources.is_empty()),
                 finite_columns: prepared_model.columns.len(),
             },
         );
@@ -1311,11 +1451,13 @@ impl EstimateActionSpec {
             outputs: self.outputs.clone(),
             matrices,
         };
-        action.metadata_owner_bytes = action.metadata_capacity_bytes()
+        action.metadata_owner_bytes = action
+            .metadata_capacity_bytes()
             .checked_add(action.transport_parent_bytes)
             .ok_or_else(|| allocation("metadata parent size overflows"))?;
         action.preparation_memory.admit_numeric_arrays_with_parent(
-            action.memory_plan.usable_bytes, action.metadata_owner_bytes,
+            action.memory_plan.usable_bytes,
+            action.metadata_owner_bytes,
         )?;
         action.admit_prepared_parent(0)?;
         Ok(action)
@@ -1371,8 +1513,12 @@ pub(crate) fn read_local_estimate_bundle(
     // overlong macro look exact. The SPI limit excludes its NUL terminator.
     let required = PREFIX.len() + length + 2;
     crate::metadata_memory::admit(
-        required as u128 + args.len() as u128 * std::mem::size_of::<String>() as u128
-            + args.iter().map(|value| value.capacity() as u128).sum::<u128>(),
+        required as u128
+            + args.len() as u128 * std::mem::size_of::<String>() as u128
+            + args
+                .iter()
+                .map(|value| value.capacity() as u128)
+                .sum::<u128>(),
         fereg_core::memory::usable_memory_bytes(imposed_memory_limit_bytes()?),
     )?;
     let mut bytes = Vec::new();
@@ -1576,8 +1722,14 @@ fn read_clusters(spec: &EstimateActionSpec, spi: &mut dyn SpiApi) -> Result<Vec<
         if term != term_index + 1 || count == 0 {
             return Err(invalid("cluster term order or source count is invalid"));
         }
-        if count > spec.cluster_component_count.saturating_sub(component_cursor) {
-            return Err(invalid("cluster component table ended before declared source counts"));
+        if count
+            > spec
+                .cluster_component_count
+                .saturating_sub(component_cursor)
+        {
+            return Err(invalid(
+                "cluster component table ended before declared source counts",
+            ));
         }
         let mut sources = reserved_empty(count, "cluster source recipe")?;
         for order in 1..=count {
@@ -1633,20 +1785,50 @@ pub(crate) fn loading_memory(
     use crate::input_memory::{add, mul};
     use std::mem::size_of;
     let sources = request.model.sources.len();
-    let weights = request.bindings.iter().filter(|binding| matches!(binding.role,
-        OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight)).count();
-    let columns = sources.checked_add(weights).and_then(|v| v.checked_add(extra_columns))
-        .and_then(|v| v.checked_add(1)).ok_or_else(|| allocation("input column count overflows"))?;
+    let weights = request
+        .bindings
+        .iter()
+        .filter(|binding| {
+            matches!(
+                binding.role,
+                OlsInputRole::AnalyticWeight
+                    | OlsInputRole::FrequencyWeight
+                    | OlsInputRole::ProbabilityWeight
+            )
+        })
+        .count();
+    let columns = sources
+        .checked_add(weights)
+        .and_then(|v| v.checked_add(extra_columns))
+        .and_then(|v| v.checked_add(1))
+        .ok_or_else(|| allocation("input column count overflows"))?;
     let row_bytes = add(mul(columns, 9)?, 1)?;
-    let arrays = (rows as u128).checked_mul(row_bytes).ok_or_else(|| allocation("input array bytes overflow"))?;
+    let arrays = (rows as u128)
+        .checked_mul(row_bytes)
+        .ok_or_else(|| allocation("input array bytes overflow"))?;
     // The loader and final source descriptors can coexist. Position lists,
     // whole-column and chunk slices, plus the SPI's positions/pointers are
     // column-sized, with at most one bulk call live on the Stata thread.
-    let sources_bytes = mul(sources, size_of::<(SourceId, OlsSourceLoader)>()
-        + size_of::<(SourceId, LoadedNumericColumn)>() + size_of::<u32>())?;
-    let transport_bytes = mul(columns, 2 * size_of::<u32>() + size_of::<*mut f64>()
-        + 2 * size_of::<&mut [f64]>() + 2 * size_of::<&mut [bool]>())?;
-    InputMemory::new(usable_bytes, add(parent_bytes, add(arrays, add(sources_bytes, transport_bytes)?)?)?)
+    let sources_bytes = mul(
+        sources,
+        size_of::<(SourceId, OlsSourceLoader)>()
+            + size_of::<(SourceId, LoadedNumericColumn)>()
+            + size_of::<u32>(),
+    )?;
+    let transport_bytes = mul(
+        columns,
+        2 * size_of::<u32>()
+            + size_of::<*mut f64>()
+            + 2 * size_of::<&mut [f64]>()
+            + 2 * size_of::<&mut [bool]>(),
+    )?;
+    InputMemory::new(
+        usable_bytes,
+        add(
+            parent_bytes,
+            add(arrays, add(sources_bytes, transport_bytes)?)?,
+        )?,
+    )
 }
 
 pub(crate) fn load_ols_input_with_memory(
@@ -1656,7 +1838,17 @@ pub(crate) fn load_ols_input_with_memory(
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
 ) -> Result<LoadedOlsInput> {
-    load_ols_input_with_team(request, candidate_all, input_complete, memory, spi, None, &mut None, 0, None)
+    load_ols_input_with_team(
+        request,
+        candidate_all,
+        input_complete,
+        memory,
+        spi,
+        None,
+        &mut None,
+        0,
+        None,
+    )
 }
 
 fn numeric_pipeline_effects_supported(request: &OlsRequestV1) -> bool {
@@ -1670,14 +1862,24 @@ fn numeric_pipeline_effects_supported(request: &OlsRequestV1) -> bool {
 
 // Use the already validated finite model, including its cluster-source graph.
 // Loading only materializes this recipe; the final fit checks every row/value.
-fn numeric_loaded_rhs_layout(model: &fereg_core::ols::PreparedOlsModel) -> Option<crate::numeric_pipeline::NumericRhsLayout> {
-    let append_intercept = matches!(model.columns.last().map(|c| &c.kind), Some(PreparedOlsColumnKind::Intercept));
-    let numeric = model.columns.len().saturating_sub(usize::from(append_intercept));
+fn numeric_loaded_rhs_layout(
+    model: &fereg_core::ols::PreparedOlsModel,
+) -> Option<crate::numeric_pipeline::NumericRhsLayout> {
+    let append_intercept = matches!(
+        model.columns.last().map(|c| &c.kind),
+        Some(PreparedOlsColumnKind::Intercept)
+    );
+    let numeric = model
+        .columns
+        .len()
+        .saturating_sub(usize::from(append_intercept));
     model.columns[..numeric].iter().enumerate().all(|(index, column)|
         matches!(column.kind, PreparedOlsColumnKind::Continuous { prepared_source_index, .. } if index == prepared_source_index))
         .then_some(crate::numeric_pipeline::NumericRhsLayout { width: model.columns.len() + 1, append_intercept })
 }
 
+// Preserve the explicit SPI admission and ownership inputs of the legacy loader.
+#[allow(clippy::too_many_arguments)]
 fn load_ols_input_with_team(
     request: &OlsRequestV1,
     candidate_all: bool,
@@ -1696,12 +1898,20 @@ fn load_ols_input_with_team(
     } else {
         Some(role_position(request, InputRoleTag::Candidate)?)
     };
-    let has_weight = request.bindings.iter().any(|binding| matches!(binding.role,
-        OlsInputRole::AnalyticWeight | OlsInputRole::FrequencyWeight | OlsInputRole::ProbabilityWeight));
+    let has_weight = request.bindings.iter().any(|binding| {
+        matches!(
+            binding.role,
+            OlsInputRole::AnalyticWeight
+                | OlsInputRole::FrequencyWeight
+                | OlsInputRole::ProbabilityWeight
+        )
+    });
     let numeric_width = request.model.sources.len() + 1 + usize::from(has_weight);
-    let defer_columns = candidate_all && n >= 16_384
+    let defer_columns = candidate_all
+        && n >= 16_384
         && (3..=64).contains(&numeric_width)
-        && team.is_some_and(|t| t.threads() >= 8) && spi.supports_numeric_rows();
+        && team.is_some_and(|t| t.threads() >= 8)
+        && spi.supports_numeric_rows();
     let mut outcome = loaded_column_reservation(n, "OLS outcome", defer_columns)?;
     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
     for source in &request.model.sources {
@@ -1724,7 +1934,11 @@ fn load_ols_input_with_team(
                 provisional_codes: StringDictionary::new(),
             }
         } else {
-            OlsSourceLoader::Numeric(loaded_column_reservation(n, "OLS numeric source", defer_columns)?)
+            OlsSourceLoader::Numeric(loaded_column_reservation(
+                n,
+                "OLS numeric source",
+                defer_columns,
+            )?)
         };
         push_reserved(
             &mut source_loaders,
@@ -1759,30 +1973,43 @@ fn load_ols_input_with_team(
     let mut rhs_layout = None;
     if candidate_all && all_sources_numeric {
         if let Some(team) = team {
-                let width = numeric_width;
-                let min_rhs_width = if team.threads() >= 8 { 3 } else { 8 };
-                let min_numeric_width = if team.threads() >= 8 { 3 } else { 9 };
-                if spi.supports_numeric_rows() && team.threads() > 1 && n >= 16_384
-                    && (min_numeric_width..=64).contains(&width)
-                    && numeric_pipeline_effects_supported(request)
-                {
-                    if let Some(layout) = compiled_rhs_layout.filter(|layout| (min_rhs_width..=width).contains(&layout.width)
-                        && (layout.append_intercept || (request.absorbed_terms.len() == 1
-                            && (1..=3).contains(&request.absorbed_terms[0].slope_sources.len())))) {
-                        if let Some(elements) = n.checked_mul(layout.width) {
-                            if let Some(bytes) = elements.checked_mul(8).filter(|bytes| *bytes <= rhs_budget && *bytes <= memory.remaining().saturating_sub(2 * 4096 * width * 8 + 4096)) {
-                                memory.admit(bytes as u128)?;
-                                let mut rows = Vec::new();
-                                rows.try_reserve_exact(elements).map_err(|_| allocation("unable to reserve numeric loaded RHS"))?;
-                                if rows.capacity() == elements {
-                                    memory.retain(bytes as u128)?;
-                                    *rhs = Some(rows);
-                                    rhs_layout = Some(layout);
-                                }
+            let width = numeric_width;
+            let min_rhs_width = if team.threads() >= 8 { 3 } else { 8 };
+            let min_numeric_width = if team.threads() >= 8 { 3 } else { 9 };
+            if spi.supports_numeric_rows()
+                && team.threads() > 1
+                && n >= 16_384
+                && (min_numeric_width..=64).contains(&width)
+                && numeric_pipeline_effects_supported(request)
+            {
+                if let Some(layout) = compiled_rhs_layout.filter(|layout| {
+                    (min_rhs_width..=width).contains(&layout.width)
+                        && (layout.append_intercept
+                            || (request.absorbed_terms.len() == 1
+                                && (1..=3)
+                                    .contains(&request.absorbed_terms[0].slope_sources.len())))
+                }) {
+                    if let Some(elements) = n.checked_mul(layout.width) {
+                        if let Some(bytes) = elements.checked_mul(8).filter(|bytes| {
+                            *bytes <= rhs_budget
+                                && *bytes
+                                    <= memory
+                                        .remaining()
+                                        .saturating_sub(2 * 4096 * width * 8 + 4096)
+                        }) {
+                            memory.admit(bytes as u128)?;
+                            let mut rows = Vec::new();
+                            rows.try_reserve_exact(elements)
+                                .map_err(|_| allocation("unable to reserve numeric loaded RHS"))?;
+                            if rows.capacity() == elements {
+                                memory.retain(bytes as u128)?;
+                                *rhs = Some(rows);
+                                rhs_layout = Some(layout);
                             }
                         }
                     }
                 }
+            }
         }
     }
     let reserved_read = if defer_columns && all_sources_numeric {
@@ -1793,23 +2020,37 @@ fn load_ols_input_with_team(
         columns.push(&mut outcome.values);
         missing.push(&mut outcome.missing);
         for ((_, loader), position) in source_loaders.iter_mut().zip(&source_positions) {
-            let OlsSourceLoader::Numeric(column) = loader else { unreachable!("numeric sources checked"); };
+            let OlsSourceLoader::Numeric(column) = loader else {
+                unreachable!("numeric sources checked");
+            };
             positions.push(*position);
             columns.push(&mut column.values);
             missing.push(&mut column.missing);
         }
-        for (position, column) in [(analytic_position, analytic_weight.as_mut()),
+        for (position, column) in [
+            (analytic_position, analytic_weight.as_mut()),
             (frequency_position, frequency_weight.as_mut()),
-            (probability_position, probability_weight.as_mut())] {
+            (probability_position, probability_weight.as_mut()),
+        ] {
             if let (Some(position), Some(column)) = (position, column) {
                 positions.push(position);
                 columns.push(&mut column.values);
                 missing.push(&mut column.missing);
             }
         }
-        crate::numeric_pipeline::try_read_reserved(spi, &positions, n, &mut columns,
-            &mut missing, team.expect("deferred input has a team"), memory, rhs.as_mut().zip(rhs_layout))?
-    } else { false };
+        crate::numeric_pipeline::try_read_reserved(
+            spi,
+            &positions,
+            n,
+            &mut columns,
+            &mut missing,
+            team.expect("deferred input has a team"),
+            memory,
+            rhs.as_mut().zip(rhs_layout),
+        )?
+    } else {
+        false
+    };
     if defer_columns && !reserved_read {
         // A rejected optional path has not read observations. Restore the
         // initialized arrays required by the ordinary loader before fallback.
@@ -1821,8 +2062,14 @@ fn load_ols_input_with_team(
                 column.missing.resize(n, false);
             }
         }
-        for column in [&mut analytic_weight, &mut frequency_weight, &mut probability_weight]
-            .into_iter().flatten() {
+        for column in [
+            &mut analytic_weight,
+            &mut frequency_weight,
+            &mut probability_weight,
+        ]
+        .into_iter()
+        .flatten()
+        {
             column.values.resize(n, 0.0);
             column.missing.resize(n, false);
         }
@@ -1871,11 +2118,25 @@ fn load_ols_input_with_team(
                 missing.push(destination.missing.as_mut_slice());
             }
         }
-        let pipelined = if reserved_read { true } else if candidate_all && all_sources_numeric {
+        let pipelined = if reserved_read {
+            true
+        } else if candidate_all && all_sources_numeric {
             if let Some(team) = team {
-                crate::numeric_pipeline::try_read_with_rhs(spi, &positions, &mut columns, &mut missing, team, memory, rhs.as_mut().zip(rhs_layout))?
-            } else { false }
-        } else { false };
+                crate::numeric_pipeline::try_read_with_rhs(
+                    spi,
+                    &positions,
+                    &mut columns,
+                    &mut missing,
+                    team,
+                    memory,
+                    rhs.as_mut().zip(rhs_layout),
+                )?
+            } else {
+                false
+            }
+        } else {
+            false
+        };
         if !pipelined {
             read_numeric_columns_in_chunks(
                 spi,
@@ -2071,8 +2332,12 @@ impl OlsSourceLoader {
     ) -> Result<()> {
         match self {
             Self::Numeric(column) => read_into(spi, position, observation, column, zero_based),
-            Self::FixedWidthString { column, provisional_codes } => {
-                let value = spi.read_string_with_limit(position, observation, memory.remaining())?;
+            Self::FixedWidthString {
+                column,
+                provisional_codes,
+            } => {
+                let value =
+                    spi.read_string_with_limit(position, observation, memory.remaining())?;
                 memory.admit(value.capacity() as u128)?;
                 if value.is_empty() {
                     column.missing[zero_based] = true;
@@ -2088,7 +2353,10 @@ impl OlsSourceLoader {
     fn finalize(self, memory: &mut InputMemory) -> Result<LoadedNumericColumn> {
         match self {
             Self::Numeric(column) => Ok(column),
-            Self::FixedWidthString { mut column, provisional_codes } => {
+            Self::FixedWidthString {
+                mut column,
+                provisional_codes,
+            } => {
                 provisional_codes.recode(&mut column.values, &column.missing, memory)?;
                 Ok(column)
             }
@@ -2412,17 +2680,29 @@ fn precommit_and_store(
     }
     if std::env::var_os("FEREG_ACTION_MEMORY_AUDIT").is_some() {
         let resources = instrumentation::snapshot();
-        crate::action_memory::emit(&action.memory_ledger(shadow.solver_workspace_peak)?,
-            resources.allocation_peak_bytes.saturating_sub(observation.resources_start.allocation_current_bytes))?;
+        crate::action_memory::emit(
+            &action.memory_ledger(shadow.solver_workspace_peak)?,
+            resources
+                .allocation_peak_bytes
+                .saturating_sub(observation.resources_start.allocation_current_bytes),
+        )?;
     }
     let forecast = action.memory_forecast(shadow)?;
     if let Some(forecast) = forecast {
-        forecast.trace(action.memory_baseline, instrumentation::native_live_before())?;
+        forecast.trace(
+            action.memory_baseline,
+            instrumentation::native_live_before(),
+        )?;
     }
-    let memory_report = MemoryReport::estimated(action.memory_baseline,
+    let memory_report = MemoryReport::estimated(
+        action.memory_baseline,
         instrumentation::native_live_before(),
-        action.memory_ledger(shadow.solver_workspace_peak)?.summary(),
-        action.memory_plan.safety_headroom_bytes, forecast)?;
+        action
+            .memory_ledger(shadow.solver_workspace_peak)?
+            .summary(),
+        action.memory_plan.safety_headroom_bytes,
+        forecast,
+    )?;
     validate_shadow_against_outputs(action, shadow)?;
     validate_derived_against_outputs(action, shadow, derived)?;
     validate_defined_value_table(&runtime, "OLS runtime shadow")?;
@@ -2617,10 +2897,15 @@ fn validate_shadow_against_outputs(
             "OLS shadow result failed its final dimensional preflight",
         ));
     }
-    if invalid_shadow_observations(shadow.residuals, shadow.retained_rows,
-        shadow.drop_reasons, action.fit.execution.threads)?
-    {
-        return Err(invalid("OLS shadow observation outputs failed final preflight"));
+    if invalid_shadow_observations(
+        shadow.residuals,
+        shadow.retained_rows,
+        shadow.drop_reasons,
+        action.fit.execution.threads,
+    )? {
+        return Err(invalid(
+            "OLS shadow observation outputs failed final preflight",
+        ));
     }
     if action.outputs.residual.is_some() != (shadow.receipt[13] == 1.0) || shadow.receipt[15] != 0.0
     {
@@ -2638,10 +2923,15 @@ fn validate_shadow_against_outputs(
 }
 
 fn invalid_shadow_observations(
-    residuals: &[f64], retained_rows: &[usize], drop_reasons: &[fereg_core::DropReason], threads: ThreadConfig,
+    residuals: &[f64],
+    retained_rows: &[usize],
+    drop_reasons: &[fereg_core::DropReason],
+    threads: ThreadConfig,
 ) -> Result<bool> {
-    if retained_rows.len() == drop_reasons.len() && residuals.len() == retained_rows.len()
-        && retained_rows.len() >= 16_384 && threads.resolved() >= 8
+    if retained_rows.len() == drop_reasons.len()
+        && residuals.len() == retained_rows.len()
+        && retained_rows.len() >= 16_384
+        && threads.resolved() >= 8
     {
         // A bounded, strictly increasing map of N rows into N positions must
         // be the identity. The original count/mapping checks then require every
@@ -2649,18 +2939,29 @@ fn invalid_shadow_observations(
         // weakening the final publication barrier or using SPI on workers.
         use rayon::prelude::*;
         return ThreadTeam::new(threads).install(|| {
-            residuals.par_iter().zip(retained_rows.par_iter()).zip(drop_reasons.par_iter())
-                .enumerate().any(|(row, ((value, original), reason))|
-                    !value.is_finite() || *original != row || *reason != fereg_core::DropReason::Retained)
+            residuals
+                .par_iter()
+                .zip(retained_rows.par_iter())
+                .zip(drop_reasons.par_iter())
+                .enumerate()
+                .any(|(row, ((value, original), reason))| {
+                    !value.is_finite()
+                        || *original != row
+                        || *reason != fereg_core::DropReason::Retained
+                })
         });
     }
     Ok(residuals.iter().any(|value| !value.is_finite())
         || retained_rows.iter().enumerate().any(|(index, row)| {
             *row >= drop_reasons.len() || (index > 0 && retained_rows[index - 1] >= *row)
         })
-        || !drop_reasons.iter().enumerate().filter_map(|(row, reason)| {
-            (*reason == fereg_core::DropReason::Retained).then_some(row)
-        }).eq(retained_rows.iter().copied()))
+        || !drop_reasons
+            .iter()
+            .enumerate()
+            .filter_map(|(row, reason)| {
+                (*reason == fereg_core::DropReason::Retained).then_some(row)
+            })
+            .eq(retained_rows.iter().copied()))
 }
 
 fn validate_shadow_receipt(action: &EstimateAction, shadow: &OlsShadowResult<'_>) -> Result<()> {
@@ -2945,14 +3246,27 @@ fn store_shadow(
     // and drop reasons. A full sample keeps its initialized private marker;
     // without requested observation products there is no row store to perform.
     let batched = try_store_full_observation_outputs(action, shadow, derived, spi)?;
-    let observation_rows = if batched || (shadow.retained_rows.len() == shadow.drop_reasons.len()
-        && action.outputs.residual.is_none() && action.outputs.drop_reason.is_none()
-        && action.outputs.xb.is_none() && action.outputs.xbd.is_none()
-        && action.outputs.absorbed.is_none()
-        && action.outputs.saved_channels.iter().all(Option::is_none))
-    { 0 } else { shadow.drop_reasons.len() };
+    let observation_rows = if batched
+        || (shadow.retained_rows.len() == shadow.drop_reasons.len()
+            && action.outputs.residual.is_none()
+            && action.outputs.drop_reason.is_none()
+            && action.outputs.xb.is_none()
+            && action.outputs.xbd.is_none()
+            && action.outputs.absorbed.is_none()
+            && action.outputs.saved_channels.iter().all(Option::is_none))
+    {
+        0
+    } else {
+        shadow.drop_reasons.len()
+    };
     let mut retained_cursor = 0_usize;
-    for (zero_based, reason) in shadow.drop_reasons.iter().copied().enumerate().take(observation_rows) {
+    for (zero_based, reason) in shadow
+        .drop_reasons
+        .iter()
+        .copied()
+        .enumerate()
+        .take(observation_rows)
+    {
         let observation = zero_based + 1;
         let retained = reason == fereg_core::DropReason::Retained;
         if !retained && reason != fereg_core::DropReason::ExcludedByIfIn {
@@ -3056,7 +3370,13 @@ fn store_shadow(
         &shadow.certificates,
     )?;
     store_matrix(spi, &action.matrices.runtime, RUNTIME_ROWS, 2, runtime)?;
-    store_matrix(spi, &action.matrices.memory_report, MEMORY_ROWS, 2, &memory_report.0)?;
+    store_matrix(
+        spi,
+        &action.matrices.memory_report,
+        MEMORY_ROWS,
+        2,
+        &memory_report.0,
+    )?;
     for column in 1..RECEIPT_COMPLETE_COLUMN {
         spi.store_matrix(
             &action.matrices.receipt,
@@ -3079,8 +3399,11 @@ fn try_store_full_observation_outputs(
     // Complete preflight proved an identity row map. Preserve the scalar store
     // order using borrowed columns; partial samples keep their marker updates.
     if shadow.retained_rows.len() != shadow.drop_reasons.len()
-        || shadow.retained_rows.len() < 4096 || action.outputs.drop_reason.is_some()
-    { return Ok(false); }
+        || shadow.retained_rows.len() < 4096
+        || action.outputs.drop_reason.is_some()
+    {
+        return Ok(false);
+    }
     let mut columns = [(0_u32, &[] as &[f64]); crate::input::MAX_NUMERIC_STORE_COLUMNS];
     let mut count = 0;
     if let Some(position) = action.outputs.residual {
@@ -3097,14 +3420,23 @@ fn try_store_full_observation_outputs(
             count += 1;
         }
     }
-    for (position, values) in action.outputs.saved_channels.iter().zip(&derived.saved_channels) {
+    for (position, values) in action
+        .outputs
+        .saved_channels
+        .iter()
+        .zip(&derived.saved_channels)
+    {
         if let (Some(position), Some(values)) = (*position, values.as_deref()) {
-            if count == columns.len() { return Ok(false); }
+            if count == columns.len() {
+                return Ok(false);
+            }
             columns[count] = (position, values);
             count += 1;
         }
     }
-    if count == 0 { return Ok(false); }
+    if count == 0 {
+        return Ok(false);
+    }
     spi.try_store_numeric_columns(&columns[..count])
 }
 
@@ -3494,10 +3826,19 @@ fn weight_position(request: &OlsRequestV1, role: OlsInputRole) -> Option<u32> {
         .find_map(|binding| (binding.role == role).then_some(binding.stata_var_position))
 }
 
-fn loaded_column_reservation(n: usize, label: &'static str, defer: bool) -> Result<LoadedNumericColumn> {
+fn loaded_column_reservation(
+    n: usize,
+    label: &'static str,
+    defer: bool,
+) -> Result<LoadedNumericColumn> {
     if defer {
-        Ok(LoadedNumericColumn { values: reserved_empty(n, label)?, missing: reserved_empty(n, label)? })
-    } else { empty_loaded_column(n, label) }
+        Ok(LoadedNumericColumn {
+            values: reserved_empty(n, label)?,
+            missing: reserved_empty(n, label)?,
+        })
+    } else {
+        empty_loaded_column(n, label)
+    }
 }
 
 fn empty_loaded_column(n: usize, label: &'static str) -> Result<LoadedNumericColumn> {
@@ -3753,6 +4094,11 @@ mod tests {
         RawTermKind, SourceEntry, TermComponent, TermId, TermOrder, TimeSeriesState,
     };
     use fereg_core::protocol::{ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION};
+    #[cfg(feature = "ffi")]
+    use fereg_core::{
+        fit_prepared_categorical_ols_clustered_map, fit_prepared_categorical_ols_robust_map,
+        fit_prepared_ols_clustered_map, fit_prepared_ols_robust_map,
+    };
     use std::collections::{BTreeMap, BTreeSet};
 
     #[derive(Debug, Clone, PartialEq)]
@@ -3786,8 +4132,15 @@ mod tests {
     }
 
     impl SpiApi for FakeSpi {
-        fn supports_numeric_rows(&self) -> bool { self.numeric_rows_enabled }
-        fn read_numeric_rows(&mut self, variables: &[u32], first: usize, output: &mut [f64]) -> Result<f64> {
+        fn supports_numeric_rows(&self) -> bool {
+            self.numeric_rows_enabled
+        }
+        fn read_numeric_rows(
+            &mut self,
+            variables: &[u32],
+            first: usize,
+            output: &mut [f64],
+        ) -> Result<f64> {
             for (row, values) in output.chunks_exact_mut(variables.len()).enumerate() {
                 for (value, variable) in values.iter_mut().zip(variables) {
                     let (number, missing) = self.read_numeric(*variable, first + row)?;
@@ -3890,7 +4243,9 @@ mod tests {
         }
 
         fn try_store_numeric_columns(&mut self, columns: &[(u32, &[f64])]) -> Result<bool> {
-            if !self.numeric_column_stores_enabled { return Ok(false); }
+            if !self.numeric_column_stores_enabled {
+                return Ok(false);
+            }
             self.numeric_column_batches += 1;
             for row in 0..columns[0].1.len() {
                 for (position, values) in columns {
@@ -4108,10 +4463,17 @@ mod tests {
 
     #[test]
     fn memory_baseline_and_matrix_are_validated_before_any_store() {
-        for replacement in ["stata_alloc_before=-1", "stata_used_before=9007199254740993", "output_memory_matrix=RB"] {
+        for replacement in [
+            "stata_alloc_before=-1",
+            "stata_used_before=9007199254740993",
+            "output_memory_matrix=RB",
+        ] {
             let (mut args, mut spi) = fixture(OlsVceKind::Iid);
             let key = replacement.split_once('=').unwrap().0;
-            *args.iter_mut().find(|arg| arg.starts_with(&format!("{key}="))).unwrap() = replacement.to_owned();
+            *args
+                .iter_mut()
+                .find(|arg| arg.starts_with(&format!("{key}=")))
+                .unwrap() = replacement.to_owned();
             assert!(estimate_ols_test(&args, &mut spi).is_err(), "{replacement}");
             assert_eq!(spi.store_calls, 0);
             assert_eq!(spi.receipt_complete(), 0.0);
@@ -4551,55 +4913,102 @@ mod tests {
             let before = crate::ffi::allocation_usage();
             drop(owner);
             let after = crate::ffi::allocation_usage();
-            assert_eq!(u128::from(before.current_bytes - after.current_bytes), bytes);
+            assert_eq!(
+                u128::from(before.current_bytes - after.current_bytes),
+                bytes
+            );
         }
         for complex in [false, true] {
             for clustered in [false, true] {
-                for weight in [None, Some(WeightKind::Analytic), Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
+                for weight in [
+                    None,
+                    Some(WeightKind::Analytic),
+                    Some(WeightKind::Frequency),
+                    Some(WeightKind::Probability),
+                ] {
                     let (args, mut spi) = saved_output_fixture();
-                    let mut action = EstimateActionSpec::parse(&args).unwrap()
-                        .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
-                    let mut loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
+                    let mut action = EstimateActionSpec::parse(&args)
+                        .unwrap()
+                        .decode_with_memory_limit(&mut spi, || Ok(None))
+                        .unwrap();
+                    let mut loaded =
+                        load_ols_input(&action.request, false, false, &mut spi).unwrap();
                     action.request.keep_singletons = true;
                     action.request.absorbed_terms[0].saved_name.clear();
                     if complex {
-                        action.request.absorbed_terms[0].categorical_sources.push(SourceId::new(1).unwrap());
-                        action.request.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+                        action.request.absorbed_terms[0]
+                            .categorical_sources
+                            .push(SourceId::new(1).unwrap());
+                        action.request.absorbed_terms[0]
+                            .slope_sources
+                            .push(SourceId::new(1).unwrap());
                     }
                     let mut repeated = action.request.absorbed_terms[0].clone();
                     repeated.id = AbsorbTermId::new(2).unwrap();
                     repeated.label = "repeated".to_owned();
                     action.request.absorbed_terms.push(repeated);
                     if let Some(kind) = weight {
-                        let column = LoadedNumericColumn { values: vec![2.0; 6], missing: vec![false; 6] };
+                        let column = LoadedNumericColumn {
+                            values: vec![2.0; 6],
+                            missing: vec![false; 6],
+                        };
                         let role = match kind {
-                            WeightKind::Analytic => { loaded.analytic_weight = Some(column); OlsInputRole::AnalyticWeight },
-                            WeightKind::Frequency => { loaded.frequency_weight = Some(column); OlsInputRole::FrequencyWeight },
-                            WeightKind::Probability => { loaded.probability_weight = Some(column); OlsInputRole::ProbabilityWeight },
+                            WeightKind::Analytic => {
+                                loaded.analytic_weight = Some(column);
+                                OlsInputRole::AnalyticWeight
+                            }
+                            WeightKind::Frequency => {
+                                loaded.frequency_weight = Some(column);
+                                OlsInputRole::FrequencyWeight
+                            }
+                            WeightKind::Probability => {
+                                loaded.probability_weight = Some(column);
+                                OlsInputRole::ProbabilityWeight
+                            }
                             WeightKind::Importance => unreachable!("unsupported fixture weight"),
                         };
-                        action.request.bindings.push(OlsInputBinding { stata_var_position: 12, role });
+                        action.request.bindings.push(OlsInputBinding {
+                            stata_var_position: 12,
+                            role,
+                        });
                     }
                     // Retained capacities deliberately exceed logical lengths.
                     loaded.outcome.values.reserve(100);
                     if clustered {
-                        let request = OlsClusteredRequestV1 { ols: action.request, clusters: vec![
-                            OlsClusterTermV1 { label: "simple".to_owned(), sources: vec![SourceId::new(2).unwrap()] },
-                            OlsClusterTermV1 { label: "interaction".to_owned(), sources: vec![SourceId::new(1).unwrap(), SourceId::new(2).unwrap()] },
-                        ] };
+                        let request = OlsClusteredRequestV1 {
+                            ols: action.request,
+                            clusters: vec![
+                                OlsClusterTermV1 {
+                                    label: "simple".to_owned(),
+                                    sources: vec![SourceId::new(2).unwrap()],
+                                },
+                                OlsClusterTermV1 {
+                                    label: "interaction".to_owned(),
+                                    sources: vec![
+                                        SourceId::new(1).unwrap(),
+                                        SourceId::new(2).unwrap(),
+                                    ],
+                                },
+                            ],
+                        };
                         if complex {
-                            let owner = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
+                            let owner =
+                                prepare_categorical_ols_clustered_data_owned(&request, loaded)
+                                    .unwrap();
                             let before = crate::ffi::allocation_usage();
-                            let bytes = owner.ols().owned_buffer_bytes() + owner.clusters().owned_buffer_bytes();
+                            let bytes = owner.ols().owned_buffer_bytes()
+                                + owner.clusters().owned_buffer_bytes();
                             assert_eq!(crate::ffi::allocation_usage().events, before.events);
                             check(owner, bytes);
                         } else {
                             let owner = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
-                            let bytes = owner.ols().owned_buffer_bytes() + owner.clusters().owned_buffer_bytes();
+                            let bytes = owner.ols().owned_buffer_bytes()
+                                + owner.clusters().owned_buffer_bytes();
                             check(owner, bytes);
                         }
                     } else if complex {
-                        let owner = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+                        let owner =
+                            prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
                         let bytes = owner.owned_buffer_bytes();
                         check(owner, bytes);
                     } else {
@@ -4625,22 +5034,42 @@ mod tests {
             let before = crate::ffi::allocation_usage();
             drop(owner);
             let after = crate::ffi::allocation_usage();
-            assert_eq!(u128::from(before.current_bytes - after.current_bytes), bytes);
+            assert_eq!(
+                u128::from(before.current_bytes - after.current_bytes),
+                bytes
+            );
         }
-        for mode in [PreparedOlsExecutionMode::Fast, PreparedOlsExecutionMode::Low] {
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
             let (args, mut spi) = saved_output_fixture();
-            let mut action = EstimateActionSpec::parse(&args).unwrap()
-                .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+            let mut action = EstimateActionSpec::parse(&args)
+                .unwrap()
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
             action.fit.execution.mode = mode;
             let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
             action.request.absorbed_terms[0].saved_name.clear();
             let clustered = OlsClusteredRequestV1 {
                 ols: action.request.clone(),
-                clusters: vec![OlsClusterTermV1 { label: "g".to_owned(), sources: vec![SourceId::new(2).unwrap()] }],
+                clusters: vec![OlsClusterTermV1 {
+                    label: "g".to_owned(),
+                    sources: vec![SourceId::new(2).unwrap()],
+                }],
             };
-            let iid = PreparedOlsUnadjustedConfig { fit: action.fit, ..Default::default() };
-            let robust = PreparedOlsRobustConfig { fit: action.fit, ..Default::default() };
-            let cluster = PreparedOlsClusteredConfig { fit: action.fit, ..Default::default() };
+            let iid = PreparedOlsUnadjustedConfig {
+                fit: action.fit,
+                ..Default::default()
+            };
+            let robust = PreparedOlsRobustConfig {
+                fit: action.fit,
+                ..Default::default()
+            };
+            let cluster = PreparedOlsClusteredConfig {
+                fit: action.fit,
+                ..Default::default()
+            };
             let prepared = prepare_ols_data_owned(&action.request, loaded.clone()).unwrap();
             let inference = fit_prepared_ols_unadjusted_map(&prepared, iid).unwrap();
             let bytes = inference.owned_buffer_bytes();
@@ -4652,14 +5081,16 @@ mod tests {
             let inference = fit_prepared_ols_clustered_map(&prepared, cluster).unwrap();
             let bytes = inference.owned_buffer_bytes();
             check(inference, bytes);
-            let prepared = prepare_categorical_ols_data_owned(&action.request, loaded.clone()).unwrap();
+            let prepared =
+                prepare_categorical_ols_data_owned(&action.request, loaded.clone()).unwrap();
             let inference = fit_prepared_categorical_ols_unadjusted_map(&prepared, iid).unwrap();
             let bytes = inference.owned_buffer_bytes();
             check(inference, bytes);
             let inference = fit_prepared_categorical_ols_robust_map(&prepared, robust).unwrap();
             let bytes = inference.owned_buffer_bytes();
             check(inference, bytes);
-            let prepared = prepare_categorical_ols_clustered_data_owned(&clustered, loaded).unwrap();
+            let prepared =
+                prepare_categorical_ols_clustered_data_owned(&clustered, loaded).unwrap();
             let inference = fit_prepared_categorical_ols_clustered_map(&prepared, cluster).unwrap();
             let bytes = inference.owned_buffer_bytes();
             check(inference, bytes);
@@ -4668,26 +5099,51 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn saved_slope_recovery_workspace_bounds_observed_allocator_peak() {
         let _guard = instrumentation::lock_action_observation();
         let (args, mut spi) = saved_output_fixture();
-        let mut action = EstimateActionSpec::parse(&args).unwrap()
-            .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+        let mut action = EstimateActionSpec::parse(&args)
+            .unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
         action.request.keep_singletons = true;
-        action.request.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+        action.request.absorbed_terms[0]
+            .slope_sources
+            .push(SourceId::new(1).unwrap());
         let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
-        let target = loaded.numeric_sources[0].1.values.iter()
+        let target = loaded.numeric_sources[0]
+            .1
+            .values
+            .iter()
             .zip(&loaded.numeric_sources[1].1.values)
-            .map(|(slope, group)| 2.0 * slope + 3.0 * group).collect::<Vec<_>>();
+            .map(|(slope, group)| 2.0 * slope + 3.0 * group)
+            .collect::<Vec<_>>();
         let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
         for workers in [1, 4] {
-            let pool = rayon::ThreadPoolBuilder::new().num_threads(workers).build().unwrap();
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(workers)
+                .build()
+                .unwrap();
             pool.install(|| {
                 for mask in [[true, true], [false, true]] {
-                    let run = || prepared.recover_absorbed_effects_fast(
-                        &target, &mask, None, false, true,
-                        LsmrConfig::default(), MapConfig { tolerance: 1e-12, ..Default::default() }, None,
-                    ).unwrap();
+                    let run = || {
+                        prepared
+                            .recover_absorbed_effects_fast(
+                                &target,
+                                &mask,
+                                None,
+                                false,
+                                true,
+                                LsmrConfig::default(),
+                                MapConfig {
+                                    tolerance: 1e-12,
+                                    ..Default::default()
+                                },
+                                None,
+                            )
+                            .unwrap()
+                    };
                     // Worker construction belongs to its separately declared
                     // runtime scope. The recovery envelope covers each live
                     // numerical attempt, including pinned within setup.
@@ -4698,9 +5154,12 @@ mod tests {
                         let usage = crate::ffi::allocation_usage();
                         let observed = usage.peak_bytes - start.allocation_current_bytes;
                         let modeled = recovered.solver_workspace_peak().bytes().unwrap();
-                        assert!(observed <= modeled, "slope recovery peak {observed} exceeds {modeled}");
+                        assert!(
+                            observed <= modeled,
+                            "slope recovery peak {observed} exceeds {modeled}"
+                        );
                         for (actual, expected) in recovered.absorbed_sum().iter().zip(&target) {
-                            assert!((actual-expected).abs() < 1e-10);
+                            assert!((actual - expected).abs() < 1e-10);
                         }
                     }
                 }
@@ -4710,15 +5169,22 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn numeric_dictionary_growth_stays_inside_construction_envelope() {
         let _guard = instrumentation::lock_action_observation();
         for n in [1, 7, 257, 4097, 8193, 65537] {
             for levels in [1, 31, n] {
-                let values: Vec<f64> = (0..n).map(|i| (i % levels) as f64 * 100000.5 + 0.25).collect();
+                let values: Vec<f64> = (0..n)
+                    .map(|i| (i % levels) as f64 * 100000.5 + 0.25)
+                    .collect();
                 let start = instrumentation::begin_observation();
                 let encoded = fereg_core::factorize::factorize_f64(&values).unwrap();
-                let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
-                assert!(u128::from(peak) <= n as u128 * 96 + 4096, "dictionary {n}/{levels}: {peak}");
+                let peak =
+                    crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
+                assert!(
+                    u128::from(peak) <= n as u128 * 96 + 4096,
+                    "dictionary {n}/{levels}: {peak}"
+                );
                 for (i, code) in encoded.codes.iter().enumerate() {
                     assert_eq!(encoded.levels[*code as usize], values[i]);
                 }
@@ -4736,80 +5202,169 @@ mod tests {
             for complex in [false, true] {
                 for vce in [OlsVceKind::Iid, OlsVceKind::Robust, OlsVceKind::Clustered] {
                     let (args, mut spi) = saved_output_fixture();
-                    let mut action = EstimateActionSpec::parse(&args).unwrap()
-                        .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+                    let mut action = EstimateActionSpec::parse(&args)
+                        .unwrap()
+                        .decode_with_memory_limit(&mut spi, || Ok(None))
+                        .unwrap();
                     action.request.keep_singletons = true;
                     action.request.absorbed_terms[0].saved_name.clear();
                     if complex {
-                        action.request.absorbed_terms[0].slope_sources.push(SourceId::new(1).unwrap());
+                        action.request.absorbed_terms[0]
+                            .slope_sources
+                            .push(SourceId::new(1).unwrap());
                     }
                     let loaded = LoadedOlsInput {
                         candidate: vec![true; rows],
-                        outcome: LoadedNumericColumn { values: (0..rows).map(|i| {
-                            let x = ((i * 7) % 109) as f64;
-                            0.8 * x + (i % 31) as f64 + ((i * 3) % 7) as f64
-                        }).collect(), missing: vec![false; rows] },
+                        outcome: LoadedNumericColumn {
+                            values: (0..rows)
+                                .map(|i| {
+                                    let x = ((i * 7) % 109) as f64;
+                                    0.8 * x + (i % 31) as f64 + ((i * 3) % 7) as f64
+                                })
+                                .collect(),
+                            missing: vec![false; rows],
+                        },
                         numeric_sources: vec![
-                            (SourceId::new(1).unwrap(), LoadedNumericColumn {
-                                values: (0..rows).map(|i| ((i * 7) % 109) as f64).collect(), missing: vec![false; rows],
-                            }),
+                            (
+                                SourceId::new(1).unwrap(),
+                                LoadedNumericColumn {
+                                    values: (0..rows).map(|i| ((i * 7) % 109) as f64).collect(),
+                                    missing: vec![false; rows],
+                                },
+                            ),
                             // Non-integer, widely spaced labels force dictionary
                             // factorization rather than the dense integer path.
-                            (SourceId::new(2).unwrap(), LoadedNumericColumn {
-                                values: (0..rows).map(|i| (i % 31) as f64 * 100000.5).collect(), missing: vec![false; rows],
-                            }),
+                            (
+                                SourceId::new(2).unwrap(),
+                                LoadedNumericColumn {
+                                    values: (0..rows).map(|i| (i % 31) as f64 * 100000.5).collect(),
+                                    missing: vec![false; rows],
+                                },
+                            ),
                         ],
-                        analytic_weight: None, frequency_weight: None, probability_weight: None,
+                        analytic_weight: None,
+                        frequency_weight: None,
+                        probability_weight: None,
                     };
                     let clusters = vec![OlsClusterTermV1 {
-                        label: "g".to_owned(), sources: vec![SourceId::new(2).unwrap()],
+                        label: "g".to_owned(),
+                        sources: vec![SourceId::new(2).unwrap()],
                     }];
-                    let construction = crate::ols_preparation_memory::OlsPreparationMemory::estimate(rows, 3, false, 1, clusters.len()).unwrap()
-                        .with_construction(rows, &action.request, &clusters).unwrap();
+                    let construction =
+                        crate::ols_preparation_memory::OlsPreparationMemory::estimate(
+                            rows,
+                            3,
+                            false,
+                            1,
+                            clusters.len(),
+                        )
+                        .unwrap()
+                        .with_construction(rows, &action.request, &clusters)
+                        .unwrap();
                     let bound = construction.preparation_peak_bytes(0).unwrap();
                     construction.admit_numeric_arrays(Some(bound)).unwrap();
-                    assert_eq!(construction.admit_numeric_arrays(Some(bound-1)).unwrap_err().code, ErrorCode::Allocation);
-                    let request = OlsClusteredRequestV1 { ols: action.request, clusters };
+                    assert_eq!(
+                        construction
+                            .admit_numeric_arrays(Some(bound - 1))
+                            .unwrap_err()
+                            .code,
+                        ErrorCode::Allocation
+                    );
+                    let request = OlsClusteredRequestV1 {
+                        ols: action.request,
+                        clusters,
+                    };
                     team.install(|| {
                         let start = instrumentation::begin_observation();
                         // Use the complex topology even for the intercept-only
                         // control, exercising construction overlap and validation.
-                        let prepared = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
-                        let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
+                        let prepared =
+                            prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
+                        let peak = crate::ffi::allocation_usage().peak_bytes
+                            - start.allocation_current_bytes;
                         assert!(u128::from(peak) <= bound, "construction {peak} > {bound}");
-                        for mode in [PreparedOlsExecutionMode::Fast, PreparedOlsExecutionMode::Low] {
+                        for mode in [
+                            PreparedOlsExecutionMode::Fast,
+                            PreparedOlsExecutionMode::Low,
+                        ] {
                             let mut fit = action.fit;
                             fit.execution.mode = mode;
                             fit.absorb.retain_coefficients = false;
                             fit.absorb.solver_memory_budget = None;
-                            let model = crate::ols_frame_memory::OlsFrameMemory::estimate(rows,
-                                prepared.ols().model().columns.len(), prepared.ols().model().coefficients.len(),
-                                if vce == OlsVceKind::Clustered { prepared.clusters().len() } else { 0 },
-                                fit.execution.poolsize, vce != OlsVceKind::Iid).unwrap();
+                            let model = crate::ols_frame_memory::OlsFrameMemory::estimate(
+                                rows,
+                                prepared.ols().model().columns.len(),
+                                prepared.ols().model().coefficients.len(),
+                                if vce == OlsVceKind::Clustered {
+                                    prepared.clusters().len()
+                                } else {
+                                    0
+                                },
+                                fit.execution.poolsize,
+                                vce != OlsVceKind::Iid,
+                            )
+                            .unwrap();
                             let start = instrumentation::begin_observation();
                             let (solver_peak, owned) = match vce {
                                 OlsVceKind::Iid => {
-                                    let r = fit_prepared_categorical_ols_unadjusted_map(prepared.ols(),
-                                        PreparedOlsUnadjustedConfig { fit, ..Default::default() }).unwrap();
-                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
-                                },
+                                    let r = fit_prepared_categorical_ols_unadjusted_map(
+                                        prepared.ols(),
+                                        PreparedOlsUnadjustedConfig {
+                                            fit,
+                                            ..Default::default()
+                                        },
+                                    )
+                                    .unwrap();
+                                    (
+                                        r.fit().solver_workspace_peak().bytes(),
+                                        r.owned_buffer_bytes(),
+                                    )
+                                }
                                 OlsVceKind::Robust => {
-                                    let r = fit_prepared_categorical_ols_robust_map(prepared.ols(),
-                                        PreparedOlsRobustConfig { fit, ..Default::default() }).unwrap();
-                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
-                                },
+                                    let r = fit_prepared_categorical_ols_robust_map(
+                                        prepared.ols(),
+                                        PreparedOlsRobustConfig {
+                                            fit,
+                                            ..Default::default()
+                                        },
+                                    )
+                                    .unwrap();
+                                    (
+                                        r.fit().solver_workspace_peak().bytes(),
+                                        r.owned_buffer_bytes(),
+                                    )
+                                }
                                 OlsVceKind::Clustered => {
-                                    let r = fit_prepared_categorical_ols_clustered_map(&prepared,
-                                        PreparedOlsClusteredConfig { fit, ..Default::default() }).unwrap();
-                                    (r.fit().solver_workspace_peak().bytes(), r.owned_buffer_bytes())
-                                },
+                                    let r = fit_prepared_categorical_ols_clustered_map(
+                                        &prepared,
+                                        PreparedOlsClusteredConfig {
+                                            fit,
+                                            ..Default::default()
+                                        },
+                                    )
+                                    .unwrap();
+                                    (
+                                        r.fit().solver_workspace_peak().bytes(),
+                                        r.owned_buffer_bytes(),
+                                    )
+                                }
                             };
-                            let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
-                            let frame = if mode == PreparedOlsExecutionMode::Fast { model.fast_bytes } else { model.low_bytes };
-                            let total = frame + u128::from(solver_peak.expect("modeled fixture solver"));
-                            assert!(u128::from(peak) <= total, "frame {peak} > {total}; owner {owned}");
+                            let peak = crate::ffi::allocation_usage().peak_bytes
+                                - start.allocation_current_bytes;
+                            let frame = if mode == PreparedOlsExecutionMode::Fast {
+                                model.fast_bytes
+                            } else {
+                                model.low_bytes
+                            };
+                            let total =
+                                frame + u128::from(solver_peak.expect("modeled fixture solver"));
+                            assert!(
+                                u128::from(peak) <= total,
+                                "frame {peak} > {total}; owner {owned}"
+                            );
                         }
-                    }).unwrap();
+                    })
+                    .unwrap();
                 }
             }
         }
@@ -4817,6 +5372,7 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn inference_residual_overlap_stays_within_existing_frame() {
         let _guard = instrumentation::lock_action_observation();
         let threads = ThreadConfig::from_requested(16, true).unwrap();
@@ -4825,19 +5381,42 @@ mod tests {
         // Exercise packed and strided score retention on an eligible narrow fit.
         for rows in [16_385, 524_301] {
             let mut request = OlsRequestV1 {
-                model: CompiledTermGraph { sources: Vec::new(), terms: Vec::new() },
-                bindings: vec![OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
-                    OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome }],
-                absorbed_terms: vec![AbsorbedTerm { id: AbsorbTermId::new(1).unwrap(), intercept: true,
-                    categorical_sources: vec![SourceId::new(11).unwrap()], slope_sources: Vec::new(),
-                    label: "g".to_owned(), saved_name: String::new() }],
-                include_intercept: true, keep_singletons: true,
+                model: CompiledTermGraph {
+                    sources: Vec::new(),
+                    terms: Vec::new(),
+                },
+                bindings: vec![
+                    OlsInputBinding {
+                        stata_var_position: 1,
+                        role: OlsInputRole::Candidate,
+                    },
+                    OlsInputBinding {
+                        stata_var_position: 2,
+                        role: OlsInputRole::Outcome,
+                    },
+                ],
+                absorbed_terms: vec![AbsorbedTerm {
+                    id: AbsorbTermId::new(1).unwrap(),
+                    intercept: true,
+                    categorical_sources: vec![SourceId::new(11).unwrap()],
+                    slope_sources: Vec::new(),
+                    label: "g".to_owned(),
+                    saved_name: String::new(),
+                }],
+                include_intercept: true,
+                keep_singletons: true,
             };
             let mut numeric_sources = Vec::new();
             for id in 1..=11 {
                 let source = SourceId::new(id).unwrap();
-                request.model.sources.push(SourceEntry { id: source, canonical_name: format!("x{id}") });
-                request.bindings.push(OlsInputBinding { stata_var_position: id + 2, role: OlsInputRole::NumericSource(source) });
+                request.model.sources.push(SourceEntry {
+                    id: source,
+                    canonical_name: format!("x{id}"),
+                });
+                request.bindings.push(OlsInputBinding {
+                    stata_var_position: id + 2,
+                    role: OlsInputRole::NumericSource(source),
+                });
                 if id < 11 {
                     let mut term = continuous_term(source);
                     term.id = TermId::new(id).unwrap();
@@ -4846,52 +5425,107 @@ mod tests {
                     term.canonical_token = format!("c.x{id}");
                     request.model.terms.push(term);
                 }
-                numeric_sources.push((source, LoadedNumericColumn {
-                    values: (0..rows).map(|r| if id == 11 { (r % 79) as f64 }
-                        else { ((r * (id as usize + 17) % 1009) as f64 / 11.0).sin() }).collect(),
-                    missing: vec![false; rows],
-                }));
+                numeric_sources.push((
+                    source,
+                    LoadedNumericColumn {
+                        values: (0..rows)
+                            .map(|r| {
+                                if id == 11 {
+                                    (r % 79) as f64
+                                } else {
+                                    ((r * (id as usize + 17) % 1009) as f64 / 11.0).sin()
+                                }
+                            })
+                            .collect(),
+                        missing: vec![false; rows],
+                    },
+                ));
             }
             let outcome = LoadedNumericColumn {
-                values: (0..rows).map(|r| 1.3 * numeric_sources[0].1.values[r]
-                    + 0.7 * numeric_sources[1].1.values[r] + (r % 79) as f64 + (r as f64).cos() * 0.1).collect(),
+                values: (0..rows)
+                    .map(|r| {
+                        1.3 * numeric_sources[0].1.values[r]
+                            + 0.7 * numeric_sources[1].1.values[r]
+                            + (r % 79) as f64
+                            + (r as f64).cos() * 0.1
+                    })
+                    .collect(),
                 missing: vec![false; rows],
             };
-            let loaded = LoadedOlsInput { candidate: vec![true; rows], outcome, numeric_sources,
-                analytic_weight: None, frequency_weight: None, probability_weight: None };
-            let request = OlsClusteredRequestV1 { ols: request,
-                clusters: vec![OlsClusterTermV1 { label: "g".to_owned(), sources: vec![SourceId::new(11).unwrap()] }] };
+            let loaded = LoadedOlsInput {
+                candidate: vec![true; rows],
+                outcome,
+                numeric_sources,
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            };
+            let request = OlsClusteredRequestV1 {
+                ols: request,
+                clusters: vec![OlsClusterTermV1 {
+                    label: "g".to_owned(),
+                    sources: vec![SourceId::new(11).unwrap()],
+                }],
+            };
             let prepared = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
             team.install(|| {
                 for clustered in [false, true] {
-                    let fit = PreparedOlsFitConfig { execution: fereg_core::ols::PreparedOlsExecutionConfig {
-                        threads, ..Default::default()
-                    }, ..Default::default() };
-                    let frame = crate::ols_frame_memory::OlsFrameMemory::estimate(rows,
-                        prepared.ols().model().columns.len(), prepared.ols().model().coefficients.len(),
-                        usize::from(clustered), fit.execution.poolsize, true).unwrap();
+                    let fit = PreparedOlsFitConfig {
+                        execution: fereg_core::ols::PreparedOlsExecutionConfig {
+                            threads,
+                            ..Default::default()
+                        },
+                        ..Default::default()
+                    };
+                    let frame = crate::ols_frame_memory::OlsFrameMemory::estimate(
+                        rows,
+                        prepared.ols().model().columns.len(),
+                        prepared.ols().model().coefficients.len(),
+                        usize::from(clustered),
+                        fit.execution.poolsize,
+                        true,
+                    )
+                    .unwrap();
                     let start = instrumentation::begin_observation();
                     let solver_peak = if clustered {
-                        let result = fit_prepared_categorical_ols_clustered_map(&prepared,
-                            PreparedOlsClusteredConfig { fit, ..Default::default() }).unwrap();
+                        let result = fit_prepared_categorical_ols_clustered_map(
+                            &prepared,
+                            PreparedOlsClusteredConfig {
+                                fit,
+                                ..Default::default()
+                            },
+                        )
+                        .unwrap();
                         assert!(result.fit().score_certificate().passed);
                         result.fit().solver_workspace_peak().bytes().unwrap()
                     } else {
-                        let result = fit_prepared_categorical_ols_robust_map(prepared.ols(),
-                            PreparedOlsRobustConfig { fit, ..Default::default() }).unwrap();
+                        let result = fit_prepared_categorical_ols_robust_map(
+                            prepared.ols(),
+                            PreparedOlsRobustConfig {
+                                fit,
+                                ..Default::default()
+                            },
+                        )
+                        .unwrap();
                         assert!(result.fit().score_certificate().passed);
                         result.fit().solver_workspace_peak().bytes().unwrap()
                     };
-                    let peak = crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
+                    let peak =
+                        crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
                     let bound = frame.fast_bytes + u128::from(solver_peak);
-                    assert!(u128::from(peak) <= bound, "rows={rows}, clustered={clustered}, peak={peak}, bound={bound}");
+                    assert!(
+                        u128::from(peak) <= bound,
+                        "rows={rows}, clustered={clustered}, peak={peak}, bound={bound}"
+                    );
                 }
-            }).unwrap();
+            })
+            .unwrap();
         }
     }
 
     #[test]
     #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn action_metadata_matches_independent_deallocation_and_counts_spare_capacity() {
         let _guard = instrumentation::lock_action_observation();
         for (args, mut spi) in [
@@ -4991,21 +5625,57 @@ mod tests {
     #[test]
     fn output_parent_admission_adds_live_owners_and_rejects_before_stores() {
         let (args, mut spi) = saved_output_fixture();
-        let mut action = EstimateActionSpec::parse(&args).unwrap()
-            .decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+        let mut action = EstimateActionSpec::parse(&args)
+            .unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
         action.prepared_owner_bytes = 1000;
         let parent = 3000 + action.metadata_owner_bytes;
         let peak = parent + action.publication_memory.peak_bytes();
         action.fit.absorb.solver_memory_budget = Some(FeSolverMemoryBudget {
-            execution_bytes: 1500, usable_bytes: peak-1,
+            execution_bytes: 1500,
+            usable_bytes: peak - 1,
         });
-        assert_eq!(action.admit_output_parent(2000).unwrap_err().code, ErrorCode::Allocation);
-        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, 1500);
-        action.fit.absorb.solver_memory_budget.as_mut().unwrap().usable_bytes = peak;
+        assert_eq!(
+            action.admit_output_parent(2000).unwrap_err().code,
+            ErrorCode::Allocation
+        );
+        assert_eq!(
+            action
+                .fit
+                .absorb
+                .solver_memory_budget
+                .unwrap()
+                .execution_bytes,
+            1500
+        );
+        action
+            .fit
+            .absorb
+            .solver_memory_budget
+            .as_mut()
+            .unwrap()
+            .usable_bytes = peak;
         action.admit_output_parent(2000).unwrap();
-        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, parent);
+        assert_eq!(
+            action
+                .fit
+                .absorb
+                .solver_memory_budget
+                .unwrap()
+                .execution_bytes,
+            parent
+        );
         action.admit_output_parent(2000).unwrap();
-        assert_eq!(action.fit.absorb.solver_memory_budget.unwrap().execution_bytes, parent);
+        assert_eq!(
+            action
+                .fit
+                .absorb
+                .solver_memory_budget
+                .unwrap()
+                .execution_bytes,
+            parent
+        );
         assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
         assert_eq!(spi.receipt_complete(), 0.0);
     }
@@ -5016,21 +5686,53 @@ mod tests {
         let mut spec = EstimateActionSpec::parse(&args).unwrap();
         for mode in [MemoryMode::Fast, MemoryMode::Low] {
             spec.memory = mode;
-            let unrestricted = spec.decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
+            let unrestricted = spec
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
             let public_base = unrestricted.memory_plan.estimate;
             let owned_bytes = public_base.fast_bytes.max(public_base.low_bytes) + 4096;
-            let reconciled = unrestricted.preparation_memory.with_prepared_owner(public_base, owned_bytes).unwrap();
-            let adjusted = unrestricted.frame_memory.with_parent(reconciled, owned_bytes + unrestricted.preparation_memory.frame_metadata_bytes).unwrap();
-            let execution = (if mode == MemoryMode::Fast { adjusted.fast_bytes } else { adjusted.low_bytes }) + unrestricted.metadata_owner_bytes;
+            let reconciled = unrestricted
+                .preparation_memory
+                .with_prepared_owner(public_base, owned_bytes)
+                .unwrap();
+            let adjusted = unrestricted
+                .frame_memory
+                .with_parent(
+                    reconciled,
+                    owned_bytes + unrestricted.preparation_memory.frame_metadata_bytes,
+                )
+                .unwrap();
+            let execution = (if mode == MemoryMode::Fast {
+                adjusted.fast_bytes
+            } else {
+                adjusted.low_bytes
+            }) + unrestricted.metadata_owner_bytes;
             let usable = (execution + unrestricted.publication_memory.peak_bytes()).max(
-                unrestricted.preparation_memory.preparation_peak_bytes(unrestricted.metadata_owner_bytes).unwrap());
+                unrestricted
+                    .preparation_memory
+                    .preparation_peak_bytes(unrestricted.metadata_owner_bytes)
+                    .unwrap(),
+            );
             let available = 512 * 1024 * 1024 + usable;
-            let mut exact = spec.decode_with_memory_limit(&mut spi, || Ok(Some(available))).unwrap();
+            let mut exact = spec
+                .decode_with_memory_limit(&mut spi, || Ok(Some(available)))
+                .unwrap();
             exact.admit_prepared_parent(owned_bytes).unwrap();
             assert_eq!(exact.memory_plan.estimate, public_base);
-            assert_eq!(exact.fit.absorb.solver_memory_budget.unwrap(), FeSolverMemoryBudget { execution_bytes: execution, usable_bytes: usable });
-            let mut short = spec.decode_with_memory_limit(&mut spi, || Ok(Some(available-1))).unwrap();
-            assert_eq!(short.admit_prepared_parent(owned_bytes).unwrap_err().code, ErrorCode::Allocation);
+            assert_eq!(
+                exact.fit.absorb.solver_memory_budget.unwrap(),
+                FeSolverMemoryBudget {
+                    execution_bytes: execution,
+                    usable_bytes: usable
+                }
+            );
+            let mut short = spec
+                .decode_with_memory_limit(&mut spi, || Ok(Some(available - 1)))
+                .unwrap();
+            assert_eq!(
+                short.admit_prepared_parent(owned_bytes).unwrap_err().code,
+                ErrorCode::Allocation
+            );
             assert_eq!((spi.numeric_reads, spi.store_calls), (0, 0));
             assert_eq!(spi.receipt_complete(), 0.0);
         }
@@ -5049,11 +5751,26 @@ mod tests {
                 let unrestricted = spec
                     .decode_with_memory_limit(&mut spi, || Ok(None))
                     .unwrap();
-                let frame = unrestricted.frame_memory.with_parent(unrestricted.memory_plan.estimate, unrestricted.preparation_memory.frame_metadata_bytes).unwrap();
-                let base = (if mode == MemoryMode::Fast { frame.fast_bytes } else { frame.low_bytes }) + unrestricted.metadata_owner_bytes;
+                let frame = unrestricted
+                    .frame_memory
+                    .with_parent(
+                        unrestricted.memory_plan.estimate,
+                        unrestricted.preparation_memory.frame_metadata_bytes,
+                    )
+                    .unwrap();
+                let base = (if mode == MemoryMode::Fast {
+                    frame.fast_bytes
+                } else {
+                    frame.low_bytes
+                }) + unrestricted.metadata_owner_bytes;
                 let reserve = unrestricted.publication_memory.peak_bytes();
                 let usable = (base + reserve)
-                    .max(unrestricted.preparation_memory.preparation_peak_bytes(unrestricted.metadata_owner_bytes).unwrap())
+                    .max(
+                        unrestricted
+                            .preparation_memory
+                            .preparation_peak_bytes(unrestricted.metadata_owner_bytes)
+                            .unwrap(),
+                    )
                     .max(unrestricted.metadata_peak_bytes);
                 let limit = 512 * 1024 * 1024 + usable;
                 let exact = spec
@@ -5390,10 +6107,26 @@ mod tests {
             let mut residuals = vec![0.5; n];
             let mut retained: Vec<_> = (0..n).collect();
             let mut reasons = vec![fereg_core::DropReason::Retained; n];
-            let compare = |residuals: &[f64], retained: &[usize], reasons: &[fereg_core::DropReason]| {
-                let serial = invalid_shadow_observations(residuals, retained, reasons, ThreadConfig::from_requested(1, false).unwrap());
-                for t in [8, 16] { assert_eq!(serial, invalid_shadow_observations(residuals, retained, reasons, ThreadConfig::from_requested(t, false).unwrap())); }
-            };
+            let compare =
+                |residuals: &[f64], retained: &[usize], reasons: &[fereg_core::DropReason]| {
+                    let serial = invalid_shadow_observations(
+                        residuals,
+                        retained,
+                        reasons,
+                        ThreadConfig::from_requested(1, false).unwrap(),
+                    );
+                    for t in [8, 16] {
+                        assert_eq!(
+                            serial,
+                            invalid_shadow_observations(
+                                residuals,
+                                retained,
+                                reasons,
+                                ThreadConfig::from_requested(t, false).unwrap()
+                            )
+                        );
+                    }
+                };
             compare(&residuals, &retained, &reasons);
             for row in [0, n / 2, n - 1] {
                 retained[row] = n;
@@ -5409,7 +6142,8 @@ mod tests {
             retained.swap(0, n - 1);
             compare(&residuals, &retained, &reasons);
             retained.swap(0, n - 1);
-            retained.remove(n / 2);residuals.remove(n / 2);
+            retained.remove(n / 2);
+            residuals.remove(n / 2);
             reasons[n / 2] = fereg_core::DropReason::MissingOutcome;
             compare(&residuals, &retained, &reasons);
         }
@@ -5420,20 +6154,44 @@ mod tests {
         for missing in [false, true] {
             let (mut args, mut reference) = fixture(OlsVceKind::Iid);
             replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
-            if missing { reference.data.insert((2, 3), (0.0, true)); }
+            if missing {
+                reference.data.insert((2, 3), (0.0, true));
+            }
             let mut no_outputs = reference.clone();
             estimate_ols_test(&args, &mut reference).unwrap();
             replace_argument(&mut args, "output_residual", "output_residual=0".to_owned());
-            replace_argument(&mut args, "output_drop_reason", "output_drop_reason=0".to_owned());
+            replace_argument(
+                &mut args,
+                "output_drop_reason",
+                "output_drop_reason=0".to_owned(),
+            );
             no_outputs.nvars -= 2;
             estimate_ols_test(&args, &mut no_outputs).unwrap();
             for name in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCERT"] {
-                assert_eq!(reference.matrices[name], no_outputs.matrices[name], "{name}");
+                assert_eq!(
+                    reference.matrices[name], no_outputs.matrices[name],
+                    "{name}"
+                );
             }
-            let rows: Vec<_> = no_outputs.stores.iter().filter_map(|event| {
-                if let StoreEvent::Numeric(variable, row, value) = event { Some((*variable, *row, *value)) } else { None }
-            }).collect();
-            assert_eq!(rows, if missing { vec![(4, 3, 0.0)] } else { Vec::new() });
+            let rows: Vec<_> = no_outputs
+                .stores
+                .iter()
+                .filter_map(|event| {
+                    if let StoreEvent::Numeric(variable, row, value) = event {
+                        Some((*variable, *row, *value))
+                    } else {
+                        None
+                    }
+                })
+                .collect();
+            assert_eq!(
+                rows,
+                if missing {
+                    vec![(4, 3, 0.0)]
+                } else {
+                    Vec::new()
+                }
+            );
             assert_eq!(no_outputs.receipt_complete(), 1.0);
         }
     }
@@ -5550,10 +6308,8 @@ mod tests {
             estimate_ols_test(&args, &mut spi).expect("omitted generated column has no xb term");
             assert_eq!(spi.matrices["RSTATUS"][0][1], 3.0);
             assert_eq!(spi.matrices["RB"][0][0], 0.0);
-            let overall = (1..=spi.nobs)
-                .map(|row| spi.data[&(2, row)].0)
-                .sum::<f64>()
-                / spi.nobs as f64;
+            let overall =
+                (1..=spi.nobs).map(|row| spi.data[&(2, row)].0).sum::<f64>() / spi.nobs as f64;
             for observation in 1..=spi.nobs {
                 let first = (observation - 1) / 2 * 2 + 1;
                 let mean = (spi.data[&(2, first)].0 + spi.data[&(2, first + 1)].0) / 2.0;
@@ -5577,103 +6333,215 @@ mod tests {
         spi.data.clear();
         for row in 1..=spi.nobs {
             for variable in 1..=15 {
-                let value = if variable == 1 { 1.0 } else if variable == 13 { ((row - 1) / 5 + 1) as f64 }
-                    else { ((row * variable as usize) as f64).sin() + ((row + variable as usize * 13) as f64).cos() };
+                let value = if variable == 1 {
+                    1.0
+                } else if variable == 13 {
+                    ((row - 1) / 5 + 1) as f64
+                } else {
+                    ((row * variable as usize) as f64).sin()
+                        + ((row + variable as usize * 13) as f64).cos()
+                };
                 spi.data.insert((variable, row), (value, false));
             }
         }
-        let mut request = OlsRequestV1 { model: CompiledTermGraph { sources: Vec::new(), terms: Vec::new() },
-            bindings: vec![OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
-                OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome }],
-            absorbed_terms: vec![AbsorbedTerm { id: AbsorbTermId::new(1).unwrap(), intercept: true,
-                categorical_sources: vec![SourceId::new(11).unwrap()], slope_sources: Vec::new(),
-                label: "g".to_owned(), saved_name: String::new() }], include_intercept: true, keep_singletons: false };
+        let mut request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: Vec::new(),
+                terms: Vec::new(),
+            },
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+            ],
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(11).unwrap()],
+                slope_sources: Vec::new(),
+                label: "g".to_owned(),
+                saved_name: String::new(),
+            }],
+            include_intercept: true,
+            keep_singletons: false,
+        };
         for id in 1..=11 {
             let source = SourceId::new(id).unwrap();
-            request.model.sources.push(SourceEntry { id: source, canonical_name: format!("x{id}") });
-            request.bindings.push(OlsInputBinding { stata_var_position: id + 2, role: OlsInputRole::NumericSource(source) });
+            request.model.sources.push(SourceEntry {
+                id: source,
+                canonical_name: format!("x{id}"),
+            });
+            request.bindings.push(OlsInputBinding {
+                stata_var_position: id + 2,
+                role: OlsInputRole::NumericSource(source),
+            });
             if id < 11 {
                 let mut term = continuous_term(source);
-                term.id = TermId::new(id).unwrap(); term.order = TermOrder::new(id).unwrap();
-                term.coefficient_slot = CoefficientSlot::new(id).unwrap(); term.canonical_token = format!("c.x{id}");
+                term.id = TermId::new(id).unwrap();
+                term.order = TermOrder::new(id).unwrap();
+                term.coefficient_slot = CoefficientSlot::new(id).unwrap();
+                term.canonical_token = format!("c.x{id}");
                 request.model.terms.push(term);
             }
         }
         let required = spi.nobs * 12 * 8;
         for (extra_sources, effect_count) in [(0, 1), (2, 1), (2, 2), (2, 3)] {
-            for (budget, threads, reorder, missing) in [(required, 4, false, false),
-                (required - 1, 4, false, false), (required, 1, false, false),
-                (required, 4, true, false), (required, 4, false, true),
-                (required, 8, false, false), (required - 1, 8, false, false),
-                (required, 16, true, false), (required, 16, false, true)] {
+            for (budget, threads, reorder, missing) in [
+                (required, 4, false, false),
+                (required - 1, 4, false, false),
+                (required, 1, false, false),
+                (required, 4, true, false),
+                (required, 4, false, true),
+                (required, 8, false, false),
+                (required - 1, 8, false, false),
+                (required, 16, true, false),
+                (required, 16, false, true),
+            ] {
                 let mut request = request.clone();
                 let mut spi = spi.clone();
-                for id in 12..12+extra_sources {
+                for id in 12..12 + extra_sources {
                     let source = SourceId::new(id).unwrap();
-                    request.model.sources.push(SourceEntry { id: source, canonical_name: format!("cluster{id}") });
-                    request.bindings.push(OlsInputBinding { stata_var_position: id + 2, role: OlsInputRole::NumericSource(source) });
+                    request.model.sources.push(SourceEntry {
+                        id: source,
+                        canonical_name: format!("cluster{id}"),
+                    });
+                    request.bindings.push(OlsInputBinding {
+                        stata_var_position: id + 2,
+                        role: OlsInputRole::NumericSource(source),
+                    });
                 }
                 for effect in 2..=effect_count {
                     let source = SourceId::new(10 + effect).unwrap();
                     request.absorbed_terms.push(AbsorbedTerm {
-                        id: AbsorbTermId::new(effect).unwrap(), intercept: true,
-                        categorical_sources: vec![source], slope_sources: Vec::new(),
-                        label: format!("g{effect}"), saved_name: String::new(),
+                        id: AbsorbTermId::new(effect).unwrap(),
+                        intercept: true,
+                        categorical_sources: vec![source],
+                        slope_sources: Vec::new(),
+                        label: format!("g{effect}"),
+                        saved_name: String::new(),
                     });
                     for row in 1..=spi.nobs {
-                        spi.data.insert((12 + effect, row), ((row % (13 + effect as usize)) as f64, false));
+                        spi.data.insert(
+                            (12 + effect, row),
+                            ((row % (13 + effect as usize)) as f64, false),
+                        );
                     }
                 }
-                if reorder { request.model.terms[0].components[0].source = SourceId::new(2).unwrap(); request.model.terms[1].components[0].source = SourceId::new(1).unwrap(); }
-                if missing { spi.data.insert((2, 3), (1e100, true)); }
+                if reorder {
+                    request.model.terms[0].components[0].source = SourceId::new(2).unwrap();
+                    request.model.terms[1].components[0].source = SourceId::new(1).unwrap();
+                }
+                if missing {
+                    spi.data.insert((2, 3), (1e100, true));
+                }
                 let clustered_request = OlsClusteredRequestV1 {
                     ols: request.clone(),
-                    clusters: vec![OlsClusterTermV1 { label: "c".to_owned(),
-                        sources: if extra_sources == 0 { vec![SourceId::new(11).unwrap()] }
-                            else { vec![SourceId::new(12).unwrap(), SourceId::new(13).unwrap()] } }],
+                    clusters: vec![OlsClusterTermV1 {
+                        label: "c".to_owned(),
+                        sources: if extra_sources == 0 {
+                            vec![SourceId::new(11).unwrap()]
+                        } else {
+                            vec![SourceId::new(12).unwrap(), SourceId::new(13).unwrap()]
+                        },
+                    }],
                 };
-                let compiled_width = numeric_loaded_rhs_layout(&clustered_request.validate_and_compile().unwrap());
-                let reference_loaded = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
+                let compiled_width =
+                    numeric_loaded_rhs_layout(&clustered_request.validate_and_compile().unwrap());
+                let reference_loaded =
+                    load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
                 let mut rhs = None;
                 let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
-                let loaded = load_ols_input_with_team(&request, true, false, &mut memory, &mut spi,
-                    Some(ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())), &mut rhs, budget, compiled_width).unwrap();
+                let loaded = load_ols_input_with_team(
+                    &request,
+                    true,
+                    false,
+                    &mut memory,
+                    &mut spi,
+                    Some(ThreadTeam::new(
+                        ThreadConfig::from_requested(threads, false).unwrap(),
+                    )),
+                    &mut rhs,
+                    budget,
+                    compiled_width,
+                )
+                .unwrap();
                 assert_eq!(loaded, reference_loaded);
                 assert_eq!(rhs.is_some(), budget == required && threads > 1 && !reorder);
-                if let Some(rows) = rhs.as_ref() { assert_eq!(rows.capacity() * 8, required); assert!(memory.peak() >= required as u128); }
-                let categorical_clustered = prepare_categorical_ols_clustered_data_owned(&clustered_request, loaded.clone()).unwrap();
+                if let Some(rows) = rhs.as_ref() {
+                    assert_eq!(rows.capacity() * 8, required);
+                    assert!(memory.peak() >= required as u128);
+                }
+                let categorical_clustered = prepare_categorical_ols_clustered_data_owned(
+                    &clustered_request,
+                    loaded.clone(),
+                )
+                .unwrap();
                 let categorical = categorical_clustered.ols();
                 let categorical_rows = rhs.clone().map(|rows| {
                     let bytes = LoadedOlsRows::moment_workspace_bytes(spi.nobs, 12).unwrap();
-                    ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()).install(|| {
-                        LoadedOlsRows::from(rows).with_unit_moments(spi.nobs, 12, bytes)
-                    }).unwrap()
+                    ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
+                        .install(|| {
+                            LoadedOlsRows::from(rows).with_unit_moments(spi.nobs, 12, bytes)
+                        })
+                        .unwrap()
                 });
                 let robust_rows = rhs.clone();
                 let clustered_rows = rhs.clone();
-                let prepared_clustered = prepare_ols_clustered_data_owned(&clustered_request, loaded).unwrap();
+                let prepared_clustered =
+                    prepare_ols_clustered_data_owned(&clustered_request, loaded).unwrap();
                 let prepared = prepared_clustered.ols();
                 let mut config = PreparedOlsUnadjustedConfig::default();
                 config.fit.execution.threads = ThreadConfig::from_requested(4, false).unwrap();
                 let reference = fit_prepared_ols_unadjusted_map(prepared, config).unwrap();
-                let actual = fereg_core::ols::fit_prepared_ols_unadjusted_map_with_loaded_rows(prepared, config, rhs).unwrap();
+                let actual = fereg_core::ols::fit_prepared_ols_unadjusted_map_with_loaded_rows(
+                    prepared, config, rhs,
+                )
+                .unwrap();
                 assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
                 assert_eq!(reference.covariance(), actual.covariance());
                 assert_eq!(reference.statistics(), actual.statistics());
                 assert_eq!(reference.certificate(), actual.certificate());
-                let reference = fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map(categorical, config).unwrap();
+                let reference = fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map(
+                    categorical,
+                    config,
+                )
+                .unwrap();
                 let actual = fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
                     categorical, config, categorical_rows).unwrap();
                 assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
                 assert_eq!(reference.covariance(), actual.covariance());
-                let robust_config = PreparedOlsRobustConfig { fit: config.fit, ..PreparedOlsRobustConfig::default() };
-                let reference = fereg_core::ols::fit_prepared_categorical_ols_robust_map(categorical, robust_config).unwrap();
-                let actual = fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-                    categorical, robust_config, robust_rows.map(LoadedOlsRows::from)).unwrap();
+                let robust_config = PreparedOlsRobustConfig {
+                    fit: config.fit,
+                    ..PreparedOlsRobustConfig::default()
+                };
+                let reference = fereg_core::ols::fit_prepared_categorical_ols_robust_map(
+                    categorical,
+                    robust_config,
+                )
+                .unwrap();
+                let actual =
+                    fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
+                        categorical,
+                        robust_config,
+                        robust_rows.map(LoadedOlsRows::from),
+                    )
+                    .unwrap();
                 assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
                 assert_eq!(reference.covariance(), actual.covariance());
-                let cluster_config = PreparedOlsClusteredConfig { fit: config.fit, ..PreparedOlsClusteredConfig::default() };
-                let reference = fereg_core::ols::fit_prepared_categorical_ols_clustered_map(&categorical_clustered, cluster_config).unwrap();
+                let cluster_config = PreparedOlsClusteredConfig {
+                    fit: config.fit,
+                    ..PreparedOlsClusteredConfig::default()
+                };
+                let reference = fereg_core::ols::fit_prepared_categorical_ols_clustered_map(
+                    &categorical_clustered,
+                    cluster_config,
+                )
+                .unwrap();
                 let actual = fereg_core::ols::fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
                     &categorical_clustered, cluster_config, clustered_rows.map(LoadedOlsRows::from)).unwrap();
                 assert_eq!(reference.fit().coefficients(), actual.fit().coefficients());
@@ -5689,86 +6557,166 @@ mod tests {
         base.nvars = 14;
         base.numeric_rows_enabled = true;
         base.data.clear();
-        for row in 1..=base.nobs { for variable in 1..=14 {
-            let value = match variable { 1 => 1.0, 9 => ((row-1)/7) as f64,
-                11 => (1+row%7) as f64, _ => ((row*variable as usize) as f64).sin() };
-            base.data.insert((variable,row),(value,false));
-        }}
+        for row in 1..=base.nobs {
+            for variable in 1..=14 {
+                let value = match variable {
+                    1 => 1.0,
+                    9 => ((row - 1) / 7) as f64,
+                    11 => (1 + row % 7) as f64,
+                    _ => ((row * variable as usize) as f64).sin(),
+                };
+                base.data.insert((variable, row), (value, false));
+            }
+        }
         let mut template = OlsRequestV1 {
-            model: CompiledTermGraph { sources: Vec::new(), terms: Vec::new() },
-            bindings: vec![OlsInputBinding { stata_var_position:1, role:OlsInputRole::Candidate },
-                OlsInputBinding { stata_var_position:2, role:OlsInputRole::Outcome }],
-            absorbed_terms: vec![AbsorbedTerm { id:AbsorbTermId::new(1).unwrap(), intercept:true,
-                categorical_sources:vec![SourceId::new(7).unwrap()], slope_sources:vec![SourceId::new(8).unwrap()],
-                label:"g##c.z".into(),saved_name:String::new() }],
-            include_intercept:true,keep_singletons:false,
+            model: CompiledTermGraph {
+                sources: Vec::new(),
+                terms: Vec::new(),
+            },
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+            ],
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(7).unwrap()],
+                slope_sources: vec![SourceId::new(8).unwrap()],
+                label: "g##c.z".into(),
+                saved_name: String::new(),
+            }],
+            include_intercept: true,
+            keep_singletons: false,
         };
         for id in 1..=8 {
-            let source=SourceId::new(id).unwrap();
-            template.model.sources.push(SourceEntry {id:source,canonical_name:format!("x{id}")});
-            template.bindings.push(OlsInputBinding {stata_var_position:id+2,role:OlsInputRole::NumericSource(source)});
-            if id<=6 {
-                let mut term=continuous_term(source);
-                term.id=TermId::new(id).unwrap();term.order=TermOrder::new(id).unwrap();
-                term.coefficient_slot=CoefficientSlot::new(id).unwrap();term.canonical_token=format!("c.x{id}");
+            let source = SourceId::new(id).unwrap();
+            template.model.sources.push(SourceEntry {
+                id: source,
+                canonical_name: format!("x{id}"),
+            });
+            template.bindings.push(OlsInputBinding {
+                stata_var_position: id + 2,
+                role: OlsInputRole::NumericSource(source),
+            });
+            if id <= 6 {
+                let mut term = continuous_term(source);
+                term.id = TermId::new(id).unwrap();
+                term.order = TermOrder::new(id).unwrap();
+                term.coefficient_slot = CoefficientSlot::new(id).unwrap();
+                term.canonical_token = format!("c.x{id}");
                 template.model.terms.push(term);
             }
         }
-        for weighted in [false,true] { for case in 0..11 {
-            let mut request=template.clone();let mut spi=base.clone();
-            if weighted { request.bindings.push(OlsInputBinding {stata_var_position:11,role:OlsInputRole::AnalyticWeight}); }
-            match case { 1=> {spi.data.insert((10,3),(1e100,true));},
-                2=> {spi.data.insert((9,3),(1e100,true));},
-                3=> {request.absorbed_terms[0].intercept=false;}, _=>{} }
-            if case >= 4 {
-                request.absorbed_terms[0].intercept = false;
-                request.include_intercept = false;
-            }
-            if case == 5 { spi.data.insert((10,3),(1e100,true)); }
-            if (6..10).contains(&case) {
-                for id in 9..=if case == 9 { 11 } else { 10 } {
-                    let source = SourceId::new(id).unwrap();
-                    request.model.sources.push(SourceEntry { id: source, canonical_name: format!("z{id}") });
-                    request.bindings.push(OlsInputBinding { stata_var_position: id + 3, role: OlsInputRole::NumericSource(source) });
-                    request.absorbed_terms[0].slope_sources.push(source);
+        for weighted in [false, true] {
+            for case in 0..11 {
+                let mut request = template.clone();
+                let mut spi = base.clone();
+                if weighted {
+                    request.bindings.push(OlsInputBinding {
+                        stata_var_position: 11,
+                        role: OlsInputRole::AnalyticWeight,
+                    });
                 }
+                match case {
+                    1 => {
+                        spi.data.insert((10, 3), (1e100, true));
+                    }
+                    2 => {
+                        spi.data.insert((9, 3), (1e100, true));
+                    }
+                    3 => {
+                        request.absorbed_terms[0].intercept = false;
+                    }
+                    _ => {}
+                }
+                if case >= 4 {
+                    request.absorbed_terms[0].intercept = false;
+                    request.include_intercept = false;
+                }
+                if case == 5 {
+                    spi.data.insert((10, 3), (1e100, true));
+                }
+                if (6..10).contains(&case) {
+                    for id in 9..=if case == 9 { 11 } else { 10 } {
+                        let source = SourceId::new(id).unwrap();
+                        request.model.sources.push(SourceEntry {
+                            id: source,
+                            canonical_name: format!("z{id}"),
+                        });
+                        request.bindings.push(OlsInputBinding {
+                            stata_var_position: id + 3,
+                            role: OlsInputRole::NumericSource(source),
+                        });
+                        request.absorbed_terms[0].slope_sources.push(source);
+                    }
+                }
+                if case == 10 {
+                    request.absorbed_terms[0].slope_sources = vec![
+                        SourceId::new(8).unwrap(),
+                        SourceId::new(5).unwrap(),
+                        SourceId::new(6).unwrap(),
+                    ];
+                }
+                let plan = plan_categorical_absorbed_request(&request).unwrap();
+                let compiled = numeric_loaded_rhs_layout(
+                    &plan.availability_request().validate_and_compile().unwrap(),
+                );
+                let reference = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
+                let mut rhs = None;
+                let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
+                let required = if case == 7 { 0 } else { spi.nobs * 8 * 8 };
+                let team = (case != 8)
+                    .then(|| ThreadTeam::new(ThreadConfig::from_requested(8, false).unwrap()));
+                let loaded = load_ols_input_with_team(
+                    &request,
+                    true,
+                    false,
+                    &mut memory,
+                    &mut spi,
+                    team,
+                    &mut rhs,
+                    required,
+                    compiled,
+                )
+                .unwrap();
+                assert_eq!(loaded, reference);
+                assert_eq!(rhs.is_some(), case < 7 || case == 10);
+                if let Some(rows) = rhs.as_ref() {
+                    let layout = compiled.unwrap();
+                    assert_eq!(rows.len(), spi.nobs * layout.width);
+                    assert_eq!(layout.append_intercept, request.include_intercept);
+                }
+                let prepared = prepare_categorical_ols_data_owned(&request, loaded).unwrap();
+                let mut config = PreparedOlsRobustConfig::default();
+                config.fit.execution.threads = ThreadConfig::from_requested(8, false).unwrap();
+                let expected =
+                    fereg_core::ols::fit_prepared_categorical_ols_robust_map(&prepared, config);
+                let actual =
+                    fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
+                        &prepared,
+                        config,
+                        rhs.map(LoadedOlsRows::from),
+                    );
+                if case == 10 {
+                    // The existing fit rejects this exactly absorbed finite-score
+                    // fixture; loading reuse must preserve that failure boundary.
+                    assert_eq!(expected.unwrap_err(), actual.unwrap_err());
+                    continue;
+                }
+                let expected = expected
+                    .unwrap_or_else(|error| panic!("weighted={weighted} case={case}: {error:?}"));
+                let actual = actual.unwrap();
+                assert_eq!(expected.fit().coefficients(), actual.fit().coefficients());
+                assert_eq!(expected.covariance(), actual.covariance());
+                assert_eq!(expected.statistics(), actual.statistics());
             }
-            if case == 10 {
-                request.absorbed_terms[0].slope_sources = vec![SourceId::new(8).unwrap(), SourceId::new(5).unwrap(), SourceId::new(6).unwrap()];
-            }
-            let plan=plan_categorical_absorbed_request(&request).unwrap();
-            let compiled=numeric_loaded_rhs_layout(&plan.availability_request().validate_and_compile().unwrap());
-            let reference=load_ols_input(&request,true,false,&mut spi.clone()).unwrap();
-            let mut rhs=None;let mut memory=loading_memory(&request,spi.nobs,0,0,None).unwrap();
-            let required = if case == 7 { 0 } else { spi.nobs * 8 * 8 };
-            let team = (case != 8).then(|| ThreadTeam::new(ThreadConfig::from_requested(8,false).unwrap()));
-            let loaded=load_ols_input_with_team(&request,true,false,&mut memory,&mut spi,
-                team,&mut rhs,required,compiled).unwrap();
-            assert_eq!(loaded,reference);
-            assert_eq!(rhs.is_some(), case < 7 || case == 10);
-            if let Some(rows) = rhs.as_ref() {
-                let layout = compiled.unwrap();
-                assert_eq!(rows.len(), spi.nobs * layout.width);
-                assert_eq!(layout.append_intercept, request.include_intercept);
-            }
-            let prepared=prepare_categorical_ols_data_owned(&request,loaded).unwrap();
-            let mut config=PreparedOlsRobustConfig::default();
-            config.fit.execution.threads=ThreadConfig::from_requested(8,false).unwrap();
-            let expected=fereg_core::ols::fit_prepared_categorical_ols_robust_map(&prepared,config);
-            let actual=fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-                &prepared,config,rhs.map(LoadedOlsRows::from));
-            if case == 10 {
-                // The existing fit rejects this exactly absorbed finite-score
-                // fixture; loading reuse must preserve that failure boundary.
-                assert_eq!(expected.unwrap_err(), actual.unwrap_err());
-                continue;
-            }
-            let expected=expected.unwrap_or_else(|error| panic!("weighted={weighted} case={case}: {error:?}"));
-            let actual=actual.unwrap();
-            assert_eq!(expected.fit().coefficients(),actual.fit().coefficients());
-            assert_eq!(expected.covariance(),actual.covariance());
-            assert_eq!(expected.statistics(),actual.statistics());
-        }}
+        }
     }
 
     #[test]
@@ -5791,16 +6739,34 @@ mod tests {
             }
         }
         let mut template = OlsRequestV1 {
-            model: CompiledTermGraph { sources: Vec::new(), terms: Vec::new() },
-            bindings: vec![OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
-                OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome }],
-            absorbed_terms: Vec::new(), include_intercept: true, keep_singletons: false,
+            model: CompiledTermGraph {
+                sources: Vec::new(),
+                terms: Vec::new(),
+            },
+            bindings: vec![
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+            ],
+            absorbed_terms: Vec::new(),
+            include_intercept: true,
+            keep_singletons: false,
         };
         for id in 1..=8 {
             let source = SourceId::new(id).unwrap();
-            template.model.sources.push(SourceEntry { id: source, canonical_name: format!("x{id}") });
-            template.bindings.push(OlsInputBinding { stata_var_position: id + 2,
-                role: OlsInputRole::NumericSource(source) });
+            template.model.sources.push(SourceEntry {
+                id: source,
+                canonical_name: format!("x{id}"),
+            });
+            template.bindings.push(OlsInputBinding {
+                stata_var_position: id + 2,
+                role: OlsInputRole::NumericSource(source),
+            });
             if id <= 6 {
                 let mut term = continuous_term(source);
                 term.id = TermId::new(id).unwrap();
@@ -5809,81 +6775,134 @@ mod tests {
                 term.canonical_token = format!("c.x{id}");
                 template.model.terms.push(term);
             } else {
-                template.absorbed_terms.push(AbsorbedTerm { id: AbsorbTermId::new(id - 6).unwrap(),
-                    intercept: true, categorical_sources: vec![source], slope_sources: Vec::new(),
-                    label: format!("g{id}"), saved_name: String::new() });
+                template.absorbed_terms.push(AbsorbedTerm {
+                    id: AbsorbTermId::new(id - 6).unwrap(),
+                    intercept: true,
+                    categorical_sources: vec![source],
+                    slope_sources: Vec::new(),
+                    label: format!("g{id}"),
+                    saved_name: String::new(),
+                });
             }
         }
         for k in [1, 3, 5, 6] {
-        for role in [OlsInputRole::AnalyticWeight, OlsInputRole::FrequencyWeight, OlsInputRole::ProbabilityWeight] {
-            for case in 0..9 {
-                let mut request = template.clone();
-                request.model.terms.truncate(k);
-                request.model.sources.retain(|source| source.id.get() <= k as u32 || source.id.get() >= 7);
-                request.bindings.retain(|binding| !matches!(binding.role,
-                    OlsInputRole::NumericSource(id) if id.get() > k as u32 && id.get() < 7));
-                let compact_id = |id: SourceId| if id.get() >= 7 {
-                    SourceId::new(id.get() - 6 + k as u32).unwrap()
-                } else { id };
-                for source in &mut request.model.sources { source.id = compact_id(source.id); }
-                for binding in &mut request.bindings {
-                    if let OlsInputRole::NumericSource(id) = &mut binding.role { *id = compact_id(*id); }
-                }
-                for effect in &mut request.absorbed_terms {
-                    effect.categorical_sources[0] = compact_id(effect.categorical_sources[0]);
-                }
-                request.bindings.push(OlsInputBinding { stata_var_position: 11, role: role.clone() });
-                let mut spi = base.clone();
-                let candidate_all = case != 5;
-                match case {
-                    1 => { spi.data.insert((11, 3), (1e100, true)); }
-                    2 => { spi.data.insert((11, 3), (0.0, false)); }
-                    3 => { spi.data.insert((11, 3), (-1.0, false)); }
-                    4 => { spi.data.insert((11, 3), (1.5, false)); }
-                    5 => {
-                        spi.data.insert((1, 3), (0.0, false));
-                        spi.data.insert((11, 3), (-1.0, false));
+            for role in [
+                OlsInputRole::AnalyticWeight,
+                OlsInputRole::FrequencyWeight,
+                OlsInputRole::ProbabilityWeight,
+            ] {
+                for case in 0..9 {
+                    let mut request = template.clone();
+                    request.model.terms.truncate(k);
+                    request
+                        .model
+                        .sources
+                        .retain(|source| source.id.get() <= k as u32 || source.id.get() >= 7);
+                    request.bindings.retain(|binding| {
+                        !matches!(binding.role,
+                    OlsInputRole::NumericSource(id) if id.get() > k as u32 && id.get() < 7)
+                    });
+                    let compact_id = |id: SourceId| {
+                        if id.get() >= 7 {
+                            SourceId::new(id.get() - 6 + k as u32).unwrap()
+                        } else {
+                            id
+                        }
+                    };
+                    for source in &mut request.model.sources {
+                        source.id = compact_id(source.id);
                     }
-                    8 => {
-                        // Missing weight removes one row of a two-row FE level;
-                        // physical singleton pruning then invalidates the speculative RHS.
-                        spi.data.insert((9, 1), (100.0, false));
-                        spi.data.insert((9, 2), (100.0, false));
-                        spi.data.insert((11, 1), (1e100, true));
-                        spi.data.insert((11, 2), (1.0, false));
+                    for binding in &mut request.bindings {
+                        if let OlsInputRole::NumericSource(id) = &mut binding.role {
+                            *id = compact_id(*id);
+                        }
                     }
-                    _ => {}
-                }
-                let budget = if case == 6 { 0 } else { spi.nobs * (k + 2) * 8 };
-                let threads = ThreadConfig::from_requested(if case == 7 { 4 } else { 8 }, false).unwrap();
-                let compiled_width = numeric_loaded_rhs_layout(&request.validate_and_compile().unwrap());
-                let reference = load_ols_input(&request, candidate_all, false, &mut spi.clone()).unwrap();
-                let mut rhs = None;
-                let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
-                let loaded = load_ols_input_with_team(&request, candidate_all, false, &mut memory,
-                    &mut spi, Some(ThreadTeam::new(threads)), &mut rhs, budget, compiled_width).unwrap();
-                assert_eq!(loaded, reference);
-                assert_eq!(rhs.is_some(), candidate_all && budget > 0 && (threads.resolved() >= 8 || k == 6));
-                let expected = prepare_categorical_ols_data_owned(&request, reference);
-                let actual = prepare_categorical_ols_data_owned(&request, loaded);
-                match (expected, actual) {
-                    (Err(expected), Err(actual)) => assert_eq!(actual, expected),
-                    (Ok(expected), Ok(actual)) => {
-                        assert_eq!(expected.sample(), actual.sample());
-                        let mut config = PreparedOlsRobustConfig::default();
-                        config.fit.execution.threads = threads;
-                        let expected = fereg_core::ols::fit_prepared_categorical_ols_robust_map(&expected, config).unwrap();
-                        let actual = fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
+                    for effect in &mut request.absorbed_terms {
+                        effect.categorical_sources[0] = compact_id(effect.categorical_sources[0]);
+                    }
+                    request.bindings.push(OlsInputBinding {
+                        stata_var_position: 11,
+                        role,
+                    });
+                    let mut spi = base.clone();
+                    let candidate_all = case != 5;
+                    match case {
+                        1 => {
+                            spi.data.insert((11, 3), (1e100, true));
+                        }
+                        2 => {
+                            spi.data.insert((11, 3), (0.0, false));
+                        }
+                        3 => {
+                            spi.data.insert((11, 3), (-1.0, false));
+                        }
+                        4 => {
+                            spi.data.insert((11, 3), (1.5, false));
+                        }
+                        5 => {
+                            spi.data.insert((1, 3), (0.0, false));
+                            spi.data.insert((11, 3), (-1.0, false));
+                        }
+                        8 => {
+                            // Missing weight removes one row of a two-row FE level;
+                            // physical singleton pruning then invalidates the speculative RHS.
+                            spi.data.insert((9, 1), (100.0, false));
+                            spi.data.insert((9, 2), (100.0, false));
+                            spi.data.insert((11, 1), (1e100, true));
+                            spi.data.insert((11, 2), (1.0, false));
+                        }
+                        _ => {}
+                    }
+                    let budget = if case == 6 { 0 } else { spi.nobs * (k + 2) * 8 };
+                    let threads =
+                        ThreadConfig::from_requested(if case == 7 { 4 } else { 8 }, false).unwrap();
+                    let compiled_width =
+                        numeric_loaded_rhs_layout(&request.validate_and_compile().unwrap());
+                    let reference =
+                        load_ols_input(&request, candidate_all, false, &mut spi.clone()).unwrap();
+                    let mut rhs = None;
+                    let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();
+                    let loaded = load_ols_input_with_team(
+                        &request,
+                        candidate_all,
+                        false,
+                        &mut memory,
+                        &mut spi,
+                        Some(ThreadTeam::new(threads)),
+                        &mut rhs,
+                        budget,
+                        compiled_width,
+                    )
+                    .unwrap();
+                    assert_eq!(loaded, reference);
+                    assert_eq!(
+                        rhs.is_some(),
+                        candidate_all && budget > 0 && (threads.resolved() >= 8 || k == 6)
+                    );
+                    let expected = prepare_categorical_ols_data_owned(&request, reference);
+                    let actual = prepare_categorical_ols_data_owned(&request, loaded);
+                    match (expected, actual) {
+                        (Err(expected), Err(actual)) => assert_eq!(actual, expected),
+                        (Ok(expected), Ok(actual)) => {
+                            assert_eq!(expected.sample(), actual.sample());
+                            let mut config = PreparedOlsRobustConfig::default();
+                            config.fit.execution.threads = threads;
+                            let expected =
+                                fereg_core::ols::fit_prepared_categorical_ols_robust_map(
+                                    &expected, config,
+                                )
+                                .unwrap();
+                            let actual = fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
                             &actual, config, rhs.map(LoadedOlsRows::from)).unwrap();
-                        assert_eq!(expected.fit().coefficients(), actual.fit().coefficients());
-                        assert_eq!(expected.covariance(), actual.covariance());
-                        assert_eq!(expected.statistics(), actual.statistics());
-                        assert_eq!(expected.certificate(), actual.certificate());
+                            assert_eq!(expected.fit().coefficients(), actual.fit().coefficients());
+                            assert_eq!(expected.covariance(), actual.covariance());
+                            assert_eq!(expected.statistics(), actual.statistics());
+                            assert_eq!(expected.certificate(), actual.certificate());
+                        }
+                        _ => panic!("weighted speculative loading changed preparation success"),
                     }
-                    _ => panic!("weighted speculative loading changed preparation success"),
                 }
             }
-        }
         }
     }
 
@@ -5893,28 +6912,47 @@ mod tests {
             for missing in [false, true] {
                 let (mut args, mut base) = saved_output_fixture();
                 replace_argument(&mut args, "candidate_all", "candidate_all=1".to_owned());
-                replace_argument(&mut args, "output_drop_reason", "output_drop_reason=0".to_owned());
+                replace_argument(
+                    &mut args,
+                    "output_drop_reason",
+                    "output_drop_reason=0".to_owned(),
+                );
                 replace_argument(&mut args, "output_xb", "output_xb=7".to_owned());
                 replace_argument(&mut args, "output_xbd", "output_xbd=8".to_owned());
                 replace_argument(&mut args, "output_absorbed", "output_absorbed=9".to_owned());
-                replace_argument(&mut args, "output_saved_channels", "output_saved_channels=2:10".to_owned());
+                replace_argument(
+                    &mut args,
+                    "output_saved_channels",
+                    "output_saved_channels=2:10".to_owned(),
+                );
                 base.nvars = 10;
                 for row in 7..=n {
                     for position in 1..=5 {
-                        base.data.insert((position, row), base.data[&(position, (row - 1) % 6 + 1)]);
+                        base.data
+                            .insert((position, row), base.data[&(position, (row - 1) % 6 + 1)]);
                     }
                 }
                 base.nobs = n;
-                if missing { base.data.insert((2, 3), (0.0, true)); }
+                if missing {
+                    base.data.insert((2, 3), (0.0, true));
+                }
                 base.stores.reserve(5 * n + 512);
                 let mut scalar = base.clone();
                 estimate_ols_test(&args, &mut scalar).unwrap();
                 let mut batched = base.clone();
                 batched.numeric_column_stores_enabled = true;
                 estimate_ols_test(&args, &mut batched).unwrap();
-                assert_eq!(batched.numeric_column_batches, usize::from(n >= 4096 && !missing));
-                let observation_events = |spi: &FakeSpi| spi.stores.iter()
-                    .take_while(|event| matches!(event, StoreEvent::Numeric(..))).cloned().collect::<Vec<_>>();
+                assert_eq!(
+                    batched.numeric_column_batches,
+                    usize::from(n >= 4096 && !missing)
+                );
+                let observation_events = |spi: &FakeSpi| {
+                    spi.stores
+                        .iter()
+                        .take_while(|event| matches!(event, StoreEvent::Numeric(..)))
+                        .cloned()
+                        .collect::<Vec<_>>()
+                };
                 assert_eq!(observation_events(&scalar), observation_events(&batched));
                 for name in ["RB", "RV", "RSTATUS", "RFIT", "RDOF", "RFE", "RCERT"] {
                     assert_eq!(scalar.matrices[name], batched.matrices[name], "{name}");
@@ -6075,14 +7113,22 @@ mod tests {
             spi.string_variables.insert(4);
             for row in 1..=6 {
                 spi.data.remove(&(4, row));
-                spi.string_data.insert((4, row), format!("group-{}", row % 3).into_bytes());
+                spi.string_data
+                    .insert((4, row), format!("group-{}", row % 3).into_bytes());
             }
             let spec = EstimateActionSpec::parse(&args)?;
             let action = spec.decode_and_validate(&mut spi)?;
             spi.interrupt_checks = 0;
             spi.interrupt_at = interrupted.then_some(1);
-            let mut memory = loading_memory(&action.request, spi.nobs, 0, action.metadata_capacity_bytes(), usable)?;
-            let result = load_ols_input_with_memory(&action.request, false, false, &mut memory, &mut spi);
+            let mut memory = loading_memory(
+                &action.request,
+                spi.nobs,
+                0,
+                action.metadata_capacity_bytes(),
+                usable,
+            )?;
+            let result =
+                load_ols_input_with_memory(&action.request, false, false, &mut memory, &mut spi);
             assert_eq!(spi.store_calls, 0);
             Ok((result?, memory.peak()))
         }
@@ -6090,32 +7136,53 @@ mod tests {
         let (bounded, same_peak) = run(Some(peak), false).unwrap();
         assert_eq!(original, bounded);
         assert_eq!(peak, same_peak);
-        assert_eq!(run(Some(peak - 1), false).unwrap_err().code, ErrorCode::Allocation);
-        assert_eq!(run(Some(peak), true).unwrap_err().code, ErrorCode::Interrupted);
+        assert_eq!(
+            run(Some(peak - 1), false).unwrap_err().code,
+            ErrorCode::Allocation
+        );
+        assert_eq!(
+            run(Some(peak), true).unwrap_err().code,
+            ErrorCode::Interrupted
+        );
     }
 
     #[test]
     #[cfg(feature = "ffi")]
     fn decoder_admission_precedes_allocations_and_bounds_live_compiler_frames() {
         let _guard = crate::instrumentation::lock_action_observation();
-        for fixture in [fixture(OlsVceKind::Iid), fixture(OlsVceKind::Clustered), saved_output_fixture()] {
+        for fixture in [
+            fixture(OlsVceKind::Iid),
+            fixture(OlsVceKind::Clustered),
+            saved_output_fixture(),
+        ] {
             let (args, mut spi) = fixture;
             let spec = EstimateActionSpec::parse(&args).unwrap();
             let bound = spec.metadata_shape().peak_bytes().unwrap();
             let (start, _) = crate::ffi::begin_ols_allocation_observation();
-            let action = spec.decode_with_memory_limit(&mut spi, || Ok(None)).unwrap();
-            let observed = crate::ffi::allocation_usage().peak_bytes.saturating_sub(start.current_bytes);
-            assert!(u128::from(observed) <= bound, "decoder {observed} exceeds {bound}");
+            let action = spec
+                .decode_with_memory_limit(&mut spi, || Ok(None))
+                .unwrap();
+            let observed = crate::ffi::allocation_usage()
+                .peak_bytes
+                .saturating_sub(start.current_bytes);
+            assert!(
+                u128::from(observed) <= bound,
+                "decoder {observed} exceeds {bound}"
+            );
             drop(action);
             // These fixtures are below the 20% headroom crossover, so this
             // supplies exactly one byte less than the decoder's admission.
             assert!(bound < 512 * 1024 * 1024);
             let (start, _) = crate::ffi::begin_ols_allocation_observation();
-            let error = spec.decode_with_memory_limit(&mut spi, || Ok(Some(512 * 1024 * 1024 + bound - 1))).unwrap_err();
+            let error = spec
+                .decode_with_memory_limit(&mut spi, || Ok(Some(512 * 1024 * 1024 + bound - 1)))
+                .unwrap_err();
             assert_eq!(error.code, ErrorCode::Allocation);
             assert_eq!(spi.numeric_reads, 0);
             assert_eq!(spi.store_calls, 0);
-            let observed = crate::ffi::allocation_usage().peak_bytes.saturating_sub(start.current_bytes);
+            let observed = crate::ffi::allocation_usage()
+                .peak_bytes
+                .saturating_sub(start.current_bytes);
             assert!(observed < 1024, "budget failure allocated decoder storage");
         }
     }
@@ -6128,7 +7195,9 @@ mod tests {
         let spec = EstimateActionSpec::parse(&args).unwrap();
         spi.matrices.get_mut(&spec.cluster_term_matrix).unwrap()[0][1] = 1e12;
         let (start, _) = crate::ffi::begin_ols_allocation_observation();
-        let error = spec.decode_with_memory_limit(&mut spi, || Ok(None)).unwrap_err();
+        let error = spec
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap_err();
         assert_eq!(error.code, ErrorCode::InvalidArgument);
         let peak = crate::ffi::allocation_usage().peak_bytes - start.current_bytes;
         assert!(u128::from(peak) < spec.metadata_shape().peak_bytes().unwrap());
@@ -6199,8 +7268,8 @@ mod tests {
         assert_eq!(ordinary.macro_reads, 0);
         assert_eq!(packed.macro_reads, 0);
         for name in [
-            "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE", "RCLUSTER", "RSUBSET",
-            "RCERT", "RREC",
+            "RB", "RV", "RSTATUS", "RMARKB", "RMARKV", "RFIT", "RDOF", "RFE", "RCLUSTER",
+            "RSUBSET", "RCERT", "RREC",
         ] {
             assert_eq!(packed.matrices[name], ordinary.matrices[name], "{name}");
             assert_eq!(
@@ -6277,8 +7346,8 @@ mod tests {
         let (args, mut mixed_spi) = fixture(OlsVceKind::Iid);
         let mut mixed = bundled(&args);
         mixed.push("ado=0.5.0".to_owned());
-        let error =
-            estimate_ols_test(&mixed, &mut mixed_spi).expect_err("mixed bundle and argv are rejected");
+        let error = estimate_ols_test(&mixed, &mut mixed_spi)
+            .expect_err("mixed bundle and argv are rejected");
         assert_eq!(error.code, ErrorCode::Syntax);
         assert_eq!(mixed_spi.numeric_reads, 0);
         assert_eq!(mixed_spi.store_calls, 0);
@@ -6336,13 +7405,21 @@ mod tests {
         payload.push_str("trailing-data");
         overlong.local_bundle = Some(payload.into_bytes());
         assert!(estimate_ols_test(&[format!("bundle_local={declared}")], &mut overlong).is_err());
-        assert_eq!((overlong.macro_reads, overlong.numeric_reads, overlong.store_calls), (1, 0, 0));
+        assert_eq!(
+            (
+                overlong.macro_reads,
+                overlong.numeric_reads,
+                overlong.store_calls
+            ),
+            (1, 0, 0)
+        );
 
         let (_, mut spi) = fixture(OlsVceKind::Iid);
         let payload = "1:4:a=é";
         spi.local_bundle = Some(payload.as_bytes().to_vec());
         assert_eq!(
-            read_local_estimate_bundle(&[format!("bundle_local={}", payload.len())], &mut spi).unwrap(),
+            read_local_estimate_bundle(&[format!("bundle_local={}", payload.len())], &mut spi)
+                .unwrap(),
             Some(format!("bundle={payload}"))
         );
     }

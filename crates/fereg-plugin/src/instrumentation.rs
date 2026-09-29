@@ -471,7 +471,11 @@ mod tests {
 /// None in mock actions that do not cross the actual ABI boundary.
 pub(crate) fn native_live_before() -> Option<u64> {
     #[cfg(feature = "ffi")]
-    { crate::ffi::abi_memory_baseline() }
+    {
+        crate::ffi::abi_memory_baseline()
+    }
     #[cfg(not(feature = "ffi"))]
-    { None }
+    {
+        None
+    }
 }

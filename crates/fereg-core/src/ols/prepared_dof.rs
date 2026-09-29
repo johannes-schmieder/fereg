@@ -61,7 +61,11 @@ pub struct PreparedOlsAbsorbedDofReport {
 impl PreparedOlsAbsorbedDofReport {
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         crate::memory::vec_capacity_bytes(&self.effects)
-            + self.effects.iter().map(|effect| effect.label.capacity() as u128).sum::<u128>()
+            + self
+                .effects
+                .iter()
+                .map(|effect| effect.label.capacity() as u128)
+                .sum::<u128>()
     }
 }
 
@@ -133,16 +137,29 @@ pub(super) fn compute_prepared_ols_absorbed_dof_with_nesting(
 
 /// One same-call immutable topology validation. Retaining the borrow prevents
 /// its codes, membership or metadata from changing before DoF construction.
-pub(super) struct ValidatedPreparedDofTopology<'a> { prepared: &'a PreparedOlsData }
+pub(super) struct ValidatedPreparedDofTopology<'a> {
+    prepared: &'a PreparedOlsData,
+}
 
-pub(super) fn validate_dof_topology_for_overlap(prepared: &PreparedOlsData) -> Result<ValidatedPreparedDofTopology<'_>> {
+pub(super) fn validate_dof_topology_for_overlap(
+    prepared: &PreparedOlsData,
+) -> Result<ValidatedPreparedDofTopology<'_>> {
     validate_prepared_topology(prepared)?;
     Ok(ValidatedPreparedDofTopology { prepared })
 }
 
 impl ValidatedPreparedDofTopology<'_> {
-    pub(super) fn compute(self, policy: PreparedOlsAbsorbedDofPolicy) -> Result<PreparedOlsAbsorbedDofReport> {
-        compute_with_nesting_reservation_validated(self.prepared, policy, &[], &mut SystemPreparedDofReservation, true)
+    pub(super) fn compute(
+        self,
+        policy: PreparedOlsAbsorbedDofPolicy,
+    ) -> Result<PreparedOlsAbsorbedDofReport> {
+        compute_with_nesting_reservation_validated(
+            self.prepared,
+            policy,
+            &[],
+            &mut SystemPreparedDofReservation,
+            true,
+        )
     }
 }
 
@@ -160,7 +177,13 @@ fn compute_with_nesting_reservation<R: PreparedDofReservation>(
     cluster_dimensions: &[&[u32]],
     reservation: &mut R,
 ) -> Result<PreparedOlsAbsorbedDofReport> {
-    compute_with_nesting_reservation_validated(prepared, policy, cluster_dimensions, reservation, false)
+    compute_with_nesting_reservation_validated(
+        prepared,
+        policy,
+        cluster_dimensions,
+        reservation,
+        false,
+    )
 }
 
 fn compute_with_nesting_reservation_validated<R: PreparedDofReservation>(
@@ -170,7 +193,9 @@ fn compute_with_nesting_reservation_validated<R: PreparedDofReservation>(
     reservation: &mut R,
     topology_validated: bool,
 ) -> Result<PreparedOlsAbsorbedDofReport> {
-    if !topology_validated { validate_prepared_topology(prepared)?; }
+    if !topology_validated {
+        validate_prepared_topology(prepared)?;
+    }
     validate_cluster_nesting_view(prepared, cluster_dimensions)?;
     let effects = prepared.fe_topology.effects();
 

@@ -1044,8 +1044,7 @@ mod tests {
                     ..unweighted_input(&candidate, &outcome)
                 };
                 let selection =
-                    select_ppml_numeric_data(classify_ppml_numeric_data(&input).unwrap())
-                        .unwrap();
+                    select_ppml_numeric_data(classify_ppml_numeric_data(&input).unwrap()).unwrap();
                 let (adjustment, report) = selection.take_adjustment(Some(values)).unwrap();
                 let PreparedAdjustment::Offset(values) = adjustment else {
                     panic!("canonical offset")
@@ -1078,35 +1077,98 @@ mod tests {
     fn classified_selection_matches_materialized_weights_roles_masks_and_adjustments() {
         let n = 37;
         let candidate: Vec<_> = (0..n).map(|r| r % 5 != 0).collect();
-        let y: Vec<_> = (0..n).map(|r| if candidate[r] { (r % 7) as f64 / 3.0 } else { f64::NAN }).collect();
-        let uses = [NumericSourceUse::ordinary(),
-            NumericSourceUse { ordinary: false, fixed_effect: true, cluster: false },
-            NumericSourceUse { ordinary: false, fixed_effect: false, cluster: true }];
+        let y: Vec<_> = (0..n)
+            .map(|r| {
+                if candidate[r] {
+                    (r % 7) as f64 / 3.0
+                } else {
+                    f64::NAN
+                }
+            })
+            .collect();
+        let uses = [
+            NumericSourceUse::ordinary(),
+            NumericSourceUse {
+                ordinary: false,
+                fixed_effect: true,
+                cluster: false,
+            },
+            NumericSourceUse {
+                ordinary: false,
+                fixed_effect: false,
+                cluster: true,
+            },
+        ];
         for dropped_source in [None, Some(0), Some(1), Some(2)] {
-            let mut values: Vec<Vec<_>> = (0..3).map(|j| (0..n).map(|r|
-                if candidate[r] { (r + j) as f64 } else { f64::INFINITY }).collect()).collect();
-            if let Some(j) = dropped_source { values[j][3] = f64::NAN; }
+            let mut values: Vec<Vec<_>> = (0..3)
+                .map(|j| {
+                    (0..n)
+                        .map(|r| {
+                            if candidate[r] {
+                                (r + j) as f64
+                            } else {
+                                f64::INFINITY
+                            }
+                        })
+                        .collect()
+                })
+                .collect();
+            if let Some(j) = dropped_source {
+                values[j][3] = f64::NAN;
+            }
             let sources: Vec<_> = values.iter().map(|v| NumericColumnView::new(v)).collect();
-            for kind in [None, Some(WeightKind::Frequency), Some(WeightKind::Probability)] {
+            for kind in [
+                None,
+                Some(WeightKind::Frequency),
+                Some(WeightKind::Probability),
+            ] {
                 for adjustment in [0, 1, 2] {
-                    let weights: Vec<_> = (0..n).map(|r| if candidate[r] {
-                        (1 + r % 4) as f64 * if kind == Some(WeightKind::Probability) { 1e-100 } else { 1.0 }
-                    } else { -1.0 }).collect();
-                    let z: Vec<_> = (0..n).map(|r| if candidate[r] { 1.0 + r as f64 / 10.0 } else { f64::NAN }).collect();
+                    let weights: Vec<_> = (0..n)
+                        .map(|r| {
+                            if candidate[r] {
+                                (1 + r % 4) as f64
+                                    * if kind == Some(WeightKind::Probability) {
+                                        1e-100
+                                    } else {
+                                        1.0
+                                    }
+                            } else {
+                                -1.0
+                            }
+                        })
+                        .collect();
+                    let z: Vec<_> = (0..n)
+                        .map(|r| {
+                            if candidate[r] {
+                                1.0 + r as f64 / 10.0
+                            } else {
+                                f64::NAN
+                            }
+                        })
+                        .collect();
                     let input = PpmlNumericPreparationInput {
-                        numeric_sources: &sources, source_uses: &uses,
+                        numeric_sources: &sources,
+                        source_uses: &uses,
                         weights: kind.map_or(WeightInput::None, |kind| WeightInput::Provided {
-                            kind, column: NumericColumnView::new(&weights) }),
+                            kind,
+                            column: NumericColumnView::new(&weights),
+                        }),
                         offset: (adjustment == 1).then(|| NumericColumnView::new(&z)),
                         exposure: (adjustment == 2).then(|| NumericColumnView::new(&z)),
                         ..unweighted_input(&candidate, &y)
                     };
                     let classified = classify_ppml_numeric_data(&input).unwrap();
                     let shape = classified.classification();
-                    assert_eq!(shape.n_active == shape.n_candidate, dropped_source.is_none());
+                    assert_eq!(
+                        shape.n_active == shape.n_candidate,
+                        dropped_source.is_none()
+                    );
                     let expected = prepare_and_check_selection(&input).unwrap();
                     let actual = select_ppml_numeric_data(classified).unwrap();
-                    assert_eq!(actual.original_row_by_active, expected.sample().original_row_by_active);
+                    assert_eq!(
+                        actual.original_row_by_active,
+                        expected.sample().original_row_by_active
+                    );
                     assert_eq!(actual.drop_reasons, expected.sample().drop_reasons);
                     assert_eq!(actual.weights, expected.weights());
                     assert!(actual.original_row_by_active.capacity() <= shape.n_candidate);
@@ -1124,8 +1186,14 @@ mod tests {
         let a = classify_ppml_numeric_data(&first).unwrap();
         let b = classify_ppml_numeric_data(&second).unwrap();
         assert_eq!(a.classification(), b.classification());
-        assert_eq!(select_ppml_numeric_data(a).unwrap().original_row_by_active, [0, 2]);
-        assert_eq!(select_ppml_numeric_data(b).unwrap().original_row_by_active, [1, 3]);
+        assert_eq!(
+            select_ppml_numeric_data(a).unwrap().original_row_by_active,
+            [0, 2]
+        );
+        assert_eq!(
+            select_ppml_numeric_data(b).unwrap().original_row_by_active,
+            [1, 3]
+        );
     }
 
     #[test]
@@ -1149,8 +1217,9 @@ mod tests {
             offset: None,
             exposure: None,
         };
-        let classification =
-            classify_ppml_numeric_data(&input).expect("allocation-free classification").classification();
+        let classification = classify_ppml_numeric_data(&input)
+            .expect("allocation-free classification")
+            .classification();
         let prepared = prepare_and_check_selection(&input).expect("materialized sample");
         assert_eq!(classification.n_original, prepared.sample().n_original);
         assert_eq!(classification.n_candidate, prepared.sample().n_candidate);

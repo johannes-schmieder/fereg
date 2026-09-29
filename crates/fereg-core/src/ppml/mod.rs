@@ -15,12 +15,12 @@ mod irls;
 mod memory;
 mod metadata_memory;
 mod one_fe_profile;
-mod profiled_intercept_curve;
 mod prepared;
 mod prepared_estimator;
 mod prepared_irls;
 mod prepared_model;
 mod prepared_separation;
+mod profiled_intercept_curve;
 mod psd;
 mod residuals;
 mod result;
@@ -724,13 +724,22 @@ mod tests {
     #[test]
     fn inner_tolerance_prepares_a_converged_outer_point_for_publication() {
         for (outer, score) in [(1e-8, 1e-8), (1e-8, 1e-10), (1e-14, 1e-12)] {
-            let mut config = PpmlConfig::default();
-            config.tolerance = outer;
-            config.score_tolerance = score;
-            let floor = config.inner_tolerance_final.min(strict_inner_tolerance(config));
-            let next = |deviance, score, previous| scheduled_inner_tolerance(
-                config, 2, previous, Some(PpmlInnerToleranceProgress::new(deviance, score)),
-            );
+            let config = PpmlConfig {
+                tolerance: outer,
+                score_tolerance: score,
+                ..PpmlConfig::default()
+            };
+            let floor = config
+                .inner_tolerance_final
+                .min(strict_inner_tolerance(config));
+            let next = |deviance, score, previous| {
+                scheduled_inner_tolerance(
+                    config,
+                    2,
+                    previous,
+                    Some(PpmlInnerToleranceProgress::new(deviance, score)),
+                )
+            };
             assert_eq!(next(outer, score, config.inner_tolerance_initial), floor);
             assert_eq!(next(0.0, score, config.inner_tolerance_initial), floor);
             assert_eq!(next(outer, 0.0, config.inner_tolerance_initial), floor);

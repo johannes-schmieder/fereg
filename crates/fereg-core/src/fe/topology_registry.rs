@@ -22,7 +22,11 @@ impl CategoricalTopologyRegistry {
 
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         crate::memory::vec_capacity_bytes(&self.sources)
-            + self.sources.iter().map(CategoricalTopologySource::owned_buffer_bytes).sum::<u128>()
+            + self
+                .sources
+                .iter()
+                .map(CategoricalTopologySource::owned_buffer_bytes)
+                .sum::<u128>()
     }
 
     #[must_use]

@@ -7,9 +7,10 @@ const OBSERVATIONS: usize = 10_000_000;
 const DEFAULT_POOLSIZE: usize = 10;
 // With the full retained-session, report, rollback, and accepted-rebase
 // lifetimes and low categorical projector banks modeled, this limit leaves
-// room for Low while still rejecting
-// Fast after the embedded input floor is included.
-const LOW_FAST_LIMIT_BYTES: u128 = 36_300_000_000;
+// room for Low while still rejecting Fast after the embedded input floor.
+// Adding 320MB of live workspaces needs 400MB of available memory under the
+// unchanged 20% headroom policy. Exact one-byte admission edges are tested below.
+const LOW_FAST_LIMIT_BYTES: u128 = 36_700_000_000;
 const NO_ROUTE_LIMIT_BYTES: u128 = 1_500_000_000;
 
 // The complete-input loader keeps outcome plus every source as an f64 vector
@@ -79,24 +80,28 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     // Fast retains the complete two-FE PCG state for all K+1 projected RHS:
     // L + 2 * L_left * (K+1) + 4 * L_right * (K+1) f64 cells,
     // plus five recurrence scalars per RHS.
+    // d6c18ccb added two prepared outcome terms; d9e9d2f7 added
+    // current-weight Schur roots/scales. Both banks are live in both routes;
+    // only the roots/scales overlap the separation phase.
+    let workspace_increment = 4 * OBSERVATIONS as u128 * 8;
     let parent_increment = 51 * 8;
     let result_increment = base.fast.result_metadata_bytes;
     assert_eq!(
         base.fast.peak_bytes,
-        47_400_233_650 + parent_increment + result_increment
+        47_400_233_650 + workspace_increment + parent_increment + result_increment
     );
     assert_eq!(
         base.fast.separation_peak_bytes,
-        47_170_268_279 + parent_increment
+        47_170_268_279 + workspace_increment / 2 + parent_increment
     );
     // Low admits an 8-KiB complete-row tile instead of one 51-double row.
     assert_eq!(
         base.low.peak_bytes,
-        24_681_286_050 + parent_increment + result_increment
+        24_681_286_050 + workspace_increment + parent_increment + result_increment
     );
     assert_eq!(
         base.low.separation_peak_bytes,
-        24_451_320_679 + parent_increment
+        24_451_320_679 + workspace_increment / 2 + parent_increment
     );
     assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 22_718_947_600);
 
@@ -118,11 +123,11 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     .expect("embedded governing estimate");
     assert_eq!(
         embedded.fast.peak_bytes,
-        51_707_733_650 + parent_increment + result_increment
+        51_707_733_650 + workspace_increment + parent_increment + result_increment
     );
     assert_eq!(
         embedded.low.peak_bytes,
-        28_988_786_050 + parent_increment + result_increment
+        28_988_786_050 + workspace_increment + parent_increment + result_increment
     );
 
     let auto = plan_ppml_memory(
@@ -161,8 +166,8 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
         ErrorCode::Allocation
     );
 
-    assert_eq!(auto.safety_headroom_bytes, 7_260_000_000);
-    assert_eq!(auto.usable_bytes, Some(29_040_000_000));
+    assert_eq!(auto.safety_headroom_bytes, 7_340_000_000);
+    assert_eq!(auto.usable_bytes, Some(29_360_000_000));
     assert_eq!(
         auto.usable_bytes.expect("imposed usable memory") - embedded.low.peak_bytes,
         51_213_950 - parent_increment - result_increment
@@ -219,7 +224,7 @@ fn previous_k10_four_gigabyte_shape_still_rejects_every_route() {
     };
     let base = estimate_ppml_memory(dimensions, PpmlMemoryConfig::default())
         .expect("previous constrained estimate");
-    let increment = 11 * 8 + base.fast.result_metadata_bytes;
+    let increment = 4 * OBSERVATIONS as u128 * 8 + 11 * 8 + base.fast.result_metadata_bytes;
     assert_eq!(base.fast.peak_bytes, 21_800_051_330 + increment);
     assert_eq!(base.low.peak_bytes, 21_481_107_890 + increment);
     assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 318_943_440);

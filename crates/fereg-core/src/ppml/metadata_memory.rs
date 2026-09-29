@@ -163,15 +163,20 @@ fn generation_storage(
     let mut ordinary = 0;
     let mut row_bytes = size_of::<usize>() as u128; // topology retained-row map
     for source in &request.model.sources {
-        let absorbed = request.absorbed_terms.iter().any(|effect| {
-            effect.categorical_sources.contains(&source.id)
-        });
+        let absorbed = request
+            .absorbed_terms
+            .iter()
+            .any(|effect| effect.categorical_sources.contains(&source.id));
         let modeled = request.model.terms.iter().any(|term| {
             term.components.iter().any(|component| {
                 component.source == source.id && component.kind == ComponentKind::Categorical
             })
-        }) || clusters.iter().any(|cluster| cluster.sources.contains(&source.id));
-        if absorbed || modeled { categories += 1; }
+        }) || clusters
+            .iter()
+            .any(|cluster| cluster.sources.contains(&source.id));
+        if absorbed || modeled {
+            categories += 1;
+        }
         if absorbed {
             compacted += 1;
             // Compact codes and original-level identities; each has <= N entries.
@@ -181,14 +186,23 @@ fn generation_storage(
             ordinary += 1;
             // A topology-backed source owns only its candidate f64 level table.
             // An ordinary source owns an additional compact u32 code vector.
-            add(&mut row_bytes, size_of::<f64>() as u128
-                + if absorbed { 0 } else { size_of::<u32>() as u128 })?;
+            add(
+                &mut row_bytes,
+                size_of::<f64>() as u128
+                    + if absorbed {
+                        0
+                    } else {
+                        size_of::<u32>() as u128
+                    },
+            )?;
         }
     }
     let effects = request.absorbed_terms.len();
     // Registry growth uses try_reserve(1): geometric capacity < 2*len, with
     // Rust's four-element minimum. No registry allocation for zero effects.
-    let registry_capacity = if effects == 0 { 0 } else {
+    let registry_capacity = if effects == 0 {
+        0
+    } else {
         effects.checked_mul(2).ok_or_else(overflow)?.max(4)
     };
     let mut fixed = sum(&[
@@ -202,11 +216,17 @@ fn generation_storage(
         bytes::<usize>(effects)?, // terminal membership offsets
     ])?;
     for effect in &request.absorbed_terms {
-        add(&mut fixed, bytes::<usize>(effect.categorical_sources.len())?)?;
+        add(
+            &mut fixed,
+            bytes::<usize>(effect.categorical_sources.len())?,
+        )?;
         add(&mut row_bytes, size_of::<usize>() as u128)?; // memberships
         if effect.categorical_sources.len() > 1 {
             // Canonical partition key and one interaction code per observation.
-            add(&mut fixed, bytes::<usize>(effect.categorical_sources.len())?)?;
+            add(
+                &mut fixed,
+                bytes::<usize>(effect.categorical_sources.len())?,
+            )?;
             add(&mut row_bytes, size_of::<u32>() as u128)?;
         }
     }

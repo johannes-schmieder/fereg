@@ -165,14 +165,17 @@ impl CertifiedSeparationSeal {
         final_outcome: &[f64],
     ) -> Result<()> {
         let expected_mask = requested_replay_mask(config);
-        let bound = if self.config != config || self.final_generation != report.generations
-            || self.final_generation_hash != report.generation_hashes.last().copied().unwrap_or(0) {
+        let bound = if self.config != config
+            || self.final_generation != report.generations
+            || self.final_generation_hash != report.generation_hashes.last().copied().unwrap_or(0)
+        {
             false
         } else {
             let (rows, outcome, trace) = if parallel_digest_team(final_original_rows.len()) {
                 let ((rows, outcome), trace) = rayon::join(
                     || final_frame_digests(final_original_rows, final_outcome),
-                    || separation_report_digest(report));
+                    || separation_report_digest(report),
+                );
                 (rows, outcome, trace)
             } else {
                 let (rows, outcome) = final_frame_digests(final_original_rows, final_outcome);
@@ -548,7 +551,11 @@ fn prepare_initial_generation(
         end_phase_allocation(phase_allocation_probe, PpmlPhase::Preparation);
     let initial_preparation_elapsed = started.elapsed();
     let coordinator = coordinator?;
-    Ok((coordinator, initial_preparation_elapsed, initial_preparation_peak))
+    Ok((
+        coordinator,
+        initial_preparation_elapsed,
+        initial_preparation_peak,
+    ))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -577,7 +584,12 @@ where
     let candidate_observations = candidate_original_rows.len();
     let generation_capacity = separation_generation_capacity(
         candidate_observations,
-        coordinator.view().prepared.outcome().iter().all(|value| *value > 0.0),
+        coordinator
+            .view()
+            .prepared
+            .outcome()
+            .iter()
+            .all(|value| *value > 0.0),
         config.drop_singletons,
     );
     let method_report_capacity =
@@ -3664,18 +3676,32 @@ mod tests {
             PHASE_PROBE_ENDS.store(0, Ordering::SeqCst);
             let (request, clusters, loaded, uses) = fixture();
             let numeric = prepare_numeric(&loaded, &uses);
-            let mut owner = PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
-            if rejected { owner = owner.with_generation_memory_bound(0); }
+            let mut owner =
+                PreparedPpmlModelOwner::new(request, clusters, loaded, numeric).unwrap();
+            if rejected {
+                owner = owner.with_generation_memory_bound(0);
+            }
             let result = prepare_initial_generation(owner, Some(deterministic_phase_probe));
             if rejected {
                 assert_eq!(result.err().unwrap().code, ErrorCode::Allocation);
             } else {
                 assert_eq!(result.unwrap().2, Some(1));
             }
-            assert_eq!(*PHASE_PROBE_EVENTS.lock().unwrap(), vec![
-                (PpmlPhase::Preparation, super::super::PpmlPhaseAllocatorEvent::Begin, 0),
-                (PpmlPhase::Preparation, super::super::PpmlPhaseAllocatorEvent::End, 1),
-            ]);
+            assert_eq!(
+                *PHASE_PROBE_EVENTS.lock().unwrap(),
+                vec![
+                    (
+                        PpmlPhase::Preparation,
+                        super::super::PpmlPhaseAllocatorEvent::Begin,
+                        0
+                    ),
+                    (
+                        PpmlPhase::Preparation,
+                        super::super::PpmlPhaseAllocatorEvent::End,
+                        1
+                    ),
+                ]
+            );
         }
     }
 

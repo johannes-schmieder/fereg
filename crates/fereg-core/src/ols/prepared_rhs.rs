@@ -100,19 +100,31 @@ fn build_prepared_ols_rhs_with_loaded_rows(
     response: &[f64],
     rows: Option<Vec<f64>>,
 ) -> Result<PreparedOlsRhs> {
-    build_prepared_ols_rhs_with_loaded_rows_and_reuse(prepared, response, rows).map(|result| result.0)
+    build_prepared_ols_rhs_with_loaded_rows_and_reuse(prepared, response, rows)
+        .map(|result| result.0)
 }
 
 pub(crate) fn build_prepared_ols_rhs_with_loaded_rows_and_reuse(
-    prepared: &PreparedOlsData, response: &[f64], rows: Option<Vec<f64>>,
+    prepared: &PreparedOlsData,
+    response: &[f64],
+    rows: Option<Vec<f64>>,
 ) -> Result<(PreparedOlsRhs, bool)> {
     if let Some(rows) = rows {
         validate_prepared_rhs_inputs(prepared, response)?;
-        if let Some(columns) = NumericOlsColumns::bind_loaded_rhs(&prepared.model, &prepared.sample)? {
+        if let Some(columns) =
+            NumericOlsColumns::bind_loaded_rhs(&prepared.model, &prepared.sample)?
+        {
             if columns.matches_rhs(response, &rows) {
-                return Ok((PreparedOlsRhs { values: DenseMatrix::from_row_major(
-                    response.len(), prepared.model.columns.len() + 1, rows,
-                )? }, true));
+                return Ok((
+                    PreparedOlsRhs {
+                        values: DenseMatrix::from_row_major(
+                            response.len(),
+                            prepared.model.columns.len() + 1,
+                            rows,
+                        )?,
+                    },
+                    true,
+                ));
             }
         }
     }
@@ -321,7 +333,11 @@ impl<'a> NumericOlsColumns<'a> {
     ) -> Result<Option<Self>> {
         // Narrow transport admission does not widen the separate predictor,
         // residual-update and ordinary RHS-construction fast paths.
-        let minimum = if sample.n_active() >= 16_384 && rayon::current_num_threads() >= 8 { 2 } else { 8 };
+        let minimum = if sample.n_active() >= 16_384 && rayon::current_num_threads() >= 8 {
+            2
+        } else {
+            8
+        };
         Self::bind_with_minimum(model, sample, minimum)
     }
 
@@ -372,20 +388,28 @@ impl<'a> NumericOlsColumns<'a> {
 
     pub(crate) fn matches_rhs(&self, response: &[f64], data: &[f64]) -> bool {
         let width = self.width + 1;
-        response.len() == self.rows && self.rows.checked_mul(width) == Some(data.len())
-            && data.par_chunks(NUMERIC_TILE_ROWS * width).enumerate().all(|(tile, input)| {
-                let start = tile * NUMERIC_TILE_ROWS;
-                for (offset, row) in input.chunks_exact(width).enumerate() {
-                    if row[0].to_bits() != response[start + offset].to_bits() { return false; }
-                }
-                for (column, source) in self.columns[..self.width].iter().enumerate() {
+        response.len() == self.rows
+            && self.rows.checked_mul(width) == Some(data.len())
+            && data
+                .par_chunks(NUMERIC_TILE_ROWS * width)
+                .enumerate()
+                .all(|(tile, input)| {
+                    let start = tile * NUMERIC_TILE_ROWS;
                     for (offset, row) in input.chunks_exact(width).enumerate() {
-                        let expected = source.map_or(1.0, |values| values[start + offset]);
-                        if row[column + 1].to_bits() != expected.to_bits() { return false; }
+                        if row[0].to_bits() != response[start + offset].to_bits() {
+                            return false;
+                        }
                     }
-                }
-                true
-            })
+                    for (column, source) in self.columns[..self.width].iter().enumerate() {
+                        for (offset, row) in input.chunks_exact(width).enumerate() {
+                            let expected = source.map_or(1.0, |values| values[start + offset]);
+                            if row[column + 1].to_bits() != expected.to_bits() {
+                                return false;
+                            }
+                        }
+                    }
+                    true
+                })
     }
 
     pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {
@@ -540,7 +564,9 @@ impl<'a> NumericOlsColumns<'a> {
         if value.is_finite() {
             Ok(value)
         } else {
-            Err(invalid_data("prepared OLS raw regression residual is not finite"))
+            Err(invalid_data(
+                "prepared OLS raw regression residual is not finite",
+            ))
         }
     }
 }
@@ -1155,51 +1181,118 @@ mod tests {
     #[test]
     fn loaded_rhs_reuse_preserves_bits_and_rejects_stale_rows() {
         use crate::{ThreadConfig, ThreadTeam};
-        for (width, n) in [(3_usize,16383), (3,16384), (5,16384), (7,16384), (8,16384),
-            (9,4099), (12,4099), (52,4099), (64,4099)] {
+        for (width, n) in [
+            (3_usize, 16383),
+            (3, 16384),
+            (5, 16384),
+            (7, 16384),
+            (8, 16384),
+            (9, 4099),
+            (12, 4099),
+            (52, 4099),
+            (64, 4099),
+        ] {
             let mut request = request(false, true);
             request.model.sources.clear();
             request.model.terms.clear();
             request.bindings.truncate(2);
-            let mut input = LoadedOlsInput { candidate: vec![true; n],
+            let mut input = LoadedOlsInput {
+                candidate: vec![true; n],
                 outcome: loaded((0..n).map(|r| (r as f64).cos()).collect()),
-                numeric_sources: Vec::new(), analytic_weight: None,
-                frequency_weight: None, probability_weight: None };
+                numeric_sources: Vec::new(),
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            };
             for j in 0..width - 2 {
                 let source = source(j as u32 + 1, &format!("x{j}"));
-                request.model.terms.push(continuous_term(j as u32 + 1, source.id));
-                request.bindings.push(OlsInputBinding { stata_var_position: j as u32 + 3,
-                    role: OlsInputRole::NumericSource(source.id) });
-                input.numeric_sources.push((source.id, loaded((0..n).map(|r|
-                    if r == 0 { -0.0 } else { ((r * 17 + j) as f64).sin() * if j % 2 == 0 { 1e90 } else { 1e-90 } }).collect())));
+                request
+                    .model
+                    .terms
+                    .push(continuous_term(j as u32 + 1, source.id));
+                request.bindings.push(OlsInputBinding {
+                    stata_var_position: j as u32 + 3,
+                    role: OlsInputRole::NumericSource(source.id),
+                });
+                input.numeric_sources.push((
+                    source.id,
+                    loaded(
+                        (0..n)
+                            .map(|r| {
+                                if r == 0 {
+                                    -0.0
+                                } else {
+                                    ((r * 17 + j) as f64).sin()
+                                        * if j % 2 == 0 { 1e90 } else { 1e-90 }
+                                }
+                            })
+                            .collect(),
+                    ),
+                ));
                 request.model.sources.push(source);
             }
             let mut prepared = prepare_ols_data(&request, &input).unwrap();
             for threads in [1, 4, 8, 16] {
-                ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()).install(|| {
-                    let reference = build_prepared_ols_rhs(&prepared).unwrap().into_values();
-                    let rows = reference.as_slice().to_vec();
-                    let pointer = rows.as_ptr();
-                    let (rhs, transferred) = build_prepared_ols_rhs_with_loaded_rows_and_reuse(&prepared, &prepared.sample.outcome, Some(rows)).unwrap();
-                    let reused = rhs.into_values();
-                    assert_eq!(transferred, width >= 9 || n >= 16384 && threads >= 8);
-                    if transferred { assert_eq!(pointer, reused.as_slice().as_ptr()); }
-                    assert!(reference.as_slice().iter().zip(reused.as_slice()).all(|(a,b)| a.to_bits() == b.to_bits()));
-                    for cell in [0, 1, width - 1, n * width / 2, n * width - 1] {
-                        let mut stale = reference.as_slice().to_vec();
-                        stale[cell] = f64::NAN;
-                        let result = build_prepared_ols_rhs_with_loaded_rows(&prepared, &prepared.sample.outcome, Some(stale)).unwrap().into_values();
-                        assert!(reference.as_slice().iter().zip(result.as_slice()).all(|(a,b)| a.to_bits() == b.to_bits()));
-                    }
-                    for length in [0, n * width - 1, n * width + 1] {
-                        let result = build_prepared_ols_rhs_with_loaded_rows(&prepared, &prepared.sample.outcome, Some(vec![0.0; length])).unwrap().into_values();
-                        assert_eq!(reference, result);
-                    }
-                }).unwrap();
+                ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
+                    .install(|| {
+                        let reference = build_prepared_ols_rhs(&prepared).unwrap().into_values();
+                        let rows = reference.as_slice().to_vec();
+                        let pointer = rows.as_ptr();
+                        let (rhs, transferred) = build_prepared_ols_rhs_with_loaded_rows_and_reuse(
+                            &prepared,
+                            &prepared.sample.outcome,
+                            Some(rows),
+                        )
+                        .unwrap();
+                        let reused = rhs.into_values();
+                        assert_eq!(transferred, width >= 9 || n >= 16384 && threads >= 8);
+                        if transferred {
+                            assert_eq!(pointer, reused.as_slice().as_ptr());
+                        }
+                        assert!(reference
+                            .as_slice()
+                            .iter()
+                            .zip(reused.as_slice())
+                            .all(|(a, b)| a.to_bits() == b.to_bits()));
+                        for cell in [0, 1, width - 1, n * width / 2, n * width - 1] {
+                            let mut stale = reference.as_slice().to_vec();
+                            stale[cell] = f64::NAN;
+                            let result = build_prepared_ols_rhs_with_loaded_rows(
+                                &prepared,
+                                &prepared.sample.outcome,
+                                Some(stale),
+                            )
+                            .unwrap()
+                            .into_values();
+                            assert!(reference
+                                .as_slice()
+                                .iter()
+                                .zip(result.as_slice())
+                                .all(|(a, b)| a.to_bits() == b.to_bits()));
+                        }
+                        for length in [0, n * width - 1, n * width + 1] {
+                            let result = build_prepared_ols_rhs_with_loaded_rows(
+                                &prepared,
+                                &prepared.sample.outcome,
+                                Some(vec![0.0; length]),
+                            )
+                            .unwrap()
+                            .into_values();
+                            assert_eq!(reference, result);
+                        }
+                    })
+                    .unwrap();
             }
             prepared.sample.regressors[0][0] = f64::NAN;
-            assert_eq!(build_prepared_ols_rhs(&prepared).unwrap_err(),
-                build_prepared_ols_rhs_with_loaded_rows(&prepared, &prepared.sample.outcome, Some(Vec::new())).unwrap_err());
+            assert_eq!(
+                build_prepared_ols_rhs(&prepared).unwrap_err(),
+                build_prepared_ols_rhs_with_loaded_rows(
+                    &prepared,
+                    &prepared.sample.outcome,
+                    Some(Vec::new())
+                )
+                .unwrap_err()
+            );
         }
     }
 
@@ -1424,16 +1517,16 @@ mod tests {
                         values.extend(prepared.fit_model().columns.iter().map(|column| {
                             match &column.kind {
                                 PreparedOlsColumnKind::Intercept => 1.0,
-                                PreparedOlsColumnKind::Continuous { source, .. } => raw(*source, row),
+                                PreparedOlsColumnKind::Continuous { source, .. } => {
+                                    raw(*source, row)
+                                }
                                 PreparedOlsColumnKind::Categorical {
                                     source, level_bits, ..
                                 } => f64::from(raw(*source, row) == f64::from_bits(*level_bits)),
                                 PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                                    f64::from(
-                                        components.iter().all(|c| {
-                                            raw(c.source, row) == f64::from_bits(c.level_bits)
-                                        }),
-                                    )
+                                    f64::from(components.iter().all(|c| {
+                                        raw(c.source, row) == f64::from_bits(c.level_bits)
+                                    }))
                                 }
                             }
                         }));
@@ -1442,23 +1535,52 @@ mod tests {
                     .collect();
                 assert_eq!(expected.len(), n * (width + 1));
                 for column in 0..width {
-                    for range in [0..n, 127..260, n-1..n, n..n] {
+                    for range in [0..n, 127..260, n - 1..n, n..n] {
                         let mut actual = Vec::new();
-                        crate::prepared_fit_view::visit_prepared_column_range(prepared, column, range.clone(), |row, value| {
-                            actual.push((row, value.to_bits())); Ok(())
-                        }).unwrap();
-                        let wanted: Vec<_> = range.map(|row|
-                            (row, expected[row * (width + 1) + column + 1].to_bits())).collect();
+                        crate::prepared_fit_view::visit_prepared_column_range(
+                            prepared,
+                            column,
+                            range.clone(),
+                            |row, value| {
+                                actual.push((row, value.to_bits()));
+                                Ok(())
+                            },
+                        )
+                        .unwrap();
+                        let wanted: Vec<_> = range
+                            .map(|row| (row, expected[row * (width + 1) + column + 1].to_bits()))
+                            .collect();
                         assert_eq!(actual, wanted);
                     }
                 }
-                assert!(crate::prepared_fit_view::visit_prepared_column_range(prepared, width, 0..1, |_,_| Ok(())).is_err());
-                assert!(crate::prepared_fit_view::visit_prepared_column_range(prepared, 0, 0..n+1, |_,_| Ok(())).is_err());
+                assert!(crate::prepared_fit_view::visit_prepared_column_range(
+                    prepared,
+                    width,
+                    0..1,
+                    |_, _| Ok(())
+                )
+                .is_err());
+                assert!(crate::prepared_fit_view::visit_prepared_column_range(
+                    prepared,
+                    0,
+                    0..n + 1,
+                    |_, _| Ok(())
+                )
+                .is_err());
                 let mut visits = 0;
-                let error = crate::prepared_fit_view::visit_prepared_column_range(prepared, 0, 0..n, |_,_| {
-                    visits += 1;
-                    Err(FeregError::new(ErrorCode::Interrupted, "column scan interrupted"))
-                }).unwrap_err();
+                let error = crate::prepared_fit_view::visit_prepared_column_range(
+                    prepared,
+                    0,
+                    0..n,
+                    |_, _| {
+                        visits += 1;
+                        Err(FeregError::new(
+                            ErrorCode::Interrupted,
+                            "column scan interrupted",
+                        ))
+                    },
+                )
+                .unwrap_err();
                 assert_eq!(error.code, ErrorCode::Interrupted);
                 assert_eq!(visits, 1);
 
@@ -1484,12 +1606,13 @@ mod tests {
                 let mut wanted = vec![-0.0_f64; n];
                 for &(column, coefficient) in &selection {
                     for row in 0..n {
-                        wanted[row] =
-                            coefficient.mul_add(expected[row * (width + 1) + column + 1], wanted[row]);
+                        wanted[row] = coefficient
+                            .mul_add(expected[row * (width + 1) + column + 1], wanted[row]);
                     }
                 }
                 for workers in [1, 4, 16] {
-                    let team = ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap());
+                    let team =
+                        ThreadTeam::new(ThreadConfig::from_requested(workers, true).unwrap());
                     let mut actual = vec![-0.0_f64; n];
                     let used = team
                         .install(|| {

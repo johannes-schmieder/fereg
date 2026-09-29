@@ -214,6 +214,8 @@ fn certify_with_bases(
                 &fresh_basis
             };
             group += 1;
+            // Keep the legacy matrix indices and numerical traversal order explicit.
+            #[allow(clippy::needless_range_loop)]
             for rhs in 0..residuals.ncols() {
                 let relative = relative_projection(
                     observations,

@@ -5,12 +5,12 @@ use super::prepared_scratch::PreparedOlsScratch;
 use super::PreparedOlsColumnKind;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
+#[cfg(any(target_arch = "aarch64", target_feature = "fma"))]
+use crate::fe::slope_coefficients::joint::normalized_product;
 use crate::fe::{
     BorrowedInterceptFeDesign, BorrowedMapWeights, FeCertificate, FeSolverKind, MapConfig,
     SolveReport, SolveStopReason,
 };
-#[cfg(any(target_arch = "aarch64", target_feature = "fma"))]
-use crate::fe::slope_coefficients::joint::normalized_product;
 use crate::memory::SolverWorkspacePeak;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
@@ -19,7 +19,12 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::Instant;
 
 mod three;
-pub(crate) fn canonical_three_workspace_bytes(n: usize, width: usize, levels: [usize; 3], threads: usize) -> Option<u128> {
+pub(crate) fn canonical_three_workspace_bytes(
+    n: usize,
+    width: usize,
+    levels: [usize; 3],
+    threads: usize,
+) -> Option<u128> {
     three::workspace_bytes(n, width, levels, threads)
 }
 
@@ -292,7 +297,10 @@ enum Column<'a, P: ?Sized> {
 }
 impl<P: ?Sized> Clone for Column<'_, P> {
     fn clone(&self) -> Self {
-        match self { Self::Numeric(v) => Self::Numeric(v), Self::Generated(p, j) => Self::Generated(p, *j) }
+        match self {
+            Self::Numeric(v) => Self::Numeric(v),
+            Self::Generated(p, j) => Self::Generated(p, *j),
+        }
     }
 }
 impl<P: PreparedOlsFitView + ?Sized> Column<'_, P> {
@@ -355,8 +363,12 @@ impl TiledCoefficients {
                 let g = self.groups[slot];
                 for j in 1..width {
                     values[j] = group_coefficient(
-                        &columns[j], &self.weights, nonzero(scales[j]), self.masses[g],
-                        a.level_index().members(g), Some((&right[j * q..(j + 1) * q], b.codes())),
+                        &columns[j],
+                        &self.weights,
+                        nonzero(scales[j]),
+                        self.masses[g],
+                        a.level_index().members(g),
+                        Some((&right[j * q..(j + 1) * q], b.codes())),
                     )?;
                 }
                 Ok(())
@@ -439,8 +451,17 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
         storage.rewrite_row_major_prepared_with(
             tile,
             rows,
-            |tile, first, count| tile.prepare(&self.columns, &self.design, self.left_effect,
-                &self.scales, &self.right, first, count),
+            |tile, first, count| {
+                tile.prepare(
+                    &self.columns,
+                    &self.design,
+                    self.left_effect,
+                    &self.scales,
+                    &self.right,
+                    first,
+                    count,
+                )
+            },
             |tile, row, column| {
                 let j = column + 1;
                 let scale = nonzero(self.scales[j]);
@@ -456,12 +477,19 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
     pub fn write_dense(&mut self, storage: &mut DenseMatrix) -> Result<()> {
         let columns = self.columns.len() - 1;
         if storage.nrows() != self.design.nobs() || storage.ncols() != columns {
-            return Err(FeregError::new(ErrorCode::InvalidArgument,
-                "canonical dense product storage is misaligned"));
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "canonical dense product storage is misaligned",
+            ));
         }
-        if columns == 0 { return Ok(()); }
+        if columns == 0 {
+            return Ok(());
+        }
         let Some(tile) = self.tiled.as_mut() else {
-            return storage.as_mut_slice().par_chunks_mut(columns).enumerate()
+            return storage
+                .as_mut_slice()
+                .par_chunks_mut(columns)
+                .enumerate()
                 .try_for_each(|(row, values)| {
                     for (column, value) in values.iter_mut().enumerate() {
                         *value = self.residual(row, column + 1)?;
@@ -476,22 +504,39 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> Products<'_, P> {
         let rows = tile.rows;
         // Streamed centers are rebuilt once per group in an output tile, not
         // once for every observation that belongs to that group.
-        for (index, values) in storage.as_mut_slice().chunks_mut(rows * columns).enumerate() {
+        for (index, values) in storage
+            .as_mut_slice()
+            .chunks_mut(rows * columns)
+            .enumerate()
+        {
             let first = index * rows;
-            tile.prepare(&self.columns, &self.design, self.left_effect, &self.scales,
-                &self.right, first, values.len() / columns)?;
-            values.par_chunks_mut(columns).enumerate().try_for_each(|(i, values)| -> Result<()> {
-                let row = first + i;
-                let slot = tile.slots[a.codes()[row] as usize];
-                for (column, value) in values.iter_mut().enumerate() {
-                    let j = column + 1;
-                    let scale = nonzero(self.scales[j]);
-                    *value = (self.columns[j].value(row)? / scale - tile.values[slot * width + j]
-                        - self.right[j * q + b.codes()[row] as usize]) * scale;
-                    if !value.is_finite() { return Err(declined()); }
-                }
-                Ok(())
-            })?;
+            tile.prepare(
+                &self.columns,
+                &self.design,
+                self.left_effect,
+                &self.scales,
+                &self.right,
+                first,
+                values.len() / columns,
+            )?;
+            values.par_chunks_mut(columns).enumerate().try_for_each(
+                |(i, values)| -> Result<()> {
+                    let row = first + i;
+                    let slot = tile.slots[a.codes()[row] as usize];
+                    for (column, value) in values.iter_mut().enumerate() {
+                        let j = column + 1;
+                        let scale = nonzero(self.scales[j]);
+                        *value = (self.columns[j].value(row)? / scale
+                            - tile.values[slot * width + j]
+                            - self.right[j * q + b.codes()[row] as usize])
+                            * scale;
+                        if !value.is_finite() {
+                            return Err(declined());
+                        }
+                    }
+                    Ok(())
+                },
+            )?;
         }
         Ok(())
     }
@@ -538,8 +583,17 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         return Ok(None);
     };
     if design.effects().len() == 3 && design.nobs() == response.len() {
-        return three::try_build(prepared, generated, response, weights, divisor, config,
-            allowance, obsolete_projection, design);
+        return three::try_build(
+            prepared,
+            generated,
+            response,
+            weights,
+            divisor,
+            config,
+            allowance,
+            obsolete_projection,
+            design,
+        );
     }
     if design.effects().len() != 2 || design.nobs() != response.len() {
         return Ok(None);
@@ -556,7 +610,9 @@ pub(super) fn try_build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     };
     let available = allowance.saturating_sub(obsolete_projection.capacity() as u128 * 8);
     if plan.bytes > allowance
-        || plan.topology_storage_bytes().is_none_or(|bytes| bytes > available)
+        || plan
+            .topology_storage_bytes()
+            .is_none_or(|bytes| bytes > available)
     {
         return Ok(None);
     }
@@ -693,29 +749,50 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // original-input certificate decides acceptance of either proposal.
     let dense_iterative = factor_work > factor_work_budget;
     let dense_krylov = if dense_iterative {
-        d.checked_mul(width).and_then(|x| x.checked_mul(3)).ok_or_else(declined)?
-    } else { 0 };
-    let dense_charge = factor_cells.checked_add(dense_krylov).ok_or_else(declined)?;
+        d.checked_mul(width)
+            .and_then(|x| x.checked_mul(3))
+            .ok_or_else(declined)?
+    } else {
+        0
+    };
+    let dense_charge = factor_cells
+        .checked_add(dense_krylov)
+        .ok_or_else(declined)?;
     // Dense geometry already affordable under the existing complete phase plan
     // retains its arithmetic. Implicit geometry admits the full certified
     // product pipeline where dense storage would otherwise force repeated
     // observation-space construction, not merely a different dense matvec.
-    let implicit = plan.minimum_storage_bytes(matrix_cells, dense_charge)
+    let implicit = plan
+        .minimum_storage_bytes(matrix_cells, dense_charge)
         .is_none_or(|bytes| bytes > allowance);
     let iterative = implicit || dense_iterative;
     let krylov_cells = if iterative {
-        d.checked_mul(width).and_then(|x| x.checked_mul(3)).ok_or_else(declined)?
-    } else { 0 };
+        d.checked_mul(width)
+            .and_then(|x| x.checked_mul(3))
+            .ok_or_else(declined)?
+    } else {
+        0
+    };
     let matrix_cells = if implicit { q } else { matrix_cells };
-    let factor_cells = if implicit { n.checked_add(q).ok_or_else(declined)? } else { factor_cells };
+    let factor_cells = if implicit {
+        n.checked_add(q).ok_or_else(declined)?
+    } else {
+        factor_cells
+    };
     let incidence_indices = if implicit {
-        (n as u128).checked_mul(size_of::<usize>() as u128)
+        (n as u128)
+            .checked_mul(size_of::<usize>() as u128)
             .and_then(|x| x.checked_add((p as u128) * size_of::<IncidenceRow>() as u128))
-            .ok_or_else(declined)?.div_ceil(8)
-    } else { 0 };
+            .ok_or_else(declined)?
+            .div_ceil(8)
+    } else {
+        0
+    };
     let incidence_words = usize::try_from(incidence_indices).map_err(|_| declined())?;
-    let factor_charge = factor_cells.checked_add(krylov_cells)
-        .and_then(|x| x.checked_add(incidence_words)).ok_or_else(declined)?;
+    let factor_charge = factor_cells
+        .checked_add(krylov_cells)
+        .and_then(|x| x.checked_add(incidence_words))
+        .ok_or_else(declined)?;
     let minimum_bytes = plan
         .minimum_storage_bytes(matrix_cells, factor_charge)
         .ok_or_else(declined)?;
@@ -777,6 +854,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     let mut matrix = budget.reserve(matrix_cells, 0.)?;
     let mut totals = budget.reserve(q, 0.)?;
     let mut touched = budget.reserve(q, 0_usize)?;
+    // Keep the legacy matrix indices and numerical traversal order explicit.
+    #[allow(clippy::needless_range_loop)]
     for g in 0..p {
         let mut count = 0;
         for &i in a.level_index().members(g) {
@@ -806,22 +885,22 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 suffix += totals[h];
             }
         } else {
-        for (position, &h) in touched[..count].iter().enumerate() {
-            let block = components[parent[h]];
-            let size = block.len + 1;
-            let row = local[h];
-            for &j in &touched[position + 1..count] {
-                let value = (totals[h].max(totals[j]) / mass_a[g]) * totals[h].min(totals[j]);
-                if !value.is_finite() || value <= 0. {
-                    return Err(declined());
+            for (position, &h) in touched[..count].iter().enumerate() {
+                let block = components[parent[h]];
+                let size = block.len + 1;
+                let row = local[h];
+                for &j in &touched[position + 1..count] {
+                    let value = (totals[h].max(totals[j]) / mass_a[g]) * totals[h].min(totals[j]);
+                    if !value.is_finite() || value <= 0. {
+                        return Err(declined());
+                    }
+                    let column = local[j];
+                    matrix[block.matrix_offset + row * size + column] -= value;
+                    matrix[block.matrix_offset + column * size + row] -= value;
+                    matrix[block.matrix_offset + row * size + row] += value;
+                    matrix[block.matrix_offset + column * size + column] += value;
                 }
-                let column = local[j];
-                matrix[block.matrix_offset + row * size + column] -= value;
-                matrix[block.matrix_offset + column * size + row] -= value;
-                matrix[block.matrix_offset + row * size + row] += value;
-                matrix[block.matrix_offset + column * size + column] += value;
             }
-        }
         }
         for &h in &touched[..count] {
             totals[h] = 0.;
@@ -843,9 +922,12 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         let block = components[r];
         let size = block.len + 1;
         touched[block.level_start + local[h]] = h;
-        roots[h] = if implicit { matrix[h] } else {
+        roots[h] = if implicit {
+            matrix[h]
+        } else {
             matrix[block.matrix_offset + local[h] * size + local[h]]
-        }.sqrt();
+        }
+        .sqrt();
         if anchors[r] != h {
             if !roots[h].is_finite() || roots[h] <= 0. {
                 return Err(declined());
@@ -855,7 +937,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     }
     let mut factor = budget.reserve(factor_cells, 0.)?;
     let mut incidence_ids = budget.reserve(if implicit { n } else { 0 }, 0_usize)?;
-    let mut incidence_rows = budget.reserve(if implicit { p } else { 0 }, IncidenceRow::default())?;
+    let mut incidence_rows =
+        budget.reserve(if implicit { p } else { 0 }, IncidenceRow::default())?;
     if implicit {
         let mut edge = 0;
         for g in 0..p {
@@ -864,7 +947,10 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             let mut count = 0;
             for &i in members {
                 let h = b.codes()[i] as usize;
-                if totals[h] == 0. { touched[count] = h; count += 1; }
+                if totals[h] == 0. {
+                    touched[count] = h;
+                    count += 1;
+                }
                 totals[h] += w[i];
             }
             touched[..count].sort_unstable();
@@ -874,36 +960,46 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 if free[h] != usize::MAX {
                     incidence_ids[edge] = free[h] - components[component].start;
                     factor[edge] = (totals[h] / mass_root) / roots[h];
-                    if !factor[edge].is_finite() { return Err(declined()); }
+                    if !factor[edge].is_finite() {
+                        return Err(declined());
+                    }
                     edge += 1;
                 }
                 totals[h] = 0.;
             }
-            incidence_rows[g] = IncidenceRow { start, end: edge, component };
+            incidence_rows[g] = IncidenceRow {
+                start,
+                end: edge,
+                component,
+            };
         }
         incidence_rows.sort_unstable_by_key(|row| (row.component, row.start));
         for h in 0..q {
             if free[h] != usize::MAX {
                 factor[n + free[h]] = (mass_b[h] / roots[h]) / roots[h];
-                if !factor[n + free[h]].is_finite() { return Err(declined()); }
-            }
-        }
-        for (root, block) in components.iter_mut().enumerate() { block.matrix_offset = root; }
-    } else {
-    for h in 0..q {
-        if free[h] != usize::MAX {
-            let block = components[parent[h]];
-            let size = block.len + 1;
-            for &j in &touched[block.level_start..block.level_start + size] {
-                if free[j] != usize::MAX {
-                    factor[block.offset + (free[h] - block.start) * block.len + free[j]
-                        - block.start] = (matrix[block.matrix_offset + local[h] * size + local[j]]
-                        / roots[h])
-                        / roots[j];
+                if !factor[n + free[h]].is_finite() {
+                    return Err(declined());
                 }
             }
         }
-    }
+        for (root, block) in components.iter_mut().enumerate() {
+            block.matrix_offset = root;
+        }
+    } else {
+        for h in 0..q {
+            if free[h] != usize::MAX {
+                let block = components[parent[h]];
+                let size = block.len + 1;
+                for &j in &touched[block.level_start..block.level_start + size] {
+                    if free[j] != usize::MAX {
+                        factor[block.offset + (free[h] - block.start) * block.len + free[j]
+                            - block.start] =
+                            (matrix[block.matrix_offset + local[h] * size + local[j]] / roots[h])
+                                / roots[j];
+                    }
+                }
+            }
+        }
     }
     components.retain(|block| block.len != 0);
     // Direct proposals retain the existing global pivot guard. Iterative
@@ -911,7 +1007,9 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     // neither reduced solve establishes canonical finite-rank authority.
     let guard = 128. * f64::EPSILON * d.max(1) as f64;
     for block in &components {
-        if iterative { break; }
+        if iterative {
+            break;
+        }
         let size = block.len;
         let factor = &mut factor[block.offset..block.offset + size * size];
         for j in 0..size {
@@ -952,6 +1050,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
         .try_for_each(|(j, norm)| -> Result<()> {
             let mut scale = 0_f64;
             let mut square = 1.;
+            // Keep the legacy matrix indices and numerical traversal order explicit.
+            #[allow(clippy::needless_range_loop)]
             for i in 0..n {
                 let value = columns[j].value(i)?;
                 if !value.is_finite() {
@@ -1035,57 +1135,79 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     let iterations = AtomicUsize::new(1);
     if d > 0 {
         let solve_column = |j: usize, values: &mut [f64], scratch: &mut [f64]| -> Result<()> {
-                for h in 0..q {
-                    if free[h] != usize::MAX {
-                        values[free[h]] = cross[j * q + h] / roots[h];
-                    }
+            for h in 0..q {
+                if free[h] != usize::MAX {
+                    values[free[h]] = cross[j * q + h] / roots[h];
                 }
-                for block in &components {
-                    let size = block.len;
-                    let values = &mut values[block.start..block.start + size];
-                    if implicit {
-                        let root = block.matrix_offset;
-                        let start = incidence_rows.partition_point(|row| row.component < root);
-                        let end = incidence_rows.partition_point(|row| row.component <= root);
-                        let rows = &incidence_rows[start..end];
-                        let diagonal = &factor[n + block.start..n + block.start + size];
-                        let count = solve_reduced_cg_with_product(values, &mut scratch[..3 * size],
-                            config.max_iterations.min(size), config.tolerance * 0.01,
-                            |direction, product| apply_incidence_schur(
-                                &factor[..n], diagonal, &incidence_ids, rows, direction, product))?;
-                        iterations.fetch_max(count, Ordering::Relaxed);
-                        continue;
-                    }
-                    let factor = &factor[block.offset..block.offset + size * size];
-                    if iterative {
-                        let count = solve_reduced_cg(factor, values, &mut scratch[..3*size],
-                            config.max_iterations.min(size), config.tolerance * 0.01)?;
-                        iterations.fetch_max(count, Ordering::Relaxed);
-                        continue;
-                    }
-                    for i in 0..size {
-                        for k in 0..i {
-                            values[i] -= factor[i * size + k] * values[k];
-                        }
-                        values[i] /= factor[i * size + i];
-                    }
-                    for i in (0..size).rev() {
-                        for k in i + 1..size {
-                            values[i] -= factor[k * size + i] * values[k];
-                        }
-                        values[i] /= factor[i * size + i];
-                    }
+            }
+            for block in &components {
+                let size = block.len;
+                let values = &mut values[block.start..block.start + size];
+                if implicit {
+                    let root = block.matrix_offset;
+                    let start = incidence_rows.partition_point(|row| row.component < root);
+                    let end = incidence_rows.partition_point(|row| row.component <= root);
+                    let rows = &incidence_rows[start..end];
+                    let diagonal = &factor[n + block.start..n + block.start + size];
+                    let count = solve_reduced_cg_with_product(
+                        values,
+                        &mut scratch[..3 * size],
+                        config.max_iterations.min(size),
+                        config.tolerance * 0.01,
+                        |direction, product| {
+                            apply_incidence_schur(
+                                &factor[..n],
+                                diagonal,
+                                &incidence_ids,
+                                rows,
+                                direction,
+                                product,
+                            )
+                        },
+                    )?;
+                    iterations.fetch_max(count, Ordering::Relaxed);
+                    continue;
                 }
-                if values.iter().any(|x| !x.is_finite()) {
-                    return Err(declined());
+                let factor = &factor[block.offset..block.offset + size * size];
+                if iterative {
+                    let count = solve_reduced_cg(
+                        factor,
+                        values,
+                        &mut scratch[..3 * size],
+                        config.max_iterations.min(size),
+                        config.tolerance * 0.01,
+                    )?;
+                    iterations.fetch_max(count, Ordering::Relaxed);
+                    continue;
                 }
-                Ok(())
+                for i in 0..size {
+                    for k in 0..i {
+                        values[i] -= factor[i * size + k] * values[k];
+                    }
+                    values[i] /= factor[i * size + i];
+                }
+                for i in (0..size).rev() {
+                    for k in i + 1..size {
+                        values[i] -= factor[k * size + i] * values[k];
+                    }
+                    values[i] /= factor[i * size + i];
+                }
+            }
+            if values.iter().any(|x| !x.is_finite()) {
+                return Err(declined());
+            }
+            Ok(())
         };
         if iterative {
-            solved.par_chunks_mut(d).zip(krylov.par_chunks_mut(3*d)).enumerate()
+            solved
+                .par_chunks_mut(d)
+                .zip(krylov.par_chunks_mut(3 * d))
+                .enumerate()
                 .try_for_each(|(j, (values, scratch))| solve_column(j, values, scratch))?;
         } else {
-            solved.par_chunks_mut(d).enumerate()
+            solved
+                .par_chunks_mut(d)
+                .enumerate()
                 .try_for_each(|(j, values)| solve_column(j, values, &mut []))?;
         }
     }
@@ -1223,6 +1345,8 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             column_square += partial[stride - 2 * width + j];
             column_abs = column_abs.max(partial[stride - width + j]);
         }
+        // Keep the legacy matrix indices and numerical traversal order explicit.
+        #[allow(clippy::needless_range_loop)]
         for h in 0..q {
             let score = merge(&partials, stride, width * width + h * width + j).abs();
             let value = score / mass_b[h].sqrt();
@@ -1450,13 +1574,20 @@ fn solve_reduced_cg(
     tolerance: f64,
 ) -> Result<usize> {
     let n = values.len();
-    if matrix.len() != n * n { return Err(declined()); }
-    solve_reduced_cg_with_product(values, scratch, max_iterations, tolerance,
+    if matrix.len() != n * n {
+        return Err(declined());
+    }
+    solve_reduced_cg_with_product(
+        values,
+        scratch,
+        max_iterations,
+        tolerance,
         |direction, product| {
             for (row, out) in matrix.chunks(n).zip(product.iter_mut()) {
                 *out = reduced_matrix_product(row, direction);
             }
-        })
+        },
+    )
 }
 
 #[derive(Clone, Copy, Default)]
@@ -1469,10 +1600,16 @@ struct IncidenceRow {
 // diag(m_b / root^2) - C'C. Group-pair weights are combined once;
 // grounding and component-local coordinates are resolved before any iteration.
 fn apply_incidence_schur(
-    incidence: &[f64], diagonal: &[f64], ids: &[usize], rows: &[IncidenceRow],
-    direction: &[f64], product: &mut [f64],
+    incidence: &[f64],
+    diagonal: &[f64],
+    ids: &[usize],
+    rows: &[IncidenceRow],
+    direction: &[f64],
+    product: &mut [f64],
 ) {
-    for ((out, d), x) in product.iter_mut().zip(diagonal).zip(direction) { *out = d * x; }
+    for ((out, d), x) in product.iter_mut().zip(diagonal).zip(direction) {
+        *out = d * x;
+    }
     for row in rows {
         let mut center = 0.;
         let coefficients = &incidence[row.start..row.end];
@@ -1487,11 +1624,16 @@ fn apply_incidence_schur(
 }
 
 fn solve_reduced_cg_with_product(
-    values: &mut [f64], scratch: &mut [f64], max_iterations: usize,
-    tolerance: f64, apply: impl Fn(&[f64], &mut [f64]),
+    values: &mut [f64],
+    scratch: &mut [f64],
+    max_iterations: usize,
+    tolerance: f64,
+    apply: impl Fn(&[f64], &mut [f64]),
 ) -> Result<usize> {
     let n = values.len();
-    if scratch.len() < 3 * n { return Err(declined()); }
+    if scratch.len() < 3 * n {
+        return Err(declined());
+    }
     let scale = values.iter().map(|x| x.abs()).fold(0_f64, f64::max);
     if !scale.is_finite() {
         return Err(declined());
@@ -1582,7 +1724,9 @@ mod tests {
         OlsRequestV1, PreparedOlsData,
     };
 
-    fn prepared(y: &[f64], x: &[Vec<f64>], g: &[f64], h: &[f64]) -> PreparedOlsData { prepared_effects(y, x, &[g, h]) }
+    fn prepared(y: &[f64], x: &[Vec<f64>], g: &[f64], h: &[f64]) -> PreparedOlsData {
+        prepared_effects(y, x, &[g, h])
+    }
 
     fn prepared_effects(y: &[f64], x: &[Vec<f64>], effects: &[&[f64]]) -> PreparedOlsData {
         let mut sources = Vec::new();
@@ -1598,7 +1742,12 @@ mod tests {
                 role: OlsInputRole::Outcome,
             },
         ];
-        for (j, values) in x.iter().map(Vec::as_slice).chain(effects.iter().copied()).enumerate() {
+        for (j, values) in x
+            .iter()
+            .map(Vec::as_slice)
+            .chain(effects.iter().copied())
+            .enumerate()
+        {
             let id = (j + 1) as u32;
             let source = SourceId::new(id).unwrap();
             sources.push(SourceEntry {
@@ -1674,69 +1823,173 @@ mod tests {
     #[test]
     fn implicit_canonical_frame_matches_weighted_contrasts_when_dense_storage_refuses() {
         for threads in [1, 4] {
-            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
-                for disconnected in [false, true] {
-                    for frame in [0, 1] {
-                        for mass in [1e-100, 1., 1e100] {
-                            let (mut g, mut h, mut w) = (Vec::new(), Vec::new(), Vec::new());
-                            let mut values = vec![Vec::new(); 7];
-                            let mut truth = vec![Vec::new(); 7];
-                            for a in 0..1024 { for e in 0..8 { for repeat in 0..2 {
-                                let b = if disconnected { (a*7+e*61)%256 + (a/512)*256 }
-                                    else { (a*7+e*61)%512 };
-                                g.push(a as f64); h.push(b as f64);
-                                w.push(mass*(0.2+((a*13+e*7+frame*3)%17) as f64));
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for disconnected in [false, true] {
+                        for frame in [0, 1] {
+                            for mass in [1e-100, 1., 1e100] {
+                                let (mut g, mut h, mut w) = (Vec::new(), Vec::new(), Vec::new());
+                                let mut values = vec![Vec::new(); 7];
+                                let mut truth = vec![Vec::new(); 7];
+                                for a in 0..1024 {
+                                    for e in 0..8 {
+                                        for repeat in 0..2 {
+                                            let b = if disconnected {
+                                                (a * 7 + e * 61) % 256 + (a / 512) * 256
+                                            } else {
+                                                (a * 7 + e * 61) % 512
+                                            };
+                                            g.push(a as f64);
+                                            h.push(b as f64);
+                                            w.push(
+                                                mass * (0.2
+                                                    + ((a * 13 + e * 7 + frame * 3) % 17) as f64),
+                                            );
+                                            for j in 0..7 {
+                                                let scale = if j == 1 {
+                                                    1e20
+                                                } else if j == 2 {
+                                                    1e-20
+                                                } else {
+                                                    1.
+                                                };
+                                                let r = if j == 3 {
+                                                    0.
+                                                } else {
+                                                    (2. * repeat as f64 - 1.)
+                                                        * ((a * (j + 1) + e * 3) % 11) as f64
+                                                };
+                                                truth[j].push(r * scale);
+                                                values[j].push(
+                                                    (r + 0.01 * a as f64 - 0.02 * b as f64) * scale,
+                                                );
+                                            }
+                                        }
+                                    }
+                                }
+                                let p = prepared(&values[0], &values[1..], &g, &h);
+                                let config = MapConfig {
+                                    tolerance: 1e-12,
+                                    ..MapConfig::default()
+                                };
+                                let divisor = w.iter().copied().fold(0_f64, f64::max);
+                                let allowance = 16 * g.len() as u128 * 6;
+                                let cols = [0, 1, 2, 3, 4, 5];
+                                let mut product = try_build(
+                                    &p,
+                                    &cols,
+                                    &values[0],
+                                    BorrowedMapWeights::Provided(&w),
+                                    divisor,
+                                    config,
+                                    allowance,
+                                    0,
+                                    &mut Vec::new(),
+                                )
+                                .unwrap()
+                                .expect("implicit frame fits and certifies");
+                                assert!(product.implicit && product.report.certified());
+                                let mut dense = DenseMatrix::zeros(g.len(), 6).unwrap();
+                                product.write_dense(&mut dense).unwrap();
+                                let mut file =
+                                    PreparedOlsScratch::create_row_major(g.len(), 6).unwrap();
+                                product.write_controls(&mut file).unwrap();
+                                let mut row = [0.; 6];
+                                for i in 0..g.len() {
+                                    file.read_linear_shared(i * 6, &mut row).unwrap();
+                                    assert!((product.response[i] - truth[0][i]).abs() < 1e-8);
+                                    for j in 1..7 {
+                                        assert_eq!(row[j - 1], dense[(i, j - 1)]);
+                                        let scale = if j == 1 {
+                                            1e20
+                                        } else if j == 2 {
+                                            1e-20
+                                        } else {
+                                            1.
+                                        };
+                                        assert!((row[j - 1] - truth[j][i]).abs() / scale < 1e-8);
+                                    }
+                                }
                                 for j in 0..7 {
-                                    let scale = if j==1 { 1e20 } else if j==2 { 1e-20 } else { 1. };
-                                    let r = if j==3 { 0. } else {
-                                        (2.*repeat as f64-1.)*((a*(j+1)+e*3)%11) as f64
-                                    };
-                                    truth[j].push(r*scale);
-                                    values[j].push((r+0.01*a as f64-0.02*b as f64)*scale);
+                                    for k in 0..7 {
+                                        let expected: f64 = (0..g.len())
+                                            .map(|i| {
+                                                (w[i] / divisor)
+                                                    * (truth[j][i] / nonzero(product.scales[j]))
+                                                    * (truth[k][i] / nonzero(product.scales[k]))
+                                            })
+                                            .sum();
+                                        assert!(
+                                            (product.moments.gram[j * 7 + k] - expected).abs()
+                                                < 1e-10
+                                        );
+                                    }
                                 }
-                            }}}
-                            let p = prepared(&values[0], &values[1..], &g, &h);
-                            let config = MapConfig { tolerance: 1e-12, ..MapConfig::default() };
-                            let divisor = w.iter().copied().fold(0_f64, f64::max);
-                            let allowance = 16*g.len() as u128*6;
-                            let cols = [0,1,2,3,4,5];
-                            let mut product = try_build(&p, &cols, &values[0], BorrowedMapWeights::Provided(&w),
-                                divisor, config, allowance, 0, &mut Vec::new()).unwrap().expect("implicit frame fits and certifies");
-                            assert!(product.implicit && product.report.certified());
-                            let mut dense = DenseMatrix::zeros(g.len(), 6).unwrap();
-                            product.write_dense(&mut dense).unwrap();
-                            let mut file = PreparedOlsScratch::create_row_major(g.len(), 6).unwrap();
-                            product.write_controls(&mut file).unwrap();
-                            let mut row = [0.;6];
-                            for i in 0..g.len() {
-                                file.read_linear_shared(i*6, &mut row).unwrap();
-                                assert!((product.response[i]-truth[0][i]).abs()<1e-8);
-                                for j in 1..7 {
-                                    assert_eq!(row[j-1],dense[(i,j-1)]);
-                                    let scale = if j==1 { 1e20 } else if j==2 { 1e-20 } else { 1. };
-                                    assert!((row[j-1]-truth[j][i]).abs()/scale<1e-8);
-                                }
+                                let bytes = product.minimum_workspace_bytes;
+                                assert!(try_build(
+                                    &p,
+                                    &cols,
+                                    &values[0],
+                                    BorrowedMapWeights::Provided(&w),
+                                    divisor,
+                                    config,
+                                    bytes - 1,
+                                    0,
+                                    &mut Vec::new()
+                                )
+                                .unwrap()
+                                .is_none());
+                                assert!(try_build(
+                                    &p,
+                                    &cols,
+                                    &values[0],
+                                    BorrowedMapWeights::Provided(&w),
+                                    divisor,
+                                    config,
+                                    bytes,
+                                    0,
+                                    &mut Vec::new()
+                                )
+                                .unwrap()
+                                .is_some());
+                                assert!(try_build(
+                                    &p,
+                                    &cols,
+                                    &values[0],
+                                    BorrowedMapWeights::Provided(&w),
+                                    divisor,
+                                    MapConfig {
+                                        max_iterations: 1,
+                                        ..config
+                                    },
+                                    allowance,
+                                    0,
+                                    &mut Vec::new()
+                                )
+                                .unwrap()
+                                .is_none());
+                                // A genuinely affordable dense frame retains its old organization.
+                                let dense = try_build(
+                                    &p,
+                                    &cols,
+                                    &values[0],
+                                    BorrowedMapWeights::Provided(&w),
+                                    divisor,
+                                    config,
+                                    u128::MAX,
+                                    0,
+                                    &mut Vec::new(),
+                                )
+                                .unwrap()
+                                .unwrap();
+                                assert!(!dense.implicit);
                             }
-                            for j in 0..7 { for k in 0..7 {
-                                let expected: f64 = (0..g.len()).map(|i| (w[i]/divisor)*
-                                    (truth[j][i]/nonzero(product.scales[j]))*(truth[k][i]/nonzero(product.scales[k]))).sum();
-                                assert!((product.moments.gram[j*7+k]-expected).abs()<1e-10);
-                            }}
-                            let bytes=product.minimum_workspace_bytes;
-                            assert!(try_build(&p,&cols,&values[0],BorrowedMapWeights::Provided(&w),divisor,
-                                config,bytes-1,0,&mut Vec::new()).unwrap().is_none());
-                            assert!(try_build(&p,&cols,&values[0],BorrowedMapWeights::Provided(&w),divisor,
-                                config,bytes,0,&mut Vec::new()).unwrap().is_some());
-                            assert!(try_build(&p,&cols,&values[0],BorrowedMapWeights::Provided(&w),divisor,
-                                MapConfig { max_iterations:1, ..config },allowance,0,&mut Vec::new()).unwrap().is_none());
-                            // A genuinely affordable dense frame retains its old organization.
-                            let dense=try_build(&p,&cols,&values[0],BorrowedMapWeights::Provided(&w),divisor,
-                                config,u128::MAX,0,&mut Vec::new()).unwrap().unwrap();
-                            assert!(!dense.implicit);
                         }
                     }
-                }
-            });
+                });
         }
     }
 
@@ -1749,8 +2002,9 @@ mod tests {
         let truth = [0.3, -0.7, 1.1, 0.2];
         for scale in [1e-200, 1., 1e200] {
             for frame in [0, 1] {
-                let weights: Vec<f64> = (0..a.len()).map(|i| scale *
-                    (0.2 + ((i * 7 + frame * 3) % 11) as f64)).collect();
+                let weights: Vec<f64> = (0..a.len())
+                    .map(|i| scale * (0.2 + ((i * 7 + frame * 3) % 11) as f64))
+                    .collect();
                 let mut cross = [[0.; 6]; 4];
                 let mut left_mass = [0.; 4];
                 let mut right_mass = [0.; 6];
@@ -1769,9 +2023,11 @@ mod tests {
                     }
                 }
                 let roots: Vec<_> = (0..6).map(|h| schur[h][h].sqrt()).collect();
-                let mut dense = vec![0.; 16];
+                let mut dense = [0.; 16];
                 for h in 0..6 {
-                    if free[h] == usize::MAX { continue; }
+                    if free[h] == usize::MAX {
+                        continue;
+                    }
                     for j in 0..6 {
                         if free[j] != usize::MAX {
                             dense[free[h] * 4 + free[j]] = (schur[h][j] / roots[h]) / roots[j];
@@ -1781,31 +2037,58 @@ mod tests {
                 let mut incidence = Vec::new();
                 let mut ids = Vec::new();
                 let mut rows = Vec::new();
+                // Keep the legacy matrix indices and numerical traversal order explicit.
+                #[allow(clippy::needless_range_loop)]
                 for g in 0..4 {
                     let start = ids.len();
                     for &i in groups.members(g) {
                         let h = b[i] as usize;
-                        if free[h] == usize::MAX { continue; }
+                        if free[h] == usize::MAX {
+                            continue;
+                        }
                         ids.push(free[h]);
                         incidence.push((weights[i] / left_mass[g].sqrt()) / roots[h]);
                     }
-                    rows.push(IncidenceRow { start, end: ids.len(), component: g / 2 });
+                    rows.push(IncidenceRow {
+                        start,
+                        end: ids.len(),
+                        component: g / 2,
+                    });
                 }
                 let mut diagonal = [0.; 4];
                 for h in 0..6 {
-                    if free[h] != usize::MAX { diagonal[free[h]] = (right_mass[h] / roots[h]) / roots[h]; }
+                    if free[h] != usize::MAX {
+                        diagonal[free[h]] = (right_mass[h] / roots[h]) / roots[h];
+                    }
                 }
-                let apply = |x: &[f64], y: &mut [f64]| apply_incidence_schur(
-                    &incidence, &diagonal, &ids, &rows, x, y);
-                let rhs: Vec<_> = dense.chunks(4).map(|row| row.iter().zip(truth).map(|(a,b)| a*b).sum::<f64>()).collect();
+                let apply = |x: &[f64], y: &mut [f64]| {
+                    apply_incidence_schur(&incidence, &diagonal, &ids, &rows, x, y)
+                };
+                let rhs: Vec<_> = dense
+                    .chunks(4)
+                    .map(|row| row.iter().zip(truth).map(|(a, b)| a * b).sum::<f64>())
+                    .collect();
                 let mut actual = [0.; 4];
                 apply(&truth, &mut actual);
-                for i in 0..4 { assert!((actual[i] - rhs[i]).abs() < 3e-15); }
+                for i in 0..4 {
+                    assert!((actual[i] - rhs[i]).abs() < 3e-15);
+                }
                 let mut solution = rhs.clone();
-                let count = solve_reduced_cg_with_product(&mut solution, &mut [0.; 12], 4, 1e-13, apply).unwrap();
+                let count =
+                    solve_reduced_cg_with_product(&mut solution, &mut [0.; 12], 4, 1e-13, apply)
+                        .unwrap();
                 assert!(count <= 4);
-                for i in 0..4 { assert!((solution[i] - truth[i]).abs() < 1e-12); }
-                assert!(solve_reduced_cg_with_product(&mut rhs.clone(), &mut [0.; 12], 0, 1e-13, apply).is_err());
+                for i in 0..4 {
+                    assert!((solution[i] - truth[i]).abs() < 1e-12);
+                }
+                assert!(solve_reduced_cg_with_product(
+                    &mut rhs.clone(),
+                    &mut [0.; 12],
+                    0,
+                    1e-13,
+                    apply
+                )
+                .is_err());
             }
         }
     }
@@ -1836,10 +2119,14 @@ mod tests {
                 for (actual, expected) in answer.iter().zip(&truth) {
                     assert!((actual / scale - expected / scale).abs() < 1e-12);
                 }
-                assert!(
-                    solve_reduced_cg(&matrix, &mut rhs.clone(), &mut vec![0.; 3 * n], 0, 1e-13)
-                        .is_err()
-                );
+                assert!(solve_reduced_cg(
+                    &matrix,
+                    &mut rhs.clone(),
+                    &mut vec![0.; 3 * n],
+                    0,
+                    1e-13
+                )
+                .is_err());
             }
         }
     }
@@ -1962,12 +2249,15 @@ mod tests {
                     .is_none());
                     assert_eq!(panel.capacity(), capacity);
                     assert!(panel.iter().all(|&x| x == 42.));
-                    let beta = products.moments.gram[3] / products.moments.gram[4] * products.scales[0]
+                    let beta = products.moments.gram[3] / products.moments.gram[4]
+                        * products.scales[0]
                         / products.scales[1];
                     assert!((beta - 0.37).abs() < 1e-10);
+                    // Keep the legacy matrix indices and numerical traversal order explicit.
+                    #[allow(clippy::needless_range_loop)]
                     for i in 0..y.len() {
-                        let residual =
-                            products.residual(i, 0).unwrap() - beta * products.residual(i, 1).unwrap();
+                        let residual = products.residual(i, 0).unwrap()
+                            - beta * products.residual(i, 1).unwrap();
                         assert!((residual - truth[i]).abs() < 1e-10);
                     }
                     let stopped = MapConfig {
@@ -2156,8 +2446,12 @@ mod tests {
     }
 
     fn weighted_streaming_case(
-        n: usize, k: usize, q_per_component: usize, components: usize,
-        worker_counts: &[usize], tile_output: bool,
+        n: usize,
+        k: usize,
+        q_per_component: usize,
+        components: usize,
+        worker_counts: &[usize],
+        tile_output: bool,
     ) {
         let q = q_per_component * components;
         use crate::ols::linear_session::{CertifiedLinearSession, LinearSessionGenerations};
@@ -2167,8 +2461,10 @@ mod tests {
         };
         let g: Vec<_> = (0..n).map(|i| (i / 6) as f64).collect();
         let h: Vec<_> = (0..n)
-            .map(|i| (((i / 6 / components + 11 * ((i % 6) / 2)) % q_per_component)
-                + (i / 6 % components) * q_per_component) as f64)
+            .map(|i| {
+                (((i / 6 / components + 11 * ((i % 6) / 2)) % q_per_component)
+                    + (i / 6 % components) * q_per_component) as f64
+            })
             .collect();
         // Both rows in each pair share all FE and control coordinates. Their
         // reciprocal-weight errors are orthogonal to the complete explicit
@@ -2207,9 +2503,11 @@ mod tests {
                 if components > 1 {
                     let matrix = components * q_per_component * q_per_component;
                     let factor = components * (q_per_component - 1) * (q_per_component - 1);
-                    let old_solve = 8 * (n + plan.p + 2*q + factor + q*w + 2*w
-                        + threads * (q*w + 3*w))
-                        + 6*q*size_of::<usize>() + 32*w + 2048;
+                    let old_solve = 8
+                        * (n + plan.p + 2 * q + factor + q * w + 2 * w + threads * (q * w + 3 * w))
+                        + 6 * q * size_of::<usize>()
+                        + 32 * w
+                        + 2048;
                     assert!(old_solve as u128 > allowance);
                     assert!(plan.minimum_storage_bytes(matrix, factor).unwrap() <= allowance);
                 }
@@ -2292,7 +2590,8 @@ mod tests {
                     .unwrap()
                     .unwrap();
                     assert!(products.report.certified());
-                    let selected_bytes = products.report.solver_workspace_peak.bytes().unwrap() as u128;
+                    let selected_bytes =
+                        products.report.solver_workspace_peak.bytes().unwrap() as u128;
                     if selected_bytes > allowance - old_capacity as u128 * 8 {
                         assert_eq!(old_panel.capacity(), 0);
                     } else {
@@ -2327,7 +2626,10 @@ mod tests {
                         }
                     }
                     let mut misaligned = DenseMatrix::zeros(n - 1, k).unwrap();
-                    assert_eq!(products.write_dense(&mut misaligned).unwrap_err().code, ErrorCode::InvalidArgument);
+                    assert_eq!(
+                        products.write_dense(&mut misaligned).unwrap_err().code,
+                        ErrorCode::InvalidArgument
+                    );
                     assert!(misaligned.as_slice().iter().all(|&x| x == 0.));
                     if tile_output {
                         let mut scratch = PreparedOlsScratch::create_row_major(n, k).unwrap();
@@ -2607,12 +2909,20 @@ mod tests {
                 )
                 .unwrap();
                 if mode == PreparedOlsExecutionMode::Fast {
-                    session.enable_fast_canonical_products(if admitted { 16 * n as u128 * 8 } else { 1 }).unwrap();
+                    session
+                        .enable_fast_canonical_products(if admitted {
+                            16 * n as u128 * 8
+                        } else {
+                            1
+                        })
+                        .unwrap();
                 }
                 let original = session.solve_fresh().unwrap();
                 // A direct certified solve reports one solve, proving that
                 // this test reaches the fused handoff rather than its fallback.
-                if admitted { assert_eq!(original.fit().absorption_report().iterations, 1); }
+                if admitted {
+                    assert_eq!(original.fit().absorption_report().iterations, 1);
+                }
                 assert!(original.fit().residuals().iter().all(|r| r.abs() < 1e-10));
                 let statuses: Vec<_> = original
                     .fit()
@@ -2624,7 +2934,7 @@ mod tests {
                 scale.solver_weight_divisor = changed.iter().copied().fold(0_f64, f64::max);
                 scale.reference_weight_multiplier = scale.solver_weight_divisor;
                 scale.reference_weight_sum = changed.iter().sum();
-                let next_y: Vec<_> = y.iter().zip(&x[0]).map(|(y, x)| y + 0.4*x).collect();
+                let next_y: Vec<_> = y.iter().zip(&x[0]).map(|(y, x)| y + 0.4 * x).collect();
                 session.refresh_response(&next_y, 1).unwrap();
                 session
                     .refresh_weights(BorrowedMapWeights::Provided(&changed), scale, 1)
@@ -2663,7 +2973,15 @@ mod tests {
                 let recovered = session.solve_fresh().unwrap();
                 assert!(recovered.fit().score_certificate().passed);
                 assert!(recovered.fit().residuals().iter().all(|r| r.abs() < 1e-9));
-                assert_eq!(recovered.fit().coefficients().iter().map(|c| c.status).collect::<Vec<_>>(), statuses);
+                assert_eq!(
+                    recovered
+                        .fit()
+                        .coefficients()
+                        .iter()
+                        .map(|c| c.status)
+                        .collect::<Vec<_>>(),
+                    statuses
+                );
             }
         }
     }
@@ -2695,7 +3013,8 @@ mod tests {
             }
             let y: Vec<_> = (0..n)
                 .map(|i| {
-                    0.2 * g[i] - 0.1 * h[i] + 0.07 * z[i]
+                    0.2 * g[i] - 0.1 * h[i]
+                        + 0.07 * z[i]
                         + x.iter()
                             .enumerate()
                             .map(|(j, x)| 0.03 * (j + 1) as f64 * x[i])
@@ -2733,7 +3052,13 @@ mod tests {
                 )
                 .unwrap();
                 if mode == PreparedOlsExecutionMode::Fast {
-                    session.enable_fast_canonical_products(if admitted { 16 * n as u128 * 8 } else { 1 }).unwrap();
+                    session
+                        .enable_fast_canonical_products(if admitted {
+                            16 * n as u128 * 8
+                        } else {
+                            1
+                        })
+                        .unwrap();
                 }
                 let original = session.solve_fresh().unwrap();
                 // Independent product tests establish the direct route. This
@@ -2750,7 +3075,7 @@ mod tests {
                 scale.solver_weight_divisor = changed.iter().copied().fold(0_f64, f64::max);
                 scale.reference_weight_multiplier = scale.solver_weight_divisor;
                 scale.reference_weight_sum = changed.iter().sum();
-                let next_y: Vec<_> = y.iter().zip(&x[0]).map(|(y, x)| y + 0.4*x).collect();
+                let next_y: Vec<_> = y.iter().zip(&x[0]).map(|(y, x)| y + 0.4 * x).collect();
                 session.refresh_response(&next_y, 1).unwrap();
                 session
                     .refresh_weights(BorrowedMapWeights::Provided(&changed), scale, 1)
@@ -2789,7 +3114,15 @@ mod tests {
                 let recovered = session.solve_fresh().unwrap();
                 assert!(recovered.fit().score_certificate().passed);
                 assert!(recovered.fit().residuals().iter().all(|r| r.abs() < 1e-9));
-                assert_eq!(recovered.fit().coefficients().iter().map(|c| c.status).collect::<Vec<_>>(), statuses);
+                assert_eq!(
+                    recovered
+                        .fit()
+                        .coefficients()
+                        .iter()
+                        .map(|c| c.status)
+                        .collect::<Vec<_>>(),
+                    statuses
+                );
             }
         }
     }
@@ -2825,7 +3158,11 @@ mod tests {
                         let mut truth = vec![Vec::new(); 4];
                         let scales = [1., 1e70, 1e-70, 1.];
                         for component in 0..2 {
+                            // Keep the legacy matrix indices and numerical traversal order explicit.
+                            #[allow(clippy::needless_range_loop)]
                             for a in 0..6 {
+                                // Keep the legacy matrix indices and numerical traversal order explicit.
+                                #[allow(clippy::needless_range_loop)]
                                 for b in 0..5 {
                                     for t in 0..3 {
                                         g.push((component * 6 + a) as f64);
@@ -2960,7 +3297,11 @@ mod tests {
                                 .map(|(b, w)| b as f64 * w)
                                 .sum::<f64>()
                                 / wb.iter().sum::<f64>();
+                            // Keep the legacy matrix indices and numerical traversal order explicit.
+                            #[allow(clippy::needless_range_loop)]
                             for a in 0..na {
+                                // Keep the legacy matrix indices and numerical traversal order explicit.
+                                #[allow(clippy::needless_range_loop)]
                                 for b in 0..nb {
                                     for t in 0..4 {
                                         g.push((a * 24 + component) as f64);
@@ -3026,6 +3367,8 @@ mod tests {
                         .unwrap()
                         .expect("component factors admitted");
                         assert!(result.report.certified());
+                        // Keep the legacy matrix indices and numerical traversal order explicit.
+                        #[allow(clippy::needless_range_loop)]
                         for j in 0..3 {
                             for i in 0..g.len() {
                                 assert!(
@@ -3179,87 +3522,209 @@ mod tests {
             )
             .unwrap()
             .is_some_and(|products| products.report.certified() && products.report.iterations > 1));
-            assert!(try_build(&wide, &[0], &y, BorrowedMapWeights::Unit, 1.,
-                MapConfig {max_iterations:1,..MapConfig::default()},u128::MAX,0,&mut Vec::new())
-                .unwrap().is_none());
+            assert!(try_build(
+                &wide,
+                &[0],
+                &y,
+                BorrowedMapWeights::Unit,
+                1.,
+                MapConfig {
+                    max_iterations: 1,
+                    ..MapConfig::default()
+                },
+                u128::MAX,
+                0,
+                &mut Vec::new()
+            )
+            .unwrap()
+            .is_none());
         });
     }
     #[test]
     fn canonical_three_products_match_independent_weighted_contrasts() {
         for threads in [1, 4] {
-            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
-                for shift in [0., 0.7] {
-                    for mass in [1., 1e-100, 1e100] {
-                        for nested in [false, true] {
-                            let wa: Vec<_> = (0..6).map(|i| 1. + i as f64 + shift).collect();
-                            let wb: Vec<_> = (0..5).map(|i| 0.5 + i as f64 + shift).collect();
-                            let wc: Vec<_> = (0..3).map(|i| 0.3 + i as f64 + shift).collect();
-                            let mean = |v: &[f64]| v.iter().enumerate().map(|(i,w)| i as f64*w).sum::<f64>() / v.iter().sum::<f64>();
-                            let (ma, mb) = (mean(&wa), mean(&wb));
-                            let (mut g, mut h, mut z, mut weights) = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
-                            let mut values = vec![Vec::new(); 5];
-                            let mut truth = vec![Vec::new(); 5];
-                            let scales = [1., 1e30, 1e-30, 1., 1.];
-                            for a in 0..6 { for b in 0..5 { for c in 0..3 { for t in 0..2 {
-                                g.push(a as f64); h.push(b as f64); z.push(if nested { (b % 3) as f64 } else { c as f64 });
-                                weights.push(wa[a]*wb[b]*wc[c]*mass);
-                                let ab = (a as f64-ma)*(b as f64-mb);
-                                let error = 2.*t as f64-1.;
-                                for (j, r) in [ab+error, ab, error, 0., ab].into_iter().enumerate() {
-                                    truth[j].push(r*scales[j]);
-                                    values[j].push((r+0.2*a as f64-0.1*b as f64+0.3*z[z.len()-1])*scales[j]);
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    for shift in [0., 0.7] {
+                        for mass in [1., 1e-100, 1e100] {
+                            for nested in [false, true] {
+                                let wa: Vec<_> = (0..6).map(|i| 1. + i as f64 + shift).collect();
+                                let wb: Vec<_> = (0..5).map(|i| 0.5 + i as f64 + shift).collect();
+                                let wc: Vec<_> = (0..3).map(|i| 0.3 + i as f64 + shift).collect();
+                                let mean = |v: &[f64]| {
+                                    v.iter().enumerate().map(|(i, w)| i as f64 * w).sum::<f64>()
+                                        / v.iter().sum::<f64>()
+                                };
+                                let (ma, mb) = (mean(&wa), mean(&wb));
+                                let (mut g, mut h, mut z, mut weights) =
+                                    (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+                                let mut values = vec![Vec::new(); 5];
+                                let mut truth = vec![Vec::new(); 5];
+                                let scales = [1., 1e30, 1e-30, 1., 1.];
+                                // Keep the legacy matrix indices and numerical traversal order explicit.
+                                #[allow(clippy::needless_range_loop)]
+                                for a in 0..6 {
+                                    // Keep the legacy matrix indices and numerical traversal order explicit.
+                                    #[allow(clippy::needless_range_loop)]
+                                    for b in 0..5 {
+                                        // Keep the legacy matrix indices and numerical traversal order explicit.
+                                        #[allow(clippy::needless_range_loop)]
+                                        for c in 0..3 {
+                                            for t in 0..2 {
+                                                g.push(a as f64);
+                                                h.push(b as f64);
+                                                z.push(if nested {
+                                                    (b % 3) as f64
+                                                } else {
+                                                    c as f64
+                                                });
+                                                weights.push(wa[a] * wb[b] * wc[c] * mass);
+                                                let ab = (a as f64 - ma) * (b as f64 - mb);
+                                                let error = 2. * t as f64 - 1.;
+                                                for (j, r) in [ab + error, ab, error, 0., ab]
+                                                    .into_iter()
+                                                    .enumerate()
+                                                {
+                                                    truth[j].push(r * scales[j]);
+                                                    values[j].push(
+                                                        (r + 0.2 * a as f64 - 0.1 * b as f64
+                                                            + 0.3 * z[z.len() - 1])
+                                                            * scales[j],
+                                                    );
+                                                }
+                                            }
+                                        }
+                                    }
                                 }
-                            }}}}
-                            let p = prepared_effects(&values[0], &values[1..], &[&g, &h, &z]);
-                            let divisor = weights.iter().copied().fold(0_f64, f64::max);
-                            let cfg = MapConfig { tolerance: 1e-12, ..MapConfig::default() };
-                            let mut result = try_build(&p, &[0,1,2,3], &values[0], BorrowedMapWeights::Provided(&weights), divisor, cfg, u128::MAX, 0, &mut Vec::new()).unwrap().expect("three-FE direct products admitted");
-                            assert!(result.three.is_some() && result.report.certified());
-                            let mut dense = DenseMatrix::zeros(g.len(), 4).unwrap();
-                            result.write_dense(&mut dense).unwrap();
-                            let mut scratch = PreparedOlsScratch::create_row_major(g.len(), 4).unwrap();
-                            result.write_controls(&mut scratch).unwrap();
-                            let mut row = [0.;4];
-                            for i in 0..g.len() {
-                                scratch.read_linear_shared(i*4, &mut row).unwrap();
-                                assert!((result.response[i]-truth[0][i]).abs()<1e-10);
-                                for j in 1..5 {
-                                    assert_eq!(row[j-1], dense[(i,j-1)]);
-                                    assert!((row[j-1]-truth[j][i]).abs()/scales[j]<1e-10);
+                                let p = prepared_effects(&values[0], &values[1..], &[&g, &h, &z]);
+                                let divisor = weights.iter().copied().fold(0_f64, f64::max);
+                                let cfg = MapConfig {
+                                    tolerance: 1e-12,
+                                    ..MapConfig::default()
+                                };
+                                let mut result = try_build(
+                                    &p,
+                                    &[0, 1, 2, 3],
+                                    &values[0],
+                                    BorrowedMapWeights::Provided(&weights),
+                                    divisor,
+                                    cfg,
+                                    u128::MAX,
+                                    0,
+                                    &mut Vec::new(),
+                                )
+                                .unwrap()
+                                .expect("three-FE direct products admitted");
+                                assert!(result.three.is_some() && result.report.certified());
+                                let mut dense = DenseMatrix::zeros(g.len(), 4).unwrap();
+                                result.write_dense(&mut dense).unwrap();
+                                let mut scratch =
+                                    PreparedOlsScratch::create_row_major(g.len(), 4).unwrap();
+                                result.write_controls(&mut scratch).unwrap();
+                                let mut row = [0.; 4];
+                                for i in 0..g.len() {
+                                    scratch.read_linear_shared(i * 4, &mut row).unwrap();
+                                    assert!((result.response[i] - truth[0][i]).abs() < 1e-10);
+                                    for j in 1..5 {
+                                        assert_eq!(row[j - 1], dense[(i, j - 1)]);
+                                        assert!(
+                                            (row[j - 1] - truth[j][i]).abs() / scales[j] < 1e-10
+                                        );
+                                    }
                                 }
+                                for j in 0..5 {
+                                    for k in 0..5 {
+                                        let expected: f64 = (0..g.len())
+                                            .map(|i| {
+                                                weights[i] / divisor
+                                                    * (truth[j][i] / nonzero(result.scales[j]))
+                                                    * (truth[k][i] / nonzero(result.scales[k]))
+                                            })
+                                            .sum();
+                                        assert!(
+                                            (result.moments.gram[j * 5 + k] - expected).abs()
+                                                < 1e-11
+                                        );
+                                    }
+                                }
+                                let bytes = result.minimum_workspace_bytes;
+                                assert!(try_build(
+                                    &p,
+                                    &[0, 1, 2, 3],
+                                    &values[0],
+                                    BorrowedMapWeights::Provided(&weights),
+                                    divisor,
+                                    cfg,
+                                    bytes - 1,
+                                    0,
+                                    &mut Vec::new()
+                                )
+                                .unwrap()
+                                .is_none());
+                                assert!(try_build(
+                                    &p,
+                                    &[0, 1, 2, 3],
+                                    &values[0],
+                                    BorrowedMapWeights::Provided(&weights),
+                                    divisor,
+                                    cfg,
+                                    bytes,
+                                    0,
+                                    &mut Vec::new()
+                                )
+                                .unwrap()
+                                .is_some());
                             }
-                            for j in 0..5 { for k in 0..5 {
-                                let expected: f64 = (0..g.len()).map(|i| weights[i]/divisor * (truth[j][i]/nonzero(result.scales[j])) * (truth[k][i]/nonzero(result.scales[k]))).sum();
-                                assert!((result.moments.gram[j*5+k]-expected).abs()<1e-11);
-                            }}
-                            let bytes = result.minimum_workspace_bytes;
-                            assert!(try_build(&p, &[0,1,2,3], &values[0], BorrowedMapWeights::Provided(&weights), divisor, cfg, bytes-1, 0, &mut Vec::new()).unwrap().is_none());
-                            assert!(try_build(&p, &[0,1,2,3], &values[0], BorrowedMapWeights::Provided(&weights), divisor, cfg, bytes, 0, &mut Vec::new()).unwrap().is_some());
                         }
                     }
-                }
-            });
+                });
         }
     }
 
     #[test]
     fn canonical_three_products_preserve_disconnected_and_invalid_frame_fallback() {
         let n = 480;
-        let g: Vec<_> = (0..n).map(|i| (i%6) as f64).collect();
-        let h: Vec<_> = (0..n).map(|i| (i%2*5+(i/6)%5) as f64).collect();
-        let z: Vec<_> = (0..n).map(|i| (i%2*4+(i/30)%4) as f64).collect();
+        let g: Vec<_> = (0..n).map(|i| (i % 6) as f64).collect();
+        let h: Vec<_> = (0..n).map(|i| (i % 2 * 5 + (i / 6) % 5) as f64).collect();
+        let z: Vec<_> = (0..n).map(|i| (i % 2 * 4 + (i / 30) % 4) as f64).collect();
         let x = vec![(0..n).map(|i| (i as f64).sin()).collect::<Vec<_>>()];
         let y = x[0].clone();
         let p = prepared_effects(&y, &x, &[&g, &h, &z]);
-        let mut panel = vec![1.;48];
-        assert!(try_build(&p, &[0], &y, BorrowedMapWeights::Unit, 1., MapConfig::default(), u128::MAX, 0, &mut panel).unwrap().is_none());
-        assert_eq!(panel, vec![1.;48]);
-        let ch: Vec<_> = (0..n).map(|i| ((i/6)%5) as f64).collect();
-        let cz: Vec<_> = (0..n).map(|i| ((i/30)%4) as f64).collect();
+        let mut panel = vec![1.; 48];
+        assert!(try_build(
+            &p,
+            &[0],
+            &y,
+            BorrowedMapWeights::Unit,
+            1.,
+            MapConfig::default(),
+            u128::MAX,
+            0,
+            &mut panel
+        )
+        .unwrap()
+        .is_none());
+        assert_eq!(panel, vec![1.; 48]);
+        let ch: Vec<_> = (0..n).map(|i| ((i / 6) % 5) as f64).collect();
+        let cz: Vec<_> = (0..n).map(|i| ((i / 30) % 4) as f64).collect();
         let connected = prepared_effects(&y, &x, &[&g, &ch, &cz]);
-        for weights in [vec![0.;n], vec![f64::NAN;n], vec![1.;n-1]] {
-            assert!(try_build(&connected, &[0], &y, BorrowedMapWeights::Provided(&weights), 1., MapConfig::default(), u128::MAX, 0, &mut panel).unwrap().is_none());
+        for weights in [vec![0.; n], vec![f64::NAN; n], vec![1.; n - 1]] {
+            assert!(try_build(
+                &connected,
+                &[0],
+                &y,
+                BorrowedMapWeights::Provided(&weights),
+                1.,
+                MapConfig::default(),
+                u128::MAX,
+                0,
+                &mut panel
+            )
+            .unwrap()
+            .is_none());
         }
     }
-
 }

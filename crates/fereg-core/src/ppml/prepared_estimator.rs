@@ -1315,6 +1315,8 @@ fn raw_input_owner_bytes(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInp
         .sum::<u128>()
 }
 
+// Keep the legacy workspace and ownership boundaries explicit during migration.
+#[allow(clippy::too_many_arguments)]
 fn final_memory_dimensions(
     prepared: &PreparedPpmlModelGeneration,
     clusters: &[&[u32]],
@@ -3979,14 +3981,26 @@ mod tests {
             -0.42003238012408883,
         ];
         let derivative = [
-            -0.013673707941541657, -0.03641436939328413, -0.0033508271882589646,
-            -0.004078391875716949, 0.004277300708386278, 0.014184178816249116,
-            0., 0.009115805294373391, -0.009115805294346302,
+            -0.013673707941541657,
+            -0.03641436939328413,
+            -0.0033508271882589646,
+            -0.004078391875716949,
+            0.004277300708386278,
+            0.014184178816249116,
+            0.,
+            0.009115805294373391,
+            -0.009115805294346302,
         ];
         let curvature = [
-            -0.0001930213526394886, 0.006785593330410039, 0.00038634085112329575,
-            0.00034917161236207284, 0.000364088184233044, 0.00026489290492318074,
-            0., 0.00012868090176021418, -0.0001286809017592705,
+            -0.0001930213526394886,
+            0.006785593330410039,
+            0.00038634085112329575,
+            0.00034917161236207284,
+            0.000364088184233044,
+            0.00026489290492318074,
+            0.,
+            0.00012868090176021418,
+            -0.0001286809017592705,
         ];
         for (got, expected) in [
             (&bias.raw, raw),
@@ -4053,8 +4067,13 @@ mod tests {
             }
             let result = fit_prepared_ppml(request, loaded).unwrap();
             assert_eq!(result.bias().unwrap().route, if mode == 1 { 1 } else { 2 });
-            for (got, expected) in result.bias().unwrap().support.iter()
-                .zip(&reference.bias().unwrap().support) {
+            for (got, expected) in result
+                .bias()
+                .unwrap()
+                .support
+                .iter()
+                .zip(&reference.bias().unwrap().support)
+            {
                 for (a, b) in got.values().into_iter().zip(expected.values()) {
                     assert!((a - b).abs() < 1e-8, "support mode {mode}: {a} vs {b}");
                 }
@@ -4087,9 +4106,17 @@ mod tests {
                     let (mut request, mut loaded) = bias_fixture(randomized);
                     request.bias.as_mut().unwrap().save_effects = save_effects;
                     loaded.bias_units.as_mut().unwrap().values = loaded.ols.numeric_sources[effect]
-                        .1.values.iter().map(|x| 103. - 7. * x).collect();
+                        .1
+                        .values
+                        .iter()
+                        .map(|x| 103. - 7. * x)
+                        .collect();
                     let e = fit_prepared_ppml(request, loaded).unwrap_err();
-                    assert!(e.message.contains("at least two distinct bias units per retained FE level"), "{e}");
+                    assert!(
+                        e.message
+                            .contains("at least two distinct bias units per retained FE level"),
+                        "{e}"
+                    );
                 }
             }
         }
@@ -4251,8 +4278,13 @@ mod tests {
             original.bias().unwrap().units,
             repeated.bias().unwrap().units
         );
-        for (got, expected) in repeated.bias().unwrap().support.iter()
-            .zip(&original.bias().unwrap().support) {
+        for (got, expected) in repeated
+            .bias()
+            .unwrap()
+            .support
+            .iter()
+            .zip(&original.bias().unwrap().support)
+        {
             for (a, b) in got.values().into_iter().zip(expected.values()) {
                 assert!((a - b).abs() < 1e-8, "frequency support: {a} vs {b}");
             }

@@ -9,7 +9,9 @@ use crate::fe::SolveReport;
 pub(crate) trait JointFiniteDesign: Sync {
     // Direct row storage can fuse independent accumulators; recipe-backed
     // rows benefit from resolving one column before scanning observations.
-    fn prefers_column_scans(&self) -> bool { false }
+    fn prefers_column_scans(&self) -> bool {
+        false
+    }
     fn nrows(&self) -> usize;
     fn ncols(&self) -> usize;
     fn column_slice(&self, _column: usize) -> Option<&[f64]> {
@@ -123,6 +125,8 @@ fn finite_product<C: JointFiniteDesign>(
         let blocks = values.len() / sums.len();
         for block in 0..blocks {
             let start = block * sums.len();
+            // Keep the legacy matrix indices and numerical traversal order explicit.
+            #[allow(clippy::needless_range_loop)]
             for lane in 0..sums.len() {
                 let row = start + lane;
                 sums[lane] = (values[row] * roots[row]).mul_add(projected[row], sums[lane]);
@@ -153,133 +157,37 @@ fn reconstruct_direct_columns<C: JointFiniteDesign>(
     original: &[f64],
     observations: &mut [f64],
 ) -> bool {
-    if !selected.iter().all(|&column| controls.column_slice(column)
-        .is_some_and(|values| values.len() == observations.len())) {
+    if !selected.iter().all(|&column| {
+        controls
+            .column_slice(column)
+            .is_some_and(|values| values.len() == observations.len())
+    }) {
         return false;
     }
     const ROWS: usize = 1024;
-    observations.par_chunks_mut(ROWS).enumerate().for_each(|(panel, target)| {
-        let start = panel * ROWS;
-        let end = start + target.len();
-        for (value, &input) in target.iter_mut().zip(&original[start..end]) {
-            *value = input - *value;
-        }
-        for (j, &column) in selected.iter().enumerate() {
-            let values = controls.column_slice(column).expect("validated immutable column");
-            for ((value, &x), &root) in target.iter_mut()
-                .zip(&values[start..end]).zip(&roots[start..end]) {
-                *value = (-coefficients[j]).mul_add(x * root / scales[j], *value);
+    observations
+        .par_chunks_mut(ROWS)
+        .enumerate()
+        .for_each(|(panel, target)| {
+            let start = panel * ROWS;
+            let end = start + target.len();
+            for (value, &input) in target.iter_mut().zip(&original[start..end]) {
+                *value = input - *value;
             }
-        }
-    });
+            for (j, &column) in selected.iter().enumerate() {
+                let values = controls
+                    .column_slice(column)
+                    .expect("validated immutable column");
+                for ((value, &x), &root) in target
+                    .iter_mut()
+                    .zip(&values[start..end])
+                    .zip(&roots[start..end])
+                {
+                    *value = (-coefficients[j]).mul_add(x * root / scales[j], *value);
+                }
+            }
+        });
     true
-}
-
-#[cfg(test)]
-mod product_tests {
-    use super::*;
-
-    struct Column {
-        values: Vec<f64>,
-        contiguous: bool,
-    }
-
-    impl JointFiniteDesign for Column {
-        fn nrows(&self) -> usize { self.values.len() }
-        fn ncols(&self) -> usize { 1 }
-        fn column_slice(&self, _: usize) -> Option<&[f64]> {
-            self.contiguous.then_some(self.values.as_slice())
-        }
-        fn visit_column_range(&self, _: usize, range: std::ops::Range<usize>, mut visit: impl FnMut(usize, f64) -> Result<()>) -> Result<()> {
-            for row in range { visit(row, self.values[row])?; }
-            Ok(())
-        }
-        fn visit_rows(&self, _: &mut [f64], mut visit: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> {
-            for (row, value) in self.values.iter().enumerate() { visit(row, std::slice::from_ref(value))?; }
-            Ok(())
-        }
-    }
-
-    struct Columns {
-        values: Vec<Vec<f64>>,
-        missing: Option<usize>,
-    }
-
-    impl JointFiniteDesign for Columns {
-        fn nrows(&self) -> usize { self.values[0].len() }
-        fn ncols(&self) -> usize { self.values.len() }
-        fn column_slice(&self, column: usize) -> Option<&[f64]> {
-            (self.missing != Some(column)).then(|| self.values[column].as_slice())
-        }
-        fn visit_column_range(&self, _: usize, _: std::ops::Range<usize>, _: impl FnMut(usize, f64) -> Result<()>) -> Result<()> { unreachable!() }
-        fn visit_rows(&self, _: &mut [f64], _: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> { unreachable!() }
-    }
-
-    #[test]
-    fn direct_reconstruction_preserves_order_panels_scales_and_refusal() {
-        for threads in [1, 4, 8] {
-            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
-            pool.install(|| {
-                for n in [1, 1023, 1024, 1025, 2083] {
-                    for k in [1, 7, 33, 65] {
-                        let scales: Vec<_> = (0..k).map(|j| [1e-200, 1., 1e200][j % 3]).collect();
-                        let roots: Vec<_> = (0..n).map(|i| [0.125, 0.5, 1., 4.][i % 4]).collect();
-                        let original: Vec<_> = (0..n).map(|i| (i as f64 / 13.).sin()).collect();
-                        let coefficients: Vec<_> = (0..k).map(|j| (j as f64 + 1.).cos()).collect();
-                        let selected: Vec<_> = (0..k).map(|j| 2*j).collect();
-                        let mut controls = Columns { values: (0..2*k).map(|j| (0..n).map(|i| {
-                            ((i + j) as f64 / 17.).sin() * scales[j / 2]
-                        }).collect()).collect(), missing: None };
-                        let initial: Vec<_> = (0..n).map(|i| (i % 7) as f64 / 3.).collect();
-                        let expected: Vec<_> = (0..n).map(|i| {
-                            selected.iter().enumerate().fold(original[i] - initial[i], |r, (j, &c)|
-                                (-coefficients[j]).mul_add(controls.values[c][i] * roots[i] / scales[j], r))
-                        }).collect();
-                        let mut actual = initial.clone();
-                        assert!(reconstruct_direct_columns(&controls, &selected, &coefficients, &scales,
-                            &roots, &original, &mut actual));
-                        assert_eq!(actual.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
-                                   expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>());
-                        controls.missing = Some(selected[k-1]);
-                        actual.copy_from_slice(&initial);
-                        assert!(!reconstruct_direct_columns(&controls, &selected, &coefficients, &scales,
-                            &roots, &original, &mut actual));
-                        assert_eq!(actual, initial);
-                    }
-                }
-            });
-        }
-    }
-
-    #[test]
-    fn normalized_products_preserve_independent_signed_inner_products_and_tails() {
-        for n in [1, 7, 8, 9, 17, 8193] {
-            let left: Vec<_> = (0..n).map(|i| (i as f64 * 1.731).sin() / (n as f64).sqrt()).collect();
-            let right: Vec<_> = (0..n).map(|i| ((i % 13) as f64 - 6.) / (7. * (n as f64).sqrt())).collect();
-            let expected: f64 = left.iter().zip(&right).map(|(a,b)| a*b).sum();
-            assert!((normalized_product(&left, &right) - expected).abs() < 1e-13);
-            assert!((normalized_product(&right, &left) - expected).abs() < 1e-13);
-        }
-    }
-
-    #[test]
-    fn finite_products_preserve_scaled_weighted_inner_products_across_layouts() {
-        for n in [1, 7, 8, 17, 8192] {
-            for scale in [1e-300, 1., 1e300] {
-                // Powers of two give a separately evaluable normalized column
-                // even when its unscaled magnitude is near floating-point limits.
-                let roots: Vec<_> = (0..n).map(|r| [0.25, 0.5, 1., 2.][r % 4]).collect();
-                let projected: Vec<_> = (0..n).map(|r| ((r * 7) as f64).cos() / (n as f64).sqrt()).collect();
-                let normalized: Vec<_> = (0..n).map(|r| ((r % 5) as f64 - 2.) / (4. * (n as f64).sqrt())).collect();
-                let expected: f64 = normalized.iter().zip(&projected).map(|(a,b)| a*b).sum();
-                for contiguous in [false, true] {
-                    let controls = Column { values: normalized.iter().zip(&roots).map(|(x,w)| x * scale / w).collect(), contiguous };
-                    let actual = finite_product(&controls, 0, &roots, &projected, scale).unwrap();
-                    assert!((actual - expected).abs() < 1e-13, "n={n} scale={scale} contiguous={contiguous}: {actual} != {expected}");
-                }
-            }
-        }
-    }
 }
 
 impl JointFiniteWorkspace {
@@ -363,7 +271,9 @@ impl JointFiniteWorkspace {
     /// Dense representatives and streamed originals have different meanings;
     /// the caller must retain that input identity. No failed call exposes norms.
     pub(crate) fn input_norms(&self) -> Option<&[f64]> {
-        self.report.as_ref().filter(|report| report.certified())
+        self.report
+            .as_ref()
+            .filter(|report| report.certified())
             .map(|_| &self.scales[..self.active])
     }
 
@@ -397,27 +307,34 @@ impl JointFiniteWorkspace {
         let p = op.coefficients;
         op.forward(&self.coefficients[..p], observations);
         let direct = reconstruct_direct_columns(
-            controls, selected, &self.coefficients[p..p + selected.len()],
-            &self.scales[..selected.len()], roots, original, observations,
+            controls,
+            selected,
+            &self.coefficients[p..p + selected.len()],
+            &self.scales[..selected.len()],
+            roots,
+            original,
+            observations,
         );
         if !direct && controls.prefers_column_scans() {
             // Each worker owns disjoint residual rows. Recipe tiles preserve
             // finite-coordinate FMA order without serial full-vector passes.
-            observations.par_chunks_mut(1024).enumerate().try_for_each(|(panel, target)| -> Result<()> {
-                let start = panel * 1024;
-                let end = start + target.len();
-                for (value, &input) in target.iter_mut().zip(&original[start..end]) {
-                    *value = input - *value;
-                }
-                for (j, &column) in selected.iter().enumerate() {
-                    controls.visit_column_range(column, start..end, |row, value| {
-                        target[row-start] = (-self.coefficients[p+j])
-                            .mul_add(value * roots[row] / self.scales[j], target[row-start]);
-                        Ok(())
-                    })?;
-                }
-                Ok(())
-            })?;
+            observations.par_chunks_mut(1024).enumerate().try_for_each(
+                |(panel, target)| -> Result<()> {
+                    let start = panel * 1024;
+                    let end = start + target.len();
+                    for (value, &input) in target.iter_mut().zip(&original[start..end]) {
+                        *value = input - *value;
+                    }
+                    for (j, &column) in selected.iter().enumerate() {
+                        controls.visit_column_range(column, start..end, |row, value| {
+                            target[row - start] = (-self.coefficients[p + j])
+                                .mul_add(value * roots[row] / self.scales[j], target[row - start]);
+                            Ok(())
+                        })?;
+                    }
+                    Ok(())
+                },
+            )?;
         } else if !direct {
             controls.visit_rows(&mut self.column_scratch, |row, values| {
                 let mut residual = original[row] - observations[row];
@@ -435,17 +352,25 @@ impl JointFiniteWorkspace {
         if direct {
             // Scores are fresh original-column scans after eliminated-effect
             // projection. Columns are independent; each keeps its row order.
-            self.residual[p..p + selected.len()].par_iter_mut()
-                .zip(selected.par_iter()).zip(self.scales[..selected.len()].par_iter())
+            self.residual[p..p + selected.len()]
+                .par_iter_mut()
+                .zip(selected.par_iter())
+                .zip(self.scales[..selected.len()].par_iter())
                 .for_each(|((sum, &column), &scale)| {
-                    let values = controls.column_slice(column).expect("validated immutable column");
-                    for ((&value, &root), &residual) in values.iter().zip(roots).zip(observations.iter()) {
+                    let values = controls
+                        .column_slice(column)
+                        .expect("validated immutable column");
+                    for ((&value, &root), &residual) in
+                        values.iter().zip(roots).zip(observations.iter())
+                    {
                         *sum = (value * root / scale).mul_add(residual, *sum);
                     }
                 });
         } else if controls.prefers_column_scans() {
-            self.residual[p..p + selected.len()].par_iter_mut()
-                .zip(selected.par_iter()).zip(self.scales[..selected.len()].par_iter())
+            self.residual[p..p + selected.len()]
+                .par_iter_mut()
+                .zip(selected.par_iter())
+                .zip(self.scales[..selected.len()].par_iter())
                 .try_for_each(|((sum, &column), &scale)| -> Result<()> {
                     controls.visit_column(column, |row, value| {
                         *sum = (value * roots[row] / scale).mul_add(observations[row], *sum);
@@ -648,7 +573,7 @@ impl JointFiniteWorkspace {
                 || iteration == config.max_iterations
             {
                 let maximum = self.reconstruct(
-                    &op,
+                    op,
                     controls,
                     selected,
                     roots,
@@ -685,7 +610,14 @@ impl JointFiniteWorkspace {
             }
             if op
                 .coupling
-                .and_then(|c| c.apply_with_helpers(&self.direction[..p], &mut self.product[..p], scratch, helpers))
+                .and_then(|c| {
+                    c.apply_with_helpers(
+                        &self.direction[..p],
+                        &mut self.product[..p],
+                        scratch,
+                        helpers,
+                    )
+                })
                 .is_none()
             {
                 op.forward(&self.direction[..p], observations);
@@ -699,6 +631,8 @@ impl JointFiniteWorkspace {
                         &self.hessian[j * k..(j + 1) * k],
                         &self.direction[p..dimension],
                     );
+                // Keep the legacy matrix indices and numerical traversal order explicit.
+                #[allow(clippy::needless_range_loop)]
                 for i in 0..p {
                     self.product[i] = cross[i].mul_add(self.direction[p + j], self.product[i]);
                 }
@@ -832,7 +766,8 @@ impl JointFiniteWorkspace {
         self.scales[..k].fill(0.);
         self.beta[..k].fill(1.);
         if controls.prefers_column_scans() {
-            self.scales[..k].par_iter_mut()
+            self.scales[..k]
+                .par_iter_mut()
                 .zip(self.beta[..k].par_iter_mut())
                 .zip(selected.par_iter())
                 .try_for_each(|((scale, square), &column)| {
@@ -929,5 +864,199 @@ impl JointFiniteWorkspace {
             helpers,
             config,
         )
+    }
+}
+
+#[cfg(test)]
+mod product_tests {
+    use super::*;
+
+    struct Column {
+        values: Vec<f64>,
+        contiguous: bool,
+    }
+
+    impl JointFiniteDesign for Column {
+        fn nrows(&self) -> usize {
+            self.values.len()
+        }
+        fn ncols(&self) -> usize {
+            1
+        }
+        fn column_slice(&self, _: usize) -> Option<&[f64]> {
+            self.contiguous.then_some(self.values.as_slice())
+        }
+        fn visit_column_range(
+            &self,
+            _: usize,
+            range: std::ops::Range<usize>,
+            mut visit: impl FnMut(usize, f64) -> Result<()>,
+        ) -> Result<()> {
+            for row in range {
+                visit(row, self.values[row])?;
+            }
+            Ok(())
+        }
+        fn visit_rows(
+            &self,
+            _: &mut [f64],
+            mut visit: impl FnMut(usize, &[f64]) -> Result<()>,
+        ) -> Result<()> {
+            for (row, value) in self.values.iter().enumerate() {
+                visit(row, std::slice::from_ref(value))?;
+            }
+            Ok(())
+        }
+    }
+
+    struct Columns {
+        values: Vec<Vec<f64>>,
+        missing: Option<usize>,
+    }
+
+    impl JointFiniteDesign for Columns {
+        fn nrows(&self) -> usize {
+            self.values[0].len()
+        }
+        fn ncols(&self) -> usize {
+            self.values.len()
+        }
+        fn column_slice(&self, column: usize) -> Option<&[f64]> {
+            (self.missing != Some(column)).then(|| self.values[column].as_slice())
+        }
+        fn visit_column_range(
+            &self,
+            _: usize,
+            _: std::ops::Range<usize>,
+            _: impl FnMut(usize, f64) -> Result<()>,
+        ) -> Result<()> {
+            unreachable!()
+        }
+        fn visit_rows(
+            &self,
+            _: &mut [f64],
+            _: impl FnMut(usize, &[f64]) -> Result<()>,
+        ) -> Result<()> {
+            unreachable!()
+        }
+    }
+
+    #[test]
+    fn direct_reconstruction_preserves_order_panels_scales_and_refusal() {
+        for threads in [1, 4, 8] {
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
+            pool.install(|| {
+                for n in [1, 1023, 1024, 1025, 2083] {
+                    for k in [1, 7, 33, 65] {
+                        let scales: Vec<_> = (0..k).map(|j| [1e-200, 1., 1e200][j % 3]).collect();
+                        let roots: Vec<_> = (0..n).map(|i| [0.125, 0.5, 1., 4.][i % 4]).collect();
+                        let original: Vec<_> = (0..n).map(|i| (i as f64 / 13.).sin()).collect();
+                        let coefficients: Vec<_> = (0..k).map(|j| (j as f64 + 1.).cos()).collect();
+                        let selected: Vec<_> = (0..k).map(|j| 2 * j).collect();
+                        let mut controls = Columns {
+                            values: (0..2 * k)
+                                .map(|j| {
+                                    (0..n)
+                                        .map(|i| ((i + j) as f64 / 17.).sin() * scales[j / 2])
+                                        .collect()
+                                })
+                                .collect(),
+                            missing: None,
+                        };
+                        let initial: Vec<_> = (0..n).map(|i| (i % 7) as f64 / 3.).collect();
+                        let expected: Vec<_> = (0..n)
+                            .map(|i| {
+                                selected.iter().enumerate().fold(
+                                    original[i] - initial[i],
+                                    |r, (j, &c)| {
+                                        (-coefficients[j]).mul_add(
+                                            controls.values[c][i] * roots[i] / scales[j],
+                                            r,
+                                        )
+                                    },
+                                )
+                            })
+                            .collect();
+                        let mut actual = initial.clone();
+                        assert!(reconstruct_direct_columns(
+                            &controls,
+                            &selected,
+                            &coefficients,
+                            &scales,
+                            &roots,
+                            &original,
+                            &mut actual
+                        ));
+                        assert_eq!(
+                            actual.iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
+                            expected.iter().map(|v| v.to_bits()).collect::<Vec<_>>()
+                        );
+                        controls.missing = Some(selected[k - 1]);
+                        actual.copy_from_slice(&initial);
+                        assert!(!reconstruct_direct_columns(
+                            &controls,
+                            &selected,
+                            &coefficients,
+                            &scales,
+                            &roots,
+                            &original,
+                            &mut actual
+                        ));
+                        assert_eq!(actual, initial);
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
+    fn normalized_products_preserve_independent_signed_inner_products_and_tails() {
+        for n in [1, 7, 8, 9, 17, 8193] {
+            let left: Vec<_> = (0..n)
+                .map(|i| (i as f64 * 1.731).sin() / (n as f64).sqrt())
+                .collect();
+            let right: Vec<_> = (0..n)
+                .map(|i| ((i % 13) as f64 - 6.) / (7. * (n as f64).sqrt()))
+                .collect();
+            let expected: f64 = left.iter().zip(&right).map(|(a, b)| a * b).sum();
+            assert!((normalized_product(&left, &right) - expected).abs() < 1e-13);
+            assert!((normalized_product(&right, &left) - expected).abs() < 1e-13);
+        }
+    }
+
+    #[test]
+    fn finite_products_preserve_scaled_weighted_inner_products_across_layouts() {
+        for n in [1, 7, 8, 17, 8192] {
+            for scale in [1e-300, 1., 1e300] {
+                // Powers of two give a separately evaluable normalized column
+                // even when its unscaled magnitude is near floating-point limits.
+                let roots: Vec<_> = (0..n).map(|r| [0.25, 0.5, 1., 2.][r % 4]).collect();
+                let projected: Vec<_> = (0..n)
+                    .map(|r| ((r * 7) as f64).cos() / (n as f64).sqrt())
+                    .collect();
+                let normalized: Vec<_> = (0..n)
+                    .map(|r| ((r % 5) as f64 - 2.) / (4. * (n as f64).sqrt()))
+                    .collect();
+                let expected: f64 = normalized.iter().zip(&projected).map(|(a, b)| a * b).sum();
+                for contiguous in [false, true] {
+                    let controls = Column {
+                        values: normalized
+                            .iter()
+                            .zip(&roots)
+                            .map(|(x, w)| x * scale / w)
+                            .collect(),
+                        contiguous,
+                    };
+                    let actual = finite_product(&controls, 0, &roots, &projected, scale).unwrap();
+                    assert!(
+                        (actual - expected).abs() < 1e-13,
+                        "n={n} scale={scale} contiguous={contiguous}: {actual} != {expected}"
+                    );
+                }
+            }
+        }
     }
 }

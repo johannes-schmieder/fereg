@@ -18,11 +18,11 @@ use crate::fe::{
 };
 use crate::memory::FeSolverMemoryBudget;
 use crate::ols::{
-    classify_frozen_linear_fallback, PpmlOrdinaryLinearOutput, CertifiedLinearSession,
-    CertifiedLinearSessionOutput, CertifiedLinearSessionProducts, FrozenLinearFallbackKind,
-    LinearSessionGenerations, LinearSessionPhaseAllocatorProbe, LinearSessionReuseReport,
-    LinearSessionWorkspaceCapacities, LinearSolveFrame, PreparedOlsBreadWeightScale,
-    PreparedOlsColumnKind, PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    classify_frozen_linear_fallback, CertifiedLinearSession, CertifiedLinearSessionOutput,
+    CertifiedLinearSessionProducts, FrozenLinearFallbackKind, LinearSessionGenerations,
+    LinearSessionPhaseAllocatorProbe, LinearSessionReuseReport, LinearSessionWorkspaceCapacities,
+    LinearSolveFrame, PpmlOrdinaryLinearOutput, PreparedOlsBreadWeightScale, PreparedOlsColumnKind,
+    PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
     PreparedOlsFittedCoefficient,
 };
 use crate::prepared_fit_view::PreparedOlsFitView;
@@ -36,17 +36,17 @@ use super::categorical_lsmr::{
     estimate_checkpoint_lsmr_workspace_bytes, estimate_joint_lsmr_workspace_bytes,
     joint_lsmr_policy, JointLsmrFrameDiagnostic, JointLsmrReport, ReusableCategoricalJointLsmr,
 };
-use super::family::{means_from_eta, CompensatedSum, PreparedPoissonInputs};
 #[cfg(test)]
 use super::family::poisson_objective_from_eta;
+use super::family::{means_from_eta, CompensatedSum, PreparedPoissonInputs};
 #[cfg(test)]
 use super::memory::DIAGNOSTIC_RECORD_BYTES;
 use super::memory::{begin_phase_allocation, end_phase_allocation};
 use super::one_fe_profile::{ProfiledColumns, ProfiledOneFe, ProfiledRawColumns};
-use super::profiled_intercept_curve::ProfiledInterceptCurve;
 #[cfg(test)]
 use super::plan_ppml_memory;
 use super::prepared_estimator::PpmlInterruptPoint;
+use super::profiled_intercept_curve::ProfiledInterceptCurve;
 use super::{
     scheduled_inner_tolerance, strict_inner_tolerance, PoissonObjective, PpmlAllocatorSnapshot,
     PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlConfig, PpmlFallbackKind,
@@ -226,14 +226,20 @@ fn inject_candidate_profile_movement(workspace: &mut PpmlIterationWorkspace) {
 
 fn profile_curve_enabled() -> bool {
     #[cfg(test)]
-    { !PROFILE_CURVE_TEST_DISABLED.get() }
+    {
+        !PROFILE_CURVE_TEST_DISABLED.get()
+    }
     #[cfg(not(test))]
-    { true }
+    {
+        true
+    }
 }
 
 fn canonical_final_enabled() -> bool {
     #[cfg(test)]
-    if CANONICAL_FINAL_TEST_DISABLED.get() { return false; }
+    if CANONICAL_FINAL_TEST_DISABLED.get() {
+        return false;
+    }
     true
 }
 
@@ -241,11 +247,15 @@ fn canonical_final_enabled() -> bool {
 pub(super) struct CanonicalFinalTestGuard(bool);
 #[cfg(test)]
 impl CanonicalFinalTestGuard {
-    pub(super) fn disabled() -> Self { Self(CANONICAL_FINAL_TEST_DISABLED.replace(true)) }
+    pub(super) fn disabled() -> Self {
+        Self(CANONICAL_FINAL_TEST_DISABLED.replace(true))
+    }
 }
 #[cfg(test)]
 impl Drop for CanonicalFinalTestGuard {
-    fn drop(&mut self) { CANONICAL_FINAL_TEST_DISABLED.set(self.0); }
+    fn drop(&mut self) {
+        CANONICAL_FINAL_TEST_DISABLED.set(self.0);
+    }
 }
 
 #[cfg(test)]
@@ -649,6 +659,8 @@ impl PpmlAllocationAuditWindow {
         Ok(())
     }
 
+    // Keep the legacy workspace and ownership boundaries explicit during migration.
+    #[allow(clippy::too_many_arguments)]
     fn finish_iteration<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         session: &CertifiedLinearSession<'_, P>,
@@ -738,7 +750,8 @@ fn allocation_audit_start_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
             )
         })?
         .scratch_bytes;
-    let profile_workspace_valid = profile.map(ProfiledOneFe::capacities_unchanged)
+    let profile_workspace_valid = profile
+        .map(ProfiledOneFe::capacities_unchanged)
         .or_else(|| curve.map(ProfiledInterceptCurve::capacities_unchanged));
     // Capture last: the window begins after all boundary evidence has been
     // read and immediately before the next complete IRLS iteration.
@@ -779,7 +792,8 @@ fn allocation_audit_end_boundary<P: PreparedOlsFitView + Sync + ?Sized>(
         ppml_workspace,
         linear_workspace,
         linear_workspace_report,
-        profile_workspace_valid: profile.map(ProfiledOneFe::capacities_unchanged)
+        profile_workspace_valid: profile
+            .map(ProfiledOneFe::capacities_unchanged)
             .or_else(|| curve.map(ProfiledInterceptCurve::capacities_unchanged)),
         scratch_bytes,
     })
@@ -855,13 +869,13 @@ fn summarize_linear_workspace(
         .chain(capacity.within_metadata.iter())
         .chain(capacity.basis_metadata.iter())
         .try_fold(0_u128, |sum, value| {
-        sum.checked_add(*value as u128).ok_or_else(|| {
-            FeregError::new(
-                ErrorCode::Allocation,
-                "PPML linear workspace capacity summary overflowed",
-            )
-        })
-    })?;
+            sum.checked_add(*value as u128).ok_or_else(|| {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    "PPML linear workspace capacity summary overflowed",
+                )
+            })
+        })?;
     Ok(PpmlLinearWorkspaceCapacityReport {
         element_capacity_sum,
         retained_resident_elements: capacity.within_resident_elements,
@@ -1144,18 +1158,22 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && ProfiledInterceptCurve::selected_effect(&fe_design).is_some()
     {
-        let effect = &fe_design.effects()[ProfiledInterceptCurve::selected_effect(&fe_design).unwrap()];
+        let effect =
+            &fe_design.effects()[ProfiledInterceptCurve::selected_effect(&fe_design).unwrap()];
         let bytes = ProfiledInterceptCurve::bytes(
             fe_design.nobs(),
             prepared.fit_model().columns.len(),
             effect.n_levels(),
             effect.slopes().len(),
         );
-        match memory_plan.solver_workspace_bytes.checked_add(bytes)
+        match memory_plan
+            .solver_workspace_bytes
+            .checked_add(bytes)
             .map(|total| memory_plan.with_solver_workspace(total))
         {
             Some(Ok(plan)) => {
-                solver_execution_bytes = solver_execution_bytes.checked_add(bytes)
+                solver_execution_bytes = solver_execution_bytes
+                    .checked_add(bytes)
                     .ok_or_else(|| allocation("profile curve size overflows"))?;
                 memory_plan = plan;
                 true
@@ -1169,9 +1187,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // Low mode retains group centers; fast mode uses the same certified
     // construction, then writes the result once into its retained dense bank.
     // Admit the extra geometry without crediting the replaced projector.
-    let group_centered_one_fe_admitted = if one_fe_profile_admitted
-        && shared_prepared.is_some()
-    {
+    let group_centered_one_fe_admitted = if one_fe_profile_admitted && shared_prepared.is_some() {
         let bytes = crate::ols::ImplicitCenteredDesign::bytes(
             fe_design.effects()[0].n_levels(),
             prepared.fit_model().columns.len(),
@@ -1204,34 +1220,54 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // Fast canonical construction reuses the same direct-product engine as
     // low execution, but its transient banks are additional to the dense
     // retained design. Do not borrow slack from the existing projector.
-    let fast_canonical_products_allowance = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-        && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
-        && config.linear.absorb.solver == FeSolverKind::Map
-        && matches!(fe_design.effects().len(), 2 | 3)
-        && fe_design.effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty())
-    {
-        let pool = config.linear.execution.poolsize.max(1)
-            .min(memory_plan.dimensions.finite_columns.max(1));
-        let bytes = (fe_design.nobs() as u128).checked_mul(pool as u128)
-            .and_then(|n| n.checked_mul(16))
-            .filter(|&allowance| fe_design.effects().len() == 2 ||
-                crate::ols::canonical_three_workspace_bytes(fe_design.nobs(),
-                    memory_plan.dimensions.finite_columns.saturating_add(1),
-                    std::array::from_fn(|e| fe_design.effects()[e].n_levels()),
-                    effective_threads)
-                    .is_some_and(|bytes| bytes <= allowance));
-        match bytes.and_then(|bytes| memory_plan.solver_workspace_bytes.checked_add(bytes)
-            .map(|total| (bytes, memory_plan.with_solver_workspace(total)))) {
-            Some((bytes, Ok(plan))) => {
-                solver_execution_bytes = solver_execution_bytes.checked_add(bytes)
-                    .ok_or_else(|| allocation("fast canonical product workspace overflows"))?;
-                memory_plan = plan;
-                bytes
+    let fast_canonical_products_allowance =
+        if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+            && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
+            && config.linear.absorb.solver == FeSolverKind::Map
+            && matches!(fe_design.effects().len(), 2 | 3)
+            && fe_design
+                .effects()
+                .iter()
+                .all(|e| e.has_intercept() && e.slopes().is_empty())
+        {
+            let pool = config
+                .linear
+                .execution
+                .poolsize
+                .max(1)
+                .min(memory_plan.dimensions.finite_columns.max(1));
+            let bytes = (fe_design.nobs() as u128)
+                .checked_mul(pool as u128)
+                .and_then(|n| n.checked_mul(16))
+                .filter(|&allowance| {
+                    fe_design.effects().len() == 2
+                        || crate::ols::canonical_three_workspace_bytes(
+                            fe_design.nobs(),
+                            memory_plan.dimensions.finite_columns.saturating_add(1),
+                            std::array::from_fn(|e| fe_design.effects()[e].n_levels()),
+                            effective_threads,
+                        )
+                        .is_some_and(|bytes| bytes <= allowance)
+                });
+            match bytes.and_then(|bytes| {
+                memory_plan
+                    .solver_workspace_bytes
+                    .checked_add(bytes)
+                    .map(|total| (bytes, memory_plan.with_solver_workspace(total)))
+            }) {
+                Some((bytes, Ok(plan))) => {
+                    solver_execution_bytes = solver_execution_bytes
+                        .checked_add(bytes)
+                        .ok_or_else(|| allocation("fast canonical product workspace overflows"))?;
+                    memory_plan = plan;
+                    bytes
+                }
+                Some((_, Err(error))) if error.code != ErrorCode::Allocation => return Err(error),
+                _ => 0,
             }
-            Some((_, Err(error))) if error.code != ErrorCode::Allocation => return Err(error),
-            _ => 0,
-        }
-    } else { 0 };
+        } else {
+            0
+        };
     let projection_rhs = match config.linear.execution.mode {
         PreparedOlsExecutionMode::Fast => solver_rhs,
         PreparedOlsExecutionMode::Low => config
@@ -1242,18 +1278,27 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     };
     let categorical_checkpoints = config.linear.execution.mode == PreparedOlsExecutionMode::Low
         && matches!(fe_design.effects().len(), 2 | 3)
-        && fe_design.effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty());
+        && fe_design
+            .effects()
+            .iter()
+            .all(|e| e.has_intercept() && e.slopes().is_empty());
     let coefficient_solver = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
         && fe_design.effects().len() > 1
-        && (fe_design.effects().iter().any(|effect| !effect.slopes().is_empty())
+        && (fe_design
+            .effects()
+            .iter()
+            .any(|effect| !effect.slopes().is_empty())
             || ((config.linear.execution.mode == PreparedOlsExecutionMode::Low
                     // The categorical checkpoint/LSMR engines cover at most
                     // three partitions. Higher-dimensional fast fits otherwise
                     // repeat generic observation-space projection for every RHS.
                     || fe_design.effects().len() > 3)
                 && solver_rhs > 1
-                && fe_design.effects().iter().all(|effect| effect.has_intercept())))
+                && fe_design
+                    .effects()
+                    .iter()
+                    .all(|effect| effect.has_intercept())))
     {
         let mut candidate = memory_plan;
         match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(&fe_design).and_then(
@@ -1266,10 +1311,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 .and_then(|workspace| {
                     let checkpoint = if categorical_checkpoints {
                         crate::fe::ReusableCategoricalMapAbsorber::coexisting_owner_bytes(
-                            fe_design.effects().len(), projection_rhs,
+                            fe_design.effects().len(),
+                            projection_rhs,
                         )?
-                    } else { 0 };
-                    Ok((geometry, workspace + 8 * fe_design.nobs() as u128 + checkpoint))
+                    } else {
+                        0
+                    };
+                    Ok((
+                        geometry,
+                        workspace + 8 * fe_design.nobs() as u128 + checkpoint,
+                    ))
                 })
             },
         ) {
@@ -1284,9 +1335,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             Err(error) if error.code == ErrorCode::Allocation => false,
             Err(error) => return Err(error),
         }
-    } else { false };
+    } else {
+        false
+    };
     // Mu exploration has a separate parent separation-phase envelope.
-    let projection_plan = if !coefficient_solver && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+    let projection_plan = if !coefficient_solver
+        && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
     {
         match crate::fe::ParallelProjectionPlan::for_design_and_threads(
@@ -1302,7 +1356,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         None
     };
-    let certificate_geometry = if coefficient_solver { true } else if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+    let certificate_geometry = if coefficient_solver {
+        true
+    } else if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && config.solver_plan.selected == super::PpmlSolverFamily::Map
         && fe_design.effects().len() > 1
         && fe_design
@@ -1332,12 +1388,17 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             Err(error) if error.code == ErrorCode::Allocation => false,
             Err(error) => return Err(error),
         }
-    } else { false };
+    } else {
+        false
+    };
     // Prepared operators are independently optional after the numerical solver
     // and its certificate bank. Refusal cannot evict either admitted mechanism.
     let slope_coupling = if coefficient_solver {
-        match crate::fe::ReusableMapAbsorber::coefficient_coupling_bytes(&fe_design, projection_rhs) {
-            Ok(Some(bytes)) => memory_plan.reusable_slope_bytes.checked_add(bytes)
+        match crate::fe::ReusableMapAbsorber::coefficient_coupling_bytes(&fe_design, projection_rhs)
+        {
+            Ok(Some(bytes)) => memory_plan
+                .reusable_slope_bytes
+                .checked_add(bytes)
                 .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
             Ok(None) => false,
             Err(error) if error.code == ErrorCode::Allocation => false,
@@ -1363,40 +1424,52 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // width while retaining the ordinary joint owner and its full budget.
     // Two effects already use level-space Schur/PCG; the measured avoidable
     // observation-space CG cost belongs to three-effect canonical construction.
-    let low_checkpoint_lsmr = if coefficient_solver && categorical_checkpoints
-        && fe_design.effects().len() == 3
-    {
-        let mut level_storage = [0; 3];
-        for (slot, effect) in level_storage.iter_mut().zip(fe_design.effects()) {
-            *slot = effect.n_levels();
-        }
-        let levels = &level_storage[..fe_design.effects().len()];
-        match estimate_checkpoint_lsmr_workspace_bytes(
-            fe_design.nobs(), projection_rhs, levels, effective_threads,
-        ).and_then(|bytes| {
-            // Scaling overlaps the LSMR frame: N weights, component labels
-            // and maxima. Topology construction uses <32 bytes/level plus
-            // <512 bytes of descriptors for these three effects.
-            let component_bytes = 8 * fe_design.nobs() as u128
-                + 32 * levels.iter().map(|&n| n as u128).sum::<u128>() + 512;
-            let bytes = bytes.checked_add(component_bytes)
-                .ok_or_else(|| allocation("component checkpoint workspace overflows"))?;
-            memory_plan.solver_workspace_bytes.checked_add(bytes)
-                .ok_or_else(|| allocation("low PPML checkpoint workspace overflows"))
-                .and_then(|total| memory_plan.with_solver_workspace(total).map(|plan| (plan, bytes)))
-        }) {
-            Ok((plan, bytes)) => {
-                memory_plan = plan;
-                solver_execution_bytes = solver_execution_bytes.checked_add(bytes)
-                    .ok_or_else(|| allocation("low PPML checkpoint overlap overflows"))?;
-                true
+    let low_checkpoint_lsmr =
+        if coefficient_solver && categorical_checkpoints && fe_design.effects().len() == 3 {
+            let mut level_storage = [0; 3];
+            for (slot, effect) in level_storage.iter_mut().zip(fe_design.effects()) {
+                *slot = effect.n_levels();
             }
-            Err(error) if error.code == ErrorCode::Allocation => false,
-            Err(error) => return Err(error),
-        }
-    } else {
-        false
-    };
+            let levels = &level_storage[..fe_design.effects().len()];
+            match estimate_checkpoint_lsmr_workspace_bytes(
+                fe_design.nobs(),
+                projection_rhs,
+                levels,
+                effective_threads,
+            )
+            .and_then(|bytes| {
+                // Scaling overlaps the LSMR frame: N weights, component labels
+                // and maxima. Topology construction uses <32 bytes/level plus
+                // <512 bytes of descriptors for these three effects.
+                let component_bytes = 8 * fe_design.nobs() as u128
+                    + 32 * levels.iter().map(|&n| n as u128).sum::<u128>()
+                    + 512;
+                let bytes = bytes
+                    .checked_add(component_bytes)
+                    .ok_or_else(|| allocation("component checkpoint workspace overflows"))?;
+                memory_plan
+                    .solver_workspace_bytes
+                    .checked_add(bytes)
+                    .ok_or_else(|| allocation("low PPML checkpoint workspace overflows"))
+                    .and_then(|total| {
+                        memory_plan
+                            .with_solver_workspace(total)
+                            .map(|plan| (plan, bytes))
+                    })
+            }) {
+                Ok((plan, bytes)) => {
+                    memory_plan = plan;
+                    solver_execution_bytes = solver_execution_bytes
+                        .checked_add(bytes)
+                        .ok_or_else(|| allocation("low PPML checkpoint overlap overflows"))?;
+                    true
+                }
+                Err(error) if error.code == ErrorCode::Allocation => false,
+                Err(error) => return Err(error),
+            }
+        } else {
+            false
+        };
     // The retained bank cannot consume slack promised to another solver call.
     let solver_memory_budget = FeSolverMemoryBudget {
         execution_bytes: solver_execution_bytes
@@ -1410,9 +1483,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     config.linear.absorb.solver_memory_budget = Some(solver_memory_budget);
     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
     if config.solver_plan.selected == super::PpmlSolverFamily::Cmg {
-        memory.expected_solver_workspace_peak = Some(crate::memory::SolverWorkspacePeak::from_bytes(
-            solver_admission.checkpoint_workspace_bytes + solver_admission.owned_fe_design_shortfall_bytes,
-        )?);
+        memory.expected_solver_workspace_peak =
+            Some(crate::memory::SolverWorkspacePeak::from_bytes(
+                solver_admission.checkpoint_workspace_bytes
+                    + solver_admission.owned_fe_design_shortfall_bytes,
+            )?);
     }
     // Admission and telemetry bind this fit to one resolved team. Repeated
     // automatic resolution may allocate while querying OS CPU quotas (Linux),
@@ -1431,12 +1506,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         start,
         purpose,
     )?;
-    let objective_inputs = PreparedPoissonInputs::new_with_threads(outcome, prior_weights, offset, config.linear.execution.threads)?;
+    let objective_inputs = PreparedPoissonInputs::new_with_threads(
+        outcome,
+        prior_weights,
+        offset,
+        config.linear.execution.threads,
+    )?;
     let mut workspace =
         PpmlIterationWorkspace::from_initial_state(memory_plan, eta, coefficient_values)?;
     workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
-    let mut objective =
-        workspace.evaluate_current_objective(&objective_inputs)?;
+    let mut objective = workspace.evaluate_current_objective(&objective_inputs)?;
     let mut score_workspace = PpmlScoreWorkspace::new(&fe_design, config.linear.execution.threads)?;
     let initial_tolerance =
         scheduled_inner_tolerance(config.ppml, 1, config.ppml.inner_tolerance_initial, None);
@@ -1491,12 +1570,13 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         session.enable_ppml_joint_slopes()?;
     }
     session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
-    let initial_checkpoint_lsmr = low_checkpoint_lsmr || use_initial_checkpoint_lsmr_accelerator(
-        &config,
-        purpose,
-        session.fe_design().nobs(),
-        session.fe_design().effects().len(),
-    );
+    let initial_checkpoint_lsmr = low_checkpoint_lsmr
+        || use_initial_checkpoint_lsmr_accelerator(
+            &config,
+            purpose,
+            session.fe_design().nobs(),
+            session.fe_design().effects().len(),
+        );
     if initial_checkpoint_lsmr {
         // This changes only how the untouched full-width frame is projected.
         // The canonical session still makes the first rank/status decision
@@ -1595,18 +1675,31 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         if iteration > 1 {
             if let Some(profile) = profiled_one_fe.as_mut() {
                 let started = Instant::now();
-                let direction = if config.linear.execution.mode == PreparedOlsExecutionMode::Low || session.has_implicit_one_fe() {
+                let direction = if config.linear.execution.mode == PreparedOlsExecutionMode::Low
+                    || session.has_implicit_one_fe()
+                {
                     let columns = session.one_fe_original_columns(profile.active_columns())?;
                     let data = ProfiledRawColumns::new(prepared, columns)?;
                     profile.prepare_direction(
-                        &data, session.fe_design(), outcome, prior_weights, offset,
-                        workspace.coefficients(), config.ppml,
+                        &data,
+                        session.fe_design(),
+                        outcome,
+                        prior_weights,
+                        offset,
+                        workspace.coefficients(),
+                        config.ppml,
                     )
                 } else {
-                    let (values, positions) = session.one_fe_representatives(profile.active_columns())?;
+                    let (values, positions) =
+                        session.one_fe_representatives(profile.active_columns())?;
                     profile.prepare_direction(
-                        ProfiledColumns::selected(values, positions)?, session.fe_design(),
-                        outcome, prior_weights, offset, workspace.coefficients(), config.ppml,
+                        ProfiledColumns::selected(values, positions)?,
+                        session.fe_design(),
+                        outcome,
+                        prior_weights,
+                        offset,
+                        workspace.coefficients(),
+                        config.ppml,
                     )
                 };
                 match direction {
@@ -1686,7 +1779,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 workspace.candidate_coefficients_mut(),
             )?;
             let specialized_columns = (selected_engine != PpmlSolverEngine::Map
-                || one_fe_profile_admitted || profiled_curve_admitted)
+                || one_fe_profile_admitted
+                || profiled_curve_admitted)
                 .then(|| {
                     fallible_copy(
                         output.fit().kept_generated_columns(),
@@ -1721,10 +1815,17 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 match ProfiledInterceptCurve::new(
                     prepared,
                     specialized_columns.as_deref().expect("curve basis"),
-                    session.fe_design(), outcome, prior_weights, config.linear.execution.threads,
+                    session.fe_design(),
+                    outcome,
+                    prior_weights,
+                    config.linear.execution.threads,
                 ) {
                     Ok(curve) => profiled_curve = Some(curve),
-                    Err(error) if matches!(error.code, ErrorCode::Allocation | ErrorCode::NonConvergence) => {}
+                    Err(error)
+                        if matches!(
+                            error.code,
+                            ErrorCode::Allocation | ErrorCode::NonConvergence
+                        ) => {}
                     Err(error) => return Err(error),
                 }
             }
@@ -1996,10 +2097,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 if !allocation_audit.needs_equivalence() {
                     (frozen_rank, frozen_reuse, frozen_route)
                 } else {
-                    let frozen_objective = workspace.evaluate_candidate_objective(
-                        &objective_inputs,
-                        config.ppml.bounds,
-                    )?;
+                    let frozen_objective = workspace
+                        .evaluate_candidate_objective(&objective_inputs, config.ppml.bounds)?;
                     record_linear_phase_timings(&mut memory, frozen_reuse)?;
                     // This canonical same-frame solve is deliberately after the
                     // end allocator snapshot. It may allocate and therefore can
@@ -2010,15 +2109,19 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &mut total_inner_iterations,
                         canonical.fit().absorption_report(),
                     )?;
-                    let solver = solver_report.as_mut()
+                    let solver = solver_report
+                        .as_mut()
                         .ok_or_else(|| internal("PPML MAP equivalence solve lacks diagnostics"))?;
                     if initial_checkpoint_lsmr {
                         record_checkpoint_solver_observation(
-                            solver, canonical.fit().absorption_report(), false,
+                            solver,
+                            canonical.fit().absorption_report(),
+                            false,
                         )?;
                     } else {
                         solver.observe(map_solver_observation(
-                            canonical.fit().absorption_report(), PpmlSolverFrameKind::Ordinary,
+                            canonical.fit().absorption_report(),
+                            PpmlSolverFrameKind::Ordinary,
                         ))?;
                     }
                     let canonical_route = canonical.fit().absorption_report().used_solver;
@@ -2044,10 +2147,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &canonical,
                         workspace.candidate_coefficients_mut(),
                     )?;
-                    let canonical_objective = workspace.evaluate_candidate_objective(
-                        &objective_inputs,
-                        config.ppml.bounds,
-                    )?;
+                    let canonical_objective = workspace
+                        .evaluate_candidate_objective(&objective_inputs, config.ppml.bounds)?;
                     equivalent &= relative_scalar_difference(
                         frozen_objective.deviance,
                         canonical_objective.deviance,
@@ -2116,24 +2217,44 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             let mut poll_line_search = || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
             let attempt = if profiled_step.is_some() {
                 let profile = profiled_one_fe.as_mut().expect("prepared profile step");
-                if config.linear.execution.mode == PreparedOlsExecutionMode::Low || session.has_implicit_one_fe() {
+                if config.linear.execution.mode == PreparedOlsExecutionMode::Low
+                    || session.has_implicit_one_fe()
+                {
                     let columns = session.one_fe_original_columns(profile.active_columns())?;
                     let data = ProfiledRawColumns::new(prepared, columns)?;
                     profile.accept(
-                        &data, session.fe_design(), &objective_inputs, offset,
-                        &mut workspace, objective, config.ppml, &mut poll_line_search,
+                        &data,
+                        session.fe_design(),
+                        &objective_inputs,
+                        offset,
+                        &mut workspace,
+                        objective,
+                        config.ppml,
+                        &mut poll_line_search,
                     )
                 } else {
-                    let (values, positions) = session.one_fe_representatives(profile.active_columns())?;
+                    let (values, positions) =
+                        session.one_fe_representatives(profile.active_columns())?;
                     profile.accept(
-                        ProfiledColumns::selected(values, positions)?, session.fe_design(),
-                        &objective_inputs, offset, &mut workspace, objective,
-                        config.ppml, &mut poll_line_search,
+                        ProfiledColumns::selected(values, positions)?,
+                        session.fe_design(),
+                        &objective_inputs,
+                        offset,
+                        &mut workspace,
+                        objective,
+                        config.ppml,
+                        &mut poll_line_search,
                     )
                 }
             } else if let Some(curve) = profiled_curve.as_mut() {
-                curve.accept(session.fe_design(), &objective_inputs, &mut workspace,
-                    objective, config.ppml, &mut poll_line_search)
+                curve.accept(
+                    session.fe_design(),
+                    &objective_inputs,
+                    &mut workspace,
+                    objective,
+                    config.ppml,
+                    &mut poll_line_search,
+                )
             } else {
                 workspace.accept_candidate_interruptible(
                     &objective_inputs,
@@ -2257,7 +2378,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             // canonical Newton checkpoint can confirm the accepted point and supply its
             // exact-weight design/bread; the independent final checks below
             // still decide whether those products can be reused.
-            if !canonical_final && profiled_curve.is_none()
+            if !canonical_final
+                && profiled_curve.is_none()
                 && !profile_rebuild_pending
                 && !checkpoint_refinement_pending
                 && (session.supports_joint_ppml_direction() || joint_lsmr.is_some())
@@ -2355,10 +2477,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             if injected_strict_movement {
                 inject_candidate_profile_movement(&mut workspace);
             }
-            let strict_objective = match workspace.evaluate_candidate_objective(
-                &objective_inputs,
-                config.ppml.bounds,
-            ) {
+            let strict_objective = match workspace
+                .evaluate_candidate_objective(&objective_inputs, config.ppml.bounds)
+            {
                 Ok(objective) => Some(objective),
                 Err(error) if error.code == ErrorCode::NonConvergence => None,
                 Err(error) => return Err(error),
@@ -2372,7 +2493,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         .map(ReusableCategoricalFwlCmg::active_slots)
                 })
                 .or_else(|| profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots))
-                .or_else(|| profiled_curve.as_ref().map(ProfiledInterceptCurve::active_slots));
+                .or_else(|| {
+                    profiled_curve
+                        .as_ref()
+                        .map(ProfiledInterceptCurve::active_slots)
+                });
             let strict_consistent = strict_candidate_decision_with_coefficient_slots(
                 strict_certified,
                 strict_basis_unchanged,
@@ -2465,7 +2590,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 // retaining it keeps the strict canonical products on the exact
                 // accepted Hessian frame for independently checked final reuse.
                 if !canonical_final && profiled_one_fe.is_none() && profiled_curve.is_none() {
-                    workspace.fill_prepared_line_search_trial_with(1.0, config.ppml.bounds, &objective_inputs, |_| Ok(()))?;
+                    workspace.fill_prepared_line_search_trial_with(
+                        1.0,
+                        config.ppml.bounds,
+                        &objective_inputs,
+                        |_| Ok(()),
+                    )?;
                     workspace.accept_trial()?;
                     objective = strict_objective.expect("consistent strict objective is present");
                 }
@@ -2580,7 +2710,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             )?;
             if strict_consistent && final_score.passed {
                 interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
-                let synchronized = if (canonical_final || profiled_one_fe.is_some() || profiled_curve.is_some())
+                let synchronized = if (canonical_final
+                    || profiled_one_fe.is_some()
+                    || profiled_curve.is_some())
                     && strict_basis_unchanged
                     && reuse_canonical_final_products(
                         &session,
@@ -2612,10 +2744,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     converged = true;
                 } else if synchronized == FinalHessianSynchronization::ResumeWithCandidate {
                     profile_rejected = true;
-                    let candidate_objective = workspace.evaluate_candidate_objective(
-                        &objective_inputs,
-                        config.ppml.bounds,
-                    )?;
+                    let candidate_objective = workspace
+                        .evaluate_candidate_objective(&objective_inputs, config.ppml.bounds)?;
                     profile_difference = strict_profile_difference(
                         workspace.eta(),
                         workspace.coefficients(),
@@ -2678,7 +2808,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             if profile_rejected {
                 // A slope correction is an optional nonlinear trial, not
                 // authority to contest a rejected canonical checkpoint.
-                if session.fe_design().effects().iter().any(|e| !e.slopes().is_empty()) {
+                if session
+                    .fe_design()
+                    .effects()
+                    .iter()
+                    .any(|e| !e.slopes().is_empty())
+                {
                     profiled_curve = None;
                 }
                 let refined = refined_checkpoint_tolerance(checkpoint_tolerance);
@@ -2764,7 +2899,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             )?;
         } else if audit_can_start {
             allocation_audit.start_after(
-                &session, &workspace, profiled_one_fe.as_ref(), profiled_curve.as_ref(),
+                &session,
+                &workspace,
+                profiled_one_fe.as_ref(),
+                profiled_curve.as_ref(),
             )?;
         }
         previous_outer_progress = Some(PpmlInnerToleranceProgress::new(
@@ -2906,10 +3044,14 @@ fn record_cmg_heap_forecast(
     cmg: &ReusableCategoricalFwlCmg,
     admission: PublicSolverMemoryAdmission,
 ) -> Result<()> {
-    let peak = cmg.expected_heap_peak(admission.checkpoint_workspace_bytes)?
+    let peak = cmg
+        .expected_heap_peak(admission.checkpoint_workspace_bytes)?
         .with_retained(admission.owned_fe_design_shortfall_bytes)?;
     memory.expected_solver_workspace_peak = Some(
-        memory.expected_solver_workspace_peak.unwrap_or(crate::memory::SolverWorkspacePeak::ZERO).max(peak),
+        memory
+            .expected_solver_workspace_peak
+            .unwrap_or(crate::memory::SolverWorkspacePeak::ZERO)
+            .max(peak),
     );
     Ok(())
 }
@@ -3401,9 +3543,10 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
 ) -> Result<bool> {
     #[cfg(test)]
     if JOINT_FINAL_TEST_MODE.get() == 1
-        || categorical.is_some() && (STRICT_RESUME_INJECTION.get() != 0
-            || STRICT_BASIS_CHANGE_INJECTION.get() != 0
-            || REPEATED_STRICT_RESUME_INJECTION.get() != 0)
+        || categorical.is_some()
+            && (STRICT_RESUME_INJECTION.get() != 0
+                || STRICT_BASIS_CHANGE_INJECTION.get() != 0
+                || REPEATED_STRICT_RESUME_INJECTION.get() != 0)
     {
         // Existing injections explicitly exercise canonical checkpoint/resume.
         // Shared witness refusal and rollback have their own modes below.
@@ -3414,7 +3557,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         JOINT_FINAL_TEST_COUNTS.get().0 + 1,
         JOINT_FINAL_TEST_COUNTS.get().1,
     ));
-    workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
+    workspace.refresh_prepared_working_state(objective_inputs, config.ppml.bounds)?;
     if categorical.is_none() {
         *frame_generation = next_frame_generation(*frame_generation)?;
         refresh_linear_frame(session, workspace, *frame_generation)?;
@@ -3422,8 +3565,11 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     session.set_config(ppml_linear_config(config, checkpoint_tolerance)?)?;
     let rank = if let Some((joint, engine)) = categorical.as_mut() {
         let result = joint.solve(
-            session.fe_design(), objective_inputs.outcome(), workspace.mean(),
-            workspace.hessian_weights(), checkpoint_tolerance,
+            session.fe_design(),
+            objective_inputs.outcome(),
+            workspace.mean(),
+            workspace.hessian_weights(),
+            checkpoint_tolerance,
             config.linear.absorb.lsmr.max_iterations,
         );
         #[cfg(test)]
@@ -3449,7 +3595,8 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
             }
             Err(error) => return Err(error),
         };
-        *total_inner_iterations = total_inner_iterations.checked_add(report.iterations.max(1))
+        *total_inner_iterations = total_inner_iterations
+            .checked_add(report.iterations.max(1))
             .ok_or_else(|| internal("strict LSMR iteration count overflowed"))?;
         let mut observation = joint_solver_observation(report, *engine);
         observation.frame = PpmlSolverFrameKind::Checkpoint;
@@ -3469,13 +3616,19 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         if !matches!(direction, PpmlOrdinaryLinearOutput::Joint(_)) || !direction.certified() {
             return Ok(false);
         }
-        accumulate_inner_iterations(total_inner_iterations, direction.response_absorption_report())?;
+        accumulate_inner_iterations(
+            total_inner_iterations,
+            direction.response_absorption_report(),
+        )?;
         record_checkpoint_solver_observation(
-            solver_report, direction.response_absorption_report(), false,
+            solver_report,
+            direction.response_absorption_report(),
+            false,
         )?;
         fill_candidate_eta_from_frozen_output(&direction, offset, workspace.candidate_eta_mut())?;
         fill_candidate_coefficients_from_frozen_output(
-            &direction, workspace.candidate_coefficients_mut(),
+            &direction,
+            workspace.candidate_coefficients_mut(),
         )?;
         direction.basis().kept_generated_columns().len()
     };
@@ -3489,7 +3642,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         inject_candidate_profile_movement(workspace);
     }
     let objective =
-        match workspace.evaluate_candidate_objective(&objective_inputs, config.ppml.bounds) {
+        match workspace.evaluate_candidate_objective(objective_inputs, config.ppml.bounds) {
             Ok(value) => Some(value),
             Err(error) if error.code == ErrorCode::NonConvergence => None,
             Err(error) => return Err(error),
@@ -3547,7 +3700,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         workspace.candidate_coefficients_mut(),
     )?;
     let objective =
-        match workspace.evaluate_candidate_objective(&objective_inputs, config.ppml.bounds) {
+        match workspace.evaluate_candidate_objective(objective_inputs, config.ppml.bounds) {
             Ok(value) => Some(value),
             Err(error) if error.code == ErrorCode::NonConvergence => None,
             Err(error) => return Err(error),
@@ -3569,10 +3722,19 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         && relative_infinity_difference(workspace.eta(), workspace.candidate_eta())
             <= config.ppml.tolerance
         && coefficient_slots.map_or_else(
-            || relative_infinity_difference(workspace.coefficients(), workspace.candidate_coefficients()),
-            |slots| relative_infinity_difference_at_slots(
-                workspace.coefficients(), workspace.candidate_coefficients(), slots,
-            ),
+            || {
+                relative_infinity_difference(
+                    workspace.coefficients(),
+                    workspace.candidate_coefficients(),
+                )
+            },
+            |slots| {
+                relative_infinity_difference_at_slots(
+                    workspace.coefficients(),
+                    workspace.candidate_coefficients(),
+                    slots,
+                )
+            },
         ) <= config.ppml.tolerance;
     if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
         super::categorical_lsmr::emit_solver_trace_line(&format!(
@@ -3650,6 +3812,8 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     let mut absorbed_scale = 0.0_f64;
     let mut working_scale = 0.0_f64;
+    // Keep the legacy matrix indices and numerical traversal order explicit.
+    #[allow(clippy::needless_range_loop)]
     for row in 0..offset.len() {
         absorbed_scale = absorbed_scale.max(output.absorbed_predictor()[row].abs());
         working_scale = working_scale
@@ -3677,8 +3841,7 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
     // budget. The existing final-Hessian replay uses the small accepted
     // predictor as its RHS and retains all rank, score and frame checks.
     if absorbed_scale > 0.0
-        && 8.0 * f64::EPSILON * working_scale
-            > strict_inner_tolerance(config.ppml) * absorbed_scale
+        && 8.0 * f64::EPSILON * working_scale > strict_inner_tolerance(config.ppml) * absorbed_scale
     {
         if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
             super::categorical_lsmr::emit_solver_trace_line(
@@ -3711,7 +3874,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     accepted_objective: PoissonObjective,
     coefficient_slots: Option<&[usize]>,
 ) -> Result<FinalHessianSynchronization> {
-    workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
+    workspace.refresh_prepared_working_state(objective_inputs, config.ppml.bounds)?;
     workspace.prepare_final_hessian_response(offset)?;
     *frame_generation = next_frame_generation(*frame_generation)?;
     // The accepted strict point usually changes the Hessian. Only a bitwise
@@ -3774,7 +3937,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         inject_candidate_profile_movement(workspace);
     }
     let candidate_objective =
-        match workspace.evaluate_candidate_objective(&objective_inputs, config.ppml.bounds) {
+        match workspace.evaluate_candidate_objective(objective_inputs, config.ppml.bounds) {
             Ok(objective) => objective,
             Err(error) if error.code == ErrorCode::NonConvergence => {
                 synchronized_transaction.rollback();
@@ -3919,7 +4082,12 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
     )?;
     if purpose == PreparedPpmlIrlsPurpose::Publication
         && seed_multi_effect_predictor(
-            outcome, prior_weights, offset, fe_design, config.ppml, &mut eta,
+            outcome,
+            prior_weights,
+            offset,
+            fe_design,
+            config.ppml,
+            &mut eta,
         )
     {
         // Absorbed intercepts represent the entire initial predictor. The
@@ -3933,7 +4101,9 @@ fn initialize<P: PreparedOlsFitView + ?Sized>(
     } else {
         0.0
     };
-    if let Some(position) = intercept_position { coefficient_values[position] = shift; }
+    if let Some(position) = intercept_position {
+        coefficient_values[position] = shift;
+    }
     if purpose == PreparedPpmlIrlsPurpose::Publication
         && seed_one_effect_predictor(
             outcome,
@@ -3974,15 +4144,19 @@ fn seed_multi_effect_predictor(
     config: PpmlConfig,
     eta: &mut [f64],
 ) -> bool {
-    if design.effects().len() < 2 || design.effects().iter()
-        .any(|effect| !effect.has_intercept())
+    if design.effects().len() < 2
+        || design
+            .effects()
+            .iter()
+            .any(|effect| !effect.has_intercept())
     {
         return false;
     }
     // Solve the first partition directly from original offsets. Its exact
     // conditional optimum does not depend on a preceding global intercept.
     // Reuse the guarded one-partition arithmetic, including log-space fallback.
-    if !seed_group_intercept_predictor(outcome, weights, offset, &design.effects()[0], config, eta) {
+    if !seed_group_intercept_predictor(outcome, weights, offset, &design.effects()[0], config, eta)
+    {
         return false;
     }
     // Start with exact conditional intercepts, then one safeguarded Newton
@@ -3996,7 +4170,9 @@ fn seed_multi_effect_predictor(
             for &row in members {
                 let y = weights[row] * outcome[row];
                 let mu = weights[row] * eta[row].exp();
-                if !y.is_finite() || !mu.is_finite() || mu <= 0.0
+                if !y.is_finite()
+                    || !mu.is_finite()
+                    || mu <= 0.0
                     || (y == 0.0 && outcome[row] > 0.0)
                 {
                     return false;
@@ -4005,9 +4181,7 @@ fn seed_multi_effect_predictor(
                 fitted.add(mu);
             }
             let (observed, fitted) = (observed.total(), fitted.total());
-            if !observed.is_finite() || observed <= 0.0
-                || !fitted.is_finite() || fitted <= 0.0
-            {
+            if !observed.is_finite() || observed <= 0.0 || !fitted.is_finite() || fitted <= 0.0 {
                 return false;
             }
             let shift = observed.ln() - fitted.ln();
@@ -4023,14 +4197,29 @@ fn seed_multi_effect_predictor(
     // Establish all intercepts before slopes can explain another partition's
     // intercept variation. The second stage profiles the current group mass
     // afresh: later partition updates may have moved its conditional intercept.
-    for effect in design.effects().iter().filter(|effect| !effect.slopes().is_empty()) {
+    for effect in design
+        .effects()
+        .iter()
+        .filter(|effect| !effect.slopes().is_empty())
+    {
         for level in 0..effect.n_levels() {
             let members = effect.level_index().members(level);
             let mut observed = CompensatedSum::default();
-            for &row in members { observed.add(weights[row] * outcome[row]); }
+            for &row in members {
+                observed.add(weights[row] * outcome[row]);
+            }
             for slope in effect.slopes() {
-                if !seed_profiled_slope(members, slope, outcome, weights,
-                    observed.total(), config, eta) { return false; }
+                if !seed_profiled_slope(
+                    members,
+                    slope,
+                    outcome,
+                    weights,
+                    observed.total(),
+                    config,
+                    eta,
+                ) {
+                    return false;
+                }
             }
         }
     }
@@ -4050,7 +4239,10 @@ fn seed_profiled_slope(
     config: PpmlConfig,
     eta: &mut [f64],
 ) -> bool {
-    let scale = members.iter().map(|&r| slope[r].abs()).fold(0.0_f64, f64::max);
+    let scale = members
+        .iter()
+        .map(|&r| slope[r].abs())
+        .fold(0.0_f64, f64::max);
     let constant = members.iter().all(|&r| slope[r] == slope[members[0]]);
     let scale = if scale == 0.0 { 1.0 } else { scale };
     let mut target = CompensatedSum::default();
@@ -4071,25 +4263,36 @@ fn seed_profiled_slope(
     }
     let score = target.total() - observed * center;
     let curvature = curvature.total() * (observed / mass.total());
-    if !score.is_finite() || !curvature.is_finite() { return false; }
+    if !score.is_finite() || !curvature.is_finite() {
+        return false;
+    }
     // A constant slope has no profiled direction, but the current intercept
     // can still need its conditional correction after another partition moved.
-    let mut step = if constant || curvature == 0.0 { 0.0 } else { score / curvature };
-    if !step.is_finite() { return false; }
+    let mut step = if constant || curvature == 0.0 {
+        0.0
+    } else {
+        score / curvature
+    };
+    if !step.is_finite() {
+        return false;
+    }
     for _ in 0..=config.max_step_halvings {
         // A scaled sum avoids overflow of the unnormalized trial means.
-        let maximum = members.iter().map(|&r|
-            weights[r].ln() + eta[r] + step * (slope[r] / scale)
-        ).fold(f64::NEG_INFINITY, f64::max);
+        let maximum = members
+            .iter()
+            .map(|&r| weights[r].ln() + eta[r] + step * (slope[r] / scale))
+            .fold(f64::NEG_INFINITY, f64::max);
         let mut trial_mass = CompensatedSum::default();
         for &r in members {
-            trial_mass.add((weights[r].ln() + eta[r] +
-                step * (slope[r] / scale) - maximum).exp());
+            trial_mass.add((weights[r].ln() + eta[r] + step * (slope[r] / scale) - maximum).exp());
         }
         let shift = observed.ln() - (maximum + trial_mass.total().ln());
         let change = step * target.total() + observed * shift - (observed - mass.total());
-        if change.is_finite() && change >= 0.0 && members.iter().all(|&r|
-            usable_seed_value(eta[r] + step * (slope[r] / scale) + shift, config))
+        if change.is_finite()
+            && change >= 0.0
+            && members
+                .iter()
+                .all(|&r| usable_seed_value(eta[r] + step * (slope[r] / scale) + shift, config))
         {
             for &r in members {
                 eta[r] += step * (slope[r] / scale) + shift;
@@ -4845,10 +5048,15 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
     } else {
         numeric
     };
-    let generated_parallel = numeric.is_none() && rows >= 4096
-        && prepared.fit_model().columns.iter().any(|c| matches!(c.kind,
-            crate::ols::PreparedOlsColumnKind::Categorical { .. }
-            | crate::ols::PreparedOlsColumnKind::CategoricalInteraction { .. }));
+    let generated_parallel = numeric.is_none()
+        && rows >= 4096
+        && prepared.fit_model().columns.iter().any(|c| {
+            matches!(
+                c.kind,
+                crate::ols::PreparedOlsColumnKind::Categorical { .. }
+                    | crate::ols::PreparedOlsColumnKind::CategoricalInteraction { .. }
+            )
+        });
     #[cfg(test)]
     let generated_parallel = generated_parallel && !FORCE_GENERIC_OUTER_SCORE.get();
     let mut numeric_moments = [(0.0_f64, 0.0_f64); crate::ols::MAX_BOUND_NUMERIC_COLUMNS];
@@ -4879,20 +5087,30 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
         // width. Each job reads originals in row order; canonical reduction
         // order below and every independently formed score remain unchanged.
         if generated_parallel && column % numeric_moments.len() == 0 {
-            let width = numeric_moments.len().min(prepared.fit_model().columns.len() - column);
+            let width = numeric_moments
+                .len()
+                .min(prepared.fit_model().columns.len() - column);
             workspace.team.install(|| {
                 use rayon::prelude::*;
-                numeric_moments[..width].par_iter_mut().enumerate().try_for_each(|(local, target)| -> Result<()> {
-                    let mut moment = CompensatedSum::default();
-                    let mut square = CompensatedSum::default();
-                    crate::prepared_fit_view::visit_prepared_column_range(prepared, column + local, 0..rows, |row, basis| {
-                        moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
-                        square.add(prior_weights[row] * mean[row] * basis * basis);
+                numeric_moments[..width]
+                    .par_iter_mut()
+                    .enumerate()
+                    .try_for_each(|(local, target)| -> Result<()> {
+                        let mut moment = CompensatedSum::default();
+                        let mut square = CompensatedSum::default();
+                        crate::prepared_fit_view::visit_prepared_column_range(
+                            prepared,
+                            column + local,
+                            0..rows,
+                            |row, basis| {
+                                moment.add(prior_weights[row] * (outcome[row] - mean[row]) * basis);
+                                square.add(prior_weights[row] * mean[row] * basis * basis);
+                                Ok(())
+                            },
+                        )?;
+                        *target = (moment.total(), square.total());
                         Ok(())
-                    })?;
-                    *target = (moment.total(), square.total());
-                    Ok(())
-                })
+                    })
             })?;
         }
         let (moment, basis_square) = if generated_parallel {
@@ -4933,9 +5151,11 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
                 // A direction owns its two accumulators. Membership order is
                 // original observation order, so independent groups/channels
                 // can run together without reassociating either score sum.
-                moments[effect_offset..effect_offset + directions].par_iter_mut()
+                moments[effect_offset..effect_offset + directions]
+                    .par_iter_mut()
                     .zip(squares[effect_offset..effect_offset + directions].par_iter_mut())
-                    .enumerate().for_each(|(direction, (moment, square))| {
+                    .enumerate()
+                    .for_each(|(direction, (moment, square))| {
                         let level = direction / effect.channels();
                         let channel = direction % effect.channels();
                         let mut total = 0.0;
@@ -4954,7 +5174,8 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
                     for channel in 0..effect.channels() {
                         let direction = effect_offset + level * effect.channels() + channel;
                         let basis = effect.basis_value(channel, row);
-                        moments[direction] += prior_weights[row] * (outcome[row] - mean[row]) * basis;
+                        moments[direction] +=
+                            prior_weights[row] * (outcome[row] - mean[row]) * basis;
                         squares[direction] += prior_weights[row] * mean[row] * basis * basis;
                     }
                 }
@@ -5235,7 +5456,9 @@ mod tests {
             let x: Vec<Vec<_>> = (0..width)
                 .map(|j| {
                     (0..rows)
-                        .map(|r| (r as f64 / (j + 3) as f64).sin() + (r % 17) as f64 * (j + 1) as f64)
+                        .map(|r| {
+                            (r as f64 / (j + 3) as f64).sin() + (r % 17) as f64 * (j + 1) as f64
+                        })
                         .collect()
                 })
                 .collect();
@@ -5267,9 +5490,11 @@ mod tests {
             for threads in [1, 4] {
                 let threads = crate::options::ThreadConfig::from_requested(threads, true).unwrap();
                 for frame in [1, 7] {
-                    let weights: Vec<_> = (0..rows).map(|r| 0.2 + ((r * frame) % 13) as f64).collect();
+                    let weights: Vec<_> =
+                        (0..rows).map(|r| 0.2 + ((r * frame) % 13) as f64).collect();
                     let mut profile =
-                        ProfiledOneFe::new(&prepared, &active, &design, &y, &weights, threads).unwrap();
+                        ProfiledOneFe::new(&prepared, &active, &design, &y, &weights, threads)
+                            .unwrap();
                     profile
                         .prepare_direction(
                             &columns,
@@ -5380,53 +5605,113 @@ mod tests {
 
     #[test]
     fn generated_outer_scores_preserve_fresh_certificates_across_tiles_frames_and_teams() {
-        use crate::ols::{PreparedCategoricalSource, PreparedOlsColumnKind, PreparedOlsCategoricalComponent};
+        use crate::ols::{
+            PreparedCategoricalSource, PreparedOlsCategoricalComponent, PreparedOlsColumnKind,
+        };
         for rows in [4095, 4097] {
             for width in [8, 65, 71] {
                 let y: Vec<_> = (0..rows).map(|r| (r % 13) as f64 / 3.).collect();
-                let x: Vec<Vec<_>> = (0..width).map(|j| (0..rows).map(|r|
-                    if j < 2 { ((r / (j+1)) % (j+3)) as f64 }
-                    else { (r as f64 / (j+3) as f64).sin() }).collect()).collect();
+                let x: Vec<Vec<_>> = (0..width)
+                    .map(|j| {
+                        (0..rows)
+                            .map(|r| {
+                                if j < 2 {
+                                    ((r / (j + 1)) % (j + 3)) as f64
+                                } else {
+                                    (r as f64 / (j + 3) as f64).sin()
+                                }
+                            })
+                            .collect()
+                    })
+                    .collect();
                 let mut prepared = prepared(&y, &x);
+                // Keep the legacy matrix indices and numerical traversal order explicit.
+                #[allow(clippy::needless_range_loop)]
                 for j in 0..2 {
-                    prepared.categorical_sources.push(PreparedCategoricalSource {
-                        source: SourceId::new((j+1) as u32).unwrap(), prepared_source_index: j,
-                        encoded: crate::factorize::factorize_f64(&x[j]).unwrap(),
-                    });
+                    prepared
+                        .categorical_sources
+                        .push(PreparedCategoricalSource {
+                            source: SourceId::new((j + 1) as u32).unwrap(),
+                            prepared_source_index: j,
+                            encoded: crate::factorize::factorize_f64(&x[j]).unwrap(),
+                        });
                 }
                 for j in 2..width {
                     let component = |source_index: usize, code| PreparedOlsCategoricalComponent {
-                        source: SourceId::new((source_index+1) as u32).unwrap(),
-                        categorical_source_index: source_index, level_bits: 1f64.to_bits(), level_code: code,
+                        source: SourceId::new((source_index + 1) as u32).unwrap(),
+                        categorical_source_index: source_index,
+                        level_bits: 1f64.to_bits(),
+                        level_code: code,
                     };
                     prepared.model.columns[j].kind = match j % 3 {
                         0 => PreparedOlsColumnKind::Categorical {
-                            source: SourceId::new(1).unwrap(), prepared_source_index: 0,
-                            categorical_source_index: 0, level_bits: 1f64.to_bits(), level_code: Some(1),
+                            source: SourceId::new(1).unwrap(),
+                            prepared_source_index: 0,
+                            categorical_source_index: 0,
+                            level_bits: 1f64.to_bits(),
+                            level_code: Some(1),
                         },
                         1 => PreparedOlsColumnKind::CategoricalInteraction {
-                            components: vec![component(0, Some(1)), component(1, Some(2)),
-                                component(0, if j % 7 == 0 { None } else { Some(1) })],
+                            components: vec![
+                                component(0, Some(1)),
+                                component(1, Some(2)),
+                                component(0, if j % 7 == 0 { None } else { Some(1) }),
+                            ],
                         },
                         _ => prepared.model.columns[j].kind.clone(),
                     };
                 }
-                let design = FeDesign::new(rows, vec![crate::fe::EffectTerm::new(
-                    (0..rows).map(|r| (r % 17) as u32).collect(), 17, true, vec![x[2].clone()],
-                ).unwrap()]).unwrap();
+                let design = FeDesign::new(
+                    rows,
+                    vec![crate::fe::EffectTerm::new(
+                        (0..rows).map(|r| (r % 17) as u32).collect(),
+                        17,
+                        true,
+                        vec![x[2].clone()],
+                    )
+                    .unwrap()],
+                )
+                .unwrap();
                 for frame in [1, 7] {
-                    let mu: Vec<_> = (0..rows).map(|r| (0.4 * (r as f64 / (91*frame) as f64).sin()).exp()).collect();
-                    let q: Vec<_> = (0..rows).map(|r| [1e-30, 1., 1e30][r % 3] * (0.25 + ((r*frame) % 11) as f64)).collect();
-                    let mut reference = PpmlScoreWorkspace::new(&design,
-                        crate::options::ThreadConfig::from_requested(1, true).unwrap()).unwrap();
+                    let mu: Vec<_> = (0..rows)
+                        .map(|r| (0.4 * (r as f64 / (91 * frame) as f64).sin()).exp())
+                        .collect();
+                    let q: Vec<_> = (0..rows)
+                        .map(|r| [1e-30, 1., 1e30][r % 3] * (0.25 + ((r * frame) % 11) as f64))
+                        .collect();
+                    let mut reference = PpmlScoreWorkspace::new(
+                        &design,
+                        crate::options::ThreadConfig::from_requested(1, true).unwrap(),
+                    )
+                    .unwrap();
                     FORCE_GENERIC_OUTER_SCORE.set(true);
-                    let expected = prepared_score_certificate(&prepared, &design, &y, &mu, &q, 1e-8, &mut reference);
+                    let expected = prepared_score_certificate(
+                        &prepared,
+                        &design,
+                        &y,
+                        &mu,
+                        &q,
+                        1e-8,
+                        &mut reference,
+                    );
                     FORCE_GENERIC_OUTER_SCORE.set(false);
                     let expected = expected.unwrap();
                     for threads in [1, 4, 8] {
-                        let mut workspace = PpmlScoreWorkspace::new(&design,
-                            crate::options::ThreadConfig::from_requested(threads, true).unwrap()).unwrap();
-                        let actual = prepared_score_certificate(&prepared, &design, &y, &mu, &q, 1e-8, &mut workspace).unwrap();
+                        let mut workspace = PpmlScoreWorkspace::new(
+                            &design,
+                            crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+                        )
+                        .unwrap();
+                        let actual = prepared_score_certificate(
+                            &prepared,
+                            &design,
+                            &y,
+                            &mu,
+                            &q,
+                            1e-8,
+                            &mut workspace,
+                        )
+                        .unwrap();
                         assert_eq!(actual, expected);
                         assert_eq!(workspace.fe_moments, reference.fe_moments);
                         assert_eq!(workspace.fe_basis_squares, reference.fe_basis_squares);
@@ -5440,14 +5725,19 @@ mod tests {
     fn independent_fe_scores_match_integer_design_across_frames_and_empty_directions() {
         use crate::fe::EffectTerm;
         for rows in [4097, 16385] {
-            let y: Vec<_> = (0..rows).map(|r| if r % 3 == 0 { 0. } else { 2. }).collect();
+            let y: Vec<_> = (0..rows)
+                .map(|r| if r % 3 == 0 { 0. } else { 2. })
+                .collect();
             let z: Vec<_> = (0..rows).map(|r| (r % 5) as f64 - 2.).collect();
             let w: Vec<_> = (0..rows).map(|r| (r % 7) as f64 - 3.).collect();
             let x: Vec<_> = (0..rows).map(|r| (r as f64 / 17.).sin()).collect();
             let prepared = prepared(&y, &[x]);
-            let first: Vec<_> = (0..rows).map(|r|
-                (12 * (r % 2) + if r % 97 < 80 { 0 } else { 1 + (r / 2) % 7 }) as u32).collect();
-            let second: Vec<_> = (0..rows).map(|r| (5 * (r % 2) + (r / 2) % 3) as u32).collect();
+            let first: Vec<_> = (0..rows)
+                .map(|r| (12 * (r % 2) + if r % 97 < 80 { 0 } else { 1 + (r / 2) % 7 }) as u32)
+                .collect();
+            let second: Vec<_> = (0..rows)
+                .map(|r| (5 * (r % 2) + (r / 2) % 3) as u32)
+                .collect();
             let third: Vec<_> = (0..rows).map(|r| (r % 2) as u32).collect();
             // Two disconnected components, a dominant group, unused labels,
             // duplicate slopes, a slope-only effect and an identically zero
@@ -5463,49 +5753,85 @@ mod tests {
                 let channels = usize::from(intercept) + slopes.len();
                 for level in 0..levels {
                     for channel in 0..channels {
-                        explicit.push((0..rows).map(|r| {
-                            if codes[r] as usize != level { 0_i64 }
-                            else if intercept && channel == 0 { 1 }
-                            else { slopes[channel - usize::from(intercept)][r] as i64 }
-                        }).collect::<Vec<_>>());
+                        explicit.push(
+                            (0..rows)
+                                .map(|r| {
+                                    if codes[r] as usize != level {
+                                        0_i64
+                                    } else if intercept && channel == 0 {
+                                        1
+                                    } else {
+                                        slopes[channel - usize::from(intercept)][r] as i64
+                                    }
+                                })
+                                .collect::<Vec<_>>(),
+                        );
                     }
                 }
                 effects.push(EffectTerm::new(codes, levels, intercept, slopes).unwrap());
             }
             let design = FeDesign::new(rows, effects).unwrap();
             for threads in [1, 4, 8] {
-                let mut workspace = PpmlScoreWorkspace::new(&design,
-                    crate::options::ThreadConfig::from_requested(threads, true).unwrap()).unwrap();
-                let storage = (workspace.fe_moments.as_ptr(), workspace.fe_moments.capacity(),
-                    workspace.fe_basis_squares.as_ptr(), workspace.fe_basis_squares.capacity());
+                let mut workspace = PpmlScoreWorkspace::new(
+                    &design,
+                    crate::options::ThreadConfig::from_requested(threads, true).unwrap(),
+                )
+                .unwrap();
+                let storage = (
+                    workspace.fe_moments.as_ptr(),
+                    workspace.fe_moments.capacity(),
+                    workspace.fe_basis_squares.as_ptr(),
+                    workspace.fe_basis_squares.capacity(),
+                );
                 for frame in [1, 7] {
                     let mu: Vec<_> = (0..rows).map(|r| (1 + (r + frame) % 2) as f64).collect();
                     let q: Vec<_> = (0..rows).map(|r| (1 + (r * frame) % 7) as i64).collect();
                     // Integer explicit-design dot products are an independent
                     // exact oracle; binary common scales remain exactly representable.
-                    let expected: Vec<_> = explicit.iter().map(|column| {
-                        let mut score = 0_i64;
-                        let mut square = 0_i64;
-                        for r in 0..rows {
-                            score += q[r] * (y[r] as i64 - mu[r] as i64) * column[r];
-                            square += q[r] * mu[r] as i64 * column[r] * column[r];
-                        }
-                        (score, square)
-                    }).collect();
+                    let expected: Vec<_> = explicit
+                        .iter()
+                        .map(|column| {
+                            let mut score = 0_i64;
+                            let mut square = 0_i64;
+                            for r in 0..rows {
+                                score += q[r] * (y[r] as i64 - mu[r] as i64) * column[r];
+                                square += q[r] * mu[r] as i64 * column[r] * column[r];
+                            }
+                            (score, square)
+                        })
+                        .collect();
                     for exponent in [-400, 0, 400] {
                         let scale = 2_f64.powi(exponent);
                         let weights: Vec<_> = q.iter().map(|&value| value as f64 * scale).collect();
                         workspace.fe_moments.fill(f64::NAN);
                         workspace.fe_basis_squares.fill(f64::NAN);
-                        let actual = prepared_score_certificate(&prepared, &design, &y, &mu,
-                            &weights, 1e-8, &mut workspace).unwrap();
+                        let actual = prepared_score_certificate(
+                            &prepared,
+                            &design,
+                            &y,
+                            &mu,
+                            &weights,
+                            1e-8,
+                            &mut workspace,
+                        )
+                        .unwrap();
                         assert!(!actual.passed);
                         for (direction, &(score, square)) in expected.iter().enumerate() {
                             assert_eq!(workspace.fe_moments[direction], score as f64 * scale);
-                            assert_eq!(workspace.fe_basis_squares[direction], square as f64 * scale);
+                            assert_eq!(
+                                workspace.fe_basis_squares[direction],
+                                square as f64 * scale
+                            );
                         }
-                        assert_eq!((workspace.fe_moments.as_ptr(), workspace.fe_moments.capacity(),
-                            workspace.fe_basis_squares.as_ptr(), workspace.fe_basis_squares.capacity()), storage);
+                        assert_eq!(
+                            (
+                                workspace.fe_moments.as_ptr(),
+                                workspace.fe_moments.capacity(),
+                                workspace.fe_basis_squares.as_ptr(),
+                                workspace.fe_basis_squares.capacity()
+                            ),
+                            storage
+                        );
                     }
                 }
             }
@@ -5687,7 +6013,10 @@ mod tests {
 
     #[test]
     fn refined_checkpoint_preserves_accuracy_on_a_small_dynamic_range_model() {
-        for (hot, mode) in [(30.0_f64, PreparedOlsExecutionMode::Low), (30., PreparedOlsExecutionMode::Fast)] {
+        for (hot, mode) in [
+            (30.0_f64, PreparedOlsExecutionMode::Low),
+            (30., PreparedOlsExecutionMode::Fast),
+        ] {
             let mut x = Vec::new();
             let mut g = Vec::new();
             let mut h = Vec::new();
@@ -5725,7 +6054,11 @@ mod tests {
             let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
             let mut config = PreparedPpmlIrlsConfig::default();
             config.ppml.max_iterations = 6;
-            config.memory.requested = if mode == PreparedOlsExecutionMode::Low { crate::options::MemoryMode::Low } else { crate::options::MemoryMode::Fast };
+            config.memory.requested = if mode == PreparedOlsExecutionMode::Low {
+                crate::options::MemoryMode::Low
+            } else {
+                crate::options::MemoryMode::Fast
+            };
             config.memory.poolsize = 1;
             config.linear.execution.mode = mode;
             config.linear.execution.poolsize = 1;
@@ -5749,13 +6082,20 @@ mod tests {
             let fit = fitted.expect("refined ordinary solves must preserve strict progress");
             assert!(fit.diagnostics().converged);
             assert_eq!(fit.diagnostics().strict_profile_rejections, 1);
-            assert!(relative_infinity_difference(fit.eta(), &truth) < 1e-10, "mode={mode:?} eta_error={:.17e}", relative_infinity_difference(fit.eta(), &truth));
+            assert!(
+                relative_infinity_difference(fit.eta(), &truth) < 1e-10,
+                "mode={mode:?} eta_error={:.17e}",
+                relative_infinity_difference(fit.eta(), &truth)
+            );
             assert!(fit.diagnostics().iterations <= 6);
         }
     }
     #[test]
     fn canonical_final_preserves_accuracy_on_a_small_dynamic_range_model() {
-        for (hot, mode) in [(30.0_f64, PreparedOlsExecutionMode::Low), (30., PreparedOlsExecutionMode::Fast)] {
+        for (hot, mode) in [
+            (30.0_f64, PreparedOlsExecutionMode::Low),
+            (30., PreparedOlsExecutionMode::Fast),
+        ] {
             let mut x = Vec::new();
             let mut g = Vec::new();
             let mut h = Vec::new();
@@ -5793,7 +6133,11 @@ mod tests {
             let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
             let mut config = PreparedPpmlIrlsConfig::default();
             config.ppml.max_iterations = 6;
-            config.memory.requested = if mode == PreparedOlsExecutionMode::Low { crate::options::MemoryMode::Low } else { crate::options::MemoryMode::Fast };
+            config.memory.requested = if mode == PreparedOlsExecutionMode::Low {
+                crate::options::MemoryMode::Low
+            } else {
+                crate::options::MemoryMode::Fast
+            };
             config.memory.poolsize = 1;
             config.linear.execution.mode = mode;
             config.linear.execution.poolsize = 1;
@@ -5812,7 +6156,11 @@ mod tests {
             );
             let fit = fitted.expect("refined ordinary solves must preserve strict progress");
             assert!(fit.diagnostics().converged);
-            assert!(relative_infinity_difference(fit.eta(), &truth) < 1e-10, "mode={mode:?} eta_error={:.17e}", relative_infinity_difference(fit.eta(), &truth));
+            assert!(
+                relative_infinity_difference(fit.eta(), &truth) < 1e-10,
+                "mode={mode:?} eta_error={:.17e}",
+                relative_infinity_difference(fit.eta(), &truth)
+            );
             assert!(fit.diagnostics().iterations <= 6);
         }
     }
@@ -6561,35 +6909,92 @@ mod tests {
     fn direct_first_partition_start_matches_independent_offset_poisson_truth() {
         for dimensions in [2, 3, 4] {
             let n = 2 * 2 * 3 * 2 * 2;
-            let codes: Vec<Vec<u32>> = (0..dimensions).map(|d| (0..n).map(|r|
-                ((r / [2, 4, 12, 24][d]) % [2, 3, 2, 2][d]) as u32).collect()).collect();
-            let offset: Vec<_> = (0..n).map(|r| if codes[0][r] == 0 { 1000.0 } else { -1000.0 }
-                + 0.05 * codes[1][r] as f64).collect();
-            let truth: Vec<_> = (0..n).map(|r| (0.05 * codes[1][r] as f64 +
-                (0..dimensions).map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64).sum::<f64>()).exp()).collect();
+            let codes: Vec<Vec<u32>> = (0..dimensions)
+                .map(|d| {
+                    (0..n)
+                        .map(|r| ((r / [2, 4, 12, 24][d]) % [2, 3, 2, 2][d]) as u32)
+                        .collect()
+                })
+                .collect();
+            let offset: Vec<_> = (0..n)
+                .map(
+                    |r| if codes[0][r] == 0 { 1000.0 } else { -1000.0 } + 0.05 * codes[1][r] as f64,
+                )
+                .collect();
+            let truth: Vec<_> = (0..n)
+                .map(|r| {
+                    (0.05 * codes[1][r] as f64
+                        + (0..dimensions)
+                            .map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64)
+                            .sum::<f64>())
+                    .exp()
+                })
+                .collect();
             // Paired outcome deviations give zero score for every explicit
             // intercept and slope, independently specifying the Poisson optimum.
-            let y: Vec<_> = truth.iter().enumerate().map(|(r, m)| m * if r%2 == 0 { 0.8 } else { 1.2 }).collect();
+            let y: Vec<_> = truth
+                .iter()
+                .enumerate()
+                .map(|(r, m)| m * if r % 2 == 0 { 0.8 } else { 1.2 })
+                .collect();
             let prepared = prepared(&y, &[]);
             for slopes in [false, true] {
-                let effects = codes.iter().enumerate().map(|(d, c)|
-                    crate::fe::EffectTerm::new(c.clone(), [2,3,2,2][d], true,
-                        if slopes { vec![(0..n).map(|r| (0.37 * (r/2) as f64).sin()).collect(), vec![1.;n]] }
-                        else { vec![] }).unwrap()).collect();
+                let effects = codes
+                    .iter()
+                    .enumerate()
+                    .map(|(d, c)| {
+                        crate::fe::EffectTerm::new(
+                            c.clone(),
+                            [2, 3, 2, 2][d],
+                            true,
+                            if slopes {
+                                vec![
+                                    (0..n).map(|r| (0.37 * (r / 2) as f64).sin()).collect(),
+                                    vec![1.; n],
+                                ]
+                            } else {
+                                vec![]
+                            },
+                        )
+                        .unwrap()
+                    })
+                    .collect();
                 let design = FeDesign::new(n, effects).unwrap();
                 for scale in [1e-150, 1., 1e150] {
-                    let q: Vec<_> = (0..n).map(|r| scale * (0..dimensions)
-                        .map(|d| 1.0 + 0.25 * codes[d][r] as f64).product::<f64>()).collect();
-                    let (beta, eta) = initialize(&prepared, &y, &q, &offset, &design,
-                        PreparedPpmlIrlsConfig::default(), None, PreparedPpmlIrlsPurpose::Publication).unwrap();
-                    assert!(beta.iter().all(|b| *b == 0.), "absorbed initial constant has a zero gauge");
+                    let q: Vec<_> = (0..n)
+                        .map(|r| {
+                            scale
+                                * (0..dimensions)
+                                    .map(|d| 1.0 + 0.25 * codes[d][r] as f64)
+                                    .product::<f64>()
+                        })
+                        .collect();
+                    let (beta, eta) = initialize(
+                        &prepared,
+                        &y,
+                        &q,
+                        &offset,
+                        &design,
+                        PreparedPpmlIrlsConfig::default(),
+                        None,
+                        PreparedPpmlIrlsPurpose::Publication,
+                    )
+                    .unwrap();
+                    assert!(
+                        beta.iter().all(|b| *b == 0.),
+                        "absorbed initial constant has a zero gauge"
+                    );
                     for (value, expected) in eta.iter().zip(&truth) {
-                        assert!((value.exp()-expected).abs() <= 1e-11*(1.0+expected));
+                        assert!((value.exp() - expected).abs() <= 1e-11 * (1.0 + expected));
                     }
                     for effect in design.effects() {
                         for level in 0..effect.n_levels() {
-                            let score: f64 = effect.level_index().members(level).iter()
-                                .map(|&r| q[r]/scale*(y[r]-eta[r].exp())).sum();
+                            let score: f64 = effect
+                                .level_index()
+                                .members(level)
+                                .iter()
+                                .map(|&r| q[r] / scale * (y[r] - eta[r].exp()))
+                                .sum();
                             assert!(score.abs() < 1e-9);
                         }
                     }
@@ -6600,21 +7005,52 @@ mod tests {
 
     #[test]
     fn direct_first_partition_refusal_restores_global_after_later_partition_failure() {
-        let y = [1.,2.,0.,0.,3.,4.,0.,0.];
-        let q = [1.,2.,3.,4.,5.,6.,7.,8.];
-        let offset = [0.2,-0.3,0.7,-0.1,0.4,-0.5,0.1,0.9];
-        let design = FeDesign::new(8, vec![
-            crate::fe::EffectTerm::new(vec![0,0,0,0,1,1,1,1],2,true,vec![]).unwrap(),
-            crate::fe::EffectTerm::new(vec![0,0,1,1,0,0,1,1],2,true,vec![]).unwrap(),
-        ]).unwrap();
-        let mut eta = [0.;8];
-        assert!(seed_group_intercept_predictor(&y,&q,&offset,&design.effects()[0],PpmlConfig::default(),&mut eta));
-        assert!(!seed_multi_effect_predictor(&y,&q,&offset,&design,PpmlConfig::default(),&mut eta));
+        let y = [1., 2., 0., 0., 3., 4., 0., 0.];
+        let q = [1., 2., 3., 4., 5., 6., 7., 8.];
+        let offset = [0.2, -0.3, 0.7, -0.1, 0.4, -0.5, 0.1, 0.9];
+        let design = FeDesign::new(
+            8,
+            vec![
+                crate::fe::EffectTerm::new(vec![0, 0, 0, 0, 1, 1, 1, 1], 2, true, vec![]).unwrap(),
+                crate::fe::EffectTerm::new(vec![0, 0, 1, 1, 0, 0, 1, 1], 2, true, vec![]).unwrap(),
+            ],
+        )
+        .unwrap();
+        let mut eta = [0.; 8];
+        assert!(seed_group_intercept_predictor(
+            &y,
+            &q,
+            &offset,
+            &design.effects()[0],
+            PpmlConfig::default(),
+            &mut eta
+        ));
+        assert!(!seed_multi_effect_predictor(
+            &y,
+            &q,
+            &offset,
+            &design,
+            PpmlConfig::default(),
+            &mut eta
+        ));
         let prepared = prepared(&y, &[]);
-        let run = |purpose| initialize(&prepared,&y,&q,&offset,&design,
-            PreparedPpmlIrlsConfig::default(),None,purpose).unwrap();
-        assert_eq!(run(PreparedPpmlIrlsPurpose::Publication),
-            run(PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance:1e-4 }));
+        let run = |purpose| {
+            initialize(
+                &prepared,
+                &y,
+                &q,
+                &offset,
+                &design,
+                PreparedPpmlIrlsConfig::default(),
+                None,
+                purpose,
+            )
+            .unwrap()
+        };
+        assert_eq!(
+            run(PreparedPpmlIrlsPurpose::Publication),
+            run(PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance: 1e-4 })
+        );
     }
 
     #[test]
@@ -6691,28 +7127,62 @@ mod tests {
     fn multi_effect_seed_matches_separable_poisson_truth_and_weight_scaling() {
         for dimensions in [2, 3] {
             let n = 4 * 5 * 3 * 2;
-            let codes: Vec<Vec<u32>> = (0..dimensions).map(|d| (0..n).map(|r|
-                match d { 0 => (r / 2) % 4, 1 => (r / 8) % 5, _ => (r / 40) % 3 } as u32
-            ).collect()).collect();
-            let effects = codes.iter().enumerate().map(|(d, c)|
-                crate::fe::EffectTerm::new(c.clone(), [4, 5, 3][d], true, Vec::new()).unwrap()
-            ).collect();
+            let codes: Vec<Vec<u32>> = (0..dimensions)
+                .map(|d| {
+                    (0..n)
+                        .map(|r| match d {
+                            0 => (r / 2) % 4,
+                            1 => (r / 8) % 5,
+                            _ => (r / 40) % 3,
+                        } as u32)
+                        .collect()
+                })
+                .collect();
+            let effects = codes
+                .iter()
+                .enumerate()
+                .map(|(d, c)| {
+                    crate::fe::EffectTerm::new(c.clone(), [4, 5, 3][d], true, Vec::new()).unwrap()
+                })
+                .collect();
             let design = FeDesign::new(n, effects).unwrap();
-            let truth: Vec<f64> = (0..n).map(|r| (0..dimensions)
-                .map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64).sum::<f64>().exp()).collect();
+            let truth: Vec<f64> = (0..n)
+                .map(|r| {
+                    (0..dimensions)
+                        .map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64)
+                        .sum::<f64>()
+                        .exp()
+                })
+                .collect();
             // Paired deviations have zero weighted score for every explicit
             // dummy. The independent optimum is the prescribed product mean.
-            let outcome: Vec<_> = truth.iter().enumerate().map(|(r, m)|
-                m * if r % 2 == 0 { 0.8 } else { 1.2 }).collect();
+            let outcome: Vec<_> = truth
+                .iter()
+                .enumerate()
+                .map(|(r, m)| m * if r % 2 == 0 { 0.8 } else { 1.2 })
+                .collect();
             for scale in [1e-50, 1.0, 1e50] {
-                let weights: Vec<_> = (0..n).map(|r| scale * (0..dimensions)
-                    .map(|d| 1.0 + 0.25 * codes[d][r] as f64).product::<f64>()).collect();
-                let total: f64 = outcome.iter().zip(&weights).map(|(y,w)| y*w).sum();
+                let weights: Vec<_> = (0..n)
+                    .map(|r| {
+                        scale
+                            * (0..dimensions)
+                                .map(|d| 1.0 + 0.25 * codes[d][r] as f64)
+                                .product::<f64>()
+                    })
+                    .collect();
+                let total: f64 = outcome.iter().zip(&weights).map(|(y, w)| y * w).sum();
                 let initial = (total / weights.iter().sum::<f64>()).ln();
                 let mut eta = vec![initial; n];
-                assert!(seed_multi_effect_predictor(&outcome, &weights, &vec![0.; n], &design, PpmlConfig::default(), &mut eta));
+                assert!(seed_multi_effect_predictor(
+                    &outcome,
+                    &weights,
+                    &vec![0.; n],
+                    &design,
+                    PpmlConfig::default(),
+                    &mut eta
+                ));
                 for (value, expected) in eta.iter().zip(&truth) {
-                    assert!((value.exp()-expected).abs() <= 1e-12*(1.0+expected));
+                    assert!((value.exp() - expected).abs() <= 1e-12 * (1.0 + expected));
                 }
             }
         }
@@ -6727,18 +7197,27 @@ mod tests {
                 let slope = [-slope_scale, slope_scale, -slope_scale, slope_scale];
                 let weights = [weight_scale; 4];
                 let mut eta = [5.0_f64.ln(); 4];
-                assert!(seed_profiled_slope(&members, &slope, &outcome, &weights,
-                    20. * weight_scale, PpmlConfig::default(), &mut eta));
+                assert!(seed_profiled_slope(
+                    &members,
+                    &slope,
+                    &outcome,
+                    &weights,
+                    20. * weight_scale,
+                    PpmlConfig::default(),
+                    &mut eta
+                ));
                 // At beta=0, the normalized slope score/curvature is 16/20.
                 // Profiling the intercept sets the mean back to five.
                 let b = 0.8_f64;
                 let intercept = 5.0_f64.ln() - b.cosh().ln();
+                // Keep the legacy matrix indices and numerical traversal order explicit.
+                #[allow(clippy::needless_range_loop)]
                 for r in 0..4 {
                     let truth = intercept + if r % 2 == 0 { -b } else { b };
                     assert!((eta[r] - truth).abs() < 1e-12);
                 }
-                let objective = |e: &[f64]| (0..4).map(|r|
-                    outcome[r] * e[r] - e[r].exp()).sum::<f64>();
+                let objective =
+                    |e: &[f64]| (0..4).map(|r| outcome[r] * e[r] - e[r].exp()).sum::<f64>();
                 assert!(objective(&eta) > objective(&[5.0_f64.ln(); 4]));
             }
         }
@@ -6748,30 +7227,71 @@ mod tests {
     fn slope_intercept_seed_matches_independent_poisson_truth() {
         for dimensions in [2, 3] {
             let n = 4 * 5 * 3 * 2;
-            let codes: Vec<Vec<u32>> = (0..dimensions).map(|d| (0..n).map(|r|
-                match d { 0 => (r / 2) % 4, 1 => (r / 8) % 5, _ => (r / 40) % 3 } as u32
-            ).collect()).collect();
+            let codes: Vec<Vec<u32>> = (0..dimensions)
+                .map(|d| {
+                    (0..n)
+                        .map(|r| match d {
+                            0 => (r / 2) % 4,
+                            1 => (r / 8) % 5,
+                            _ => (r / 40) % 3,
+                        } as u32)
+                        .collect()
+                })
+                .collect();
             // Every explicit intercept/slope is constant within a replica pair.
             // Paired outcome deviations cancel its weighted score exactly.
             let slopes: Vec<_> = (0..n).map(|r| (0.37 * (r / 2) as f64).sin()).collect();
-            let effects = codes.iter().enumerate().map(|(d, c)|
-                crate::fe::EffectTerm::new(c.clone(), [4, 5, 3][d], true,
-                    vec![slopes.clone(), slopes.iter().map(|z| z * 1e6).collect(), vec![0.0; n]])
+            let effects = codes
+                .iter()
+                .enumerate()
+                .map(|(d, c)| {
+                    crate::fe::EffectTerm::new(
+                        c.clone(),
+                        [4, 5, 3][d],
+                        true,
+                        vec![
+                            slopes.clone(),
+                            slopes.iter().map(|z| z * 1e6).collect(),
+                            vec![0.0; n],
+                        ],
+                    )
                     .unwrap()
-            ).collect();
+                })
+                .collect();
             let design = FeDesign::new(n, effects).unwrap();
-            let truth: Vec<f64> = (0..n).map(|r| (0..dimensions)
-                .map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64).sum::<f64>().exp()).collect();
-            let outcome: Vec<_> = truth.iter().enumerate().map(|(r, m)|
-                m * if r % 2 == 0 { 0.8 } else { 1.2 }).collect();
+            let truth: Vec<f64> = (0..n)
+                .map(|r| {
+                    (0..dimensions)
+                        .map(|d| 0.2 * (d + 1) as f64 * codes[d][r] as f64)
+                        .sum::<f64>()
+                        .exp()
+                })
+                .collect();
+            let outcome: Vec<_> = truth
+                .iter()
+                .enumerate()
+                .map(|(r, m)| m * if r % 2 == 0 { 0.8 } else { 1.2 })
+                .collect();
             for scale in [1e-50, 1.0, 1e50] {
-                let weights: Vec<_> = (0..n).map(|r| scale * (0..dimensions)
-                    .map(|d| 1.0 + 0.25 * codes[d][r] as f64).product::<f64>()).collect();
+                let weights: Vec<_> = (0..n)
+                    .map(|r| {
+                        scale
+                            * (0..dimensions)
+                                .map(|d| 1.0 + 0.25 * codes[d][r] as f64)
+                                .product::<f64>()
+                    })
+                    .collect();
                 let total: f64 = outcome.iter().zip(&weights).map(|(y, w)| y * w).sum();
                 let initial = (total / weights.iter().sum::<f64>()).ln();
                 let mut eta = vec![initial; n];
-                assert!(seed_multi_effect_predictor(&outcome, &weights, &vec![0.; n], &design,
-                    PpmlConfig::default(), &mut eta));
+                assert!(seed_multi_effect_predictor(
+                    &outcome,
+                    &weights,
+                    &vec![0.; n],
+                    &design,
+                    PpmlConfig::default(),
+                    &mut eta
+                ));
                 for (value, expected) in eta.iter().zip(&truth) {
                     assert!((value.exp() - expected).abs() <= 1e-12 * (1.0 + expected));
                 }
@@ -6781,91 +7301,192 @@ mod tests {
 
     #[test]
     fn slope_intercept_seed_preserves_offsets_warm_starts_and_full_refusal() {
-        let make_design = |intercept| FeDesign::new(8, vec![
-            crate::fe::EffectTerm::new(vec![0,0,0,0,1,1,1,1],2,true,
-                vec![vec![0.,0.,2.,2.,0.,0.,2.,2.]]).unwrap(),
-            crate::fe::EffectTerm::new(vec![0,0,1,1,0,0,1,1],2,intercept,
-                vec![vec![1.,1.,0.,0.,1.,1.,0.,0.],vec![0.;8]]).unwrap(),
-        ]).unwrap();
+        let make_design = |intercept| {
+            FeDesign::new(
+                8,
+                vec![
+                    crate::fe::EffectTerm::new(
+                        vec![0, 0, 0, 0, 1, 1, 1, 1],
+                        2,
+                        true,
+                        vec![vec![0., 0., 2., 2., 0., 0., 2., 2.]],
+                    )
+                    .unwrap(),
+                    crate::fe::EffectTerm::new(
+                        vec![0, 0, 1, 1, 0, 0, 1, 1],
+                        2,
+                        intercept,
+                        vec![vec![1., 1., 0., 0., 1., 1., 0., 0.], vec![0.; 8]],
+                    )
+                    .unwrap(),
+                ],
+            )
+            .unwrap()
+        };
         let design = make_design(true);
-        let weights = [1.,2.,3.,4.,5.,6.,7.,8.];
-        let offset = [0.2,-0.3,0.7,-0.1,0.4,-0.5,0.1,0.9];
-        let outcome = [1.,3.,4.,2.,7.,5.,8.,9.];
+        let weights = [1., 2., 3., 4., 5., 6., 7., 8.];
+        let offset = [0.2, -0.3, 0.7, -0.1, 0.4, -0.5, 0.1, 0.9];
+        let outcome = [1., 3., 4., 2., 7., 5., 8., 9.];
         let prepared = prepared(&outcome, &[]);
         let config = PreparedPpmlIrlsConfig::default();
-        let initialize_as = |purpose, start| initialize(&prepared, &outcome, &weights,
-            &offset, &design, config, start, purpose).unwrap();
+        let initialize_as = |purpose, start| {
+            initialize(
+                &prepared, &outcome, &weights, &offset, &design, config, start, purpose,
+            )
+            .unwrap()
+        };
         let mu = PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance: 1e-4 };
         let (global_coefficients, global) = initialize_as(mu, None);
         let (_, publication) = initialize_as(PreparedPpmlIrlsPurpose::Publication, None);
-        let objective = |e: &[f64]| (0..8).map(|r|
-            weights[r] * (outcome[r] * e[r] - e[r].exp())).sum::<f64>();
+        let objective = |e: &[f64]| {
+            (0..8)
+                .map(|r| weights[r] * (outcome[r] * e[r] - e[r].exp()))
+                .sum::<f64>()
+        };
         assert!(objective(&publication) > objective(&global));
-        for group in [vec![0,1,4,5],vec![2,3,6,7]] {
-            let score: f64 = group.iter().map(|&r|
-                weights[r] * (outcome[r] - publication[r].exp())).sum();
+        for group in [vec![0, 1, 4, 5], vec![2, 3, 6, 7]] {
+            let score: f64 = group
+                .iter()
+                .map(|&r| weights[r] * (outcome[r] - publication[r].exp()))
+                .sum();
             assert!(score.abs() < 1e-11);
         }
         for r in (0..8).step_by(2) {
-            assert!(((publication[r] - offset[r]) -
-                (publication[r+1] - offset[r+1])).abs() < 1e-14);
+            assert!(
+                ((publication[r] - offset[r]) - (publication[r + 1] - offset[r + 1])).abs() < 1e-14
+            );
         }
-        let start = PreparedPpmlStart { coefficient_values: global_coefficients,
-            eta: global.clone() };
-        let (coefficients, warm) = initialize_as(PreparedPpmlIrlsPurpose::Publication, Some(&start));
+        let start = PreparedPpmlStart {
+            coefficient_values: global_coefficients,
+            eta: global.clone(),
+        };
+        let (coefficients, warm) =
+            initialize_as(PreparedPpmlIrlsPurpose::Publication, Some(&start));
         assert_eq!(coefficients, start.coefficient_values);
         assert_eq!(warm, start.eta);
         let mut refused = global.clone();
-        assert!(!seed_multi_effect_predictor(&outcome, &weights, &offset, &make_design(false),
-            config.ppml, &mut refused));
-        assert_eq!(refused, global, "a slope-only partition retains the prior route");
-        for y in [[1.,2.,3.,4.,0.,0.,0.,0.], [2.;8]] {
+        assert!(!seed_multi_effect_predictor(
+            &outcome,
+            &weights,
+            &offset,
+            &make_design(false),
+            config.ppml,
+            &mut refused
+        ));
+        assert_eq!(
+            refused, global,
+            "a slope-only partition retains the prior route"
+        );
+        for y in [[1., 2., 3., 4., 0., 0., 0., 0.], [2.; 8]] {
             let mut limited = config;
-            if y[4] > 0.0 { limited.ppml.bounds.eta_max = 0.01; }
-            let run = |purpose| initialize(&prepared, &y, &weights, &offset, &design,
-                limited, None, purpose).unwrap().1;
+            if y[4] > 0.0 {
+                limited.ppml.bounds.eta_max = 0.01;
+            }
+            let run = |purpose| {
+                initialize(
+                    &prepared, &y, &weights, &offset, &design, limited, None, purpose,
+                )
+                .unwrap()
+                .1
+            };
             assert_eq!(run(PreparedPpmlIrlsPurpose::Publication), run(mu));
         }
         let mut eta = global;
-        assert!(!seed_multi_effect_predictor(&[2.;8], &[1e308;8], &offset, &design,
-            config.ppml, &mut eta));
+        assert!(!seed_multi_effect_predictor(
+            &[2.; 8],
+            &[1e308; 8],
+            &offset,
+            &design,
+            config.ppml,
+            &mut eta
+        ));
     }
 
     #[test]
     fn multi_effect_seed_improves_objective_and_refusal_restores_global_start() {
-        let design = FeDesign::new(8, vec![
-            crate::fe::EffectTerm::new(vec![0,0,0,0,1,1,1,1],2,true,vec![]).unwrap(),
-            crate::fe::EffectTerm::new(vec![0,0,1,1,0,0,1,1],2,true,vec![]).unwrap(),
-        ]).unwrap();
-        let weights = [1.,2.,3.,4.,5.,6.,7.,8.];
-        let offset = [0.2,-0.3,0.7,-0.1,0.4,-0.5,0.1,0.9];
-        let outcome = [1.,3.,4.,2.,7.,5.,8.,9.];
+        let design = FeDesign::new(
+            8,
+            vec![
+                crate::fe::EffectTerm::new(vec![0, 0, 0, 0, 1, 1, 1, 1], 2, true, vec![]).unwrap(),
+                crate::fe::EffectTerm::new(vec![0, 0, 1, 1, 0, 0, 1, 1], 2, true, vec![]).unwrap(),
+            ],
+        )
+        .unwrap();
+        let weights = [1., 2., 3., 4., 5., 6., 7., 8.];
+        let offset = [0.2, -0.3, 0.7, -0.1, 0.4, -0.5, 0.1, 0.9];
+        let outcome = [1., 3., 4., 2., 7., 5., 8., 9.];
         let mut eta = offset;
-        let objective = |e: &[f64]| (0..8).map(|r| weights[r]*(outcome[r]*e[r]-e[r].exp())).sum::<f64>();
+        let objective = |e: &[f64]| {
+            (0..8)
+                .map(|r| weights[r] * (outcome[r] * e[r] - e[r].exp()))
+                .sum::<f64>()
+        };
         let before = objective(&eta);
-        assert!(seed_multi_effect_predictor(&outcome, &weights, &offset, &design, PpmlConfig::default(), &mut eta));
+        assert!(seed_multi_effect_predictor(
+            &outcome,
+            &weights,
+            &offset,
+            &design,
+            PpmlConfig::default(),
+            &mut eta
+        ));
         assert!(objective(&eta) > before);
-        for group in [vec![0,1,4,5],vec![2,3,6,7]] {
-            let score: f64 = group.iter().map(|&r| weights[r]*(outcome[r]-eta[r].exp())).sum();
+        for group in [vec![0, 1, 4, 5], vec![2, 3, 6, 7]] {
+            let score: f64 = group
+                .iter()
+                .map(|&r| weights[r] * (outcome[r] - eta[r].exp()))
+                .sum();
             assert!(score.abs() < 1e-11);
         }
         // Each replica within a cell differs only by its original offset.
         for r in (0..8).step_by(2) {
-            assert!(((eta[r]-offset[r])-(eta[r+1]-offset[r+1])).abs() < 1e-14);
+            assert!(((eta[r] - offset[r]) - (eta[r + 1] - offset[r + 1])).abs() < 1e-14);
         }
-        let outcome = [1.,2.,3.,4.,0.,0.,0.,0.];
+        let outcome = [1., 2., 3., 4., 0., 0., 0., 0.];
         let prepared = prepared(&outcome, &[]);
         let config = PreparedPpmlIrlsConfig::default();
-        let (_, global) = initialize(&prepared,&outcome,&weights,&offset,&design,config,None,
-            PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance: 1e-4 }).unwrap();
-        let (_, publication) = initialize(&prepared,&outcome,&weights,&offset,&design,config,None,
-            PreparedPpmlIrlsPurpose::Publication).unwrap();
-        assert_eq!(publication,global);
-        let mut unusable = [0.;8];
-        assert!(!seed_multi_effect_predictor(&[2.;8],&[1e308;8],&[0.;8],&design,config.ppml,&mut unusable));
+        let (_, global) = initialize(
+            &prepared,
+            &outcome,
+            &weights,
+            &offset,
+            &design,
+            config,
+            None,
+            PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance: 1e-4 },
+        )
+        .unwrap();
+        let (_, publication) = initialize(
+            &prepared,
+            &outcome,
+            &weights,
+            &offset,
+            &design,
+            config,
+            None,
+            PreparedPpmlIrlsPurpose::Publication,
+        )
+        .unwrap();
+        assert_eq!(publication, global);
+        let mut unusable = [0.; 8];
+        assert!(!seed_multi_effect_predictor(
+            &[2.; 8],
+            &[1e308; 8],
+            &[0.; 8],
+            &design,
+            config.ppml,
+            &mut unusable
+        ));
         let mut bounded = PpmlConfig::default();
         bounded.bounds.eta_max = 0.01;
-        assert!(!seed_multi_effect_predictor(&[2.;8],&[1.;8],&[0.;8],&design,bounded,&mut unusable));
+        assert!(!seed_multi_effect_predictor(
+            &[2.; 8],
+            &[1.; 8],
+            &[0.; 8],
+            &design,
+            bounded,
+            &mut unusable
+        ));
     }
 
     #[test]
@@ -7455,20 +8076,29 @@ mod tests {
     #[test]
     fn canonical_final_preserves_strict_disconnected_slope_truth() {
         let n = 480;
-        let g: Vec<_> = (0..n).map(|i| (i/5%4 + 4*(i/240)) as f64).collect();
-        let h: Vec<_> = (0..n).map(|i| (i/20%3 + 3*(i/240)) as f64).collect();
-        let x: Vec<_> = (0..n).map(|i| ((i%5) as f64 - 2.).powi(2)
-            + (i as f64/17.).sin()).collect();
-        let eta: Vec<_> = (0..n).map(|i| 0.3 + 0.2*x[i] + 0.1*g[i] - 0.05*h[i]
-            + (g[i]+h[i])*((i%5) as f64 - 2.)*0.02).collect();
+        let g: Vec<_> = (0..n).map(|i| (i / 5 % 4 + 4 * (i / 240)) as f64).collect();
+        let h: Vec<_> = (0..n)
+            .map(|i| (i / 20 % 3 + 3 * (i / 240)) as f64)
+            .collect();
+        let x: Vec<_> = (0..n)
+            .map(|i| ((i % 5) as f64 - 2.).powi(2) + (i as f64 / 17.).sin())
+            .collect();
+        let eta: Vec<_> = (0..n)
+            .map(|i| {
+                0.3 + 0.2 * x[i] + 0.1 * g[i] - 0.05 * h[i]
+                    + (g[i] + h[i]) * ((i % 5) as f64 - 2.) * 0.02
+            })
+            .collect();
         let y: Vec<_> = eta.iter().map(|v| v.exp()).collect();
         let prepared = prepared_joint_slopes(&y, &x, &g, &h);
         for disparity in [1e13] {
-            let weights: Vec<_> = (0..n).map(|i| (0.2+(i%13) as f64/7.)
-                * if i<240 { 1. } else { disparity }).collect();
-            for (execution, memory) in [
-                (PreparedOlsExecutionMode::Fast, crate::options::MemoryMode::Fast),
-            ] {
+            let weights: Vec<_> = (0..n)
+                .map(|i| (0.2 + (i % 13) as f64 / 7.) * if i < 240 { 1. } else { disparity })
+                .collect();
+            for (execution, memory) in [(
+                PreparedOlsExecutionMode::Fast,
+                crate::options::MemoryMode::Fast,
+            )] {
                 for threads in [1, 4] {
                     let mut config = PreparedPpmlIrlsConfig::default();
                     config.ppml.tolerance = 1e-12;
@@ -7477,27 +8107,50 @@ mod tests {
                     config.memory.requested = memory;
                     config.linear.execution.poolsize = 1;
                     config.memory.poolsize = 1;
-                    config.linear.execution.threads = crate::options::ThreadConfig::from_requested(threads, true).unwrap();
+                    config.linear.execution.threads =
+                        crate::options::ThreadConfig::from_requested(threads, true).unwrap();
                     {
                         let _canonical = CanonicalFinalTestGuard::disabled();
                         let _curve = ProfileCurveTestGuard::disabled();
-                        let baseline = fit_prepared_ppml_irls(&prepared, &y, &weights, &vec![0.;n], config,
-                            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None).unwrap();
+                        let baseline = fit_prepared_ppml_irls(
+                            &prepared,
+                            &y,
+                            &weights,
+                            &vec![0.; n],
+                            config,
+                            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
+                                .unwrap(),
+                            None,
+                        )
+                        .unwrap();
                         assert!(relative_infinity_difference(baseline.eta(), &eta) < 1e-10);
                     }
                     for mode in [0, 1, 2, 3] {
                         profile_final_test_mode(mode);
-                        let fit = fit_prepared_ppml_irls(&prepared, &y, &weights, &vec![0.;n], config,
-                            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None).unwrap();
+                        let fit = fit_prepared_ppml_irls(
+                            &prepared,
+                            &y,
+                            &weights,
+                            &vec![0.; n],
+                            config,
+                            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory)
+                                .unwrap(),
+                            None,
+                        )
+                        .unwrap();
                         let accepted = profile_final_test_mode(0);
                         assert_eq!(accepted, 0);
                         assert!(fit.diagnostics().strict_profile_rejections > 0);
-                        assert!(fit.diagnostics().converged && fit.diagnostics().two_consecutive_convergence);
+                        assert!(
+                            fit.diagnostics().converged
+                                && fit.diagnostics().two_consecutive_convergence
+                        );
                         assert!(fit.diagnostics().final_score.passed);
                         assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10,
                             "disparity={disparity} mode={mode} storage={execution:?} threads={threads} eta_error={:.17e}", relative_infinity_difference(fit.eta(), &eta));
-                        assert!((fit.coefficients()[0].value.unwrap()-0.2).abs() < 1e-10);
-                        validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
+                        assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                        validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean())
+                            .unwrap();
                     }
                 }
             }
@@ -7511,9 +8164,7 @@ mod tests {
         let h: Vec<_> = (0..n).map(|i| (i / 8 % 8) as f64).collect();
         let x: Vec<_> = (0..n).map(|i| (i as f64 * 0.37).sin()).collect();
         let y: Vec<_> = (0..n).map(|i| (2 + i % 5) as f64).collect();
-        let mut offset: Vec<_> = (0..n)
-            .map(|i| (0.2 + (i % 17) as f64 / 8.0).ln())
-            .collect();
+        let mut offset: Vec<_> = (0..n).map(|i| (0.2 + (i % 17) as f64 / 8.0).ln()).collect();
         offset[37] = 5e-7_f64.ln();
         let prepared = prepared_two_fe_with_codes(&y, &x, &g, &h);
         let config = PreparedPpmlIrlsConfig::default();
@@ -7610,7 +8261,11 @@ mod tests {
     #[test]
     fn low_three_fe_audit_certifies_map_window_independently_of_checkpoint_engine() {
         fn stable_probe() -> PpmlAllocatorSnapshot {
-            PpmlAllocatorSnapshot { current_bytes: 16384, peak_bytes: 32768, allocation_events: 41 }
+            PpmlAllocatorSnapshot {
+                current_bytes: 16384,
+                peak_bytes: 32768,
+                allocation_events: 41,
+            }
         }
         let (prepared, y) = prepared_three_fe([0, 1, 2], false, None);
         let mut config = PreparedPpmlIrlsConfig::default();
@@ -7620,9 +8275,15 @@ mod tests {
         config.memory.poolsize = 1;
         config.allocation_snapshot_probe = Some(stable_probe);
         let fit = fit_prepared_ppml_irls(
-            &prepared, &y, &vec![1.; y.len()], &vec![0.; y.len()], config,
-            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None,
-        ).unwrap();
+            &prepared,
+            &y,
+            &vec![1.; y.len()],
+            &vec![0.; y.len()],
+            config,
+            plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+            None,
+        )
+        .unwrap();
         let memory = &fit.diagnostics().memory;
         memory.validate().unwrap();
         let audit = memory.steady_state_allocation_certificate.unwrap();
@@ -7633,9 +8294,13 @@ mod tests {
         // ordinary window; the separately certified LSMR alternative remains
         // an allowed final route if Schur declines.
         assert_eq!(memory.linear_route, Some(FeSolverKind::Map));
-        assert!(memory.plan.audit_route_matches_final(FeSolverKind::Map, FeSolverKind::Lsmr));
+        assert!(memory
+            .plan
+            .audit_route_matches_final(FeSolverKind::Map, FeSolverKind::Lsmr));
         for route in [FeSolverKind::Auto, FeSolverKind::Cg, FeSolverKind::Cmg] {
-            assert!(!memory.plan.audit_route_matches_final(FeSolverKind::Map, route));
+            assert!(!memory
+                .plan
+                .audit_route_matches_final(FeSolverKind::Map, route));
         }
         let mut invalid = memory.plan;
         invalid.solver_workspace_bytes = 0;
@@ -7655,21 +8320,43 @@ mod tests {
         config.memory.requested = crate::options::MemoryMode::Low;
         config.memory.poolsize = 1;
         let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
-        let fit = |plan| fit_prepared_ppml_irls(
-            &prepared, &y, &weights, &vec![0.; y.len()], config, plan, None,
-        ).unwrap();
+        let fit = |plan| {
+            fit_prepared_ppml_irls(
+                &prepared,
+                &y,
+                &weights,
+                &vec![0.; y.len()],
+                config,
+                plan,
+                None,
+            )
+            .unwrap()
+        };
         let admitted = fit(plan);
-        assert_eq!(admitted.diagnostics().solver.checkpoint, super::super::PpmlSolverFamily::Lsmr);
+        assert_eq!(
+            admitted.diagnostics().solver.checkpoint,
+            super::super::PpmlSolverFamily::Lsmr
+        );
         let mut constrained = plan;
         constrained.usable_bytes = Some(admitted.diagnostics().memory.plan.selected_bytes() - 1);
         let declined = fit(constrained);
-        assert_eq!(declined.diagnostics().solver.checkpoint, super::super::PpmlSolverFamily::Map);
-        assert_eq!(admitted.diagnostics().memory.plan.reusable_slope_bytes,
-                   declined.diagnostics().memory.plan.reusable_slope_bytes);
+        assert_eq!(
+            declined.diagnostics().solver.checkpoint,
+            super::super::PpmlSolverFamily::Map
+        );
+        assert_eq!(
+            admitted.diagnostics().memory.plan.reusable_slope_bytes,
+            declined.diagnostics().memory.plan.reusable_slope_bytes
+        );
         assert!(declined.diagnostics().memory.plan.reusable_slope_bytes > 0);
-        assert!(declined.diagnostics().memory.plan.selected_bytes() <= constrained.usable_bytes.unwrap());
+        assert!(
+            declined.diagnostics().memory.plan.selected_bytes()
+                <= constrained.usable_bytes.unwrap()
+        );
         assert!(relative_infinity_difference(admitted.eta(), declined.eta()) < 1e-10);
-        assert!(admitted.diagnostics().final_score.passed && declined.diagnostics().final_score.passed);
+        assert!(
+            admitted.diagnostics().final_score.passed && declined.diagnostics().final_score.passed
+        );
     }
 
     #[test]
@@ -7764,7 +8451,7 @@ mod tests {
                     0 => {
                         assert_eq!(JOINT_FINAL_TEST_COUNTS.get().1, 1);
                         assert!(fit.diagnostics().solver.engines()[2].checkpoint_frames >= 1);
-                    },
+                    }
                     1 => assert_eq!(JOINT_FINAL_TEST_COUNTS.get(), (0, 0)),
                     _ => {
                         assert!(JOINT_FINAL_TEST_COUNTS.get().0 >= 1);
@@ -7864,13 +8551,23 @@ mod tests {
                             .sum::<f64>()
                 })
                 .collect();
-            let y: Vec<_> = eta.iter().enumerate().map(|(i, v)| v.exp() + 0.1 * (i as f64 / 11.).sin()).collect();
+            let y: Vec<_> = eta
+                .iter()
+                .enumerate()
+                .map(|(i, v)| v.exp() + 0.1 * (i as f64 / 11.).sin())
+                .collect();
             let weights: Vec<_> = (0..n).map(|i| 0.2 + (i % 17) as f64 / 7.).collect();
             let mut config = PreparedPpmlIrlsConfig::default();
             let reference = fit_prepared_ppml_irls(
-                &prepared, &y, &weights, &offset, config,
-                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(), None,
-            ).unwrap();
+                &prepared,
+                &y,
+                &weights,
+                &offset,
+                config,
+                plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap(),
+                None,
+            )
+            .unwrap();
             config.solver_plan = PpmlSolverPlan::new(super::super::PpmlSolverFamily::Lsmr);
             JOINT_FINAL_TEST_COUNTS.set((0, 0));
             let fit = fit_prepared_ppml_irls(
@@ -7889,7 +8586,12 @@ mod tests {
             assert!(fit.diagnostics().solver.engines()[engine].checkpoint_frames >= 1);
             assert!(relative_infinity_difference(fit.eta(), reference.eta()) < 1e-9);
             if !zero_control {
-                assert!((fit.coefficients()[0].value.unwrap() - reference.coefficients()[0].value.unwrap()).abs() < 1e-10);
+                assert!(
+                    (fit.coefficients()[0].value.unwrap()
+                        - reference.coefficients()[0].value.unwrap())
+                    .abs()
+                        < 1e-10
+                );
             }
             validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
         }
@@ -7898,75 +8600,173 @@ mod tests {
     fn higher_dimensional_categorical_frames_preserve_weighted_poisson_truth() {
         // Identical pairs have opposite response errors, so every weighted
         // explicit-design score vanishes at eta despite nonzero residuals.
-        for (dimensions, nested, zero_control) in [(4, false, false), (5, false, false), (4, true, true)] {
+        for (dimensions, nested, zero_control) in
+            [(4, false, false), (5, false, false), (4, true, true)]
+        {
             let n = 480;
             let x = source(1, "x");
-            let effects: Vec<_> = (0..dimensions).map(|j| source((j + 2) as u32, &format!("g{j}"))).collect();
-            let codes: Vec<Vec<f64>> = (0..dimensions).map(|j| (0..n).map(|i| {
-                let row = i / 2;
-                (match j {
-                    0 => row % 24,
-                    1 => (row * 5 + row / 24) % 9,
-                    2 => (row * 7 + row / 11) % 4,
-                    3 if nested => (row % 24) / 3,
-                    3 => (row * 11 + row / 7) % 5,
-                    _ => (row / 3) % 3,
-                }) as f64
-            }).collect()).collect();
-            let values: Vec<_> = (0..n).map(|i| if zero_control { 0. } else { ((i / 2) as f64 * 0.173).sin() }).collect();
+            let effects: Vec<_> = (0..dimensions)
+                .map(|j| source((j + 2) as u32, &format!("g{j}")))
+                .collect();
+            let codes: Vec<Vec<f64>> = (0..dimensions)
+                .map(|j| {
+                    (0..n)
+                        .map(|i| {
+                            let row = i / 2;
+                            (match j {
+                                0 => row % 24,
+                                1 => (row * 5 + row / 24) % 9,
+                                2 => (row * 7 + row / 11) % 4,
+                                3 if nested => (row % 24) / 3,
+                                3 => (row * 11 + row / 7) % 5,
+                                _ => (row / 3) % 3,
+                            }) as f64
+                        })
+                        .collect()
+                })
+                .collect();
+            let values: Vec<_> = (0..n)
+                .map(|i| {
+                    if zero_control {
+                        0.
+                    } else {
+                        ((i / 2) as f64 * 0.173).sin()
+                    }
+                })
+                .collect();
             let offset: Vec<_> = (0..n).map(|i| ((i / 2) as f64 / 17.).cos() * 0.1).collect();
-            let eta: Vec<_> = (0..n).map(|i| offset[i] + 0.3 + 0.2 * values[i]
-                + codes.iter().enumerate().map(|(j, c)| 0.02 * (j + 1) as f64 * c[i]).sum::<f64>()).collect();
-            let y: Vec<_> = eta.iter().enumerate().map(|(i, v)| v.exp() * if i % 2 == 0 { 0.9 } else { 1.1 }).collect();
+            let eta: Vec<_> = (0..n)
+                .map(|i| {
+                    offset[i]
+                        + 0.3
+                        + 0.2 * values[i]
+                        + codes
+                            .iter()
+                            .enumerate()
+                            .map(|(j, c)| 0.02 * (j + 1) as f64 * c[i])
+                            .sum::<f64>()
+                })
+                .collect();
+            let y: Vec<_> = eta
+                .iter()
+                .enumerate()
+                .map(|(i, v)| v.exp() * if i % 2 == 0 { 0.9 } else { 1.1 })
+                .collect();
             let weights: Vec<_> = (0..n).map(|i| 0.2 + ((i / 2) % 17) as f64 / 7.).collect();
-            let mut sources = vec![x.clone()]; sources.extend(effects.clone());
+            let mut sources = vec![x.clone()];
+            sources.extend(effects.clone());
             let mut numeric_sources = vec![(x.id, loaded(&values))];
             numeric_sources.extend(effects.iter().zip(&codes).map(|(e, c)| (e.id, loaded(c))));
             let mut bindings = vec![
-                OlsInputBinding { stata_var_position: 1, role: OlsInputRole::Candidate },
-                OlsInputBinding { stata_var_position: 2, role: OlsInputRole::Outcome },
-                OlsInputBinding { stata_var_position: 3, role: OlsInputRole::NumericSource(x.id) },
+                OlsInputBinding {
+                    stata_var_position: 1,
+                    role: OlsInputRole::Candidate,
+                },
+                OlsInputBinding {
+                    stata_var_position: 2,
+                    role: OlsInputRole::Outcome,
+                },
+                OlsInputBinding {
+                    stata_var_position: 3,
+                    role: OlsInputRole::NumericSource(x.id),
+                },
             ];
             bindings.extend(effects.iter().enumerate().map(|(j, e)| OlsInputBinding {
-                stata_var_position: (j + 4) as u32, role: OlsInputRole::NumericSource(e.id),
+                stata_var_position: (j + 4) as u32,
+                role: OlsInputRole::NumericSource(e.id),
             }));
-            let prepared = prepare_ols_data(&OlsRequestV1 {
-                model: CompiledTermGraph { sources, terms: vec![continuous_term(1, x.id)] },
-                absorbed_terms: effects.iter().enumerate().rev().map(|(j, e)| AbsorbedTerm {
-                    id: AbsorbTermId::new((dimensions - j) as u32).unwrap(), intercept: true,
-                    categorical_sources: vec![e.id], slope_sources: Vec::new(),
-                    label: format!("g{j}"), saved_name: String::new(),
-                }).collect(),
-                bindings, include_intercept: true, keep_singletons: true,
-            }, &LoadedOlsInput {
-                candidate: vec![true; n], outcome: loaded(&y), numeric_sources,
-                analytic_weight: None, frequency_weight: None, probability_weight: None,
-            }).unwrap();
-            for (mode, threads) in [(PreparedOlsExecutionMode::Fast, 1), (PreparedOlsExecutionMode::Fast, 4), (PreparedOlsExecutionMode::Low, 4)] {
+            let prepared = prepare_ols_data(
+                &OlsRequestV1 {
+                    model: CompiledTermGraph {
+                        sources,
+                        terms: vec![continuous_term(1, x.id)],
+                    },
+                    absorbed_terms: effects
+                        .iter()
+                        .enumerate()
+                        .rev()
+                        .map(|(j, e)| AbsorbedTerm {
+                            id: AbsorbTermId::new((dimensions - j) as u32).unwrap(),
+                            intercept: true,
+                            categorical_sources: vec![e.id],
+                            slope_sources: Vec::new(),
+                            label: format!("g{j}"),
+                            saved_name: String::new(),
+                        })
+                        .collect(),
+                    bindings,
+                    include_intercept: true,
+                    keep_singletons: true,
+                },
+                &LoadedOlsInput {
+                    candidate: vec![true; n],
+                    outcome: loaded(&y),
+                    numeric_sources,
+                    analytic_weight: None,
+                    frequency_weight: None,
+                    probability_weight: None,
+                },
+            )
+            .unwrap();
+            for (mode, threads) in [
+                (PreparedOlsExecutionMode::Fast, 1),
+                (PreparedOlsExecutionMode::Fast, 4),
+                (PreparedOlsExecutionMode::Low, 4),
+            ] {
                 let mut config = PreparedPpmlIrlsConfig::default();
                 config.linear.execution.mode = mode;
                 config.linear.execution.threads.requested = std::num::NonZeroUsize::new(threads);
-                config.memory.requested = if mode == PreparedOlsExecutionMode::Low { crate::options::MemoryMode::Low } else { crate::options::MemoryMode::Fast };
-                let plan = plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
-                let fit = fit_prepared_ppml_irls(&prepared, &y, &weights, &offset, config, plan, None).unwrap();
+                config.memory.requested = if mode == PreparedOlsExecutionMode::Low {
+                    crate::options::MemoryMode::Low
+                } else {
+                    crate::options::MemoryMode::Fast
+                };
+                let plan =
+                    plan_ppml_memory(memory_dimensions(&prepared, config), config.memory).unwrap();
+                let fit =
+                    fit_prepared_ppml_irls(&prepared, &y, &weights, &offset, config, plan, None)
+                        .unwrap();
                 assert!(fit.diagnostics().converged && fit.diagnostics().final_score.passed);
                 assert!(fit.diagnostics().memory.plan.reusable_slope_bytes > 0);
                 assert!(relative_infinity_difference(fit.eta(), &eta) < 1e-10);
-                if !zero_control { assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10); }
+                if !zero_control {
+                    assert!((fit.coefficients()[0].value.unwrap() - 0.2).abs() < 1e-10);
+                }
                 validate_final_hessian_frame(fit.linear().weights(), &weights, fit.mean()).unwrap();
-                if dimensions == 4 && !nested && mode == PreparedOlsExecutionMode::Fast && threads == 1 {
+                if dimensions == 4
+                    && !nested
+                    && mode == PreparedOlsExecutionMode::Fast
+                    && threads == 1
+                {
                     let mut constrained = plan;
                     constrained.usable_bytes = Some(plan.selected_bytes());
-                    let fallback = fit_prepared_ppml_irls(&prepared, &y, &weights, &offset, config, constrained, None).unwrap();
+                    let fallback = fit_prepared_ppml_irls(
+                        &prepared,
+                        &y,
+                        &weights,
+                        &offset,
+                        config,
+                        constrained,
+                        None,
+                    )
+                    .unwrap();
                     assert_eq!(fallback.diagnostics().memory.plan.reusable_slope_bytes, 0);
-                    assert!(fallback.diagnostics().memory.plan.selected_bytes() <= constrained.usable_bytes.unwrap());
+                    assert!(
+                        fallback.diagnostics().memory.plan.selected_bytes()
+                            <= constrained.usable_bytes.unwrap()
+                    );
                     // Refused optional workspace retains the generic engine;
                     // check its published means against the scientific envelope.
                     for (&actual, &truth) in fallback.mean().iter().zip(&eta) {
                         let expected = truth.exp();
                         assert!((actual - expected).abs() <= 1e-9 + 1e-7 * expected.abs());
                     }
-                    validate_final_hessian_frame(fallback.linear().weights(), &weights, fallback.mean()).unwrap();
+                    validate_final_hessian_frame(
+                        fallback.linear().weights(),
+                        &weights,
+                        fallback.mean(),
+                    )
+                    .unwrap();
                 }
             }
         }
@@ -8044,7 +8844,8 @@ mod tests {
             (PreparedOlsExecutionMode::Low, 2),
         ] {
             for threads in [1, 4] {
-                let mut config = ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-12).unwrap();
+                let mut config =
+                    ppml_linear_config(PreparedPpmlIrlsConfig::default(), 1e-12).unwrap();
                 config.execution.threads =
                     crate::options::ThreadConfig::from_requested(threads, true).unwrap();
                 config.execution.mode = mode;
@@ -8147,11 +8948,14 @@ mod tests {
                     let repeated = session.solve_ordinary_ppml().unwrap();
                     assert!(repeated.certified());
                     assert!(
-                        relative_infinity_difference(repeated.coefficients(), &actual_beta) <= 1e-10
+                        relative_infinity_difference(repeated.coefficients(), &actual_beta)
+                            <= 1e-10
                     );
                     assert!(
-                        relative_infinity_difference(repeated.within_residuals(), &actual_residuals)
-                            <= 1e-10
+                        relative_infinity_difference(
+                            repeated.within_residuals(),
+                            &actual_residuals
+                        ) <= 1e-10
                     );
                     session.discard_invalid_frozen_state();
                     assert!(session.solve_fresh().unwrap().certified());
@@ -8588,22 +9392,41 @@ mod tests {
     #[test]
     fn strict_profile_requires_small_coefficient_newton_accuracy() {
         let eta = [0.1, -0.2, 0.3];
-        let objective = PoissonObjective { deviance: 2.5, log_likelihood: -1.25 };
+        let objective = PoissonObjective {
+            deviance: 2.5,
+            log_likelihood: -1.25,
+        };
         for beta in [0.0_f64, -2e-4, 3e-3, 0.5, 4.0] {
             let allowance = (1e-11 + 1e-8 * beta.abs()).min(1e-8 * beta.abs().max(1.0));
             for (factor, expected) in [
                 (0.5, FinalHessianSynchronization::Certified),
                 (2.0, FinalHessianSynchronization::ResumeWithCandidate),
             ] {
-                assert_eq!(strict_candidate_decision(
-                    true, true, 1, 1, &eta, &[beta], objective, &eta,
-                    &[beta + factor * allowance], Some(objective), PpmlConfig::default(),
-                ), expected, "beta={beta}, factor={factor}");
+                assert_eq!(
+                    strict_candidate_decision(
+                        true,
+                        true,
+                        1,
+                        1,
+                        &eta,
+                        &[beta],
+                        objective,
+                        &eta,
+                        &[beta + factor * allowance],
+                        Some(objective),
+                        PpmlConfig::default(),
+                    ),
+                    expected,
+                    "beta={beta}, factor={factor}"
+                );
             }
         }
         // Excluded normalization coordinates have no Newton authority. An
         // invalid active coordinate or slot must still fail closed.
-        assert_eq!(strict_coefficient_difference(&[0.0, 2.0], &[0.0, 3.0], Some(&[0])), 0.0);
+        assert_eq!(
+            strict_coefficient_difference(&[0.0, 2.0], &[0.0, 3.0], Some(&[0])),
+            0.0
+        );
         for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
             assert!(strict_coefficient_difference(&[invalid], &[0.0], None).is_infinite());
             assert!(strict_coefficient_difference(&[0.0], &[invalid], Some(&[0])).is_infinite());

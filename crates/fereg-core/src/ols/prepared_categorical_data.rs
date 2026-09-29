@@ -16,14 +16,14 @@ use crate::fe::{
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
     plan_categorical_absorbed_request, prune_categorical_partition_singletons,
     recover_finalized_categorical_effects_cg_certified,
-    recover_finalized_two_effects_graph_certified,
     recover_finalized_categorical_effects_from_coefficients_selected_certified,
     recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_map_certified,
-    recover_finalized_categorical_effects_sd_lsmr_certified, BorrowedMapWeights,
-    BoundCategoricalAbsorbEffect, CategoricalAbsorbRequestPlan, CategoricalAbsorbedEffectView, CategoricalCodeView,
-    CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology, LsmrConfig, MapConfig,
-    RecoveredCategoricalEffects, SingletonMultiplicity, SingletonResult,
+    recover_finalized_categorical_effects_sd_lsmr_certified,
+    recover_finalized_two_effects_graph_certified, BorrowedMapWeights,
+    BoundCategoricalAbsorbEffect, CategoricalAbsorbRequestPlan, CategoricalAbsorbedEffectView,
+    CategoricalCodeView, CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology,
+    LsmrConfig, MapConfig, RecoveredCategoricalEffects, SingletonMultiplicity, SingletonResult,
 };
 use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
 use crate::metadata::SourceId;
@@ -36,7 +36,9 @@ use crate::topology_dof::{
 };
 use rayon::prelude::*;
 
-use crate::ols::{prepare_ols_data_with_cluster_sources, prepare_ols_data_owned_with_cluster_sources};
+use crate::ols::{
+    prepare_ols_data_owned_with_cluster_sources, prepare_ols_data_with_cluster_sources,
+};
 
 use super::{
     LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCoefficientStatus,
@@ -131,10 +133,18 @@ impl PreparedCategoricalOlsData {
             + bytes(&self.model.coefficients)
             + self.nested_metadata_capacity_bytes()
             + bytes(&self.categorical_sources)
-            + self.categorical_sources.iter().map(|source| match &source.storage {
-                PreparedCategoricalModelSourceStorage::Topology { candidate_levels, .. } => bytes(candidate_levels),
-                PreparedCategoricalModelSourceStorage::Owned { encoded } => bytes(&encoded.codes) + bytes(&encoded.levels),
-            }).sum::<u128>()
+            + self
+                .categorical_sources
+                .iter()
+                .map(|source| match &source.storage {
+                    PreparedCategoricalModelSourceStorage::Topology {
+                        candidate_levels, ..
+                    } => bytes(candidate_levels),
+                    PreparedCategoricalModelSourceStorage::Owned { encoded } => {
+                        bytes(&encoded.codes) + bytes(&encoded.levels)
+                    }
+                })
+                .sum::<u128>()
             + self.fe_topology.owned_buffer_bytes()
             + self.report_plan.owned_buffer_bytes()
     }
@@ -522,7 +532,9 @@ impl PreparedCategoricalOlsData {
     ) -> Result<RecoveredCategoricalEffects> {
         let validation_bytes = self.fe_topology.validation_workspace_bytes()?;
         if memory_budget.is_some_and(|budget| !budget.fits(validation_bytes)) {
-            return Err(allocation("saved-FE topology validation exceeds the joint memory budget"));
+            return Err(allocation(
+                "saved-FE topology validation exceeds the joint memory budget",
+            ));
         }
         let validated_single = self.validate_with_reusable_topology(true)?;
         let effects = self.effect_views()?;
@@ -555,18 +567,27 @@ impl PreparedCategoricalOlsData {
             // PPML admits recovery in its parent/frame planner and disables this
             // LSMR route. Keep its existing admission and failure policy.
             let mut shapes = Vec::new();
-            shapes.try_reserve_exact(effects.len()).map_err(|_| {
-                allocation("unable to reserve slope recovery shapes")
-            })?;
+            shapes
+                .try_reserve_exact(effects.len())
+                .map_err(|_| allocation("unable to reserve slope recovery shapes"))?;
             for (effect, &source) in effects.iter().zip(self.fe_topology.effect_to_topology()) {
-                shapes.push((self.fe_topology.registry().source(source)?.n_levels(),
-                    effect.has_intercept(), effect.slopes().len()));
+                shapes.push((
+                    self.fe_topology.registry().source(source)?.n_levels(),
+                    effect.has_intercept(),
+                    effect.slopes().len(),
+                ));
             }
             Some(crate::memory::estimate_slope_recovery_memory(
-                self.sample.n_active(), &shapes,
-                requested_channels.iter().filter(|&&requested| requested).count(),
-                self.fe_topology.compacted_sources().len(), validation_bytes,
-                rayon::current_num_threads(), lsmr.local_size,
+                self.sample.n_active(),
+                &shapes,
+                requested_channels
+                    .iter()
+                    .filter(|&&requested| requested)
+                    .count(),
+                self.fe_topology.compacted_sources().len(),
+                validation_bytes,
+                rayon::current_num_threads(),
+                lsmr.local_size,
             )?)
         } else {
             None
@@ -615,26 +636,61 @@ impl PreparedCategoricalOlsData {
         }
         // OLS may solve independent slope groups directly. The common finishing
         // certificate remains authoritative; failed attempts leave target intact.
-        if allow_lsmr && effects.len() == 1 && !effects[0].slopes().is_empty()
-            && effects[0].channels() <= 4 && target.len() >= 16_384 && map.max_iterations > 0
+        if allow_lsmr
+            && effects.len() == 1
+            && !effects[0].slopes().is_empty()
+            && effects[0].channels() <= 4
+            && target.len() >= 16_384
+            && map.max_iterations > 0
         {
-            let levels = self.fe_topology.registry().source(self.fe_topology.effect_to_topology()[0])?.n_levels();
-            let extra = crate::fe::single_slope_recovery_extra_bytes(target.len(), levels,
-                effects[0].channels(), rayon::current_num_threads())?;
-            let direct_bytes = recovery_memory.and_then(|memory| memory.retained_peak_bytes.checked_add(extra)).ok_or_else(|| allocation("single slope recovery envelope overflows"))?;
+            let levels = self
+                .fe_topology
+                .registry()
+                .source(self.fe_topology.effect_to_topology()[0])?
+                .n_levels();
+            let extra = crate::fe::single_slope_recovery_extra_bytes(
+                target.len(),
+                levels,
+                effects[0].channels(),
+                rayon::current_num_threads(),
+            )?;
+            let direct_bytes = recovery_memory
+                .and_then(|memory| memory.retained_peak_bytes.checked_add(extra))
+                .ok_or_else(|| allocation("single slope recovery envelope overflows"))?;
             for cache_geometry in [true, false] {
-                if cache_geometry && rayon::current_num_threads() != 1 { continue; }
+                if cache_geometry && rayon::current_num_threads() != 1 {
+                    continue;
+                }
                 let bytes = if cache_geometry {
-                    direct_bytes.checked_add(crate::fe::single_slope_recovery_geometry_bytes(levels, effects[0].channels())?)
+                    direct_bytes
+                        .checked_add(crate::fe::single_slope_recovery_geometry_bytes(
+                            levels,
+                            effects[0].channels(),
+                        )?)
                         .ok_or_else(|| allocation("cached recovery geometry envelope overflows"))?
-                } else { direct_bytes };
-                if !fits(bytes) { continue; }
+                } else {
+                    direct_bytes
+                };
+                if !fits(bytes) {
+                    continue;
+                }
                 record_attempt(&mut attempted_peak, Some(bytes))?;
-                match crate::fe::recover_finalized_single_slope_direct_certified(&self.fe_topology,
-                    &effects, weights, target, requested_channels, map.tolerance, materialize_absorbed_sum, cache_geometry)
-                {
-                    Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
-                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => return Err(error),
+                match crate::fe::recover_finalized_single_slope_direct_certified(
+                    &self.fe_topology,
+                    &effects,
+                    weights,
+                    target,
+                    requested_channels,
+                    map.tolerance,
+                    materialize_absorbed_sum,
+                    cache_geometry,
+                ) {
+                    Ok(recovered) => {
+                        return Ok(recovered.with_solver_workspace_peak(attempted_peak))
+                    }
+                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
+                        return Err(error)
+                    }
                     Err(_) => {}
                 }
             }
@@ -643,17 +699,32 @@ impl PreparedCategoricalOlsData {
             .iter()
             .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
         {
-            if allow_lsmr && effects.len() == 2
-                && target.len() >= 16_384 && rayon::current_num_threads() >= 8
+            if allow_lsmr
+                && effects.len() == 2
+                && target.len() >= 16_384
+                && rayon::current_num_threads() >= 8
                 && recovery_memory.is_some_and(|memory| fits(memory.retained_peak_bytes))
             {
-                record_attempt(&mut attempted_peak, recovery_memory.map(|memory| memory.retained_peak_bytes))?;
-                match recover_finalized_two_effects_graph_certified(&self.fe_topology, &effects,
-                    weights, target, requested_channels, map.tolerance, known_connected,
-                    materialize_absorbed_sum)
-                {
-                    Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
-                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => return Err(error),
+                record_attempt(
+                    &mut attempted_peak,
+                    recovery_memory.map(|memory| memory.retained_peak_bytes),
+                )?;
+                match recover_finalized_two_effects_graph_certified(
+                    &self.fe_topology,
+                    &effects,
+                    weights,
+                    target,
+                    requested_channels,
+                    map.tolerance,
+                    known_connected,
+                    materialize_absorbed_sum,
+                ) {
+                    Ok(recovered) => {
+                        return Ok(recovered.with_solver_workspace_peak(attempted_peak))
+                    }
+                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
+                        return Err(error)
+                    }
                     Err(_) => {}
                 }
             }
@@ -789,13 +860,18 @@ impl PreparedCategoricalOlsData {
         if self.fe_topology.compacted_sources().len() != 1
             || self.fe_topology.registry().sources().len() != 1
             || self.fe_topology.effect_to_topology().len() != 1
-            || self.fe_topology.registry().sources()[0].partition().is_interaction()
+            || self.fe_topology.registry().sources()[0]
+                .partition()
+                .is_interaction()
         {
             return Ok(None);
         }
-        Ok(self.validated_single_topology()?.map(|topology| {
-            ValidatedCategoricalDofInputs { prepared: self, topology }
-        }))
+        Ok(self
+            .validated_single_topology()?
+            .map(|topology| ValidatedCategoricalDofInputs {
+                prepared: self,
+                topology,
+            }))
     }
 
     fn validate_with_reusable_topology(
@@ -1098,21 +1174,38 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
 ) -> Result<PreparedCategoricalOlsData> {
     let mut plan = plan_categorical_absorbed_request(request)?;
     let compact_slope_availability = loaded.candidate.len() >= 16_384
-        && request.absorbed_terms.len() == 1 && !request.absorbed_terms[0].slope_sources.is_empty()
-        && request.model.terms.iter().all(|term| term.components.iter().all(|c|
-            c.kind == crate::metadata::ComponentKind::Continuous));
+        && request.absorbed_terms.len() == 1
+        && !request.absorbed_terms[0].slope_sources.is_empty()
+        && request.model.terms.iter().all(|term| {
+            term.components
+                .iter()
+                .all(|c| c.kind == crate::metadata::ComponentKind::Continuous)
+        });
     let availability = if compact_slope_availability {
         let (model, sample, early_factor) = crate::ols::prepare_ols_numeric_sample_owned(
-            plan.availability_request(), loaded, cluster_sources)?;
+            plan.availability_request(),
+            loaded,
+            cluster_sources,
+        )?;
         // The unchanged sample stage has already validated all sources and
         // assigned their original drop reasons. With continuous finite terms,
         // removing temporary categories cannot alter a finite column recipe.
         drop(early_factor);
         plan.discard_classified_slope_categories()?;
         crate::ols::finish_prepare_with_early_factor(
-            plan.availability_request(), cluster_sources, model, sample, true, None)?
+            plan.availability_request(),
+            cluster_sources,
+            model,
+            sample,
+            true,
+            None,
+        )?
     } else {
-        prepare_ols_data_owned_with_cluster_sources(plan.availability_request(), loaded, cluster_sources)?
+        prepare_ols_data_owned_with_cluster_sources(
+            plan.availability_request(),
+            loaded,
+            cluster_sources,
+        )?
     };
     finish_prepare_categorical_ols_data(request, cluster_sources, false, plan, availability)
 }
@@ -1204,23 +1297,44 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
 ) -> Result<PreparedCategoricalOlsData> {
     let mut plan = plan_categorical_absorbed_request(request)?;
     let compact_slope_availability = ppml_structural_constant
-        && request.absorbed_terms.iter().any(|term| !term.slope_sources.is_empty())
-        && request.model.terms.iter().all(|term| term.components.iter().all(|component|
-            component.kind == crate::metadata::ComponentKind::Continuous));
+        && request
+            .absorbed_terms
+            .iter()
+            .any(|term| !term.slope_sources.is_empty())
+        && request.model.terms.iter().all(|term| {
+            term.components
+                .iter()
+                .all(|component| component.kind == crate::metadata::ComponentKind::Continuous)
+        });
     let availability = if compact_slope_availability {
         let (model, sample) = crate::ols::prepare_ols_numeric_sample(
-            plan.availability_request(), loaded, cluster_sources)?;
+            plan.availability_request(),
+            loaded,
+            cluster_sources,
+        )?;
         // The complete source-use classifier already decided slope missingness.
         // Only true categorical partitions need codes and membership from here;
         // cluster roles remain explicit, and every new generation repeats this
         // classification before constructing its own immutable topology.
         plan.discard_classified_slope_categories()?;
         crate::ols::finish_prepare_with_early_factor(
-            plan.availability_request(), cluster_sources, model, sample, true, None)?
+            plan.availability_request(),
+            cluster_sources,
+            model,
+            sample,
+            true,
+            None,
+        )?
     } else {
         prepare_ols_data_with_cluster_sources(plan.availability_request(), loaded, cluster_sources)?
     };
-    finish_prepare_categorical_ols_data(request, cluster_sources, ppml_structural_constant, plan, availability)
+    finish_prepare_categorical_ols_data(
+        request,
+        cluster_sources,
+        ppml_structural_constant,
+        plan,
+        availability,
+    )
 }
 
 fn finish_prepare_categorical_ols_data(
@@ -1255,25 +1369,48 @@ fn finish_prepare_categorical_ols_data(
     // interactions and weighted samples keep the generic pruning/finalization.
     let fixed_point = if availability.sample.n_active() >= 16_384
         && matches!(availability.sample.weights, PreparedWeights::None)
-        && !recipe_views.is_empty() && recipe_views.iter().all(|recipe| recipe.len() == 1)
+        && !recipe_views.is_empty()
+        && recipe_views.iter().all(|recipe| recipe.len() == 1)
     {
-        recipe_views.iter().try_fold(true, |clear, recipe| -> Result<bool> {
-            let Some(source) = availability.fe_topology.sources().iter()
-                .find(|source| source.categorical_source_index() == recipe[0])
-            else { return Ok(false); };
-            Ok(clear && (plan.requested_keep_singletons() || (0..source.n_levels())
-                .try_fold(true, |clear, level| -> Result<bool> {
-                    Ok(clear && source.members(level)?.len() > 1)
-                })?))
-        })?
-    } else { false };
+        recipe_views
+            .iter()
+            .try_fold(true, |clear, recipe| -> Result<bool> {
+                let Some(source) = availability
+                    .fe_topology
+                    .sources()
+                    .iter()
+                    .find(|source| source.categorical_source_index() == recipe[0])
+                else {
+                    return Ok(false);
+                };
+                Ok(clear
+                    && (plan.requested_keep_singletons()
+                        || (0..source.n_levels()).try_fold(
+                            true,
+                            |clear, level| -> Result<bool> {
+                                Ok(clear && source.members(level)?.len() > 1)
+                            },
+                        )?))
+            })?
+    } else {
+        false
+    };
     let singleton = if fixed_point {
-        SingletonResult { active: initially_active, dropped_observations: Vec::new(), cascade_events: 0 }
+        SingletonResult {
+            active: initially_active,
+            dropped_observations: Vec::new(),
+            cascade_events: 0,
+        }
     } else {
         let singleton = prune_categorical_partition_singletons(
-            &candidate_views, &recipe_views, &initially_active, multiplicity,
+            &candidate_views,
+            &recipe_views,
+            &initially_active,
+            multiplicity,
             plan.requested_keep_singletons(),
-        )?.into_parts().0;
+        )?
+        .into_parts()
+        .0;
         drop(initially_active);
         singleton
     };
@@ -1283,7 +1420,11 @@ fn finish_prepare_categorical_ols_data(
     let rebuilt_topology = if fixed_point {
         None
     } else {
-        Some(finalize_categorical_topology(&candidate_views, &recipe_views, &singleton.active)?)
+        Some(finalize_categorical_topology(
+            &candidate_views,
+            &recipe_views,
+            &singleton.active,
+        )?)
     };
     drop(candidate_views);
 
@@ -1303,15 +1444,23 @@ fn finish_prepare_categorical_ols_data(
     } else {
         let mut membership_sources = availability_topology.into_sources();
         FinalizedCategoricalTopology::from_single_source_indexes(
-            candidate_sources.len(), sample.n_active(), &recipe_views,
+            candidate_sources.len(),
+            sample.n_active(),
+            &recipe_views,
             |source_index| {
-                let position = membership_sources.iter().position(|source|
-                    source.categorical_source_index() == source_index)
+                let position = membership_sources
+                    .iter()
+                    .position(|source| source.categorical_source_index() == source_index)
                     .ok_or_else(|| invalid("transferred topology source is missing"))?;
                 let index = membership_sources.swap_remove(position).into_level_index();
-                let source = candidate_sources.get_mut(source_index)
+                let source = candidate_sources
+                    .get_mut(source_index)
                     .ok_or_else(|| invalid("transferred categorical source is out of range"))?;
-                Ok((std::mem::take(&mut source.encoded.codes), source.encoded.n_levels(), index))
+                Ok((
+                    std::mem::take(&mut source.encoded.codes),
+                    source.encoded.n_levels(),
+                    index,
+                ))
             },
         )?
     };
@@ -1987,21 +2136,41 @@ mod tests {
     #[test]
     fn validated_sample_owner_preserves_storage_and_rejects_invalid_inputs() {
         let sample = numeric_sample();
-        let pointers = (sample.outcome.as_ptr(), sample.regressors[0].as_ptr(),
-            sample.original_row_by_active.as_ptr(), sample.drop_reasons.as_ptr());
+        let pointers = (
+            sample.outcome.as_ptr(),
+            sample.regressors[0].as_ptr(),
+            sample.original_row_by_active.as_ptr(),
+            sample.drop_reasons.as_ptr(),
+        );
         let bytes = sample.owned_buffer_bytes();
         let owned = validated_sample::ValidatedSample::new(sample).unwrap();
-        assert_eq!(pointers, (owned.outcome.as_ptr(), owned.regressors[0].as_ptr(),
-            owned.original_row_by_active.as_ptr(), owned.drop_reasons.as_ptr()));
+        assert_eq!(
+            pointers,
+            (
+                owned.outcome.as_ptr(),
+                owned.regressors[0].as_ptr(),
+                owned.original_row_by_active.as_ptr(),
+                owned.drop_reasons.as_ptr()
+            )
+        );
         assert_eq!(owned.owned_buffer_bytes(), bytes);
-        assert_eq!(std::mem::size_of_val(&owned), std::mem::size_of::<PreparedNumericSample>());
+        assert_eq!(
+            std::mem::size_of_val(&owned),
+            std::mem::size_of::<PreparedNumericSample>()
+        );
         assert_eq!(owned.outcome[1].to_bits(), (-0.0_f64).to_bits());
 
         let corruptions: &[fn(&mut PreparedNumericSample)] = &[
             |s| s.n_candidate = 5,
-            |s| { s.drop_reasons.pop(); },
-            |s| { s.outcome.pop(); },
-            |s| { s.regressors[0].pop(); },
+            |s| {
+                s.drop_reasons.pop();
+            },
+            |s| {
+                s.outcome.pop();
+            },
+            |s| {
+                s.regressors[0].pop();
+            },
             |s| s.outcome[2] = f64::NAN,
             |s| s.regressors[0][2] = f64::INFINITY,
             |s| s.original_row_by_active.swap(0, 1),
@@ -2013,19 +2182,33 @@ mod tests {
             let mut sample = numeric_sample();
             corrupt(&mut sample);
             let expected = validate_numeric_sample(&sample).unwrap_err();
-            assert_eq!(validated_sample::ValidatedSample::new(sample).unwrap_err(), expected);
+            assert_eq!(
+                validated_sample::ValidatedSample::new(sample).unwrap_err(),
+                expected
+            );
         }
-        for kind in [WeightKind::Analytic, WeightKind::Frequency,
-            WeightKind::Probability, WeightKind::Importance]
-        {
-            for values in [vec![1.0, 2.0, 3.0, 4.0], vec![1.0; 3],
-                vec![0.0; 4], vec![-1.0; 4], vec![f64::NAN; 4],
-                vec![0.5; 4], vec![f64::from(u32::MAX) + 1.0; 4]]
-            {
+        for kind in [
+            WeightKind::Analytic,
+            WeightKind::Frequency,
+            WeightKind::Probability,
+            WeightKind::Importance,
+        ] {
+            for values in [
+                vec![1.0, 2.0, 3.0, 4.0],
+                vec![1.0; 3],
+                vec![0.0; 4],
+                vec![-1.0; 4],
+                vec![f64::NAN; 4],
+                vec![0.5; 4],
+                vec![f64::from(u32::MAX) + 1.0; 4],
+            ] {
                 let mut sample = numeric_sample();
                 sample.weights = PreparedWeights::Provided { kind, values };
                 let expected = validate_numeric_sample(&sample);
-                assert_eq!(validated_sample::ValidatedSample::new(sample).map(|_| ()), expected);
+                assert_eq!(
+                    validated_sample::ValidatedSample::new(sample).map(|_| ()),
+                    expected
+                );
             }
         }
     }

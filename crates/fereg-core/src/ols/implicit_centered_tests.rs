@@ -11,7 +11,11 @@ fn fixture_partition(rank_deficient: bool, interaction: bool) -> SharedPreparedO
     fixture_extra_columns(rank_deficient, interaction, 0)
 }
 
-fn fixture_extra_columns(rank_deficient: bool, interaction: bool, extra: usize) -> SharedPreparedOlsData {
+fn fixture_extra_columns(
+    rank_deficient: bool,
+    interaction: bool,
+    extra: usize,
+) -> SharedPreparedOlsData {
     let n = 96;
     let x: Vec<_> = (0..n).map(|i| (i as f64 * 0.71).sin()).collect();
     let z: Vec<_> = (0..n).map(|i| (i as f64 * 0.47).cos()).collect();
@@ -28,7 +32,9 @@ fn fixture_extra_columns(rank_deficient: bool, interaction: bool, extra: usize) 
         ]);
     }
     columns.extend((0..extra).map(|j| {
-        (0..n).map(|i| ((i * (j + 3) + 1) as f64 * 0.39).sin()).collect::<Vec<_>>()
+        (0..n)
+            .map(|i| ((i * (j + 3) + 1) as f64 * 0.39).sin())
+            .collect::<Vec<_>>()
     }));
     let k = columns.len();
     columns.push(groups);
@@ -157,7 +163,8 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
                             )
                             .unwrap();
                         assert!(report.certified());
-                        let mut dense = crate::data::DenseMatrix::zeros(response.len(), ids.len()).unwrap();
+                        let mut dense =
+                            crate::data::DenseMatrix::zeros(response.len(), ids.len()).unwrap();
                         frame.write_dense(&mut dense).unwrap();
                         let view = frame.view().unwrap();
                         let mut row = vec![0.; ids.len()];
@@ -201,7 +208,8 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
                     )
                     .is_err());
                 assert!(frame.view().is_err());
-                let mut unpublished = crate::data::DenseMatrix::zeros(response.len(), ids.len()).unwrap();
+                let mut unpublished =
+                    crate::data::DenseMatrix::zeros(response.len(), ids.len()).unwrap();
                 assert!(frame.write_dense(&mut unpublished).is_err());
                 assert!(unpublished.as_slice().iter().all(|&v| v == 0.0));
                 frame
@@ -269,7 +277,9 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
         .unwrap();
         let other = fixture(true);
         assert!(session.enable_group_centered_one_fe(other).is_err());
-        session.enable_group_centered_one_fe(source.clone()).unwrap();
+        session
+            .enable_group_centered_one_fe(source.clone())
+            .unwrap();
         let output = session.solve_fresh().unwrap();
         assert!(output.certified());
         assert_eq!(output.fit().kept_generated_columns().len(), 2);
@@ -287,12 +297,22 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
             "exact duplicate loses one finite rank direction"
         );
         for generation in 2..=4 {
-            let next_weights: Vec<_> = (0..y.len()).map(|i| 0.5 + ((i * 7 + generation as usize) % 13) as f64).collect();
+            let next_weights: Vec<_> = (0..y.len())
+                .map(|i| 0.5 + ((i * 7 + generation as usize) % 13) as f64)
+                .collect();
             let maximum = next_weights.iter().copied().fold(0.0_f64, f64::max);
-            session.refresh_weights(BorrowedMapWeights::Provided(&next_weights), PreparedOlsBreadWeightScale {
-                weight_kind: None, solver_weight_divisor: maximum,
-                reference_weight_multiplier: maximum, reference_weight_sum: next_weights.iter().sum(),
-            }, generation).unwrap();
+            session
+                .refresh_weights(
+                    BorrowedMapWeights::Provided(&next_weights),
+                    PreparedOlsBreadWeightScale {
+                        weight_kind: None,
+                        solver_weight_divisor: maximum,
+                        reference_weight_multiplier: maximum,
+                        reference_weight_sum: next_weights.iter().sum(),
+                    },
+                    generation,
+                )
+                .unwrap();
             let strict = session.strictify().unwrap();
             assert!(strict.certified());
             assert_eq!(strict.fit().kept_generated_columns().len(), 2);
@@ -305,8 +325,11 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
         };
         let weak = Arc::downgrade(arc);
         drop(source);
-        assert_eq!(weak.upgrade().is_some(), mode == PreparedOlsExecutionMode::Low,
-            "implicit products retain the input owner; dense products own every projected value");
+        assert_eq!(
+            weak.upgrade().is_some(),
+            mode == PreparedOlsExecutionMode::Low,
+            "implicit products retain the input owner; dense products own every projected value"
+        );
         let design = products.finite_within_design();
         use crate::sandwich::SandwichDesign;
         let mut row = vec![0.; design.dimension()];
@@ -397,18 +420,41 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
         let source = fixture_extra_columns(false, false, stored - 2);
         let prepared = source.fit_view();
         let ids: Vec<_> = (0..stored).collect();
-        let selected: Vec<_> = (0..active).map(|j| if active == 1 { stored - 1 } else { j * (stored - 1) / (active - 1) }).collect();
-        let scales: Vec<_> = (0..active).map(|j| 2.0_f64.powi((j % 3) as i32 * 100 - 100)).collect();
+        let selected: Vec<_> = (0..active)
+            .map(|j| {
+                if active == 1 {
+                    stored - 1
+                } else {
+                    j * (stored - 1) / (active - 1)
+                }
+            })
+            .collect();
+        let scales: Vec<_> = (0..active)
+            .map(|j| 2.0_f64.powi((j % 3) as i32 * 100 - 100))
+            .collect();
         let y = &prepared.sample().outcome;
-        let mut frame = ImplicitCenteredDesign::new(source.clone(), &ids, PreparedOlsExecutionMode::Low).unwrap();
+        let mut frame =
+            ImplicitCenteredDesign::new(source.clone(), &ids, PreparedOlsExecutionMode::Low)
+                .unwrap();
         let mut raw = vec![0.; stored];
         let mut means = raw.clone();
         let mut norms = raw.clone();
         for (generation, magnitude) in [1e-200, 1., 1e200].into_iter().enumerate() {
-            let weights: Vec<_> = (0..y.len()).map(|i| magnitude * (0.25 + ((i * 13 + generation * 11) % 19) as f64)).collect();
+            let weights: Vec<_> = (0..y.len())
+                .map(|i| magnitude * (0.25 + ((i * 13 + generation * 11) % 19) as f64))
+                .collect();
             let divisor = weights.iter().copied().fold(0.0_f64, f64::max);
-            let (response, report) = frame.refresh(y, BorrowedMapWeights::Provided(&weights), divisor,
-                1e-14, &mut raw, &mut means, &mut norms).unwrap();
+            let (response, report) = frame
+                .refresh(
+                    y,
+                    BorrowedMapWeights::Provided(&weights),
+                    divisor,
+                    1e-14,
+                    &mut raw,
+                    &mut means,
+                    &mut norms,
+                )
+                .unwrap();
             assert!(report.certified());
             let view = frame.view().unwrap();
             for scaled in [false, true] {
@@ -421,13 +467,15 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
                         let group = view.codes()[i] as usize;
                         let value = |j: usize| {
                             (prepared.fit_column_value(ids[selected[j]], i).unwrap()
-                                - view.center(selected[j], group)) / if scaled { scales[j] } else { 1. }
+                                - view.center(selected[j], group))
+                                / if scaled { scales[j] } else { 1. }
                         };
                         let weighted_left = weights[i] / divisor * value(left);
                         expected_rhs[left] = weighted_left.mul_add(response[i], expected_rhs[left]);
                         for right in left..active {
                             let position = left * active + right;
-                            expected_gram[position] = weighted_left.mul_add(value(right), expected_gram[position]);
+                            expected_gram[position] =
+                                weighted_left.mul_add(value(right), expected_gram[position]);
                         }
                     }
                     for right in left..active {
@@ -435,20 +483,34 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
                     }
                 }
                 for threads in [1, 2, 4, 16] {
-                    rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
-                        let source = FixedBlockMomentSource::RetainedImplicit {
-                            values: view, selected_columns: Some(&selected), response: &response,
-                            weights: BorrowedMapWeights::Provided(&weights), solver_weight_divisor: divisor,
-                            column_scales: scaled.then_some(scales.as_slice()),
-                        };
-                        let layout = finite_wls_moment_layout(source).unwrap();
-                        let mut partials = vec![0.; layout.partial_elements];
-                        let mut rhs = vec![0.; active];
-                        let mut gram = vec![0.; active * active];
-                        fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram).unwrap();
-                        assert_eq!(rhs, expected_rhs);
-                        assert_eq!(gram, expected_gram);
-                    });
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(threads)
+                        .build()
+                        .unwrap()
+                        .install(|| {
+                            let source = FixedBlockMomentSource::RetainedImplicit {
+                                values: view,
+                                selected_columns: Some(&selected),
+                                response: &response,
+                                weights: BorrowedMapWeights::Provided(&weights),
+                                solver_weight_divisor: divisor,
+                                column_scales: scaled.then_some(scales.as_slice()),
+                            };
+                            let layout = finite_wls_moment_layout(source).unwrap();
+                            let mut partials = vec![0.; layout.partial_elements];
+                            let mut rhs = vec![0.; active];
+                            let mut gram = vec![0.; active * active];
+                            fill_finite_wls_moments(
+                                source,
+                                layout,
+                                &mut partials,
+                                &mut rhs,
+                                &mut gram,
+                            )
+                            .unwrap();
+                            assert_eq!(rhs, expected_rhs);
+                            assert_eq!(gram, expected_gram);
+                        });
                 }
             }
         }

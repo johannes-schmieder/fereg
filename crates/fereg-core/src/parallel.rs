@@ -114,7 +114,11 @@ pub(crate) struct InstalledThreadTeam {
 
 impl InstalledThreadTeam {
     pub(crate) fn threads(&self) -> usize {
-        self.pool.pool.as_ref().expect("live worker team").current_num_threads()
+        self.pool
+            .pool
+            .as_ref()
+            .expect("live worker team")
+            .current_num_threads()
     }
 
     pub(crate) fn install<T, F>(&self, function: F) -> T
@@ -165,7 +169,12 @@ impl ThreadTeam {
         function: impl FnOnce(&rayon::Scope<'scope>) -> T,
     ) -> Result<T> {
         let team = self.acquire()?;
-        Ok(team.pool.pool.as_ref().expect("live worker team").in_place_scope(function))
+        Ok(team
+            .pool
+            .pool
+            .as_ref()
+            .expect("live worker team")
+            .in_place_scope(function))
     }
 
     /// Resolve/cache the requested pool before entering a transaction that

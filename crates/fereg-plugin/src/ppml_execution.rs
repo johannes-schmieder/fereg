@@ -24,7 +24,9 @@ impl<T> Exchange<T> {
     }
 
     fn wait<'a>(&self, state: MutexGuard<'a, State<T>>) -> MutexGuard<'a, State<T>> {
-        self.changed.wait(state).unwrap_or_else(|error| error.into_inner())
+        self.changed
+            .wait(state)
+            .unwrap_or_else(|error| error.into_inner())
     }
 
     fn poll(&self, point: PpmlInterruptPoint) -> Result<()> {
@@ -70,7 +72,12 @@ pub(crate) fn run<T: Send>(
     // The exchange is stack-owned, with one request and reply in flight.
     // Both peers close it on unwinding so the scope can always join.
     let exchange = Exchange {
-        state: Mutex::new(State { point: None, reply: None, output: None, closed: false }),
+        state: Mutex::new(State {
+            point: None,
+            reply: None,
+            output: None,
+            closed: false,
+        }),
         changed: Condvar::new(),
     };
     team.in_place_scope(|scope| {
@@ -106,8 +113,8 @@ mod tests {
     use super::*;
     use fereg_core::ThreadConfig;
     use std::cell::Cell;
-    use std::rc::Rc;
     use std::panic::{catch_unwind, AssertUnwindSafe};
+    use std::rc::Rc;
 
     fn team(threads: usize) -> ThreadTeam {
         ThreadTeam::new(ThreadConfig::from_requested(threads, true).unwrap())
@@ -118,16 +125,25 @@ mod tests {
         let caller = std::thread::current().id();
         for threads in [1, 4, 2, 4] {
             let polls = Rc::new(Cell::new(0));
-            let result = run(team(threads), |poll| {
-                assert_eq!(std::thread::current().id() == caller, threads == 1);
-                if threads > 1 { assert_eq!(rayon::current_num_threads(), threads); }
-                for _ in 0..128 { poll(PpmlInterruptPoint::IrlsIteration)?; }
-                Ok(37)
-            }, &mut |_| {
-                assert_eq!(std::thread::current().id(), caller);
-                polls.set(polls.get() + 1);
-                Ok(())
-            }).unwrap();
+            let result = run(
+                team(threads),
+                |poll| {
+                    assert_eq!(std::thread::current().id() == caller, threads == 1);
+                    if threads > 1 {
+                        assert_eq!(rayon::current_num_threads(), threads);
+                    }
+                    for _ in 0..128 {
+                        poll(PpmlInterruptPoint::IrlsIteration)?;
+                    }
+                    Ok(37)
+                },
+                &mut |_| {
+                    assert_eq!(std::thread::current().id(), caller);
+                    polls.set(polls.get() + 1);
+                    Ok(())
+                },
+            )
+            .unwrap();
             assert_eq!(result, 37);
             assert_eq!(polls.get(), 128);
         }
@@ -136,18 +152,31 @@ mod tests {
     #[test]
     fn callback_errors_and_both_peer_panics_join_and_allow_retry() {
         for threads in [1, 4] {
-            let error = run(team(threads), |poll| {
-                poll(PpmlInterruptPoint::Preparation)?;
-                panic!("cancelled callback must stop computation");
-                #[allow(unreachable_code)] Ok(())
-            }, &mut |_| Err(FeregError::new(ErrorCode::Interrupted, "requested break"))).unwrap_err();
+            let error = run(
+                team(threads),
+                |poll| {
+                    poll(PpmlInterruptPoint::Preparation)?;
+                    panic!("cancelled callback must stop computation");
+                    #[allow(unreachable_code)]
+                    Ok(())
+                },
+                &mut |_| Err(FeregError::new(ErrorCode::Interrupted, "requested break")),
+            )
+            .unwrap_err();
             assert_eq!(error.code, ErrorCode::Interrupted);
             for worker_panics in [false, true] {
-                assert!(catch_unwind(AssertUnwindSafe(|| run(team(threads), |poll| {
-                    if worker_panics { panic!("injected native panic"); }
-                    poll(PpmlInterruptPoint::Preparation)?;
-                    Ok(())
-                }, &mut |_| panic!("injected caller panic")))).is_err());
+                assert!(catch_unwind(AssertUnwindSafe(|| run(
+                    team(threads),
+                    |poll| {
+                        if worker_panics {
+                            panic!("injected native panic");
+                        }
+                        poll(PpmlInterruptPoint::Preparation)?;
+                        Ok(())
+                    },
+                    &mut |_| panic!("injected caller panic")
+                )))
+                .is_err());
                 assert_eq!(run(team(threads), |_| Ok(11), &mut |_| Ok(())).unwrap(), 11);
             }
         }
@@ -155,25 +184,31 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
     fn repeated_scoped_family_work_and_callbacks_allocate_nothing_after_warmup() {
         let _guard = crate::instrumentation::lock_action_observation();
         let probe = crate::instrumentation::ppml_allocator_snapshot_probe(true).unwrap();
         let team = team(4);
         team.install(|| drop(rayon::broadcast(|_| ()))).unwrap();
-        run(team, |poll| {
-            for _ in 0..16 {
-                poll(PpmlInterruptPoint::IrlsIteration)?;
-                team.install(|| rayon::join(|| 1, || 2))?;
-            }
-            let before = probe();
-            for _ in 0..256 {
-                poll(PpmlInterruptPoint::IrlsIteration)?;
-                team.install(|| rayon::join(|| 1, || 2))?;
-            }
-            let after = probe();
-            assert_eq!(before.allocation_events, after.allocation_events);
-            assert_eq!(before.current_bytes, after.current_bytes);
-            Ok(())
-        }, &mut |_| Ok(())).unwrap();
+        run(
+            team,
+            |poll| {
+                for _ in 0..16 {
+                    poll(PpmlInterruptPoint::IrlsIteration)?;
+                    team.install(|| rayon::join(|| 1, || 2))?;
+                }
+                let before = probe();
+                for _ in 0..256 {
+                    poll(PpmlInterruptPoint::IrlsIteration)?;
+                    team.install(|| rayon::join(|| 1, || 2))?;
+                }
+                let after = probe();
+                assert_eq!(before.allocation_events, after.allocation_events);
+                assert_eq!(before.current_bytes, after.current_bytes);
+                Ok(())
+            },
+            &mut |_| Ok(()),
+        )
+        .unwrap();
     }
 }

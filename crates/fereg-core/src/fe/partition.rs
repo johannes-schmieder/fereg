@@ -28,9 +28,14 @@ impl CategoricalPartition {
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         let key = match &self.key {
             CategoricalPartitionKey::Single(_) => 0,
-            CategoricalPartitionKey::Interaction(indices) => crate::memory::vec_capacity_bytes(indices),
+            CategoricalPartitionKey::Interaction(indices) => {
+                crate::memory::vec_capacity_bytes(indices)
+            }
         };
-        key + self.owned_interaction.as_ref().map_or(0, EncodedInteraction::owned_buffer_bytes)
+        key + self
+            .owned_interaction
+            .as_ref()
+            .map_or(0, EncodedInteraction::owned_buffer_bytes)
     }
 
     /// Construct a zero-copy partition over one authoritative categorical
@@ -63,7 +68,9 @@ impl CategoricalPartition {
 
     /// Only immutable finalized-owner receipts may bypass component rescans.
     pub(super) fn owned_interaction_codes(&self) -> Option<&[u32]> {
-        self.owned_interaction.as_ref().map(EncodedInteraction::codes)
+        self.owned_interaction
+            .as_ref()
+            .map(EncodedInteraction::codes)
     }
 
     #[must_use]

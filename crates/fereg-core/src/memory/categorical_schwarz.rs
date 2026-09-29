@@ -226,12 +226,23 @@ mod tests {
         // must not reject the same complete checkpoint at a larger team size.
         for threads in [1, 4, 8, 16, 28] {
             let model = crate::memory::estimate_fe_solver_memory(
-                983_040, 11, &[196_608, 9_831, 492], threads, Some(4),
-            ).unwrap();
+                983_040,
+                11,
+                &[196_608, 9_831, 492],
+                threads,
+                Some(4),
+            )
+            .unwrap();
             assert!(model.lsmr_schwarz_bytes < 32 * 1024_u128.pow(3));
             let frame = estimate_categorical_schwarz_memory(
-                983_040, 3, 206_931, 196_608, threads as u128, 0,
-            ).unwrap();
+                983_040,
+                3,
+                206_931,
+                196_608,
+                threads as u128,
+                0,
+            )
+            .unwrap();
             let active_worker_payload = threads as u128 * (206_931 + 6 * 196_608 + 4) * 8;
             assert!(frame.apply_peak_bytes > active_worker_payload);
             assert!(frame.retained_bytes > 4 * frame.apply_peak_bytes);

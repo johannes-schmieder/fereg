@@ -32,7 +32,8 @@ fn dense_score_reduction(dimension: usize) -> FixedBlockReductionPolicy {
     let products_per_row = (k * (k + 1)).max(1);
     FixedBlockReductionPolicy {
         rows_per_block: (DENSE_SCORE_PRODUCTS_PER_BLOCK / products_per_row)
-            .clamp(1, PPML_SANDWICH_REDUCTION.rows_per_block as u128) as usize,
+            .clamp(1, PPML_SANDWICH_REDUCTION.rows_per_block as u128)
+            as usize,
         ..PPML_SANDWICH_REDUCTION
     }
 }
@@ -41,14 +42,26 @@ fn dense_score_reduction(dimension: usize) -> FixedBlockReductionPolicy {
 /// cap can change the number of blocks after rank drops, so bound its complete
 /// budget rather than assuming the maximum-rank block count stays authoritative.
 pub(super) fn dense_score_partials_bound(rows: usize, dimension: usize) -> Result<u128> {
-    if rows == 0 || dimension == 0 { return Ok(0); }
+    if rows == 0 || dimension == 0 {
+        return Ok(0);
+    }
     let k = dimension as u128;
-    let stride = k.checked_mul(k + 1).and_then(|n| n.checked_mul(16))
-        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "PPML score partial dimensions overflow"))?;
+    let stride = k
+        .checked_mul(k + 1)
+        .and_then(|n| n.checked_mul(16))
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "PPML score partial dimensions overflow",
+            )
+        })?;
     let policy = dense_score_reduction(dimension);
-    let blocks = rows.div_ceil(policy.rows_per_block).min(policy.maximum_blocks) as u128;
-    let requested = stride.checked_mul(blocks)
-        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "PPML score partial bank overflows"))?;
+    let blocks = rows
+        .div_ceil(policy.rows_per_block)
+        .min(policy.maximum_blocks) as u128;
+    let requested = stride.checked_mul(blocks).ok_or_else(|| {
+        FeregError::new(ErrorCode::Allocation, "PPML score partial bank overflows")
+    })?;
     Ok(requested.min((policy.partial_budget_bytes as u128).max(stride)))
 }
 
@@ -195,7 +208,9 @@ pub trait PpmlInferenceDesign {
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()>;
 
     /// Whether bounded consecutive scans avoid expensive pointwise access.
-    fn prefers_sequential_scan(&self) -> bool { false }
+    fn prefers_sequential_scan(&self) -> bool {
+        false
+    }
 
     /// Visit an immutable contiguous block using caller-owned row storage.
     /// Sources may keep bounded reader state local to this call; the callback
@@ -268,7 +283,6 @@ impl PpmlInferenceDesign for CertifiedLinearWithinDesign<'_> {
     ) -> Result<()> {
         SandwichDesign::visit_range(self, rows, output, visit)
     }
-
 }
 
 /// Final strict-state inputs for PPML inference.
@@ -689,7 +703,6 @@ where
     ) -> Result<()> {
         self.source.visit_range(rows, output, visit)
     }
-
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1656,7 +1669,8 @@ mod tests {
                 for rank in 1..=columns {
                     let policy = dense_score_reduction(rank);
                     let stride = 16 * rank * (rank + 1);
-                    let blocks = rows.div_ceil(policy.rows_per_block)
+                    let blocks = rows
+                        .div_ceil(policy.rows_per_block)
                         .min(policy.maximum_blocks)
                         .min((policy.partial_budget_bytes / stride).max(1));
                     assert!((blocks * stride) as u128 <= bound);
@@ -1671,43 +1685,81 @@ mod tests {
     fn wide_robust_work_blocks_match_literal_weighted_sandwich_and_teams() {
         let rows = 8193;
         let columns = 24;
-        let columns_data: Vec<Vec<f64>> = (0..columns).map(|column|
-            (0..rows).map(|row| ((row * 17 + column * 31) % 103) as f64 / 31.0
-                + ((row + 1) as f64 / (column + 7) as f64).sin()).collect()).collect();
+        let columns_data: Vec<Vec<f64>> = (0..columns)
+            .map(|column| {
+                (0..rows)
+                    .map(|row| {
+                        ((row * 17 + column * 31) % 103) as f64 / 31.0
+                            + ((row + 1) as f64 / (column + 7) as f64).sin()
+                    })
+                    .collect()
+            })
+            .collect();
         let design = DenseMatrix::from_columns(&columns_data).unwrap();
-        let residuals: Vec<_> = (0..rows).map(|i| ((i * 13 % 37) as f64 - 18.0) / 7.0).collect();
-        let bread: Vec<_> = (0..columns*columns).map(|i| f64::from(i / columns == i % columns)).collect();
+        let residuals: Vec<_> = (0..rows)
+            .map(|i| ((i * 13 % 37) as f64 - 18.0) / 7.0)
+            .collect();
+        let bread: Vec<_> = (0..columns * columns)
+            .map(|i| f64::from(i / columns == i % columns))
+            .collect();
         let slots: Vec<_> = (0..columns).collect();
         for frequency in [false, true] {
-            let weights: Vec<_> = (0..rows).map(|i| if frequency { (i % 7 + 1) as f64 } else { 1.0 }).collect();
-            let weight_report = if frequency { frequency_report(&weights) } else { unweighted_report(rows) };
-            let correction = weight_report.effective_observations as f64 / (weight_report.effective_observations - 1) as f64;
-            let mut expected = vec![0.; columns*columns];
+            let weights: Vec<_> = (0..rows)
+                .map(|i| if frequency { (i % 7 + 1) as f64 } else { 1.0 })
+                .collect();
+            let weight_report = if frequency {
+                frequency_report(&weights)
+            } else {
+                unweighted_report(rows)
+            };
+            let correction = weight_report.effective_observations as f64
+                / (weight_report.effective_observations - 1) as f64;
+            let mut expected = vec![0.; columns * columns];
             for left in 0..columns {
                 for right in 0..columns {
                     // Full scalar outer products, independent of block policy,
                     // score multipliers, triangular storage and compensated merge.
                     for row in 0..rows {
-                        expected[left*columns+right] += weights[row] * residuals[row].powi(2)
-                            * columns_data[left][row] * columns_data[right][row];
+                        expected[left * columns + right] += weights[row]
+                            * residuals[row].powi(2)
+                            * columns_data[left][row]
+                            * columns_data[right][row];
                     }
-                    expected[left*columns+right] *= correction;
+                    expected[left * columns + right] *= correction;
                 }
             }
             let mut serial = None;
             for threads in [1, 4] {
-                let report = compute_ppml_inference_interruptible_with_threads(PpmlInferenceInput {
-                    coefficients: &vec![0.; columns], full_dimension: columns, within_design: &design,
-                    reported_finite_rank: columns, score_residuals: &residuals, prior_weights: &weights,
-                    weight_report, identified_bread: &bread, kept_full_slots: &slots,
-                    absorbed_rank: 0, connected_components: 0, absorbed_rank_is_approximate: false,
-                    clusters: &[], requested_vce: PpmlVceRequest::Robust, wald_columns: &[], certificate_tolerance: 1e-10,
-                }, ThreadConfig::from_requested(threads, true).unwrap(), &mut || Ok(())).unwrap();
+                let report = compute_ppml_inference_interruptible_with_threads(
+                    PpmlInferenceInput {
+                        coefficients: &vec![0.; columns],
+                        full_dimension: columns,
+                        within_design: &design,
+                        reported_finite_rank: columns,
+                        score_residuals: &residuals,
+                        prior_weights: &weights,
+                        weight_report,
+                        identified_bread: &bread,
+                        kept_full_slots: &slots,
+                        absorbed_rank: 0,
+                        connected_components: 0,
+                        absorbed_rank_is_approximate: false,
+                        clusters: &[],
+                        requested_vce: PpmlVceRequest::Robust,
+                        wald_columns: &[],
+                        certificate_tolerance: 1e-10,
+                    },
+                    ThreadConfig::from_requested(threads, true).unwrap(),
+                    &mut || Ok(()),
+                )
+                .unwrap();
                 assert!(report.vce.certificate.passed);
                 for (actual, oracle) in report.vce.covariance.iter().zip(&expected) {
                     assert!((actual - oracle).abs() <= 1e-11 * (1.0 + oracle.abs()));
                 }
-                if let Some(prior) = &serial { assert_eq!(&report.vce.covariance, prior); }
+                if let Some(prior) = &serial {
+                    assert_eq!(&report.vce.covariance, prior);
+                }
                 serial = Some(report.vce.covariance);
             }
         }

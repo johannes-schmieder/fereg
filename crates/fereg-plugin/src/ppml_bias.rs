@@ -167,7 +167,11 @@ pub(super) fn validate(
             {
                 return Err(internal("bias publication is not request-aligned"));
             }
-            for matrix in [&action.matrices.bias, &action.matrices.bias_diagnostics, &action.matrices.bias_support] {
+            for matrix in [
+                &action.matrices.bias,
+                &action.matrices.bias_diagnostics,
+                &action.matrices.bias_support,
+            ] {
                 let matrix = matrix
                     .as_ref()
                     .ok_or_else(|| internal("bias matrix is absent"))?;

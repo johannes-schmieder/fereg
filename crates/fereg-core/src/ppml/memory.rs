@@ -712,9 +712,14 @@ impl PpmlMemoryPlan {
     /// A warmed MAP audit measures ordinary directions, separately from an
     /// admitted low three-FE canonical LSMR checkpoint outside that window.
     #[must_use]
-    pub fn audit_route_matches_final(self, audited: FeSolverKind, final_route: FeSolverKind) -> bool {
+    pub fn audit_route_matches_final(
+        self,
+        audited: FeSolverKind,
+        final_route: FeSolverKind,
+    ) -> bool {
         audited == final_route
-            || (audited == FeSolverKind::Map && final_route == FeSolverKind::Lsmr
+            || (audited == FeSolverKind::Map
+                && final_route == FeSolverKind::Lsmr
                 && self.selected == PpmlMemoryRoute::Low
                 && self.dimensions.fe_dimensions == 3
                 && self.dimensions.fe_total_channels == 3
@@ -1295,22 +1300,40 @@ fn estimate_route(
     // The row-scaled metadata includes categorical sources that are absent
     // from the absorbed-effect count (finite factors and cluster-only sources).
     let prepared_generation_bytes = checked_sum(&[
-        bytes_f64(checked_mul(n, checked_sum(&[loaded, 3])?, "PPML generation numerics")?)?,
-        checked_mul(loaded, size_of::<Vec<f64>>() as u128, "PPML numeric descriptors")?,
+        bytes_f64(checked_mul(
+            n,
+            checked_sum(&[loaded, 3])?,
+            "PPML generation numerics",
+        )?)?,
+        checked_mul(
+            loaded,
+            size_of::<Vec<f64>>() as u128,
+            "PPML numeric descriptors",
+        )?,
         checked_mul(n, word, "PPML generation sample row map")?,
         original_n,
         dimensions.metadata.prepared_nested_bytes,
         dimensions.metadata.generation_fixed_bytes,
-        checked_mul(n, dimensions.metadata.generation_bytes_per_row, "PPML generation topology rows")?,
+        checked_mul(
+            n,
+            dimensions.metadata.generation_bytes_per_row,
+            "PPML generation topology rows",
+        )?,
         checked_mul(levels, word, "PPML generation membership offsets")?,
-        checked_mul(reported_coefficient_slots,
-            (size_of::<PreparedOlsCoefficient>() + size_of::<PreparedOlsColumn>()
+        checked_mul(
+            reported_coefficient_slots,
+            (size_of::<PreparedOlsCoefficient>()
+                + size_of::<PreparedOlsColumn>()
                 + size_of::<CoefficientSlot>()) as u128,
-            "PPML generation reserved coefficient axis")?,
+            "PPML generation reserved coefficient axis",
+        )?,
     ])?;
     let legacy_generation_bytes = checked_sum(&[
-        canonical_numeric_bytes, topology_bytes, cluster_topology_bytes,
-        prepared_model_metadata_bytes, checked_mul(n, word, "PPML generation row allowance")?,
+        canonical_numeric_bytes,
+        topology_bytes,
+        cluster_topology_bytes,
+        prepared_model_metadata_bytes,
+        checked_mul(n, word, "PPML generation row allowance")?,
         original_n,
     ])?;
     let prepared_generation_supplement_bytes =
@@ -1428,15 +1451,17 @@ fn estimate_route(
     } else {
         0
     };
-    let objective_partials_cells = objective_partial_cells(
-        dimensions.observations, dimensions.threads,
-    ) as u128;
-    let iteration_buffer_bytes = bytes_f64(checked_sum(&[checked_mul(
-        n,
-        // Two immutable outcome terms live beside the eight mutable buffers.
-        ITERATION_VECTOR_COUNT + 2,
-        "PPML reusable iteration vectors",
-    )?, objective_partials_cells])?)?;
+    let objective_partials_cells =
+        objective_partial_cells(dimensions.observations, dimensions.threads) as u128;
+    let iteration_buffer_bytes = bytes_f64(checked_sum(&[
+        checked_mul(
+            n,
+            // Two immutable outcome terms live beside the eight mutable buffers.
+            ITERATION_VECTOR_COUNT + 2,
+            "PPML reusable iteration vectors",
+        )?,
+        objective_partials_cells,
+    ])?)?;
     let coefficient_buffer_bytes = bytes_f64(checked_mul(
         coefficient_slots,
         COEFFICIENT_VECTOR_COUNT,
@@ -1729,8 +1754,13 @@ fn estimate_route(
         // Retain the prior square envelope and conservatively add the complete
         // robust partial bank, including any smaller final numerical rank.
         if clusters == 0 {
-            super::vce::dense_score_partials_bound(dimensions.observations, dimensions.finite_columns)?
-        } else { 0 },
+            super::vce::dense_score_partials_bound(
+                dimensions.observations,
+                dimensions.finite_columns,
+            )?
+        } else {
+            0
+        },
     ])?;
     // A clustered zero-dimensional sandwich does not construct score/meat
     // workspaces. It counts exact joint groups by sorting one fallibly owned
@@ -1861,7 +1891,9 @@ fn estimate_route(
         "PPML bounded diagnostic record",
     )?;
 
-    let input_owner_supplement_bytes = dimensions.metadata.input_owner_bytes
+    let input_owner_supplement_bytes = dimensions
+        .metadata
+        .input_owner_bytes
         .saturating_sub(config.embedding_resident_bytes);
     let common = checked_sum(&[
         dimensions.metadata.bias_workspace_bytes,
@@ -2619,7 +2651,8 @@ impl PpmlIterationWorkspace {
             score_residuals: fallible_filled(n, 0.0, "PPML score-residual buffer")?,
             objective_partials: fallible_filled(
                 objective_partial_cells(n, plan.dimensions.threads),
-                0.0, "PPML objective partial sums",
+                0.0,
+                "PPML objective partial sums",
             )?,
             coefficients,
             candidate_coefficients: fallible_filled(k, 0.0, "PPML candidate-coefficient buffer")?,
@@ -2860,11 +2893,23 @@ impl PpmlIterationWorkspace {
     }
 
     pub(crate) fn refresh_prepared_working_state(
-        &mut self, inputs: &PreparedPoissonInputs<'_>, bounds: PoissonBounds,
+        &mut self,
+        inputs: &PreparedPoissonInputs<'_>,
+        bounds: PoissonBounds,
     ) -> Result<()> {
-        require_observation_lengths(self.eta.len(), &[inputs.outcome().len()], "PPML working state")?;
+        require_observation_lengths(
+            self.eta.len(),
+            &[inputs.outcome().len()],
+            "PPML working state",
+        )?;
         inputs.fill_means(&self.eta, bounds, &mut self.mean)?;
-        inputs.fill_working_state_and_scores(&self.mean, &self.eta, &mut self.hessian_weights, &mut self.working_response, &mut self.score_residuals)?;
+        inputs.fill_working_state_and_scores(
+            &self.mean,
+            &self.eta,
+            &mut self.hessian_weights,
+            &mut self.working_response,
+            &mut self.score_residuals,
+        )?;
         self.certify_steady_state_capacity()
     }
 
@@ -2906,21 +2951,29 @@ impl PpmlIterationWorkspace {
 
     #[cfg(test)]
     pub(super) fn fill_line_search_trial_with(
-        &mut self, step: f64, bounds: PoissonBounds,
+        &mut self,
+        step: f64,
+        bounds: PoissonBounds,
         transform: impl FnOnce(&mut [f64]) -> Result<()>,
     ) -> Result<()> {
         self.fill_line_search_trial_core(step, bounds, None, transform)
     }
 
     pub(super) fn fill_prepared_line_search_trial_with(
-        &mut self, step: f64, bounds: PoissonBounds, inputs: &PreparedPoissonInputs<'_>,
+        &mut self,
+        step: f64,
+        bounds: PoissonBounds,
+        inputs: &PreparedPoissonInputs<'_>,
         transform: impl FnOnce(&mut [f64]) -> Result<()>,
     ) -> Result<()> {
         self.fill_line_search_trial_core(step, bounds, Some(inputs), transform)
     }
 
     fn fill_line_search_trial_core(
-        &mut self, step: f64, bounds: PoissonBounds, inputs: Option<&PreparedPoissonInputs<'_>>,
+        &mut self,
+        step: f64,
+        bounds: PoissonBounds,
+        inputs: Option<&PreparedPoissonInputs<'_>>,
         transform: impl FnOnce(&mut [f64]) -> Result<()>,
     ) -> Result<()> {
         if !step.is_finite() || !(0.0..=1.0).contains(&step) {
@@ -2961,23 +3014,44 @@ impl PpmlIterationWorkspace {
     /// Evaluate the strict candidate directly in the reusable mean buffer
     /// without changing the accepted eta or coefficient state.
     pub(crate) fn evaluate_candidate_objective(
-        &mut self, inputs: &PreparedPoissonInputs<'_>, bounds: PoissonBounds,
+        &mut self,
+        inputs: &PreparedPoissonInputs<'_>,
+        bounds: PoissonBounds,
     ) -> Result<PoissonObjective> {
         inputs.fill_means(&self.candidate_eta, bounds, &mut self.trial_mean)?;
-        let objective = inputs.evaluate_tiled(&self.candidate_eta, &self.trial_mean, &mut self.objective_partials)?;
+        let objective = inputs.evaluate_tiled(
+            &self.candidate_eta,
+            &self.trial_mean,
+            &mut self.objective_partials,
+        )?;
         self.certify_steady_state_capacity()?;
         Ok(objective)
     }
 
-    pub(crate) fn evaluate_current_objective(&mut self, inputs: &PreparedPoissonInputs<'_>) -> Result<PoissonObjective> {
+    pub(crate) fn evaluate_current_objective(
+        &mut self,
+        inputs: &PreparedPoissonInputs<'_>,
+    ) -> Result<PoissonObjective> {
         inputs.evaluate_tiled(&self.eta, &self.mean, &mut self.objective_partials)
     }
 
-    pub(super) fn evaluate_trial_objective(&mut self, inputs: &PreparedPoissonInputs<'_>) -> Result<PoissonObjective> {
-        inputs.evaluate_tiled(&self.trial_eta, &self.trial_mean, &mut self.objective_partials)
+    pub(super) fn evaluate_trial_objective(
+        &mut self,
+        inputs: &PreparedPoissonInputs<'_>,
+    ) -> Result<PoissonObjective> {
+        inputs.evaluate_tiled(
+            &self.trial_eta,
+            &self.trial_mean,
+            &mut self.objective_partials,
+        )
     }
 
-    pub(super) fn evaluate_external_objective(&mut self, inputs: &PreparedPoissonInputs<'_>, eta: &[f64], mean: &[f64]) -> Result<PoissonObjective> {
+    pub(super) fn evaluate_external_objective(
+        &mut self,
+        inputs: &PreparedPoissonInputs<'_>,
+        eta: &[f64],
+        mean: &[f64],
+    ) -> Result<PoissonObjective> {
         inputs.evaluate_tiled(eta, mean, &mut self.objective_partials)
     }
 
@@ -3003,12 +3077,7 @@ impl PpmlIterationWorkspace {
     ) -> Result<PpmlLineSearchAcceptance> {
         let offset = vec![0.; outcome.len()];
         let inputs = PreparedPoissonInputs::new(outcome, prior_weights, &offset)?;
-        self.accept_candidate_interruptible(
-            &inputs,
-            current_objective,
-            config,
-            &mut || Ok(()),
-        )
+        self.accept_candidate_interruptible(&inputs, current_objective, config, &mut || Ok(()))
     }
 
     /// Interruptible counterpart used only by the PPML native caller-thread
@@ -3028,7 +3097,8 @@ impl PpmlIterationWorkspace {
             if step < config.minimum_step {
                 break;
             }
-            match self.fill_prepared_line_search_trial_with(step, config.bounds, inputs, |_| Ok(())) {
+            match self.fill_prepared_line_search_trial_with(step, config.bounds, inputs, |_| Ok(()))
+            {
                 Ok(()) => {}
                 Err(error) if error.code == ErrorCode::NonConvergence => {
                     step *= 0.5;
@@ -3672,7 +3742,9 @@ impl PpmlMemoryTelemetry {
                             .steady_iteration_median_nanoseconds,
                     })?;
                 if recomputed != certificate
-                    || !self.plan.audit_route_matches_final(certificate.linear_route, route)
+                    || !self
+                        .plan
+                        .audit_route_matches_final(certificate.linear_route, route)
                     || self.workspace_capacity != Some(certificate.workspace_end)
                     || certificate.scratch_bytes_end != scratch
                 {
@@ -3860,17 +3932,24 @@ mod tests {
     #[test]
     fn objective_partial_bank_is_charged_beside_all_iteration_vectors() {
         for threads in [1, 4, 8] {
-            let shape = PpmlMemoryDimensions { threads, ..dimensions() };
+            let shape = PpmlMemoryDimensions {
+                threads,
+                ..dimensions()
+            };
             let estimate = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
             let cells = objective_partial_cells(shape.observations, threads);
             let expected = (10 * shape.observations as u128 + cells as u128) * 8;
             assert_eq!(estimate.fast.iteration_buffer_bytes, expected);
             assert_eq!(estimate.low.iteration_buffer_bytes, expected);
             let plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
-            let workspace = PpmlIterationWorkspace::new(plan, &vec![0.; shape.observations]).unwrap();
+            let workspace =
+                PpmlIterationWorkspace::new(plan, &vec![0.; shape.observations]).unwrap();
             assert_eq!(workspace.objective_partials.len(), cells);
             assert_eq!(workspace.objective_partials.capacity(), cells);
-            assert_eq!(workspace.capacity_report().observation_capacity_sum, 8 * shape.observations + cells);
+            assert_eq!(
+                workspace.capacity_report().observation_capacity_sum,
+                8 * shape.observations + cells
+            );
             workspace.certify_steady_state_capacity().unwrap();
         }
     }
@@ -3903,14 +3982,26 @@ mod tests {
         for embedding in [0, 113, 10_007, 10_008] {
             let mut shape = shape;
             shape.metadata.input_owner_bytes = 10_007;
-            let after = estimate_ppml_memory(shape, PpmlMemoryConfig {
-                embedding_resident_bytes: embedding, ..PpmlMemoryConfig::default()
-            }).unwrap();
-            assert_eq!(after.fast.input_owner_supplement_bytes, 10_007_u128.saturating_sub(embedding));
-            assert_eq!(after.fast.iteration_peak_bytes - before.fast.iteration_peak_bytes,
-                embedding.max(10_007));
-            assert_eq!(after.fast.separation_peak_bytes - before.fast.separation_peak_bytes,
-                embedding.max(10_007));
+            let after = estimate_ppml_memory(
+                shape,
+                PpmlMemoryConfig {
+                    embedding_resident_bytes: embedding,
+                    ..PpmlMemoryConfig::default()
+                },
+            )
+            .unwrap();
+            assert_eq!(
+                after.fast.input_owner_supplement_bytes,
+                10_007_u128.saturating_sub(embedding)
+            );
+            assert_eq!(
+                after.fast.iteration_peak_bytes - before.fast.iteration_peak_bytes,
+                embedding.max(10_007)
+            );
+            assert_eq!(
+                after.fast.separation_peak_bytes - before.fast.separation_peak_bytes,
+                embedding.max(10_007)
+            );
         }
     }
 
@@ -3925,24 +4016,57 @@ mod tests {
         let after = estimate_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
         for (before, after) in [(before.fast, after.fast), (before.low, after.low)] {
             assert!(before.prepared_generation_supplement_bytes > 0);
-            assert_eq!(after.prepared_generation_bytes - before.prepared_generation_bytes, 97);
+            assert_eq!(
+                after.prepared_generation_bytes - before.prepared_generation_bytes,
+                97
+            );
             assert_eq!(after.iteration_peak_bytes - before.iteration_peak_bytes, 97);
-            assert_eq!(after.separation_replacement_generation_bytes
-                - before.separation_replacement_generation_bytes, 97);
-            assert_eq!(after.separation_rebase_bytes - before.separation_rebase_bytes, 97);
-            assert_eq!(after.separation_peak_bytes - before.separation_peak_bytes, 194);
+            assert_eq!(
+                after.separation_replacement_generation_bytes
+                    - before.separation_replacement_generation_bytes,
+                97
+            );
+            assert_eq!(
+                after.separation_rebase_bytes - before.separation_rebase_bytes,
+                97
+            );
+            assert_eq!(
+                after.separation_peak_bytes - before.separation_peak_bytes,
+                194
+            );
         }
-        let config = PpmlMemoryConfig { requested: MemoryMode::Fast,
-            ..PpmlMemoryConfig::default() };
+        let config = PpmlMemoryConfig {
+            requested: MemoryMode::Fast,
+            ..PpmlMemoryConfig::default()
+        };
         let peak = estimate_ppml_memory(shape, config).unwrap().fast.peak_bytes;
         // This fixture remains below the fixed-headroom crossover.
         assert!(peak < 4 * MINIMUM_HEADROOM_BYTES);
-        plan_ppml_memory(shape, PpmlMemoryConfig { available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES), ..config }).unwrap();
-        assert_eq!(plan_ppml_memory(shape, PpmlMemoryConfig {
-            available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES - 1), ..config
-        }).unwrap_err().code, ErrorCode::Allocation);
+        plan_ppml_memory(
+            shape,
+            PpmlMemoryConfig {
+                available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES),
+                ..config
+            },
+        )
+        .unwrap();
+        assert_eq!(
+            plan_ppml_memory(
+                shape,
+                PpmlMemoryConfig {
+                    available_bytes: Some(peak + MINIMUM_HEADROOM_BYTES - 1),
+                    ..config
+                }
+            )
+            .unwrap_err()
+            .code,
+            ErrorCode::Allocation
+        );
         shape.metadata.generation_bytes_per_row = u128::MAX;
-        assert_eq!(estimate_ppml_memory(shape, config).unwrap_err().code, ErrorCode::Allocation);
+        assert_eq!(
+            estimate_ppml_memory(shape, config).unwrap_err().code,
+            ErrorCode::Allocation
+        );
     }
 
     #[test]
@@ -4217,7 +4341,8 @@ mod tests {
             .expect("narrow categorical estimate");
         let rhs = 4_u128;
         let generic_map_cells = rhs * 7 + 1 + rhs + 2 * 20;
-        let accelerator_cells = 30_000_u128 + 2 * 10_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
+        let accelerator_cells =
+            30_000_u128 + 2 * 10_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
         assert_eq!(
             estimate.fast.fe_workspace_bytes,
             (generic_map_cells + accelerator_cells) * size_of::<f64>() as u128,
@@ -6033,16 +6158,27 @@ mod tests {
         let plan = plan_ppml_memory(shape, PpmlMemoryConfig::default()).unwrap();
         let mut workspace = PpmlIterationWorkspace::new(plan, &[0.; 2]).unwrap();
         let bounds = PoissonBounds::default();
-        workspace.refresh_working_state(&[1., 2.], &[1.; 2], &[0.; 2], bounds).unwrap();
+        workspace
+            .refresh_working_state(&[1., 2.], &[1.; 2], &[0.; 2], bounds)
+            .unwrap();
         workspace.set_candidate_eta(&[0.25, -0.5]).unwrap();
         workspace.set_candidate_coefficients(&[0.75]).unwrap();
-        let before = (workspace.eta().to_vec(), workspace.mean().to_vec(),
-            workspace.coefficients().to_vec(), workspace.capacity_report());
+        let before = (
+            workspace.eta().to_vec(),
+            workspace.mean().to_vec(),
+            workspace.coefficients().to_vec(),
+            workspace.capacity_report(),
+        );
         for overflow in [false, true] {
             let result = workspace.fill_line_search_trial_with(0.5, bounds, |eta| {
                 eta[0] = if overflow { 1000. } else { 0.1 };
-                if overflow { Ok(()) } else {
-                    Err(FeregError::new(ErrorCode::NonConvergence, "injected profile refusal"))
+                if overflow {
+                    Ok(())
+                } else {
+                    Err(FeregError::new(
+                        ErrorCode::NonConvergence,
+                        "injected profile refusal",
+                    ))
                 }
             });
             assert_eq!(result.unwrap_err().code, ErrorCode::NonConvergence);

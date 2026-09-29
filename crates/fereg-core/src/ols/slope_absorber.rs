@@ -46,7 +46,7 @@ impl OlsSlopeAbsorber {
             config
                 .absorb
                 .solver_memory_budget
-                .map_or(true, |b| b.fits(bytes))
+                .is_none_or(|b| b.fits(bytes))
         };
         if !fits(memory.construction_bytes) {
             return Ok(None);
@@ -147,7 +147,12 @@ impl OlsSlopeAbsorber {
             peak: SolverWorkspacePeak::from_bytes(resident.max(memory.construction_bytes))?,
             setup_seconds: started.elapsed().as_secs_f64(),
         });
-        Ok(Some(owner.into_boxed_slice().try_into().map_err(|_| allocation())?))
+        Ok(Some(
+            owner
+                .into_boxed_slice()
+                .try_into()
+                .map_err(|_| allocation())?,
+        ))
     }
 
     pub(super) fn absorb(

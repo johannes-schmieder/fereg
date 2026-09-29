@@ -261,15 +261,23 @@ impl ReusableMapAbsorber {
     /// geometry/solver banks. One-shot owners use the same allocation layout.
     pub(crate) fn base_workspace_bytes(design: &FeDesign, rhs: usize) -> Result<u128> {
         let channels = design.max_channels().max(1) as u128;
-        let members = design.effects().iter().flat_map(|effect| {
-            (0..effect.n_levels()).map(|level| effect.level_index().members(level).len())
-        }).max().unwrap_or(1) as u128;
-        let cells = channels.checked_mul(channels)
+        let members = design
+            .effects()
+            .iter()
+            .flat_map(|effect| {
+                (0..effect.n_levels()).map(|level| effect.level_index().members(level).len())
+            })
+            .max()
+            .unwrap_or(1) as u128;
+        let cells = channels
+            .checked_mul(channels)
             .and_then(|n| n.checked_add(channels.checked_mul(rhs as u128)?))
             .and_then(|n| n.checked_add(7 * rhs as u128))
             .and_then(|n| n.checked_add(2 * channels * members))
             .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "reusable MAP bytes overflow"))?;
-        cells.checked_mul(8).and_then(|n| n.checked_add(std::mem::size_of::<Self>() as u128))
+        cells
+            .checked_mul(8)
+            .and_then(|n| n.checked_add(std::mem::size_of::<Self>() as u128))
             .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "reusable MAP bytes overflow"))
     }
 
@@ -400,7 +408,10 @@ impl ReusableMapAbsorber {
         self.certificate_geometry.is_some()
     }
 
-    pub(crate) fn coefficient_coupling_bytes(design: &FeDesign, rhs: usize) -> Result<Option<u128>> {
+    pub(crate) fn coefficient_coupling_bytes(
+        design: &FeDesign,
+        rhs: usize,
+    ) -> Result<Option<u128>> {
         super::slope_coefficients::SlopeCoefficientWorkspace::coupling_bytes(design, rhs)
     }
 
@@ -1267,11 +1278,12 @@ impl ReusableMapAbsorber {
             passed: relative_max <= tolerance,
         })
     }
-
 }
 
 // Preserve every scalar entry's observation order while sharing row loads,
 // weight roots and raw-channel products across a bounded RHS tile.
+// Keep the legacy workspace and ownership boundaries explicit during migration.
+#[allow(clippy::too_many_arguments)]
 pub(super) fn certify_reusable_group(
     effect: &super::EffectTerm,
     members: &[usize],
@@ -1409,9 +1421,8 @@ pub(super) fn prepare_reusable_group_basis(
         }
         let candidate_start = last * stride;
         let basis_start = basis_count * stride;
-        for local in 0..member_count {
-            basis[basis_start + local] = columns[candidate_start + local];
-        }
+        basis[basis_start..basis_start + member_count]
+            .copy_from_slice(&columns[candidate_start..candidate_start + member_count]);
         active -= 1;
         for _ in 0..2 {
             for prior in 0..basis_count {
@@ -1709,7 +1720,11 @@ mod tests {
                 if coupling != 0 {
                     owner.enable_coefficient_coupling().unwrap();
                     if coupling == 2 {
-                        owner.coefficient_solver.as_mut().unwrap().force_compact_coupling_for_test();
+                        owner
+                            .coefficient_solver
+                            .as_mut()
+                            .unwrap()
+                            .force_compact_coupling_for_test();
                     }
                 }
                 owner.enable_joint_slopes().unwrap();
@@ -1882,7 +1897,8 @@ mod tests {
     }
 
     #[test]
-    fn column_oriented_joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frames() {
+    fn column_oriented_joint_slope_directions_match_analytic_weighted_oracle_and_revoke_failed_frames(
+    ) {
         check_streamed_joint_slope_directions::<true>();
     }
 
@@ -1890,13 +1906,28 @@ mod tests {
         use super::super::slope_coefficients::joint::JointFiniteDesign;
         struct Layout<'a, const COLUMNS: bool>(&'a DenseMatrix);
         impl<const COLUMNS: bool> JointFiniteDesign for Layout<'_, COLUMNS> {
-            fn prefers_column_scans(&self) -> bool { COLUMNS }
-            fn nrows(&self) -> usize { self.0.nrows() }
-            fn ncols(&self) -> usize { self.0.ncols() }
-            fn visit_column_range(&self, column: usize, range: std::ops::Range<usize>, visit: impl FnMut(usize, f64) -> Result<()>) -> Result<()> {
+            fn prefers_column_scans(&self) -> bool {
+                COLUMNS
+            }
+            fn nrows(&self) -> usize {
+                self.0.nrows()
+            }
+            fn ncols(&self) -> usize {
+                self.0.ncols()
+            }
+            fn visit_column_range(
+                &self,
+                column: usize,
+                range: std::ops::Range<usize>,
+                visit: impl FnMut(usize, f64) -> Result<()>,
+            ) -> Result<()> {
                 self.0.visit_column_range(column, range, visit)
             }
-            fn visit_rows(&self, scratch: &mut [f64], visit: impl FnMut(usize, &[f64]) -> Result<()>) -> Result<()> {
+            fn visit_rows(
+                &self,
+                scratch: &mut [f64],
+                visit: impl FnMut(usize, &[f64]) -> Result<()>,
+            ) -> Result<()> {
                 self.0.visit_rows(scratch, visit)
             }
         }
@@ -1942,14 +1973,20 @@ mod tests {
                     .num_threads(threads)
                     .build()
                     .unwrap();
-                let mut owner = ReusableMapAbsorber::new(design.clone(), if coupling == 2 { 4 } else { 1 }).unwrap();
+                let mut owner =
+                    ReusableMapAbsorber::new(design.clone(), if coupling == 2 { 4 } else { 1 })
+                        .unwrap();
                 owner.enable_certificate_geometry().unwrap();
                 owner.enable_coefficient_solver(threads).unwrap();
                 owner.enable_coefficient_certificates().unwrap();
                 if coupling != 0 {
                     owner.enable_coefficient_coupling().unwrap();
                     if coupling == 2 {
-                        owner.coefficient_solver.as_mut().unwrap().force_compact_coupling_for_test();
+                        owner
+                            .coefficient_solver
+                            .as_mut()
+                            .unwrap()
+                            .force_compact_coupling_for_test();
                     }
                 }
                 owner.enable_joint_slopes_for_columns(3).unwrap();
@@ -2005,7 +2042,9 @@ mod tests {
                     let out = owner.joint_slopes().unwrap();
                     assert!(out.report.as_ref().unwrap().certified());
                     for (&column, &norm) in [2, 0].iter().zip(out.input_norms().unwrap()) {
-                        let squared: f64 = weights.iter().enumerate()
+                        let squared: f64 = weights
+                            .iter()
+                            .enumerate()
                             .map(|(row, &weight)| weight * controls[(row, column)].powi(2))
                             .sum();
                         assert!((norm / squared.sqrt() - 1.).abs() < 2e-14);
@@ -2139,21 +2178,39 @@ mod tests {
         let rows = 192;
         for oversized in [false, true] {
             let z: Vec<_> = (0..rows).map(|i| ((i / 8) as f64).sin()).collect();
-            let design = FeDesign::new(rows, vec![
-                EffectTerm::new(
-                    (0..rows).map(|i| if oversized { 0 } else { (2 * (i % 8)) as u32 }).collect(),
-                    19, true,
-                    vec![z.clone(), z.iter().map(|v| v * 2.).collect(), vec![0.; rows]],
-                ).unwrap(),
-                EffectTerm::new(
-                    (0..rows).map(|i| (i % 11) as u32).collect(), 13, false,
-                    vec![(0..rows).map(|i| 1e120 * ((i * 7) as f64).cos()).collect()],
-                ).unwrap(),
-            ]).unwrap();
+            let design = FeDesign::new(
+                rows,
+                vec![
+                    EffectTerm::new(
+                        (0..rows)
+                            .map(|i| if oversized { 0 } else { (2 * (i % 8)) as u32 })
+                            .collect(),
+                        19,
+                        true,
+                        vec![
+                            z.clone(),
+                            z.iter().map(|v| v * 2.).collect(),
+                            vec![0.; rows],
+                        ],
+                    )
+                    .unwrap(),
+                    EffectTerm::new(
+                        (0..rows).map(|i| (i % 11) as u32).collect(),
+                        13,
+                        false,
+                        vec![(0..rows).map(|i| 1e120 * ((i * 7) as f64).cos()).collect()],
+                    )
+                    .unwrap(),
+                ],
+            )
+            .unwrap();
             let mut serial = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
             serial.enable_certificate_geometry().unwrap();
             for threads in [1, 2, 4, 7] {
-                let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+                let pool = rayon::ThreadPoolBuilder::new()
+                    .num_threads(threads)
+                    .build()
+                    .unwrap();
                 let mut candidate = ReusableMapAbsorber::new(design.clone(), 7).unwrap();
                 candidate.enable_certificate_geometry().unwrap();
                 candidate.enable_coefficient_solver(threads).unwrap();
@@ -2163,16 +2220,33 @@ mod tests {
                         .map(|i| scale * (0.2 + ((i * (generation + 3)) % 17) as f64))
                         .collect();
                     serial.prepare_coefficient_geometry(&weights).unwrap();
-                    let before = candidate.certificate_geometry.as_ref().unwrap().basis.clone();
-                    let prepared = pool.install(|| {
-                        candidate.coefficient_solver.as_mut().unwrap().prepare_geometry(
-                            &design, &weights, candidate.certificate_geometry.as_mut().unwrap(),
-                        )
-                    }).unwrap();
+                    let before = candidate
+                        .certificate_geometry
+                        .as_ref()
+                        .unwrap()
+                        .basis
+                        .clone();
+                    let prepared = pool
+                        .install(|| {
+                            candidate
+                                .coefficient_solver
+                                .as_mut()
+                                .unwrap()
+                                .prepare_geometry(
+                                    &design,
+                                    &weights,
+                                    candidate.certificate_geometry.as_mut().unwrap(),
+                                )
+                        })
+                        .unwrap();
                     assert_eq!(prepared, threads > 1 && !oversized);
                     if !prepared {
-                        assert_eq!(candidate.certificate_geometry.as_ref().unwrap().basis, before);
-                        pool.install(|| candidate.prepare_coefficient_geometry(&weights)).unwrap();
+                        assert_eq!(
+                            candidate.certificate_geometry.as_ref().unwrap().basis,
+                            before
+                        );
+                        pool.install(|| candidate.prepare_coefficient_geometry(&weights))
+                            .unwrap();
                     }
                     let expected = serial.certificate_geometry.as_ref().unwrap();
                     let actual = candidate.certificate_geometry.as_ref().unwrap();
@@ -2629,7 +2703,10 @@ mod tests {
                         if prepared_coupling {
                             solver.enable_coefficient_coupling().unwrap();
                             if coupling_kind == 2 {
-                                solver.coefficient_solver.as_mut().unwrap()
+                                solver
+                                    .coefficient_solver
+                                    .as_mut()
+                                    .unwrap()
                                     .force_compact_coupling_for_test();
                             }
                         }
@@ -2657,6 +2734,8 @@ mod tests {
                             let mut row = 0;
                             for component in 0..2 {
                                 for i in 0..8 {
+                                    // Keep the legacy matrix indices and numerical traversal order explicit.
+                                    #[allow(clippy::needless_range_loop)]
                                     for j in 0..6 {
                                         for t in 0..2 {
                                             let sign = if t == 0 { -1. } else { 1. };
@@ -2668,7 +2747,8 @@ mod tests {
                                                     * tw,
                                             );
                                             let remainder =
-                                                (i as f64 + 1.).sin() * (j as f64 - mean) * sign / tw;
+                                                (i as f64 + 1.).sin() * (j as f64 - mean) * sign
+                                                    / tw;
                                             let fitted = if intercept {
                                                 (i * i + component) as f64
                                             } else {
@@ -3010,7 +3090,14 @@ mod tests {
             let geometry = cached.certificate_geometry.as_ref().unwrap();
             assert_eq!(geometry.generation, Some(generation));
             assert_eq!(geometry.preparations, step / 2 + 1);
-            assert_eq!(cached.coefficient_solver.as_ref().unwrap().coupling_preparations(), Some(step / 2 + 1));
+            assert_eq!(
+                cached
+                    .coefficient_solver
+                    .as_ref()
+                    .unwrap()
+                    .coupling_preparations(),
+                Some(step / 2 + 1)
+            );
             if step == 1 {
                 let wrong_sample = MapGeometryGeneration {
                     sample: generation.sample + 1,
@@ -3090,7 +3177,14 @@ mod tests {
                     cached.certificate_geometry.as_ref().unwrap().preparations,
                     4
                 );
-                assert_eq!(cached.coefficient_solver.as_ref().unwrap().coupling_preparations(), Some(4));
+                assert_eq!(
+                    cached
+                        .coefficient_solver
+                        .as_ref()
+                        .unwrap()
+                        .coupling_preparations(),
+                    Some(4)
+                );
                 cached
                     .absorb(&weights, zeros, MapConfig::default(), false)
                     .unwrap();
@@ -3102,7 +3196,14 @@ mod tests {
                     cached.certificate_geometry.as_ref().unwrap().preparations,
                     5
                 );
-                assert_eq!(cached.coefficient_solver.as_ref().unwrap().coupling_preparations(), Some(5));
+                assert_eq!(
+                    cached
+                        .coefficient_solver
+                        .as_ref()
+                        .unwrap()
+                        .coupling_preparations(),
+                    Some(5)
+                );
             }
         }
     }
@@ -3218,7 +3319,8 @@ mod tests {
         assert_eq!(capacities.certificate_ranks, 10);
         assert_eq!(
             ReusableMapAbsorber::certificate_geometry_bytes(&design).unwrap(),
-            (rows * 5 * 8 + 10 * std::mem::size_of::<usize>()
+            (rows * 5 * 8
+                + 10 * std::mem::size_of::<usize>()
                 + std::mem::size_of::<Option<MapGeometryGeneration>>()) as u128
         );
         for (generation, rhs) in [7, 1, 3, 7].into_iter().enumerate() {

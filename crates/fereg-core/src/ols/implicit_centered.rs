@@ -232,12 +232,17 @@ impl ImplicitCenteredDesign {
             return Ok(());
         }
         let columns = view.bind_columns()?;
-        output.as_mut_slice().par_chunks_mut(view.columns()).enumerate()
+        output
+            .as_mut_slice()
+            .par_chunks_mut(view.columns())
+            .enumerate()
             .try_for_each(|(row, values)| -> Result<()> {
                 let group = view.codes()[row] as usize;
                 for (column, value) in values.iter_mut().enumerate() {
                     *value = columns[column].value(row)? - view.center(column, group);
-                    if !value.is_finite() { return Err(numerical()); }
+                    if !value.is_finite() {
+                        return Err(numerical());
+                    }
                 }
                 Ok(())
             })
@@ -267,6 +272,8 @@ impl ImplicitCenteredDesign {
     }
     /// All statistics and acceptance are recomputed under this exact frame.
     /// Publication authority is revoked before any fallible operation.
+    // Keep the legacy workspace and ownership boundaries explicit during migration.
+    #[allow(clippy::too_many_arguments)]
     pub(super) fn refresh(
         &mut self,
         response: &[f64],

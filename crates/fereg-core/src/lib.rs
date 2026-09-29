@@ -75,12 +75,12 @@ pub use ols::{
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,
     fit_prepared_ols_unadjusted_map, prepare_categorical_ols_clustered_data,
-    prepare_ols_clustered_data, prepare_ols_clustered_data_owned, prepare_ols_data, prepare_ols_data_owned, solve_rank_revealing,
-    CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,
-    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,
-    CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,
-    ClusterSubsetReport, DofConfig, DofMethod, DofReport, FiniteSolver, FitStatistics,
-    LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
+    prepare_ols_clustered_data, prepare_ols_clustered_data_owned, prepare_ols_data,
+    prepare_ols_data_owned, solve_rank_revealing, CertifiedPreparedCategoricalOlsClustered,
+    CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedCategoricalOlsUnadjusted,
+    CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
+    CertifiedPreparedOlsUnadjusted, ClusterSubsetReport, DofConfig, DofMethod, DofReport,
+    FiniteSolver, FitStatistics, LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
     LinearSessionPhaseAllocatorProbe, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
     OlsClusteredRequestV1, OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult,
     PreparedCategoricalOlsClusteredData, PreparedCategoricalSource, PreparedOlsAbsorbedDofEffect,
@@ -115,8 +115,8 @@ pub use ppml_separation::{
     SeparationMethodReport, SeparationMethods, SeparationReport,
 };
 pub use prepared_categorical_data::{
-    prepare_categorical_ols_data, prepare_categorical_ols_data_owned, PreparedCategoricalModelSource, PreparedCategoricalOlsData,
-    PreparedCategoricalOlsRhs,
+    prepare_categorical_ols_data, prepare_categorical_ols_data_owned,
+    PreparedCategoricalModelSource, PreparedCategoricalOlsData, PreparedCategoricalOlsRhs,
 };
 pub use prepared_categorical_effect::{
     PreparedCategoricalEffect, PreparedCategoricalEffectRequest,

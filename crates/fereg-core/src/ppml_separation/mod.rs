@@ -299,7 +299,11 @@ pub(crate) const fn separation_generation_capacity(
 ) -> usize {
     if all_positive {
         let bound = 1 + drop_singletons as usize;
-        if observations < bound { observations } else { bound }
+        if observations < bound {
+            observations
+        } else {
+            bound
+        }
     } else {
         observations
     }

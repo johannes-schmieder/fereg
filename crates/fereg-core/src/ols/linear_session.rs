@@ -7,6 +7,8 @@
 //! OLS kernel; frozen-basis iterations use session-owned streaming moments and
 //! factorization workspaces. Reuse is reported per route and never inferred.
 
+use super::canonical_products::CanonicalMoments;
+use super::implicit_centered::ImplicitCenteredDesign;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
@@ -16,8 +18,6 @@ use crate::fe::{
 use crate::metadata::CoefficientSlot;
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
-use super::implicit_centered::ImplicitCenteredDesign;
-use super::canonical_products::CanonicalMoments;
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
 #[cfg(test)]
@@ -660,8 +660,8 @@ struct JointOriginalColumns<'a, P: PreparedOlsFitView + ?Sized> {
     numeric: Option<super::prepared_rhs::NumericOlsColumns<'a>>,
 }
 
-impl<P: PreparedOlsFitView + Sync + ?Sized>
-    crate::fe::slope_coefficients::joint::JointFiniteDesign for JointOriginalColumns<'_, P>
+impl<P: PreparedOlsFitView + Sync + ?Sized> crate::fe::slope_coefficients::joint::JointFiniteDesign
+    for JointOriginalColumns<'_, P>
 {
     fn prefers_column_scans(&self) -> bool {
         self.numeric.is_none()
@@ -677,10 +677,19 @@ impl<P: PreparedOlsFitView + Sync + ?Sized>
 
     fn column_slice(&self, column: usize) -> Option<&[f64]> {
         let generated = *self.generated.get(column)?;
-        let super::PreparedOlsColumnKind::Continuous { prepared_source_index, .. } =
-            self.prepared.fit_model().columns.get(generated)?.kind else { return None; };
-        self.prepared.fit_sample().regressors.get(prepared_source_index)
-            .filter(|values| values.len() == self.nrows()).map(Vec::as_slice)
+        let super::PreparedOlsColumnKind::Continuous {
+            prepared_source_index,
+            ..
+        } = self.prepared.fit_model().columns.get(generated)?.kind
+        else {
+            return None;
+        };
+        self.prepared
+            .fit_sample()
+            .regressors
+            .get(prepared_source_index)
+            .filter(|values| values.len() == self.nrows())
+            .map(Vec::as_slice)
     }
 
     fn visit_column_range(
@@ -689,9 +698,16 @@ impl<P: PreparedOlsFitView + Sync + ?Sized>
         range: std::ops::Range<usize>,
         visit: impl FnMut(usize, f64) -> Result<()>,
     ) -> Result<()> {
-        let generated = *self.generated.get(column)
+        let generated = *self
+            .generated
+            .get(column)
             .ok_or_else(|| invalid_argument("joint original column is out of range"))?;
-        crate::prepared_fit_view::visit_prepared_column_range(self.prepared, generated, range, visit)
+        crate::prepared_fit_view::visit_prepared_column_range(
+            self.prepared,
+            generated,
+            range,
+            visit,
+        )
     }
 
     fn visit_rows(
@@ -700,7 +716,9 @@ impl<P: PreparedOlsFitView + Sync + ?Sized>
         mut visit: impl FnMut(usize, &[f64]) -> Result<()>,
     ) -> Result<()> {
         if row_scratch.len() < self.generated.len() {
-            return Err(invalid_argument("joint original row exceeds admitted width"));
+            return Err(invalid_argument(
+                "joint original row exceeds admitted width",
+            ));
         }
         let values = &mut row_scratch[..self.generated.len()];
         for row in 0..self.prepared.fit_sample().n_active() {
@@ -813,7 +831,11 @@ impl RetainedWithinStorage {
                 mode: PreparedOlsExecutionMode::Fast,
             },
             Self::Implicit(values) => LinearWithinMemoryReport {
-                resident_bytes: values.resident_bytes(), scratch_bytes: 0, rows, columns, mode: values.mode(),
+                resident_bytes: values.resident_bytes(),
+                scratch_bytes: 0,
+                rows,
+                columns,
+                mode: values.mode(),
             },
             Self::Scratch(values) => LinearWithinMemoryReport {
                 resident_bytes: 0,
@@ -983,7 +1005,11 @@ impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
                 }
                 Ok(())
             }
-            RetainedWithinStorage::Implicit(values) => values.view()?.fill_selected_row(row, self.active_positions, output),
+            RetainedWithinStorage::Implicit(values) => {
+                values
+                    .view()?
+                    .fill_selected_row(row, self.active_positions, output)
+            }
             RetainedWithinStorage::Scratch(values) => {
                 if self
                     .active_positions
@@ -1017,7 +1043,10 @@ impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
             }
             RetainedWithinStorage::Implicit(values) => {
                 let view = values.view()?;
-                if rows.start > rows.end || rows.end > view.rows() || output.len() != self.active_positions.len() {
+                if rows.start > rows.end
+                    || rows.end > view.rows()
+                    || output.len() != self.active_positions.len()
+                {
                     return Err(invalid_argument("implicit inference range is invalid"));
                 }
                 let bound = view.bind_columns()?;
@@ -1034,7 +1063,11 @@ impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
                     || rows.end > values.rows()
                     || output.len() != self.active_positions.len()
                     || values.columns() != output.len()
-                    || self.active_positions.iter().copied().enumerate()
+                    || self
+                        .active_positions
+                        .iter()
+                        .copied()
+                        .enumerate()
                         .any(|(expected, position)| expected != position)
                 {
                     return Err(invalid_argument(
@@ -1050,7 +1083,6 @@ impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
         }
         Ok(())
     }
-
 }
 
 /// Borrowed certified products exposed to an iterative estimator and its
@@ -1526,21 +1558,28 @@ impl ReusableLinearMapProjector<'_> {
     fn ppml_operator_work(&self) -> Option<u128> {
         match self {
             Self::PpmlCategorical { projector, .. }
-            | Self::PpmlCoefficients { canonical: Some(projector), .. } => projector.ppml_operator_work(),
+            | Self::PpmlCoefficients {
+                canonical: Some(projector),
+                ..
+            } => projector.ppml_operator_work(),
             _ => None,
         }
     }
 
     const fn design(&self) -> &FeDesign {
         match self {
-            Self::Generic(projector) | Self::PpmlCoefficients { projector, .. } => projector.design(),
+            Self::Generic(projector) | Self::PpmlCoefficients { projector, .. } => {
+                projector.design()
+            }
             Self::PpmlCategorical { score_design, .. } => score_design,
         }
     }
 
     const fn max_rhs(&self) -> usize {
         match self {
-            Self::Generic(projector) | Self::PpmlCoefficients { projector, .. } => projector.max_rhs(),
+            Self::Generic(projector) | Self::PpmlCoefficients { projector, .. } => {
+                projector.max_rhs()
+            }
             Self::PpmlCategorical { projector, .. } => projector.max_rhs(),
         }
     }
@@ -1548,15 +1587,26 @@ impl ReusableLinearMapProjector<'_> {
     fn capacities(&self) -> ReusableMapCapacities {
         match self {
             Self::Generic(projector) => projector.capacities(),
-            Self::PpmlCoefficients { projector, previous_response, canonical } => {
+            Self::PpmlCoefficients {
+                projector,
+                previous_response,
+                canonical,
+            } => {
                 let mut capacity = projector.capacities();
                 capacity.accelerator_state += previous_response.capacity();
                 if let Some(canonical) = canonical {
                     let c = canonical.capacities();
-                    capacity.accelerator_state += c.reference_norms + c.residual_norms
-                        + c.rhs_scales + c.norm_scales + c.norm_sums + c.group_sums
-                        + c.group_corrections + c.projection_gram + c.projection_rhs
-                        + c.certificate_columns + c.accelerator_state;
+                    capacity.accelerator_state += c.reference_norms
+                        + c.residual_norms
+                        + c.rhs_scales
+                        + c.norm_scales
+                        + c.norm_sums
+                        + c.group_sums
+                        + c.group_corrections
+                        + c.projection_gram
+                        + c.projection_rhs
+                        + c.certificate_columns
+                        + c.accelerator_state;
                 }
                 capacity
             }
@@ -1569,7 +1619,10 @@ impl ReusableLinearMapProjector<'_> {
     }
 
     const fn supports_fused_projection(&self) -> bool {
-        matches!(self, Self::PpmlCategorical { .. } | Self::PpmlCoefficients { .. })
+        matches!(
+            self,
+            Self::PpmlCategorical { .. } | Self::PpmlCoefficients { .. }
+        )
     }
 
     #[cfg(test)]
@@ -1580,7 +1633,10 @@ impl ReusableLinearMapProjector<'_> {
     fn enable_checkpoint_lsmr(&mut self) {
         match self {
             Self::PpmlCategorical { projector, .. }
-            | Self::PpmlCoefficients { canonical: Some(projector), .. } => {
+            | Self::PpmlCoefficients {
+                canonical: Some(projector),
+                ..
+            } => {
                 projector.enable_checkpoint_lsmr();
             }
             _ => {}
@@ -1621,9 +1677,10 @@ impl ReusableLinearMapProjector<'_> {
                 config,
                 structural_constant_if_empty,
             ),
-            Self::PpmlCoefficients { canonical: Some(canonical), .. } => {
-                canonical.absorb(raw_weights, values, config)
-            }
+            Self::PpmlCoefficients {
+                canonical: Some(canonical),
+                ..
+            } => canonical.absorb(raw_weights, values, config),
             Self::PpmlCoefficients { projector, .. } => projector.absorb_in_generation(
                 normalized_weights,
                 values,
@@ -1636,7 +1693,6 @@ impl ReusableLinearMapProjector<'_> {
             }
         }
     }
-
 }
 
 /// A frozen solve may fail because its reused numerical state no longer
@@ -1880,30 +1936,49 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     /// The caller admits all extra group/binding/worker storage before sharing
     /// the prepared owner. Object identity proves the immutable sample/model axis.
-    pub(crate) fn enable_group_centered_one_fe(&mut self, source: SharedPreparedOlsData) -> Result<()> {
-        if self.within.is_some() || self.config.absorb.solver != FeSolverKind::Map
+    pub(crate) fn enable_group_centered_one_fe(
+        &mut self,
+        source: SharedPreparedOlsData,
+    ) -> Result<()> {
+        if self.within.is_some()
+            || self.config.absorb.solver != FeSolverKind::Map
             || !self.prepared.fit_has_one_ordinary_intercept_effect()
             || !std::ptr::eq(self.prepared.fit_sample(), source.fit_view().sample())
-            || !std::ptr::eq(self.prepared.fit_model(), source.fit_view().model()) {
-            return Err(invalid_argument("implicit prepared owner does not match the linear session"));
+            || !std::ptr::eq(self.prepared.fit_model(), source.fit_view().model())
+        {
+            return Err(invalid_argument(
+                "implicit prepared owner does not match the linear session",
+            ));
         }
         self.group_centered_source = Some(source);
         Ok(())
     }
 
     pub(crate) fn has_implicit_one_fe(&self) -> bool {
-        self.group_centered_source.is_some() && self.config.execution.mode == PreparedOlsExecutionMode::Low
+        self.group_centered_source.is_some()
+            && self.config.execution.mode == PreparedOlsExecutionMode::Low
     }
 
     /// PPML admits this complete optional bank beside the existing fast plan;
     /// the direct builder may still decline work or current-weight geometry.
     pub(crate) fn enable_fast_canonical_products(&mut self, allowance: u128) -> Result<()> {
-        if self.within.is_some() || self.config.execution.mode != PreparedOlsExecutionMode::Fast
+        if self.within.is_some()
+            || self.config.execution.mode != PreparedOlsExecutionMode::Fast
             || self.config.absorb.solver != FeSolverKind::Map
             || !matches!(self.fe_design().effects().len(), 2 | 3)
-            || !self.fe_design().effects().iter().all(|e| e.has_intercept() && e.slopes().is_empty())
-            || !matches!(self.fe_projector, Some(ReusableLinearMapProjector::PpmlCategorical { .. })) {
-            return Err(invalid_argument("fast canonical product admission does not match the session"));
+            || !self
+                .fe_design()
+                .effects()
+                .iter()
+                .all(|e| e.has_intercept() && e.slopes().is_empty())
+            || !matches!(
+                self.fe_projector,
+                Some(ReusableLinearMapProjector::PpmlCategorical { .. })
+            )
+        {
+            return Err(invalid_argument(
+                "fast canonical product admission does not match the session",
+            ));
         }
         self.fast_canonical_products_allowance = allowance;
         Ok(())
@@ -2020,7 +2095,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .as_ref()
             .map_or((0, 0, 0), |within| match &within.storage {
                 RetainedWithinStorage::Dense(values) => (values.storage_capacity(), 0, 0),
-                RetainedWithinStorage::Implicit(values) => ((values.resident_bytes() / 8) as usize, 0, 0),
+                RetainedWithinStorage::Implicit(values) => {
+                    ((values.resident_bytes() / 8) as usize, 0, 0)
+                }
                 RetainedWithinStorage::Scratch(scratch) => {
                     (0, scratch.bytes(), scratch.io_buffer_capacity())
                 }
@@ -2276,7 +2353,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn enable_component_checkpoint_scaling(&mut self) {
         if let Some(ReusableLinearMapProjector::PpmlCoefficients {
             canonical: Some(p), ..
-        }) = self.fe_projector.as_mut() {
+        }) = self.fe_projector.as_mut()
+        {
             p.enable_component_checkpoint_scaling();
         }
     }
@@ -2445,6 +2523,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         // A representative differs from the current response only by FE terms.
         // Advance its anchor even on a later solver failure, so canonical fallback
         // cannot apply this same response difference for a second time.
+        // Keep the legacy matrix indices and numerical traversal order explicit.
+        #[allow(clippy::needless_range_loop)]
         for row in 0..n {
             self.frozen_workspace.response[row] += self.response[row] - previous_response[row];
         }
@@ -2459,20 +2539,22 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 self.config.absorb.map,
                 self.generations.map_geometry(),
             )?,
-            RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => projector.solve_joint_slopes_streamed(
-                &self.map_weights,
-                &JointOriginalColumns {
-                    prepared: self.prepared,
-                    generated: &within.stored_generated_columns,
-                    numeric: super::prepared_rhs::NumericOlsColumns::bind_score_means(
-                        self.prepared.fit_model(), self.prepared.fit_sample(),
-                    )?,
-                },
-                &within.active_positions,
-                &self.frozen_workspace.response,
-                self.config.absorb.map,
-                self.generations.map_geometry(),
-            )?,
+            RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => projector
+                .solve_joint_slopes_streamed(
+                    &self.map_weights,
+                    &JointOriginalColumns {
+                        prepared: self.prepared,
+                        generated: &within.stored_generated_columns,
+                        numeric: super::prepared_rhs::NumericOlsColumns::bind_score_means(
+                            self.prepared.fit_model(),
+                            self.prepared.fit_sample(),
+                        )?,
+                    },
+                    &within.active_positions,
+                    &self.frozen_workspace.response,
+                    self.config.absorb.map,
+                    self.generations.map_geometry(),
+                )?,
         }
         let solving_seconds = started.elapsed().as_secs_f64();
         let checking = Instant::now();
@@ -2484,9 +2566,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let input_norms = match &within.storage {
             RetainedWithinStorage::Dense(_) => None,
             RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_) => {
-                Some(joint.input_norms().ok_or_else(|| invalid_argument(
-                    "joint input norms lack a successful current-call certificate",
-                ))?)
+                Some(joint.input_norms().ok_or_else(|| {
+                    invalid_argument("joint input norms lack a successful current-call certificate")
+                })?)
             }
         };
         let rank = basis.kept_generated_columns().len();
@@ -2505,8 +2587,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         )?;
         // The finite-solve scratch is dead during joint acceptance; it holds
         // per-column norms until the independent response scale is available.
-        resize_zeroed(&mut self.frozen_workspace.solve, rank,
-            "unable to reserve joint current norms")?;
+        resize_zeroed(
+            &mut self.frozen_workspace.solve,
+            rank,
+            "unable to reserve joint current norms",
+        )?;
         let originals = JointOriginalColumns {
             prepared: self.prepared,
             generated: basis.kept_generated_columns(),
@@ -2515,49 +2600,75 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         use crate::fe::slope_coefficients::joint::JointFiniteDesign;
         let weights = &self.map_weights;
         let response = &self.response;
-        let needs_mean = basis.slots().iter().any(|slot|
-            slot.status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept);
+        let needs_mean = basis
+            .slots()
+            .iter()
+            .any(|slot| slot.status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept);
         let (response_checks, column_checks) = rayon::join(
             || check_joint_response(response, residuals, weights, needs_mean),
-            || self.frozen_workspace.scores.par_iter_mut()
-                .zip(self.frozen_workspace.rhs.par_iter_mut())
-                .zip(self.frozen_workspace.solve.par_iter_mut())
-                .enumerate()
-                .try_for_each(|(column, ((score, mean), norm))| -> Result<()> {
-                    let mut scale = 0.;
-                    let mut square = 1.;
-                    let mut sum = 0.;
-                    let mut correction = 0.;
-                    let mut mean_sum = 0.;
-                    let mut mean_correction = 0.;
-                    originals.visit_column(column, |row, value| {
-                        if input_norms.is_none() {
-                            update_scaled_square(weights[row].sqrt() * value, &mut scale, &mut square)?;
-                        }
-                        compensated_add(weights[row] * value * residuals[row], &mut sum, &mut correction)?;
-                        compensated_add(weights[row] * value, &mut mean_sum, &mut mean_correction)?;
+            || {
+                self.frozen_workspace
+                    .scores
+                    .par_iter_mut()
+                    .zip(self.frozen_workspace.rhs.par_iter_mut())
+                    .zip(self.frozen_workspace.solve.par_iter_mut())
+                    .enumerate()
+                    .try_for_each(|(column, ((score, mean), norm))| -> Result<()> {
+                        let mut scale = 0.;
+                        let mut square = 1.;
+                        let mut sum = 0.;
+                        let mut correction = 0.;
+                        let mut mean_sum = 0.;
+                        let mut mean_correction = 0.;
+                        originals.visit_column(column, |row, value| {
+                            if input_norms.is_none() {
+                                update_scaled_square(
+                                    weights[row].sqrt() * value,
+                                    &mut scale,
+                                    &mut square,
+                                )?;
+                            }
+                            compensated_add(
+                                weights[row] * value * residuals[row],
+                                &mut sum,
+                                &mut correction,
+                            )?;
+                            compensated_add(
+                                weights[row] * value,
+                                &mut mean_sum,
+                                &mut mean_correction,
+                            )?;
+                            Ok(())
+                        })?;
+                        *norm = match input_norms {
+                            Some(norms) => norms[column],
+                            None => stable_norm(scale, square)?,
+                        };
+                        *score = (sum + correction).abs();
+                        *mean = mean_sum + mean_correction;
                         Ok(())
-                    })?;
-                    *norm = match input_norms {
-                        Some(norms) => norms[column],
-                        None => stable_norm(scale, square)?,
-                    };
-                    *score = (sum + correction).abs();
-                    *mean = mean_sum + mean_correction;
-                    Ok(())
-                }),
+                    })
+            },
         );
         let response_checks = response_checks?;
         column_checks?;
-        for ((score, mean), &norm) in self.frozen_workspace.scores.iter_mut()
+        for ((score, mean), &norm) in self
+            .frozen_workspace
+            .scores
+            .iter_mut()
             .zip(self.frozen_workspace.rhs.iter_mut())
             .zip(self.frozen_workspace.solve.iter())
         {
-            if *score != 0. { *score = *score / norm / response_checks.reference_norm; }
+            if *score != 0. {
+                *score = *score / norm / response_checks.reference_norm;
+            }
             *mean /= response_checks.weight_sum;
-            if !score.is_finite() || *score > self.config.absorb.map.tolerance || !mean.is_finite() {
-                return Err(FeregError::new(ErrorCode::NonConvergence,
-                    "joint original-input finite score failed"));
+            if !score.is_finite() || *score > self.config.absorb.map.tolerance || !mean.is_finite()
+            {
+                return Err(FeregError::new(
+                    ErrorCode::NonConvergence,
+                    "joint original-input finite score failed",
+                ));
             }
         }
         let reconstruction = response_checks.reconstruction;
@@ -2701,7 +2812,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         };
         if columns > 0 {
             match &mut within.storage {
-                RetainedWithinStorage::Implicit(_) => unreachable!("implicit originals require no materialization"),
+                RetainedWithinStorage::Implicit(_) => {
+                    unreachable!("implicit originals require no materialization")
+                }
                 RetainedWithinStorage::Dense(values) => {
                     let tile_rows = (65_536 / columns).max(1);
                     for (tile, values) in values
@@ -2758,7 +2871,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .response
                 .copy_from_slice(&self.response);
             match self.fe_projector.as_mut() {
-                Some(ReusableLinearMapProjector::PpmlCoefficients { previous_response, .. }) => previous_response.copy_from_slice(&self.response),
+                Some(ReusableLinearMapProjector::PpmlCoefficients {
+                    previous_response, ..
+                }) => previous_response.copy_from_slice(&self.response),
                 _ => self.map_weights.copy_from_slice(&self.response),
             }
         }
@@ -2958,7 +3073,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     pub(crate) fn one_fe_original_columns(&self, active: &[usize]) -> Result<&[usize]> {
         self.validate_one_fe_profile_basis(active)?;
-        Ok(self.frozen_basis.as_ref().expect("validated profile basis").kept_generated_columns())
+        Ok(self
+            .frozen_basis
+            .as_ref()
+            .expect("validated profile basis")
+            .kept_generated_columns())
     }
 
     fn validate_one_fe_profile_basis(&self, active: &[usize]) -> Result<&RetainedWithinDesign> {
@@ -3082,16 +3201,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .as_ref()
             .is_some_and(ReusableLinearMapProjector::supports_fused_projection)
         {
-            if let Some(ReusableLinearMapProjector::PpmlCoefficients { previous_response, .. }) = self.fe_projector.as_mut() {
-                if previous_response.len() != self.response.len() { return Err(invalid_argument("slope response history dimensions differ")); }
+            if let Some(ReusableLinearMapProjector::PpmlCoefficients {
+                previous_response, ..
+            }) = self.fe_projector.as_mut()
+            {
+                if previous_response.len() != self.response.len() {
+                    return Err(invalid_argument("slope response history dimensions differ"));
+                }
                 previous_response.copy_from_slice(&self.response);
             } else {
-            reused &= self.map_weights.capacity() >= self.response.len();
-            self.map_weights.clear();
-            self.map_weights
-                .try_reserve(self.response.len())
-                .map_err(|_| allocation("unable to refresh weighted-linear prior response"))?;
-            self.map_weights.extend_from_slice(&self.response);
+                reused &= self.map_weights.capacity() >= self.response.len();
+                self.map_weights.clear();
+                self.map_weights
+                    .try_reserve(self.response.len())
+                    .map_err(|_| allocation("unable to refresh weighted-linear prior response"))?;
+                self.map_weights.extend_from_slice(&self.response);
             }
         }
         self.response.clear();
@@ -3293,27 +3417,45 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.canonical_projection_work_hint
     }
 
-    fn try_canonical_products(&mut self) -> Result<Option<(Vec<f64>, SolveReport, CanonicalMoments)>> {
+    fn try_canonical_products(
+        &mut self,
+    ) -> Result<Option<(Vec<f64>, SolveReport, CanonicalMoments)>> {
         if (self.config.execution.mode != PreparedOlsExecutionMode::Low
             && self.fast_canonical_products_allowance == 0)
             || self.config.absorb.solver != FeSolverKind::Map
-            || !self.fe_projector.as_ref().is_some_and(|projector| matches!(projector,
-                ReusableLinearMapProjector::PpmlCategorical { .. }
-                | ReusableLinearMapProjector::PpmlCoefficients { canonical: Some(_), .. })) {
+            || !self.fe_projector.as_ref().is_some_and(|projector| {
+                matches!(
+                    projector,
+                    ReusableLinearMapProjector::PpmlCategorical { .. }
+                        | ReusableLinearMapProjector::PpmlCoefficients {
+                            canonical: Some(_),
+                            ..
+                        }
+                )
+            })
+        {
             return Ok(None);
         }
         if let Some(within) = &self.within {
-            if !matches!(within.storage, RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Dense(_))
-                || within.generations.sample != self.generations.sample
+            if !matches!(
+                within.storage,
+                RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Dense(_)
+            ) || within.generations.sample != self.generations.sample
                 || within.generations.topology != self.generations.topology
-                || (!self.projection_refresh_required && within.generations.same_design(self.generations)) {
+                || (!self.projection_refresh_required
+                    && within.generations.same_design(self.generations))
+            {
                 return Ok(None);
             }
         }
         let generated = self.full_retained_generated_columns()?;
-        if generated.is_empty() { return Ok(None); }
+        if generated.is_empty() {
+            return Ok(None);
+        }
         if let Some(within) = &self.within {
-            if within.stored_generated_columns != generated { return Ok(None); }
+            if within.stored_generated_columns != generated {
+                return Ok(None);
+            }
         }
         // The old low projection owns a temporary raw/within block and a
         // separate reusable projection block. The optional current-call banks
@@ -3324,15 +3466,25 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let allowance = if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
             self.fast_canonical_products_allowance
         } else {
-            (self.response.len() as u128).checked_mul(pool as u128)
-                .and_then(|x|x.checked_mul(16)).ok_or_else(|| allocation("canonical product allowance overflows"))?
+            (self.response.len() as u128)
+                .checked_mul(pool as u128)
+                .and_then(|x| x.checked_mul(16))
+                .ok_or_else(|| allocation("canonical product allowance overflows"))?
         };
         let Some(mut products) = super::canonical_products::try_build(
-            self.prepared, &generated, &self.response, self.weights.borrowed(),
-            self.bread_weight_scale.solver_weight_divisor, self.config.absorb.map, allowance,
+            self.prepared,
+            &generated,
+            &self.response,
+            self.weights.borrowed(),
+            self.bread_weight_scale.solver_weight_divisor,
+            self.config.absorb.map,
+            allowance,
             self.canonical_projection_work_hint,
             &mut self.projection_block,
-        )? else { return Ok(None); };
+        )?
+        else {
+            return Ok(None);
+        };
         if let Some(within) = self.within.as_mut() {
             within.certificate.passed = false;
             match &mut within.storage {
@@ -3340,7 +3492,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 RetainedWithinStorage::Dense(storage) => products.write_dense(storage)?,
                 RetainedWithinStorage::Implicit(_) => unreachable!(),
             }
-            within.reference_norms.copy_from_slice(&products.scales[1..]);
+            within
+                .reference_norms
+                .copy_from_slice(&products.scales[1..]);
             within.reference_means.copy_from_slice(&products.means[1..]);
             within.within_norms.copy_from_slice(&products.norms[1..]);
             within.generations = WithinGenerations::from_session(self.generations);
@@ -3350,7 +3504,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 products.write_dense(&mut dense)?;
                 RetainedWithinStorage::Dense(dense)
             } else {
-                let mut scratch = PreparedOlsScratch::create_row_major(self.response.len(), generated.len())?;
+                let mut scratch =
+                    PreparedOlsScratch::create_row_major(self.response.len(), generated.len())?;
                 products.write_controls(&mut scratch)?;
                 RetainedWithinStorage::Scratch(scratch)
             };
@@ -3358,13 +3513,23 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 storage,
                 stored_generated_columns: generated,
                 active_positions: Vec::new(),
-                reference_norms: fallible_copy(&products.scales[1..], "unable to retain canonical product scales")?,
-                reference_means: fallible_copy(&products.means[1..], "unable to retain canonical product means")?,
-                within_norms: fallible_copy(&products.norms[1..], "unable to retain canonical product norms")?,
+                reference_norms: fallible_copy(
+                    &products.scales[1..],
+                    "unable to retain canonical product scales",
+                )?,
+                reference_means: fallible_copy(
+                    &products.means[1..],
+                    "unable to retain canonical product means",
+                )?,
+                within_norms: fallible_copy(
+                    &products.norms[1..],
+                    "unable to retain canonical product norms",
+                )?,
                 generations: WithinGenerations::from_session(self.generations),
                 certificate: LinearWithinDesignCertificate {
                     left_inverse_relative_infinity_norm: f64::INFINITY,
-                    right_inverse_relative_infinity_norm: f64::INFINITY, passed: false,
+                    right_inverse_relative_infinity_norm: f64::INFINITY,
+                    passed: false,
                 },
             });
         }
@@ -3397,90 +3562,96 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         #[cfg(test)]
         let mut response_fused_with_design = false;
         let products_reuse_storage = self.within.is_some();
-        let operator_work_before = self.fe_projector.as_ref().and_then(ReusableLinearMapProjector::ppml_operator_work);
+        let operator_work_before = self
+            .fe_projector
+            .as_ref()
+            .and_then(ReusableLinearMapProjector::ppml_operator_work);
         let product_attempt = self.try_canonical_products()?;
         let mut canonical_moments = None;
-        let (within_response, absorption_report) = if let Some((response, projection, moments)) = product_attempt {
-            canonical_moments = Some(moments);
-            report.within_design_reused = products_reuse_storage;
-            report.warm_projection_attempted = products_reuse_storage;
-            report.warm_projection_certified = products_reuse_storage;
-            (response, projection)
-        } else if self.group_centered_source.is_some() && self.within.is_some() {
-            report.warm_projection_attempted = true;
-            let refreshed = self.refresh_group_centered_design()?;
-            report.warm_projection_certified = true;
-            report.within_design_reused = true;
-            refreshed
-        } else if self.within.is_none() {
-            let (within, response, absorption_report) = self.build_full_retained_design()?;
-            self.within = Some(within);
-            (response, absorption_report)
-        } else {
-            let same_design = !self.projection_refresh_required
-                && self
-                    .within
-                    .as_ref()
-                    .is_some_and(|within| within.generations.same_design(self.generations));
-            if !same_design {
-                let eligible = self.within.as_ref().is_some_and(|within| {
-                    within
-                        .generations
-                        .eligible_for_weight_refresh(self.generations)
-                        || self.projection_refresh_required
-                            && within.generations.sample == self.generations.sample
-                            && within.generations.topology == self.generations.topology
-                });
-                if !eligible {
-                    return Err(invalid_argument(
-                        "weighted-linear retained solve has no reusable design generation",
-                    ));
-                }
+        let (within_response, absorption_report) =
+            if let Some((response, projection, moments)) = product_attempt {
+                canonical_moments = Some(moments);
+                report.within_design_reused = products_reuse_storage;
+                report.warm_projection_attempted = products_reuse_storage;
+                report.warm_projection_certified = products_reuse_storage;
+                (response, projection)
+            } else if self.group_centered_source.is_some() && self.within.is_some() {
                 report.warm_projection_attempted = true;
-                let mut fused_response_report = None;
-                if self.config.absorb.solver == FeSolverKind::Map
-                    && self.config.execution.mode == PreparedOlsExecutionMode::Fast
-                    && self
-                        .fe_projector
-                        .as_ref()
-                        .is_some_and(ReusableLinearMapProjector::supports_fused_projection)
-                {
-                    report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
-                    let (reused, fused_report) =
-                        self.reproject_retained_with_response_in_place()?;
-                    report.fe_projection_workspace_reused &= reused;
-                    fused_response_report = Some(fused_report);
-                    #[cfg(test)]
-                    {
-                        response_fused_with_design = true;
-                    }
-                } else if self.config.absorb.solver == FeSolverKind::Map {
-                    report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
-                    report.fe_projection_workspace_reused &=
-                        self.reproject_retained_within_in_place()?;
-                } else {
-                    self.reproject_retained_within_in_place()?;
-                }
-                self.refresh_retained_norms()?;
+                let refreshed = self.refresh_group_centered_design()?;
                 report.warm_projection_certified = true;
                 report.within_design_reused = true;
-                if let Some(fused_report) = fused_response_report {
-                    (
-                        std::mem::take(&mut self.frozen_workspace.response),
-                        fused_report,
-                    )
+                refreshed
+            } else if self.within.is_none() {
+                let (within, response, absorption_report) = self.build_full_retained_design()?;
+                self.within = Some(within);
+                (response, absorption_report)
+            } else {
+                let same_design = !self.projection_refresh_required
+                    && self
+                        .within
+                        .as_ref()
+                        .is_some_and(|within| within.generations.same_design(self.generations));
+                if !same_design {
+                    let eligible = self.within.as_ref().is_some_and(|within| {
+                        within
+                            .generations
+                            .eligible_for_weight_refresh(self.generations)
+                            || self.projection_refresh_required
+                                && within.generations.sample == self.generations.sample
+                                && within.generations.topology == self.generations.topology
+                    });
+                    if !eligible {
+                        return Err(invalid_argument(
+                            "weighted-linear retained solve has no reusable design generation",
+                        ));
+                    }
+                    report.warm_projection_attempted = true;
+                    let mut fused_response_report = None;
+                    if self.config.absorb.solver == FeSolverKind::Map
+                        && self.config.execution.mode == PreparedOlsExecutionMode::Fast
+                        && self
+                            .fe_projector
+                            .as_ref()
+                            .is_some_and(ReusableLinearMapProjector::supports_fused_projection)
+                    {
+                        report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
+                        let (reused, fused_report) =
+                            self.reproject_retained_with_response_in_place()?;
+                        report.fe_projection_workspace_reused &= reused;
+                        fused_response_report = Some(fused_report);
+                        #[cfg(test)]
+                        {
+                            response_fused_with_design = true;
+                        }
+                    } else if self.config.absorb.solver == FeSolverKind::Map {
+                        report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
+                        report.fe_projection_workspace_reused &=
+                            self.reproject_retained_within_in_place()?;
+                    } else {
+                        self.reproject_retained_within_in_place()?;
+                    }
+                    self.refresh_retained_norms()?;
+                    report.warm_projection_certified = true;
+                    report.within_design_reused = true;
+                    if let Some(fused_report) = fused_response_report {
+                        (
+                            std::mem::take(&mut self.frozen_workspace.response),
+                            fused_report,
+                        )
+                    } else {
+                        self.absorb_current_response()?
+                    }
                 } else {
+                    report.fe_projection_workspace_reused =
+                        self.config.absorb.solver == FeSolverKind::Map;
+                    report.within_design_reused = true;
                     self.absorb_current_response()?
                 }
-            } else {
-                report.fe_projection_workspace_reused =
-                    self.config.absorb.solver == FeSolverKind::Map;
-                report.within_design_reused = true;
-                self.absorb_current_response()?
-            }
-        };
+            };
         drop(projection_phase);
-        let observed_projection_work = self.fe_projector.as_ref()
+        let observed_projection_work = self
+            .fe_projector
+            .as_ref()
             .and_then(ReusableLinearMapProjector::ppml_operator_work)
             .zip(operator_work_before)
             .and_then(|(after, before)| after.checked_sub(before))
@@ -3674,11 +3845,22 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 0..norms.len(),
                 norms,
             ),
-            Some(ReusableLinearMapProjector::PpmlCoefficients { projector, canonical: None, .. }) =>
-                Ok((projector.absorb_coefficient_with_selected_norms(
-                    &self.map_weights, values, self.config.absorb.map,
-                    self.generations.map_geometry(), 0..norms.len(), None, norms,
-                )?, true)),
+            Some(ReusableLinearMapProjector::PpmlCoefficients {
+                projector,
+                canonical: None,
+                ..
+            }) => Ok((
+                projector.absorb_coefficient_with_selected_norms(
+                    &self.map_weights,
+                    values,
+                    self.config.absorb.map,
+                    self.generations.map_geometry(),
+                    0..norms.len(),
+                    None,
+                    norms,
+                )?,
+                true,
+            )),
             _ => Ok((self.absorb_reusable_map(values)?, false)),
         }
     }
@@ -3743,7 +3925,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .as_ref()
             .map_or(rank, |within| within.storage.columns());
         let retained_moment_elements = self.within.as_ref().map_or(0, |within| {
-            if matches!(within.storage, RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_)) {
+            if matches!(
+                within.storage,
+                RetainedWithinStorage::Scratch(_) | RetainedWithinStorage::Implicit(_)
+            ) {
                 if rank == 0 {
                     return 0;
                 }
@@ -4245,7 +4430,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             let outcome_mean = match current_response_mean {
                 Some(mean) => mean,
                 None => weighted_mean_slice(
-                    &self.response, self.weights.borrowed(), self.bread_weight_scale,
+                    &self.response,
+                    self.weights.borrowed(),
+                    self.bread_weight_scale,
                 )?,
             };
             let mut finite_mean = 0.0_f64;
@@ -4421,10 +4608,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             (0, 0.0, 1.0)
         } else {
             let source = match &retained.storage {
-                RetainedWithinStorage::Implicit(values) => FixedBlockMomentSource::RetainedImplicit {
-                    values: values.view()?, selected_columns: Some(&workspace.candidate_positions), response: within_response,
-                    weights: self.weights.borrowed(), solver_weight_divisor: self.bread_weight_scale.solver_weight_divisor, column_scales: Some(&workspace.candidate_scales),
-                },
+                RetainedWithinStorage::Implicit(values) => {
+                    FixedBlockMomentSource::RetainedImplicit {
+                        values: values.view()?,
+                        selected_columns: Some(&workspace.candidate_positions),
+                        response: within_response,
+                        weights: self.weights.borrowed(),
+                        solver_weight_divisor: self.bread_weight_scale.solver_weight_divisor,
+                        column_scales: Some(&workspace.candidate_scales),
+                    }
+                }
                 RetainedWithinStorage::Dense(values) => FixedBlockMomentSource::RetainedDense {
                     values: values.as_slice(),
                     rows,
@@ -4461,13 +4654,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 "unable to reserve retained weighted-linear RHS",
             )?;
             if let Some(products) = canonical_moments {
-                if products.width != stored_columns+1 || products.gram.len() != products.width*products.width {
-                    return Err(invalid_argument("canonical moment handoff has an incompatible column axis"));
+                if products.width != stored_columns + 1
+                    || products.gram.len() != products.width * products.width
+                {
+                    return Err(invalid_argument(
+                        "canonical moment handoff has an incompatible column axis",
+                    ));
                 }
-                for (j,&position) in workspace.candidate_positions.iter().enumerate() {
-                    workspace.rhs[j] = products.gram[(position+1)*products.width]*products.response_scale;
-                    for (k,&other) in workspace.candidate_positions.iter().enumerate() {
-                        workspace.gram[j*candidate_count+k] = products.gram[(position+1)*products.width+other+1];
+                for (j, &position) in workspace.candidate_positions.iter().enumerate() {
+                    workspace.rhs[j] =
+                        products.gram[(position + 1) * products.width] * products.response_scale;
+                    for (k, &other) in workspace.candidate_positions.iter().enumerate() {
+                        workspace.gram[j * candidate_count + k] =
+                            products.gram[(position + 1) * products.width + other + 1];
                     }
                 }
             } else {
@@ -4801,37 +5000,50 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let scale = self.bread_weight_scale;
         let reference_norms = &retained.reference_norms;
         let coefficients = &workspace.coefficients;
-        let residual_at = |row: usize, value: &mut dyn FnMut(usize) -> Result<f64>| -> Result<f64> {
-            let within_value = within_response[row];
-            let root_weight =
-                normalized_solver_weight(weights, scale, row)?
-                    .sqrt();
-            let mut weighted_residual = root_weight * within_value;
-            for (selected, storage_position) in active_positions.iter().copied().enumerate() {
-                let standardized_value = root_weight * value(storage_position)?
-                    / reference_norms[storage_position];
-                weighted_residual = (-coefficients[selected])
-                    .mul_add(standardized_value, weighted_residual);
-            }
-            let residual = weighted_residual / root_weight;
-            if !residual.is_finite() { return Err(invalid_data("retained weighted-linear residual is not finite")); }
-            Ok(residual)
-        };
+        let residual_at =
+            |row: usize, value: &mut dyn FnMut(usize) -> Result<f64>| -> Result<f64> {
+                let within_value = within_response[row];
+                let root_weight = normalized_solver_weight(weights, scale, row)?.sqrt();
+                let mut weighted_residual = root_weight * within_value;
+                for (selected, storage_position) in active_positions.iter().copied().enumerate() {
+                    let standardized_value =
+                        root_weight * value(storage_position)? / reference_norms[storage_position];
+                    weighted_residual =
+                        (-coefficients[selected]).mul_add(standardized_value, weighted_residual);
+                }
+                let residual = weighted_residual / root_weight;
+                if !residual.is_finite() {
+                    return Err(invalid_data(
+                        "retained weighted-linear residual is not finite",
+                    ));
+                }
+                Ok(residual)
+            };
         match &retained.storage {
             RetainedWithinStorage::Dense(values) => {
-                workspace.residuals.par_iter_mut().enumerate().try_for_each(|(row, target)| -> Result<()> {
-                    *target = residual_at(row, &mut |column| Ok(values[(row, column)]))?;
-                    Ok(())
-                })?;
+                workspace
+                    .residuals
+                    .par_iter_mut()
+                    .enumerate()
+                    .try_for_each(|(row, target)| -> Result<()> {
+                        *target = residual_at(row, &mut |column| Ok(values[(row, column)]))?;
+                        Ok(())
+                    })?;
             }
             RetainedWithinStorage::Implicit(values) => {
                 let view = values.view()?;
                 let bound = view.bind_columns()?;
-                workspace.residuals.par_iter_mut().enumerate().try_for_each(|(row, target)| -> Result<()> {
-                    let group = view.codes()[row] as usize;
-                    *target = residual_at(row, &mut |column| Ok(bound[column].value(row)? - view.center(column, group)))?;
-                    Ok(())
-                })?;
+                workspace
+                    .residuals
+                    .par_iter_mut()
+                    .enumerate()
+                    .try_for_each(|(row, target)| -> Result<()> {
+                        let group = view.codes()[row] as usize;
+                        *target = residual_at(row, &mut |column| {
+                            Ok(bound[column].value(row)? - view.center(column, group))
+                        })?;
+                        Ok(())
+                    })?;
             }
             RetainedWithinStorage::Scratch(_) => {
                 // Finite moments have been consumed. Reuse their admitted bank
@@ -4843,8 +5055,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     .min(workspace.moment_partials.len() / stored_columns.max(1));
                 if stored_columns != 0 && workers > 1 {
                     let chunk_rows = rows.div_ceil(workers);
-                    workspace.residuals.par_chunks_mut(chunk_rows)
-                        .zip(workspace.moment_partials.par_chunks_exact_mut(stored_columns))
+                    workspace
+                        .residuals
+                        .par_chunks_mut(chunk_rows)
+                        .zip(
+                            workspace
+                                .moment_partials
+                                .par_chunks_exact_mut(stored_columns),
+                        )
                         .enumerate()
                         .try_for_each(|(chunk, (targets, values))| -> Result<()> {
                             let mut reader = retained.storage.reader();
@@ -5116,10 +5334,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let residual_absorbed = if self.config.absorb.solver == FeSolverKind::Map {
             self.fill_reusable_map_weights()?;
             if let Some(ReusableLinearMapProjector::PpmlCoefficients {
-                projector, canonical: None, ..
-            }) = self.fe_projector.as_mut() {
+                projector,
+                canonical: None,
+                ..
+            }) = self.fe_projector.as_mut()
+            {
                 projector.absorb_coefficient_residual(
-                    &self.map_weights, residual_matrix, self.config.absorb.map,
+                    &self.map_weights,
+                    residual_matrix,
+                    self.config.absorb.map,
                     self.generations.map_geometry(),
                 )?
             } else {
@@ -5218,9 +5441,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// Own one complete current-weight projected representation. Admitted
     /// one-FE sessions construct group centers, materializing fast dense rows
     /// or retaining low implicit rows; other sessions keep their prior storage.
-    fn build_full_retained_design(&mut self) -> Result<(RetainedWithinDesign, Vec<f64>, SolveReport)> {
-        if self.group_centered_source.is_some() && (self.config.absorb.map.max_iterations == 0 || self.config.absorb.map.check_every == 0) {
-            return Err(invalid_argument("implicit MAP iteration and check budgets must be positive"));
+    fn build_full_retained_design(
+        &mut self,
+    ) -> Result<(RetainedWithinDesign, Vec<f64>, SolveReport)> {
+        if self.group_centered_source.is_some()
+            && (self.config.absorb.map.max_iterations == 0
+                || self.config.absorb.map.check_every == 0)
+        {
+            return Err(invalid_argument(
+                "implicit MAP iteration and check budgets must be positive",
+            ));
         }
         let rows = self.response.len();
         let stored_generated_columns = self.full_retained_generated_columns()?;
@@ -5242,12 +5472,31 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         )?;
 
         let slope_norms = self.config.absorb.solver == FeSolverKind::Map
-            && matches!(self.fe_projector, Some(ReusableLinearMapProjector::PpmlCoefficients { canonical: None, .. }));
+            && matches!(
+                self.fe_projector,
+                Some(ReusableLinearMapProjector::PpmlCoefficients {
+                    canonical: None,
+                    ..
+                })
+            );
 
-        let (storage, within_response, absorption_report) = if let Some(source) = &self.group_centered_source {
-            let mut values = ImplicitCenteredDesign::new(source.clone(), &stored_generated_columns, self.config.execution.mode)?;
-            let (response, report) = values.refresh(&self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
-                self.config.absorb.map.tolerance, &mut reference_norms, &mut reference_means, &mut within_norms)?;
+        let (storage, within_response, absorption_report) = if let Some(source) =
+            &self.group_centered_source
+        {
+            let mut values = ImplicitCenteredDesign::new(
+                source.clone(),
+                &stored_generated_columns,
+                self.config.execution.mode,
+            )?;
+            let (response, report) = values.refresh(
+                &self.response,
+                self.weights.borrowed(),
+                self.bread_weight_scale.solver_weight_divisor,
+                self.config.absorb.map.tolerance,
+                &mut reference_norms,
+                &mut reference_means,
+                &mut within_norms,
+            )?;
             let storage = if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
                 let mut dense = DenseMatrix::zeros(rows, stored_columns)?;
                 values.write_dense(&mut dense)?;
@@ -5256,226 +5505,259 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 RetainedWithinStorage::Implicit(values)
             };
             (storage, response, report)
-        } else { match self.config.execution.mode {
-            PreparedOlsExecutionMode::Fast => {
-                let raw = self.prepared.fit_build_rhs_with_response(&self.response)?;
-                let expected_columns = self
-                    .prepared
-                    .fit_model()
-                    .columns
-                    .len()
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("weighted-linear combined width overflows"))?;
-                if raw.nrows() != rows || raw.ncols() != expected_columns {
-                    return Err(invalid_argument(
-                        "weighted-linear combined retained design is inconsistent",
-                    ));
-                }
-                let raw_norms = if slope_norms { None } else { Some(self.weighted_dense_column_norms(&raw)?) };
-                let raw_means = self.weighted_dense_column_means(&raw)?;
-                for (position, generated) in stored_generated_columns.iter().copied().enumerate() {
-                    if let Some(raw_norms) = &raw_norms {
-                        reference_norms[position] = raw_norms[generated + 1];
+        } else {
+            match self.config.execution.mode {
+                PreparedOlsExecutionMode::Fast => {
+                    let raw = self.prepared.fit_build_rhs_with_response(&self.response)?;
+                    let expected_columns = self
+                        .prepared
+                        .fit_model()
+                        .columns
+                        .len()
+                        .checked_add(1)
+                        .ok_or_else(|| {
+                        allocation("weighted-linear combined width overflows")
+                    })?;
+                    if raw.nrows() != rows || raw.ncols() != expected_columns {
+                        return Err(invalid_argument(
+                            "weighted-linear combined retained design is inconsistent",
+                        ));
                     }
-                    reference_means[position] = raw_means[generated + 1];
-                }
-                drop(raw_norms);
-                drop(raw_means);
-                let mut norms_reused = false;
-                let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
-                    self.fill_reusable_map_weights()?;
-                    if slope_norms {
-                        norms_reused = true;
-                        self.absorb_slope_with_selected_norms(
-                            raw, stored_generated_columns.iter().map(|column| column + 1),
-                            Some(&mut reference_norms), &mut within_norms,
-                        )?
-                    } else if let Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) =
-                        self.fe_projector.as_mut()
+                    let raw_norms = if slope_norms {
+                        None
+                    } else {
+                        Some(self.weighted_dense_column_norms(&raw)?)
+                    };
+                    let raw_means = self.weighted_dense_column_means(&raw)?;
+                    for (position, generated) in
+                        stored_generated_columns.iter().copied().enumerate()
                     {
-                        let (absorbed, reused) = projector.absorb_with_selected_norms(
-                            self.weights.borrowed(),
-                            raw,
-                            self.config.absorb.map,
-                            self.bread_weight_scale.solver_weight_divisor,
-                            stored_generated_columns.iter().map(|column| column + 1),
-                            &mut within_norms,
-                        )?;
-                        norms_reused = reused;
-                        absorbed
-                    } else {
-                        self.absorb_reusable_map(raw)?
+                        if let Some(raw_norms) = &raw_norms {
+                            reference_norms[position] = raw_norms[generated + 1];
+                        }
+                        reference_means[position] = raw_means[generated + 1];
                     }
-                } else {
-                    self.prepared
-                        .fit_absorb_matrix(self.weights.borrowed(), raw, self.config.absorb)?
-                };
-                if !absorbed.report().certified() {
-                    return Err(invalid_data(
-                        "weighted-linear combined design absorption did not certify",
-                    ));
-                }
-                let (within, report) = absorbed.into_parts();
-                let stride = within.ncols();
-                let mut values = within.into_row_major();
-                let norm_workspace_columns = if norms_reused { 0 } else { stored_columns };
-                let mut norm_scales = fallible_filled(
-                    norm_workspace_columns,
-                    0.0_f64,
-                    "unable to reserve weighted-linear retained norm scales",
-                )?;
-                let mut norm_sums = fallible_filled(
-                    norm_workspace_columns,
-                    1.0_f64,
-                    "unable to reserve weighted-linear retained norm sums",
-                )?;
-                let mut response = fallible_filled(
-                    rows,
-                    0.0_f64,
-                    "unable to reserve weighted-linear retained within response",
-                )?;
-                for (row, response_value) in response.iter_mut().enumerate().take(rows) {
-                    let source_start = row
-                        .checked_mul(stride)
-                        .ok_or_else(|| allocation("weighted-linear combined offset overflows"))?;
-                    *response_value = values[source_start];
-                    let target_start = row.checked_mul(stored_columns).ok_or_else(|| {
-                        allocation("weighted-linear retained compact offset overflows")
-                    })?;
-                    if norms_reused {
-                        for (target, generated) in stored_generated_columns.iter().copied().enumerate()
+                    drop(raw_norms);
+                    drop(raw_means);
+                    let mut norms_reused = false;
+                    let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
+                        self.fill_reusable_map_weights()?;
+                        if slope_norms {
+                            norms_reused = true;
+                            self.absorb_slope_with_selected_norms(
+                                raw,
+                                stored_generated_columns.iter().map(|column| column + 1),
+                                Some(&mut reference_norms),
+                                &mut within_norms,
+                            )?
+                        } else if let Some(ReusableLinearMapProjector::PpmlCategorical {
+                            projector,
+                            ..
+                        }) = self.fe_projector.as_mut()
                         {
-                            values[target_start + target] = values[source_start + generated + 1];
-                        }
-                    } else {
-                        let root = normalized_solver_weight(
-                            self.weights.borrowed(),
-                            self.bread_weight_scale,
-                            row,
-                        )?
-                        .sqrt();
-                        for (target, generated) in stored_generated_columns.iter().copied().enumerate()
-                        {
-                            let value = values[source_start + generated + 1];
-                            update_scaled_square(
-                                root * value,
-                                &mut norm_scales[target],
-                                &mut norm_sums[target],
-                            )?;
-                            values[target_start + target] = value;
-                        }
-                    }
-                }
-                for column in 0..norm_workspace_columns {
-                    within_norms[column] = stable_norm(norm_scales[column], norm_sums[column])?;
-                }
-                values.truncate(checked_elements(rows, stored_columns)?);
-                (
-                    RetainedWithinStorage::Dense(DenseMatrix::from_row_major(
-                        rows,
-                        stored_columns,
-                        values,
-                    )?),
-                    response,
-                    report,
-                )
-            }
-            PreparedOlsExecutionMode::Low => {
-                let raw_response = DenseMatrix::from_row_major(
-                    rows,
-                    1,
-                    fallible_copy(
-                        &self.response,
-                        "unable to reserve weighted-linear low-memory response",
-                    )?,
-                )?;
-                let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
-                    self.fill_reusable_map_weights()?;
-                    self.absorb_reusable_map(raw_response)?
-                } else {
-                    self.prepared.fit_absorb_matrix(
-                        self.weights.borrowed(),
-                        raw_response,
-                        self.config.absorb,
-                    )?
-                };
-                if !absorbed.report().certified() {
-                    return Err(invalid_data(
-                        "weighted-linear low-memory response absorption did not certify",
-                    ));
-                }
-                let (response, mut report) = absorbed.into_parts();
-                let mut scratch = PreparedOlsScratch::create_row_major(rows, stored_columns)?;
-                let block_width = self
-                    .config
-                    .execution
-                    .poolsize
-                    .max(1)
-                    .min(stored_columns.max(1));
-                for start in (0..stored_columns).step_by(block_width) {
-                    let end = start.saturating_add(block_width).min(stored_columns);
-                    let block = end - start;
-                    let mut raw_values = fallible_filled(
-                        checked_elements(rows, block)?,
-                        0.0_f64,
-                        "unable to reserve weighted-linear row-major scratch block",
-                    )?;
-                    raw_values.par_chunks_mut(128 * block).enumerate().try_for_each(|(tile, values)| -> Result<()> {
-                        let start_row = tile * 128;
-                        let end_row = start_row + values.len() / block;
-                        for local in 0..block {
-                            crate::prepared_fit_view::visit_prepared_column_range(
-                                self.prepared, stored_generated_columns[start + local], start_row..end_row,
-                                |row, value| { values[(row-start_row) * block + local] = value; Ok(()) },
-                            )?;
-                        }
-                        Ok(())
-                    })?;
-                    let raw = DenseMatrix::from_row_major(rows, block, raw_values)?;
-                    if !slope_norms {
-                        let norms = self.weighted_dense_column_norms(&raw)?;
-                        reference_norms[start..end].copy_from_slice(&norms);
-                    }
-                    let means = self.weighted_dense_column_means(&raw)?;
-                    reference_means[start..end].copy_from_slice(&means);
-                    drop(means);
-                    let (absorbed, norms_reused) = if slope_norms {
-                        (self.absorb_slope_with_selected_norms(
-                            raw, 0..block, Some(&mut reference_norms[start..end]),
-                            &mut within_norms[start..end],
-                        )?, true)
-                    } else if self.config.absorb.solver == FeSolverKind::Map {
-                        self.absorb_reusable_map_with_norms(raw, &mut within_norms[start..end])?
-                    } else {
-                        (
-                            self.prepared.fit_absorb_matrix(
+                            let (absorbed, reused) = projector.absorb_with_selected_norms(
                                 self.weights.borrowed(),
                                 raw,
-                                self.config.absorb,
-                            )?,
-                            false,
-                        )
+                                self.config.absorb.map,
+                                self.bread_weight_scale.solver_weight_divisor,
+                                stored_generated_columns.iter().map(|column| column + 1),
+                                &mut within_norms,
+                            )?;
+                            norms_reused = reused;
+                            absorbed
+                        } else {
+                            self.absorb_reusable_map(raw)?
+                        }
+                    } else {
+                        self.prepared.fit_absorb_matrix(
+                            self.weights.borrowed(),
+                            raw,
+                            self.config.absorb,
+                        )?
                     };
                     if !absorbed.report().certified() {
                         return Err(invalid_data(
-                            "weighted-linear low-memory design absorption did not certify",
+                            "weighted-linear combined design absorption did not certify",
                         ));
                     }
-                    let (within, block_report) = absorbed.into_parts();
-                    merge_canonical_projection_reports(&mut report, block_report)?;
-                    if !norms_reused {
-                        let norms = self.weighted_dense_column_norms(&within)?;
-                        within_norms[start..end].copy_from_slice(&norms);
+                    let (within, report) = absorbed.into_parts();
+                    let stride = within.ncols();
+                    let mut values = within.into_row_major();
+                    let norm_workspace_columns = if norms_reused { 0 } else { stored_columns };
+                    let mut norm_scales = fallible_filled(
+                        norm_workspace_columns,
+                        0.0_f64,
+                        "unable to reserve weighted-linear retained norm scales",
+                    )?;
+                    let mut norm_sums = fallible_filled(
+                        norm_workspace_columns,
+                        1.0_f64,
+                        "unable to reserve weighted-linear retained norm sums",
+                    )?;
+                    let mut response = fallible_filled(
+                        rows,
+                        0.0_f64,
+                        "unable to reserve weighted-linear retained within response",
+                    )?;
+                    for (row, response_value) in response.iter_mut().enumerate().take(rows) {
+                        let source_start = row.checked_mul(stride).ok_or_else(|| {
+                            allocation("weighted-linear combined offset overflows")
+                        })?;
+                        *response_value = values[source_start];
+                        let target_start = row.checked_mul(stored_columns).ok_or_else(|| {
+                            allocation("weighted-linear retained compact offset overflows")
+                        })?;
+                        if norms_reused {
+                            for (target, generated) in
+                                stored_generated_columns.iter().copied().enumerate()
+                            {
+                                values[target_start + target] =
+                                    values[source_start + generated + 1];
+                            }
+                        } else {
+                            let root = normalized_solver_weight(
+                                self.weights.borrowed(),
+                                self.bread_weight_scale,
+                                row,
+                            )?
+                            .sqrt();
+                            for (target, generated) in
+                                stored_generated_columns.iter().copied().enumerate()
+                            {
+                                let value = values[source_start + generated + 1];
+                                update_scaled_square(
+                                    root * value,
+                                    &mut norm_scales[target],
+                                    &mut norm_sums[target],
+                                )?;
+                                values[target_start + target] = value;
+                            }
+                        }
                     }
-                    scratch.patch_row_major_block(start, block, within.as_slice())?;
+                    for column in 0..norm_workspace_columns {
+                        within_norms[column] = stable_norm(norm_scales[column], norm_sums[column])?;
+                    }
+                    values.truncate(checked_elements(rows, stored_columns)?);
+                    (
+                        RetainedWithinStorage::Dense(DenseMatrix::from_row_major(
+                            rows,
+                            stored_columns,
+                            values,
+                        )?),
+                        response,
+                        report,
+                    )
                 }
-                (
-                    RetainedWithinStorage::Scratch(scratch),
-                    response.into_row_major(),
-                    report,
-                )
+                PreparedOlsExecutionMode::Low => {
+                    let raw_response = DenseMatrix::from_row_major(
+                        rows,
+                        1,
+                        fallible_copy(
+                            &self.response,
+                            "unable to reserve weighted-linear low-memory response",
+                        )?,
+                    )?;
+                    let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
+                        self.fill_reusable_map_weights()?;
+                        self.absorb_reusable_map(raw_response)?
+                    } else {
+                        self.prepared.fit_absorb_matrix(
+                            self.weights.borrowed(),
+                            raw_response,
+                            self.config.absorb,
+                        )?
+                    };
+                    if !absorbed.report().certified() {
+                        return Err(invalid_data(
+                            "weighted-linear low-memory response absorption did not certify",
+                        ));
+                    }
+                    let (response, mut report) = absorbed.into_parts();
+                    let mut scratch = PreparedOlsScratch::create_row_major(rows, stored_columns)?;
+                    let block_width = self
+                        .config
+                        .execution
+                        .poolsize
+                        .max(1)
+                        .min(stored_columns.max(1));
+                    for start in (0..stored_columns).step_by(block_width) {
+                        let end = start.saturating_add(block_width).min(stored_columns);
+                        let block = end - start;
+                        let mut raw_values = fallible_filled(
+                            checked_elements(rows, block)?,
+                            0.0_f64,
+                            "unable to reserve weighted-linear row-major scratch block",
+                        )?;
+                        raw_values
+                            .par_chunks_mut(128 * block)
+                            .enumerate()
+                            .try_for_each(|(tile, values)| -> Result<()> {
+                                let start_row = tile * 128;
+                                let end_row = start_row + values.len() / block;
+                                for local in 0..block {
+                                    crate::prepared_fit_view::visit_prepared_column_range(
+                                        self.prepared,
+                                        stored_generated_columns[start + local],
+                                        start_row..end_row,
+                                        |row, value| {
+                                            values[(row - start_row) * block + local] = value;
+                                            Ok(())
+                                        },
+                                    )?;
+                                }
+                                Ok(())
+                            })?;
+                        let raw = DenseMatrix::from_row_major(rows, block, raw_values)?;
+                        if !slope_norms {
+                            let norms = self.weighted_dense_column_norms(&raw)?;
+                            reference_norms[start..end].copy_from_slice(&norms);
+                        }
+                        let means = self.weighted_dense_column_means(&raw)?;
+                        reference_means[start..end].copy_from_slice(&means);
+                        drop(means);
+                        let (absorbed, norms_reused) = if slope_norms {
+                            (
+                                self.absorb_slope_with_selected_norms(
+                                    raw,
+                                    0..block,
+                                    Some(&mut reference_norms[start..end]),
+                                    &mut within_norms[start..end],
+                                )?,
+                                true,
+                            )
+                        } else if self.config.absorb.solver == FeSolverKind::Map {
+                            self.absorb_reusable_map_with_norms(raw, &mut within_norms[start..end])?
+                        } else {
+                            (
+                                self.prepared.fit_absorb_matrix(
+                                    self.weights.borrowed(),
+                                    raw,
+                                    self.config.absorb,
+                                )?,
+                                false,
+                            )
+                        };
+                        if !absorbed.report().certified() {
+                            return Err(invalid_data(
+                                "weighted-linear low-memory design absorption did not certify",
+                            ));
+                        }
+                        let (within, block_report) = absorbed.into_parts();
+                        merge_canonical_projection_reports(&mut report, block_report)?;
+                        if !norms_reused {
+                            let norms = self.weighted_dense_column_norms(&within)?;
+                            within_norms[start..end].copy_from_slice(&norms);
+                        }
+                        scratch.patch_row_major_block(start, block, within.as_slice())?;
+                    }
+                    (
+                        RetainedWithinStorage::Scratch(scratch),
+                        response.into_row_major(),
+                        report,
+                    )
+                }
             }
-        }};
+        };
         Ok((
             RetainedWithinDesign {
                 storage,
@@ -5498,28 +5780,58 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     fn refresh_group_centered_design(&mut self) -> Result<(Vec<f64>, SolveReport)> {
         if self.config.absorb.map.max_iterations == 0 || self.config.absorb.map.check_every == 0 {
-            return Err(invalid_argument("implicit MAP iteration and check budgets must be positive"));
+            return Err(invalid_argument(
+                "implicit MAP iteration and check budgets must be positive",
+            ));
         }
-        let mut retained = self.within.take().ok_or_else(|| invalid_argument("implicit within design is absent"))?;
-        if retained.generations.sample != self.generations.sample || retained.generations.topology != self.generations.topology {
-            return Err(invalid_argument("implicit within sample or topology is stale"));
+        let mut retained = self
+            .within
+            .take()
+            .ok_or_else(|| invalid_argument("implicit within design is absent"))?;
+        if retained.generations.sample != self.generations.sample
+            || retained.generations.topology != self.generations.topology
+        {
+            return Err(invalid_argument(
+                "implicit within sample or topology is stale",
+            ));
         }
         let refreshed = match &mut retained.storage {
             RetainedWithinStorage::Implicit(values) => values.refresh(
-                &self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
-                self.config.absorb.map.tolerance, &mut retained.reference_norms,
-                &mut retained.reference_means, &mut retained.within_norms)?,
+                &self.response,
+                self.weights.borrowed(),
+                self.bread_weight_scale.solver_weight_divisor,
+                self.config.absorb.map.tolerance,
+                &mut retained.reference_norms,
+                &mut retained.reference_means,
+                &mut retained.within_norms,
+            )?,
             RetainedWithinStorage::Dense(dense) => {
-                let source = self.group_centered_source.as_ref().ok_or_else(|| invalid_argument("centered preparation source is absent"))?;
-                let mut values = ImplicitCenteredDesign::new(source.clone(), &retained.stored_generated_columns, self.config.execution.mode)?;
+                let source = self
+                    .group_centered_source
+                    .as_ref()
+                    .ok_or_else(|| invalid_argument("centered preparation source is absent"))?;
+                let mut values = ImplicitCenteredDesign::new(
+                    source.clone(),
+                    &retained.stored_generated_columns,
+                    self.config.execution.mode,
+                )?;
                 let refreshed = values.refresh(
-                    &self.response, self.weights.borrowed(), self.bread_weight_scale.solver_weight_divisor,
-                    self.config.absorb.map.tolerance, &mut retained.reference_norms,
-                    &mut retained.reference_means, &mut retained.within_norms)?;
+                    &self.response,
+                    self.weights.borrowed(),
+                    self.bread_weight_scale.solver_weight_divisor,
+                    self.config.absorb.map.tolerance,
+                    &mut retained.reference_norms,
+                    &mut retained.reference_means,
+                    &mut retained.within_norms,
+                )?;
                 values.write_dense(dense)?;
                 refreshed
             }
-            RetainedWithinStorage::Scratch(_) => return Err(invalid_argument("centered refresh requires its owned representation")),
+            RetainedWithinStorage::Scratch(_) => {
+                return Err(invalid_argument(
+                    "centered refresh requires its owned representation",
+                ))
+            }
         };
         retained.generations = WithinGenerations::from_session(self.generations);
         retained.certificate.passed = false;
@@ -5656,8 +5968,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     fn refresh_retained_norms(&mut self) -> Result<()> {
         if self.group_centered_source.is_some() {
-            let retained = self.within.as_ref().ok_or_else(|| invalid_argument("implicit norms are absent"))?;
-            if !retained.generations.same_design(self.generations) { return Err(invalid_argument("implicit norms are stale")); }
+            let retained = self
+                .within
+                .as_ref()
+                .ok_or_else(|| invalid_argument("implicit norms are absent"))?;
+            if !retained.generations.same_design(self.generations) {
+                return Err(invalid_argument("implicit norms are stale"));
+            }
             return Ok(());
         }
         let mut retained = self
@@ -5700,22 +6017,33 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             let mut weight_correction = 0.0_f64;
             let rows = self.response.len();
             let numeric = super::prepared_rhs::NumericOlsColumns::bind(
-                self.prepared.fit_model(), self.prepared.fit_sample(),
+                self.prepared.fit_model(),
+                self.prepared.fit_sample(),
             )?;
             // Raw numeric sources are immutable for this sample/topology.
             // Bind them once, but recompute every statistic with this frame's
             // weights. Column ownership preserves row order and needs no new
             // bank; its work depends on N*K, not the number of absorbed effects.
             let column_work = rows >= 16_384 && rows.saturating_mul(columns) >= 65_536 * 8;
-            let generated_work = column_work && self.prepared.fit_model().columns.iter().any(|c|
-                matches!(c.kind, super::PreparedOlsColumnKind::Categorical { .. }
-                    | super::PreparedOlsColumnKind::CategoricalInteraction { .. }));
+            let generated_work = column_work
+                && self.prepared.fit_model().columns.iter().any(|c| {
+                    matches!(
+                        c.kind,
+                        super::PreparedOlsColumnKind::Categorical { .. }
+                            | super::PreparedOlsColumnKind::CategoricalInteraction { .. }
+                    )
+                });
             let parallel_columns = columns >= 8
                 && rayon::current_thread_index().is_some()
                 && rayon::current_num_threads() > 1
-                && (generated_work && matches!(self.fe_projector.as_ref(),
-                        Some(ReusableLinearMapProjector::PpmlCategorical { .. }
-                            | ReusableLinearMapProjector::PpmlCoefficients { .. }))
+                && (generated_work
+                    && matches!(
+                        self.fe_projector.as_ref(),
+                        Some(
+                            ReusableLinearMapProjector::PpmlCategorical { .. }
+                                | ReusableLinearMapProjector::PpmlCoefficients { .. }
+                        )
+                    )
                     || self.config.execution.mode == PreparedOlsExecutionMode::Fast
                         && matches!(self.fe_projector.as_ref(),
                             Some(ReusableLinearMapProjector::PpmlCategorical { score_design, .. })
@@ -5744,12 +6072,18 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     .try_for_each(
                         |(column, (((scale, sum), mean), correction))| -> Result<()> {
                             let generated = generated_columns[column];
-                            crate::prepared_fit_view::visit_prepared_column_range(prepared, generated, 0..rows, |row, raw_value| {
-                                let weight = normalized_solver_weight(weights, weight_scale, row)?;
-                                update_scaled_square(weight.sqrt() * raw_value, scale, sum)?;
-                                compensated_add(weight * raw_value, mean, correction)?;
-                                Ok(())
-                            })?;
+                            crate::prepared_fit_view::visit_prepared_column_range(
+                                prepared,
+                                generated,
+                                0..rows,
+                                |row, raw_value| {
+                                    let weight =
+                                        normalized_solver_weight(weights, weight_scale, row)?;
+                                    update_scaled_square(weight.sqrt() * raw_value, scale, sum)?;
+                                    compensated_add(weight * raw_value, mean, correction)?;
+                                    Ok(())
+                                },
+                            )?;
                             Ok(())
                         },
                     )?;
@@ -6048,7 +6382,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             "weighted-linear reusable dense MAP projection exceeds its fixed workspace",
                         ));
                     }
-                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map {
+                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map
+                    {
                         self.absorb_reusable_map_with_norms(values, &mut within_norms)?
                     } else {
                         (
@@ -6067,8 +6402,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         ));
                     }
                     if !norms_reused {
-                        workspace_reused &=
-                            self.fill_weighted_dense_column_norms_reusing(&values, &mut within_norms)?;
+                        workspace_reused &= self
+                            .fill_weighted_dense_column_norms_reusing(&values, &mut within_norms)?;
                     }
                     RetainedWithinStorage::Dense(values)
                 }
@@ -6098,7 +6433,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         block,
                         std::mem::take(&mut self.projection_block),
                     )?;
-                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map {
+                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map
+                    {
                         self.absorb_reusable_map_with_norms(raw, &mut within_norms[start..end])?
                     } else {
                         (
@@ -6207,10 +6543,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .map_err(|_| allocation("unable to expand fused weighted-linear projection"))?;
         values.resize(elements, 0.0);
         let previous_response = match self.fe_projector.as_ref() {
-            Some(ReusableLinearMapProjector::PpmlCoefficients { previous_response, .. }) => previous_response.as_slice(),
+            Some(ReusableLinearMapProjector::PpmlCoefficients {
+                previous_response, ..
+            }) => previous_response.as_slice(),
             _ => self.map_weights.as_slice(),
         };
-        if previous_response.len() != rows { return Err(invalid_argument("fused response history dimensions differ")); }
+        if previous_response.len() != rows {
+            return Err(invalid_argument("fused response history dimensions differ"));
+        }
         for row in (0..rows).rev() {
             let source = row
                 .checked_mul(columns)
@@ -6233,15 +6573,31 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
         let combined = DenseMatrix::from_row_major(rows, stride, values)?;
         let (absorbed, norms_reused) = match self.fe_projector.as_mut() {
-            Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) => projector.absorb_with_trailing_norms(
-                self.weights.borrowed(), combined, self.config.absorb.map,
-                self.bread_weight_scale.solver_weight_divisor, &mut within_norms)?,
-            Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) =>
-                (projector.absorb_coefficient_with_selected_norms(
-                    &self.map_weights, combined, self.config.absorb.map,
-                    self.generations.map_geometry(), 1..stride, None, &mut within_norms,
-                )?, true),
-            _ => return Err(invalid_argument("fused projection requires an admitted PPML projector")),
+            Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) => projector
+                .absorb_with_trailing_norms(
+                    self.weights.borrowed(),
+                    combined,
+                    self.config.absorb.map,
+                    self.bread_weight_scale.solver_weight_divisor,
+                    &mut within_norms,
+                )?,
+            Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) => (
+                projector.absorb_coefficient_with_selected_norms(
+                    &self.map_weights,
+                    combined,
+                    self.config.absorb.map,
+                    self.generations.map_geometry(),
+                    1..stride,
+                    None,
+                    &mut within_norms,
+                )?,
+                true,
+            ),
+            _ => {
+                return Err(invalid_argument(
+                    "fused projection requires an admitted PPML projector",
+                ))
+            }
         };
         if !absorbed.report().certified() {
             return Err(invalid_data(
@@ -6300,7 +6656,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if self.finite_predictor.len() != rows {
             return Err(invalid_argument("canonical finite predictor is misaligned"));
         }
-        resize_zeroed(&mut self.absorbed_predictor, rows, "unable to reserve weighted-linear absorbed predictor")?;
+        resize_zeroed(
+            &mut self.absorbed_predictor,
+            rows,
+            "unable to reserve weighted-linear absorbed predictor",
+        )?;
         let mut certificate = LinearReconstructionCertificate::new();
         for row in 0..rows {
             self.absorbed_predictor[row] =
@@ -6430,9 +6790,13 @@ fn stream_frozen_solve(
     }
     let source = match storage {
         RetainedWithinStorage::Implicit(values) => FixedBlockMomentSource::RetainedImplicit {
-                    values: values.view()?, selected_columns: Some(active_positions), response: within_response,
-                    weights: weights, solver_weight_divisor: bread_weight_scale.solver_weight_divisor, column_scales: Some(&workspace.candidate_scales),
-                },
+            values: values.view()?,
+            selected_columns: Some(active_positions),
+            response: within_response,
+            weights,
+            solver_weight_divisor: bread_weight_scale.solver_weight_divisor,
+            column_scales: Some(&workspace.candidate_scales),
+        },
         RetainedWithinStorage::Dense(values) => FixedBlockMomentSource::RetainedDense {
             values: values.as_slice(),
             rows,
@@ -6763,7 +7127,10 @@ struct JointResponseChecks {
 }
 
 fn check_joint_response(
-    response: &[f64], residuals: &[f64], weights: &[f64], needs_mean: bool,
+    response: &[f64],
+    residuals: &[f64],
+    weights: &[f64],
+    needs_mean: bool,
 ) -> Result<JointResponseChecks> {
     if response.len() != residuals.len() || response.len() != weights.len() {
         return Err(invalid_argument("joint response check dimensions differ"));
@@ -6779,7 +7146,9 @@ fn check_joint_response(
             for ((&value, &residual), &weight) in response.iter().zip(residuals).zip(weights) {
                 let root = weight.sqrt();
                 if !root.is_finite() || root <= 0. {
-                    return Err(invalid_data("weighted-linear norm weight is not finite and positive"));
+                    return Err(invalid_data(
+                        "weighted-linear norm weight is not finite and positive",
+                    ));
                 }
                 update_scaled_square(root * value, &mut response_scale, &mut response_square)?;
                 update_scaled_square(root * residual, &mut residual_scale, &mut residual_square)?;
@@ -6792,23 +7161,36 @@ fn check_joint_response(
                 .max(stable_norm(residual_scale, residual_square)?);
             let weight_sum = weight_sum + weight_correction;
             let mean = needs_mean.then(|| (response_sum + response_correction) / weight_sum);
-            if !weight_sum.is_finite() || weight_sum <= 0. || mean.is_some_and(|value| !value.is_finite()) {
+            if !weight_sum.is_finite()
+                || weight_sum <= 0.
+                || mean.is_some_and(|value| !value.is_finite())
+            {
                 return Err(invalid_data("frozen weighted-linear mean is not finite"));
             }
             Ok((reference, weight_sum, mean))
         },
-        || response.par_chunks(4096).zip(residuals.par_chunks(4096))
-            .map(|(response, residuals)| certify_frozen_combined_predictor(response, residuals))
-            .try_reduce(LinearReconstructionCertificate::new, |left, right| Ok(
-                LinearReconstructionCertificate {
-                    relative_infinity_norm: left.relative_infinity_norm.max(right.relative_infinity_norm),
-                    passed: left.passed && right.passed,
-                }
-            )),
+        || {
+            response
+                .par_chunks(4096)
+                .zip(residuals.par_chunks(4096))
+                .map(|(response, residuals)| certify_frozen_combined_predictor(response, residuals))
+                .try_reduce(LinearReconstructionCertificate::new, |left, right| {
+                    Ok(LinearReconstructionCertificate {
+                        relative_infinity_norm: left
+                            .relative_infinity_norm
+                            .max(right.relative_infinity_norm),
+                        passed: left.passed && right.passed,
+                    })
+                })
+        },
     );
     let (reference_norm, weight_sum, response_mean) = moments?;
-    Ok(JointResponseChecks { reference_norm, weight_sum, response_mean,
-        reconstruction: reconstruction? })
+    Ok(JointResponseChecks {
+        reference_norm,
+        weight_sum,
+        response_mean,
+        reconstruction: reconstruction?,
+    })
 }
 
 fn weighted_mean_slice(
@@ -7051,16 +7433,23 @@ mod reconstruction_tests {
         use super::{check_joint_response, stable_weighted_norm, weighted_mean_slice};
         let n = 12_291;
         for threads in [1, 4] {
-            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
             for response_scale in [0., 1e-150, 1., 1e150] {
                 for weight_scale in [1e-150, 1., 1e150] {
-                    let response: Vec<_> = (0..n).map(|i|
-                        ((i % 17) as f64 - 8.) * response_scale).collect();
-                    let residuals: Vec<_> = (0..n).map(|i|
-                        ((i % 13) as f64 - 6.) * response_scale).collect();
-                    let weights: Vec<_> = (0..n).map(|i|
-                        (0.5 + (i % 7) as f64) * weight_scale).collect();
-                    let expected = stable_weighted_norm(n, |i| Ok((response[i], weights[i]))).unwrap()
+                    let response: Vec<_> = (0..n)
+                        .map(|i| ((i % 17) as f64 - 8.) * response_scale)
+                        .collect();
+                    let residuals: Vec<_> = (0..n)
+                        .map(|i| ((i % 13) as f64 - 6.) * response_scale)
+                        .collect();
+                    let weights: Vec<_> = (0..n)
+                        .map(|i| (0.5 + (i % 7) as f64) * weight_scale)
+                        .collect();
+                    let expected = stable_weighted_norm(n, |i| Ok((response[i], weights[i])))
+                        .unwrap()
                         .max(stable_weighted_norm(n, |i| Ok((residuals[i], weights[i]))).unwrap());
                     let scale = super::super::PreparedOlsBreadWeightScale {
                         weight_kind: None,
@@ -7069,15 +7458,25 @@ mod reconstruction_tests {
                         reference_weight_sum: n as f64,
                     };
                     for needs_mean in [false, true] {
-                        let result = pool.install(|| check_joint_response(
-                            &response, &residuals, &weights, needs_mean,
-                        )).unwrap();
+                        let result = pool
+                            .install(|| {
+                                check_joint_response(&response, &residuals, &weights, needs_mean)
+                            })
+                            .unwrap();
                         assert_eq!(result.reference_norm.to_bits(), expected.to_bits());
-                        assert_eq!(result.reconstruction,
-                            certify_frozen_combined_predictor(&response, &residuals).unwrap());
-                        assert_eq!(result.response_mean, needs_mean.then(|| weighted_mean_slice(
-                            &response, crate::fe::BorrowedMapWeights::Provided(&weights), scale,
-                        ).unwrap()));
+                        assert_eq!(
+                            result.reconstruction,
+                            certify_frozen_combined_predictor(&response, &residuals).unwrap()
+                        );
+                        assert_eq!(
+                            result.response_mean,
+                            needs_mean.then(|| weighted_mean_slice(
+                                &response,
+                                crate::fe::BorrowedMapWeights::Provided(&weights),
+                                scale,
+                            )
+                            .unwrap())
+                        );
                     }
                 }
             }
@@ -7167,7 +7566,6 @@ mod reconstruction_tests {
         assert_eq!(certificate.relative_infinity_norm, maximum);
     }
 }
-
 
 #[cfg(test)]
 mod inference_scan_tests {

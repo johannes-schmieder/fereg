@@ -47,6 +47,8 @@ pub(crate) struct SingleSlopeAbsorber<'a> {
     absorption_bytes: u128,
 }
 
+// Keep certified results inline; boxing would change admitted allocation lifetimes.
+#[allow(clippy::large_enum_variant)]
 pub(crate) enum SingleSlopeAttempt {
     Certified(CertifiedBorrowedMap),
     Rejected {
@@ -249,7 +251,8 @@ impl<'a> SingleSlopeAbsorber<'a> {
             // check uses this input's freshly scanned raw-weight norms and QR
             // moments; no earlier residual certificate is reused.
             let check_started = Instant::now();
-            let certificate = self.check_matrix(&original, &references, tolerance, &mut checks, None)?;
+            let certificate =
+                self.check_matrix(&original, &references, tolerance, &mut checks, None)?;
             initial_check_seconds = check_started.elapsed().as_secs_f64();
             if certificate.passed {
                 let bytes = bytes(&self.roots)
@@ -303,7 +306,10 @@ impl<'a> SingleSlopeAbsorber<'a> {
                 self.project_serial_ordered::<16, 64>(&original, &mut result, &mut coefficients)?
             } else {
                 self.project_serial_ordered::<MAX_RHS, { MAX_CHANNELS * MAX_RHS }>(
-                    &original, &mut result, &mut coefficients)?
+                    &original,
+                    &mut result,
+                    &mut coefficients,
+                )?
             })
         } else {
             coefficients
@@ -372,7 +378,8 @@ impl<'a> SingleSlopeAbsorber<'a> {
         }
         let right_scales = (self.serial_ordered && rayon::current_num_threads() == 1)
             .then_some(&coefficients[..self.groups.len() * rhs]);
-        let certificate = self.check_matrix(&result, &scales, tolerance, &mut checks, right_scales)?;
+        let certificate =
+            self.check_matrix(&result, &scales, tolerance, &mut checks, right_scales)?;
         let certification_seconds = certificate_started.elapsed().as_secs_f64();
         if !certificate.passed {
             return Ok(SingleSlopeAttempt::Rejected {
@@ -452,7 +459,8 @@ impl<'a> SingleSlopeAbsorber<'a> {
                 for channel in 0..channels {
                     let left = weight(self.weights, row) * basis_value(&self.effect, channel, row);
                     for (sum, &value) in coefficients[channel * rhs..(channel + 1) * rhs]
-                        .iter_mut().zip(values)
+                        .iter_mut()
+                        .zip(values)
                     {
                         *sum = left.mul_add(value, *sum);
                     }
@@ -467,28 +475,42 @@ impl<'a> SingleSlopeAbsorber<'a> {
                 let target = &mut result.as_mut_slice()[row * rhs..(row + 1) * rhs];
                 for channel in 0..channels {
                     let basis = basis_value(&self.effect, channel, row);
-                    for (fitted, &coefficient) in target.iter_mut()
+                    for (fitted, &coefficient) in target
+                        .iter_mut()
                         .zip(&coefficients[channel * rhs..(channel + 1) * rhs])
                     {
                         *fitted = basis.mul_add(coefficient, *fitted);
                     }
                 }
-                for (column, (fitted, &value)) in target.iter_mut()
-                    .zip(&original.as_slice()[row * rhs..(row + 1) * rhs]).enumerate()
+                for (column, (fitted, &value)) in target
+                    .iter_mut()
+                    .zip(&original.as_slice()[row * rhs..(row + 1) * rhs])
+                    .enumerate()
                 {
                     *fitted = value - *fitted;
                     let weighted = self.roots[row] * *fitted;
-                    if !weighted.is_finite() { return Err(invalid()); }
-                    update_scaled_sum_of_squares(weighted, &mut norm_scales[column], &mut norm_sums[column]);
+                    if !weighted.is_finite() {
+                        return Err(invalid());
+                    }
+                    update_scaled_sum_of_squares(
+                        weighted,
+                        &mut norm_scales[column],
+                        &mut norm_sums[column],
+                    );
                     group_scales[column] = group_scales[column].max(weighted.abs());
                 }
             }
         }
         let mut norms = filled(rhs, 0.0)?;
         for column in 0..rhs {
-            norms[column] = if norm_scales[column] == 0.0 { 0.0 }
-                else { norm_scales[column] * norm_sums[column].sqrt() };
-            if !norms[column].is_finite() { return Err(invalid()); }
+            norms[column] = if norm_scales[column] == 0.0 {
+                0.0
+            } else {
+                norm_scales[column] * norm_sums[column].sqrt()
+            };
+            if !norms[column].is_finite() {
+                return Err(invalid());
+            }
         }
         Ok(norms)
     }
@@ -511,7 +533,12 @@ impl<'a> SingleSlopeAbsorber<'a> {
                 } else if rhs <= 16 {
                     self.check_group::<16, 64>(level, result, scales, right_scales)?
                 } else {
-                    self.check_group::<MAX_RHS, { MAX_CHANNELS * MAX_RHS }>(level, result, scales, right_scales)?
+                    self.check_group::<MAX_RHS, { MAX_CHANNELS * MAX_RHS }>(
+                        level,
+                        result,
+                        scales,
+                        right_scales,
+                    )?
                 };
                 Ok(())
             })?;
@@ -681,6 +708,8 @@ impl<'a> SingleSlopeAbsorber<'a> {
     }
 }
 
+// Keep the legacy workspace and ownership boundaries explicit during migration.
+#[allow(clippy::too_many_arguments)]
 fn build_groups(
     partition: BorrowedInterceptEffect<'_>,
     effect: &CategoricalAbsorbedEffectView<'_>,
@@ -820,7 +849,10 @@ mod tests {
     #[test]
     fn ordered_serial_fusion_preserves_projection_norms_and_fresh_certificates() {
         for threads in [1, 4] {
-            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
             pool.install(|| {
                 for shuffled in [false, true] {
                     for intercept in [false, true] {
@@ -829,58 +861,170 @@ mod tests {
                                 for weight_case in 0..3 {
                                     let n = 1031;
                                     let levels = 73;
-                                    let row_at = |row: usize| if shuffled { row * 37 % n } else { row };
-                                    let codes = (0..n).map(|row| (row_at(row) * levels / n) as u32).collect();
-                                    let slopes = (0..channels).map(|channel| (0..n).map(|row| {
-                                        let r = row_at(row);
-                                        match channel {
-                                            0 => ((r * 13) as f64).sin(),
-                                            1 => if r * levels / n % 3 == 0 { 0.0 } else { ((r * 19) as f64).cos() },
-                                            _ => ((r * 13) as f64).sin() + 1e-15 * (r as f64).cos(),
-                                        }
-                                    }).collect()).collect();
-                                    let effect = EffectTerm::new(codes, levels, intercept, slopes).unwrap();
-                                    let partition = BorrowedInterceptEffect::new(effect.codes(), levels, effect.level_index()).unwrap();
-                                    let weights: Vec<f64> = (0..n).map(|row| match weight_case {
-                                        0 => 1.0,
-                                        1 => 128.0,
-                                        _ => 10.0_f64.powi((row_at(row) % 13) as i32 - 6),
-                                    }).collect();
-                                    let borrowed = if weight_case == 0 { BorrowedMapWeights::Unit }
-                                        else { BorrowedMapWeights::Provided(&weights) };
-                                    let view = || CategoricalAbsorbedEffectView::new(intercept,
-                                        effect.slopes().iter().map(Vec::as_slice).collect()).unwrap();
+                                    let row_at =
+                                        |row: usize| if shuffled { row * 37 % n } else { row };
+                                    let codes = (0..n)
+                                        .map(|row| (row_at(row) * levels / n) as u32)
+                                        .collect();
+                                    let slopes = (0..channels)
+                                        .map(|channel| {
+                                            (0..n)
+                                                .map(|row| {
+                                                    let r = row_at(row);
+                                                    match channel {
+                                                        0 => ((r * 13) as f64).sin(),
+                                                        1 => {
+                                                            if r * levels / n % 3 == 0 {
+                                                                0.0
+                                                            } else {
+                                                                ((r * 19) as f64).cos()
+                                                            }
+                                                        }
+                                                        _ => {
+                                                            ((r * 13) as f64).sin()
+                                                                + 1e-15 * (r as f64).cos()
+                                                        }
+                                                    }
+                                                })
+                                                .collect()
+                                        })
+                                        .collect();
+                                    let effect =
+                                        EffectTerm::new(codes, levels, intercept, slopes).unwrap();
+                                    let partition = BorrowedInterceptEffect::new(
+                                        effect.codes(),
+                                        levels,
+                                        effect.level_index(),
+                                    )
+                                    .unwrap();
+                                    let weights: Vec<f64> = (0..n)
+                                        .map(|row| match weight_case {
+                                            0 => 1.0,
+                                            1 => 128.0,
+                                            _ => 10.0_f64.powi((row_at(row) % 13) as i32 - 6),
+                                        })
+                                        .collect();
+                                    let borrowed = if weight_case == 0 {
+                                        BorrowedMapWeights::Unit
+                                    } else {
+                                        BorrowedMapWeights::Provided(&weights)
+                                    };
+                                    let view = || {
+                                        CategoricalAbsorbedEffectView::new(
+                                            intercept,
+                                            effect.slopes().iter().map(Vec::as_slice).collect(),
+                                        )
+                                        .unwrap()
+                                    };
                                     let mut peak = SolverWorkspacePeak::ZERO;
-                                    let mut fused = SingleSlopeAbsorber::build(partition, view(), borrowed, rhs, None, &mut peak).unwrap().unwrap();
+                                    let mut fused = SingleSlopeAbsorber::build(
+                                        partition,
+                                        view(),
+                                        borrowed,
+                                        rhs,
+                                        None,
+                                        &mut peak,
+                                    )
+                                    .unwrap()
+                                    .unwrap();
                                     assert_eq!(fused.serial_ordered, threads == 1 && !shuffled);
-                                    let mut ordinary = SingleSlopeAbsorber::build(partition, view(), borrowed, rhs, None, &mut peak).unwrap().unwrap();
+                                    let mut ordinary = SingleSlopeAbsorber::build(
+                                        partition,
+                                        view(),
+                                        borrowed,
+                                        rhs,
+                                        None,
+                                        &mut peak,
+                                    )
+                                    .unwrap()
+                                    .unwrap();
                                     ordinary.serial_ordered = false;
-                                    let input = DenseMatrix::from_columns(&(0..rhs).map(|col| (0..n)
-                                        .map(|row| ((row_at(row) * (col + 3)) as f64 * 0.019).cos())
-                                        .collect()).collect::<Vec<_>>()).unwrap();
-                                    let a = fused.absorb(input.clone(), 1e-8, None, None, false).unwrap();
-                                    let b = ordinary.absorb(input.clone(), 1e-8, None, None, false).unwrap();
+                                    let input = DenseMatrix::from_columns(
+                                        &(0..rhs)
+                                            .map(|col| {
+                                                (0..n)
+                                                    .map(|row| {
+                                                        ((row_at(row) * (col + 3)) as f64 * 0.019)
+                                                            .cos()
+                                                    })
+                                                    .collect()
+                                            })
+                                            .collect::<Vec<_>>(),
+                                    )
+                                    .unwrap();
+                                    let a = fused
+                                        .absorb(input.clone(), 1e-8, None, None, false)
+                                        .unwrap();
+                                    let b = ordinary
+                                        .absorb(input.clone(), 1e-8, None, None, false)
+                                        .unwrap();
                                     match (a, b) {
-                                        (SingleSlopeAttempt::Certified(mut a), SingleSlopeAttempt::Certified(mut b)) => {
-                                            assert_eq!(a.residualized().as_slice().iter().map(|v| v.to_bits()).collect::<Vec<_>>(),
-                                                b.residualized().as_slice().iter().map(|v| v.to_bits()).collect::<Vec<_>>());
-                                            assert_eq!(a.take_residual_norms(), b.take_residual_norms());
-                                            assert_eq!(a.report().certificate, b.report().certificate);
-                                            let references = weighted_column_norms(&input, &weights).unwrap();
-                                            let design = FeDesign::new(n, vec![effect.clone()]).unwrap();
-                                            let independent = certify_residuals_with_reference_norms(&design, &weights,
-                                                a.residualized(), &references, 1e-8).unwrap();
+                                        (
+                                            SingleSlopeAttempt::Certified(mut a),
+                                            SingleSlopeAttempt::Certified(mut b),
+                                        ) => {
+                                            assert_eq!(
+                                                a.residualized()
+                                                    .as_slice()
+                                                    .iter()
+                                                    .map(|v| v.to_bits())
+                                                    .collect::<Vec<_>>(),
+                                                b.residualized()
+                                                    .as_slice()
+                                                    .iter()
+                                                    .map(|v| v.to_bits())
+                                                    .collect::<Vec<_>>()
+                                            );
+                                            assert_eq!(
+                                                a.take_residual_norms(),
+                                                b.take_residual_norms()
+                                            );
+                                            assert_eq!(
+                                                a.report().certificate,
+                                                b.report().certificate
+                                            );
+                                            let references =
+                                                weighted_column_norms(&input, &weights).unwrap();
+                                            let design =
+                                                FeDesign::new(n, vec![effect.clone()]).unwrap();
+                                            let independent =
+                                                certify_residuals_with_reference_norms(
+                                                    &design,
+                                                    &weights,
+                                                    a.residualized(),
+                                                    &references,
+                                                    1e-8,
+                                                )
+                                                .unwrap();
                                             assert!(independent.passed);
-                                            assert_eq!(independent.relative_infinity_norm, a.report().certificate.relative_infinity_norm);
-                                            assert_eq!(independent.absolute_infinity_norm, a.report().certificate.absolute_infinity_norm);
+                                            assert_eq!(
+                                                independent.relative_infinity_norm,
+                                                a.report().certificate.relative_infinity_norm
+                                            );
+                                            assert_eq!(
+                                                independent.absolute_infinity_norm,
+                                                a.report().certificate.absolute_infinity_norm
+                                            );
                                         }
-                                        (SingleSlopeAttempt::Rejected { original: a, iterations: ai, .. },
-                                         SingleSlopeAttempt::Rejected { original: b, iterations: bi, .. }) => {
+                                        (
+                                            SingleSlopeAttempt::Rejected {
+                                                original: a,
+                                                iterations: ai,
+                                                ..
+                                            },
+                                            SingleSlopeAttempt::Rejected {
+                                                original: b,
+                                                iterations: bi,
+                                                ..
+                                            },
+                                        ) => {
                                             assert_eq!(a, input);
                                             assert_eq!(a, b);
                                             assert_eq!(ai, bi);
                                         }
-                                        _ => panic!("serial fusion changed certification or fallback"),
+                                        _ => panic!(
+                                            "serial fusion changed certification or fallback"
+                                        ),
                                     }
                                 }
                             }

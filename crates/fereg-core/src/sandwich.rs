@@ -57,7 +57,9 @@ pub(crate) trait SandwichDesign {
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()>;
 
     /// Scratch sources can amortize positional I/O across an immutable scan.
-    fn prefers_sequential_scan(&self) -> bool { false }
+    fn prefers_sequential_scan(&self) -> bool {
+        false
+    }
 
     /// A reducer owns its row buffer and order; a source may retain a bounded
     /// reader for this immutable scan without sharing cursor state with workers.
@@ -535,7 +537,12 @@ where
                     }
                 }
                 if let Some(update) = fixed_triangle {
-                    update(production_meat, certificate_meat, production_score, certificate_score)?;
+                    update(
+                        production_meat,
+                        certificate_meat,
+                        production_score,
+                        certificate_score,
+                    )?;
                 } else {
                     for left in 0..dimension {
                         let production_left = production_score[left];
@@ -544,7 +551,8 @@ where
                         // Contiguous triangle rows expose independent coordinates to
                         // vectorization while preserving each sum's observation order.
                         for (((production, certificate), &production_right), &certificate_right) in
-                            production_meat[range.clone()].iter_mut()
+                            production_meat[range.clone()]
+                                .iter_mut()
                                 .zip(&mut certificate_meat[range])
                                 .zip(&production_score[left..])
                                 .zip(&certificate_score[left..])
@@ -655,15 +663,20 @@ fn update_fixed_dense_triangle<const DIMENSION: usize, const SQUARE: usize>(
     production_score: &[f64],
     certificate_score: &[f64],
 ) -> Result<()> {
-    let shape_error = || invalid_argument("fixed dense sandwich triangle dimensions are inconsistent");
+    let shape_error =
+        || invalid_argument("fixed dense sandwich triangle dimensions are inconsistent");
     let production: &mut [f64; SQUARE] = production.try_into().map_err(|_| shape_error())?;
     let certificate: &mut [f64; SQUARE] = certificate.try_into().map_err(|_| shape_error())?;
-    let production_score: &[f64; DIMENSION] = production_score.try_into().map_err(|_| shape_error())?;
-    let certificate_score: &[f64; DIMENSION] = certificate_score.try_into().map_err(|_| shape_error())?;
+    let production_score: &[f64; DIMENSION] =
+        production_score.try_into().map_err(|_| shape_error())?;
+    let certificate_score: &[f64; DIMENSION] =
+        certificate_score.try_into().map_err(|_| shape_error())?;
     for left in 0..DIMENSION {
         for right in left..DIMENSION {
-            production[left * DIMENSION + right] += production_score[left] * production_score[right];
-            certificate[left * DIMENSION + right] += certificate_score[right] * certificate_score[left];
+            production[left * DIMENSION + right] +=
+                production_score[left] * production_score[right];
+            certificate[left * DIMENSION + right] +=
+                certificate_score[right] * certificate_score[left];
         }
     }
     Ok(())
@@ -1597,7 +1610,13 @@ mod tests {
         for nrows in [0usize, 1, 2, 7, 64, 257, 8193] {
             for skew in [false, true] {
                 let first: Vec<u32> = (0..nrows)
-                    .map(|row| if skew && row % 20 != 0 { 0 } else { 1 + (row % 17) as u32 })
+                    .map(|row| {
+                        if skew && row % 20 != 0 {
+                            0
+                        } else {
+                            1 + (row % 17) as u32
+                        }
+                    })
                     .collect();
                 let second: Vec<u32> = (0..nrows).map(|row| ((row / 7) % 3) as u32).collect();
                 let third: Vec<u32> = (0..nrows).map(|row| (row / 23) as u32).collect();
@@ -1610,15 +1629,24 @@ mod tests {
                     });
                     for boundary in 0..=nrows {
                         let mut expected = boundary;
-                        while expected > 0 && expected < nrows
-                            && compare_cluster_rows(&dimensions, mask, order[expected-1], order[expected]) == Ordering::Equal
+                        while expected > 0
+                            && expected < nrows
+                            && compare_cluster_rows(
+                                &dimensions,
+                                mask,
+                                order[expected - 1],
+                                order[expected],
+                            ) == Ordering::Equal
                         {
                             expected += 1;
                         }
                         let actual = extend_cluster_boundary(&order, boundary, |left, right| {
                             compare_cluster_rows(&dimensions, mask, left, right) == Ordering::Equal
                         });
-                        assert_eq!(actual, expected, "rows={nrows}, skew={skew}, mask={mask}, boundary={boundary}");
+                        assert_eq!(
+                            actual, expected,
+                            "rows={nrows}, skew={skew}, mask={mask}, boundary={boundary}"
+                        );
                     }
                 }
             }
@@ -1629,7 +1657,7 @@ mod tests {
     fn cluster_boundary_search_bounds_giant_group_work_and_keeps_short_edges_cheap() {
         let nrows = 1usize << 20;
         let order: Vec<usize> = (0..nrows).collect();
-        for boundary in [1, nrows/4, nrows/2, nrows-1] {
+        for boundary in [1, nrows / 4, nrows / 2, nrows - 1] {
             let mut comparisons = 0;
             let end = extend_cluster_boundary(&order, boundary, |_, _| {
                 comparisons += 1;
@@ -1638,10 +1666,13 @@ mod tests {
             assert_eq!(end, nrows);
             assert!(comparisons <= 22, "{comparisons} comparisons");
             let mut comparisons = 0;
-            assert_eq!(extend_cluster_boundary(&order, boundary, |_, _| {
-                comparisons += 1;
-                false
-            }), boundary);
+            assert_eq!(
+                extend_cluster_boundary(&order, boundary, |_, _| {
+                    comparisons += 1;
+                    false
+                }),
+                boundary
+            );
             assert_eq!(comparisons, 1);
         }
     }
@@ -1978,15 +2009,14 @@ mod tests {
             let multipliers: Vec<_> = (0..rows)
                 .map(|i| [0.0, -0.0, 1e-10, -1.0, 1e10][i % 5])
                 .collect();
-            let expected = legacy_serial_influence_covariance(
-                &values, rows, dimension, &multipliers, &bread,
-            );
+            let expected =
+                legacy_serial_influence_covariance(&values, rows, dimension, &multipliers, &bread);
             let design = RowMajorSandwichDesign::new(&values, rows, dimension).unwrap();
             let scores = SliceSandwichScoreMultiplier::same(&multipliers).unwrap();
             let mut reservation = CountingReservation::default();
-            let actual = reduce_serial_influence_covariance(
-                &design, scores, &bread, &mut reservation,
-            ).unwrap();
+            let actual =
+                reduce_serial_influence_covariance(&design, scores, &bread, &mut reservation)
+                    .unwrap();
             assert_eq!(reservation.calls, 4);
             for (actual, expected) in actual.iter().zip(expected) {
                 assert_eq!(actual.to_bits(), expected.to_bits(), "width={dimension}");
@@ -2007,8 +2037,12 @@ mod tests {
             let multipliers = [1.0, 1.0];
             let scores = SliceSandwichScoreMultiplier::same(&multipliers).unwrap();
             let error = reduce_serial_influence_covariance(
-                &design, scores, &[bread], &mut CountingReservation::default(),
-            ).expect_err("nonfinite influence or outer accumulator");
+                &design,
+                scores,
+                &[bread],
+                &mut CountingReservation::default(),
+            )
+            .expect_err("nonfinite influence or outer accumulator");
             assert_eq!(error.code, ErrorCode::InvalidData);
         }
     }
@@ -2120,7 +2154,10 @@ mod tests {
     #[test]
     fn dense_triangle_rows_preserve_both_independent_meats_across_widths_and_teams() {
         for threads in [1, 4] {
-            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
+            let pool = rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap();
             pool.install(|| {
                 for dimension in (1..=17).chain([31, 50, 65]) {
                     let nrows = 257;
@@ -2170,8 +2207,13 @@ mod tests {
             let certificate_score = vec![7.0; if malformed == 3 { 2 } else { 3 }];
             let prior_production = production.clone();
             let prior_certificate = certificate.clone();
-            assert!(update(&mut production, &mut certificate,
-                &production_score, &certificate_score).is_err());
+            assert!(update(
+                &mut production,
+                &mut certificate,
+                &production_score,
+                &certificate_score
+            )
+            .is_err());
             assert_eq!(production, prior_production);
             assert_eq!(certificate, prior_certificate);
         }

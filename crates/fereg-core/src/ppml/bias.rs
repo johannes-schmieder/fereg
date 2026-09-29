@@ -96,14 +96,18 @@ pub(super) fn compute<P: PreparedOlsFitView + Sync + ?Sized>(
     let started = std::time::Instant::now();
     interrupt(PpmlInterruptPoint::BiasCorrection)?;
     let support = support::check(
-        session.fe_design(), session.bias_weights(), frame.units, interrupt,
+        session.fe_design(),
+        session.bias_weights(),
+        frame.units,
+        interrupt,
     )?;
     let mut fixed = session.bias_information(certificate_tolerance)?;
     let dimension = session.bias_dimension();
     let first = session.fe_design().effects()[0].n_levels();
     let second = session.fe_design().effects()[1].n_levels();
     let mut raw = filled(dimension, 0.)?;
-    session.bias_raw_coefficients(&mut fixed, frame.eta, frame.offset, &mut raw)
+    session
+        .bias_raw_coefficients(&mut fixed, frame.eta, frame.offset, &mut raw)
         .map_err(|e| bias_error_context(e, "raw", None, None, Some(fixed.route)))?;
     let mut result = calculate(
         request,
@@ -113,7 +117,8 @@ pub(super) fn compute<P: PreparedOlsFitView + Sync + ?Sized>(
         dimension,
         |response, prediction, coefficients| {
             interrupt(PpmlInterruptPoint::BiasCorrection)?;
-            session.bias_solve(&mut fixed, response, prediction, coefficients)
+            session
+                .bias_solve(&mut fixed, response, prediction, coefficients)
                 .map_err(|mut e| {
                     e.message = format!("bias_route={}: {}", fixed.route, e.message);
                     e
@@ -256,9 +261,12 @@ impl PpmlBiasResult {
         }
         .checked_add(2 * expected_groups)
         .ok_or_else(|| error(ErrorCode::Internal, "bias solve count overflow"))?;
-        if !self.minimum_mean.is_finite() || self.minimum_mean <= 0.
-            || !self.maximum_mean.is_finite() || self.maximum_mean < self.minimum_mean
-            || !self.elapsed_seconds.is_finite() || self.elapsed_seconds < 0.
+        if !self.minimum_mean.is_finite()
+            || self.minimum_mean <= 0.
+            || !self.maximum_mean.is_finite()
+            || self.maximum_mean < self.minimum_mean
+            || !self.elapsed_seconds.is_finite()
+            || self.elapsed_seconds < 0.
             || self.observations == 0
             || self.units > self.observations
             || self.minimum_unit_rows == 0
@@ -535,9 +543,15 @@ fn bias_error_context(
     // Errors travel outside the successful-result wire, so these diagnostics
     // survive transaction rollback without publishing partial estimates.
     let mut context = format!("bias_channel={channel}");
-    if let Some(block) = block { context.push_str(&format!(" bias_block={block}")); }
-    if let Some(probe) = probe { context.push_str(&format!(" bias_probe={probe}")); }
-    if let Some(route) = route { context.push_str(&format!(" bias_route={route}")); }
+    if let Some(block) = block {
+        context.push_str(&format!(" bias_block={block}"));
+    }
+    if let Some(probe) = probe {
+        context.push_str(&format!(" bias_probe={probe}"));
+    }
+    if let Some(route) = route {
+        context.push_str(&format!(" bias_route={route}"));
+    }
     error.message = format!("{context}: {}", error.message);
     error
 }
@@ -633,18 +647,37 @@ mod tests {
     }
     #[test]
     fn allocation_and_auxiliary_failure_return_no_correction() {
-        assert_eq!(filled::<f64>(usize::MAX, 0.).unwrap_err().code, ErrorCode::Allocation);
-        for failure in [ErrorCode::Allocation, ErrorCode::NonConvergence, ErrorCode::Interrupted] {
+        assert_eq!(
+            filled::<f64>(usize::MAX, 0.).unwrap_err().code,
+            ErrorCode::Allocation
+        );
+        for failure in [
+            ErrorCode::Allocation,
+            ErrorCode::NonConvergence,
+            ErrorCode::Interrupted,
+        ] {
             let mut calls = 0;
             let result = calculate(
-                PpmlBiasRequest { method: PpmlBiasMethod::Randomized, probes: 8,
-                    seed: 17, stream: 1, save_effects: false },
-                &[1., 2., 3., 4.], &[1.; 4], &[0.4, 0.6, 1., 2.], 1,
+                PpmlBiasRequest {
+                    method: PpmlBiasMethod::Randomized,
+                    probes: 8,
+                    seed: 17,
+                    stream: 1,
+                    save_effects: false,
+                },
+                &[1., 2., 3., 4.],
+                &[1.; 4],
+                &[0.4, 0.6, 1., 2.],
+                1,
                 |_, prediction, coefficients| {
                     calls += 1;
-                    if calls == 4 { return Err(error(failure, "injected auxiliary failure")); }
+                    if calls == 4 {
+                        return Err(error(failure, "injected auxiliary failure"));
+                    }
                     prediction.fill(0.);
-                    if let Some(c) = coefficients { c.fill(0.); }
+                    if let Some(c) = coefficients {
+                        c.fill(0.);
+                    }
                     Ok(())
                 },
             );
@@ -658,21 +691,35 @@ mod tests {
         for (stop, channel) in [(1, "probe"), (2, "derivative"), (3, "curvature")] {
             let mut calls = 0;
             let failure = calculate(
-                PpmlBiasRequest { method: PpmlBiasMethod::Randomized, probes: 8,
-                    seed: 17, stream: 1, save_effects: false },
-                &[1., 2., 3., 4.], &[1.; 4], &[0.4, 0.6, 1., 2.], 1,
+                PpmlBiasRequest {
+                    method: PpmlBiasMethod::Randomized,
+                    probes: 8,
+                    seed: 17,
+                    stream: 1,
+                    save_effects: false,
+                },
+                &[1., 2., 3., 4.],
+                &[1.; 4],
+                &[0.4, 0.6, 1., 2.],
+                1,
                 |_, prediction, coefficients| {
                     calls += 1;
                     if calls == stop {
                         return Err(error(ErrorCode::NonConvergence, "recovery diagnostic"));
                     }
                     prediction.fill(0.);
-                    if let Some(c) = coefficients { c.fill(0.); }
+                    if let Some(c) = coefficients {
+                        c.fill(0.);
+                    }
                     Ok(())
                 },
-            ).unwrap_err();
+            )
+            .unwrap_err();
             assert_eq!(failure.code, ErrorCode::NonConvergence);
-            assert!(failure.message.contains(&format!("bias_channel={channel}")), "{failure}");
+            assert!(
+                failure.message.contains(&format!("bias_channel={channel}")),
+                "{failure}"
+            );
             assert!(failure.message.contains("bias_block=0"), "{failure}");
         }
     }

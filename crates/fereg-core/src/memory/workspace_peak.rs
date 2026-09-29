@@ -13,14 +13,23 @@ pub struct SolverWorkspacePeak {
 }
 
 impl SolverWorkspacePeak {
-    pub(crate) const ZERO: Self = Self { admitted: 0, expected_heap: 0 };
-    pub(crate) const UNMODELED: Self = Self { admitted: u64::MAX, expected_heap: u64::MAX };
+    pub(crate) const ZERO: Self = Self {
+        admitted: 0,
+        expected_heap: 0,
+    };
+    pub(crate) const UNMODELED: Self = Self {
+        admitted: u64::MAX,
+        expected_heap: u64::MAX,
+    };
 
     pub(crate) fn from_bytes(bytes: u128) -> Result<Self> {
         u64::try_from(bytes)
             .ok()
             .filter(|bytes| *bytes != u64::MAX)
-            .map(|bytes| Self { admitted: bytes, expected_heap: bytes })
+            .map(|bytes| Self {
+                admitted: bytes,
+                expected_heap: bytes,
+            })
             .ok_or_else(|| {
                 FeregError::new(
                     ErrorCode::Allocation,
@@ -41,7 +50,11 @@ impl SolverWorkspacePeak {
 
     /// Engineering forecast, separate from admission and opaque runtime headroom.
     pub const fn expected_heap_bytes(self) -> Option<u64> {
-        if self.expected_heap == u64::MAX { None } else { Some(self.expected_heap) }
+        if self.expected_heap == u64::MAX {
+            None
+        } else {
+            Some(self.expected_heap)
+        }
     }
 
     pub(crate) fn with_expected_heap(mut self, bytes: Option<u128>) -> Result<Self> {
@@ -71,7 +84,9 @@ impl SolverWorkspacePeak {
     /// admission bytes (which may include stacks and worst-case reservations).
     pub(crate) fn with_retained_peak(self, parent: Self) -> Result<Self> {
         let add = |a: u64, b: u64| -> Result<u64> {
-            if a == u64::MAX || b == u64::MAX { return Ok(u64::MAX); }
+            if a == u64::MAX || b == u64::MAX {
+                return Ok(u64::MAX);
+            }
             Ok(Self::from_bytes(a as u128 + b as u128)?.admitted)
         };
         Ok(Self {
@@ -143,17 +158,24 @@ mod tests {
 
     #[test]
     fn forecasts_preserve_discarded_attempts_and_independent_parent_peaks() {
-        let attempt = SolverWorkspacePeak::from_bytes(1000).unwrap()
-            .with_expected_heap(Some(30)).unwrap();
+        let attempt = SolverWorkspacePeak::from_bytes(1000)
+            .unwrap()
+            .with_expected_heap(Some(30))
+            .unwrap();
         let fallback = SolverWorkspacePeak::from_bytes(100).unwrap();
-        let parent = SolverWorkspacePeak::from_bytes(500).unwrap()
-            .with_expected_heap(Some(20)).unwrap();
+        let parent = SolverWorkspacePeak::from_bytes(500)
+            .unwrap()
+            .with_expected_heap(Some(20))
+            .unwrap();
         let peak = attempt.max(fallback).with_retained_peak(parent).unwrap();
         assert_eq!(peak.bytes(), Some(1500));
         assert_eq!(peak.expected_heap_bytes(), Some(120));
         let unknown = attempt.with_expected_heap(None).unwrap().max(fallback);
         assert_eq!(unknown.bytes(), Some(1000));
         assert_eq!(unknown.expected_heap_bytes(), None);
-        assert_eq!(unknown.with_retained(2).unwrap().expected_heap_bytes(), None);
+        assert_eq!(
+            unknown.with_retained(2).unwrap().expected_heap_bytes(),
+            None
+        );
     }
 }

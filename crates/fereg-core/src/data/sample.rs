@@ -200,7 +200,9 @@ impl PreparedNumericSample {
             }
             + match &self.adjustment {
                 PreparedAdjustment::None => 0,
-                PreparedAdjustment::Offset(values) | PreparedAdjustment::Exposure(values) => bytes(values),
+                PreparedAdjustment::Offset(values) | PreparedAdjustment::Exposure(values) => {
+                    bytes(values)
+                }
             }
             + bytes(&self.drop_reasons)
     }

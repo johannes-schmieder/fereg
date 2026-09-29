@@ -612,6 +612,8 @@ mod tests {
                             assert_eq!(fit.report().used_solver, FeSolverKind::Map);
                             assert_eq!(fit.report().checkpoint_retries, 0);
                             assert!(fit.report().certified());
+                            // Keep the legacy matrix indices and numerical traversal order explicit.
+                            #[allow(clippy::needless_range_loop)]
                             for r in 0..n {
                                 for k in 0..5 {
                                     let oracle = if k == 4 {
