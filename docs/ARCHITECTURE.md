@@ -1,0 +1,286 @@
+# Clean-core architecture
+
+This is the target structure in [PLAN](cleanup/PLAN.md), governed by
+[SPEC](SPEC.md). It is not an implementation or qualification claim.
+[MILESTONES](../MILESTONES.md) records the active engine and completed gates.
+The [preserved legacy architecture](cleanup/legacy-architecture.md) remains
+a migration source until M7; the relocation avoids case-only path collisions.
+
+## Boundary and data flow
+
+```text
+Stata syntax, if/in, factor/TS metadata, held estimates and private outputs
+  -> one guarded estimate-ols / estimate-ppml plugin call
+  -> plugin: validate request; resolve resources; load via main-thread SPI
+  -> engine::spec::ModelSpec + engine::data::Loaded
+  -> data::prepare: row ledger, missing/domain rules, weights
+  -> topology::build: codes, interactions, singleton fixed point, components
+  -> ols::fit / ppml::fit
+       shared fe::Engine -> wls -> vce -> outputs -> certified result
+  -> plugin: validate all result values/bindings; store private shadows
+  -> COMPLETE last; ado validates, posts e(), commits requested names
+```
+
+Stata owns syntax and the public transaction. Rust owns observation-scale
+preparation and computation. C is an ABI adapter. Bounded metadata/result
+validation in Mata is permitted; dummy expansion, FE coding, dense designs
+and estimation loops in ado/Mata are not. SPI is called only on Stata's thread.
+Workers receive Rust-owned buffers. Safe crates use `#![forbid(unsafe_code)]`;
+project-owned unsafe operations live only in the plugin FFI boundary.
+
+## Crates and budgets
+
+Production Rust must stay at most 35,000 lines; engine at most 25,000 and plugin
+at most 8,000. These are ceilings, not targets to fill. Files are at most 1,500
+lines, functions at most 150. New engine/oracle limits apply immediately;
+all crates are covered after M7. Split by cohesive responsibility, not suffixes
+for another memory mode, VCE pipeline or special model envelope.
+
+| Engine module | Responsibility | Production-line budget |
+|---|---|---:|
+| error | Typed failures and Stata return mapping | 150 |
+| threads | Call-owned team, fixed partitions and reductions | 450 |
+| spec | Model/request types and closed wire parser | 2,000 |
+| data | Loaded sources, sample ledger, weights, prepared rows | 1,700 |
+| factor | Canonical numeric/string/tuple coding | 600 |
+| topology | Membership, singleton fixed point, components, slope channels | 1,800 |
+| dof | Structural rank, redundancy and nesting policy | 1,000 |
+| fe | Shared design/plan, four backends, certification | 7,000 |
+| wls | Moments, rank-aware Cholesky/QR and information solves | 2,000 |
+| vce | IID, HC1, cluster subsets, PSD and tests of coefficients | 1,800 |
+| ols | One estimator orchestration | 600 |
+| ppml | Family, IRLS, separation coordinator/detectors, bias | 4,000 |
+| outputs | Reconstruction, normalization and requested row products | 800 |
+| result | Certified estimator results and diagnostics | 600 |
+| Total | Leaves 500 lines of engine headroom | 24,500 |
+
+The plugin's 8,000-line ceiling covers FFI/panic containment, safe input loading,
+wire/result validation, engine adapters, publication and installed diagnostics.
+It contains no second numerical implementation. `fereg-oracle` is dev-only:
+independent dense OLS/Poisson, seeded designs, comparison helpers and differential
+tests. It does not contribute to native artifacts. Its production-like helpers
+also obey safe-code, file and function limits.
+
+Harvest code by copying the named source in PLAN §8 with a provenance line.
+Keep numerical and behavioral tests; remove legacy instrumentation/routing only
+when the target invariant is covered. The new engine never depends on legacy.
+Only the temporary plugin dependency and oracle's dev-only differential
+dependency are allowed. No new production dependency on testkit or oracle.
+
+## Data ownership
+
+`ModelSpec` contains syntax-derived source roles, canonical coefficient slots,
+factor/TS recipes, absorbed terms, clusters, options and requested outputs.
+It contains no SPI pointer and no generated N×K matrix. Parsing rejects unknown
+keys, malformed length framing and incompatible wire identities before input.
+
+`Loaded` owns each numeric/string source once, explicit missingness where needed,
+the candidate marker, raw weight/adjustment sources and original-row identity.
+Unweighted is a variant, not an allocated vector. Sources with multiple roles
+share identity. Stata materializes only the allowed TS operators before binding;
+the Rust side does not change host lag/lead semantics.
+
+`Prepared` is the sole final-sample representation: stable row map/drop ledger,
+borrowed or owned compact sources, generated-column recipes, normalized weight
+view, and one `FeTopology`. Different solver, VCE and output requests borrow
+this same representation. Ownership transfer may reuse an allocation without
+creating an alternative "fast" representation or retaining two equivalent banks.
+
+`FeTopology` owns compact codes and CSR membership per distinct partition,
+declared effect/channel order, references to aligned slope sources, components
+and original-row links. Codes and CSR must agree independently. Interactions
+use exact tuples; hashes never define equality. Singleton pruning reaches a
+fixed point using the correct multiplicity before topology is finalized.
+DoF and cluster nesting consume this topology without recoding observations.
+
+PPML's ledger has a monotonically changing sample generation. A certified
+separation union/cascade commits one generation and compacts all row-scoped
+state together. Numerical sessions cannot survive that generation change.
+Public masks and outputs are always scattered through the ledger, never through
+a detector's private row order.
+
+## Common fixed-effect interface
+
+`fe::Design` borrows topology and current positive weights and exposes D,
+D'W, per-level weighted blocks and coefficient layout. `fe::Plan` records
+the public request, mathematical eligibility, selected backend, total budget
+and allowed fallback. It cannot inspect N, finite width, workers, weight kind
+or memory to choose a route. Structural dimensions can determine mathematical
+support and allocation sizes; they cannot implement performance fences.
+
+`fe::Engine` applies the plan to a batch of RHSs and optional coefficient warm
+starts. All backends return coefficients in canonical channel/level order,
+explicitly reconstructed residuals, and the same diagnostics/certificate type.
+No solver returns a privileged "already certified" estimator state. Private
+`PlanOverride` is an explicit test input, not a cfg(test) branch in production
+control flow or a replacement public solver option.
+
+For a RHS v solve
+
+```text
+min_alpha sum_i w_i (v_i - sum_q x_qi' alpha[q,g_q(i)])^2.
+```
+
+An effect has one intercept and/or several slope channels per level. Local
+rank-deficient blocks use the shared rank-aware span policy. Backend success
+must preserve this span even where coordinates are nonunique.
+
+### Direct projection
+
+No FE is no-work; one FE solves each small per-level weighted block and
+subtracts its contribution. Multiple RHSs share membership/weight passes and
+local factors. Singular channels use their identified local subspace rather
+than arbitrary diagonal regularization. Return coefficients and run the same
+reconstruction and orthogonality checks as iterative backends.
+
+### Schur-PCG
+
+Eliminate the effect with the most parameters, using canonical effect order
+to break ties. Partition the coefficient normal system as
+
+```text
+[ A  B ] [a] = [g]
+[ B' C ] [b]   [h]
+S b = h - B' A^+ g,       S = C - B' A^+ B
+a = A^+ (g - B b).
+```
+
+A consists of independent per-level blocks; A^+ denotes the rank-aware
+identified solve, not a dense generic inverse. Apply S through observation
+passes over all active RHSs. Do not form the global dense FE matrix or Schur
+matrix. Block-Jacobi uses per-level blocks with the same rank policy.
+Operate on the compatible identified subspace and preserve component/nullspace
+constraints. Breakdowns do not justify adding a ridge or changing model rank.
+
+Each RHS has its own recurrence and convergence evidence; shared passes must
+not make one RHS's stop decide another's. Warm starts are coefficients in the
+same declared layout and generation. A monitor uses observed progress and the
+remaining SPEC budget. Stagnating columns can transfer once to the same LSMR
+adapter used for explicit requests; transfer cannot reset iteration accounting.
+
+### Retained LSMR and CMG
+
+The LSMR adapter uses pinned `within::Effect`/`Solver` batch interfaces and
+maps its coefficient layout back to `FeTopology`. The pinned API exposes
+coefficient vectors as well as demeaned vectors: retain the coefficients and
+reconstruct residuals independently instead of accepting its demeaned output
+as a span witness. Use Schwarz preconditioning where supported and stable
+reduction choices; no second implementation for automatic fallback.
+
+CMG maps the supported two-intercept core to a weighted bipartite Laplacian,
+anchors components, and eliminates supported nuisance intercept columns using
+the documented small Schur block. Recover potentials into declared FE order,
+then use common residual reconstruction and normalization. No slopes or
+unsupported multiway graph can be smuggled through a graph adapter. Preserve
+SPEC's OLS/PPML support distinction, including nuisance limits and trivial
+OLS direct cases. Changing PPML weights invalidates numerical Laplacian,
+hierarchy/preconditioner, nuisance factor and certificate state; immutable
+membership can be retained. Any permitted reuse must bind exact current weights.
+
+Explicit requests start with that backend. SPEC bounds one numerical transfer
+to LSMR and makes topology/input/allocation/Break/internal errors fatal.
+Diagnostics identify every attempt and the backend that actually produced each
+accepted frame. CMG automatic selection needs separate comparative admission.
+Both dependencies must pass cross-worker determinism and independent weak-graph
+tests; their own convergence flags and existing reproducibility claims do not
+establish the new contract.
+
+### Shared certification
+
+Compute r=v−Dalpha afresh. Independently check row reconstruction and weighted
+local-span orthogonality at SPEC scales, including slope rank and input norms.
+Normalize only by transformations that preserve the fitted FE sum. Store
+scientific diagnostics separately from timings. Certificates are necessary
+runtime checks; dense/100-digit oracle tests establish independent accuracy
+on ill-conditioned graphs. The legacy CMG raw-residual failure stays a direct
+explicit-CMG regression, not merely a test of a replacement auto route.
+
+## Finite WLS, inference and outputs
+
+`wls` forms deterministic moments, tries guarded pivoted Cholesky and falls
+back to scaled pivoted Householder QR. QR controls canonical rank/status.
+One result type carries identified coefficients, bread and slot mapping.
+Reuse its information-operator solves for PPML bias; do not build another
+estimator or substitute ordinary e(V) for full-system information.
+
+`vce` uses the same fitted view for IID/HC1/cluster scores, deterministic subset
+aggregation and PSD policy. OLS and PPML supply their distinct weight, DoF
+and finite-sample policies from SPEC; shared mechanics do not erase those
+differences. Independent validation uses fresh quantities, not copies of the
+producer's success flag. Fit statistics come from original/accepted inputs.
+
+`outputs` constructs only requested residual/xb/d/eta/mu/saved-channel banks,
+normalizes within components, checks row reconstruction and scatters once.
+Bias contributions have their distinct fixed anchor. Certification uses the
+requested tolerance without legacy automatic 1e-14 output re-solves; PPML's
+strict accepted-Hessian requirements remain separately mandatory.
+
+## PPML orchestration
+
+The separation coordinator owns immutable detector proposals, certificate
+acceptance, singleton cascades and generation rebasing. Detectors do not mutate
+the sample. FE/simplex/IR/Mu and capacity/error behavior follow SPEC exactly.
+Initial rank selection happens on the final separation sample.
+
+IRLS evaluates the Poisson family, refreshes h=qmu, solves shared weighted
+linear frames, and step-halves the joint predictor/coefficient proposal.
+Use global plus analytic one-FE group starts only. Two accepted convergence
+passes, strict WLS, frozen-basis revalidation and independent final-Hessian,
+score/objective/model-space checks are mandatory. A weight generation can
+reuse structural topology; it cannot reuse a stale numerical certificate.
+
+Optional bias correction uses the full identified FE-plus-control information
+operator at the accepted state. Stream exact unit contractions or fixed
+Philox probes through shared linear algebra. Carry both derivative and
+curvature terms, support/refusal rules, group numerical uncertainty and fixed
+anchors. Ordinary results stay unchanged and correction participates in the
+same transaction. Option-off creates no correction work or state.
+
+## Memory, threads and errors
+
+One call-level memory plan covers input, topology, numerical work and output
+lifetimes. Use request dimensions and conservative source bounds before loading;
+the plan owns accounting through the complete call. There is no independent
+per-backend admission controller and no alternate low-memory estimator.
+Clearly insufficient capacity and checked-size overflow fail early; otherwise
+allocations remain fallible. Allocating a buffer is never proof of scientific
+eligibility. SPEC's visible simplex-cap rule remains a detector contract.
+
+Use one call-owned Rayon team. Fixed logical partitions and deterministic
+merge order do not depend on worker count; size constants can tile a kernel
+but cannot choose a numerical route. Dependency adapters must bind the same
+arithmetic ordering. Nested pools and Stata SPI on workers are prohibited.
+All foreign work must be joined before borrowed/native owners are released.
+
+`error` retains semantic classes and Stata mappings from SPEC. Carry contextual
+solver/frame/certificate information without exposing partially valid results.
+Panic is caught once at FFI. Resource guards release Rust/foreign workers and
+state on errors; the ado guard restores public state and any temporary Stata
+processor setting on every exit. COMPLETE remains the final native operation.
+
+## Migration seam and validation
+
+Before M2, core/testkit stay in their original paths; M2 moves them under
+`legacy/`. The plugin dispatches its existing legacy dependency or the new
+engine through one hidden selector. Explicit engine() overrides the developer
+global, then the current default. `engine_next.rs` converts certified results
+to existing shadows; extend old validators minimally for new solver identities.
+No alternate publication or sample path is introduced by that conversion.
+
+OLS switches only after G-OLS; PPML only after G-PPML including mean correction.
+Keep mapped source docs, scientific tests and independent oracles until their
+replacement checks pass. At M7 remove legacy and both temporary dependencies,
+the selector, tracking allocator and obsolete result rows. Result wire v2 and
+matching ado validation become one path. Regenerate/remove compiled Mata
+helpers together with their source/object checks. Retain dependency notices;
+native distribution separately requires G-LICENSE.
+
+CI runs the lean harness on every push. Independent oracle tests force every
+supported backend and errors, include at least 2,000 seeded designs and sealed
+weak graphs, and compare samples/status/DoF exactly against legacy during
+migration. Stata fixtures verify the public transaction and installed outputs.
+Mac/SCC benchmark tiers measure default policy and explicit solvers separately.
+M8 can compress FE edges, batch RHS kernels and improve SPI transport while
+keeping this math/interface; changed data layout or parallelism requires both
+scientific checks and measured suite evidence. No performance cliff earns a
+new model-size route. Gates and any failed evidence remain in MILESTONES.

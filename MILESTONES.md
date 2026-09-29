@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M1.2; expand the new engine architecture.
+Current task: M1.3; independent dense oracles and design generators.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -16,7 +16,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [~] M0.7 Local suite passes; hosted CI confirmation awaits GitHub billing
 - [x] M0.8 Minimal legacy safety fixes
 - [x] M1.1 `docs/SPEC.md`; source reconciliation and provenance consolidated
-- [ ] M1.2 `docs/ARCHITECTURE.md`
+- [x] M1.2 `docs/ARCHITECTURE.md`; legacy source and readers preserved
 - [ ] M1.3 `crates/fereg-oracle`
 - [ ] M1.4 `bench/` suite
 - [ ] M1.5 SCC tooling
@@ -81,7 +81,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M1.1 (this task commit) — twenty SPEC sections with executable-test mappings; all named source contracts/ADRs reconciled; LSMR/CMG and both PPML bias increments retained; notices folded; link/option/section audit and local lean checks pass.
+- 2026-09-29 M1.2 (this task commit) — 286-line architecture, 24,500-line engine budgets, shared FE/seam/ownership rules; case-colliding legacy doc preserved with readers/links updated; four source-contract checks and local lean harness pass.
+- 2026-09-29 M1.1 d176dcd9 — twenty SPEC sections with executable-test mappings; all named source contracts/ADRs reconciled; LSMR/CMG and both PPML bias increments retained; notices folded; link/option/section audit and local lean checks pass.
 - 2026-09-29 M0.8 b5a95266 — b41f18e/tag core identical; Low raw residual used CG polish (max error 7.733e-4); full CMG projection passes Auto/CMG/LSMR dense oracles; public CG rejection and rollback pass; committed b5a95266 passes ./ci/run_stata_ci.sh quick: 32/32, rc=0, sentinels.
 - 2026-09-29 M0.7 30725d78 — 1429 workspace tests, 164 serial FFI tests and nine isolated audits pass; three existing core tests remain ignored; native CMG adapter repair required for green baseline included; byte growth traced to d6c18ccb/d9e9d2f7.
 - 2026-09-29 M0.6 516d0b39 — local lean checks pass; hosted run 36546517277 blocked before any step by GitHub billing; workflow/profile/guide pushed; remote Linux confirmation pending.

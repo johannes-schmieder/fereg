@@ -11,7 +11,7 @@ SEPARATION = ROOT / "crates/fereg-core/src/ppml/prepared_separation.rs"
 SEPARATION_MOD = ROOT / "crates/fereg-core/src/ppml_separation/mod.rs"
 SIMPLEX = ROOT / "crates/fereg-core/src/ppml_separation/simplex/mod.rs"
 ADR = ROOT / "docs/adr/0017-certified-ppml-separation-ledger.md"
-ARCHITECTURE = ROOT / "docs/architecture.md"
+ARCHITECTURE = ROOT / "docs/cleanup/legacy-architecture.md"
 PERFORMANCE = ROOT / "docs/performance_contract.md"
 HELP = ROOT / "stata/feppml.sthlp"
 

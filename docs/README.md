@@ -10,7 +10,7 @@
 - [`../stata/fereg_postestimation.sthlp`](../stata/fereg_postestimation.sthlp)
   — prediction, `test`, and `estat summarize`.
 - [`../AGENTS.md`](../AGENTS.md) — concise operating rules for repository work.
-- [`../STATUS.md`](../STATUS.md) — sole mutable development status and resume
+- [`../MILESTONES.md`](../MILESTONES.md) — sole mutable development status and resume
   point.
 - [`development_workflow.md`](development_workflow.md) — local development,
   commit, testing, and exact-SHA acceptance procedure.
@@ -20,7 +20,9 @@
 
 ## Architecture and scientific contracts
 
-- [`architecture.md`](architecture.md)
+- [`SPEC.md`](SPEC.md) — consolidated rebuild behavior.
+- [`ARCHITECTURE.md`](ARCHITECTURE.md) — target engine design.
+- [`cleanup/legacy-architecture.md`](cleanup/legacy-architecture.md) — preserved migration source.
 - [`data_plane.md`](data_plane.md)
 - [`factor_protocol.md`](factor_protocol.md)
 - [`plugin_protocol.md`](plugin_protocol.md)
@@ -40,6 +42,6 @@
 - [`upstream_map.md`](upstream_map.md)
 - [`stata_parser_review.md`](stata_parser_review.md)
 
-`STATUS.md` records current progress. The user guide and Stata help describe the
+`MILESTONES.md` records current progress; `STATUS.md` is frozen history. The user guide and Stata help describe the
 public command. The remaining documents in this directory describe contracts
 and design; they should not contain competing live milestone or handover state.

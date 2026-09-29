@@ -211,7 +211,7 @@ for reference in (
     "STATUS.md",
     "docs/development_workflow.md",
     "docs/adr/",
-    "docs/architecture.md",
+    "docs/cleanup/legacy-architecture.md",
     "docs/scientific_contracts.md",
 ):
     require(reference in agents, f"AGENTS.md is missing current source pointer: {reference}")
