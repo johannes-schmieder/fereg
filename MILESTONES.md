@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.6 FE-only benchmark admission. Every supported backend is now forced through PlanOverride on 2,200 independent-oracle designs with exact 1/2/4/8-worker identity; bounded LSMR true-residual correction resolves the newly exposed weak-direction discrepancy. Full lean/long checks pass. M4.4 factor precedence follows built-in Stata; M6.1 accumulated IRLS work reporting and M6.2 detectors/terminal replay/orchestration remain open.
+Current task: M3.6 committed-source FE-only benchmark campaign. The release worker and runner preserve the legacy prepared estimator's actual auto route, cold setup and complete projection-stage costs; all 30 small-input arms pass accuracy/determinism checks and the full lean/harness suites pass. Million-row performance admission remains. M4.4 factor precedence follows built-in Stata; M6.1 accumulated IRLS work reporting and M6.2 detectors/terminal replay/orchestration remain open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -107,6 +107,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M3.6 FE-only harness (this commit) — dev-only release worker compares the unchanged legacy prepared IID coefficient entry point with the shared new engine; both include RHS construction, numeric setup, projection and certification, excluding preparation/loading/finite fitting. Legacy phase traces retain the real auto route. Inputs export the existing seeded DTA losslessly; source/input/binary identity, warm-up plus five fresh processes, reference coefficients/objectives, residual diagnostics, 1/8-worker output hashes, missing/failing arms, timing dispersion and separate explicit LSMR/CMG costs are retained. All 30 supported combinations pass a 2,000-row diagnostic; 18 Python harness tests and the full lean Rust/FFI/size/mock-SPI suite pass. The committed-source million-row campaign and G-M3 performance decision remain pending.
 
 - 2026-09-29 M3.6 forced-backend qualification (this commit) — 2,200 designs exercise every structurally supported PlanOverride backend against independent dense QR, including six graph families, all four weight kinds, slope-only/rank-deficient channels, duplicate effects and zero RHSs; no fallback masks a forced backend, and complete outputs/diagnostics match exactly at 1/2/4/8 workers. Seeds 59/274 localize first-stop LSMR errors of 2.128e-9/5.522e-9 despite passing local-span certificates (the new campaign's prediction bound is 2e-9; both initial examples still satisfy the broader SPEC envelope). Same-factor true-residual correction now requires fitted-update stability as well as the unchanged FE certificate, counts all work within the original budget and fails closed on stagnation/exhaustion. Both regression errors fall below 1e-9; the unchanged full lean and long oracle suites pass, including high-precision fixtures, WLS, PPML and forced transfer. FE-only timing harness/campaign and G-M3 performance admission remain open; no performance claim or public default change.
 

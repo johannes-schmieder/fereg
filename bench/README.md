@@ -70,3 +70,49 @@ Harness checks (no licensed command needed):
 ```sh
 python3 -m unittest discover -s bench/tests -v
 ```
+
+## FE-only admission (M3.6)
+
+```sh
+python3 bench/fe_projection.py --root /tmp/fereg-fe-admission
+```
+
+This builds and copies a release-mode `fereg-oracle` example into the new run
+root, records its hash and source identity, and runs the four M3.6 cells at
+N=1,000,000, K=10 and 1/8 native threads. Inputs are lossless binary exports of
+the same seeded DTA generator. A projection bank contains y, ten regressors
+and the constant, matching the legacy prepared estimator's twelve columns.
+Each supported arm has one warm-up and five fresh-process measurements;
+timeouts/failures stop its remaining repetitions without retrying. CMG is
+reported on its three supported categorical cells; slopes are excluded from
+that explicit arm only. Data preparation, loading, thread-team creation and
+finite-regressor fitting are outside the projection-stage timer.
+
+The legacy arm calls the frozen prepared IID estimator's coefficient entry
+point with its automatic policy and default controls. Its existing `fit` trace
+supplies `rhs + raw_moments + initial_absorb`: RHS construction, numerical
+solver setup, reference moments, projection and certification. The new arm
+times design validation, RHS construction, engine setup and its complete
+certified projection. Neither uses a warm numerical factor. This stage scope
+includes the work needed to begin finite fitting; it is not an end-to-end
+estimator or a lower-level legacy MAP-only comparison. Legacy is never edited
+to expose a different benchmark route.
+
+The default tolerance is 1e-8 for every arm. Separate legacy/new automatic
+fits at 1e-12 cross-check ordinary coefficients and the objective. Each warm-up
+and measurement must agree with the tight legacy reference under SPEC's
+coefficient envelope and a 1e-7 relative objective envelope. Residual distances
+are reported as diagnostics under SPEC §20. New-arm scientific output hashes
+must agree across repetitions and 1/8 workers. Independent dense/high-precision
+oracle tests remain necessary; these large references cannot replace them.
+
+`summary.csv` retains all 30 expected cell/thread/arm combinations, failures,
+missing work, source/input/binary hashes, medians, ranges, median absolute
+deviations, route/work diagnostics and ratios to legacy. Eight accurate
+`next-auto`/legacy pairs determine the per-cell 1.1× admission threshold;
+explicit LSMR/CMG costs remain separate. Commit only this compact summary to
+`history/`, keeping raw inputs/results/logs in the run root. `--rows`, `--cells`,
+`--threads` and `--repetitions` permit partial diagnostics; formal admission
+requires the full protocol and clean committed Mac source. The runner writes
+`complete.json` only after all planned arms terminate and source/binary
+identity is rechecked.
