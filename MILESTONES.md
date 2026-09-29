@@ -2,17 +2,17 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M0.2.
+Current task: M0.7–M0.8; baseline maintenance and CMG residual diagnosis.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Tasks
 - [x] M0.1 Tag, plan, milestones
-- [ ] M0.2 New `AGENTS.md`
-- [ ] M0.3 Stage rebuild ADRs
-- [ ] M0.4 Transfer the resume record
-- [ ] M0.5 Inventory and prepare the lean harness; preserve scientific coverage
-- [ ] M0.6 CI
+- [x] M0.2 New `AGENTS.md` (verbatim; local harness passes with pending M0.7–M0.8 repairs)
+- [~] M0.3 Stage rebuild ADRs (structural checks pass; baseline checks pending)
+- [~] M0.4 Transfer the resume record (links/frozen-source checks pass)
+- [~] M0.5 Inventory and prepare the lean harness; preserve scientific coverage
+- [~] M0.6 CI (configured; baseline checks pending before push)
 - [ ] M0.7 Make the legacy suite pass
 - [ ] M0.8 Minimal legacy safety fixes
 - [ ] M1.1 `docs/SPEC.md`
@@ -70,9 +70,19 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Blockers / questions for Johannes
 
-- None requiring input. Stata/SPI licensing disposition remains a planned
+- No user input required. The repaired working tree passes the lean Rust/FFI
+  harness and all 32 local Stata quick fixtures. M0.2–M0.8 commits and hosted
+  Linux CI are being completed. Local diagnostic logs: `target/rebuild-m0/`.
+- Stata/SPI licensing disposition remains a planned
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M0.1 (this task commit) — issue copy verified verbatim; all 52 tasks/five gates listed; annotated origin tag verified at e61cb9ee.
+- 2026-09-29 M0.8 (in progress) — b41f18e and legacy tag have identical core/testkit; Low raw-residual adapter called CG polish (error 7.733e-4 versus Fast 1.915e-13); full CMG projection repairs it; Auto/CMG/LSMR dense-oracle regression passes both modes.
+- 2026-09-29 M0.7 (in progress) — memory +320MB traced to d6c18ccb outcome terms and d9e9d2f7 Schur roots/scales (160MB each); no budget policy changed.
+- 2026-09-29 M0.6 (uncommitted) — optimized CI profile/workflow and concise licensed runner guide prepared; remote CI pending.
+- 2026-09-29 M0.5 (uncommitted) — 97 generator/reference inputs copied unchanged; example paths made portable; legacy harness preserved; mock SPI bridge passes.
+- 2026-09-29 M0.4 (uncommitted) — resume links moved; historical numerical findings mapped; STATUS retained unchanged.
+- 2026-09-29 M0.3 (uncommitted) — eight staged ADRs plus README/TEMPLATE; original ADRs unchanged; GPL linking disposition explicitly unresolved.
+- 2026-09-29 M0.2 (this task commit) — AGENTS matches plan §4.1 verbatim; lean checks pass in the working tree with pending M0.7–M0.8 repairs; legacy layout guards remain callable.
+- 2026-09-29 M0.1 afbcfd2d — issue copy verified verbatim; all 52 tasks/five gates listed; annotated origin tag verified at e61cb9ee; pushed.
