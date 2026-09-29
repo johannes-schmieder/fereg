@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.5 retained LSMR/CMG adapters and bounded convergence monitor; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
+Current task: M4.1 shared finite WLS; M3.5 dependency determinism decision pending; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -70,6 +70,19 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Blockers / questions for Johannes
 
+- M3.5: pinned `within` 1ac3522 violates SPEC §18 / architecture's same-arithmetic
+  thread contract: a 20,000-row weighted three-FE probe changes 407/419
+  Schwarz-LSMR coefficients at T8 versus T1 (max 9.16e-16), and
+  18,563/20,000 fitted sums (max 1.44e-15); diagonal
+  preconditioning changes 419/419 (max 7.27e-14). All solves report convergence.
+  Explicit ParallelReduction does not fix this; current upstream 0319e7a also
+  documents width-dependent reductions. Nested/single-thread secondary pools
+  and vendored patches conflict with accepted architecture/dependency rules.
+  Johannes is asked to authorize an upstream deterministic-reduction fix and
+  a new qualified pin, or explicitly amend the reproducibility contract.
+  Shared direct/Schur/certificate work is complete; M3.5 acceptance is paused
+  pending this decision, with independent milestones continuing.
+
 - SCC inspection on 2026-09-29 reports 6,963.31 GB used against the 6,950 GB
   `/projectnb/welfgr` quota; Johannes was asked about freeing space. The live
   filesystem reports 92,530,540,544 bytes available at the full-baseline
@@ -86,7 +99,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M3.4 (this commit) — shared fresh reconstruction/local-span certification and component-weighted intercept normalization; independent reorthogonalized span witness, raw/RMS diagnostics, stale-weight/tampering/weak-direction/unit-rotation tests; 90 engine tests, 4,400 direct/Schur oracle designs and full lean/long suites pass; normalization preserves fitted sums and slopes, deterministic at 1/2/4/8 workers; Mac launcher pause 13:06:17–13:09:56 UTC (219s), fit clocks unaffected; SCC 36/56 application markers, two comparator failures retained.
+- 2026-09-29 M3.5 qualification (this commit) — pinned within 1ac3522 cross-worker discrepancy reproduced under explicit Schwarz ParallelReduction and diagonal preconditioning; executable oracle diagnostic records coefficient and fitted-sum differences, no runtime tolerance weakened; upstream 0319e7a still documents the limitation; dependency-scope decision requested under AGENTS conflict rule; full lean/long suites and focused diagnostic/Clippy pass; Mac launcher pause 13:12:19–13:16:52 UTC (273s), no active fit during audit; independent M4.1 continues.
+
+- 2026-09-29 M3.4 2d4dcb11 — shared fresh reconstruction/local-span certification and component-weighted intercept normalization; independent reorthogonalized span witness, raw/RMS diagnostics, stale-weight/tampering/weak-direction/unit-rotation tests; 90 engine tests, 4,400 direct/Schur oracle designs and full lean/long suites pass; normalization preserves fitted sums and slopes, deterministic at 1/2/4/8 workers; Mac launcher pause 13:06:17–13:09:56 UTC (219s), fit clocks unaffected; SCC 36/56 application markers, two comparator failures retained.
 
 - 2026-09-29 M3.3 8767cc66 — matrix-free Schur-PCG eliminates the largest effect with shared rank-aware level QR, block-Jacobi solves, independent RHS budgets and immutable-frame warm starts; 84 engine tests, 2,200 dense-dummy graph/weight/slope comparisons (4,400 nonzero RHSs), bit identity at 1/2/4/8 workers, full lean and long oracle suites pass; recurrence candidates await M3.4 certification/M3.5 monitoring; Mac launcher pause 12:57:17–13:00:41 UTC (204s), fit clocks unaffected.
 
