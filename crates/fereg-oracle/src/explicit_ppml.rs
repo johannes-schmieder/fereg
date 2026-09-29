@@ -44,6 +44,8 @@ pub struct PpmlResult {
     pub coefficients: Vec<f64>,
     /// Full-column covariance before any multiway PSD repair, with omitted slots zero.
     pub covariance: Vec<Vec<f64>>,
+    /// Full-coordinate inverse accepted Hessian; omitted coordinates remain zero.
+    pub bread: Vec<Vec<f64>>,
     pub eta: Vec<f64>,
     pub mean: Vec<f64>,
     pub score: Vec<f64>,
@@ -90,14 +92,17 @@ pub fn fit_explicit_ppml_with_config(
             .map(|(q, mu)| q * mu)
             .collect::<Vec<_>>(),
     );
-    let covariance = inference::covariance(problem, &prepared, &state.mean, &invert(&hessian)?)?;
+    let bread = invert(&hessian)?;
+    let covariance = inference::covariance(problem, &prepared, &state.mean, &bread)?;
     let width = problem.design[0].len();
     let mut coefficients = vec![0.0; width];
     let mut full_covariance = vec![vec![0.0; width]; width];
+    let mut full_bread = vec![vec![0.0; width]; width];
     for (i, &column) in prepared.kept.iter().enumerate() {
         coefficients[column] = beta[i];
         for (j, &other) in prepared.kept.iter().enumerate() {
             full_covariance[column][other] = covariance[i][j];
+            full_bread[column][other] = bread[i][j];
         }
     }
     let deviance = poisson_deviance(&problem.outcome, &state.mean, &prepared.q);
@@ -107,6 +112,7 @@ pub fn fit_explicit_ppml_with_config(
     Ok(PpmlResult {
         coefficients,
         covariance: full_covariance,
+        bread: full_bread,
         eta: state.eta,
         mean: state.mean,
         score,

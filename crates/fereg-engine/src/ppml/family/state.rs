@@ -98,3 +98,43 @@ impl Family<'_> {
 fn relative(left: f64, right: f64) -> f64 {
     (left - right).abs() / left.abs().max(right.abs()).max(1.)
 }
+
+impl Family<'_> {
+    pub(crate) fn point_from_linear(
+        &self,
+        linear: &crate::wls::AbsorbedFit,
+        raw: &DenseMatrix,
+        fe: &Design<'_>,
+        team: &ThreadTeam,
+    ) -> Result<Point> {
+        use crate::error::reserved;
+        if raw.nrows() != self.outcome.len()
+            || raw.ncols() != linear.finite.coefficients.len()
+            || fe.nobs() != self.outcome.len()
+        {
+            return Err(invalid("PPML linear candidate dimensions differ"));
+        }
+        let mut finite = reserved(raw.ncols())?;
+        finite.extend_from_slice(&linear.finite.coefficients);
+        let mut coefficients = reserved(linear.absorbed_coefficients.as_slice().len())?;
+        coefficients.extend_from_slice(linear.absorbed_coefficients.as_slice());
+        let absorbed =
+            DenseMatrix::from_row_major(linear.absorbed_coefficients.nrows(), 1, coefficients)?;
+        let d = fe.multiply(&absorbed, team)?;
+        let mut eta = reserved(raw.nrows())?;
+        for row in 0..raw.nrows() {
+            eta.push(
+                self.offset.map_or(0., |values| values[row])
+                    + raw.row_combination(row, &finite, 0.)
+                    + d[(row, 0)],
+            );
+        }
+        let point = Point {
+            finite,
+            absorbed,
+            eta,
+        };
+        point.validate()?;
+        Ok(point)
+    }
+}

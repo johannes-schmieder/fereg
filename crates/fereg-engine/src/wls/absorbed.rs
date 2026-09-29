@@ -72,20 +72,7 @@ pub fn solve_absorbed_with_basis(
             within[(row, column)] = projection.residuals[(row, column + 1)];
         }
     }
-    let mut slots = reserved(k)?;
-    for (column, &role) in roles.iter().enumerate() {
-        let mut norm = 0_f64;
-        for row in 0..n {
-            norm = norm.hypot(design.weights().at(row).sqrt() * raw[(row, column)]);
-        }
-        if !norm.is_finite() {
-            return Err(numerical("absorbed WLS reference norm overflows"));
-        }
-        slots.push(Slot {
-            role,
-            reference_norm: norm,
-        });
-    }
+    let slots = reference_slots(raw, roles, design.weights())?;
     let finite = super::solve_with_basis(
         &Problem {
             design: &within,
@@ -225,4 +212,62 @@ fn invalid(message: &str) -> FeregError {
 }
 fn numerical(message: &str) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
+}
+
+fn reference_slots(
+    raw: &DenseMatrix,
+    roles: &[Role],
+    weights: crate::data::Weights<'_>,
+) -> Result<Vec<Slot>> {
+    let mut slots = reserved(raw.ncols())?;
+    for (column, &role) in roles.iter().enumerate() {
+        let mut norm = 0_f64;
+        for row in 0..raw.nrows() {
+            norm = norm.hypot(weights.at(row).sqrt() * raw[(row, column)]);
+        }
+        if !norm.is_finite() {
+            return Err(numerical("absorbed WLS reference norm overflows"));
+        }
+        slots.push(Slot {
+            role,
+            reference_norm: norm,
+        });
+    }
+    Ok(slots)
+}
+impl AbsorbedFit {
+    /// Independently recertify the authoritative basis on this freshly projected
+    /// design before comparing it with the canonical candidate's omission map.
+    pub fn revalidate_basis(
+        &self,
+        design: &crate::fe::Design<'_>,
+        raw: &DenseMatrix,
+        roles: &[Role],
+        basis: &FrozenBasis,
+        policy: Policy,
+        team: &ThreadTeam,
+    ) -> Result<Fit> {
+        if raw.nrows() != design.nobs()
+            || raw.ncols() != roles.len()
+            || self.within.nrows() != raw.nrows()
+            || self.within.ncols() != raw.ncols()
+        {
+            return Err(invalid(
+                "basis revalidation has mismatched design dimensions",
+            ));
+        }
+        let slots = reference_slots(raw, roles, design.weights())?;
+        super::solve_with_basis(
+            &Problem {
+                design: &self.within,
+                outcome: &self.within_outcome,
+                weights: design.weights(),
+                slots: &slots,
+                has_absorbed_intercept: design.topology().effects().iter().any(|e| e.intercept),
+            },
+            policy,
+            Some(basis),
+            team,
+        )
+    }
 }

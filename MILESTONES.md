@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.1 strict acceptance and IRLS controller integration; frozen WLS bases and accepted-state Hessian frames verified; M4.4/M3.5 qualification decisions pending; M1.6 Mac and SCC baselines captured, with comparator failures preserved.
+Current task: M6.1 IRLS controller integration; frozen WLS bases, strict Fisher checks and accepted-state final-Hessian checkpoints verified; M4.4/M3.5 qualification decisions pending; M1.6 Mac and SCC baselines captured, with comparator failures preserved.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -107,6 +107,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M6.1 strict checkpoints (this commit) — fresh strict Fisher/final-Hessian solves use shared FE/WLS, recertify the frozen basis on the refreshed projection and compare full canonical omissions. Harvested near-zero coefficient/predictor/objective envelopes, fresh identified-column/FE scores and model/objective replay leave accepted inputs immutable; unrepresentable Poisson trials resume, final-Hessian basis changes fail. Eight integration regressions and exact 1/2/4/8-worker identity pass; 2,200 independent Newton states across zero to three FEs, slopes, disconnected graphs, offsets and prior weights pass both stages (4,400 checkpoints), including finite bread comparisons. All 178 engine tests and full lean/long suites pass; the independent oracle now exposes its already-computed accepted inverse. Bounded IRLS resumption and final publication orchestration remain open.
 
 - 2026-09-29 M6.1 frozen/Hessian frames (this commit) — one shared WLS path retains canonical slot identities under changing weights and fails on numerical rank loss; fresh canonical comparisons detect same-rank pivot/status changes. Final-Hessian frames reconstruct exact qmu and eta-minus-offset without a Fisher update, retaining stale-mean rejection. Six new regressions and exact 1/2/4/8-worker identity pass; 4,400 dense WLS comparisons include 2,200 frozen changed-weight frames with fresh basis revalidation, and 2,200 independent PPML states match final Hessian/bread. All 170 engine tests, full lean and long oracle suites pass; strict publication decisions and the IRLS controller remain open.
 

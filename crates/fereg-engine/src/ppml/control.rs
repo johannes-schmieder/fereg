@@ -22,6 +22,14 @@ impl Controls {
         })
     }
     #[must_use]
+    pub fn tolerance(self) -> f64 {
+        self.tolerance
+    }
+    #[must_use]
+    pub fn publication_tolerance(self) -> f64 {
+        self.tolerance.min(1e-8)
+    }
+    #[must_use]
     pub fn strict_tolerance(self) -> f64 {
         (0.1 * self.tolerance).min(1e-12)
     }
