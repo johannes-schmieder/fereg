@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.5 within determinism repair pushed as upstream draft PR #441; port to current upstream and weighted-build/performance qualification remain. M4.4 factor precedence resolved and pushed. M6.2 detectors/terminal replay/orchestration remain open; exact-FE ledger and cone/span certificates verified. M6.1 IRLS direct/Schur verified; retained backends await M3.5.
+Current task: M3.5 upstream within determinism repair is ported, tested and pushed; weighted Gram build failure is repaired at unchanged limits. Qualify the dependency pin, retained adapters and convergence monitor next. M4.4 factor precedence is resolved. M6.2 detectors/terminal replay/orchestration remain open; M6.1 IRLS direct/Schur is verified, retained backends await M3.5.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -71,25 +71,24 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 ## Blockers / questions for Johannes
 
 - M3.5: pinned `within` 1ac3522 violates SPEC §18 / architecture's same-arithmetic
-  thread contract: a 20,000-row weighted three-FE probe changes 407/419
-  Schwarz-LSMR coefficients at T8 versus T1 (max 9.16e-16), and
-  18,563/20,000 fitted sums (max 1.44e-15); diagonal
+  thread contract: a weighted 20,000-row three-FE probe changes 407/419
+  Schwarz-LSMR coefficients at T8 versus T1 (max 9.16e-16), and diagonal
   preconditioning changes 419/419 (max 7.27e-14). All solves report convergence.
-  Explicit ParallelReduction does not fix this; current upstream 0319e7a also
-  documents width-dependent reductions. Nested/single-thread secondary pools
-  and vendored patches conflict with accepted architecture/dependency rules.
-  Johannes authorized fixing within upstream on 2026-09-29. The separate
-  upstream branch `codex/thread-determinism` starts at the fork's 0319e7a;
-  repair 12b6df0 and microbenchmark summary dcdc0b3 are pushed in
-  [upstream draft PR #441](https://github.com/py-econometrics/within/pull/441).
-  Off/diagonal/explicit ParallelReduction now pass worker-identity checks on
-  that lineage; AtomicScatter/Auto remain outside the guarantee. Current
-  parent main 1b5c85d has substantial newer design/LSMR API changes: porting
-  and downstream qualification are still required. A million-row weighted
-  low-cardinality intercept design fails the preconditioner build on both
-  baseline and candidate; its unchanged Laplacian validation guard and
-  accumulation error need localization. Small-case timing overhead also
-  remains to assess. No new pin or relaxed reproducibility contract is accepted.
+  Johannes authorized the upstream fix on 2026-09-29. [Draft PR #441](https://github.com/py-econometrics/within/pull/441)
+  now includes port 072516e onto parent main 1b5c85d and weighted-accumulation
+  repair 35fdce9. Off/diagonal/explicit ParallelReduction pass exact worker
+  identity checks; Auto/AtomicScatter and adaptive raw coefficients remain
+  outside the guarantee. Current parent reproduces the thread failure at T2.
+  The million-row weighted build failure is independently reproduced and
+  repaired: mismatch 5.42e-7 becomes 4.13e-10 against the unchanged 4.60e-7
+  limit, with executable balance, signed-cell and independent sum regressions.
+  Full upstream Rust/Clippy/fmt and Python checks pass. All eight candidate
+  [microbenchmark cells](https://github.com/johannes-schmieder/within/blob/7e46f75/bench/history/2026-09-29-current-upstream-thread-determinism.csv)
+  converge; the baseline retains two build failures, and small-case overhead
+  remains (+13.4% T1, +8.2% T8). This is not the fereg performance gate.
+  Dependency/API migration, retained-backend accuracy and performance
+  qualification remain; pinned 1ac3522 and public defaults are unchanged.
+  No relaxed reproducibility contract or nested single-thread pool is accepted.
 
 - SCC inspection on 2026-09-29 reports 6,963.31 GB used against the 6,950 GB
   `/projectnb/welfgr` quota; Johannes was asked about freeing space. The live
@@ -106,6 +105,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M3.5 current-upstream repair (this commit) — draft PR #441 is mergeable after port 072516e to parent 1b5c85d; numerical repair 35fdce9 and summary 7e46f75 are pushed. Current parent fails the exact batch check at T2; candidate passes fixed-config 1/2/4/8-worker checks and all upstream Rust/Clippy/fmt tests, including range-safe LSMR. Weighted build failure is localized to long Gram sums and repaired by shared compensation at unchanged limits; independent expansion/integer-count oracles, signed-cell reset and million-row balance regressions pass. Rebuilt Python: 120 passed/2 skipped; fereg full lean passes. [Current-base timings](https://github.com/johannes-schmieder/within/blob/7e46f75/bench/history/2026-09-29-current-upstream-thread-determinism.csv): 8/8 candidate cells converge versus 6/8 baseline; common-cell median GM 1.027, small-case overhead retained, no performance gate claimed. Pin/API migration and downstream qualification remain; no default or dependency pin changed.
 
 - 2026-09-29 M3.5 upstream repair (this commit) — [draft PR #441](https://github.com/py-econometrics/within/pull/441), fork source 12b6df0/summary dcdc0b3: fixed LSMR arithmetic trees, shared stable level membership, and compact Schwarz contributions summed in subdomain order. Baseline failures reproduced independently; exact 1/2/4/8-worker weighted four-way batches, large sloped adjoints, scalar chunk boundaries/odd worker counts and concurrent cloned preconditioners pass. Full upstream-lineage Rust tests, all-feature strict Clippy/fmt, Python 106 passed/2 skipped, and the fereg local lean suite pass. [Microbenchmark summary](https://github.com/johannes-schmieder/within/blob/dcdc0b3/bench/history/2026-09-29-thread-determinism.csv) preserves both failed weighted-build cells and small-case overhead, with no performance gate claimed. Parent main is now 1b5c85d, substantially ahead of the dependency-era fork: current-upstream port, weighted-build localization and fereg qualification remain; pinned 1ac3522 is unchanged.
 
