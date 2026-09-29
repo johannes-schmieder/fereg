@@ -1,4 +1,4 @@
-//! Continue the same LSMR factors when its preconditioned stop precedes the FE target.
+//! Reproject the true residual until both FE scores and fitted corrections settle.
 use super::{LsmrCandidate, LsmrSession, StopReason};
 use crate::{data::DenseMatrix, error::Result, threads::ThreadTeam};
 
@@ -20,6 +20,8 @@ impl LsmrSession<'_, '_> {
                 DenseMatrix::from_columns(&[candidate.coefficients.column(column)?])?;
             let progress = &mut candidate.progress[column];
             let mut previous = f64::INFINITY;
+            let mut update = f64::INFINITY;
+            let mut previous_update = f64::INFINITY;
             loop {
                 let residual = self.design.reconstruct(&original, &coefficients, team)?;
                 let evidence = self.design.measure_certificate(
@@ -30,35 +32,50 @@ impl LsmrSession<'_, '_> {
                     team,
                 )?;
                 let score = evidence.relative_score[0];
-                if score <= tolerance {
+                let reference = evidence.weighted_rhs_norm[0];
+                let residual_small = evidence.weighted_residual_norm[0] <= tolerance * reference;
+                if score <= tolerance && (update <= tolerance || residual_small) {
                     break;
                 }
-                if score >= previous {
+                if (score > tolerance && score >= previous)
+                    || (update > tolerance && update >= previous_update && update.is_finite())
+                {
                     progress.stop = StopReason::Stagnation;
                     break;
                 }
                 previous = score;
+                previous_update = update;
                 let remaining = budget - progress.iterations;
                 if remaining == 0 {
                     progress.stop = StopReason::BudgetExhausted;
                     break;
                 }
-                // within stops in a preconditioned normal-equation metric. A
-                // correction scales that recurrence to the actual remaining
-                // residual; acceptance still uses the original RHS and FE span.
+                // A small local FE score can hide a larger fitted error along
+                // a weak graph direction. Reprojecting the true residual tests
+                // that remaining fitted component in observation coordinates,
+                // without interpreting gauge-dependent coefficient distances.
                 let correction = self.solve(&residual, remaining, tolerance, team)?;
                 let work = &correction.progress[0];
                 progress.iterations += work.iterations;
                 progress.refinements += 1;
+                let fitted = self.design.multiply(&correction.coefficients, team)?;
+                update = (0..fitted.nrows()).fold(0_f64, |norm, row| {
+                    let value = self.design.weights().at(row).sqrt() * fitted[(row, 0)];
+                    norm.hypot(if reference == 0. {
+                        value
+                    } else {
+                        value / reference
+                    })
+                });
+                if !update.is_finite() {
+                    progress.stop = StopReason::NumericalBreakdown;
+                    break;
+                }
                 for row in 0..coefficients.nrows() {
                     coefficients[(row, 0)] += correction.coefficients[(row, 0)];
                 }
-                if work.stop != StopReason::Converged || work.iterations == 0 {
-                    progress.stop = if work.stop == StopReason::Converged {
-                        StopReason::NumericalBreakdown
-                    } else {
-                        work.stop
-                    };
+                if work.stop != StopReason::Converged {
+                    progress.stop = work.stop;
                     break;
                 }
             }
