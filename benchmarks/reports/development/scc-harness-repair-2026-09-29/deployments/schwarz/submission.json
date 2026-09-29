@@ -1,0 +1,14 @@
+{
+  "job_id": "7778964",
+  "submitted_utc": "2026-09-29T04:24:26.060837+00:00",
+  "command": [
+    "qsub",
+    "-terse",
+    "-v",
+    "RUN_ROOT=/projectnb/welfgr/fereg/dev/20260929-schwarz-imbalance-02",
+    "-o",
+    "/projectnb/welfgr/fereg/dev/20260929-schwarz-imbalance-02/logs",
+    "/projectnb/welfgr/fereg/dev/20260929-schwarz-imbalance-02/job.sh"
+  ],
+  "deployment_sha256": "07c74ec9414b6a4b8e41770feffe944b039741545282ece1f0c8524ffc672a5a"
+}

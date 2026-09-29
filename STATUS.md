@@ -1,6 +1,6 @@
 # fereg 0.5.0 beta status
 
-**Last updated:** 2026-09-28
+**Last updated:** 2026-09-29
 **Branch:** main
 **Mode:** prototype/development
 **Release state:** public OLS and PPML beta surfaces; no qualified release,
@@ -9,6 +9,52 @@ tag, or Windows scientific qualification.
 This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The broad scientific/performance follow-up and
 <=0.90-stock goal remain active.
+
+## Active SCC harness repair and pending-group continuation — 2026-09-29
+
+Johannes authorized repairing the failed validation harnesses and finishing only
+the 27 untouched benchmark groups. This supersedes the older pause instruction
+for this bounded follow-up. The [repair report](benchmarks/reports/development/scc-harness-repair-2026-09-29/README.md)
+preserves all five original diagnostic outcomes. Both core builds omitted an
+included CSV fixture; comparator validation read the wrong Stata log filename;
+public validation stopped on an unhandled accounting-query timeout. The memory
+probe completed: the identical input used LSMR and finished in 19.218 process
+seconds with a 448-GiB admission frame and 3.53 GiB sampled RSS, versus a
+180-second estimation timeout under a 192-GiB frame. This supports the admission
+diagnosis but does not establish a candidate speedup.
+
+The narrow successor harnesses preserve the frozen c09eeab3… package, original
+candidate patches, fixtures and tolerances. Six new boundary/continuation tests
+and the ten existing parser/public-gate tests pass. **7778963** reproduces
+14/72 baseline CG failures, passes all 72 candidate cases and ten controls on
+both arms. **7778964** passes 119/120 Schwarz tests; the canonical multiway-rank
+control fails its solver/fallback reporting assertion, so this candidate remains
+ineligible. **7778965** passes all 12 comparator applications, independent
+oracle completion and four exact gtools sample-publication checks; default-profile
+scientific discrepancies remain separate. Terminal accounting and result
+bindings for these three jobs are in the report. **7778967** completes public
+validation: the CG build/binary/ABI checks and eight existing licensed fixtures
+pass, but the new near-within oracle returns r(9), with its exact assertion still
+unlocalized. Baseline returns r(459), negative CG Hestenes improvement potential.
+Schwarz is refused by its core gate. The corrected accounting handling works;
+the job exits two because neither arm passes every public requirement. No failed
+numerical test was retried and neither candidate is adopted.
+
+The original **7766045** array has clean accounting, with **541/568** groups
+complete and 27 checkpointed. All 541 existing input receipts match the original
+campaign; the frozen audit reports zero integrity errors. **7778971** contains
+exactly those 27 pending PPML groups / 81 applications, preserving every original
+per-group setting and the frozen controller. Its one 28-core E5-2680v4 task has
+a three-hour cap and was held behind **7778963/7778964/7778965/7778967**; those
+jobs are now terminal and it is awaiting a node. Original
+forecast is 1.183 node-hours. Do not run builds, diagnostic fits or profiling
+alongside its headline clocks. Collect its accounting, unchanged old markers,
+all input identities and the complete audit before reporting final distributions.
+
+The newer local bias-support/recovery commits are separate from these frozen
+jobs. No candidate is adopted, and this follow-up does not resume or change
+the separate empirical campaigns. Finish existing jobs and collect first;
+do not automatically rerun the failed Schwarz numerical assertion.
 
 ## Completed focused repair: PPML anchored recovery — 2026-09-28
 

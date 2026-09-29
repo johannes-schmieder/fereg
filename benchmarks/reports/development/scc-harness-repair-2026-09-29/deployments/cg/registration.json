@@ -1,0 +1,58 @@
+{
+  "accepted_source": "/projectnb/welfgr/fereg/dev/20260928-private-low-02/source",
+  "base_commit": "f69f7c576083becd152e06f614be533555df5854",
+  "baseline_failure_expected": true,
+  "baseline_package": "c09eeab353a8445aae85f75891f112964246e876c4865ec9e2f757d83922e236",
+  "candidate_sha256": "1a4b56bde29892160868e5d474ab2b5324d5f3851cb54a787db0c3b28d454fa2",
+  "dependencies": [],
+  "iteration_and_certificate_tolerances": "unchanged production configuration; probe tolerance 1e-12 and oracle bound 1e-11",
+  "probe_cases_per_arm": 72,
+  "repair_scope": "One focused rerun after deployment/log-reader defect; scientific definitions and frozen estimator unchanged",
+  "retry_of": "/projectnb/welfgr/fereg/dev/20260928-nonretaining-cg-01",
+  "scope": "Untimed core red/green diagnosis; public validation and performance required before adoption",
+  "slots": 8,
+  "test_inputs": {
+    "tests/fixtures/ppml/reconstruction.csv": "3f3f4de4d63ff2a4b427ec53f2cbc2112e33b369cb58d6657e7b9d6aa08ff2c5"
+  },
+  "tests": [
+    {
+      "name": "fe::borrowed_map::tests::registered_nonretaining_cg_known_within_probe",
+      "probe": "direct"
+    },
+    {
+      "name": "fe::cmg::tests::registered_nonretaining_cmg_correction_probe",
+      "probe": "cmg"
+    },
+    {
+      "name": "fe::borrowed_map::tests::cg_workspace_report_counts_capacity_early_exit_and_retained_coefficients"
+    },
+    {
+      "name": "fe::borrowed_map::tests::ppml_cg_action_preserves_fe_space_under_cancellation"
+    },
+    {
+      "name": "fe::borrowed_map::tests::borrowed_cg_constant_energy_roundoff_preserves_weighted_projection"
+    },
+    {
+      "name": "fe::borrowed_map::tests::hestenes_energy_audit_recomputes_remaining_energy_and_rejects_invalid_steps"
+    },
+    {
+      "name": "fe::borrowed_map::tests::borrowed_cg_is_weighted_batched_certified_and_deterministic"
+    },
+    {
+      "name": "fe::borrowed_map::tests::borrowed_cg_breakdown_and_exhaustion_fail_closed"
+    },
+    {
+      "name": "fe::borrowed_map::tests::constrained_joint_memory_routes_lsmr_to_cg_and_fails_cleanly_when_neither_fits"
+    },
+    {
+      "name": "fe::borrowed_map::tests::reusable_categorical_map_matches_one_shot_across_weight_frames_and_rhs_widths"
+    },
+    {
+      "name": "fe::cmg::tests::automatic_two_fe_cmg_corrections_retain_requested_products_within_budget"
+    },
+    {
+      "name": "fe::cmg::tests::terminal_residual_correction_checks_its_cg_budget"
+    }
+  ],
+  "walltime_seconds": 3600
+}

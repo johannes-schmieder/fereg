@@ -1,0 +1,14 @@
+{
+  "job_id": "7778965",
+  "submitted_utc": "2026-09-29T04:24:26.236228+00:00",
+  "command": [
+    "qsub",
+    "-terse",
+    "-v",
+    "RUN_ROOT=/projectnb/welfgr/fereg/dev/20260929-comparator-state-02",
+    "-o",
+    "/projectnb/welfgr/fereg/dev/20260929-comparator-state-02/logs",
+    "/projectnb/welfgr/fereg/dev/20260929-comparator-state-02/job.sh"
+  ],
+  "deployment_sha256": "5f383edfb19e317d8e286d6c48d4bf5e7931e908312853ccf0f747b25e39d173"
+}

@@ -1,0 +1,24 @@
+{
+  "job_id": "7778971",
+  "command": [
+    "qsub",
+    "-terse",
+    "-N",
+    "fereg_pending",
+    "-l",
+    "mem_per_core=3G,h_rt=03:00:00",
+    "-hold_jid",
+    "7778963,7778964,7778965,7778967",
+    "-v",
+    "RUN_ROOT=/projectnb/welfgr/fereg/runs/20260928-current-sweep-161b9491,PLAN=/projectnb/welfgr/fereg/runs/20260928-current-sweep-161b9491/plans/production-continuation-20260929.json,FEREG_SCC_RUNS_ROOT=/projectnb/welfgr/fereg/runs",
+    "-o",
+    "/projectnb/welfgr/fereg/runs/20260928-current-sweep-161b9491/logs",
+    "/projectnb/welfgr/fereg/runs/20260928-current-sweep-161b9491/controller/job.sh"
+  ],
+  "submitted_utc": "2026-09-29T04:27:31.035881+00:00",
+  "plan_sha256": "bf9177e7267dcae1752cdbdb4c4478fb46136f3f889c576bf799fbbea9c6029e",
+  "groups": 27,
+  "applications": 81,
+  "slots": 28,
+  "wall_seconds": 10800
+}

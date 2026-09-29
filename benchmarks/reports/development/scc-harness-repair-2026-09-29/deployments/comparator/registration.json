@@ -1,0 +1,162 @@
+{
+  "cases": [
+    {
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "one_fe-original",
+      "original": "results/ppml-one_fe-n61440-k10-t4-main/warm-1",
+      "original_arms": [
+        "feppml",
+        "pyfixest",
+        "fixest",
+        "fixest_strict"
+      ],
+      "seed": 104729
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 10,
+        "model": "ppml",
+        "n": 61440,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "two_fe_dense-original",
+      "original": "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1",
+      "original_arms": [
+        "feppml",
+        "pyfixest",
+        "fixest",
+        "fixest_strict"
+      ],
+      "seed": 104729
+    },
+    {
+      "cell": {
+        "design": "one_fe",
+        "effects": [
+          "g1"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 15360,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "one_fe-fresh",
+      "seed": 2026092837
+    },
+    {
+      "cell": {
+        "design": "two_fe_dense",
+        "effects": [
+          "g1",
+          "g2"
+        ],
+        "k": 6,
+        "model": "ppml",
+        "n": 15360,
+        "section": "main",
+        "threads": 4
+      },
+      "id": "two_fe_dense-fresh",
+      "seed": 2026092837
+    }
+  ],
+  "gtools_fixture": {
+    "assertions": [
+      "exact e(sample) versus explicit eligibility",
+      "r(N)/e(N)/sample-count consistency",
+      "bitwise identical b/V before and after publication",
+      "Mata/e-class b/V consistency"
+    ],
+    "cases": [
+      "OLS one-FE IID",
+      "OLS two-FE with missingness and if/in",
+      "OLS two-FE with cluster missingness",
+      "positive PPML robust two-FE with missingness and if/in"
+    ],
+    "failure_boundary": "empty sample",
+    "table_profiles": [
+      0,
+      1
+    ]
+  },
+  "hold_after_job": null,
+  "original_fingerprint": "041bf47963205620c13f2137c17a25a47afd70d73c5d03c42a936bbb39ce29e6",
+  "original_receipts": {
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/feppml/coefficients.csv": "d22537553936e2b7d76c621f67fc5fbbab73e325a332415a91ba50fb902f6def",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/feppml/covariance.csv": "73fa2148f16e5858f53f731b8d113da033e234ccd35e8aa002c533487315f0f4",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/feppml/result.json": "72b6cfa895004519f06d72bb7f223bb3d2d640a6ffdb0f01f248c90a0becbfc4",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/fixest/coefficients.csv": "1baff8838cebfdf651bb2d045988148a52fe82e334576f21ac2d2142b3ef33f2",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/fixest/covariance.csv": "80a5ab03b2c3673bab4b60616da8bfb059ac05e6c93a473d11ce3cad5a1a51a7",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/fixest/result.json": "a8ff3a9ef04fe7e25730a57be1c1a7089e1818e2c8006361dd20284b4afe8b2e",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/fixest_strict/coefficients.csv": "1baff8838cebfdf651bb2d045988148a52fe82e334576f21ac2d2142b3ef33f2",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/fixest_strict/covariance.csv": "80a5ab03b2c3673bab4b60616da8bfb059ac05e6c93a473d11ce3cad5a1a51a7",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/fixest_strict/result.json": "4043ab8957b58d3fdc3d6ee2d8293ffe94da2636d236f5ff3b8d029ad96f2cb8",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/input.json": "00db0e7364c9b36566876b5ada54a215ead88ec018f337c1cfd4eab63684429a",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/pyfixest/coefficients.csv": "3cd538759361a42700084d513c16867ec79e5e6915e7926953073131fd7fca90",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/pyfixest/covariance.csv": "b2c001f2b48612249089386a820c073994604890aa968a7f544674844d667aa7",
+    "results/ppml-one_fe-n61440-k10-t4-main/warm-1/pyfixest/result.json": "aeb802365a8762f1a2c57c7076c46a55c4fe63ee07ad5a5286bf7fa513744500",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/feppml/coefficients.csv": "9ac098255b2c62175eead63360995383bbc6fd603ee98691e4baa7aead41355b",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/feppml/covariance.csv": "88c777db7a7540e4bd850b8b480b485922f2ef36fc190fcdee2d1b10498925d5",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/feppml/result.json": "57bacca9a776c24148f64c8bc88392b1abbe15e250b698f83e24b60db80eeb3e",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/fixest/coefficients.csv": "d7304b4155b50b60771030f62063cbd54861cb029eb18eb83b9d9fdcbbca541f",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/fixest/covariance.csv": "b5c45d071f1fcc647c02dc0db3810a8dfa48ad2810b4db0586537d255d64e812",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/fixest/result.json": "f66a9e0d4e5237c6a24a71368e61676c7f58115718efc3cad27563e42bb212da",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/fixest_strict/coefficients.csv": "437c809ac5bf9d0495b654b151ed5b6110d93ae1dc3ba830706e3c33650a4f48",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/fixest_strict/covariance.csv": "2b52cf4e80383d1ea2d50b2f92533b54290a653b8fbfe5aabd77185d66f97bac",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/fixest_strict/result.json": "d766634755db25ce7b6028a224b16cb46aeb49704d27dc57e6f22eaebeaffa2d",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/input.json": "6df0348b04391e7717100b96b128584e4049661c4b3cbddf7ba9db5f9327e919",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/pyfixest/coefficients.csv": "c3752d3912aacc521b74ba049ba9633f37604c602d24a3d887e2c69423cccf0b",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/pyfixest/covariance.csv": "9b582254ed06d0cdf11fd0d78413e7c0214496b4ee3158346e86d5d5fbe85de9",
+    "results/ppml-two_fe_dense-n61440-k10-t4-main/warm-1/pyfixest/result.json": "e073fdc521ef5e405388e58e2e7572198bbf533588a7ab9caa90efd9f15abe27"
+  },
+  "preserved_guards": [
+    "same scientific envelopes",
+    "same unmodified pinned reference",
+    "historical NR unchanged",
+    "fresh covariance diagnostic only",
+    "no maintained worker change before licensed fixture"
+  ],
+  "profiles": {
+    "default": {},
+    "outer_and_inner_strict": {
+      "fixef_tol": 1e-11,
+      "iwls_tol": 1e-12
+    },
+    "outer_strict": {
+      "iwls_tol": 1e-12
+    }
+  },
+  "purpose": "Current-weight inference and exact-sample extraction diagnosis; no stock timing reclassification",
+  "repair_scope": "One focused rerun after deployment/log-reader defect; scientific definitions and frozen estimator unchanged",
+  "resources": {
+    "mem_per_core": "3G",
+    "slots": 4,
+    "wall_seconds": 1800
+  },
+  "schema": "fereg-comparator-state-diagnostic-v1",
+  "science": {
+    "coefficient_atol": 1e-10,
+    "coefficient_rtol": 1e-07,
+    "objective_atol": 1e-10,
+    "objective_rtol": 1e-08,
+    "vce_atol": 1e-10,
+    "vce_rtol": 1e-06
+  }
+}
