@@ -1,0 +1,43 @@
+{
+  "status": "pass",
+  "checks": [
+    "nine collected SHA-256 bindings",
+    "568 complete groups and input receipts",
+    "1428 arm rows and 860 comparison rows reconcile",
+    "three complete-configuration performance tables",
+    "568 native thread entries and 72 transitions",
+    "thread analyzer and frozen report bindings",
+    "new report and opening STATUS links"
+  ],
+  "configuration_statistics": [
+    {
+      "model": "ols",
+      "reference": "fixest",
+      "complete": 44,
+      "wins": 19,
+      "ten_percent_wins": 14,
+      "over_twenty_percent_losses": 20,
+      "median": 1.1333224129366006
+    },
+    {
+      "model": "ppml",
+      "reference": "fixest",
+      "complete": 52,
+      "wins": 33,
+      "ten_percent_wins": 30,
+      "over_twenty_percent_losses": 10,
+      "median": 0.8270151879241574
+    },
+    {
+      "model": "ppml",
+      "reference": "fixest_strict",
+      "complete": 58,
+      "wins": 49,
+      "ten_percent_wins": 46,
+      "over_twenty_percent_losses": 4,
+      "median": 0.5480938864502867
+    }
+  ],
+  "report_sha256": "aa49ce184c07ca30b23b5f762fc2801a33691592ff2f109fc734e548d48eea45",
+  "thread_analyzer_sha256": "adaa607cf7bdab7731357970f04f8d50876975741e46f8026543d0d13adbf978"
+}

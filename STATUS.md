@@ -10,7 +10,7 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The broad scientific/performance follow-up and
 <=0.90-stock goal remain active.
 
-## Active SCC harness repair and pending-group continuation — 2026-09-29
+## Completed SCC harness repair and sweep collection — 2026-09-29
 
 Johannes authorized repairing the failed validation harnesses and finishing only
 the 27 untouched benchmark groups. This supersedes the older pause instruction
@@ -40,21 +40,50 @@ Schwarz is refused by its core gate. The corrected accounting handling works;
 the job exits two because neither arm passes every public requirement. No failed
 numerical test was retried and neither candidate is adopted.
 
-The original **7766045** array has clean accounting, with **541/568** groups
-complete and 27 checkpointed. All 541 existing input receipts match the original
-campaign; the frozen audit reports zero integrity errors. **7778971** contains
-exactly those 27 pending PPML groups / 81 applications, preserving every original
-per-group setting and the frozen controller. Its one 28-core E5-2680v4 task has
-a three-hour cap and was held behind **7778963/7778964/7778965/7778967**; those
-jobs are now terminal and it is awaiting a node. Original
-forecast is 1.183 node-hours. Do not run builds, diagnostic fits or profiling
-alongside its headline clocks. Collect its accounting, unchanged old markers,
-all input identities and the complete audit before reporting final distributions.
+The [completion report](benchmarks/reports/development/current-source-sweep-completion-scc-2026-09-29/README.md)
+closes all **568/568** registered groups. Original **7766045** array accounting
+is clean; its 27 checkpointed groups / 81 applications finished under
+**7778971**, with clean accounting, a unique terminal marker, 541 seconds wall
+time and 3.383G maxvmem. Its reserved 28-core E5-2680v4 task was held behind all
+four repaired diagnostic jobs. All 541 previous completed markers are unchanged,
+all 568 input receipts match the original campaign, and the complete frozen
+audit has zero integrity errors. No new application failures occurred.
+
+Final counts: **1,370 successful applications, eight existing timeouts and
+50 historical reference-budget exclusions**. Pair checks yield **653 passes,
+149 accuracy discrepancies and eight unavailable pairs**, with exclusions
+separate. The continuation adds three default-stock weak-d3 PPML SE
+discrepancies; corresponding strict pairs pass. NR is scientific exclusion,
+not missing coverage or an automatic assignment of fault to fereg.
+
+Complete four-repeat configuration medians: OLS wins **19/44**, median
+native/stock **1.133**, with **20/44 above 1.20**. PPML wins **33/52** against
+default stock (median **0.827**, ten above 1.20) and **49/58** against strict
+stock (median **0.548**, four above 1.20). Full distributions, losses, slopes,
+failures and memory observations are in the report. The worst ranked OLS loss
+is large degree-three/T4 at **7.320x**. All three native command timeouts are
+large degree-two/T4 at the unchanged 720-second bound. Comparable PPML slopes
+remain strong; dense two-FE fast/low ratios are **0.348/0.255** against strict
+stock, while their OLS ratios remain **1.219/1.409**.
+
+The thread supplement validates all successful native metadata. Of 36
+transitions per model, 24 OLS and 31 PPML have four eligible observations.
+OLS has no slower transition median, but individual regressions remain.
+Weak-d3 PPML from 4 to 28 selected threads is slower at N61,440 and N983,040
+(medians **1.178/1.344**); these observational clocks need alternating same-node
+confirmation. Twelve PPML T28 requests select eight workers, so request counts
+must not be equated with actual parallelism.
 
 The newer local bias-support/recovery commits are separate from these frozen
 jobs. No candidate is adopted, and this follow-up does not resume or change
-the separate empirical campaigns. Finish existing jobs and collect first;
-do not automatically rerun the failed Schwarz numerical assertion.
+the separate empirical campaigns. This is a good pause point: all authorized
+repair retests and pending groups are collected, with no follow-up job left
+running. Next numerical work should localize the CG public assertion and
+baseline-adjudicate Schwarz's reporting failure before any adoption or candidate
+timing; do not automatically rerun scientific failures. Subsequent performance
+priorities are large OLS degree-three/six costs, weak-d3 PPML thread routing and
+the remaining one-FE/zero-outcome PPML losses. The 1.20 ceiling and 0.90 goal
+remain unmet. Historical pending entries below do not authorize new jobs.
 
 ## Completed focused repair: PPML anchored recovery — 2026-09-28
 
