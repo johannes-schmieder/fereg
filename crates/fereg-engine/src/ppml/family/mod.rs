@@ -1,5 +1,6 @@
 //! Immutable Poisson inputs; trial evaluation never mutates an accepted state.
 mod math;
+mod score;
 mod start;
 use crate::{
     data::{ReferenceWeights, WeightKind},
@@ -7,6 +8,7 @@ use crate::{
     threads::{CompensatedSum, ThreadTeam, REDUCTION_CHUNK},
 };
 use rayon::prelude::*;
+pub use score::{ScoreCertificate, ScoreNorms};
 pub use start::NullObjective;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Objective {
