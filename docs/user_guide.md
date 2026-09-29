@@ -290,9 +290,11 @@ IID inference, the default pairwise policy in `fereg` and `reghdfe`, and
 session and checks coefficients and RSS before printing times. It is a
 reproducible local comparison, not release qualification.
 
-Formal performance claims require the frozen exact-SHA benchmark suite and its
-scientific gates. Current measured evidence and limitations are in
-[`../STATUS.md`](../STATUS.md).
+Rebuild performance claims follow the declared benchmark suite and scientific
+gates in the [approved plan](cleanup/PLAN.md). Current progress and limitations
+are in [MILESTONES.md](../MILESTONES.md); [STATUS.md](../STATUS.md) preserves
+the legacy source-bound findings. The documented public commands use the
+legacy engine until their respective cutover gates pass.
 
 ## Examples and limitations
 

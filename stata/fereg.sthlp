@@ -746,8 +746,10 @@ not need Rust, Python, Julia, a compiler, BLAS, or a separate native runtime.
 Version 0.5.0 is unreleased beta source. Public OLS and the additive
 {cmd:feppml} testing surface are active. Windows licensed-Stata testing and the
 formal cross-platform qualification remain deferred. See
-{cmd:STATUS.md} and {cmd:docs/compatibility_matrix.md} in the source
-distribution for exact-SHA qualification evidence and platform caveats.
+{cmd:MILESTONES.md} and {cmd:docs/compatibility_matrix.md} in the source
+distribution for rebuild progress and platform caveats. The preservation tag
+{cmd:legacy-v0.5.0-beta} is not a qualified release; the existing engine remains
+active until its replacement passes the planned cutover checks.
 
 {marker sources}
 {title:Sources and acknowledgements}

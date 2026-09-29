@@ -57,7 +57,7 @@ PRODUCTION_STATA_FILES = (
 )
 ROOT_FILES = (
     "README.md",
-    "STATUS.md",
+    "MILESTONES.md",
     "CHANGELOG.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",

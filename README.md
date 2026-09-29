@@ -7,13 +7,13 @@ removal, robust and multiway-clustered inference, and saved fixed-effect
 outputs. Estimation runs in one native call and publishes results only after
 the numerical and covariance checks pass.
 
-The current source is an unreleased 0.5.0 beta. Both the public `fereg` OLS
-command and the additive `feppml` command are active. `feppml` uses the same
-prepared-data, certified weighted-linear, covariance, memory-planning, and
-thread-team infrastructure without changing the public `fereg` path or OLS
-wire. Windows licensed-Stata testing and formal cross-platform qualification
-remain deferred, so this source is available for user testing but is not a
-tagged or source-qualified release.
+The repository is implementing the [issue-28 clean-core rebuild](https://github.com/johannes-schmieder/fereg/issues/28).
+Follow [MILESTONES.md](MILESTONES.md) for progress and the
+[approved plan](docs/cleanup/PLAN.md) for scope. The current public OLS and
+`feppml` commands still use the unreleased 0.5.0 legacy engine; the new core
+has not passed its cutover gates. LSMR, CMG and PPML mean bias correction remain
+in scope. Windows licensed-Stata testing remains deferred. The
+`legacy-v0.5.0-beta` tag is a preservation snapshot, not a qualified release.
 
 ## Quick start
 
@@ -133,7 +133,7 @@ checks:
 Stronger licensed profiles include `differential` and `full`. Their exact-SHA
 acceptance and runner requirements are documented in
 [`docs/development_workflow.md`](docs/development_workflow.md) and
-[`STATA_CI_RUNNER.md`](STATA_CI_RUNNER.md).
+[`ci/README.md`](ci/README.md).
 
 ## Documentation
 
@@ -144,7 +144,8 @@ acceptance and runner requirements are documented in
 - [`docs/README.md`](docs/README.md) — documentation map.
 - [`docs/compatibility_matrix.md`](docs/compatibility_matrix.md) — implemented,
   deferred, and platform-specific behavior.
-- [`STATUS.md`](STATUS.md) — current qualification status and measured evidence.
+- [`MILESTONES.md`](MILESTONES.md) — rebuild progress, checks and resume point.
+- [`STATUS.md`](STATUS.md) — frozen legacy findings and source-bound evidence.
 - [`AGENTS.md`](AGENTS.md) — concise operating rules for repository work.
 - [`docs/adr/`](docs/adr/) — accepted architectural and scientific decisions.
 
