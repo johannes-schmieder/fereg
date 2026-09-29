@@ -9,6 +9,7 @@ use crate::{
     threads::{compensated_sum, ThreadTeam},
     topology::{connected_components_all, LevelIndex},
 };
+use rayon::prelude::*;
 impl Design<'_> {
     /// Center later intercepts within each intercept-connected component and
     /// transfer each shift to the first intercept. Commit only if the fitted
@@ -48,18 +49,60 @@ impl Design<'_> {
             );
         }
         let membership = LevelIndex::from_codes(&row_components, components.n_components)?;
+        let mut weights = reserved(components.n_components)?;
+        for component in 0..components.n_components {
+            let members = membership.members(component)?;
+            let scale = members
+                .iter()
+                .map(|&row| self.weights().at(row))
+                .fold(0., f64::max);
+            let total = if scale == 0. {
+                0.
+            } else {
+                compensated_sum(members.iter().map(|&row| self.weights().at(row) / scale))
+            };
+            weights.push((scale, total));
+        }
         let mut values = reserved(coefficients.as_slice().len())?;
         values.extend_from_slice(coefficients.as_slice());
         let mut normalized =
             DenseMatrix::from_row_major(coefficients.nrows(), coefficients.ncols(), values)?;
         for (local, &effect) in intercepts.iter().enumerate().skip(1) {
             let mut shifts = DenseMatrix::zeros(components.n_components, coefficients.ncols())?;
-            for component in 0..components.n_components {
-                let members = membership.members(component)?;
+            let mut scales = DenseMatrix::zeros(components.n_components, coefficients.ncols())?;
+            let offset = self.layout().effects[effect].offset;
+            let codes = self.topology().effect_partition(effect)?.codes();
+            // Every declared final-sample level occurs. Its repeated row
+            // values have the same maximum as this single level traversal.
+            for (level, &component) in components.component_by_effect_level[local]
+                .iter()
+                .enumerate()
+            {
                 for column in 0..coefficients.ncols() {
-                    shifts[(component, column)] =
-                        self.component_mean(effect, members, coefficients, column)?;
+                    scales[(component, column)] = scales[(component, column)]
+                        .max(coefficients[(offset + level, column)].abs());
                 }
+            }
+            team.install(|| {
+                shifts
+                    .as_mut_slice()
+                    .par_iter_mut()
+                    .enumerate()
+                    .for_each(|(index, shift)| {
+                        let component = index / coefficients.ncols();
+                        let column = index % coefficients.ncols();
+                        *shift = self.component_mean(
+                            (offset, codes),
+                            membership.members(component).expect("validated component"),
+                            coefficients,
+                            column,
+                            weights[component],
+                            scales[(component, column)],
+                        );
+                    });
+            });
+            if shifts.as_slice().iter().any(|value| !value.is_finite()) {
+                return Err(numerical("FE normalization mean is not representable"));
             }
             for (local_effect, index) in [(local, effect), (0, intercepts[0])] {
                 for level in 0..self.layout().effects[index].levels {
@@ -74,8 +117,8 @@ impl Design<'_> {
             }
         }
         let after = self.multiply(&normalized, team)?;
-        let mut amplitude = self.contribution_amplitudes(coefficients)?;
-        let normalized_amplitude = self.contribution_amplitudes(&normalized)?;
+        let mut amplitude = self.contribution_amplitudes(coefficients, team)?;
+        let normalized_amplitude = self.contribution_amplitudes(&normalized, team)?;
         // Centering can move a nonzero component mean onto a row whose old
         // contributions were all tiny. Its subtracting terms then round at
         // the new gauge's scale. Audit both representations symmetrically;
@@ -98,58 +141,61 @@ impl Design<'_> {
     }
     fn component_mean(
         &self,
-        effect: usize,
+        effect: (usize, &[u32]),
         members: &[usize],
         coefficients: &DenseMatrix,
         column: usize,
-    ) -> Result<f64> {
-        let layout = &self.layout().effects[effect];
-        let codes = self.topology().effect_partition(effect)?.codes();
-        let weight_scale = members
-            .iter()
-            .map(|&row| self.weights().at(row))
-            .fold(0., f64::max);
-        let value_scale = members
-            .iter()
-            .map(|&row| coefficients[(layout.offset + codes[row] as usize, column)].abs())
-            .fold(0., f64::max);
+        weights: (f64, f64),
+        value_scale: f64,
+    ) -> f64 {
+        let (offset, codes) = effect;
+        let (weight_scale, weight) = weights;
         if value_scale == 0. || weight_scale == 0. {
-            return Ok(0.);
+            return 0.;
         }
-        let weight = compensated_sum(
-            members
-                .iter()
-                .map(|&row| self.weights().at(row) / weight_scale),
-        );
         let numerator = compensated_sum(members.iter().map(|&row| {
             (self.weights().at(row) / weight_scale)
-                * (coefficients[(layout.offset + codes[row] as usize, column)] / value_scale)
+                * (coefficients[(offset + codes[row] as usize, column)] / value_scale)
         }));
-        let mean = (numerator / weight) * value_scale;
-        if !mean.is_finite() {
-            return Err(numerical("FE normalization mean is not representable"));
-        }
-        Ok(mean)
+        (numerator / weight) * value_scale
     }
-    fn contribution_amplitudes(&self, coefficients: &DenseMatrix) -> Result<DenseMatrix> {
+    fn contribution_amplitudes(
+        &self,
+        coefficients: &DenseMatrix,
+        team: &ThreadTeam,
+    ) -> Result<DenseMatrix> {
         let mut amplitudes = DenseMatrix::zeros(self.nobs(), coefficients.ncols())?;
-        for row in 0..self.nobs() {
-            for column in 0..coefficients.ncols() {
-                let mut scale = 0_f64;
-                for (effect, layout) in self.layout().effects.iter().enumerate() {
-                    let level = self.topology().effect_partition(effect)?.codes()[row] as usize;
-                    for channel in 0..layout.channels {
-                        scale = scale.max(
-                            (self.basis_value(effect, channel, row)?
-                                * coefficients
-                                    [(self.coefficient_index(effect, channel, level)?, column)])
-                                .abs(),
-                        );
+        // Both fitted passes validated the frame and coefficient shapes.
+        // Each row retains the same effect/channel order on every worker.
+        team.install(|| {
+            amplitudes
+                .as_mut_slice()
+                .par_chunks_mut(coefficients.ncols().max(1))
+                .enumerate()
+                .for_each(|(row, scales)| {
+                    for (column, scale) in scales.iter_mut().enumerate() {
+                        for (effect, layout) in self.layout().effects.iter().enumerate() {
+                            let level = self
+                                .topology()
+                                .effect_partition(effect)
+                                .expect("validated effect")
+                                .codes()[row] as usize;
+                            for channel in 0..layout.channels {
+                                *scale = scale.max(
+                                    (self
+                                        .basis_value(effect, channel, row)
+                                        .expect("validated channel")
+                                        * coefficients[(
+                                            layout.offset + channel * layout.levels + level,
+                                            column,
+                                        )])
+                                        .abs(),
+                                );
+                            }
+                        }
                     }
-                }
-                amplitudes[(row, column)] = scale;
-            }
-        }
+                });
+        });
         Ok(amplitudes)
     }
 }

@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.6 committed-source FE-only benchmark campaign. The release worker and runner preserve the legacy prepared estimator's actual auto route, cold setup and complete projection-stage costs; all 30 small-input arms pass accuracy/determinism checks and the full lean/harness suites pass. Million-row performance admission remains. M4.4 factor precedence follows built-in Stata; M6.1 accumulated IRLS work reporting and M6.2 detectors/terminal replay/orchestration remain open.
+Current task: M3.6 committed-source timing of the first focused shared-bank certification repair. The million-row FE-only baseline passes all 30 accuracy/determinism groups and 150 measured fits, but auto misses every timing pair (geometric-mean ratio 11.256). Shared normalization/certification geometry, component weight totals and fixed-partition parallel kernels pass the full lean/long suites; a binding-cell rerun remains before the required G-M3 decision. M4.4 factor precedence follows built-in Stata; M6.1 accumulated IRLS work reporting and M6.2 detectors/terminal replay/orchestration remain open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -70,6 +70,17 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Blockers / questions for Johannes
 
+- M3.6: the [million-row FE baseline](bench/history/2026-09-29-b7486de6-darwin-fe-projection.csv)
+  passes every supported backend's accuracy checks and exact 1/8-worker output
+  identity, but the initial auto candidate costs 1.704–94.921 times legacy auto
+  across the eight timing pairs. The first focused repair consolidates shared
+  acceptance work without changing backends, budgets or tolerance. A
+  [diagnostic profile](bench/history/2026-09-29-b7486de6-darwin-fe-profile.csv)
+  also identifies substantial iterative Schur work; inclusive counts overlap
+  and are not timing-gate evidence. The full lean and long oracle checks pass;
+  measure the committed repair before deciding G-M3. If it still fails, PLAN
+  requires stopping to ask Johannes.
+
 - M3.5: Johannes authorized repairing within upstream. [Draft PR #441](https://github.com/py-econometrics/within/pull/441)
   is pushed at b80e299, including current-parent port, fixed parallel reductions,
   compensated weighted Gram assembly and raw-coordinate construction. The new
@@ -107,6 +118,10 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M3.6 focused acceptance repair (this commit) — successful primary banks use the same shared normalization/certificate once across all RHSs; numerical rejection retains the raw bank for column-specific certification and the existing single bounded fallback. Component weight totals are shared, coefficient maxima traverse observed levels once, and independent centering/row-amplitude work uses the caller's team. Weighted norms retain range-safe hypot with fixed 1,024-row partitions and an ordered merge; no backend policy, budget, rank or tolerance changes. Exact single-column certificate agreement, mixed successful/failed-bank reports, zero-fitted-row gauges, overflow/subnormal-scale norms and 1/2/4/8-worker identity pass. Full lean (fmt/strict Clippy/workspace/FFI/size/mock-SPI) and long oracle suites pass, including all 2,200 forced-backend designs and 100-digit fixtures. A committed-source binding-cell timing rerun remains; this is the one focused G-M3 attempt, not performance admission. Bank-shaped normalization scratch remains fallible and must be included in M4.4's top-level memory estimate.
+
+- 2026-09-29 M3.6 FE baseline (this commit) — frozen b7486de6: all 30 supported groups, 150 measured fits, 30 warm-ups and eight tight-reference processes succeed; coefficients/objectives and exact new-engine repeat/1–8-worker output hashes pass. Coverage, rebuilt-summary equality and source/Cargo.lock/binary/four-input identity audits pass. Auto geometric-mean ratio 11.256 (range 1.704–94.921) fails timing admission; explicit LSMR/CMG costs remain separate in the [summary](bench/history/2026-09-29-b7486de6-darwin-fe-projection.csv). The [interrupted first cohort](bench/history/2026-09-29-b7486de6-darwin-fe-projection-interrupted.csv) retains six completed groups and missing arms after its command session disappeared; process inspection verified no runner/worker before the independent detached campaign started. No retries or merged medians; the full replacement campaign is complete. Diagnostic main-thread sampling localizes both iterative Schur applications and repeated per-RHS acceptance; the first focused certification repair is under validation, and G-M3 remains open.
 
 - 2026-09-29 M3.6 FE-only harness (this commit) — dev-only release worker compares the unchanged legacy prepared IID coefficient entry point with the shared new engine; both include RHS construction, numeric setup, projection and certification, excluding preparation/loading/finite fitting. Legacy phase traces retain the real auto route. Inputs export the existing seeded DTA losslessly; source/input/binary identity, warm-up plus five fresh processes, reference coefficients/objectives, residual diagnostics, 1/8-worker output hashes, missing/failing arms, timing dispersion and separate explicit LSMR/CMG costs are retained. All 30 supported combinations pass a 2,000-row diagnostic; 18 Python harness tests and the full lean Rust/FFI/size/mock-SPI suite pass. The committed-source million-row campaign and G-M3 performance decision remain pending.
 

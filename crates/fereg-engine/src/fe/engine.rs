@@ -129,6 +129,10 @@ impl<'a, 'data> Engine<'a, 'data> {
                 fallback: None,
             });
         }
+        if let Some(mut accepted) = self.accept_bank(rhs, &coefficients, team)? {
+            accepted.setup_diagnostics = diagnostics::copy_setup(&self.last_setup)?;
+            return Ok(accepted);
+        }
         // The primary bank has already run. Preserve every column's work even
         // if resolving an earlier column fails and aborts result publication.
         for column in 0..rhs.ncols() {
@@ -148,6 +152,39 @@ impl<'a, 'data> Engine<'a, 'data> {
         )?;
         result.setup_diagnostics = diagnostics::copy_setup(&self.last_setup)?;
         Ok(result)
+    }
+    fn accept_bank(
+        &self,
+        rhs: &DenseMatrix,
+        coefficients: &DenseMatrix,
+        team: &ThreadTeam,
+    ) -> Result<Option<Projection>> {
+        if self
+            .last_diagnostics
+            .iter()
+            .any(|report| !success(report.stop))
+        {
+            return Ok(None);
+        }
+        // Gauge shifts and certificate reductions are independent per RHS.
+        // Sharing their geometry across the bank avoids rebuilding it for each
+        // column. Keep the original candidate until every column passes so a
+        // numerical failure can still be localized through the bounded path.
+        let mut values = reserved(coefficients.as_slice().len())?;
+        values.extend_from_slice(coefficients.as_slice());
+        let candidate =
+            DenseMatrix::from_row_major(coefficients.nrows(), coefficients.ncols(), values)?;
+        match self.design.finish_candidate(
+            rhs,
+            candidate,
+            diagnostics::copy_rhs(&self.last_diagnostics)?,
+            self.plan.tolerance(),
+            team,
+        ) {
+            Ok(result) => Ok(Some(result)),
+            Err(failure) if failure.code == ErrorCode::NonConvergence => Ok(None),
+            Err(failure) => Err(failure),
+        }
     }
     fn primary(
         &mut self,

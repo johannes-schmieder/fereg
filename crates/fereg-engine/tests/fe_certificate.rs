@@ -6,6 +6,52 @@ use fereg_engine::{
     ErrorCode,
 };
 mod support;
+
+#[test]
+fn weighted_certificate_norms_are_range_safe_across_fixed_partition_boundaries() {
+    let sample = support::prepared(&[1], false, 8193, 0);
+    let weights: Vec<_> = (0..sample.n_active())
+        .map(|row| if row % 4 < 2 { 1. } else { 4. })
+        .collect();
+    let design = Design::new(&sample, Weights::Provided(&weights)).unwrap();
+    for scale in [1e-200, 1e200] {
+        let values: Vec<_> = (0..8193)
+            .map(|row| {
+                if row == 8192 {
+                    0.
+                } else {
+                    [3., -3., 4., -4.][row % 4] * scale
+                }
+            })
+            .collect();
+        let rhs = DenseMatrix::from_columns(&[values, vec![0.; 8193]]).unwrap();
+        let coefficients = DenseMatrix::zeros(design.layout().total, rhs.ncols()).unwrap();
+        let expected_norm = (146_f64 * 2048.).sqrt() * scale;
+        let mut reference = None;
+        for workers in [1, 2, 4, 8] {
+            let certificate = design
+                .certify(
+                    &rhs,
+                    &coefficients,
+                    &rhs,
+                    1e-10,
+                    &ThreadTeam::new(workers).unwrap(),
+                )
+                .unwrap();
+            assert!((certificate.weighted_rhs_norm[0] / expected_norm - 1.).abs() < 1e-13);
+            assert_eq!(certificate.weighted_rhs_norm[1], 0.);
+            assert_eq!(
+                certificate.weighted_residual_norm,
+                certificate.weighted_rhs_norm
+            );
+            if let Some(expected) = &reference {
+                assert_eq!(expected, &certificate);
+            } else {
+                reference = Some(certificate);
+            }
+        }
+    }
+}
 #[test]
 fn certificate_accepts_direct_and_schur_with_worker_identity() {
     for levels in [vec![7], vec![7, 5, 3]] {

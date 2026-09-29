@@ -1,7 +1,8 @@
 use fereg_engine::{
     data::DenseMatrix,
     fe::{
-        Backend, Design, Engine, FallbackReason, MonitorControl, PlanOverride, StopReason, Weights,
+        Backend, Design, Engine, FallbackReason, MonitorControl, Plan, PlanOverride, SchurSession,
+        StopReason, Weights,
     },
     spec::{Estimator, Options, Solver},
     threads::ThreadTeam,
@@ -243,7 +244,7 @@ fn certificate_failure_transfers_once_then_fails_closed_at_the_representation_fl
     let second: Vec<_> = z.iter().zip(&v).map(|(a, b)| a + 1e-6 * b).collect();
     let sample = support::slope_sample(false, &vec![0; n], &[z, second]);
     let design = Design::new(&sample, Weights::Unit).unwrap();
-    let rhs = DenseMatrix::from_columns(&[v]).unwrap();
+    let rhs = DenseMatrix::from_columns(&[vec![0.; n], v.clone(), v]).unwrap();
     let team = ThreadTeam::new(1).unwrap();
     let mut controls = options(Solver::Auto, 1000);
     controls.tolerance = 1e-12;
@@ -252,7 +253,14 @@ fn certificate_failure_transfers_once_then_fails_closed_at_the_representation_fl
         engine.project(&rhs, &team).unwrap_err().code,
         ErrorCode::NonConvergence
     );
-    let report = &engine.last_diagnostics()[0];
+    let reports = engine.last_diagnostics();
+    assert_eq!(reports.len(), 3);
+    assert_eq!(reports[0].used, Backend::Direct);
+    assert_eq!(reports[0].attempts.len(), 1);
+    assert_eq!(reports[0].fallback, None);
+    assert_eq!(reports[2].attempts.len(), 1);
+    assert_eq!(reports[2].iterations, 0);
+    let report = &reports[1];
     assert_eq!(report.attempts.len(), 2);
     assert_eq!(report.attempts[0].backend, Backend::Direct);
     assert_eq!(report.attempts[0].iterations, 0);
@@ -261,4 +269,78 @@ fn certificate_failure_transfers_once_then_fails_closed_at_the_representation_fl
     assert_eq!(report.attempts[1].backend, Backend::Lsmr);
     assert_eq!(report.stop, StopReason::Stagnation);
     assert!(report.iterations > 0 && report.iterations <= controls.iterations);
+}
+
+#[test]
+fn bank_acceptance_matches_individual_original_input_certificates_exactly() {
+    for levels in [vec![7], vec![7, 5, 3]] {
+        let sample = support::prepared(&levels, true, 30, 0);
+        let weights: Vec<_> = (0..sample.n_active())
+            .map(|row| 1. + (row % 3) as f64)
+            .collect();
+        let design = Design::new(&sample, Weights::Provided(&weights)).unwrap();
+        let rhs = bank(sample.n_active());
+        let controls = options(Solver::Auto, 1000);
+        let mut reference = None;
+        for workers in [1, 2, 4, 8] {
+            let team = ThreadTeam::new(workers).unwrap();
+            let mut engine = Engine::with_controls(
+                &design,
+                Estimator::Ols,
+                &controls,
+                PlanOverride::Automatic,
+                MonitorControl::Disabled,
+                &team,
+            )
+            .unwrap();
+            let actual = engine.project(&rhs, &team).unwrap();
+            assert!(actual.diagnostics.iter().all(|d| d.attempts.len() == 1));
+            let raw = if levels.len() == 1 {
+                design.direct_candidate(&rhs, &team).unwrap().coefficients
+            } else {
+                let plan = Plan::new(&design, Estimator::Ols, &controls).unwrap();
+                SchurSession::new(&design, &plan, &team)
+                    .unwrap()
+                    .solve(&rhs, &team)
+                    .unwrap()
+                    .coefficients
+            };
+            for column in 0..rhs.ncols() {
+                let independent = design
+                    .finish_candidate(
+                        &DenseMatrix::from_columns(&[rhs.column(column).unwrap()]).unwrap(),
+                        DenseMatrix::from_columns(&[raw.column(column).unwrap()]).unwrap(),
+                        vec![actual.diagnostics[column].clone()],
+                        controls.tolerance,
+                        &team,
+                    )
+                    .unwrap();
+                assert_eq!(
+                    actual.coefficients.column(column).unwrap(),
+                    independent.coefficients.column(0).unwrap()
+                );
+                assert_eq!(
+                    actual.residuals.column(column).unwrap(),
+                    independent.residuals.column(0).unwrap()
+                );
+                let a = &actual.certificate;
+                let b = &independent.certificate;
+                for (full, single) in [
+                    (&a.relative_score, &b.relative_score),
+                    (&a.relative_score_rms, &b.relative_score_rms),
+                    (&a.raw_score_max, &b.raw_score_max),
+                    (&a.weighted_rhs_norm, &b.weighted_rhs_norm),
+                    (&a.weighted_residual_norm, &b.weighted_residual_norm),
+                    (&a.relative_reconstruction, &b.relative_reconstruction),
+                ] {
+                    assert_eq!(full[column], single[0]);
+                }
+            }
+            if let Some(expected) = &reference {
+                assert_eq!(expected, &actual);
+            } else {
+                reference = Some(actual);
+            }
+        }
+    }
 }

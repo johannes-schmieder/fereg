@@ -1,0 +1,7 @@
+commit,binary_profile,binary_sha256,cell,rows,regressors,threads,sample_interval_ms,scope,section,inclusive_samples
+b7486de68068dfc2aa0e9ed06eb2569e6fedfe37,profiling-diagnostic,e95751f377e0a500ef88a718b81d8ce83faebe33c722f90d22092f4bcbb08095,ols-2fe-akm-strong,1000000,10,1,1,main-thread-inclusive-nonadditive,main-thread-all-stacks,11402
+b7486de68068dfc2aa0e9ed06eb2569e6fedfe37,profiling-diagnostic,e95751f377e0a500ef88a718b81d8ce83faebe33c722f90d22092f4bcbb08095,ols-2fe-akm-strong,1000000,10,1,1,main-thread-inclusive-nonadditive,primary-solve,8145
+b7486de68068dfc2aa0e9ed06eb2569e6fedfe37,profiling-diagnostic,e95751f377e0a500ef88a718b81d8ce83faebe33c722f90d22092f4bcbb08095,ols-2fe-akm-strong,1000000,10,1,1,main-thread-inclusive-nonadditive,schur-iteration-apply,6509
+b7486de68068dfc2aa0e9ed06eb2569e6fedfe37,profiling-diagnostic,e95751f377e0a500ef88a718b81d8ce83faebe33c722f90d22092f4bcbb08095,ols-2fe-akm-strong,1000000,10,1,1,main-thread-inclusive-nonadditive,per-rhs-resolution,1974
+b7486de68068dfc2aa0e9ed06eb2569e6fedfe37,profiling-diagnostic,e95751f377e0a500ef88a718b81d8ce83faebe33c722f90d22092f4bcbb08095,ols-2fe-akm-strong,1000000,10,1,1,main-thread-inclusive-nonadditive,per-rhs-certification,1358
+b7486de68068dfc2aa0e9ed06eb2569e6fedfe37,profiling-diagnostic,e95751f377e0a500ef88a718b81d8ce83faebe33c722f90d22092f4bcbb08095,ols-2fe-akm-strong,1000000,10,1,1,main-thread-inclusive-nonadditive,per-rhs-local-span-checks,968

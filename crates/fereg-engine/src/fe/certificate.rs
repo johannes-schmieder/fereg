@@ -6,7 +6,7 @@ use super::{
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    threads::{compensated_sum, ThreadTeam},
+    threads::{compensated_sum, ThreadTeam, REDUCTION_CHUNK},
 };
 use rayon::prelude::*;
 impl Design<'_> {
@@ -52,8 +52,8 @@ impl Design<'_> {
             return Err(invalid("certificate RHS counts differ"));
         }
         let reconstruction = reconstruction_errors(rhs, &reconstructed, residuals)?;
-        let reference_norm = weighted_norms(self, rhs)?;
-        let residual_norm = weighted_norms(self, residuals)?;
+        let reference_norm = weighted_norms(self, rhs, team)?;
+        let residual_norm = weighted_norms(self, residuals, team)?;
         let mut scales = reserved(rhs.ncols())?;
         scales.extend(
             reference_norm
@@ -239,14 +239,36 @@ pub(super) fn reconstruction_errors(
     }
     Ok(errors)
 }
-fn weighted_norms(design: &Design<'_>, matrix: &DenseMatrix) -> Result<Vec<f64>> {
+fn weighted_norms(
+    design: &Design<'_>,
+    matrix: &DenseMatrix,
+    team: &ThreadTeam,
+) -> Result<Vec<f64>> {
+    let width = matrix.ncols();
+    let mut partials = DenseMatrix::zeros(matrix.nrows().div_ceil(REDUCTION_CHUNK), width)?;
+    // Hypot retains range safety. Fixed row partitions and an ordered merge
+    // keep the arithmetic identical across worker counts, including the tail.
+    team.install(|| {
+        partials
+            .as_mut_slice()
+            .par_chunks_mut(width.max(1))
+            .enumerate()
+            .for_each(|(chunk, norms)| {
+                let start = chunk * REDUCTION_CHUNK;
+                for row in start..start.saturating_add(REDUCTION_CHUNK).min(matrix.nrows()) {
+                    let root = design.weights().at(row).sqrt();
+                    for (column, norm) in norms.iter_mut().enumerate() {
+                        *norm = norm.hypot(root * matrix[(row, column)]);
+                    }
+                }
+            });
+    });
     let mut norms = zeros(matrix.ncols())?;
-    for column in 0..matrix.ncols() {
-        for row in 0..matrix.nrows() {
-            norms[column] =
-                norms[column].hypot(design.weights().at(row).sqrt() * matrix[(row, column)]);
+    for (column, norm) in norms.iter_mut().enumerate() {
+        for chunk in 0..partials.nrows() {
+            *norm = norm.hypot(partials[(chunk, column)]);
         }
-        if !norms[column].is_finite() {
+        if !norm.is_finite() {
             return Err(numerical(
                 "weighted FE certificate norm is not representable",
             ));
