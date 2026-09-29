@@ -5,6 +5,7 @@ mod implicit;
 mod membership;
 pub use implicit::prepare_implicit_constant;
 mod singleton;
+mod subset;
 use crate::{
     data::Prepared,
     error::{ErrorCode, FeregError, Result},

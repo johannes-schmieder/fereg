@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.2 separation ledger, generations and certified detectors; M6.1 final-sample IRLS verified for direct/Schur, with retained-backend qualification pending M3.5; M4.4/M3.5 qualification decisions pending; M1.6 Mac and SCC baselines captured, with comparator failures preserved.
+Current task: M6.2 numerical separation certificates and simplex/IR/Mu detectors; transactional exact-FE ledger and singleton cascades verified; M6.1 final-sample IRLS verified for direct/Schur, with retained-backend qualification pending M3.5; M4.4/M3.5 qualification decisions pending; M1.6 baselines captured with comparator failures preserved.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -41,7 +41,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M5.3 Benchmarks
 - [ ] M5.4 G-OLS, then flip the `fereg` default to `engine(next)`
 - [~] M6.1 `ppml::family` and IRLS; direct/Schur verified, retained backends await M3.5
-- [ ] M6.2 Separation
+- [ ] M6.2 Separation (exact-FE ledger verified; numerical certificates/detectors pending)
 - [ ] M6.3 PPML inference and outputs
 - [ ] M6.4 Bias correction
 - [ ] M6.5 Tests and seam
@@ -107,6 +107,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M6.2 exact ledger (this commit) — immutable generation views, original-row proposals and stable FE-level identities; independent row-code certificate replay verifies CSR detector proposals and cascade follow-ups. Initial singletons commit separately; each certified exact drop plus frequency-aware singleton cascade and requested exact fixed point stages all source banks and rebases topology once before atomic publication. Invalid/stale evidence and late empty-positive-sample failures preserve the accepted owner and digests. Seven regressions and 2,200 literal-group generation comparisons pass, including pinned legacy singleton/component parity, slope-only exclusions, raw weight/adjustment alignment and repeatable original-identity digests. Full lean and long oracle suites pass. Numerical cone certificates, simplex/IR/Mu orchestration and bounded method diagnostics remain open; public defaults stay legacy.
 
 - 2026-09-29 M6.1 IRLS controller (this commit) — bounded final-sample IRLS integrates global/analytic one-FE starts, canonical basis freezing, fresh weighted FE/WLS frames, coefficient-only warm seeds, joint step halving, two-pass convergence and strict resumption without resetting the outer budget. Basis changes re-express the accepted predictor before atomic adoption; final coefficients/gauge are checked against the exact accepted eta/mu and qmu bread frame. Prepared weights/offsets stay authoritative and exposure is logged once. Nine new regressions cover difficult halvings, strict/basis resumption, budget exhaustion, offsets/exposure, slope-only FEs, implicit/aliased constants, malformed/unsupported inputs and fresh-weight seeds; 2,200 cold fits match independent dense Newton coefficients, means, deviance and bread, with exact 1/2/4/8-worker checks. All 187 engine tests and full lean/long suites pass. M6.1 remains verification-pending for M3.5 retained backends; public defaults stay legacy and M6.2 preparation/separation is next.
 

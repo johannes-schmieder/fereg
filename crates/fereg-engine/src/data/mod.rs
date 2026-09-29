@@ -11,6 +11,7 @@ pub(crate) use prepared::retain_rows;
 mod reference_weights;
 mod sample;
 mod source_plan;
+mod subset;
 pub use source_plan::SourcePlan;
 mod weights;
 pub(crate) use reference_weights::exact_count;
