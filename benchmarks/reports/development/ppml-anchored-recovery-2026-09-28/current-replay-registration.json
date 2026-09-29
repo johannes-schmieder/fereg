@@ -1,0 +1,42 @@
+{
+  "job": 7774550,
+  "dependency": 7774467,
+  "scope": "Current diagnostic baseline on the exact captured CZ26 full-call input; independent of pinned-target analysis",
+  "source_manifest_sha256": "577d0b6752351c2d6e6c7a8aee8c0372d1041981162eb5d63bd6a6afbb4b7d2f",
+  "plugin_sha256": "33dbe01546b1f55aef7f2cc6dd7443dbdeb9cc8cebe596e52d59fb2c18fff2cf",
+  "native_threads": 28,
+  "stata_processors": 4,
+  "probes": 256,
+  "seed": 739391,
+  "stream": 0,
+  "tolerance": 1e-09,
+  "iterate": 300,
+  "files": {
+    "direct_replay.py": "e5b754d5cddc8a1c994fff2f3176f9aaae30166b2d81c6bb3f0abf061479972c",
+    "current_replay_job.sh": "f67810cc1101fc6eccb73ed502bfb721443038026ae61e1c683fe9abce7ff1b4"
+  },
+  "local_harness_smoke": {
+    "branch": 0,
+    "probes": 8,
+    "native_threads_requested": 4,
+    "input_sha256": "411b6cb33a61251c57df8c161e4695aaea820acb9ee59287ac6f65536e501047",
+    "fixture_sha256": "e6cd76e4b34f702aff3362b2a1e9d1f4ef5e9cd4c4fca12c7f117755df3302d8",
+    "harness_sha256": "e5b754d5cddc8a1c994fff2f3176f9aaae30166b2d81c6bb3f0abf061479972c",
+    "plugin_sha256": "58675b3cac34749ee6d486c05170022d708d061ff6cc30dbfe0fddc163c998a3",
+    "success": true,
+    "stata": {
+      "schema_version": "1",
+      "completed": "1",
+      "stata_rc": "0",
+      "stata_version": "18",
+      "stata_edition": "MP",
+      "stata_os": "Unix",
+      "stata_machine_type": "Mac (Apple Silicon)",
+      "stata_processors": "4"
+    },
+    "process_rc": 0,
+    "stata_rc": 0,
+    "error": null,
+    "source_manifest_sha256": "577d0b6752351c2d6e6c7a8aee8c0372d1041981162eb5d63bd6a6afbb4b7d2f"
+  }
+}

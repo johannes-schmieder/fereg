@@ -2,6 +2,10 @@
 
 ## 0.5.0 beta — unreleased
 
+- Refine finite PPML bias-effect reconstruction failures with the accepted
+  weighted native solver, preserving component anchors and the original
+  certificate. Report the failing channel, block and measured discrepancy.
+
 - Require at least two distinct bias units within every retained level of both
   FE sets for PPML coefficient mean correction. Add `e(bias_support)` count and
   information-concentration summaries, explain independent-score-unit assumptions

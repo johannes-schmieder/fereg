@@ -1,0 +1,82 @@
+{
+  "passed": true,
+  "input_checks": [
+    {
+      "scope": "pin_vs_candidate_branch_0",
+      "rows": 2049981,
+      "columns": 24,
+      "exact_values_and_order": true
+    },
+    {
+      "scope": "pin_vs_candidate_branch_1",
+      "rows": 2049981,
+      "columns": 24,
+      "exact_values_and_order": true
+    },
+    {
+      "scope": "full_vs_branch_b_exact_row_multiset",
+      "rows": 2049981,
+      "columns": 24,
+      "exact_values_and_order": true,
+      "ordering_note": "Frozen wrapper bysort steps may reorder observations between calls; this comparison sorts copies only."
+    }
+  ],
+  "sample_checks": [
+    {
+      "branch": 0,
+      "retained_rows": 2049981,
+      "retained_mask_sha256": "60b63f86e5edca3d9f3c8474f6ffc7b321f40041271fa0682d1ae3271e999820",
+      "row_identity_unchanged": true,
+      "all_18_effect_channel_masks_match": true
+    },
+    {
+      "branch": 1,
+      "retained_rows": 1016421,
+      "retained_mask_sha256": "e501db2c157d1fdca13bafbd5c7da02e5723883bef3ed9f8eca00a630bcc9fb1",
+      "row_identity_unchanged": true,
+      "all_18_effect_channel_masks_match": true
+    },
+    {
+      "branch": 2,
+      "retained_rows": 1033560,
+      "retained_mask_sha256": "ec9616a751b42f32e615d1c6ab7743ff9d19f3ca772330e8c223f153c2bea0ef",
+      "row_identity_unchanged": true,
+      "all_18_effect_channel_masks_match": true
+    }
+  ],
+  "source": "Frozen pinned replay inputs and complete candidate sequence outputs; row data remain on SCC.",
+  "job": 7774946,
+  "accounting": {
+    "hostname": "scc-gd4.scc.bu.edu",
+    "jobnumber": "7774946",
+    "start_time": "Mon Sep 28 20:40:10 2026",
+    "end_time": "Mon Sep 28 20:40:37 2026",
+    "slots": "4",
+    "failed": "0",
+    "exit_status": "0",
+    "ru_wallclock": "27",
+    "ru_maxrss": "1410912",
+    "maxvmem": "1.561G"
+  },
+  "source_manifest_sha256": "e0ce365c88956bdcdc02617cdb34d2e92398f34c1c3ab506adb6b9a9a4e396b6",
+  "validator_sha256": "4ec7220d83ef1558d63ea14c8678b3a1cbf691b86c6efd009e885f2d5babd5bf",
+  "application_terminal": "SEQUENCE_INPUT_IDENTITY_COMPLETE job=7774946",
+  "previous_attempt": {
+    "job": 7774850,
+    "accounting": {
+      "hostname": "scc-gd4.scc.bu.edu",
+      "jobnumber": "7774850",
+      "start_time": "Mon Sep 28 20:35:25 2026",
+      "end_time": "Mon Sep 28 20:35:37 2026",
+      "slots": "4",
+      "failed": "0",
+      "exit_status": "1",
+      "ru_wallclock": "12",
+      "ru_maxrss": "1013176",
+      "maxvmem": "1.227G"
+    },
+    "result": "Pinned full/A comparisons passed. Full-versus-B exact-order assumption failed.",
+    "adjudication": "Frozen wrapper lines 208-209 sort between calls; corrected validator compares exact row values across calls and exact input/output order within each call. Estimations and data remain unchanged.",
+    "original_validator_sha256": "44026dfce62dfde1763ed7b522b4242ea6119b554ced7aa0cd46a1f3627e87a2"
+  }
+}

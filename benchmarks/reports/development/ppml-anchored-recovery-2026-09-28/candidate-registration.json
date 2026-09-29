@@ -1,0 +1,32 @@
+{
+  "source_manifest_sha256": "e0ce365c88956bdcdc02617cdb34d2e92398f34c1c3ab506adb6b9a9a4e396b6",
+  "plugins": {
+    "macos": "92a447289b6b8550b06162a81879b17fe3fa70ed3afb21343fdea7f4b6163c1f",
+    "linux": "156f63c32e7c462be4eb5ca979f575e1713b5ae20853708a2be90a1c584a3a5b"
+  },
+  "jobs": {
+    "candidate_build": 7774682,
+    "corrected_native_target_check": 7774704,
+    "sequence_array": 7774695,
+    "sequence_tasks": {
+      "1": 26,
+      "2": 22,
+      "3": 25
+    },
+    "thread_comparison": 7774745,
+    "current_full_baseline": 7774550,
+    "current_branch_a_baseline": 7774648
+  },
+  "current_baselines": "Both direct calls passed; the failure is sensitive to small numerical differences and is established on the pinned frozen sequence.",
+  "build_gate_failure": "Plugin build, ABI, and Stata fixture passed; unit-test compilation omitted tests/fixtures/ppml/reconstruction.csv. The one focused retest adds only the hashed synthetic fixture.",
+  "sequence_state": "Manually held until corrected native oracle gate passes; no full-sequence candidate validation claimed.",
+  "files": {
+    "build_candidate_job.sh": "675e04ddd47f30b1806bd5c6c14516ec8fb301062c243caf2c3740bc71e00002",
+    "native_target_job.sh": "6934855b0c8c3993b54d6f0b63fbe96154d31d7f4dfee30941b005f4fa9db621",
+    "qualify_sequence.py": "c2eb2b1ea74aa48153e9c0d06671b9fd31e1441776c25164883b4d0b10eb67da",
+    "qualify_sequence_job.sh": "44919ee29a128e398b31b7aa226cc5d818e03ec04b93cf9473d05e05a9eaf659",
+    "direct_replay.py": "e5b754d5cddc8a1c994fff2f3176f9aaae30166b2d81c6bb3f0abf061479972c",
+    "compare_replays.py": "bea056971a55354fdf47a77601b8a58e30d4ac96ead78b2268b8d345f9329be2",
+    "thread_comparison_job.sh": "b3daa9a056bdef53bf71d60944be5114d27f1c8d6b4b6947d5ef5d55c3535e07"
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "job": 7774946,
+  "retests_job": 7774850,
+  "slots": 4,
+  "wall_cap_minutes": 10,
+  "reason": "The frozen wrapper has bysort sepworker and bysort sepfirm between PPML calls (lines 208-209); requiring the same full/B row order was an incorrect validator assumption.",
+  "unchanged": "All nine completed estimations, source, binaries, samples, data values and per-call row order remain untouched.",
+  "checks": "Exact pin/candidate full and A frames; exact full/B row multiset using sorted comparison copies; exact original input/output order and eighteen channel masks within each call.",
+  "files": {
+    "verify_sequence_inputs.py": "4ec7220d83ef1558d63ea14c8678b3a1cbf691b86c6efd009e885f2d5babd5bf",
+    "verify_sequence_inputs_job.sh": "bdbb9e64b9a744054418f1fb0f137e1d305d987f7ce31a9fe4a969c2ba5667b5"
+  },
+  "frozen_wrapper_sha256": "787fe63a5fe173c1135ad3c2240f1d7deb2a834a9ca31bd1334c1a2670b02ca8",
+  "local_validation": "Comparison copies may reorder; changed values and within-call reordering are refused."
+}

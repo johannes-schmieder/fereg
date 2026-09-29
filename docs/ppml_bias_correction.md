@@ -106,6 +106,12 @@ their existing normalization. Raw correction effects are recovered from the
 accepted PPML predictor after removing the offset and unchanged finite
 contribution. This avoids cancellation in the IRLS working response when
 fitted means are tiny; the reconstruction certificate is unchanged.
+Recovery first traverses the two-FE graph. If finite coefficients fail the
+row reconstruction certificate, one native weighted projection of the small
+remaining discrepancy refines them under the accepted Hessian weights. The
+increment is re-anchored separately in every connected component. Every row
+must then satisfy the original certificate; an inconsistent target still fails.
+The ordinary fit, finite coefficients, sample and tolerance are unchanged.
 Re-anchoring subtracts the chosen second-FE
 anchor and adds it to the first FE in raw and correction channels alike;
 disconnected branches require compatible support before common-anchor comparisons.
@@ -200,6 +206,14 @@ Validity 1 means the retained interior calculation passed its numerical
 checks; it does not certify the observation-process assumptions or statistical
 accuracy of the approximation. Failed requests return an error instead of a
 partially valid correction.
+
+Correction failures identify `bias_channel` (`raw`, `probe`, `derivative`, or
+`curvature`), with zero-based `bias_block` and `bias_probe` when applicable.
+`bias_route` identifies the accepted information route. Recovery errors report
+the stage, worst scaled and absolute row discrepancies, certificate tolerance,
+target and reconstructed scales, and nonfinite status. These fields are in the
+error log; a failed call does not publish a partial diagnostic matrix or replace
+the caller's previous estimates and output variables.
 
 `e(bias_support)` has two rows, `fe1` and `fe2`, in absorb order, and
 11 columns:

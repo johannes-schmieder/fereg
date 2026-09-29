@@ -1,0 +1,10 @@
+{
+  "scope": "failure diagnostics and finite-input guards only; no numerical repair yet",
+  "source_manifest_sha256": "a35afec7ca6bfe36dbab7180533cc94940fa4588bbd12b03832c4d99ed2d0914",
+  "command": "cargo test -p fereg-core --lib bias -- --test-threads=1",
+  "passed": 22,
+  "failed": 0,
+  "ignored": 1,
+  "log_sha256": "d41a73b3f710305abd563cb13cce592383d4d33236d7a2806fd959254d0c9129",
+  "retained_log": "target/ppml-recovery-20260928/diagnostics-core-final.log"
+}

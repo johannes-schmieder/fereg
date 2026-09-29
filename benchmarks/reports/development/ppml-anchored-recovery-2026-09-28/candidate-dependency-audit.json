@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "status": "pass",
+  "source_sha": "94459a1420923cffe5bcb87d8e2b54bbdd2d8b4b",
+  "cargo_lock_sha256": "6dccaed3108fdbaf552edd8e3cb4660960f7a894fd343634ede7b9c432102b0e",
+  "advisory_count": 0,
+  "toolchain": "1.85.1"
+}

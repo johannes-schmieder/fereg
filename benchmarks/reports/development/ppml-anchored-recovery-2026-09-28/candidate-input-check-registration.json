@@ -1,0 +1,14 @@
+{
+  "job": 7774850,
+  "dependency": 7774695,
+  "scope": "Exact input value/row-order comparison to the pinned full/Branch A captures, Branch B declared-input identity, and all eighteen saved-effect sample masks",
+  "slots": 4,
+  "wall_cap_minutes": 10,
+  "source_manifest_sha256": "e0ce365c88956bdcdc02617cdb34d2e92398f34c1c3ab506adb6b9a9a4e396b6",
+  "files": {
+    "verify_sequence_inputs.py": "44026dfce62dfde1763ed7b522b4242ea6119b554ced7aa0cd46a1f3627e87a2",
+    "verify_sequence_inputs_job.sh": "bdbb9e64b9a744054418f1fb0f137e1d305d987f7ce31a9fe4a969c2ba5667b5"
+  },
+  "local_checks": "Synthetic equality with renamed temporary-variable labels, refusal of row reordering and changed values",
+  "data_policy": "Run only on SCC; collect scalar pass/fail, counts, hashes and metadata."
+}

@@ -10,6 +10,61 @@ This is the sole mutable progress/handover record. Historical receipts remain
 unchanged under benchmarks/reports/. The broad scientific/performance follow-up and
 <=0.90-stock goal remain active.
 
+## Completed focused repair: PPML anchored recovery — 2026-09-28
+
+The [repair report](benchmarks/reports/development/ppml-anchored-recovery-2026-09-28/README.md)
+records the pinned diagnosis, implementation, measured performance and downstream
+adoption instructions. FEVC and frozen Separations code/results remain unchanged;
+the campaign and monitor remain stopped pending a separate integration decision.
+Unrelated work and SCC experiments are preserved. Johannes authorized committing
+and pushing the matched source after validation. Source bytes were checked
+against the tested snapshot; historical receipts retain their original identities.
+
+The failing pin `a0588293…` passes full PPML, then fails Branch A raw FE recovery
+on route 2 before probes. First-edge traversal amplifies an approximately
+projected target: scaled error 1.12228e-9 against 1e-9, with 17 failing rows.
+Independent weighted LSMR/SVD reduce it to 6.38791e-10 without changing the
+certificate. The graph is connected with anchor distance two. Direct current
+upstream baselines already pass; they are not a failing-before comparison.
+
+The repair retains traversal as the fast path and conditionally refines its
+finite remainder with the accepted native weighted solver. It restores the
+original component anchors, reapplies the unchanged row certificate, charges
+retained recovery state and adds channel/block/route/error context. Ordinary
+estimation and transaction semantics are unchanged. The dirty-main
+[source manifest](benchmarks/reports/development/ppml-anchored-recovery-2026-09-28/candidate-source.json)
+**e0ce365c…** is based on HEAD **94459a14…** and includes the preexisting accepted
+bias-unit-support work. Mac plugin **92a44728…** and Linux **156f63c3…** are matched
+to that snapshot; HEAD alone does not identify the candidate.
+
+[Local checks](benchmarks/reports/development/ppml-anchored-recovery-2026-09-28/candidate-local.json)
+passed 28 focused Rust tests, 15 reconstruction and ten complete-correction
+oracle cases, plus four licensed Stata 18 correction/transaction fixtures.
+The extracted Mac runtime passed its separate installation/ordinary-PPML check.
+[Native target and thread checks](benchmarks/reports/development/ppml-anchored-recovery-2026-09-28/candidate-native-and-threads.json)
+**7774704/7774745** passed: captured-target recovery takes 0.190 s and matches
+the independent coefficients; corrected effects differ by at most 8.40e-14
+between four and 28 threads with identical retained rows.
+
+[Array **7774695**](benchmarks/reports/development/ppml-anchored-recovery-2026-09-28/candidate-sequences.json)
+passed all nine CZ26/CZ22/CZ25 full/A/B calls at the original 256 probes,
+28 effective native threads and four Stata processors. All Stata sentinels and
+scheduler tasks passed. CZ26 command times were 224.816/117.443/123.745 s;
+whole-job peak RSS was 5.164 GiB including frozen preparation. The largest
+successful reconstruction error across the nine calls was 3.345e-11.
+[Input check **7774946**](benchmarks/reports/development/ppml-anchored-recovery-2026-09-28/candidate-input-identity.json)
+passed exact pinned full/A values and order, full/B row-value identity, and all
+within-call row/mask checks. Its failed predecessor assumed constant order
+across the frozen wrapper's explicit between-call sorts; only the read-only
+validator was corrected. All failed attempts remain documented.
+
+[Separate Mac/Linux review archives](benchmarks/reports/development/ppml-anchored-recovery-2026-09-28/candidate-packages.json)
+and receipts are under `target/ppml-recovery-20260928/`;
+SCC work is isolated under `fereg-recovery-20260928`. Row data and coefficient
+arrays remain on SCC; final receipts contain approved aggregates only. This is
+a tested review candidate, not a release, Windows/native-Intel qualification,
+or authorization to resume the Separations campaign.
+
 ## Completed follow-up: PPML bias-unit support — 2026-09-28
 
 Johannes approved implementing the independent-unit support restriction. Both

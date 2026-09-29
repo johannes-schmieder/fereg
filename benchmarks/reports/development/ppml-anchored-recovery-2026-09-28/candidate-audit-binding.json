@@ -1,0 +1,22 @@
+{
+  "scope": "Cargo.lock only; no production-source clean-SHA qualification implied",
+  "source_dirty": true,
+  "lock_identical_to_HEAD": true,
+  "raw_receipt_sha256": "973c327806734efd9fb6595c107393ba908a5050c287ab1077166a80b8f66676",
+  "advisory_database": {
+    "advisory-count": 1273,
+    "last-commit": "ef03605143a913024f864d2edf476adad5720c93",
+    "last-updated": "2026-09-28T11:30:11+02:00"
+  },
+  "tool": {
+    "target_arch": [],
+    "target_os": [],
+    "severity": null,
+    "ignore": [],
+    "informational_warnings": [
+      "unmaintained",
+      "unsound",
+      "notice"
+    ]
+  }
+}

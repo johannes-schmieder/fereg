@@ -1,0 +1,46 @@
+{
+  "scope": "isolated CZ26 diagnostic; no Separations campaign restart",
+  "base_source": "a05882933fb0f1fc668e2a09bed8ff768b7329be",
+  "diagnostic_plugin_sha256": "ef98db1f41bf4d2e73de4a0cd92abcc99f57efd66efe739a023407eea3d95435",
+  "frozen_downstream_plugin_sha256": "259e27939df8288456a254bdebe150682dac6d30fff321e2bc32d0bdac04d909",
+  "files": {
+    "diagnose.py": "ddc1a1023230c2461c1cec831738c7f68babae982580df0225897330795fd9d3",
+    "diagnose_job.sh": "00d4e998c24ba43aa37cfdd20c3782ec826cd901537b2e26fe3eca4aec478868",
+    "replay_job.sh": "bff073dab114e76e4748b6f91be10b10db9b2347bbe40b35fcf2f66d8b76e7d4",
+    "analyze_target.py": "984d2adb8618d9ce5c6a230576c54aeaab7302235d0e2860be402c748c8faa2a",
+    "analyze_job.sh": "c96cd24f2df67a40c1d7d0ffd2ca0ec142279e148438bbc58cffe55402ace371",
+    "pin-diagnostic.tar.gz": "217c71146f70a9caacca1ee2540441580e2798689230340a96ab14e1f2199fd0"
+  },
+  "attempts": [
+    {
+      "job": "7774301",
+      "result": "build and actual ABI checks passed; test runner refused missing plugin checksum before any Stata fixture"
+    },
+    {
+      "job": "7774336",
+      "result": "dependent analysis cancelled because upstream input was absent"
+    },
+    {
+      "job": "7774339",
+      "result": "corrected replay submitted; licensed bias fixture passed; real replay pending at registration"
+    },
+    {
+      "job": "7774346",
+      "result": "independent analysis held behind 7774339"
+    }
+  ],
+  "runtime": {
+    "stata_processors": 4,
+    "native_threads": 28,
+    "probes": 256,
+    "seed": 739391,
+    "streams": [
+      0,
+      1,
+      2
+    ],
+    "tolerance": 1e-09,
+    "iterate": 300
+  },
+  "data_policy": "row-level data and recovery targets remain on SCC"
+}

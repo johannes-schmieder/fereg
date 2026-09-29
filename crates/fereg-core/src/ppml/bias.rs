@@ -66,7 +66,9 @@ pub(super) fn memory_bound(
     let p = (levels as u128) + columns as u128;
     n.checked_mul(if saves { 400 } else { 240 })
         .and_then(|v| v.checked_add(p.min(256) * p.min(256) * 16))
-        .and_then(|v| p.checked_mul(208).and_then(|q| v.checked_add(q)))
+        // Recovery reuses the admitted one-RHS projection workspace. Reserve
+        // additional component anchors and retained coefficient products.
+        .and_then(|v| p.checked_mul(240).and_then(|q| v.checked_add(q)))
         .and_then(|v| {
             (columns as u128)
                 .checked_mul(columns as u128)
@@ -101,7 +103,8 @@ pub(super) fn compute<P: PreparedOlsFitView + Sync + ?Sized>(
     let first = session.fe_design().effects()[0].n_levels();
     let second = session.fe_design().effects()[1].n_levels();
     let mut raw = filled(dimension, 0.)?;
-    session.bias_raw_coefficients(&mut fixed, frame.eta, frame.offset, &mut raw)?;
+    session.bias_raw_coefficients(&mut fixed, frame.eta, frame.offset, &mut raw)
+        .map_err(|e| bias_error_context(e, "raw", None, None, Some(fixed.route)))?;
     let mut result = calculate(
         request,
         frame.units,
@@ -111,6 +114,10 @@ pub(super) fn compute<P: PreparedOlsFitView + Sync + ?Sized>(
         |response, prediction, coefficients| {
             interrupt(PpmlInterruptPoint::BiasCorrection)?;
             session.bias_solve(&mut fixed, response, prediction, coefficients)
+                .map_err(|mut e| {
+                    e.message = format!("bias_route={}: {}", fixed.route, e.message);
+                    e
+                })
         },
     )?;
     result.raw = raw;
@@ -463,7 +470,8 @@ fn calculate(
                     ));
                 }
             }
-            solve(&response, &mut prediction, None)?;
+            solve(&response, &mut prediction, None)
+                .map_err(|e| bias_error_context(e, "probe", Some(block), Some(probe), None))?;
             result.solves += 1;
             for row in 0..n {
                 fc[row] = (0.5 * prediction[row]).mul_add(prediction[row], fc[row]);
@@ -486,8 +494,10 @@ fn calculate(
                 *x /= block_mass;
             }
         }
-        solve(&fd, &mut prediction, Some(&mut dc))?;
-        solve(&fc, &mut prediction, Some(&mut cc))?;
+        solve(&fd, &mut prediction, Some(&mut dc))
+            .map_err(|e| bias_error_context(e, "derivative", Some(block), None, None))?;
+        solve(&fc, &mut prediction, Some(&mut cc))
+            .map_err(|e| bias_error_context(e, "curvature", Some(block), None, None))?;
         result.solves += 2;
         let next = mass + block_mass;
         for j in 0..dimension {
@@ -513,6 +523,23 @@ fn calculate(
         }
     }
     Ok(result)
+}
+
+fn bias_error_context(
+    mut error: FeregError,
+    channel: &str,
+    block: Option<usize>,
+    probe: Option<usize>,
+    route: Option<u8>,
+) -> FeregError {
+    // Errors travel outside the successful-result wire, so these diagnostics
+    // survive transaction rollback without publishing partial estimates.
+    let mut context = format!("bias_channel={channel}");
+    if let Some(block) = block { context.push_str(&format!(" bias_block={block}")); }
+    if let Some(probe) = probe { context.push_str(&format!(" bias_probe={probe}")); }
+    if let Some(route) = route { context.push_str(&format!(" bias_route={route}")); }
+    error.message = format!("{context}: {}", error.message);
+    error
 }
 
 /// Counter is unit bits followed by probe index; the key is seed then stream.
@@ -623,6 +650,30 @@ mod tests {
             );
             assert_eq!(result.unwrap_err().code, failure);
             assert_eq!(calls, 4);
+        }
+    }
+
+    #[test]
+    fn auxiliary_failure_identifies_probe_derivative_and_curvature_block() {
+        for (stop, channel) in [(1, "probe"), (2, "derivative"), (3, "curvature")] {
+            let mut calls = 0;
+            let failure = calculate(
+                PpmlBiasRequest { method: PpmlBiasMethod::Randomized, probes: 8,
+                    seed: 17, stream: 1, save_effects: false },
+                &[1., 2., 3., 4.], &[1.; 4], &[0.4, 0.6, 1., 2.], 1,
+                |_, prediction, coefficients| {
+                    calls += 1;
+                    if calls == stop {
+                        return Err(error(ErrorCode::NonConvergence, "recovery diagnostic"));
+                    }
+                    prediction.fill(0.);
+                    if let Some(c) = coefficients { c.fill(0.); }
+                    Ok(())
+                },
+            ).unwrap_err();
+            assert_eq!(failure.code, ErrorCode::NonConvergence);
+            assert!(failure.message.contains(&format!("bias_channel={channel}")), "{failure}");
+            assert!(failure.message.contains("bias_block=0"), "{failure}");
         }
     }
 
