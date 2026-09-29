@@ -1,4 +1,6 @@
 //! Shared source preparation and finite-column generation for both estimators.
+mod clusters;
+pub use clusters::ClusterFrame;
 mod columns;
 pub use columns::{ColumnSlot, CompiledColumns, SyntaxStatus};
 mod loaded;
