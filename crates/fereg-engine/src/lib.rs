@@ -6,6 +6,7 @@ pub mod data;
 pub mod dof;
 pub mod error;
 pub mod factor;
+pub mod fe;
 pub mod spec;
 pub mod threads;
 pub mod topology;

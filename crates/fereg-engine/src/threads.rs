@@ -140,7 +140,7 @@ impl Drop for ThreadTeam {
     }
 }
 
-fn compensated_sum(values: impl IntoIterator<Item = f64>) -> f64 {
+pub(crate) fn compensated_sum(values: impl IntoIterator<Item = f64>) -> f64 {
     let mut sum: f64 = 0.0;
     let mut correction = 0.0;
     for value in values {
