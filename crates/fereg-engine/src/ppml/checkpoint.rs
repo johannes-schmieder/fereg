@@ -47,6 +47,8 @@ pub struct Report {
     pub candidate: Option<Candidate>,
     pub accepted_scores: ScoreCertificate,
     pub accepted_state: StateCertificate,
+    /// Includes the linear frame even when its Poisson candidate is unrepresentable.
+    pub work: wls::Work,
 }
 /// All inputs must describe the same final separation/singleton sample and
 /// canonical generated-column order. The driver owns generation alignment.
@@ -119,8 +121,19 @@ impl Checkpoint<'_, '_> {
         // Strictness tightens FE projection; finite score/inverse guards keep
         // their shared scientific policy, as in the legacy strict solve.
         let policy = Policy::default();
-        let linear =
-            wls::solve_absorbed(&mut engine, self.raw, &response, self.roles, policy, team)?;
+        let mut work = wls::Work::default();
+        let linear = wls::solve_absorbed_recorded(
+            &mut engine,
+            self.raw,
+            &response,
+            self.roles,
+            wls::AbsorbedControls {
+                finite: policy,
+                basis: None,
+            },
+            &mut work,
+            team,
+        )?;
         linear.revalidate_basis(&fresh, self.raw, self.roles, self.basis, policy, team)?;
         let basis_unchanged = self.basis.matches(&linear.finite);
         if stage == Stage::FinalHessian && !basis_unchanged {
@@ -141,6 +154,7 @@ impl Checkpoint<'_, '_> {
                     candidate: None,
                     accepted_scores,
                     accepted_state,
+                    work,
                 });
             }
             Err(error) => return Err(error),
@@ -176,6 +190,7 @@ impl Checkpoint<'_, '_> {
             decision,
             accepted_scores,
             accepted_state,
+            work,
             candidate: Some(Candidate {
                 point: candidate,
                 evaluation: candidate_evaluation,

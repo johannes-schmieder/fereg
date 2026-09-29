@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.6 G-M3 decision after the first focused repair. The committed strong-two-FE rerun passes all eight accuracy/determinism groups and 40 measured fits; auto improves 19.5%/29.2% at T1/T8 but remains 2.188/18.655 times legacy, failing the 1.1 limit. The full lean/long suites pass; PLAN requires asking Johannes before another FE performance attempt. Recommended next step: bring M8.3 shared-operator work forward, retaining the gate and all scientific/API rules. M4.4 factor precedence follows built-in Stata; M6.1 accumulated IRLS work reporting and M6.2 detectors/terminal replay/orchestration remain open.
+Current task: M6.1 is complete after bounded IRLS work accounting passes the full lean/long suites. Next independent task: M6.2 separation detectors, terminal replay and orchestration. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -40,7 +40,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M5.2 Stata fixtures with `engine(next)`
 - [ ] M5.3 Benchmarks
 - [ ] M5.4 G-OLS, then flip the `fereg` default to `engine(next)`
-- [~] M6.1 `ppml::family` and IRLS; all backends match Newton oracles, accumulated frame-work reporting remains
+- [x] M6.1 `ppml::family` and IRLS; all backends match Newton oracles, accumulated frame-work reporting verified
 - [ ] M6.2 Separation (ledger and numerical certificates verified; detectors/orchestration pending)
 - [ ] M6.3 PPML inference and outputs
 - [ ] M6.4 Bias correction
@@ -128,6 +128,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M6.1 accumulated work (this commit) — the sole shared WLS assembly records primary/recovery FE reports and auxiliary setup before finite guards or speculative rejection can discard them. Fixed-size summaries retain requested/selected/used/checkpoint counts, backend attempts/refinements, stop/fallback counts, summed Krylov iterations and maximum per RHS; checked merges fail atomically on overflow. IRLS accumulates initial/ordinary/strict/final-Hessian/rebase frames, including unrepresentable Poisson candidates and numerical rebase failures, with separate Fisher/Hessian/rebase counts. Six new regressions cover fresh CMG nuisance setup at 1/2/4/8 workers, reused-factor setup charged once, derived-RHS certificate recovery, full primary-bank work after bounded fallback failure, finite guard rejection and overflow; retained analytic/LSMR/basis-change/overflow-checkpoint regressions verify discarded work. Full lean and long oracle suites pass, including 2,200 PPML/Newton designs and eligible explicit LSMR/CMG fits. No mathematical acceptance, solver policy, iteration budget or public default changes. M6.1 is complete; M6.2 and G-M3 remain open.
 
 - 2026-09-29 M3.6 focused timing decision (this commit) — frozen 870a1200: all eight strong-two-FE groups and 50 processes succeed; five measured repetitions per group, both tight references, source/Cargo.lock/binary/input identities and byte-identical collector replay audit pass. Auto medians 11.0188/3.4235 seconds at T1/T8 versus legacy 5.0352/0.1835; ratios 2.188/18.655 miss G-M3's 1.1 limit despite 19.5%/29.2% improvement over the baseline. Explicit LSMR medians 8.0564/2.3284 and CMG 5.9658/1.4010 seconds; all coefficient/objective checks and exact new-engine repeat/worker hashes pass. The [partial summary](bench/history/2026-09-29-870a1200-darwin-fe-projection-focus.csv) retains dispersion/provenance and establishes failure of the all-cell requirement, not a new full-suite geometric mean. Full lean checks pass again; the repair's long oracle suite already passed. M3.6/G-M3 remain open; ask Johannes as PLAN requires after one focused attempt, recommending M8.3 shared-operator work before cutover. No public default changes.
 

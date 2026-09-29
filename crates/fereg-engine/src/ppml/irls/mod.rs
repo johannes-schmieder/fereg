@@ -14,7 +14,7 @@ use crate::{
     fe::Design,
     spec::{Estimator, Options},
     threads::ThreadTeam,
-    wls::{AbsorbedFit, FrozenBasis, Role},
+    wls::{AbsorbedFit, FrozenBasis, Role, Work},
 };
 /// No sample mutation or cached numerical state crosses this call. Raw offsets
 /// and exposures are read from the sole prepared sample owner.
@@ -29,8 +29,12 @@ pub struct Diagnostics {
     pub step_halvings: usize,
     pub linear_frames: usize,
     pub strict_checks: usize,
+    pub fisher_checks: usize,
+    pub hessian_checks: usize,
+    pub basis_rebases: usize,
     pub strict_resumes: usize,
     pub analytic_start: bool,
+    pub work: Work,
 }
 #[derive(Debug, PartialEq)]
 pub struct Fit {
@@ -101,8 +105,8 @@ impl<'a, 'data> Context<'a, 'data> {
             self.controls.strict_tolerance(),
             None,
             Stage::FinalHessian,
+            &mut diagnostics,
         )?;
-        diagnostics.linear_frames += 1;
         let mut basis = FrozenBasis::from_fit(&initial.finite)?;
         accepted = self.represent(&accepted, &initial)?;
         drop(initial);
@@ -113,8 +117,8 @@ impl<'a, 'data> Context<'a, 'data> {
                 convergence.next_inner_tolerance(),
                 Some(&basis),
                 Stage::Fisher,
+                &mut diagnostics,
             )?;
-            diagnostics.linear_frames += 1;
             let proposal =
                 self.family
                     .point_from_linear(&linear, self.problem.raw, self.design, self.team)?;
@@ -173,7 +177,11 @@ impl<'a, 'data> Context<'a, 'data> {
     ) -> Result<super::checkpoint::Report> {
         diagnostics.linear_frames += 1;
         diagnostics.strict_checks += 1;
-        Checkpoint {
+        match stage {
+            Stage::Fisher => diagnostics.fisher_checks += 1,
+            Stage::FinalHessian => diagnostics.hessian_checks += 1,
+        }
+        let report = Checkpoint {
             family: self.family,
             design: self.design,
             raw: self.problem.raw,
@@ -181,7 +189,9 @@ impl<'a, 'data> Context<'a, 'data> {
             basis,
             options: self.options,
         }
-        .run(accepted.point(), accepted.evaluation(), stage, self.team)
+        .run(accepted.point(), accepted.evaluation(), stage, self.team)?;
+        diagnostics.work.merge(report.work)?;
+        Ok(report)
     }
     fn adopt(
         &self,
@@ -203,13 +213,14 @@ impl<'a, 'data> Context<'a, 'data> {
             next
         } else {
             let new_basis = FrozenBasis::from_fit(&candidate.linear.finite)?;
-            diagnostics.linear_frames += 1;
+            diagnostics.basis_rebases += 1;
             let rebase = self
                 .frame(
                     &next,
                     self.controls.strict_tolerance(),
                     Some(&new_basis),
                     Stage::FinalHessian,
+                    diagnostics,
                 )
                 .and_then(|linear| self.represent(&next, &linear));
             match rebase {

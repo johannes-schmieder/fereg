@@ -301,6 +301,16 @@ fn overflowing_poisson_trial_returns_the_accepted_state_for_bounded_resumption()
         .unwrap();
     assert_eq!(report.decision, Decision::ResumeAccepted);
     assert!(report.candidate.is_none());
+    assert_eq!(report.work.projection().calls(), 1);
+    assert_eq!(report.work.projection().counts().right_hand_sides, 2);
+    assert_eq!(report.work.counts().summed_iterations, 0);
+    assert_eq!(
+        report
+            .work
+            .projection()
+            .used(fereg_engine::fe::Backend::NoEffects),
+        2
+    );
     assert_eq!(evaluation, family.evaluate(&accepted.eta, &team).unwrap());
 }
 

@@ -1,9 +1,9 @@
 //! Shared FWL assembly for OLS responses and PPML working/final-Hessian frames.
-use super::{Fit, FrozenBasis, Policy, Problem, Role, Slot};
+use super::{work::Phase, Fit, FrozenBasis, Policy, Problem, Role, Slot, Work};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    fe::{Certificate, Engine, RhsDiagnostics, SetupDiagnostics},
+    fe::{Certificate, Engine, Projection, RhsDiagnostics, SetupDiagnostics},
     threads::{compensated_sum, ThreadTeam},
 };
 #[derive(Debug, PartialEq)]
@@ -22,6 +22,11 @@ pub struct AbsorbedFit {
     pub recovery_diagnostics: Vec<RhsDiagnostics>,
     pub relative_residual_reconstruction: f64,
     pub relative_original_finite_score: f64,
+}
+#[derive(Debug, Default, Clone, Copy)]
+pub struct AbsorbedControls<'a> {
+    pub finite: Policy,
+    pub basis: Option<&'a FrozenBasis>,
 }
 
 pub fn solve_absorbed(
@@ -45,6 +50,34 @@ pub fn solve_absorbed_with_basis(
     basis: Option<&FrozenBasis>,
     team: &ThreadTeam,
 ) -> Result<AbsorbedFit> {
+    solve_absorbed_recorded(
+        engine,
+        raw,
+        outcome,
+        roles,
+        AbsorbedControls {
+            finite: policy,
+            basis,
+        },
+        &mut Work::default(),
+        team,
+    )
+}
+/// Work is recorded before finite fitting, certificate rejection or speculative
+/// callers can discard the frame. Numerical errors preserve consumed work.
+pub fn solve_absorbed_recorded(
+    engine: &mut Engine<'_, '_>,
+    raw: &DenseMatrix,
+    outcome: &[f64],
+    roles: &[Role],
+    controls: AbsorbedControls<'_>,
+    work: &mut Work,
+    team: &ThreadTeam,
+) -> Result<AbsorbedFit> {
+    let AbsorbedControls {
+        finite: policy,
+        basis,
+    } = controls;
     let design = engine.design();
     let n = design.nobs();
     let k = raw.ncols();
@@ -65,7 +98,7 @@ pub fn solve_absorbed_with_basis(
             rhs[(row, column + 1)] = raw[(row, column)];
         }
     }
-    let mut projection = engine.project(&rhs, team)?;
+    let mut projection = recorded_projection(engine, &rhs, Phase::Projection, work, team)?;
     let mut within = DenseMatrix::zeros(n, k)?;
     let within_outcome = projection.residuals.column(0)?;
     for row in 0..n {
@@ -112,7 +145,7 @@ pub fn solve_absorbed_with_basis(
             Err(error) if error.code == ErrorCode::NonConvergence => {
                 // Separate projections can cancel to a much smaller final RHS.
                 // Its own SPEC scale, not the pre-fit scales, must certify.
-                let recovery = engine.project(&target, team)?;
+                let recovery = recorded_projection(engine, &target, Phase::Recovery, work, team)?;
                 projection
                     .setup_diagnostics
                     .try_reserve(recovery.setup_diagnostics.len())
@@ -171,6 +204,29 @@ pub fn solve_absorbed_with_basis(
         relative_residual_reconstruction: reconstruction,
         relative_original_finite_score: original_score,
     })
+}
+fn recorded_projection(
+    engine: &mut Engine<'_, '_>,
+    rhs: &DenseMatrix,
+    phase: Phase,
+    work: &mut Work,
+    team: &ThreadTeam,
+) -> Result<Projection> {
+    let result = engine.project(rhs, team);
+    // Fatal validation/allocation errors can precede resetting the last report.
+    // They cannot become resumed frames or produce a published estimator.
+    if result
+        .as_ref()
+        .is_err_and(|e| e.code != ErrorCode::NonConvergence)
+    {
+        return result;
+    }
+    work.observe(
+        phase,
+        engine.last_diagnostics(),
+        engine.last_setup_diagnostics(),
+    )?;
+    result
 }
 fn original_score(
     engine: &Engine<'_, '_>,

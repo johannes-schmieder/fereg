@@ -56,6 +56,11 @@ fn analytic_one_fe_start_and_exact_accepted_hessian_match_group_optima() {
     .unwrap();
     assert!(fit.diagnostics.analytic_start);
     assert_eq!(fit.diagnostics.accepted_iterations, 2);
+    assert_eq!(
+        fit.diagnostics.work.projection().calls(),
+        fit.diagnostics.linear_frames
+    );
+    assert_eq!(fit.diagnostics.work.counts().summed_iterations, 0);
     for group in 0..4 {
         let sum_y: f64 = (group..n)
             .step_by(4)
@@ -255,9 +260,18 @@ fn strict_basis_change_is_represented_and_committed_before_bounded_resumption() 
     assert_eq!(fit.linear.finite.kept, vec![1]);
     assert_eq!(fit.point.finite[0], 0.);
     close(fit.point.finite[1], -2.);
+    assert!(fit.diagnostics.basis_rebases > 0);
     assert!(
         fit.diagnostics.linear_frames
             > 1 + fit.diagnostics.accepted_iterations + fit.diagnostics.strict_checks
+    );
+    assert_eq!(
+        fit.diagnostics.work.projection().calls(),
+        fit.diagnostics.linear_frames
+    );
+    assert_eq!(
+        fit.diagnostics.work.projection().counts().right_hand_sides,
+        fit.diagnostics.linear_frames * 3
     );
     for (&eta, &x) in fit.point.eta.iter().zip(&x) {
         close(eta, -2. * x);
@@ -292,6 +306,28 @@ fn explicit_lsmr_keeps_ppml_means_and_fresh_hessians_identical_across_workers() 
             ..options()
         };
         let fit = run(&sample, &raw, &[Role::Ordinary], options, 1).unwrap();
+        assert_eq!(
+            fit.diagnostics.work.projection().calls(),
+            fit.diagnostics.linear_frames
+        );
+        let work = fit.diagnostics.work.projection();
+        assert_eq!(
+            work.requested(Solver::Lsmr),
+            fit.diagnostics.linear_frames * 2
+        );
+        assert_eq!(
+            work.used(fereg_engine::fe::Backend::Lsmr),
+            work.counts().right_hand_sides
+        );
+        assert!(
+            work.counts().summed_iterations
+                > fit
+                    .linear
+                    .projection_diagnostics
+                    .iter()
+                    .map(|d| d.iterations)
+                    .sum()
+        );
         close(fit.point.finite[0], -0.4);
         for (mean, truth) in fit.evaluation.mean.iter().zip(&sample.outcome) {
             close(*mean, *truth);

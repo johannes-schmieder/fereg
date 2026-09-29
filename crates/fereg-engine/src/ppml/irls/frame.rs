@@ -2,7 +2,7 @@ use super::*;
 use crate::{
     error::reserved,
     fe::Engine,
-    wls::{self, Policy},
+    wls::{self, AbsorbedControls, Policy},
 };
 impl<'a, 'data> Context<'a, 'data> {
     pub(super) fn frame(
@@ -11,7 +11,9 @@ impl<'a, 'data> Context<'a, 'data> {
         tolerance: f64,
         basis: Option<&FrozenBasis>,
         stage: Stage,
+        diagnostics: &mut Diagnostics,
     ) -> Result<AbsorbedFit> {
+        diagnostics.linear_frames += 1;
         let n = self.problem.sample.n_active();
         let mut h = reserved(n)?;
         h.resize(n, 0.);
@@ -52,13 +54,16 @@ impl<'a, 'data> Context<'a, 'data> {
             score_tolerance: Policy::default().score_tolerance.max(tolerance),
             ..Policy::default()
         };
-        wls::solve_absorbed_with_basis(
+        wls::solve_absorbed_recorded(
             &mut engine,
             self.problem.raw,
             &response,
             self.problem.roles,
-            policy,
-            basis,
+            AbsorbedControls {
+                finite: policy,
+                basis,
+            },
+            &mut diagnostics.work,
             self.team,
         )
     }

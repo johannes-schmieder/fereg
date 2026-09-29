@@ -276,6 +276,16 @@ passes, strict WLS, frozen-basis revalidation and independent final-Hessian,
 score/objective/model-space checks are mandatory. A weight generation can
 reuse structural topology; it cannot reuse a stale numerical certificate.
 
+Shared WLS records FE work before finite fitting or speculative rejection can
+discard a frame. Fixed-size summaries separate primary projection, derived-RHS
+recovery and auxiliary setup; retain backend attempts, refinements, stop and
+fallback counts; and distinguish summed iterations from the maximum per RHS.
+IRLS accumulates every completed or resumed numerical frame, including an
+unrepresentable Poisson checkpoint and a rejected basis rebase. Fisher checks,
+final-Hessian checks and rebases have separate counts. Setup is charged once
+per immutable frame, and overflow is a fatal error rather than saturation.
+The final accepted frame still carries its detailed per-RHS reports.
+
 Optional bias correction uses the full identified FE-plus-control information
 operator at the accepted state. Stream exact unit contractions or fixed
 Philox probes through shared linear algebra. Carry both derivative and

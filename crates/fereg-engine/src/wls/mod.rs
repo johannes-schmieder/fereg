@@ -4,15 +4,20 @@ mod basis;
 mod certificate;
 mod cholesky;
 mod moments;
+mod work;
 use crate::{
     data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
     linalg::{ColumnScaling, ScaledDesign, WeightedQr},
     threads::ThreadTeam,
 };
-pub use absorbed::{solve_absorbed, solve_absorbed_with_basis, AbsorbedFit};
+pub use absorbed::{
+    solve_absorbed, solve_absorbed_recorded, solve_absorbed_with_basis, AbsorbedControls,
+    AbsorbedFit,
+};
 pub use basis::FrozenBasis;
 use cholesky::Cholesky;
+pub use work::{AttemptWork, Counts, ProjectionWork, SetupWork, Work};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Role {
