@@ -148,6 +148,7 @@ name = "fereg-oracle"
 version = "0.5.0"
 dependencies = [
  "fereg-core",
+ "fereg-engine",
 ]
 
 [[package]]

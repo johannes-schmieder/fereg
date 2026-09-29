@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M2.3 shared data/factor preparation; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
+Current task: M2.4 shared FE topology, singleton pruning and DoF; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -20,10 +20,10 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.3 `crates/fereg-oracle`; dense oracles, seeded designs and legacy comparisons
 - [x] M1.4 `bench/` suite; 22 cells, pinned comparators and Mac smoke
 - [x] M1.5 SCC tooling; compute-node smoke passed and summary collected
-- [~] M1.6 Legacy baseline; Mac standard running, SCC full pending smoke
+- [~] M1.6 Legacy baseline; frozen Mac standard and SCC full campaigns running
 - [x] M2.1 Move legacy; Rust checks, path checks and universal plugin/ABI build pass
 - [x] M2.2 Create `crates/fereg-engine`; safe skeleton, wire parser and deterministic team
-- [ ] M2.3 Harvest `data`
+- [x] M2.3 Shared data/factor harvest; exact legacy sample/weight parity on 2,400 designs
 - [ ] M2.4 Harvest `topology`
 - [ ] M3.1 `fe::Design` and `fe::Plan`
 - [ ] M3.2 Direct projection for Q = 1
@@ -86,7 +86,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M2.2 (this commit) — independent safe engine, fallible wire metadata, retained solver options, call-owned deterministic team; 18 engine tests, full lean checks and long oracle suite pass; 1/2/4/8-worker bit identity; largest file 1,240 lines, Clippy 150-line function bound and 1,500/1,501-line guard checks pass; Mac launcher pause 11:26:06–11:30:40 UTC (274s), fit clocks unaffected.
+- 2026-09-29 M2.3 (this commit) — shared owned inputs, sample ledger, in-place compaction, model columns and canonical factor/tuple coding; 52 engine tests, 2,400 exact sample/weight comparisons, 100 factor comparisons, full lean and long oracle checks pass; data/factor total 1,397 lines including embedded tests; Mac launcher pauses 11:42:01–12:00:31 UTC (fit continued) and 12:03:19–12:06:44 UTC (205s for checks); strict fixest weak-graph warmup nonconvergence retained in baseline, no retry.
+
+- 2026-09-29 M2.2 0c3a3763 — independent safe engine, fallible wire metadata, retained solver options, call-owned deterministic team; 18 engine tests, full lean checks and long oracle suite pass; 1/2/4/8-worker bit identity; largest file 1,240 lines, Clippy 150-line function bound and 1,500/1,501-line guard checks pass; Mac launcher pause 11:26:06–11:30:40 UTC (274s), fit clocks unaffected.
 - 2026-09-29 M1.5 completion 146c2b4b — setup 7779824/smoke 7779825: failed=0/exit=0, 28 slots, maxvmem 10.841/1.438G; 16/16 groups and 80/80 measured fits accurate, 155.7s, no failures/timeouts; [summary](bench/history/2026-09-29-242f5201-linux-smoke.csv); collector stdin/permissions repair passes focused retest, 13 harness tests and full lean checks; Mac launcher pause 11:11:47–11:16:08 UTC (261s), fit clocks unaffected.
 - 2026-09-29 M1.6 full submitted cdfa8f85 — setup 7779871, array 7779872 (56 tasks); owner-only runs/20260929-rebuild-m16-cdfa8f85; verified existing Veneto storage authorization and 92.5 GB free; raw data stay on SCC.
 - 2026-09-29 M2.1 b1700e6d — moved 155 legacy files; all numerical source/test blobs unchanged, one testkit Cargo path adjusted; workspace/plugin/oracle/fuzz and live path readers updated; historical pins preserved; 36 path/harness tests, full lean checks and universal plugin/ABI tests pass; Mac launcher pause 11:03:33–11:09:23 UTC (350s), fit clocks unaffected.

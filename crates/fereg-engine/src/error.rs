@@ -106,7 +106,7 @@ pub(crate) fn copied_string(value: &str) -> Result<String> {
     let mut owned = String::new();
     owned
         .try_reserve_exact(value.len())
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, "unable to reserve model metadata"))?;
+        .map_err(|_| FeregError::new(ErrorCode::Allocation, "unable to reserve engine string"))?;
     owned.push_str(value);
     Ok(owned)
 }
