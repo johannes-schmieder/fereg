@@ -79,6 +79,9 @@ fn campaign(start: usize, count: usize) {
             .sum();
         close(null.log_likelihood, null_ll, seed);
         let actual = family.evaluate(&expected.eta, &one).unwrap();
+        if seed % 20 == 0 {
+            check_full_step(&family, &expected, &offset, &eight);
+        }
         let mut h = vec![0.; n];
         let mut z = vec![0.; n];
         family
@@ -132,4 +135,35 @@ fn poisson_family_matches_independent_newton_states_and_pinned_legacy() {
 #[ignore = "long Poisson family differential campaign"]
 fn two_thousand_poisson_family_states() {
     campaign(200, 2000);
+}
+
+fn check_full_step(
+    family: &Family<'_>,
+    expected: &fereg_oracle::explicit_ppml::PpmlResult,
+    offset: &[f64],
+    team: &ThreadTeam,
+) {
+    use fereg_engine::{
+        data::DenseMatrix,
+        ppml::step::{Accepted, Point},
+    };
+    let constant = family.global_start().unwrap();
+    let current = Accepted::start(
+        family,
+        Point {
+            finite: vec![constant, 0.],
+            absorbed: DenseMatrix::zeros(0, 1).unwrap(),
+            eta: offset.iter().map(|v| v + constant).collect(),
+        },
+        team,
+    )
+    .unwrap();
+    let proposed = Point {
+        finite: expected.coefficients.clone(),
+        absorbed: DenseMatrix::zeros(0, 1).unwrap(),
+        eta: expected.eta.clone(),
+    };
+    let accepted = current.try_step(&proposed, team).unwrap();
+    assert_eq!(accepted.step(), 1.);
+    assert_eq!(accepted.point(), &proposed);
 }

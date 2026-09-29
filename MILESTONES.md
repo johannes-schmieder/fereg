@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.1 independent Poisson-family harvest; M4.4/M3.5 qualification decisions pending; M1.6 SCC full array running (7779872), Mac standard and auto/LSMR/CMG baselines captured.
+Current task: M6.1 independent Poisson family, starts and step-control harvest; M4.4/M3.5 qualification decisions pending; M1.6 SCC full array running (7779872), Mac standard and auto/LSMR/CMG baselines captured.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -108,7 +108,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M6.1 starts/null (this commit) — log-sum global constant and optional analytic one-intercept-FE proposals only, zero groups decline without modifying a global state; reference null likelihood ignores offsets and retains the harvested positive-mean subnormal safeguard/log fallback; four start/null regressions and all 2,200 family-state oracle comparisons pass, including constant offsets ±700 and rescued tiny weighted outcomes; 142 engine tests and full lean/long suites pass; IRLS control and final-Hessian acceptance remain open.
+- 2026-09-29 M6.1 step control (this commit) — immutable accepted family/parameter states, exact full proposals and joint coefficient/predictor halvings under the pinned 25-step/1e-12-slack policy; only numerical trial failures are retried, allocation/argument failures remain fatal; two accepted objective-and-score passes request strict checks, rejected checkpoints preserve the outer budget, and the harvested inner target tightens monotonically; six control regressions, 110 sampled independent Newton proposals, 148 engine tests and full lean/long suites pass; SCC 53/56 application markers, all remaining tasks running.
+
+- 2026-09-29 M6.1 starts/null 81168928 — log-sum global constant and optional analytic one-intercept-FE proposals only, zero groups decline without modifying a global state; reference null likelihood ignores offsets and retains the harvested positive-mean subnormal safeguard/log fallback; four start/null regressions and all 2,200 family-state oracle comparisons pass, including constant offsets ±700 and rescued tiny weighted outcomes; 142 engine tests and full lean/long suites pass; IRLS control and final-Hessian acceptance remain open.
 
 - 2026-09-29 M6.1 Poisson family 4f3535ca — harvested stable deviance/log-gamma formulas, unclipped positive means, immutable outcome/offset terms, fixed-block objective evaluation and explicit qmu/z working frames with stale-predictor rejection; shared compensated accumulator preserves prior reduction arithmetic; analytic fractional likelihood, near-saturation deviance, frequency replication and worker/chunk-boundary identity pass; 2,200 independent Newton-state/pinned-legacy comparisons, 138 engine tests and full lean/long suites pass; starts, IRLS and accepted-state controller remain open.
 
