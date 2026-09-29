@@ -14,6 +14,7 @@ source /etc/bashrc
 module purge
 module load python3/3.12.4 R/4.5.2 stata-mp/19
 set -u
+umask 077
 run_root=${1:?run root}
 phase=${2:?setup or benchmark}
 tier=${3:?tier}

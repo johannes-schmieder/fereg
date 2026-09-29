@@ -5,6 +5,8 @@ The scripts use `/projectnb/welfgr/fereg/dev/<id>` for smoke and
 quota and jobs before deploying. Source archives contain an explicit allowlist
 from a Git commit, including the source-pinned reference bundles. Existing
 runs, environments and data are never overlaid or deleted.
+Run roots are owner-only. The submitted controllers are extracted from the
+verified commit archive, so uncommitted local edits cannot enter a remote run.
 
 Prepare comparator archives with `bench/setup.py` locally, then prepare inputs
 from a commit that contains these scripts:

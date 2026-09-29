@@ -1,6 +1,7 @@
 #!/bin/bash
 # Invoked inside the setup job, after module initialization.
 set -euo pipefail
+umask 077
 run_root=${1:?run root}
 [[ "$run_root" =~ ^/projectnb/welfgr/fereg/(dev|runs)/[A-Za-z0-9][A-Za-z0-9._-]{0,95}$ ]]
 cd "$run_root"
@@ -24,7 +25,10 @@ export PATH="$CARGO_HOME/bin:$PATH"
 export FEREG_GIT_COMMIT
 FEREG_GIT_COMMIT=$(python3 -c 'import json; print(json.load(open("input/source.json"))["commit"])')
 python3 -c 'import numpy,pandas; print("numpy",numpy.__version__,"pandas",pandas.__version__)'
-bash source/scripts/build_linux.sh > logs/build.log 2>&1
+(
+    cd source
+    bash scripts/build_linux.sh
+) > logs/build.log 2>&1
 python3 source/bench/setup.py --root "$run_root/environment" > logs/comparators.log 2>&1
 python3 - "$run_root" <<'PY'
 import hashlib,json,sys

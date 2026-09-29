@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M1.5; SCC tooling and one smoke job.
+Current task: M1.5 checked setup-directory repair ready for focused SCC retest; M1.6 Mac standard paused between fits at frozen 3a931afe.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -20,7 +20,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.3 `crates/fereg-oracle`; dense oracles, seeded designs and legacy comparisons
 - [x] M1.4 `bench/` suite; 22 cells, pinned comparators and Mac smoke
 - [~] M1.5 SCC tooling implemented and checked locally; compute-node smoke pending
-- [ ] M1.6 Legacy baseline
+- [~] M1.6 Legacy baseline; Mac standard running, SCC full pending smoke
 - [ ] M2.1 Move legacy
 - [ ] M2.2 Create `crates/fereg-engine`
 - [ ] M2.3 Harvest `data`
@@ -86,7 +86,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M1.5 preparation (this task commit) — commit snapshots, private offline native build, pinned comparator setup, 28-slot jobs, task manifests and strict collection; ten harness tests, shell syntax and local lean checks pass; SCC Python/R/Stata modules and both Rust dependency pins verified; remote smoke still pending.
+- 2026-09-29 M1.5 repair (this commit) — build from source/; controllers extracted from the verified commit archive; owner-only run roots; shell checks, 12 benchmark tests and full local lean harness pass; one focused SCC retest pending.
+- 2026-09-29 M1.5 preparation 3a931afe — local checks pass; archive hashes verified; setup 7779802 exited 101 before compilation because Cargo ran above source/; dependent 7779803 exited 1 at its setup guard without estimation; failed logs preserved in dev/20260929-rebuild-m15-3a931afe.
 - 2026-09-29 M1.4 d47a91b5 — 22 cells/three tiers; verified fixest 0.14.2 and Stata pins; Mac smoke 16/16 groups, 80/80 measured fits accurate, zero failures/timeouts, 48.0s <300s; [dirty-source diagnostic summary](bench/history/2026-09-29-60da973a-dirty-darwin-smoke.csv); 27 additional option comparisons, five harness tests, universal build/self-test and lean harness pass.
 - 2026-09-29 M1.3 60da973a — 27 regular oracle tests, 2,000-design long differential suite and ignored CG-defect diagnostic pass; six 100-digit fixtures, direct CMG/LSMR, weighted inference and Poisson self-checks pass; files <1,500 lines, Clippy 150-line function limit brought forward from M2; local lean harness passes.
 - 2026-09-29 M1.2 1bb169fc — 286-line architecture, 24,500-line engine budgets, shared FE/seam/ownership rules; case-colliding legacy doc preserved with readers/links updated; four source-contract checks and local lean harness pass.
