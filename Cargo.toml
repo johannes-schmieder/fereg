@@ -4,6 +4,7 @@ members = [
     "crates/fereg-core",
     "crates/fereg-plugin",
     "crates/fereg-testkit",
+    "crates/fereg-oracle",
 ]
 resolver = "2"
 

@@ -137,6 +137,13 @@ dependencies = [
 ]
 
 [[package]]
+name = "fereg-oracle"
+version = "0.5.0"
+dependencies = [
+ "fereg-core",
+]
+
+[[package]]
 name = "fereg-plugin"
 version = "0.5.0"
 dependencies = [

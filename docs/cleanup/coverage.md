@@ -73,6 +73,19 @@ tracked source/test/harness path and Git blob identity at the rebuild snapshot.
 
 ## Source reconciliation
 
+The independent library is `crates/fereg-oracle`, with no production dependency
+on legacy code. Its `ols`, `ppml` and `weak_graph` integration tests exercise the
+dense oracles against hand calculations, invariances and the preserved 100-digit
+fixtures. `designs` checks seeded graph/sample construction; `legacy` compares
+rows, fitted values, residuals, identified coefficients and inference on the
+legacy default routes, including direct CMG/LSMR and unsupported-CMG checks.
+The temporary legacy dependency is dev-only. Run its longer 2,000-design suite
+and the diagnostic CG counterexample with `cargo test -p fereg-oracle --profile
+ci -- --include-ignored`. The Poisson oracle exposes the raw multiway sandwich;
+PSD repair remains a separate production-inference requirement. These tests
+provide comparison infrastructure; the new-engine replacements and cutover
+gates in the table still require their own checks.
+
 [SPEC](../SPEC.md) consolidates the following sources. "Superseded" below
 means their stated target policy is replaced by the approved plan, not that
 the source or its scientific tests can already be deleted. All sources remain
