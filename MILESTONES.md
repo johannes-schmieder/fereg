@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M2.2 new engine skeleton; M1.6 SCC full setup running (7779871/7779872), Mac baseline running at frozen 3a931afe.
+Current task: M2.3 shared data/factor preparation; M1.6 SCC full array running (7779872), Mac baseline running at frozen 3a931afe.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -22,7 +22,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.5 SCC tooling; compute-node smoke passed and summary collected
 - [~] M1.6 Legacy baseline; Mac standard running, SCC full pending smoke
 - [x] M2.1 Move legacy; Rust checks, path checks and universal plugin/ABI build pass
-- [ ] M2.2 Create `crates/fereg-engine`
+- [x] M2.2 Create `crates/fereg-engine`; safe skeleton, wire parser and deterministic team
 - [ ] M2.3 Harvest `data`
 - [ ] M2.4 Harvest `topology`
 - [ ] M3.1 `fe::Design` and `fe::Plan`
@@ -86,7 +86,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M1.5 completion (this commit) — setup 7779824/smoke 7779825: failed=0/exit=0, 28 slots, maxvmem 10.841/1.438G; 16/16 groups and 80/80 measured fits accurate, 155.7s, no failures/timeouts; [summary](bench/history/2026-09-29-242f5201-linux-smoke.csv); collector stdin/permissions repair passes focused retest, 13 harness tests and full lean checks; Mac launcher pause 11:11:47–11:16:08 UTC (261s), fit clocks unaffected.
+- 2026-09-29 M2.2 (this commit) — independent safe engine, fallible wire metadata, retained solver options, call-owned deterministic team; 18 engine tests, full lean checks and long oracle suite pass; 1/2/4/8-worker bit identity; largest file 1,240 lines, Clippy 150-line function bound and 1,500/1,501-line guard checks pass; Mac launcher pause 11:26:06–11:30:40 UTC (274s), fit clocks unaffected.
+- 2026-09-29 M1.5 completion 146c2b4b — setup 7779824/smoke 7779825: failed=0/exit=0, 28 slots, maxvmem 10.841/1.438G; 16/16 groups and 80/80 measured fits accurate, 155.7s, no failures/timeouts; [summary](bench/history/2026-09-29-242f5201-linux-smoke.csv); collector stdin/permissions repair passes focused retest, 13 harness tests and full lean checks; Mac launcher pause 11:11:47–11:16:08 UTC (261s), fit clocks unaffected.
 - 2026-09-29 M1.6 full submitted cdfa8f85 — setup 7779871, array 7779872 (56 tasks); owner-only runs/20260929-rebuild-m16-cdfa8f85; verified existing Veneto storage authorization and 92.5 GB free; raw data stay on SCC.
 - 2026-09-29 M2.1 b1700e6d — moved 155 legacy files; all numerical source/test blobs unchanged, one testkit Cargo path adjusted; workspace/plugin/oracle/fuzz and live path readers updated; historical pins preserved; 36 path/harness tests, full lean checks and universal plugin/ABI tests pass; Mac launcher pause 11:03:33–11:09:23 UTC (350s), fit clocks unaffected.
 - 2026-09-29 M1.6 preparation cdfa8f85 — declared separate auto/LSMR/CMG cohort; pinned original Veneto N=3,159,720/K=4 and lossless DTA conversion; 12 benchmark tests, full local lean harness and frozen universal build/ABI tests pass; Mac launcher paused 10:52:56–11:01:32 UTC (516s) for checks/build, fit clocks unaffected.

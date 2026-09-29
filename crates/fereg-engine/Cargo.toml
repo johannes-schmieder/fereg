@@ -1,0 +1,14 @@
+[package]
+name = "fereg-engine"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+authors.workspace = true
+license.workspace = true
+publish = false
+
+[dependencies]
+rayon = "=1.12.0"
+
+[lints]
+workspace = true

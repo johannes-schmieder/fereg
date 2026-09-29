@@ -1,6 +1,7 @@
 [workspace]
 exclude = ["vendor/rayon-core"]
 members = [
+    "crates/fereg-engine",
     "legacy/fereg-core",
     "crates/fereg-plugin",
     "legacy/fereg-testkit",
