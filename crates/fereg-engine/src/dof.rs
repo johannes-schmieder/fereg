@@ -268,9 +268,9 @@ fn dof_row(
     let mut sources = reserved(effect.categorical_sources.len())?;
     sources.extend_from_slice(&effect.categorical_sources);
     Ok(DofEffect {
-        identity: EffectIdentity::Explicit {
-            term_id: effect.term_id,
-            sources,
+        identity: match effect.term_id {
+            Some(term_id) => EffectIdentity::Explicit { term_id, sources },
+            None => EffectIdentity::ImplicitNoAbsorb,
         },
         label: copied_string(label)?,
         categories,

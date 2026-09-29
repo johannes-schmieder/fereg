@@ -114,6 +114,12 @@ impl std::ops::IndexMut<(usize, usize)> for DenseMatrix {
 /// Recipe for one canonical finite-dimensional model column.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ColumnRecipe {
+    /// Literal Stata-expanded levels on the existing numeric source bank.
+    /// Vanished levels naturally generate zeros without changing slot identity.
+    NumericIndicators {
+        sources: Vec<usize>,
+        levels: Vec<f64>,
+    },
     Intercept,
     Continuous {
         source: usize,
@@ -232,6 +238,23 @@ impl<'a> ModelMatrixBuilder<'a> {
 
     fn validate_recipe(&self, recipe: &ColumnRecipe) -> Result<()> {
         match recipe {
+            ColumnRecipe::NumericIndicators { sources, levels } => {
+                if sources.is_empty()
+                    || sources.len() != levels.len()
+                    || levels
+                        .iter()
+                        .any(|v| !v.is_finite() || *v < 0. || v.fract() != 0.)
+                {
+                    return Err(FeregError::new(
+                        ErrorCode::InvalidArgument,
+                        "invalid numeric indicator recipe",
+                    ));
+                }
+                for source in sources {
+                    self.check_continuous(*source)?;
+                }
+                Ok(())
+            }
             ColumnRecipe::Intercept => Ok(()),
             ColumnRecipe::Continuous { source } => self.check_continuous(*source),
             ColumnRecipe::Categorical { source, .. } => self.check_categorical(*source),
@@ -294,6 +317,12 @@ impl<'a> ModelMatrixBuilder<'a> {
 
     fn value(&self, recipe: &ColumnRecipe, row: usize) -> f64 {
         match recipe {
+            ColumnRecipe::NumericIndicators { sources, levels } => f64::from(u8::from(
+                sources
+                    .iter()
+                    .zip(levels)
+                    .all(|(source, level)| self.continuous[*source][row] == *level),
+            )),
             ColumnRecipe::Intercept => 1.0,
             ColumnRecipe::Continuous { source } => self.continuous[*source][row],
             ColumnRecipe::Categorical { source, level } => {

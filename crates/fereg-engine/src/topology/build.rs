@@ -139,7 +139,7 @@ fn encode_partitions(
         let mut categorical_sources = reserved(term.categorical_sources.len())?;
         categorical_sources.extend_from_slice(&term.categorical_sources);
         effects.push(Effect {
-            term_id: term.id,
+            term_id: Some(term.id),
             partition,
             categorical_sources,
             intercept: term.intercept,

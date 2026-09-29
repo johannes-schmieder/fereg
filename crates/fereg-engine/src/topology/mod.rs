@@ -1,7 +1,9 @@
 //! One final FE topology shared by projection, singleton, DoF and output consumers.
 mod build;
 mod components;
+mod implicit;
 mod membership;
+pub use implicit::prepare_implicit_constant;
 mod singleton;
 use crate::{
     data::Prepared,
@@ -23,7 +25,8 @@ pub struct SlopeChannel {
 }
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Effect {
-    pub term_id: AbsorbTermId,
+    /// None denotes the pinned, unreported one-level structural constant.
+    pub term_id: Option<AbsorbTermId>,
     pub partition: usize,
     pub categorical_sources: Vec<SourceId>,
     pub intercept: bool,
