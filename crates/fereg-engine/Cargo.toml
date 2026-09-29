@@ -8,6 +8,7 @@ license.workspace = true
 publish = false
 
 [dependencies]
+cmg = { git = "https://github.com/johannes-schmieder/CMG", rev = "1d39c113f0c397f29653d92672090e5a42f80921" }
 within = { git = "https://github.com/johannes-schmieder/within", rev = "b80e2991084a13bd4bea0715ababdf5f0824b8a1", package = "within" }
 rayon = "=1.12.0"
 

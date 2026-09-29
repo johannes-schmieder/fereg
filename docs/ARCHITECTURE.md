@@ -178,9 +178,15 @@ automatic fallback uses this same adapter.
 CMG maps the supported two-intercept core to a weighted bipartite Laplacian,
 anchors components, and eliminates supported nuisance intercept columns using
 the documented small Schur block. Recover potentials into declared FE order,
-then use common residual reconstruction and normalization. No slopes or
-unsupported multiway graph can be smuggled through a graph adapter. Preserve
-SPEC's OLS/PPML support distinction, including nuisance limits and trivial
+then use common residual reconstruction and normalization. Core RHSs use the
+call-owned worker team with fixed scalar CMG arithmetic per RHS and reusable
+workspaces; dependency-owned executors and size-based execution policies are
+not used. The graph solve uses an absolute residual target derived from the
+original weighted RHS norm and minimum core level mass, with zero relative
+backward-error tolerance. Growing coefficient norms on weak graphs cannot
+loosen that target. Common FE acceptance remains independently authoritative.
+No slopes or unsupported multiway graph can be smuggled through a graph adapter.
+Preserve SPEC's OLS/PPML support distinction, including nuisance limits and trivial
 OLS direct cases. Changing PPML weights invalidates numerical Laplacian,
 hierarchy/preconditioner, nuisance factor and certificate state; immutable
 membership can be retained. Any permitted reuse must bind exact current weights.

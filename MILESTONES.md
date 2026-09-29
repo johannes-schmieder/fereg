@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M3.5 explicit LSMR adapter and repaired within pin pass independent qualification and full local lean/long checks. CMG adapter and bounded monitored fallback remain. M4.4 factor precedence follows built-in Stata; M6.2 detectors/terminal replay/orchestration remain open.
+Current task: M3.5 CMG two-effect graph core passes independent qualification and full local lean/long checks. Nuisance-effect elimination and bounded monitored fallback remain before retained-backend integration is complete. Explicit LSMR is qualified. M4.4 factor precedence follows built-in Stata; M6.2 detectors/terminal replay/orchestration remain open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -78,8 +78,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   same-factor residual refinement counts corrections and total iterations at
   unchanged acceptance scales. Candidate normal equations do not decide rank
   or publication. OLS projection/WLS and eligible PPML oracle qualification
-  and full lean/long checks pass. CMG integration, monitored fallback and
-  M3.6 performance admission remain. No public default changes.
+  and full lean/long checks pass. The CMG two-effect core now passes independent
+  dense/high-precision checks without legacy CG polish. Nuisance elimination,
+  engine integration, monitored fallback and M3.6 performance admission remain. No public default changes.
   The historical formal-vendor protocol deliberately rejects the temporary
   mixed same-version within pins: no current-tree capture may claim that old
   protocol's certification. Its identity/fail-closed tests pass; the rebuild's
@@ -103,6 +104,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M3.5 CMG core (this commit) — pinned CMG graph/hierarchy over shared categorical codes and current weights; no dependency executor or legacy routing/polish. The absolute graph residual limit is derived from the original weighted RHS norm and minimum level mass, preventing coefficient-sized backward tolerances from relaxing FE acceptance. Independent dense projection/finite-WLS comparisons pass on 2,200 designs × two weight frames; the unchanged 800-row failure generator is shared with the retained legacy regression, and all five categorical 100-digit fixtures pass (slopes reject explicitly). A 1,504-vertex test exercises multilevel CMG and exact 1/2/4/8-worker identity, reusable RHS banks, zero RHSs and one-step exhaustion. Full lean/long checks pass. The core returns unaccepted coefficient candidates; nuisance elimination, public new-engine CMG integration and bounded fallback remain open.
 
 - 2026-09-29 M3.5 LSMR integration (this commit) — new-engine/oracle within b80e299, frozen legacy pin unchanged; original-coordinate adapter, fixed additive reductions, shared acceptance and bounded same-factor residual refinement with visible work accounting. Independent checks pass: 2,200 full-engine projection designs, 4,400 changing-weight LSMR WLS frames, six 100-digit weak-graph fixtures at 1/2/4/8 workers, and 733 eligible LSMR fits in 2,200 PPML/Newton designs. PPML seeds 7/203 reproduce distinct stopping metrics; unchanged-target refinement resolves them. Nearly collinear slopes retain the original span; precision-floor stagnation and one-step remaining-budget failure stay fail-closed. Weight materialization, empty banks, saved outputs and exact worker identity are covered. Full lean/long checks pass; 11 frozen-build-closure identity/fail-closed tests pass. PLAN §0.10 and issue #28 record Johannes's upstream-repair and built-in Stata precedence decisions; LSMR/CMG and exact/randomized PPML mean bias correction remain required. PR #441 is updated and draft; CMG/fallback/performance and cutover remain open.
 

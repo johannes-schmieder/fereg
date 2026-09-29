@@ -189,9 +189,16 @@ fn independent_projection_audit_detects_remaining_fe_content() {
 mod engine_inputs;
 #[test]
 fn retained_lsmr_matches_hundred_digit_weak_graph_fixtures() {
+    check_retained_fixtures(false);
+}
+#[test]
+fn cmg_core_matches_hundred_digit_categorical_weak_graph_fixtures() {
+    check_retained_fixtures(true);
+}
+fn check_retained_fixtures(cmg: bool) {
     use fereg_engine::{
         data::DenseMatrix as EngineMatrix,
-        fe::{Design, LsmrSession, StopReason, Weights},
+        fe::{CmgCore, Design, LsmrSession, StopReason, Weights},
         threads::ThreadTeam,
     };
     let fixtures = parse_fixtures();
@@ -200,31 +207,42 @@ fn retained_lsmr_matches_hundred_digit_weak_graph_fixtures() {
         let explicit = design(&fixture);
         let sample = engine_inputs::prepare(explicit.effects(), &fixture.inputs[0]);
         let design = Design::new(&sample, Weights::Provided(&fixture.weights)).unwrap();
+        if cmg && explicit.effects().iter().any(|e| !e.slopes().is_empty()) {
+            assert_eq!(
+                CmgCore::new(&design, [0, 1]).err().unwrap().code,
+                fereg_engine::ErrorCode::Unsupported
+            );
+            continue;
+        }
         let rhs = EngineMatrix::from_columns(&fixture.inputs).unwrap();
         let mut reference = None;
         for workers in [1, 2, 4, 8] {
             let team = ThreadTeam::new(workers).unwrap();
-            let mut candidate = LsmrSession::new(&design, &team)
-                .unwrap_or_else(|e| panic!("{} build: {e}", fixture.id))
-                .solve(&rhs, 16_000, 1e-12, &team)
-                .unwrap_or_else(|e| panic!("{} solve: {e}", fixture.id));
+            let (mut coefficients, progress) = if cmg {
+                let candidate = CmgCore::new(&design, [0, 1])
+                    .unwrap()
+                    .solve(&rhs, 16_000, 1e-12, &team)
+                    .unwrap();
+                (candidate.coefficients, candidate.progress)
+            } else {
+                let candidate = LsmrSession::new(&design, &team)
+                    .unwrap_or_else(|e| panic!("{} build: {e}", fixture.id))
+                    .solve(&rhs, 16_000, 1e-12, &team)
+                    .unwrap_or_else(|e| panic!("{} solve: {e}", fixture.id));
+                (candidate.coefficients, candidate.progress)
+            };
             assert!(
-                candidate
-                    .progress
-                    .iter()
-                    .all(|p| p.stop == StopReason::Converged),
+                progress.iter().all(|p| p.stop == StopReason::Converged),
                 "{}: {:?}",
                 fixture.id,
-                candidate.progress
+                progress
             );
             design
-                .normalize_coefficients(&mut candidate.coefficients, 1e-10, &team)
+                .normalize_coefficients(&mut coefficients, 1e-10, &team)
                 .unwrap();
-            let residuals = design
-                .reconstruct(&rhs, &candidate.coefficients, &team)
-                .unwrap();
+            let residuals = design.reconstruct(&rhs, &coefficients, &team).unwrap();
             let certificate = design
-                .certify(&rhs, &candidate.coefficients, &residuals, 1e-10, &team)
+                .certify(&rhs, &coefficients, &residuals, 1e-10, &team)
                 .unwrap_or_else(|e| panic!("{} certificate: {e}", fixture.id));
             for column in 0..rhs.ncols() {
                 let residual = residuals.column(column).unwrap();
@@ -249,7 +267,7 @@ fn retained_lsmr_matches_hundred_digit_weak_graph_fixtures() {
                     .check(objective, fixture.objectives[column])
                     .unwrap();
             }
-            let actual = (candidate, residuals, certificate);
+            let actual = (coefficients, progress, residuals, certificate);
             if let Some(expected) = &reference {
                 assert_eq!(expected, &actual, "{} workers={workers}", fixture.id);
             } else {
