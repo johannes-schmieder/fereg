@@ -126,6 +126,15 @@ retain their host meaning. Missing required sources exclude rows; fatal domain
 errors are not converted to exclusions. Cluster availability precedes singleton
 pruning; cluster counts never define FE singletons.
 
+Ordinary factor values are validated on the resulting available sample, after
+these exclusions but before singleton pruning, separation or rank decisions.
+They must be nonnegative integers; otherwise fail with r(452), including for
+omitted/base terms. Invalid factor values on excluded rows do not cause an
+error. This follows built-in Stata `regress`; it intentionally supersedes the
+legacy candidate-wide ordinary-factor check and differs from pinned reghdfe
+6.14.1 in excluded-row cases (rebuild ADR 0009). FE and cluster identifiers
+retain their existing numeric/string domains.
+
 Rust owns classification, collision-safe factorization and stable compaction.
 The same original-row map compacts every source, recipe, weight, offset and
 topology. After deletions, rebuild final codes and factor recipes; preserve
@@ -137,6 +146,8 @@ Empty or insufficient final samples fail, with no public sample posted.
 Tests: `tests/numeric_sample_oracle.rs`,
 `tests/categorical_final_sample_rebase_oracle.rs`,
 `parity_ppmlhdfe/feppml_native_preparation.do`, `feppml_time_series.do`.
+Replacement checks: engine `tests/ols_preparation.rs` and
+`tests/stata/development/reference_factor_precedence.do`.
 
 ## 3. Weights
 
@@ -662,6 +673,7 @@ uncertified candidates cannot be posted or relabeled as convergence.
 | Protocol mismatch | 499 |
 | Unsupported weight | 101 |
 | Invalid FW / negative AW | 401 / 402 |
+| Invalid ordinary factor on the available sample | 452 |
 | Empty/insufficient observations or required residual DoF | 2001 |
 | Invalid data | 459 |
 | Numerical nonconvergence | 430 |

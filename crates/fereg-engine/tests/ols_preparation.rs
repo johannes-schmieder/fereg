@@ -170,14 +170,120 @@ fn source_roles_missing_precedence_singletons_and_final_normalization_share_one_
     assert_eq!(loaded.candidate.len(), 12);
 }
 #[test]
-fn ordinary_factor_preparation_is_not_qualified_until_the_domain_order_is_resolved() {
+fn ordinary_factors_follow_available_sample_domains_and_preserve_original_identity() {
+    let mut spec = model(2);
+    spec.model.terms[0] = term(true);
+    let mut continuous = term(false);
+    continuous.id = TermId::new(2).unwrap();
+    continuous.order = TermOrder::new(2).unwrap();
+    continuous.coefficient_slot = CoefficientSlot::new(2).unwrap();
+    continuous.components[0].source = SourceId::new(2).unwrap();
+    continuous.canonical_token = "z".into();
+    spec.model.terms.push(continuous);
+    for invalid in [-1., 1.5] {
+        let mut loaded = input(vec![invalid; 8]);
+        replace_value(&mut loaded, 0, 6, 0.);
+        replace_value(&mut loaded, 0, 7, 1.);
+        loaded.candidate[0] = false;
+        loaded.outcome.values[1] = f64::NAN;
+        loaded.sources.push(LoadedSource::Numeric(column(vec![
+            1.,
+            1.,
+            f64::NAN,
+            1.,
+            1.,
+            1.,
+            1.,
+            1.,
+        ])));
+        loaded.weights = Some((
+            WeightKind::Analytic,
+            column(vec![1., 1., 1., 0., f64::NAN, 1., 1., 1.]),
+        ));
+        let LoadedSource::Numeric(factor) = &mut loaded.sources[0] else {
+            unreachable!()
+        };
+        factor.missing = Some(vec![false, false, false, false, false, true, false, false]);
+        let sample = ols::prepare(&spec, &loaded).unwrap();
+        assert_eq!(sample.original_row_by_active, vec![6, 7]);
+        assert_eq!(sample.regressors[0], vec![0., 1.]);
+        assert_eq!(
+            sample.drop_reasons,
+            vec![
+                DropReason::ExcludedByIfIn,
+                DropReason::MissingOutcome,
+                DropReason::MissingRegressor,
+                DropReason::InvalidOrMissingWeight,
+                DropReason::InvalidOrMissingWeight,
+                DropReason::MissingRegressor,
+                DropReason::Retained,
+                DropReason::Retained,
+            ]
+        );
+        replace_value(&mut loaded, 0, 7, invalid);
+        let error = ols::prepare(&spec, &loaded).unwrap_err();
+        assert_eq!(error.return_code(), 452);
+        assert!(error.message.contains("observation 8"));
+    }
+}
+#[test]
+fn factor_domains_cannot_be_hidden_by_omission_or_singleton_deletion() {
     let mut spec = model(1);
     spec.model.terms[0] = term(true);
-    let loaded = input(vec![1., 2., 3.]);
-    assert_eq!(
-        ols::prepare(&spec, &loaded).unwrap_err().code,
-        ErrorCode::Unsupported
-    );
+    spec.absorbed_terms = vec![AbsorbedTerm {
+        id: AbsorbTermId::new(1).unwrap(),
+        intercept: true,
+        categorical_sources: vec![SourceId::new(1).unwrap()],
+        slope_sources: vec![],
+        label: "g".into(),
+        saved_name: String::new(),
+    }];
+    for invalid in [-1., 1.5] {
+        for omitted in [false, true] {
+            spec.model.terms[0].whole_column_omitted = omitted;
+            let loaded = input(vec![invalid, 1., 1., 2., 2.]);
+            assert_eq!(ols::prepare(&spec, &loaded).unwrap_err().return_code(), 452);
+        }
+    }
+}
+#[test]
+fn factor_domains_follow_fe_and_cluster_availability_without_restricting_their_codes() {
+    let mut spec = model(3);
+    spec.model.terms[0] = term(true);
+    spec.absorbed_terms = vec![AbsorbedTerm {
+        id: AbsorbTermId::new(1).unwrap(),
+        intercept: true,
+        categorical_sources: vec![SourceId::new(2).unwrap()],
+        slope_sources: vec![],
+        label: "g".into(),
+        saved_name: String::new(),
+    }];
+    spec.clusters = vec![ClusterTerm {
+        label: "h".into(),
+        sources: vec![SourceId::new(3).unwrap()],
+    }];
+    let mut loaded = input(vec![-1., 1.5, 0., 1., 0., 1.]);
+    loaded.sources.push(LoadedSource::Numeric(column(vec![
+        f64::NAN,
+        2.5,
+        -1.5,
+        -1.5,
+        2.5,
+        2.5,
+    ])));
+    loaded.sources.push(LoadedSource::Numeric(column(vec![
+        1.,
+        f64::NAN,
+        -3.5,
+        -3.5,
+        4.5,
+        4.5,
+    ])));
+    let sample = ols::prepare(&spec, &loaded).unwrap();
+    assert_eq!(sample.original_row_by_active, vec![2, 3, 4, 5]);
+    assert_eq!(sample.drop_reasons[0], DropReason::MissingFixedEffect);
+    assert_eq!(sample.drop_reasons[1], DropReason::MissingCluster);
+    sample.topology.as_ref().unwrap().validate(&sample).unwrap();
 }
 #[test]
 fn estimator_domains_are_enforced_with_pinned_codes_and_availability_order() {

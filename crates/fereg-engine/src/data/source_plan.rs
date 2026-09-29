@@ -94,14 +94,26 @@ impl SourcePlan {
                 ));
             };
         }
-        if self
-            .ordinary_categorical
-            .iter()
-            .any(|&categorical| categorical)
-        {
-            return Err(FeregError::new(ErrorCode::Unsupported,
-                "ordinary factor preparation awaits the SPEC/legacy domain-order decision recorded in MILESTONES.md"));
+        let sample = loaded.prepare(&self.uses, policy)?;
+        // Built-in Stata validates factors on the available sample, before
+        // estimator-specific deletions can hide an invalid factor value.
+        for (source, &categorical) in self.ordinary_categorical.iter().enumerate() {
+            if !categorical {
+                continue;
+            }
+            for (row, &value) in sample.regressors[source].iter().enumerate() {
+                if value < 0. || value.fract() != 0. {
+                    return Err(FeregError::new(
+                        ErrorCode::InvalidFactor,
+                        format!(
+                            "ordinary factor source {} must contain nonnegative integers; invalid value at observation {}",
+                            source + 1,
+                            sample.original_row_by_active[row] + 1
+                        ),
+                    ));
+                }
+            }
         }
-        loaded.prepare(&self.uses, policy)
+        Ok(sample)
     }
 }

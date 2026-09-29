@@ -13,6 +13,7 @@ pub enum ErrorCode {
     UnsupportedWeight,
     NegativeWeight,
     InvalidFrequencyWeight,
+    InvalidFactor,
     InsufficientObservations,
     InvalidData,
     NonConvergence,
@@ -33,6 +34,7 @@ impl ErrorCode {
             Self::ProtocolMismatch => 499,
             Self::NegativeWeight => 402,
             Self::InvalidFrequencyWeight => 401,
+            Self::InvalidFactor => 452,
             Self::InsufficientObservations => 2001,
             Self::InvalidData => 459,
             Self::NonConvergence => 430,
@@ -53,6 +55,7 @@ impl ErrorCode {
             Self::UnsupportedWeight => "unsupported_weight",
             Self::NegativeWeight => "negative_weight",
             Self::InvalidFrequencyWeight => "invalid_frequency_weight",
+            Self::InvalidFactor => "invalid_factor",
             Self::InsufficientObservations => "insufficient_observations",
             Self::InvalidData => "invalid_data",
             Self::NonConvergence => "nonconvergence",
@@ -119,6 +122,7 @@ mod tests {
     fn pinned_estimation_domain_return_codes_are_distinct() {
         assert_eq!(ErrorCode::NegativeWeight.stata_return_code(), 402);
         assert_eq!(ErrorCode::InvalidFrequencyWeight.stata_return_code(), 401);
+        assert_eq!(ErrorCode::InvalidFactor.stata_return_code(), 452);
         assert_eq!(
             ErrorCode::InsufficientObservations.stata_return_code(),
             2001

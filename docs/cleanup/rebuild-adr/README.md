@@ -23,3 +23,4 @@ remain distinct until migration.
 | [0006](0006-public-surface.md) | Public surface and derived outputs | Accepted |
 | [0007](0007-testing-evidence.md) | Testing, benchmarks and evidence | Accepted |
 | [0008](0008-dependencies-licensing.md) | Dependencies and GPLv3 direction | Accepted |
+| [0009](0009-factor-domain-precedence.md) | Ordinary factor sample precedence | Accepted |
