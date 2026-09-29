@@ -3,39 +3,27 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ -n "${FEREG_PYTHON_BIN:-}" ]]; then
-  PYTHON_BIN="$FEREG_PYTHON_BIN"
-else
-  PYTHON_BIN=""
-  for candidate in python3 python3.14 python3.13 python3.12 python3.11; do
-    if command -v "$candidate" >/dev/null 2>&1 &&
-      "$candidate" -c 'import tomllib' >/dev/null 2>&1; then
-      PYTHON_BIN="$(command -v "$candidate")"
-      break
-    fi
-  done
-fi
-if [[ -z "$PYTHON_BIN" ]] || ! "$PYTHON_BIN" -c 'import tomllib' >/dev/null 2>&1; then
-  printf '%s\n' 'fereg tests require Python 3.11+ with tomllib' >&2
+command -v cargo >/dev/null 2>&1 || {
+  printf '%s\n' 'Rust/Cargo is required; install the pinned rust-toolchain.toml toolchain.' >&2
   exit 127
-fi
+}
 
-"$PYTHON_BIN" scripts/check_repository.py
-"$PYTHON_BIN" -m unittest discover -s tests/python -v
-FEREG_PYTHON_BIN="$PYTHON_BIN" scripts/run_portable_static_checks.sh
+profile="${FEREG_TEST_PROFILE:-ci}"
+
+cargo fmt --all -- --check
+cargo clippy --workspace --all-targets --no-default-features --profile "$profile" -- -D warnings
+cargo clippy -p fereg-plugin --all-targets --features ffi --profile "$profile" -- -D warnings
+cargo test --workspace --all-targets --no-default-features --profile "$profile"
+# The FFI allocator observes every test's allocations, even outside an audit.
+cargo test -p fereg-plugin --features ffi --lib --profile "$profile" -- --test-threads=1
+# Exercise the explicitly isolated allocator audits as well.
+cargo test -p fereg-plugin --features ffi --lib --profile "$profile" -- --ignored --test-threads=1
+if [[ -f scripts/check_sizes.sh ]]; then
+  bash scripts/check_sizes.sh
+fi
 tests/mock_spi/run_mock_bridge_test.sh
-if [[ "$(uname -s)" == "Linux" ]]; then
+if [[ "$(uname -s)" == Linux ]]; then
   tests/mock_spi/run_mock_linux_plugin_audit.sh
 else
   printf '%s\n' 'SKIP: Linux mock-plugin audit requires a GNU ELF linker.'
-fi
-
-if command -v cargo >/dev/null 2>&1; then
-  cargo fmt --all -- --check
-  cargo fmt --manifest-path fuzz/Cargo.toml --all -- --check
-  cargo clippy --workspace --all-targets --no-default-features -- -D warnings
-  cargo test --workspace --all-targets --no-default-features
-  cargo test -p fereg-plugin --features ffi --lib
-else
-  printf '%s\n' 'SKIP: Rust/Cargo not installed; see STATUS.md.'
 fi

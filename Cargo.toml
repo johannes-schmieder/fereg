@@ -33,5 +33,11 @@ lto = "thin"
 strip = false
 debug = true
 
+[profile.ci]
+inherits = "release"
+lto = false
+codegen-units = 16
+debug-assertions = true
+
 [patch.crates-io]
 rayon-core = { path = "vendor/rayon-core" }
