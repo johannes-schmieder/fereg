@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M2.1 verified legacy relocation ready to commit; M1.5 SCC smoke passed, collection pending; frozen M1.6 Mac baseline paused for checks.
+Current task: M2.2 new engine skeleton; M1.6 SCC full setup running (7779871/7779872), Mac baseline running at frozen 3a931afe.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -19,7 +19,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [x] M1.2 `docs/ARCHITECTURE.md`; legacy source and readers preserved
 - [x] M1.3 `crates/fereg-oracle`; dense oracles, seeded designs and legacy comparisons
 - [x] M1.4 `bench/` suite; 22 cells, pinned comparators and Mac smoke
-- [~] M1.5 SCC tooling implemented and checked locally; compute-node smoke pending
+- [x] M1.5 SCC tooling; compute-node smoke passed and summary collected
 - [~] M1.6 Legacy baseline; Mac standard running, SCC full pending smoke
 - [x] M2.1 Move legacy; Rust checks, path checks and universal plugin/ABI build pass
 - [ ] M2.2 Create `crates/fereg-engine`
@@ -72,9 +72,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 - SCC inspection on 2026-09-29 reports 6,963.31 GB used against the 6,950 GB
   `/projectnb/welfgr` quota; Johannes was asked about freeing space. The live
-  filesystem reports 93,084,188,672 bytes available, sufficient for the bounded
-  build/smoke with a 10 GiB preflight floor. Recheck capacity before the full
-  baseline. Existing runs and other active jobs have not been modified.
+  filesystem reports 92,530,540,544 bytes available at the full-baseline
+  preflight, sufficient for its estimated <50 GB including build and raw
+  outputs. Existing runs and other active jobs have not been modified.
 - GitHub Actions run [36546517277](https://github.com/johannes-schmieder/fereg/actions/runs/36546517277)
   did not start: failed account payment or spending-limit restriction. Johannes
   was asked to resolve billing; no repository fix or retry can supply this check.
@@ -86,7 +86,9 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
 ## Log (newest first; one line per task)
 
-- 2026-09-29 M2.1 (this commit) — moved 155 legacy files; all numerical source/test blobs unchanged, one testkit Cargo path adjusted; workspace/plugin/oracle/fuzz and live path readers updated; historical pins preserved; 36 path/harness tests, full lean checks and universal plugin/ABI tests pass.
+- 2026-09-29 M1.5 completion (this commit) — setup 7779824/smoke 7779825: failed=0/exit=0, 28 slots, maxvmem 10.841/1.438G; 16/16 groups and 80/80 measured fits accurate, 155.7s, no failures/timeouts; [summary](bench/history/2026-09-29-242f5201-linux-smoke.csv); collector stdin/permissions repair passes focused retest, 13 harness tests and full lean checks; Mac launcher pause 11:11:47–11:16:08 UTC (261s), fit clocks unaffected.
+- 2026-09-29 M1.6 full submitted cdfa8f85 — setup 7779871, array 7779872 (56 tasks); owner-only runs/20260929-rebuild-m16-cdfa8f85; verified existing Veneto storage authorization and 92.5 GB free; raw data stay on SCC.
+- 2026-09-29 M2.1 b1700e6d — moved 155 legacy files; all numerical source/test blobs unchanged, one testkit Cargo path adjusted; workspace/plugin/oracle/fuzz and live path readers updated; historical pins preserved; 36 path/harness tests, full lean checks and universal plugin/ABI tests pass; Mac launcher pause 11:03:33–11:09:23 UTC (350s), fit clocks unaffected.
 - 2026-09-29 M1.6 preparation cdfa8f85 — declared separate auto/LSMR/CMG cohort; pinned original Veneto N=3,159,720/K=4 and lossless DTA conversion; 12 benchmark tests, full local lean harness and frozen universal build/ABI tests pass; Mac launcher paused 10:52:56–11:01:32 UTC (516s) for checks/build, fit clocks unaffected.
 - 2026-09-29 M1.5 repair 242f5201 — build from source/; controllers extracted from the verified commit archive; owner-only run roots; shell checks, 12 benchmark tests and full local lean harness pass; focused retest setup 7779824/smoke 7779825 queued in dev/20260929-rebuild-m15-242f5201.
 - 2026-09-29 M1.5 preparation 3a931afe — local checks pass; archive hashes verified; setup 7779802 exited 101 before compilation because Cargo ran above source/; dependent 7779803 exited 1 at its setup guard without estimation; failed logs preserved in dev/20260929-rebuild-m15-3a931afe.
