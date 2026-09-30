@@ -1,5 +1,6 @@
 //! Immutable detector views and atomic sample generations (SPEC §14).
 mod cascade;
+mod coordinator;
 mod exact;
 mod ir;
 mod ledger;
@@ -8,6 +9,9 @@ mod mu;
 mod numerical;
 mod simplex;
 mod verify;
+pub use coordinator::{
+    run, Event, EventKind, FinalSample, MethodSummary, Report, RunControls, TRACE_LIMIT,
+};
 pub use exact::{ExactCertificate, ExactLevel, ExactProposal, Status};
 pub use ir::{IrFixedPoint, IrReport, IrTerminal};
 pub use ledger::{Commit, Ledger, Policy, View};

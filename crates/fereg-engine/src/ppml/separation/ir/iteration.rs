@@ -6,7 +6,7 @@ use crate::{
     ppml::separation::{Method, Model, Status, View},
     spec::{Estimator, Options},
     threads::ThreadTeam,
-    wls::{self, AbsorbedControls, FrozenBasis, Work},
+    wls::{self, AbsorbedControls, FrozenBasis, Role, Work},
 };
 
 pub(super) fn run(
@@ -123,7 +123,28 @@ fn span_basis(
     // avoiding cancellation between a large finite coefficient and its FE
     // counterpart in the artificial weighted recurrence. Fresh certification
     // still uses the original model, independently of this auxiliary frame.
-    Ok((FrozenBasis::from_fit(&fit.finite)?, fit.within))
+    let basis = FrozenBasis::from_fit(&fit.finite)?;
+    let mut columns = fit.within;
+    for (column, &role) in model.roles.iter().enumerate() {
+        if role != Role::AbsorbedIntercept {
+            continue;
+        }
+        if !design.topology().effects().iter().any(|e| e.intercept)
+            || (0..columns.nrows()).any(|row| model.raw[(row, column)] != 1.)
+        {
+            return Err(super::invalid(
+                "deferred IR constant lacks the exact intercept span",
+            ));
+        }
+        // This declared constant is already in the intercept-FE span and
+        // has no auxiliary finite coefficient. Its exact within column is
+        // zero; reprojecting subtraction roundoff creates a spurious RHS.
+        // Ordinary columns keep the certified unit-frame residual unchanged.
+        for row in 0..columns.nrows() {
+            columns[(row, column)] = 0.;
+        }
+    }
+    Ok((basis, columns))
 }
 
 fn metrics(outcome: &[f64], fitted: &DenseMatrix) -> Result<IrFixedPoint> {

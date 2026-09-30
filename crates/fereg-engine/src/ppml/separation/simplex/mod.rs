@@ -29,7 +29,7 @@ impl Default for SimplexLimits {
     }
 }
 impl SimplexLimits {
-    fn validate(self) -> Result<()> {
+    pub(super) fn validate(self) -> Result<()> {
         if self.max_pivots == 0 || self.max_cells == 0 {
             return Err(invalid("simplex pivot and cell limits must be positive"));
         }

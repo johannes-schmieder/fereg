@@ -1,0 +1,154 @@
+//! One owner, canonical detector order and fresh final-sample estimation.
+mod report;
+mod round;
+use super::{invalid, Controls, Ledger, Policy, SimplexLimits, DEFAULT_MU_TOLERANCE};
+use crate::{
+    data::{CompiledColumns, DenseMatrix, Prepared},
+    error::{reserved, ErrorCode, FeregError, Result},
+    ppml::irls,
+    spec::Options,
+    threads::ThreadTeam,
+    wls::Role,
+};
+pub use report::{Event, EventKind, MethodSummary, Report, TRACE_LIMIT};
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct RunControls {
+    pub numerical: Controls,
+    pub simplex: SimplexLimits,
+    pub ir_iterations: usize,
+    pub mu_tolerance: f64,
+}
+impl Default for RunControls {
+    fn default() -> Self {
+        Self {
+            numerical: Controls::default(),
+            simplex: SimplexLimits::default(),
+            ir_iterations: 100,
+            mu_tolerance: DEFAULT_MU_TOLERANCE,
+        }
+    }
+}
+impl RunControls {
+    fn validate(self) -> Result<()> {
+        self.numerical.validate()?;
+        self.simplex.validate()?;
+        if self.ir_iterations == 0
+            || !self.mu_tolerance.is_finite()
+            || self.mu_tolerance <= 0.
+            || self.mu_tolerance >= 1.
+        {
+            return Err(invalid("invalid separation IR budget or Mu threshold"));
+        }
+        Ok(())
+    }
+}
+
+/// A completed detector chain owns no exploratory fit, basis or factors.
+/// Private construction prevents a prior generation becoming a final sample.
+#[derive(Debug, PartialEq)]
+pub struct FinalSample {
+    sample: Prepared,
+    raw: DenseMatrix,
+    roles: Vec<Role>,
+    options: Options,
+    report: Report,
+}
+impl FinalSample {
+    #[must_use]
+    pub fn sample(&self) -> &Prepared {
+        &self.sample
+    }
+    #[must_use]
+    pub fn raw(&self) -> &DenseMatrix {
+        &self.raw
+    }
+    #[must_use]
+    pub fn roles(&self) -> &[Role] {
+        &self.roles
+    }
+    #[must_use]
+    pub fn report(&self) -> &Report {
+        &self.report
+    }
+    /// Rank and final-Hessian authority are recomputed on the final sample.
+    pub fn fit(&self, team: &ThreadTeam) -> Result<irls::Fit> {
+        irls::fit_final_sample(
+            &irls::Problem {
+                sample: &self.sample,
+                raw: &self.raw,
+                roles: &self.roles,
+            },
+            self.options,
+            team,
+        )
+    }
+    #[must_use]
+    pub fn into_parts(self) -> (Prepared, DenseMatrix, Vec<Role>, Report) {
+        (self.sample, self.raw, self.roles, self.report)
+    }
+}
+
+pub fn run(
+    sample: Prepared,
+    columns: &CompiledColumns,
+    options: Options,
+    policy: Policy,
+    controls: RunControls,
+    team: &ThreadTeam,
+) -> Result<FinalSample> {
+    options.validate()?;
+    controls.validate()?;
+    if columns.roles.contains(&Role::AbsorbedIntercept)
+        && !sample
+            .topology
+            .as_ref()
+            .is_some_and(|t| t.effects().iter().any(|e| e.intercept))
+    {
+        return Err(invalid(
+            "deferred constant requires the prepared intercept span",
+        ));
+    }
+    let mut roles = reserved(columns.roles.len())?;
+    roles.extend_from_slice(&columns.roles);
+    let mut ledger = Ledger::new(sample, policy)?;
+    let mut report = Report::new(policy, &ledger);
+    if let Some(commit) = ledger.prune_initial_singletons()? {
+        report.commit(None, commit)?;
+    }
+    loop {
+        report.begin_round(ledger.view().generation())?;
+        if round::exact(&mut ledger, &mut report)? {
+            continue;
+        }
+        // Recipes read only the new owner. No old projected columns or
+        // factors are compacted into the next numerical generation.
+        let raw = columns.generate(ledger.view().sample())?;
+        if round::numerical(
+            &mut ledger,
+            &raw,
+            &roles,
+            options,
+            controls,
+            &mut report,
+            team,
+        )? {
+            continue;
+        }
+        report.finish(&ledger)?;
+        let sample = ledger.into_sample();
+        if raw.nrows() != sample.n_active() {
+            return Err(FeregError::new(
+                ErrorCode::Internal,
+                "final separation columns are stale",
+            ));
+        }
+        return Ok(FinalSample {
+            sample,
+            raw,
+            roles,
+            options,
+            report,
+        });
+    }
+}

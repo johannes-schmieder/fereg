@@ -342,7 +342,7 @@ impl<'a, 'data> Engine<'a, 'data> {
                 )
             })?;
         if self.plan.fallback().is_none() || remaining == 0 {
-            return Err(error(ErrorCode::NonConvergence, &format!("{} stopped with {stop:?} after {iterations} iterations; no permitted remaining attempt", backend.label())));
+            return Err(error(ErrorCode::NonConvergence, &format!("{} stopped with {stop:?} for RHS {index} after {iterations} iterations; no permitted remaining attempt", backend.label())));
         }
         self.last_diagnostics[index].fallback = Some(fallback_reason(stop));
         if self.lsmr.is_none() {

@@ -265,6 +265,6 @@ fn digest(sample: &Prepared) -> u64 {
     }
     hash
 }
-fn mix(hash: u64, value: u64) -> u64 {
+pub(super) fn mix(hash: u64, value: u64) -> u64 {
     (hash ^ value).wrapping_mul(0x100000001b3)
 }

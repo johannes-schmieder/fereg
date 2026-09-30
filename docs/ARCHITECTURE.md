@@ -283,10 +283,13 @@ strict accepted-Hessian requirements remain separately mandatory.
 
 ## PPML orchestration
 
-The separation coordinator owns immutable detector proposals, certificate
-acceptance, singleton cascades and generation rebasing. Detectors do not mutate
-the sample. FE/simplex/IR/Mu and capacity/error behavior follow SPEC exactly.
-Initial rank selection happens on the final separation sample.
+`separation::run` owns one Prepared ledger, immutable proposals and fresh
+certificate/replay acceptance in canonical FE/simplex/IR/Mu order. Atomic
+singleton/FE cascades commit one generation; every deletion discards the old
+numerical scope and regenerates finite recipes from compacted sources.
+Bounded method totals, a 64-event prefix and deterministic digests retain all
+generations' work. The sealed FinalSample owns no exploration; cold IRLS
+recomputes rank and final-Hessian authority on its sample.
 
 IR uses an immutable artificial weight frame (unit interior weights and
 `tol^2/N0` boundary weights), independent of prior weights and adjustments.
@@ -294,37 +297,34 @@ Before recurrence it freezes the full auxiliary finite span in a fresh strict
 unit-metric WLS frame. Estimator FE-omission thresholds cannot remove a cone
 direction: the auxiliary guard trims only squared machine-roundoff residuals,
 and shared QR owns numerical span rank. The recurrence uses those unit-within
-columns, a span-preserving FE re-expression that avoids cancellation between
-large finite coefficients and their FE counterparts. Weighted recurrence uses
-the registered IR projection target; fresh certification of the resulting cone
-direction uses the original model and strict unit-metric projection. Every
-frame and correction contributes observable work.
+columns, preserving span without large finite/FE cancellation. A validated
+deferred constant has exact zero within values; subtraction roundoff cannot
+become a new RHS. Weighted recurrence uses the registered IR projection target;
+fresh cone certification uses original columns and strict unit projection.
+Every frame and correction contributes observable work.
 
-Generation-bound IR reports are proposals. Deletions need fresh cone/span
-certification and atomic cascades; no-drop terminals need exact fresh
-recurrence replay. Cached success/projected state has no terminal authority.
-Exhaustion, stale/tampered evidence and unsupported solvers fail clearly.
+Generation-bound IR proposals need fresh cone/span acceptance or exact no-drop
+recurrence replay. Cached state has no terminal authority. Exhaustion,
+stale/tampered evidence and unsupported solvers fail clearly.
 
 Simplex counts the entire explicit finite/FE/channel width before dense work,
 including checked QR, null-space, tableau, topology and certificate storage.
-Column scaling preserves the cone; shared auxiliary QR removes full-model gauge
-redundancy and rechecks every original column's span. Positive-constraint
-elimination also reduces boundary rows, then homogeneous boundary coordinates
-keep small valid contrasts visible to Bland phase-I. A proposed ray still needs
-independent original-model cone/span certification; an infeasibility proposal
-needs a separately checked Farkas multiplier against the immutable boundary cone.
+Column scaling preserves the cone; auxiliary QR removes gauges and rechecks
+every original column's span. Positive elimination also reduces boundary rows;
+homogeneous coordinates keep small contrasts visible to Bland phase-I. Rays
+need independent original cone/span certification; infeasibility needs a
+separately checked Farkas multiplier against the immutable boundary cone.
 No-drop reports require fresh deterministic replay. A resource skip has no
 terminal authority alone: the requested comprehensive IR must freshly replay
 the same current model and generation with no unhandled separation. An IR drop
-restarts the chain, invalidating the old skip. Full-chain coordination remains.
+restarts the chain, invalidating the old skip and its capacity-resolution seal.
 
 Mu uses the same bounded IRLS trajectory in exploration mode; accepted
 linear/state/mean/objective evidence is required, but a finite root is not.
 Small means nominate candidates only: a fresh unit-metric full-model
 projection proposes a cone direction, then independent ledger span/sign
-certification decides deletion. No-drop reports require full deterministic
-replay on the current model/generation. Discard exploratory means, parameters,
-basis and factors; final-sample IRLS starts afresh.
+certification decides deletion. No-drop reports need full current-generation
+replay. Discard means, parameters, basis and factors before final-sample IRLS.
 
 IRLS evaluates the Poisson family, refreshes h=qmu, solves shared weighted
 linear frames, and step-halves the joint predictor/coefficient proposal.
