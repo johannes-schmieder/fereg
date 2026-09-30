@@ -1282,3 +1282,78 @@ fn fe_and_dense_cancellation_cover_separation_final_irls_and_both_bias_modes() {
         }
     }
 }
+
+#[test]
+fn inference_cancellation_keeps_host_error_identity_and_accepted_ppml_results() {
+    use std::{cell::Cell, rc::Rc};
+    let (loaded, _) = fixture(Some(WeightKind::Frequency));
+    let caller = std::thread::current().id();
+    for clustered in [false, true] {
+        let model = model(clustered);
+        let request = request(true, None);
+        for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+            for workers in [1, 8] {
+                let options = options(solver, workers);
+                let team = ThreadTeam::new(workers).unwrap();
+                let make = || {
+                    Call::new(
+                        &model,
+                        &options,
+                        &request,
+                        Inputs::from_loaded(&loaded, 0, 0).unwrap(),
+                        Some(WeightKind::Frequency),
+                        Resources::default(),
+                    )
+                    .unwrap()
+                };
+                let plain = make().run(&loaded, None).unwrap();
+                let count = Rc::new(Cell::new(0_usize));
+                let mut region = false;
+                let polled = make()
+                    .run_with_team(&loaded, None, &team, &mut |phase| {
+                        assert_eq!(std::thread::current().id(), caller);
+                        match phase {
+                            Phase::Estimated => region = true,
+                            Phase::Inferred => region = false,
+                            Phase::Numerical(InterruptPoint::DenseLinearAlgebra) if region => {
+                                count.set(count.get() + 1)
+                            }
+                            _ => (),
+                        }
+                        Ok(())
+                    })
+                    .unwrap();
+                same(&plain, &polled);
+                same_products(&plain, &polled);
+                assert!(count.get() > 2);
+                for stop in [1, count.get() / 2, count.get()] {
+                    let sentinel =
+                        FeregError::new(ErrorCode::NonConvergence, "PPML covariance host sentinel");
+                    let mut calls = 0;
+                    let mut region = false;
+                    let error = make()
+                        .run_with_team(&loaded, None, &team, &mut |phase| {
+                            match phase {
+                                Phase::Estimated => region = true,
+                                Phase::Inferred => region = false,
+                                Phase::Numerical(InterruptPoint::DenseLinearAlgebra) if region => {
+                                    calls += 1;
+                                    if calls == stop {
+                                        return Err(sentinel.clone());
+                                    }
+                                }
+                                _ => (),
+                            }
+                            Ok(())
+                        })
+                        .unwrap_err();
+                    assert_eq!(error, sentinel);
+                    assert_eq!(calls, stop);
+                    let retry = make().run(&loaded, None).unwrap();
+                    same(&plain, &retry);
+                    same_products(&plain, &retry);
+                }
+            }
+        }
+    }
+}

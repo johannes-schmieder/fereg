@@ -667,3 +667,102 @@ fn numerical_callbacks_abort_every_fe_and_dense_boundary_and_preserve_complete_o
         }
     }
 }
+
+#[test]
+fn inference_cancellation_keeps_host_error_identity_and_all_vce_products() {
+    use std::{cell::Cell, rc::Rc};
+    let input = loaded(true, Some(WeightKind::Frequency));
+    let caller = std::thread::current().id();
+    for kind in [vce::Kind::Iid, vce::Kind::Robust, vce::Kind::Cluster] {
+        let spec = model(true, kind == vce::Kind::Cluster);
+        let mut request = requested(true);
+        request.vce = Some(kind);
+        for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+            for workers in [1, 8] {
+                let options = options(solver, workers);
+                let team = ThreadTeam::new(workers).unwrap();
+                let make = || {
+                    Call::new(
+                        &spec,
+                        &options,
+                        &request,
+                        Inputs::from_loaded(&input, 0, 0).unwrap(),
+                        Some(WeightKind::Frequency),
+                        Resources::default(),
+                    )
+                    .unwrap()
+                };
+                let plain = make().run(&input).unwrap();
+                let count = Rc::new(Cell::new(0_usize));
+                let mut region = false;
+                let polled = make()
+                    .run_with_team(&input, &team, &mut |phase| {
+                        assert_eq!(std::thread::current().id(), caller);
+                        match phase {
+                            Phase::Estimated => region = true,
+                            Phase::Inferred => region = false,
+                            Phase::DenseLinearAlgebra if region => count.set(count.get() + 1),
+                            _ => (),
+                        }
+                        Ok(())
+                    })
+                    .unwrap();
+                same(&plain, &polled);
+                assert_eq!(plain.covariance.psd, polled.covariance.psd);
+                assert_eq!(
+                    plain
+                        .covariance
+                        .standard_errors
+                        .iter()
+                        .map(|x| x.to_bits())
+                        .collect::<Vec<_>>(),
+                    polled
+                        .covariance
+                        .standard_errors
+                        .iter()
+                        .map(|x| x.to_bits())
+                        .collect::<Vec<_>>(),
+                );
+                assert_eq!(plain.covariance.correction, polled.covariance.correction);
+                assert_eq!(
+                    plain.covariance.cluster_counts,
+                    polled.covariance.cluster_counts
+                );
+                assert_eq!(
+                    plain.covariance.subset_counts,
+                    polled.covariance.subset_counts
+                );
+                assert_eq!(
+                    plain.covariance.reconstruction_error,
+                    polled.covariance.reconstruction_error
+                );
+                assert!(count.get() > 2);
+                for stop in [1, count.get() / 2, count.get()] {
+                    let sentinel =
+                        FeregError::new(ErrorCode::NonConvergence, "OLS covariance host sentinel");
+                    let mut calls = 0;
+                    let mut region = false;
+                    let error = make()
+                        .run_with_team(&input, &team, &mut |phase| {
+                            match phase {
+                                Phase::Estimated => region = true,
+                                Phase::Inferred => region = false,
+                                Phase::DenseLinearAlgebra if region => {
+                                    calls += 1;
+                                    if calls == stop {
+                                        return Err(sentinel.clone());
+                                    }
+                                }
+                                _ => (),
+                            }
+                            Ok(())
+                        })
+                        .unwrap_err();
+                    assert_eq!(error, sentinel);
+                    assert_eq!(calls, stop);
+                    same(&plain, &make().run(&input).unwrap());
+                }
+            }
+        }
+    }
+}

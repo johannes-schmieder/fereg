@@ -1,5 +1,8 @@
 //! Shared CGM policy harvested from legacy ppml/psd.rs at 25f7cf7b.
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::{
+    error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PsdState {
@@ -32,16 +35,34 @@ pub fn apply_psd_policy(
     cluster_dimensions: usize,
     tolerance: f64,
 ) -> Result<(Vec<f64>, PsdReport)> {
+    apply_psd_policy_polled(covariance, dimension, cluster_dimensions, tolerance, None)
+}
+pub(crate) fn apply_psd_policy_polled(
+    covariance: &[f64],
+    dimension: usize,
+    cluster_dimensions: usize,
+    tolerance: f64,
+    poll: Poll<'_>,
+) -> Result<(Vec<f64>, PsdReport)> {
+    execution::check(poll)?;
     if !tolerance.is_finite() || tolerance <= 0.0 || tolerance >= 1.0 {
         return Err(invalid_argument(
             "PSD tolerance must be finite and lie in (0, 1)",
         ));
     }
     let square = checked_square(dimension, "PSD dimensions overflow usize")?;
-    if covariance.len() != square || covariance.iter().any(|value| !value.is_finite()) {
+    if covariance.len() != square {
         return Err(invalid_argument(
             "covariance is nonfinite or dimensionally inconsistent",
         ));
+    }
+    for (position, value) in covariance.iter().enumerate() {
+        execution::check_chunk(poll, position)?;
+        if !value.is_finite() {
+            return Err(invalid_argument(
+                "covariance is nonfinite or dimensionally inconsistent",
+            ));
+        }
     }
     if dimension == 0 {
         return Ok((
@@ -66,10 +87,10 @@ pub fn apply_psd_policy(
     }
 
     let mut symmetric = fallible_copy(covariance, "unable to reserve symmetric covariance")?;
-    symmetrize(&mut symmetric, dimension)?;
-    let raw = symmetric_eigensystem(&symmetric, dimension)?;
+    symmetrize(&mut symmetric, dimension, poll)?;
+    let raw = symmetric_eigensystem(&symmetric, dimension, poll)?;
     let raw_minimum = raw.values.iter().copied().fold(f64::INFINITY, f64::min);
-    let raw_scale = matrix_scale(&symmetric, dimension)?;
+    let raw_scale = matrix_scale(&symmetric, dimension, poll)?;
     if cluster_dimensions <= 1 && raw_minimum < -tolerance * raw_scale {
         return Err(numerical_nonconvergence(format!(
             "robust/one-way covariance is materially indefinite: min={raw_minimum:.17e}, scale={raw_scale:.17e}"
@@ -80,13 +101,13 @@ pub fn apply_psd_policy(
     let raw_orthogonality_error = raw.orthogonality_relative_error;
     let (output, final_system, final_scale, clipped, clipped_error, state) =
         if cluster_dimensions > 1 && raw_minimum < 0.0 {
-            let (mut repaired, clipped) = reconstruct_clipped(&raw, dimension)?;
-            let error = certify_clipped_reconstruction(&raw, &repaired, dimension)?;
+            let (mut repaired, clipped) = reconstruct_clipped(&raw, dimension, poll)?;
+            let error = certify_clipped_reconstruction(&raw, &repaired, dimension, poll)?;
             drop(raw);
             drop(symmetric);
-            symmetrize(&mut repaired, dimension)?;
-            let final_system = symmetric_eigensystem(&repaired, dimension)?;
-            let final_scale = matrix_scale(&repaired, dimension)?;
+            symmetrize(&mut repaired, dimension, poll)?;
+            let final_system = symmetric_eigensystem(&repaired, dimension, poll)?;
+            let final_scale = matrix_scale(&repaired, dimension, poll)?;
             (
                 repaired,
                 final_system,
@@ -177,16 +198,34 @@ pub fn inspect_published_covariance(
     cluster_dimensions: usize,
     tolerance: f64,
 ) -> Result<(Vec<f64>, PublishedPsdInspection)> {
+    inspect_published_covariance_polled(covariance, dimension, cluster_dimensions, tolerance, None)
+}
+pub(crate) fn inspect_published_covariance_polled(
+    covariance: &[f64],
+    dimension: usize,
+    cluster_dimensions: usize,
+    tolerance: f64,
+    poll: Poll<'_>,
+) -> Result<(Vec<f64>, PublishedPsdInspection)> {
+    execution::check(poll)?;
     if !tolerance.is_finite() || tolerance <= 0.0 || tolerance >= 1.0 {
         return Err(invalid_argument(
             "PSD tolerance must be finite and lie in (0, 1)",
         ));
     }
     let square = checked_square(dimension, "PSD dimensions overflow usize")?;
-    if covariance.len() != square || covariance.iter().any(|value| !value.is_finite()) {
+    if covariance.len() != square {
         return Err(invalid_argument(
             "covariance is nonfinite or dimensionally inconsistent",
         ));
+    }
+    for (position, value) in covariance.iter().enumerate() {
+        execution::check_chunk(poll, position)?;
+        if !value.is_finite() {
+            return Err(invalid_argument(
+                "covariance is nonfinite or dimensionally inconsistent",
+            ));
+        }
     }
     if dimension == 0 {
         return Ok((
@@ -200,14 +239,14 @@ pub fn inspect_published_covariance(
         ));
     }
     let mut symmetric = fallible_copy(covariance, "unable to reserve symmetric covariance")?;
-    symmetrize(&mut symmetric, dimension)?;
-    let spectrum = symmetric_eigensystem(&symmetric, dimension)?;
+    symmetrize(&mut symmetric, dimension, poll)?;
+    let spectrum = symmetric_eigensystem(&symmetric, dimension, poll)?;
     let minimum = spectrum
         .values
         .iter()
         .copied()
         .fold(f64::INFINITY, f64::min);
-    let scale = matrix_scale(&symmetric, dimension)?;
+    let scale = matrix_scale(&symmetric, dimension, poll)?;
     if minimum < -tolerance * scale
         || spectrum.reconstruction_relative_error > tolerance
         || spectrum.orthogonality_relative_error > tolerance
@@ -227,8 +266,8 @@ pub fn inspect_published_covariance(
         orthogonality_relative_error: spectrum.orthogonality_relative_error,
     };
     let comparison = if cluster_dimensions > 1 && minimum < 0.0 {
-        let (repaired, _) = reconstruct_clipped(&spectrum, dimension)?;
-        if certify_clipped_reconstruction(&spectrum, &repaired, dimension)? > tolerance {
+        let (repaired, _) = reconstruct_clipped(&spectrum, dimension, poll)?;
+        if certify_clipped_reconstruction(&spectrum, &repaired, dimension, poll)? > tolerance {
             return Err(numerical_nonconvergence(
                 "published covariance repair comparison is uncertified",
             ));
@@ -240,15 +279,21 @@ pub fn inspect_published_covariance(
     Ok((comparison, inspection))
 }
 
-fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEigensystem> {
+fn symmetric_eigensystem(
+    matrix: &[f64],
+    dimension: usize,
+    poll: Poll<'_>,
+) -> Result<SymmetricEigensystem> {
+    execution::check(poll)?;
     let square = checked_square(dimension, "eigensystem dimensions overflow usize")?;
     if matrix.len() != square {
         return Err(invalid_argument("eigensystem dimensions are inconsistent"));
     }
     let mut work = fallible_copy(matrix, "unable to reserve eigensystem work matrix")?;
-    symmetrize(&mut work, dimension)?;
+    symmetrize(&mut work, dimension, poll)?;
     let mut vectors = filled(square, 0.0_f64, "unable to reserve eigenvectors")?;
     for index in 0..dimension {
+        execution::check_chunk(poll, index)?;
         vectors[index * dimension + index] = 1.0;
     }
     // The modeled eigensystem peak already includes this vector beside work
@@ -256,24 +301,40 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
     // filling the final diagonal; there is no second cache allocation.
     let mut values = filled(dimension, 0.0_f64, "unable to reserve eigenvalues")?;
     for (row, maximum) in values.iter_mut().enumerate() {
-        *maximum = upper_row_maximum(&work, dimension, row).1;
+        *maximum = upper_row_maximum(&work, dimension, row, poll)?.1;
     }
     if dimension > 1 {
-        let threshold = 128.0 * f64::EPSILON * matrix_scale(&work, dimension)?;
+        let threshold = 128.0 * f64::EPSILON * matrix_scale(&work, dimension, poll)?;
         let maximum_iterations = dimension
             .checked_mul(dimension)
             .and_then(|value| value.checked_mul(128))
             .ok_or_else(|| allocation("Jacobi iteration limit overflows usize"))?;
         let mut converged = false;
         for _ in 0..maximum_iterations {
-            let (pivot_row, pivot_column, maximum) = cached_jacobi_pivot(&work, dimension, &values);
+            execution::check(poll)?;
+            let (pivot_row, pivot_column, maximum) =
+                cached_jacobi_pivot(&work, dimension, &values, poll)?;
             if maximum <= threshold {
                 converged = true;
                 break;
             }
-            invalidate_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
-            jacobi_rotate(&mut work, &mut vectors, dimension, pivot_row, pivot_column)?;
-            refresh_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
+            invalidate_rotated_maxima(
+                &work,
+                dimension,
+                &mut values,
+                pivot_row,
+                pivot_column,
+                poll,
+            )?;
+            jacobi_rotate(
+                &mut work,
+                &mut vectors,
+                dimension,
+                pivot_row,
+                pivot_column,
+                poll,
+            )?;
+            refresh_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column, poll)?;
         }
         if !converged {
             return Err(numerical_nonconvergence(
@@ -282,13 +343,14 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
         }
     }
     for index in 0..dimension {
+        execution::check_chunk(poll, index)?;
         values[index] = work[index * dimension + index];
     }
     if values.iter().any(|value| !value.is_finite()) {
         return Err(numerical_nonconvergence("eigenvalue is not finite"));
     }
     let (reconstruction_relative_error, orthogonality_relative_error) =
-        certify_eigensystem(matrix, &values, &vectors, dimension)?;
+        certify_eigensystem(matrix, &values, &vectors, dimension, poll)?;
     Ok(SymmetricEigensystem {
         values,
         vectors,
@@ -313,26 +375,36 @@ fn exhaustive_jacobi_pivot(matrix: &[f64], dimension: usize) -> (usize, usize, f
     (pivot_row, pivot_column, maximum)
 }
 
-fn upper_row_maximum(matrix: &[f64], dimension: usize, row: usize) -> (usize, f64) {
+fn upper_row_maximum(
+    matrix: &[f64],
+    dimension: usize,
+    row: usize,
+    poll: Poll<'_>,
+) -> Result<(usize, f64)> {
+    execution::check(poll)?;
     let mut column = row + 1;
     let mut maximum = 0.0_f64;
     for index in (row + 1)..dimension {
+        execution::check_chunk(poll, index)?;
         let candidate = matrix[row * dimension + index].abs();
         if candidate > maximum {
             column = index;
             maximum = candidate;
         }
     }
-    (column, maximum)
+    Ok((column, maximum))
 }
 
 fn cached_jacobi_pivot(
     matrix: &[f64],
     dimension: usize,
     row_maxima: &[f64],
-) -> (usize, usize, f64) {
+    poll: Poll<'_>,
+) -> Result<(usize, usize, f64)> {
+    execution::check(poll)?;
     let (mut pivot_row, mut maximum) = (0, 0.0_f64);
     for (row, &candidate) in row_maxima.iter().enumerate() {
+        execution::check_chunk(poll, row)?;
         if candidate > maximum {
             pivot_row = row;
             maximum = candidate;
@@ -340,8 +412,8 @@ fn cached_jacobi_pivot(
     }
     // Strict greater-than comparisons preserve the exhaustive search's first
     // row and first column on ties, including its all-zero stopping pivot.
-    let (pivot_column, _) = upper_row_maximum(matrix, dimension, pivot_row);
-    (pivot_row, pivot_column, maximum)
+    let (pivot_column, _) = upper_row_maximum(matrix, dimension, pivot_row, poll)?;
+    Ok((pivot_row, pivot_column, maximum))
 }
 
 fn invalidate_rotated_maxima(
@@ -350,8 +422,11 @@ fn invalidate_rotated_maxima(
     row_maxima: &mut [f64],
     p: usize,
     q: usize,
-) {
+    poll: Poll<'_>,
+) -> Result<()> {
+    execution::check(poll)?;
     for (row, maximum) in row_maxima.iter_mut().enumerate() {
+        execution::check_chunk(poll, row)?;
         if row == p
             || row == q
             || (row < p && matrix[row * dimension + p].abs() == *maximum)
@@ -362,6 +437,7 @@ fn invalidate_rotated_maxima(
             *maximum = -*maximum;
         }
     }
+    Ok(())
 }
 
 fn refresh_rotated_maxima(
@@ -370,10 +446,13 @@ fn refresh_rotated_maxima(
     row_maxima: &mut [f64],
     p: usize,
     q: usize,
-) {
+    poll: Poll<'_>,
+) -> Result<()> {
+    execution::check(poll)?;
     for (row, maximum) in row_maxima.iter_mut().enumerate() {
+        execution::check_chunk(poll, row)?;
         if maximum.is_sign_negative() {
-            *maximum = upper_row_maximum(matrix, dimension, row).1;
+            *maximum = upper_row_maximum(matrix, dimension, row, poll)?.1;
         } else {
             // Other upper rows changed only in columns p/q. Their old
             // maximum remains present, but either new entry may exceed it.
@@ -387,6 +466,7 @@ fn refresh_rotated_maxima(
             }
         }
     }
+    Ok(())
 }
 
 fn jacobi_rotate(
@@ -395,7 +475,9 @@ fn jacobi_rotate(
     dimension: usize,
     p: usize,
     q: usize,
+    poll: Poll<'_>,
 ) -> Result<()> {
+    execution::check(poll)?;
     let app = matrix[p * dimension + p];
     let aqq = matrix[q * dimension + q];
     let apq = matrix[p * dimension + q];
@@ -414,6 +496,7 @@ fn jacobi_rotate(
         return Err(numerical_nonconvergence("Jacobi rotation is not finite"));
     }
     for index in 0..dimension {
+        execution::check_chunk(poll, index)?;
         if index == p || index == q {
             continue;
         }
@@ -431,6 +514,7 @@ fn jacobi_rotate(
     matrix[p * dimension + q] = 0.0;
     matrix[q * dimension + p] = 0.0;
     for row in 0..dimension {
+        execution::check_chunk(poll, row)?;
         let vip = vectors[row * dimension + p];
         let viq = vectors[row * dimension + q];
         vectors[row * dimension + p] = cosine * vip - sine * viq;
@@ -444,19 +528,24 @@ fn certify_eigensystem(
     values: &[f64],
     vectors: &[f64],
     dimension: usize,
+    poll: Poll<'_>,
 ) -> Result<(f64, f64)> {
+    execution::check(poll)?;
     let mut reconstruction_error = 0.0_f64;
     let mut orthogonality_error = 0.0_f64;
     for row in 0..dimension {
+        execution::check(poll)?;
         let mut row_error = 0.0_f64;
         let mut row_scale = f64::MIN_POSITIVE;
         let mut orthogonal_row_error = 0.0_f64;
         for column in 0..dimension {
+            execution::check_chunk(poll, column)?;
             let mut reconstructed = 0.0_f64;
             let mut reconstructed_correction = 0.0_f64;
             let mut inner_product = 0.0_f64;
             let mut inner_correction = 0.0_f64;
             for eigen in 0..dimension {
+                execution::check_chunk(poll, eigen)?;
                 compensated_add(
                     vectors[row * dimension + eigen]
                         * values[eigen]
@@ -493,15 +582,20 @@ fn certify_eigensystem(
 fn reconstruct_clipped(
     eigen: &SymmetricEigensystem,
     dimension: usize,
+    poll: Poll<'_>,
 ) -> Result<(Vec<f64>, usize)> {
+    execution::check(poll)?;
     let square = checked_square(dimension, "clipped covariance dimensions overflow usize")?;
     let mut output = filled(square, 0.0_f64, "unable to reserve clipped covariance")?;
     let clipped = eigen.values.iter().filter(|value| **value < 0.0).count();
     for row in 0..dimension {
+        execution::check(poll)?;
         for column in row..dimension {
+            execution::check_chunk(poll, column)?;
             let mut value = 0.0_f64;
             let mut correction = 0.0_f64;
             for index in 0..dimension {
+                execution::check_chunk(poll, index)?;
                 compensated_add(
                     eigen.vectors[row * dimension + index]
                         * eigen.values[index].max(0.0)
@@ -525,7 +619,9 @@ fn certify_clipped_reconstruction(
     eigen: &SymmetricEigensystem,
     actual: &[f64],
     dimension: usize,
+    poll: Poll<'_>,
 ) -> Result<f64> {
+    execution::check(poll)?;
     let square = checked_square(dimension, "clipped-certificate dimensions overflow usize")?;
     if actual.len() != square || eigen.values.len() != dimension || eigen.vectors.len() != square {
         return Err(invalid_argument(
@@ -534,12 +630,15 @@ fn certify_clipped_reconstruction(
     }
     let mut error = 0.0_f64;
     for row in 0..dimension {
+        execution::check(poll)?;
         let mut row_error = 0.0_f64;
         let mut row_scale = f64::MIN_POSITIVE;
         for column in 0..dimension {
+            execution::check_chunk(poll, column)?;
             let mut expected = 0.0_f64;
             let mut correction = 0.0_f64;
             for index in 0..dimension {
+                execution::check_chunk(poll, index)?;
                 compensated_add(
                     eigen.vectors[row * dimension + index]
                         * eigen.values[index].max(0.0)
@@ -564,11 +663,14 @@ fn certify_clipped_reconstruction(
     }
 }
 
-fn matrix_scale(matrix: &[f64], dimension: usize) -> Result<f64> {
+fn matrix_scale(matrix: &[f64], dimension: usize, poll: Poll<'_>) -> Result<f64> {
+    execution::check(poll)?;
     let mut scale = 0.0_f64;
     for row in 0..dimension {
+        execution::check(poll)?;
         let mut row_sum = 0.0_f64;
         for column in 0..dimension {
+            execution::check_chunk(poll, column)?;
             row_sum += matrix[row * dimension + column].abs();
         }
         scale = scale.max(row_sum);
@@ -580,14 +682,17 @@ fn matrix_scale(matrix: &[f64], dimension: usize) -> Result<f64> {
     }
 }
 
-fn symmetrize(matrix: &mut [f64], dimension: usize) -> Result<()> {
+fn symmetrize(matrix: &mut [f64], dimension: usize, poll: Poll<'_>) -> Result<()> {
+    execution::check(poll)?;
     if matrix.len() != dimension.saturating_mul(dimension) {
         return Err(invalid_argument(
             "covariance symmetry dimensions are inconsistent",
         ));
     }
     for row in 0..dimension {
+        execution::check(poll)?;
         for column in (row + 1)..dimension {
+            execution::check_chunk(poll, column)?;
             let value = 0.5 * (matrix[row * dimension + column] + matrix[column * dimension + row]);
             if !value.is_finite() {
                 return Err(numerical_nonconvergence(
@@ -770,12 +875,12 @@ mod tests {
                     }
                 }
                 let mut maxima = (0..dimension)
-                    .map(|row| upper_row_maximum(&matrix, dimension, row).1)
+                    .map(|row| upper_row_maximum(&matrix, dimension, row, None).unwrap().1)
                     .collect::<Vec<_>>();
                 let capacity = maxima.capacity();
                 for _ in 0..512 {
                     let expected = exhaustive_jacobi_pivot(&matrix, dimension);
-                    let cached = cached_jacobi_pivot(&matrix, dimension, &maxima);
+                    let cached = cached_jacobi_pivot(&matrix, dimension, &maxima, None).unwrap();
                     assert_eq!(cached, expected, "dimension={dimension}, pattern={pattern}");
                     if expected.2 == 0.0 {
                         break;
@@ -786,17 +891,37 @@ mod tests {
                         &mut maxima,
                         expected.0,
                         expected.1,
-                    );
+                        None,
+                    )
+                    .unwrap();
                     if pattern == 2 && dimension > 2 {
                         assert!(maxima
                             .iter()
                             .any(|value| *value == 0.0 && value.is_sign_negative()));
                     }
-                    jacobi_rotate(&mut matrix, &mut vectors, dimension, expected.0, expected.1)
-                        .unwrap();
-                    refresh_rotated_maxima(&matrix, dimension, &mut maxima, expected.0, expected.1);
+                    jacobi_rotate(
+                        &mut matrix,
+                        &mut vectors,
+                        dimension,
+                        expected.0,
+                        expected.1,
+                        None,
+                    )
+                    .unwrap();
+                    refresh_rotated_maxima(
+                        &matrix,
+                        dimension,
+                        &mut maxima,
+                        expected.0,
+                        expected.1,
+                        None,
+                    )
+                    .unwrap();
                     for (row, &maximum) in maxima.iter().enumerate() {
-                        assert_eq!(maximum, upper_row_maximum(&matrix, dimension, row).1);
+                        assert_eq!(
+                            maximum,
+                            upper_row_maximum(&matrix, dimension, row, None).unwrap().1
+                        );
                         assert!(!maximum.is_sign_negative());
                     }
                     assert_eq!(maxima.capacity(), capacity);

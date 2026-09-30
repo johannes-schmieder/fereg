@@ -3,7 +3,7 @@ use crate::{
     data::{ClusterFrame, Loaded, Prepared, ReferenceWeights, Weights},
     dof::{compute_absorbed_dof, ResidualDof},
     error::reserved,
-    execution::{self, Probe},
+    execution::{self, Poll, Probe},
     fe::{Design, Engine},
     memory::Inputs,
     outputs::{self, OlsFrame},
@@ -115,7 +115,15 @@ pub(super) fn execute_in(
         weights,
         &linear.finite,
     )?;
-    let inference = infer(&call, &sample, &linear, weights, &reported, team)?;
+    let inference = infer(
+        &call,
+        &sample,
+        &linear,
+        weights,
+        &reported,
+        team,
+        probe.dense(),
+    )?;
     timings.inference = clock.elapsed();
     interrupt(Phase::Inferred)?;
     clock = Instant::now();
@@ -181,7 +189,9 @@ fn infer(
     weights: ReferenceWeights<'_>,
     reported: &super::Reported,
     team: &ThreadTeam,
+    poll: Poll<'_>,
 ) -> Result<Inference> {
+    execution::check(poll)?;
     let model = call.model;
     let columns = &call.columns;
     let request = call.request;
@@ -205,7 +215,7 @@ fn infer(
         &counts,
     )?;
     let tolerance = wls::Policy::default().bread_tolerance;
-    let covariance = vce::estimate(
+    let covariance = vce::estimate_polled(
         &vce::Problem {
             design: &reported.score_design,
             bread: &reported.bread,
@@ -217,8 +227,9 @@ fn infer(
         kind,
         tolerance,
         team,
+        poll,
     )?
-    .scatter(reported.coefficients.len(), &reported.coordinates)?;
+    .scatter_polled(reported.coefficients.len(), &reported.coordinates, poll)?;
     let mut tested = reserved(reported.coordinates.len())?;
     tested.extend(
         reported
@@ -227,17 +238,19 @@ fn infer(
             .copied()
             .filter(|&slot| Some(slot) != columns.constant_slot),
     );
-    let wald = vce::wald(
+    let wald = vce::wald_polled(
         &reported.coefficients,
         &covariance.values,
         &tested,
         Estimator::Ols,
         tolerance,
+        poll,
     )?;
-    let t_statistics = vce::coefficient_statistics(
+    let t_statistics = vce::coefficient_statistics_polled(
         &reported.coefficients,
         &covariance.standard_errors,
         &reported.coordinates,
+        poll,
     )?;
     let statistics = statistics::ols(
         &sample.outcome,

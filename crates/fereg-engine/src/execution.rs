@@ -87,6 +87,17 @@ pub(crate) fn sum(values: impl IntoIterator<Item = f64>, poll: Poll<'_>) -> Resu
         .total(),
     )
 }
+pub(crate) fn try_sum(
+    values: impl IntoIterator<Item = Result<f64>>,
+    poll: Poll<'_>,
+) -> Result<f64> {
+    let mut sum = CompensatedSum::default();
+    for (position, value) in values.into_iter().enumerate() {
+        check_chunk(poll, position)?;
+        sum.add(value?);
+    }
+    Ok(sum.total())
+}
 pub(crate) fn blocked_sum(
     length: usize,
     value: impl Fn(usize) -> f64,

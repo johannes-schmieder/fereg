@@ -124,13 +124,14 @@ pub(super) fn execute_in(
     clock = Instant::now();
     let inferred = {
         let frame = ClusterFrame::new(call.model, final_sample.sample())?;
-        inference::estimate(
+        inference::estimate_polled(
             &call.columns,
             &accepted,
             &frame.views()?,
             call.kind,
             wls::Policy::default().bread_tolerance,
             team,
+            probe.dense(),
         )?
     };
     let statistics = statistics::ppml(&accepted)?;

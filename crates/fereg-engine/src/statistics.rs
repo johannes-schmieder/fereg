@@ -4,8 +4,8 @@ use crate::{
     data::ReferenceWeights,
     dof::ResidualDof,
     error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     spec::Estimator,
-    threads::blocked_sum,
 };
 pub use ppml::{ppml, PpmlStatistics};
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -77,18 +77,33 @@ pub fn ols(
     Ok(result)
 }
 pub(crate) fn squares(values: &[f64], center: f64, weights: ReferenceWeights<'_>) -> Result<f64> {
+    squares_polled(values, center, weights, None)
+}
+pub(crate) fn squares_polled(
+    values: &[f64],
+    center: f64,
+    weights: ReferenceWeights<'_>,
+    poll: Poll<'_>,
+) -> Result<f64> {
+    execution::check(poll)?;
     // Normalize before squaring, then undo the scale without forming scale² first.
-    let scale = values
-        .iter()
-        .map(|v| (*v - center).abs())
-        .fold(0., f64::max);
+    let scale = execution::fold(
+        values.iter().map(|v| (*v - center).abs()),
+        0.,
+        poll,
+        f64::max,
+    )?;
     if scale == 0. {
         return Ok(0.);
     }
-    let sum = blocked_sum(values.len(), |i| {
-        let root = weights.value(i).sqrt() * ((values[i] - center) / scale);
-        root * root
-    });
+    let sum = execution::blocked_sum(
+        values.len(),
+        |i| {
+            let root = weights.value(i).sqrt() * ((values[i] - center) / scale);
+            root * root
+        },
+        poll,
+    )?;
     let result = (sum.sqrt() * scale).powi(2);
     if result.is_finite() {
         Ok(result)

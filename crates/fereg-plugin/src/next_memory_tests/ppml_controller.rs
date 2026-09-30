@@ -377,7 +377,10 @@ fn ppml_fe_and_dense_cancellation_release_separation_final_irls_and_bias_owners(
                     InterruptPoint::FixedEffects,
                     InterruptPoint::DenseLinearAlgebra,
                 ] {
-                    for cancelled_region in 0..3 {
+                    for cancelled_region in 0..4 {
+                        if cancelled_region == 2 && checkpoint == InterruptPoint::FixedEffects {
+                            continue;
+                        }
                         let (before, _) = begin_ols_allocation_observation();
                         let mut region = 0;
                         let mut polls = 0;
@@ -385,7 +388,8 @@ fn ppml_fe_and_dense_cancellation_release_separation_final_irls_and_bias_owners(
                             .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
                                 match phase {
                                     Phase::Separated => region = 1,
-                                    Phase::Outputs => region = 2,
+                                    Phase::Estimated => region = 2,
+                                    Phase::Outputs => region = 3,
                                     Phase::Numerical(point)
                                         if point == checkpoint && region == cancelled_region =>
                                     {

@@ -4,6 +4,7 @@ use crate::{
     data::{ColumnRecipe, CompiledColumns, ReferenceWeights},
     dof::{compute_absorbed_dof, DofPolicy, DofReport, ResidualDof},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     factor::{factorize_code_interaction, CategoricalCodeView},
     spec::Estimator,
     threads::ThreadTeam,
@@ -30,6 +31,18 @@ pub fn estimate(
     tolerance: f64,
     team: &ThreadTeam,
 ) -> Result<Inference> {
+    estimate_polled(columns, fit, clusters, kind, tolerance, team, None)
+}
+pub(crate) fn estimate_polled(
+    columns: &CompiledColumns,
+    fit: &irls::Fit<'_>,
+    clusters: &[CategoricalCodeView<'_>],
+    kind: Kind,
+    tolerance: f64,
+    team: &ThreadTeam,
+    poll: Poll<'_>,
+) -> Result<Inference> {
+    execution::check(poll)?;
     let problem = fit.problem();
     if columns.implicit_constant || !columns.structural_intercept || columns.roles != problem.roles
     {
@@ -75,7 +88,9 @@ pub fn estimate(
     let mut cluster_counts = reserved(clusters.len())?;
     let mut cluster_codes = reserved(clusters.len())?;
     for &view in clusters {
+        execution::check(poll)?;
         cluster_counts.push(factorize_code_interaction(&[view])?.n_levels);
+        execution::check(poll)?;
         cluster_codes.push(view.codes);
     }
     let mut absorbed_dof =
@@ -95,15 +110,17 @@ pub fn estimate(
         &cluster_counts,
     )?;
     let mut residual = reserved(q.nobs())?;
-    residual.extend(
-        problem
-            .sample
-            .outcome
-            .iter()
-            .zip(&fit.evaluation.mean)
-            .map(|(y, mu)| y - mu),
-    );
-    let covariance = vce::estimate(
+    for (row, (y, mu)) in problem
+        .sample
+        .outcome
+        .iter()
+        .zip(&fit.evaluation.mean)
+        .enumerate()
+    {
+        execution::check_chunk(poll, row)?;
+        residual.push(y - mu);
+    }
+    let covariance = vce::estimate_polled(
         &vce::Problem {
             design: &reported.score_design,
             bread: &reported.bread,
@@ -115,12 +132,14 @@ pub fn estimate(
         kind,
         tolerance,
         team,
+        poll,
     )?
-    .scatter(reported.coefficients.len(), &reported.coordinates)?;
-    let z_statistics = vce::coefficient_statistics(
+    .scatter_polled(reported.coefficients.len(), &reported.coordinates, poll)?;
+    let z_statistics = vce::coefficient_statistics_polled(
         &reported.coefficients,
         &covariance.standard_errors,
         &reported.coordinates,
+        poll,
     )?;
     let mut tested = reserved(reported.coordinates.len())?;
     tested.extend(
@@ -130,12 +149,13 @@ pub fn estimate(
             .copied()
             .filter(|&slot| Some(slot) != columns.constant_slot),
     );
-    let wald = vce::wald(
+    let wald = vce::wald_polled(
         &reported.coefficients,
         &covariance.values,
         &tested,
         Estimator::Ppml,
         tolerance,
+        poll,
     )?;
     Ok(Inference {
         coefficients: reported.coefficients,
