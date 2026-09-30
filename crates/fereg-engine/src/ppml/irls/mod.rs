@@ -17,6 +17,7 @@ use super::{
 use crate::{
     data::{DenseMatrix, Prepared, ReferenceWeights, Weights},
     error::{ErrorCode, FeregError, Result},
+    execution::Probe,
     fe::Design,
     spec::{Estimator, Options},
     threads::ThreadTeam,
@@ -90,7 +91,8 @@ impl std::ops::Deref for Fit<'_> {
         &self.accepted
     }
 }
-struct Context<'a, 'data> {
+struct Context<'a, 'data, 'poll> {
+    probe: Probe<'poll>,
     problem: &'a Problem<'data>,
     family: &'a Family<'a>,
     design: &'a Design<'a>,
@@ -112,7 +114,16 @@ pub fn fit_final_sample_with<'data>(
     team: &ThreadTeam,
     interrupt: &mut Interrupt<'_>,
 ) -> Result<Fit<'data>> {
-    with_context(problem, options, team, |context| {
+    fit_final_sample_polled(problem, options, team, interrupt, Probe::default())
+}
+pub(crate) fn fit_final_sample_polled<'data>(
+    problem: &Problem<'data>,
+    options: Options,
+    team: &ThreadTeam,
+    interrupt: &mut Interrupt<'_>,
+    probe: Probe<'_>,
+) -> Result<Fit<'data>> {
+    with_context(problem, options, team, probe, |context| {
         let trajectory = context.run(Purpose::Publication, interrupt)?;
         let report = trajectory
             .final_checkpoint
@@ -120,11 +131,12 @@ pub fn fit_final_sample_with<'data>(
         context.finish(trajectory.accepted, report, trajectory.diagnostics)
     })
 }
-fn with_context<'data, T>(
+fn with_context<'data, 'poll, T>(
     problem: &Problem<'data>,
     options: Options,
     team: &ThreadTeam,
-    run: impl FnOnce(Context<'_, 'data>) -> Result<T>,
+    probe: Probe<'poll>,
+    run: impl FnOnce(Context<'_, 'data, 'poll>) -> Result<T>,
 ) -> Result<T> {
     let controls = Controls::new(&options)?;
     problem.sample.validate_alignment()?;
@@ -154,6 +166,7 @@ fn with_context<'data, T>(
     let family = Family::new(&problem.sample.outcome, q, offset.as_deref())?;
     let design = Design::new(problem.sample, Weights::Reference(q))?;
     run(Context {
+        probe,
         problem,
         family: &family,
         design: &design,
@@ -163,7 +176,7 @@ fn with_context<'data, T>(
         offset: offset.as_deref(),
     })
 }
-impl<'a, 'data> Context<'a, 'data> {
+impl<'a, 'data> Context<'a, 'data, '_> {
     fn checkpoint(
         &self,
         accepted: &Accepted<'_, '_>,
@@ -185,7 +198,13 @@ impl<'a, 'data> Context<'a, 'data> {
             basis,
             options: self.options,
         }
-        .run(accepted.point(), accepted.evaluation(), stage, self.team)?;
+        .run_polled(
+            accepted.point(),
+            accepted.evaluation(),
+            stage,
+            self.team,
+            self.probe,
+        )?;
         diagnostics.work.merge(report.work)?;
         Ok(report)
     }

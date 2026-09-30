@@ -8,6 +8,7 @@ use super::{
 use crate::{
     data::{ClusterFrame, Loaded, NumericColumn, ReferenceWeights},
     error::reserved,
+    execution::{self, Probe},
     memory::Inputs,
     outputs,
     result::{Sample, WeightSummary},
@@ -58,6 +59,32 @@ pub(super) fn execute(
     team: &ThreadTeam,
     interrupt: &mut impl FnMut(Phase) -> Result<()>,
 ) -> Result<PpmlFit> {
+    execution::run(
+        team,
+        |relay| {
+            let fe_poll = || relay(Phase::Numerical(super::InterruptPoint::FixedEffects));
+            execute_in(
+                call,
+                loaded,
+                units,
+                team,
+                Probe::new(&fe_poll),
+                &mut |phase| execution::check(Some(&|| relay(phase))),
+            )
+        },
+        interrupt,
+    )
+}
+pub(super) fn execute_in(
+    call: Call<'_>,
+    loaded: &Loaded,
+    units: Option<&NumericColumn>,
+    team: &ThreadTeam,
+    probe: Probe<'_>,
+    interrupt: &mut impl FnMut(Phase) -> Result<()>,
+) -> Result<PpmlFit> {
+    // Executor setup precedes host cancellation and allocation-failure probes.
+    interrupt(Phase::Loaded)?;
     let units = call.units(loaded, units)?;
     let mut timings = Timings::default();
     let mut clock = Instant::now();
@@ -65,7 +92,7 @@ pub(super) fn execute(
     timings.preparation = clock.elapsed();
     interrupt(Phase::Prepared)?;
     clock = Instant::now();
-    let final_sample = separation::run_with(
+    let final_sample = separation::run_polled(
         sample,
         &call.columns,
         call.options,
@@ -75,13 +102,22 @@ pub(super) fn execute(
         },
         call.request.separation_controls,
         team,
-        &mut |point| interrupt(Phase::Numerical(point)),
+        super::interrupt::Flow {
+            interrupt: &mut |point| interrupt(Phase::Numerical(point)),
+            probe,
+        },
     )?;
     timings.separation = clock.elapsed();
     interrupt(Phase::Separated)?;
     clock = Instant::now();
     // Final rank, mean and Hessian authority are cold on this exact generation.
-    let accepted = final_sample.fit_with(team, &mut |point| interrupt(Phase::Numerical(point)))?;
+    let accepted = final_sample.fit_polled(
+        team,
+        super::interrupt::Flow {
+            interrupt: &mut |point| interrupt(Phase::Numerical(point)),
+            probe,
+        },
+    )?;
     timings.estimation = clock.elapsed();
     interrupt(Phase::Estimated)?;
     clock = Instant::now();
@@ -114,13 +150,14 @@ pub(super) fn execute(
     timings.outputs = clock.elapsed();
     interrupt(Phase::Outputs)?;
     clock = Instant::now();
-    let bias = bias::compute(
+    let bias = bias::compute_polled(
         &accepted,
         call.model,
         call.request.bias,
         units.map(NumericColumn::view),
         team,
         &mut || interrupt(Phase::BiasCorrection),
+        probe,
     )?
     .map(|correction| BiasResult::new(correction, call.admitted.estimate().bias_workspace_bytes()))
     .transpose()?;

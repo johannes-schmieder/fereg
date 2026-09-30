@@ -7,6 +7,7 @@ use super::{
 use crate::{
     data::DenseMatrix,
     error::{ErrorCode, FeregError, Result},
+    execution::Probe,
     fe::{Certificate, Engine, Projection, RhsDiagnostics, SetupDiagnostics},
     threads::ThreadTeam,
 };
@@ -16,6 +17,7 @@ pub(super) struct Model<'a> {
     pub outcome: &'a [f64],
     pub finite: &'a Fit,
     pub policy: Policy,
+    pub probe: Probe<'a>,
 }
 pub(super) struct Recovered {
     pub coefficients: DenseMatrix,
@@ -44,7 +46,8 @@ pub(super) fn finish(
         Err(error) if error.code == ErrorCode::NonConvergence => {
             // Cancellation can make the combined RHS much smaller than its
             // separate projections. Its own scale remains authoritative.
-            let mut recovered = recorded_projection(engine, &target, Phase::Recovery, work, team)?;
+            let mut recovered =
+                recorded_projection(engine, &target, Phase::Recovery, work, model.probe, team)?;
             append(&mut diagnostics, &mut setup, &mut recovered)?;
             coefficients = recovered.coefficients;
             residual = recovered.residuals;
@@ -59,7 +62,8 @@ pub(super) fn finish(
     // that larger FE-target scale does not bound the original finite score.
     // Correct actual residuals at their own scale; never relax acceptance.
     while original_score > acceptance && refinements < 3 && design.layout().total != 0 {
-        let mut correction = recorded_projection(engine, &residual, Phase::Recovery, work, team)?;
+        let mut correction =
+            recorded_projection(engine, &residual, Phase::Recovery, work, model.probe, team)?;
         append(&mut diagnostics, &mut setup, &mut correction)?;
         for (alpha, delta) in coefficients
             .as_mut_slice()

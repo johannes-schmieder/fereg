@@ -60,6 +60,25 @@ pub fn compute(
     team: &ThreadTeam,
     interrupt: &mut dyn FnMut() -> Result<()>,
 ) -> Result<Option<Correction>> {
+    compute_polled(
+        fit,
+        model,
+        request,
+        units,
+        team,
+        interrupt,
+        crate::execution::Probe::default(),
+    )
+}
+pub(crate) fn compute_polled(
+    fit: &irls::Fit<'_>,
+    model: &ModelSpec,
+    request: Option<Request>,
+    units: Option<NumericColumnView<'_>>,
+    team: &ThreadTeam,
+    interrupt: &mut dyn FnMut() -> Result<()>,
+    probe: crate::execution::Probe<'_>,
+) -> Result<Option<Correction>> {
     let Some(request) = request else {
         if units.is_some() {
             return Err(invalid("biasunit requires bias correction"));
@@ -82,47 +101,56 @@ pub fn compute(
     request
         .method
         .dimensions(fit.problem().sample.n_active(), support.identities().len())?;
-    with_information(fit, &columns, team, interrupt, |info, interrupt| {
-        let calculated = calculation::calculate(fit, &support, request.method, info, interrupt)?;
-        let (stripes, ordinary) = publication::ordinary(&columns, info, &calculated.coefficients)?;
-        let saved = publication::saved(
-            fit.problem().sample,
-            info.first_levels(),
-            &calculated.coefficients,
-            request.save_effects,
-            interrupt,
-        )
-        .map_err(|e| context(e, "publication", None, None))?;
-        let mut finite_slots = reserved(info.finite_slots().len())?;
-        finite_slots.extend_from_slice(info.finite_slots());
-        interrupt()?;
-        Ok(Some(Correction {
-            request,
-            coefficients: calculated.coefficients,
-            stripes,
-            ordinary,
-            saved,
-            support: support.effects,
-            first_levels: info.first_levels(),
-            second_levels: info.second_levels(),
-            finite_slots,
-            units: support.identities().len(),
-            probes: calculated.probes,
-            groups: calculated.groups,
-            minimum_unit_rows: support.minimum_unit_rows(),
-            maximum_unit_rows: support.maximum_unit_rows(),
-            minimum_mean: fit
-                .evaluation
-                .mean
-                .iter()
-                .copied()
-                .fold(f64::INFINITY, f64::min),
-            maximum_mean: fit.evaluation.mean.iter().copied().fold(0., f64::max),
-            diagnostics: info.diagnostics(),
-            elapsed_seconds: started.elapsed().as_secs_f64(),
-            certificate_tolerance: fit.options().tolerance,
-        }))
-    })
+    information::with_information_polled(
+        fit,
+        &columns,
+        team,
+        interrupt,
+        probe,
+        |info, interrupt| {
+            let calculated =
+                calculation::calculate(fit, &support, request.method, info, interrupt)?;
+            let (stripes, ordinary) =
+                publication::ordinary(&columns, info, &calculated.coefficients)?;
+            let saved = publication::saved(
+                fit.problem().sample,
+                info.first_levels(),
+                &calculated.coefficients,
+                request.save_effects,
+                interrupt,
+            )
+            .map_err(|e| context(e, "publication", None, None))?;
+            let mut finite_slots = reserved(info.finite_slots().len())?;
+            finite_slots.extend_from_slice(info.finite_slots());
+            interrupt()?;
+            Ok(Some(Correction {
+                request,
+                coefficients: calculated.coefficients,
+                stripes,
+                ordinary,
+                saved,
+                support: support.effects,
+                first_levels: info.first_levels(),
+                second_levels: info.second_levels(),
+                finite_slots,
+                units: support.identities().len(),
+                probes: calculated.probes,
+                groups: calculated.groups,
+                minimum_unit_rows: support.minimum_unit_rows(),
+                maximum_unit_rows: support.maximum_unit_rows(),
+                minimum_mean: fit
+                    .evaluation
+                    .mean
+                    .iter()
+                    .copied()
+                    .fold(f64::INFINITY, f64::min),
+                maximum_mean: fit.evaluation.mean.iter().copied().fold(0., f64::max),
+                diagnostics: info.diagnostics(),
+                elapsed_seconds: started.elapsed().as_secs_f64(),
+                certificate_tolerance: fit.options().tolerance,
+            }))
+        },
+    )
     .map_err(|e| context(e, "correction", None, None))
 }
 fn context(

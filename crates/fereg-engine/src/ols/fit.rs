@@ -3,6 +3,7 @@ use crate::{
     data::{ClusterFrame, Loaded, Prepared, ReferenceWeights, Weights},
     dof::{compute_absorbed_dof, ResidualDof},
     error::reserved,
+    execution::{self, Probe},
     fe::{Design, Engine},
     memory::Inputs,
     outputs::{self, OlsFrame},
@@ -50,6 +51,27 @@ pub(super) fn execute(
     team: &ThreadTeam,
     interrupt: &mut impl FnMut(Phase) -> Result<()>,
 ) -> Result<OlsFit> {
+    execution::run(
+        team,
+        |relay| {
+            let fe_poll = || relay(Phase::FixedEffects);
+            execute_in(call, loaded, team, Probe::new(&fe_poll), &mut |phase| {
+                execution::check(Some(&|| relay(phase)))
+            })
+        },
+        interrupt,
+    )
+}
+pub(super) fn execute_in(
+    call: Call<'_>,
+    loaded: &Loaded,
+    team: &ThreadTeam,
+    probe: Probe<'_>,
+    interrupt: &mut impl FnMut(Phase) -> Result<()>,
+) -> Result<OlsFit> {
+    // Executor setup must precede the first host poll; a caller may arm an
+    // allocation injector here to qualify fallible numerical preparation.
+    interrupt(Phase::Loaded)?;
     let mut timings = Timings::default();
     let mut clock = Instant::now();
     let sample = super::prepare::prepare_planned(call.model, loaded, &call.columns, &call.sources)?;
@@ -67,7 +89,10 @@ pub(super) fn execute(
         &raw,
         &sample.outcome,
         &call.columns.roles,
-        AbsorbedControls::default(),
+        AbsorbedControls {
+            probe,
+            ..AbsorbedControls::default()
+        },
         &mut work,
         team,
     )?;

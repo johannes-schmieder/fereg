@@ -8,6 +8,7 @@ use super::{
 use crate::{
     data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::Probe,
     fe::{Design, Engine},
     spec::{Estimator, Options},
     threads::ThreadTeam,
@@ -67,6 +68,16 @@ impl Checkpoint<'_, '_> {
         evaluation: &Evaluation,
         stage: Stage,
         team: &ThreadTeam,
+    ) -> Result<Report> {
+        self.run_polled(point, evaluation, stage, team, Probe::default())
+    }
+    pub(crate) fn run_polled(
+        &self,
+        point: &Point,
+        evaluation: &Evaluation,
+        stage: Stage,
+        team: &ThreadTeam,
+        probe: Probe<'_>,
     ) -> Result<Report> {
         let controls = Controls::new(&self.options)?;
         if self.basis.statuses().len() != point.finite.len()
@@ -128,6 +139,7 @@ impl Checkpoint<'_, '_> {
             &response,
             self.roles,
             wls::AbsorbedControls {
+                probe,
                 finite: policy,
                 basis: None,
             },

@@ -24,6 +24,7 @@ fn ledger(y: &[f64]) -> Ledger {
 }
 fn model<'a>(raw: &'a DenseMatrix, roles: &'a [Role]) -> Model<'a> {
     Model {
+        probe: Default::default(),
         raw,
         roles,
         controls: Controls::default(),

@@ -9,6 +9,7 @@ use fereg_engine::{
 mod support;
 fn model<'a>(raw: &'a DenseMatrix, roles: &'a [Role]) -> Model<'a> {
     Model {
+        probe: Default::default(),
         raw,
         roles,
         options: Options::for_estimator(Estimator::Ppml),

@@ -10,6 +10,7 @@ use fereg_engine::{
 mod support;
 fn make_model<'a>(raw: &'a DenseMatrix, roles: &'a [Role], solver: Solver) -> Model<'a> {
     Model {
+        probe: Default::default(),
         raw,
         roles,
         options: Options {

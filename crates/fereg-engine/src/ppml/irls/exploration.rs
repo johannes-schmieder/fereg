@@ -53,18 +53,19 @@ pub(crate) fn explore_mu(
     tolerance: f64,
     team: &ThreadTeam,
     interrupt: &mut Interrupt<'_>,
+    probe: Probe<'_>,
 ) -> Result<Exploration> {
     if !tolerance.is_finite() || tolerance <= 0. || tolerance >= 1. {
         return Err(invalid(
             "Mu threshold must be finite and strictly between zero and one",
         ));
     }
-    with_context(problem, options, team, |context| {
+    with_context(problem, options, team, probe, |context| {
         let trajectory = context.run(Purpose::Mu { tolerance }, interrupt)?;
         context.finish_exploration(trajectory)
     })
 }
-impl<'a> Context<'a, '_> {
+impl<'a> Context<'a, '_, '_> {
     fn finish_exploration(&self, trajectory: Trajectory<'a, 'a>) -> Result<Exploration> {
         let state = trajectory.accepted.certify_state(
             self.problem.raw,

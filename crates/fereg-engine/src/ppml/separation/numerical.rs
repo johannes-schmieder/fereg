@@ -59,6 +59,7 @@ impl Controls {
 }
 
 pub struct Model<'a> {
+    pub probe: crate::execution::Probe<'a>,
     pub raw: &'a DenseMatrix,
     pub roles: &'a [Role],
     pub options: Options,

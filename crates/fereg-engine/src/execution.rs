@@ -5,6 +5,26 @@ use std::sync::{Condvar, Mutex, MutexGuard};
 /// Worker-safe cooperative poll. Thread-bound host APIs belong in `run`'s callback.
 pub(crate) type Poll<'a> = Option<&'a (dyn Fn() -> bool + Sync)>;
 
+/// Borrowed worker-safe cancellation signal; host callbacks require a scoped relay.
+#[derive(Clone, Copy, Default)]
+pub struct Probe<'a>(Poll<'a>);
+impl<'a> Probe<'a> {
+    pub fn new(poll: &'a (dyn Fn() -> bool + Sync)) -> Self {
+        Self(Some(poll))
+    }
+    pub(crate) fn poll(self) -> Poll<'a> {
+        self.0
+    }
+}
+impl std::fmt::Debug for Probe<'_> {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter
+            .debug_struct("Probe")
+            .field("enabled", &self.0.is_some())
+            .finish()
+    }
+}
+
 pub(crate) fn check(poll: Poll<'_>) -> Result<()> {
     if poll.is_some_and(|poll| !poll()) {
         Err(interrupted())

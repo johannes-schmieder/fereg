@@ -91,6 +91,7 @@ fn original_response_score_is_repaired_without_relaxing_the_guard_or_changing_th
             &outcome,
             &[Role::Ordinary],
             AbsorbedControls {
+                probe: Default::default(),
                 finite: policy,
                 basis: Some(&basis),
             },

@@ -74,6 +74,7 @@ fn separately_certified_frames_retain_exact_full_model_rays_at_boundary_weights(
                     &u,
                     &roles,
                     AbsorbedControls {
+                        probe: Default::default(),
                         finite: policy,
                         basis: Some(&basis),
                     },

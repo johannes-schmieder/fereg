@@ -4,7 +4,7 @@ use crate::{
     fe::Engine,
     wls::{self, AbsorbedControls, Policy},
 };
-impl<'a> Context<'a, '_> {
+impl<'a> Context<'a, '_, '_> {
     pub(super) fn frame(
         &self,
         accepted: &Accepted<'_, '_>,
@@ -60,6 +60,7 @@ impl<'a> Context<'a, '_> {
             &response,
             self.problem.roles,
             AbsorbedControls {
+                probe: self.probe,
                 finite: policy,
                 basis,
             },

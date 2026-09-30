@@ -272,6 +272,7 @@ fn ppml_numerical_break_releases_owners_at_every_checkpoint_kind() {
             InterruptPoint::LineSearch,
             InterruptPoint::LinearFrame,
             InterruptPoint::StrictCheckpoint,
+            InterruptPoint::FixedEffects,
         ] {
             let (before, _) = begin_ols_allocation_observation();
             let mut reached = false;
@@ -304,6 +305,111 @@ fn ppml_numerical_break_releases_owners_at_every_checkpoint_kind() {
             assert_eq!(value, expected);
             drop(fit);
             assert!(allocation_usage().current_bytes <= before.current_bytes);
+        }
+    }
+}
+
+#[test]
+#[ignore = "process-global allocator audit; run with --test-threads=1"]
+fn ppml_fe_cancellation_releases_separation_final_irls_and_bias_owners() {
+    let _guard = crate::instrumentation::lock_action_observation();
+    let model = fixture::model(false);
+    let mut loaded = fixture::loaded(1024, true, true);
+    let LoadedSource::Numeric(x) = &mut loaded.sources[2] else {
+        unreachable!()
+    };
+    x.values.fill(0.);
+    x.values[3] = 1.;
+    x.values[67] = -1.;
+    loaded.outcome.values[3] = 0.;
+    loaded.outcome.values[67] = 0.;
+    let units = units(1024);
+    let inputs = Inputs::from_loaded(&loaded, 0, 0)
+        .unwrap()
+        .with_numeric_auxiliary(&units)
+        .unwrap();
+    let sentinel = fereg_engine::FeregError::new(
+        fereg_engine::ErrorCode::NonConvergence,
+        "host FE cancellation must not enter numerical recovery",
+    );
+    for method in [
+        bias::Method::Exact,
+        bias::Method::Randomized {
+            probes: 4,
+            seed: 739391,
+            stream: 9,
+        },
+    ] {
+        let mut request = request(true, Some(method));
+        request.separation = separation::Methods::parse("fe simplex ir mu").unwrap();
+        for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+            for workers in [1, 8] {
+                let options = Options {
+                    solver,
+                    threads: workers,
+                    ..Options::for_estimator(Estimator::Ppml)
+                };
+                let team = ThreadTeam::new(workers).unwrap();
+                let make = || {
+                    Call::new(
+                        &model,
+                        &options,
+                        &request,
+                        inputs,
+                        loaded.weights.as_ref().map(|(kind, _)| *kind),
+                        Resources::default(),
+                    )
+                    .unwrap()
+                };
+                let baseline = make()
+                    .run_with_team(&loaded, Some(&units), &team, &mut |_| Ok(()))
+                    .unwrap();
+                let mut expected = 0;
+                hash(&baseline.coefficients, &mut expected);
+                hash(baseline.covariance.values.as_slice(), &mut expected);
+                hash(
+                    baseline.bias.as_ref().unwrap().ordinary.as_slice(),
+                    &mut expected,
+                );
+                drop(baseline);
+                for cancelled_region in 0..3 {
+                    let (before, _) = begin_ols_allocation_observation();
+                    let mut region = 0;
+                    let mut polls = 0;
+                    let error = make()
+                        .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
+                            match phase {
+                                Phase::Separated => region = 1,
+                                Phase::Outputs => region = 2,
+                                Phase::Numerical(InterruptPoint::FixedEffects)
+                                    if region == cancelled_region =>
+                                {
+                                    polls += 1;
+                                    if polls == 3 {
+                                        return Err(sentinel.clone());
+                                    }
+                                }
+                                _ => (),
+                            }
+                            Ok(())
+                        })
+                        .unwrap_err();
+                    assert_eq!(polls, 3);
+                    assert_eq!(error, sentinel);
+                    drop(error);
+                    assert!(allocation_usage().current_bytes <= before.current_bytes);
+                    let retry = make()
+                        .run_with_team(&loaded, Some(&units), &team, &mut |_| Ok(()))
+                        .unwrap();
+                    let mut value = 0;
+                    hash(&retry.coefficients, &mut value);
+                    hash(retry.covariance.values.as_slice(), &mut value);
+                    hash(retry.bias.as_ref().unwrap().ordinary.as_slice(), &mut value);
+                    assert_eq!(value, expected);
+                    drop(retry);
+                    assert!(allocation_usage().current_bytes <= before.current_bytes);
+                }
+            }
         }
     }
 }

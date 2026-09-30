@@ -168,10 +168,15 @@ impl<'a> Call<'a> {
         self.admitted.estimate()
     }
     pub fn run(self, loaded: &Loaded, units: Option<&NumericColumn>) -> Result<super::PpmlFit> {
-        self.run_with(loaded, units, &mut |_| Ok(()))
+        self.bind(loaded, units)?;
+        let team = ThreadTeam::new(self.options.threads)?;
+        super::fit::execute_in(self, loaded, units, &team, Default::default(), &mut |_| {
+            Ok(())
+        })
     }
     /// Callbacks run on the caller through separation/replay, IRLS and bias;
-    /// individual FE solves and dense kernels still run to their next boundary.
+    /// every FE iteration requests a caller-thread check through one scoped relay.
+    /// Individual dense kernels still run to their next boundary.
     pub fn run_with(
         self,
         loaded: &Loaded,
@@ -179,7 +184,6 @@ impl<'a> Call<'a> {
         interrupt: &mut impl FnMut(Phase) -> Result<()>,
     ) -> Result<super::PpmlFit> {
         self.bind(loaded, units)?;
-        interrupt(Phase::Loaded)?;
         let team = ThreadTeam::new(self.options.threads)?;
         super::fit::execute(self, loaded, units, &team, interrupt)
     }
@@ -196,7 +200,6 @@ impl<'a> Call<'a> {
                 "worker team differs from the preflight declaration",
             ));
         }
-        interrupt(Phase::Loaded)?;
         super::fit::execute(self, loaded, units, team, interrupt)
     }
     fn bind(&self, loaded: &Loaded, units: Option<&NumericColumn>) -> Result<()> {

@@ -25,6 +25,7 @@ pub enum Phase {
     Estimated,
     Inferred,
     Outputs,
+    FixedEffects,
 }
 pub struct Call<'a> {
     pub(super) model: &'a ModelSpec,
@@ -121,16 +122,17 @@ impl<'a> Call<'a> {
         self.admitted.estimate()
     }
     pub fn run(self, loaded: &Loaded) -> Result<super::OlsFit> {
-        self.run_with(loaded, &mut |_| Ok(()))
+        self.bind(loaded)?;
+        let team = ThreadTeam::new(self.options.threads)?;
+        super::fit::execute_in(self, loaded, &team, Default::default(), &mut |_| Ok(()))
     }
-    /// Callbacks execute only on the caller, at complete phase boundaries.
+    /// Callbacks execute on the caller at phases and individual FE iterations.
     pub fn run_with(
         self,
         loaded: &Loaded,
         interrupt: &mut impl FnMut(Phase) -> Result<()>,
     ) -> Result<super::OlsFit> {
         self.bind(loaded)?;
-        interrupt(Phase::Loaded)?;
         let team = ThreadTeam::new(self.options.threads)?;
         super::fit::execute(self, loaded, &team, interrupt)
     }
@@ -147,7 +149,6 @@ impl<'a> Call<'a> {
                 "worker team differs from the preflight declaration",
             ));
         }
-        interrupt(Phase::Loaded)?;
         super::fit::execute(self, loaded, team, interrupt)
     }
     fn bind(&self, loaded: &Loaded) -> Result<()> {

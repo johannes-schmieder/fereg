@@ -87,6 +87,7 @@ impl View<'_> {
             mu_tolerance,
             team,
             interrupt,
+            model.probe,
         )?
         .into_parts();
         let threshold = irls::MeanThreshold::new(&self.sample().outcome, &mean, mu_tolerance);
@@ -195,6 +196,7 @@ impl View<'_> {
             candidate,
             model.roles,
             wls::AbsorbedControls {
+                probe: model.probe,
                 finite: model.linear_policy(),
                 basis: None,
             },

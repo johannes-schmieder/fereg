@@ -3,6 +3,7 @@ use super::{recovery, work::Phase, Fit, FrozenBasis, Policy, Problem, Role, Slot
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::Probe,
     fe::{Certificate, Engine, Projection, RhsDiagnostics, SetupDiagnostics},
     threads::{compensated_sum, ThreadTeam},
 };
@@ -29,6 +30,7 @@ pub struct AbsorbedFit {
 pub struct AbsorbedControls<'a> {
     pub finite: Policy,
     pub basis: Option<&'a FrozenBasis>,
+    pub probe: Probe<'a>,
 }
 
 pub fn solve_absorbed(
@@ -58,6 +60,7 @@ pub fn solve_absorbed_with_basis(
         outcome,
         roles,
         AbsorbedControls {
+            probe: Default::default(),
             finite: policy,
             basis,
         },
@@ -79,6 +82,7 @@ pub fn solve_absorbed_recorded(
     let AbsorbedControls {
         finite: policy,
         basis,
+        probe,
     } = controls;
     let design = engine.design();
     let n = design.nobs();
@@ -100,7 +104,7 @@ pub fn solve_absorbed_recorded(
             rhs[(row, column + 1)] = raw[(row, column)];
         }
     }
-    let mut projection = recorded_projection(engine, &rhs, Phase::Projection, work, team)?;
+    let mut projection = recorded_projection(engine, &rhs, Phase::Projection, work, probe, team)?;
     let mut within = DenseMatrix::zeros(n, k)?;
     let within_outcome = projection.residuals.column(0)?;
     for row in 0..n {
@@ -146,6 +150,7 @@ pub fn solve_absorbed_recorded(
             outcome,
             finite: &finite,
             policy,
+            probe,
         },
         target,
         absorbed_coefficients,
@@ -203,9 +208,10 @@ pub(crate) fn recorded_projection(
     rhs: &DenseMatrix,
     phase: Phase,
     work: &mut Work,
+    probe: Probe<'_>,
     team: &ThreadTeam,
 ) -> Result<Projection> {
-    let result = engine.project(rhs, team);
+    let result = engine.project_polled(rhs, probe.poll(), team);
     // Fatal validation/allocation errors can precede resetting the last report.
     // They cannot become resumed frames or produce a published estimator.
     if result

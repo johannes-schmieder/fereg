@@ -3,6 +3,7 @@ use super::{anchor::Anchor, certificate, filled, invalid, numerical};
 use crate::{
     data::{ColumnRecipe, CompiledColumns, DenseMatrix, Weights},
     error::{ErrorCode, FeregError, Result},
+    execution::Probe,
     fe::{Backend, Design, Engine},
     ppml::{control::Controls, irls},
     spec::{Estimator, Options},
@@ -20,6 +21,7 @@ pub struct Diagnostics {
     pub work: Work,
 }
 pub struct Information<'frame, 'data> {
+    probe: Probe<'frame>,
     fit: &'frame irls::Fit<'data>,
     engine: Engine<'frame, 'frame>,
     team: &'frame ThreadTeam,
@@ -40,6 +42,16 @@ pub fn with_information<T>(
     columns: &CompiledColumns,
     team: &ThreadTeam,
     interrupt: &mut dyn FnMut() -> Result<()>,
+    run: impl FnOnce(&mut Information<'_, '_>, &mut dyn FnMut() -> Result<()>) -> Result<T>,
+) -> Result<T> {
+    with_information_polled(fit, columns, team, interrupt, Probe::default(), run)
+}
+pub(crate) fn with_information_polled<T>(
+    fit: &irls::Fit<'_>,
+    columns: &CompiledColumns,
+    team: &ThreadTeam,
+    interrupt: &mut dyn FnMut() -> Result<()>,
+    probe: Probe<'_>,
     run: impl FnOnce(&mut Information<'_, '_>, &mut dyn FnMut() -> Result<()>) -> Result<T>,
 ) -> Result<T> {
     interrupt()?;
@@ -86,6 +98,7 @@ pub fn with_information<T>(
             .ok_or_else(|| invalid("bias finite slot is absent"))?;
     }
     let mut information = Information {
+        probe,
         fit,
         engine,
         team,
@@ -163,6 +176,7 @@ impl Information<'_, '_> {
             response,
             problem.roles,
             AbsorbedControls {
+                probe: self.probe,
                 finite: Policy::default(),
                 basis: Some(&self.basis),
             },
@@ -291,6 +305,7 @@ impl Information<'_, '_> {
             &target,
             Phase::Recovery,
             &mut self.diagnostics.work,
+            self.probe,
             self.team,
         )?;
         self.diagnostics.raw_recoveries += 1;

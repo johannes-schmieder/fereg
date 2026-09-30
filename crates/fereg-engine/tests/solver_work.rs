@@ -293,6 +293,7 @@ fn finite_guard_rejection_keeps_completed_projection_work() {
     let y: Vec<_> = (0..n).map(|i| (i as f64 * 0.17).cos()).collect();
     let mut work = Work::default();
     let controls = AbsorbedControls {
+        probe: Default::default(),
         finite: wls::Policy {
             score_tolerance: f64::MIN_POSITIVE,
             ..wls::Policy::default()
@@ -315,4 +316,84 @@ fn finite_guard_rejection_keeps_completed_projection_work() {
     assert_eq!(work.projection().stopped(StopReason::NoEffects), 3);
     assert_eq!(work.recovery().calls(), 0);
     assert_eq!(work.setup().calls(), 0);
+}
+
+#[test]
+fn derived_rhs_recovery_reuses_the_complete_calls_worker_probe() {
+    use fereg_engine::{
+        execution::{self, Probe},
+        FeregError,
+    };
+    let sample = support::prepared(&[3], false, 20, 0);
+    let n = sample.n_active();
+    let design = Design::new(&sample, Weights::Unit).unwrap();
+    let x: Vec<_> = (0..n).map(|i| (i % 13) as f64 / 7. - 0.4).collect();
+    let y: Vec<_> = x.iter().map(|x| 0.3 * x).collect();
+    let raw = DenseMatrix::from_columns(&[x.clone()]).unwrap();
+    let rhs = DenseMatrix::from_columns(&[y.clone(), x]).unwrap();
+    let options = Options {
+        tolerance: 1e-12,
+        ..Options::for_estimator(Estimator::Ols)
+    };
+    for workers in [1, 8] {
+        let team = ThreadTeam::new(workers).unwrap();
+        let mut primary_calls = 0;
+        Engine::new(&design, Estimator::Ols, &options, &team)
+            .unwrap()
+            .project_with(&rhs, &team, &mut || {
+                primary_calls += 1;
+                Ok(())
+            })
+            .unwrap();
+        let fit = execution::run(
+            &team,
+            |poll| {
+                wls::solve_absorbed_recorded(
+                    &mut Engine::new(&design, Estimator::Ols, &options, &team)?,
+                    &raw,
+                    &y,
+                    &[Role::Ordinary],
+                    AbsorbedControls {
+                        probe: Probe::new(&|| poll(())),
+                        ..AbsorbedControls::default()
+                    },
+                    &mut Work::default(),
+                    &team,
+                )
+            },
+            &mut |()| Ok(()),
+        )
+        .unwrap();
+        assert_eq!(fit.recovery_diagnostics.len(), 1);
+        let mut calls = 0;
+        let sentinel = FeregError::new(ErrorCode::NonConvergence, "recovery host error");
+        let error = execution::run(
+            &team,
+            |poll| {
+                wls::solve_absorbed_recorded(
+                    &mut Engine::new(&design, Estimator::Ols, &options, &team)?,
+                    &raw,
+                    &y,
+                    &[Role::Ordinary],
+                    AbsorbedControls {
+                        probe: Probe::new(&|| poll(())),
+                        ..AbsorbedControls::default()
+                    },
+                    &mut Work::default(),
+                    &team,
+                )
+            },
+            &mut |()| {
+                calls += 1;
+                if calls == primary_calls + 1 {
+                    Err(sentinel.clone())
+                } else {
+                    Ok(())
+                }
+            },
+        )
+        .unwrap_err();
+        assert_eq!(error, sentinel);
+        assert_eq!(calls, primary_calls + 1);
+    }
 }

@@ -90,6 +90,7 @@ fn campaign(start: usize, count: usize) {
         )
         .unwrap();
         let model = Model {
+            probe: Default::default(),
             raw: &raw,
             roles: &roles,
             options: Options::for_estimator(Estimator::Ppml),
@@ -305,6 +306,7 @@ fn numerical_deletion_and_its_full_cascade_publish_one_generation() {
         .unwrap();
     let raw = DenseMatrix::from_columns(&[p.direction.clone()]).unwrap();
     let model = Model {
+        probe: Default::default(),
         raw: &raw,
         roles: &[Role::Ordinary],
         options: Options::for_estimator(Estimator::Ppml),
@@ -363,6 +365,7 @@ fn numerical_cascade_cannot_commit_when_it_eliminates_all_positive_outcomes() {
         .unwrap();
     let raw = DenseMatrix::from_columns(&[p.direction.clone()]).unwrap();
     let model = Model {
+        probe: Default::default(),
         raw: &raw,
         roles: &[Role::Ordinary],
         options: Options::for_estimator(Estimator::Ppml),

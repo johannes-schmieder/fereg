@@ -53,6 +53,7 @@ pub(super) fn run(
             &u,
             model.roles,
             AbsorbedControls {
+                probe: model.probe,
                 finite: model.linear_policy(),
                 basis: Some(&basis),
             },
@@ -117,6 +118,7 @@ fn span_basis(
         &zero,
         model.roles,
         AbsorbedControls {
+            probe: model.probe,
             finite: model.linear_policy(),
             basis: None,
         },

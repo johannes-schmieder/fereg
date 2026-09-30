@@ -35,6 +35,7 @@ pub(super) fn certify(
         &normalized,
         model.roles,
         wls::AbsorbedControls {
+            probe: model.probe,
             finite: model.linear_policy(),
             basis: None,
         },

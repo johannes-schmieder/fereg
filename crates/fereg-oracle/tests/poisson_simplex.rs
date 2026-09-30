@@ -72,6 +72,7 @@ fn campaign(start: usize, count: usize) {
                     };
                     let roles = vec![Role::Ordinary; columns.len()];
                     let model = Model {
+                        probe: Default::default(),
                         raw: &raw,
                         roles: &roles,
                         controls: Controls::default(),

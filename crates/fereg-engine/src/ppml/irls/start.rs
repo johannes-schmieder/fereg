@@ -1,6 +1,6 @@
 use super::*;
 use crate::error::reserved;
-impl<'a> Context<'a, '_> {
+impl<'a> Context<'a, '_, '_> {
     pub(super) fn start(
         &self,
         diagnostics: &mut Diagnostics,

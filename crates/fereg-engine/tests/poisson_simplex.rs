@@ -24,6 +24,7 @@ fn ledger(s: Prepared, methods: Methods) -> Ledger {
 }
 fn model<'a>(x: &'a DenseMatrix, roles: &'a [Role]) -> Model<'a> {
     Model {
+        probe: Default::default(),
         raw: x,
         roles,
         options: Options::for_estimator(Estimator::Ppml),

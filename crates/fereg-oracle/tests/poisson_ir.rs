@@ -49,6 +49,7 @@ fn campaign(start: usize, count: usize) {
             }
             for solver in solvers {
                 let model = Model {
+                    probe: Default::default(),
                     raw: &raw,
                     roles: &roles,
                     controls: Controls::default(),

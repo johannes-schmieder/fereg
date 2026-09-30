@@ -648,6 +648,7 @@ fn numerical_callbacks_preserve_all_solvers_bias_outputs_and_worker_identity() {
                 InterruptPoint::LineSearch,
                 InterruptPoint::LinearFrame,
                 InterruptPoint::StrictCheckpoint,
+                InterruptPoint::FixedEffects,
             ] {
                 assert!(trace.contains(&point), "missing {point:?}: {trace:?}");
             }
@@ -1152,5 +1153,109 @@ fn outcome_weight_and_adjustment_bias_bindings_preserve_raw_original_ids() {
             separate.memory.minimum_bytes() - reused.memory.minimum_bytes(),
             loaded.candidate.len() as u128 * 8
         );
+    }
+}
+
+#[test]
+fn fe_cancellation_covers_separation_final_irls_and_both_bias_modes() {
+    use std::{cell::Cell, rc::Rc};
+    let (loaded, units) = interrupted_fixture();
+    let model = model(false);
+    let caller = std::thread::current().id();
+    for method in [
+        bias::Method::Exact,
+        bias::Method::Randomized {
+            probes: 4,
+            seed: 739391,
+            stream: 9,
+        },
+    ] {
+        let mut request = request(true, Some(method));
+        request.separation = separation::Methods::parse("fe simplex ir mu").unwrap();
+        for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+            let mut reference = None;
+            for workers in [1, 8] {
+                let options = options(solver, workers);
+                let team = ThreadTeam::new(workers).unwrap();
+                let inputs = Inputs::from_loaded(&loaded, 0, 0)
+                    .unwrap()
+                    .with_numeric_auxiliary(&units)
+                    .unwrap();
+                let make = || {
+                    Call::new(
+                        &model,
+                        &options,
+                        &request,
+                        inputs,
+                        Some(WeightKind::Frequency),
+                        Resources::default(),
+                    )
+                    .unwrap()
+                };
+                let plain = make().run(&loaded, Some(&units)).unwrap();
+                let counts = Rc::new([Cell::new(0_usize), Cell::new(0), Cell::new(0)]);
+                let mut region = 0;
+                let polled = make()
+                    .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
+                        assert_eq!(std::thread::current().id(), caller);
+                        match phase {
+                            Phase::Separated => region = 1,
+                            Phase::Outputs => region = 2,
+                            Phase::Numerical(InterruptPoint::FixedEffects) => {
+                                counts[region].set(counts[region].get() + 1)
+                            }
+                            _ => (),
+                        }
+                        Ok(())
+                    })
+                    .unwrap();
+                same(&plain, &polled);
+                same_products(&plain, &polled);
+                assert!(counts.iter().all(|c| c.get() > 2));
+                if let Some(reference) = &reference {
+                    same(reference, &polled);
+                    same_products(reference, &polled);
+                } else {
+                    reference = Some(polled);
+                }
+                for cancelled_region in 0..3 {
+                    for stop in [
+                        1,
+                        counts[cancelled_region].get() / 2,
+                        counts[cancelled_region].get(),
+                    ] {
+                        let sentinel = FeregError::new(
+                            ErrorCode::NonConvergence,
+                            "host FE callback r430 must abort",
+                        );
+                        let mut calls = 0;
+                        let mut region = 0;
+                        let error = make()
+                            .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
+                                match phase {
+                                    Phase::Separated => region = 1,
+                                    Phase::Outputs => region = 2,
+                                    Phase::Numerical(InterruptPoint::FixedEffects)
+                                        if region == cancelled_region =>
+                                    {
+                                        calls += 1;
+                                        if calls == stop {
+                                            return Err(sentinel.clone());
+                                        }
+                                    }
+                                    _ => (),
+                                }
+                                Ok(())
+                            })
+                            .unwrap_err();
+                        assert_eq!(error, sentinel);
+                        assert_eq!(calls, stop);
+                        let retry = make().run(&loaded, Some(&units)).unwrap();
+                        same(&plain, &retry);
+                        same_products(&plain, &retry);
+                    }
+                }
+            }
+        }
     }
 }

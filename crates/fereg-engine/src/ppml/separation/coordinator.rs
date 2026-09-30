@@ -5,7 +5,7 @@ use super::{invalid, Controls, Ledger, Policy, SimplexLimits, DEFAULT_MU_TOLERAN
 use crate::{
     data::{CompiledColumns, DenseMatrix, Prepared},
     error::{reserved, ErrorCode, FeregError, Result},
-    ppml::{irls, Interrupt, InterruptPoint},
+    ppml::{interrupt::Flow, irls, Interrupt, InterruptPoint},
     spec::Options,
     threads::ThreadTeam,
     wls::Role,
@@ -76,7 +76,16 @@ impl FinalSample {
         self.fit_with(team, &mut |_| Ok(()))
     }
     pub fn fit_with(&self, team: &ThreadTeam, interrupt: &mut Interrupt<'_>) -> Result<irls::Fit> {
-        irls::fit_final_sample_with(
+        self.fit_polled(
+            team,
+            Flow {
+                interrupt,
+                probe: Default::default(),
+            },
+        )
+    }
+    pub(crate) fn fit_polled(&self, team: &ThreadTeam, flow: Flow<'_, '_>) -> Result<irls::Fit> {
+        irls::fit_final_sample_polled(
             &irls::Problem {
                 sample: &self.sample,
                 raw: &self.raw,
@@ -84,7 +93,8 @@ impl FinalSample {
             },
             self.options,
             team,
-            interrupt,
+            flow.interrupt,
+            flow.probe,
         )
     }
     #[must_use]
@@ -120,6 +130,29 @@ pub fn run_with(
     team: &ThreadTeam,
     interrupt: &mut Interrupt<'_>,
 ) -> Result<FinalSample> {
+    run_polled(
+        sample,
+        columns,
+        options,
+        policy,
+        controls,
+        team,
+        Flow {
+            interrupt,
+            probe: Default::default(),
+        },
+    )
+}
+pub(crate) fn run_polled(
+    sample: Prepared,
+    columns: &CompiledColumns,
+    options: Options,
+    policy: Policy,
+    controls: RunControls,
+    team: &ThreadTeam,
+    flow: Flow<'_, '_>,
+) -> Result<FinalSample> {
+    let Flow { interrupt, probe } = flow;
     options.validate()?;
     controls.validate()?;
     if columns.roles.contains(&Role::AbsorbedIntercept)
@@ -154,6 +187,7 @@ pub fn run_with(
             controls,
             team,
             interrupt,
+            probe,
         })
         .run(&mut ledger, &raw, &roles, &mut report)?
         {

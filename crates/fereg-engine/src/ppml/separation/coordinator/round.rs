@@ -35,6 +35,7 @@ pub(super) struct Runtime<'a, 'callback> {
     pub options: Options,
     pub controls: RunControls,
     pub team: &'a ThreadTeam,
+    pub probe: crate::execution::Probe<'a>,
     pub interrupt: &'a mut Interrupt<'callback>,
 }
 impl Runtime<'_, '_> {
@@ -49,6 +50,7 @@ impl Runtime<'_, '_> {
         let controls = self.controls;
         let team = self.team;
         let model = Model {
+            probe: self.probe,
             raw,
             roles,
             options,

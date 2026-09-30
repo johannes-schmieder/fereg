@@ -29,3 +29,5 @@ use crate::error::{ErrorCode, FeregError};
 fn invalid(message: &str) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)
 }
+
+pub(crate) use coordinator::run_polled;
