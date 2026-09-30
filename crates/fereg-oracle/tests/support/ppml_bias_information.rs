@@ -55,14 +55,14 @@ fn close(a: f64, b: f64, seed: usize) {
         "information seed={seed}: {a:.17e} != {b:.17e}"
     );
 }
-struct Explicit {
-    columns: Vec<Vec<f64>>,
+pub struct Explicit {
+    pub columns: Vec<Vec<f64>>,
     left: BTreeMap<u32, usize>,
     right: BTreeMap<u32, Option<usize>>,
     finite: Vec<usize>,
 }
 impl Explicit {
-    fn new(effects: &[DummyEffect], fit: &irls::Fit<'_>) -> Self {
+    pub fn new(effects: &[DummyEffect], fit: &irls::Fit<'_>) -> Self {
         let n = fit.problem().sample.n_active();
         let left_codes = effects[0].codes();
         let right_codes = effects[1].codes();
@@ -116,7 +116,7 @@ impl Explicit {
             finite,
         }
     }
-    fn solve(&self, response: &[f64], fit: &irls::Fit<'_>) -> (Vec<f64>, Vec<f64>) {
+    pub fn solve(&self, response: &[f64], fit: &irls::Fit<'_>) -> (Vec<f64>, Vec<f64>) {
         let expected = fit_explicit_ols(&ExplicitOlsProblem {
             outcome: response.to_vec(),
             regressors: self.columns.clone(),
@@ -131,7 +131,7 @@ impl Explicit {
             expected.fitted_values,
         )
     }
-    fn compare_coefficients(
+    pub fn compare_coefficients(
         &self,
         fit: &irls::Fit<'_>,
         actual: &[f64],

@@ -72,6 +72,7 @@ pub fn ols(
                 Kind::Absorbed => d,
                 Kind::DropReason => continue,
                 Kind::Mean => return Err(invalid("OLS mean output is unsupported")),
+                Kind::Bias { .. } => return Err(invalid("OLS bias output is unsupported")),
                 Kind::Saved { effect, channel } => {
                     fixed::contribution(frame.design, &alpha, effect, channel, row)?
                 }

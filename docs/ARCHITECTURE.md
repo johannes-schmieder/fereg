@@ -347,8 +347,8 @@ Optional bias correction uses the full identified FE-plus-control information
 operator at the accepted state. A scoped frame borrows sealed final qmu and
 the accepted finite basis; shared WLS records all solve/recovery work. Raw eta
 recovery and every auxiliary action share a support-only component anchor,
-fresh reconstruction and original-coordinate scores. Stream exact units or
-fixed Philox probes for both increments and group uncertainty. Ordinary results stay unchanged; the transaction is atomic and option-off creates no correction work.
+fresh reconstruction and original-coordinate scores. Validate all declared numeric terms, including omissions; stream exact units or fixed shared Philox signs for both increments.
+Probe-count weighted groups report D/C variance and covariance. Shared output allocation maps nine ordinary channels and requested FE banks; the atomic calculation leaves ordinary results unchanged and option-off creates no work.
 
 ## Memory, threads and errors
 

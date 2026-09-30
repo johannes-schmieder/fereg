@@ -100,7 +100,9 @@ pub fn with_information<T>(
         diagnostics: Diagnostics::default(),
     };
     information.level_information()?;
-    information.recover_raw(interrupt)?;
+    information
+        .recover_raw(interrupt)
+        .map_err(|e| super::context(e, "raw", None, None))?;
     run(&mut information, interrupt)
 }
 impl Information<'_, '_> {
@@ -206,6 +208,43 @@ impl Information<'_, '_> {
             destination.copy_from_slice(&self.candidate);
         }
         Ok(())
+    }
+    /// A last-group contrast inferred by linearity still needs fresh original
+    /// normal equations; subtraction must not hide an uncertified group.
+    pub(super) fn certify_combination(
+        &mut self,
+        response: &[f64],
+        coefficients: &[f64],
+        interrupt: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<()> {
+        interrupt()?;
+        let problem = self.fit.problem();
+        certificate::prediction(
+            problem.sample,
+            problem.raw,
+            self.basis.kept(),
+            self.anchor.first,
+            self.anchor.levels(),
+            coefficients,
+            &mut self.prediction,
+        )?;
+        let score = certificate::scores(
+            problem.sample,
+            problem.raw,
+            self.basis.kept(),
+            &self.fit.hessian_weights,
+            response,
+            &self.prediction,
+            self.tolerance,
+        )?;
+        for (row, residual) in self.residual.iter_mut().enumerate() {
+            *residual = self.prediction[row] + (response[row] - self.prediction[row]);
+        }
+        let error = certificate::reconstruction(response, &self.residual, self.tolerance)?;
+        self.diagnostics.maximum_score = self.diagnostics.maximum_score.max(score);
+        self.diagnostics.maximum_reconstruction =
+            self.diagnostics.maximum_reconstruction.max(error);
+        interrupt()
     }
     fn level_information(&mut self) -> Result<()> {
         let topology = self

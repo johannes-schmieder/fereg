@@ -12,6 +12,8 @@ use fereg_oracle::{
     explicit_ols::DummyEffect,
 };
 use std::collections::BTreeMap;
+#[path = "support/ppml_bias_calculation.rs"]
+mod calculation;
 #[path = "support/ppml_bias_information.rs"]
 mod information;
 #[path = "support/engine.rs"]
@@ -190,6 +192,7 @@ fn campaign(start: usize, count: usize) {
         let source = sample.regressors.len();
         sample.regressors.push(g.regressors[0].clone());
         let columns = information::columns(source);
+        let model = calculation::model(&sample, source);
         let raw = columns.generate(&sample).unwrap();
         for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
             let problem = irls::Problem {
@@ -206,6 +209,7 @@ fn campaign(start: usize, count: usize) {
             let actual = compare(&fit, &units, seed);
             let actions = information::compare(&fit, &columns, &g.effects, &one, seed);
             if let Some(actual) = actual {
+                let correction = calculation::compare(&fit, &model, &units, &g.effects, &one, seed);
                 accepted += 1;
                 if seed % 41 == 0 {
                     let repeated = irls::fit_final_sample(&problem, options, &eight).unwrap();
@@ -215,6 +219,10 @@ fn campaign(start: usize, count: usize) {
                         information::compare(&repeated, &columns, &g.effects, &eight, seed)
                     );
                     assert_eq!(actual, compare(&repeated, &units, seed).unwrap());
+                    assert_eq!(
+                        correction,
+                        calculation::compare(&repeated, &model, &units, &g.effects, &eight, seed)
+                    );
                 }
             } else {
                 refused += 1;
@@ -231,6 +239,111 @@ fn bias_support_matches_independent_tables_across_weights_graphs_and_backends() 
 #[ignore = "long accepted-information unit-support campaign"]
 fn two_thousand_bias_support_designs() {
     campaign(200, 2000);
+}
+#[test]
+fn both_exact_increments_retain_the_frozen_explicit_bias_fixture() {
+    // Frozen prepared_estimator::bias_exact_full_system_matches_independent_explicit_design,
+    // whose numbers were formed by scripts/ppml_bias_oracle.py independently of Rust.
+    let effects = vec![
+        DummyEffect::new((0..12).map(|i| (i / 2) as u32).collect(), 6, true, vec![]).unwrap(),
+        DummyEffect::new((0..12).map(|i| (i % 2) as u32).collect(), 2, true, vec![]).unwrap(),
+    ];
+    let mut sample = inputs::prepare(&effects, &[1., 2., 2., 4., 3., 5., 4., 7., 5., 8., 6., 9.]);
+    sample.regressors.push(vec![
+        -1.5, -0.5, -1., 0.5, -0.5, 1., 0., 1.5, 0.5, 2., 1., 2.5,
+    ]);
+    sample.weights = PreparedWeights::Provided {
+        kind: WeightKind::Probability,
+        values: vec![1., 2., 1.5, 0.5, 3., 2., 4., 1., 2.5, 3.5, 1., 2.],
+    };
+    sample.adjustment = PreparedAdjustment::Offset(vec![
+        0., 0.05, 0.1, 0., -0.05, 0.1, 0., 0.05, -0.1, 0., 0.1, 0.05,
+    ]);
+    let model = calculation::model(&sample, 2);
+    let columns = CompiledColumns::new(&model, Estimator::Ppml).unwrap();
+    let raw = columns.generate(&sample).unwrap();
+    let units: Vec<_> = (1..=12).map(f64::from).collect();
+    let expected = [
+        [
+            -0.6300485701861334,
+            0.30201008524001827,
+            0.8998899114400561,
+            1.4089593261745437,
+            1.875388786600004,
+            2.1284955000363808,
+            0.,
+            1.0631795606840344,
+            -0.42003238012408883,
+        ],
+        [
+            -0.013673707941541657,
+            -0.03641436939328413,
+            -0.0033508271882589646,
+            -0.004078391875716949,
+            0.004277300708386278,
+            0.014184178816249116,
+            0.,
+            0.009115805294373391,
+            -0.009115805294346302,
+        ],
+        [
+            -0.0001930213526394886,
+            0.006785593330410039,
+            0.00038634085112329575,
+            0.00034917161236207284,
+            0.000364088184233044,
+            0.00026489290492318074,
+            0.,
+            0.00012868090176021418,
+            -0.0001286809017592705,
+        ],
+    ];
+    let team = ThreadTeam::new(1).unwrap();
+    for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+        let fit = irls::fit_final_sample(
+            &irls::Problem {
+                sample: &sample,
+                raw: &raw,
+                roles: &columns.roles,
+            },
+            Options {
+                solver,
+                ..Options::for_estimator(Estimator::Ppml)
+            },
+            &team,
+        )
+        .unwrap();
+        let result = bias::compute(
+            &fit,
+            &model,
+            Some(bias::Request {
+                method: bias::Method::Exact,
+                save_effects: true,
+            }),
+            Some(NumericColumnView::new(&units)),
+            &team,
+            &mut || Ok(()),
+        )
+        .unwrap()
+        .unwrap();
+        for (channel, wanted) in [
+            bias::Channel::Raw,
+            bias::Channel::Derivative,
+            bias::Channel::Curvature,
+        ]
+        .into_iter()
+        .zip(expected)
+        {
+            for (j, reference) in wanted.into_iter().enumerate() {
+                let value = result.coefficients.value(j, channel).unwrap();
+                assert!(
+                    (value - reference).abs() < 2e-8,
+                    "{solver:?}/{channel:?}/{j}: {value} != {reference}"
+                );
+            }
+        }
+        assert_eq!(result.diagnostics.solves, 14);
+    }
 }
 #[test]
 fn tiny_mean_duration_raw_recovery_and_actions_match_explicit_full_design_qr() {

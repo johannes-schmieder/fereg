@@ -24,6 +24,11 @@ pub enum Kind {
         effect: usize,
         channel: usize,
     },
+    /// Bias uncertainty uses the fixed component anchor, never ordinary centering.
+    Bias {
+        effect: usize,
+        channel: crate::ppml::bias::Channel,
+    },
 }
 #[derive(Debug, Clone, Default)]
 pub struct Request {
@@ -91,7 +96,7 @@ impl Outputs {
             .map(|c| c.values.as_slice())
     }
 }
-fn allocate(sample: &Prepared, kinds: Vec<Kind>) -> Result<Outputs> {
+pub(crate) fn allocate(sample: &Prepared, kinds: Vec<Kind>) -> Result<Outputs> {
     let mut columns = reserved(kinds.len())?;
     for kind in kinds {
         let mut values = reserved(sample.n_original())?;
@@ -107,7 +112,7 @@ fn allocate(sample: &Prepared, kinds: Vec<Kind>) -> Result<Outputs> {
         certificate: None,
     })
 }
-fn validate_scatter(sample: &Prepared, outputs: &Outputs) -> Result<()> {
+pub(crate) fn validate_scatter(sample: &Prepared, outputs: &Outputs) -> Result<()> {
     for column in &outputs.columns {
         if column.values.len() != sample.n_original() {
             return Err(invalid("output does not cover the original axis"));

@@ -103,6 +103,9 @@ pub fn ppml(
                     fixed::contribution(&design, alpha, effect, channel, row)?
                 }
                 Kind::DropReason => continue,
+                Kind::Bias { .. } => {
+                    return Err(invalid("ordinary PPML output cannot publish bias channels"))
+                }
             };
             if !value.is_finite() {
                 return Err(numerical("PPML observation output is not representable"));
