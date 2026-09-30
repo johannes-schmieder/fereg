@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M4.5 complete-estimator oracle and legacy differential coverage. M4.4 is qualified: one consumed preloading/native admission drives shared preparation, FE/WLS, inference, statistics and requested-only outputs, then returns an immutable complete OLS result with the original sample ledger. Full lean/long checks pass, including 2,200 complete-controller designs and 96 additional tracked calls; broader factor/TS, sample/status/DoF and multiway legacy comparisons remain for M4.5. M6.4's exact/randomized cD+cC, support, anchors, uncertainty, nine/18 Rust channels and diagnostic schema remain qualified; PPML call-level binding and the Stata transactions remain open. Both defaults remain legacy. The unrelated pre-merge user stash is preserved. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8; recommended next step is bringing M8.3 shared-operator work forward while retaining scientific/API rules.
+Current task: M4.5 complete-estimator coverage and reconciliation of the OLS multiway covariance policy. Six fixtures cover 2,320 factor/TS/weight/FE/cluster/sample designs on 6,297 supported roots, using independent full-dummy fits, available legacy comparisons and exact output/worker checks. Full local lean and long checks pass. The reported-constant multiway repair conflicts with SPEC and awaits Johannes; matching the pinned reghdfe sequence is recommended. Two frozen comparator validation failures remain explicit parity exceptions. M4.4 is qualified; M6.4 mean-bias calculations/schema are qualified, but PPML call binding and the Stata transactions remain open. Both public defaults remain legacy. The unrelated pre-merge stash is preserved. Further FE optimization still awaits Johannes after the focused repair failed G-M3; bringing M8.3 shared-operator work forward remains the recommendation.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] partially implemented or verification pending.
 
@@ -35,7 +35,7 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
 - [x] M4.2 `vce` and fit statistics
 - [x] M4.3 Outputs
 - [x] M4.4 `ols::fit(&ModelSpec, &Loaded, &Options) -> Result<OlsFit>`; shared preflight/controller, immutable final result and whole-call ownership qualified
-- [~] M4.5 Oracle and differential tests (2,200 complete continuous/sloped OLS designs qualified; broader factor/TS and exact legacy sample/status/DoF coverage remain)
+- [~] M4.5 Oracle and differential tests (2,320 complete factor/TS/interaction/sample designs and all supported roots pass full local checks; reported-constant multiway policy and explicit frozen-reference exceptions remain for admission)
 - [ ] M5.1 Engine switch
 - [ ] M5.2 Stata fixtures with `engine(next)`
 - [ ] M5.3 Benchmarks
@@ -69,6 +69,24 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
 - [ ] G-LICENSE native-plugin distribution.
 
 ## Blockers / questions for Johannes
+
+- M4.5: complete-estimator seed 12 reproduces an OLS multiway covariance
+  conflict. SPEC §10 requires eigen-clipping the complete matrix and a final
+  full-PSD certificate. Frozen legacy and pinned reghdfe 6.14.1 instead restore
+  the independently clipped original slope block when a constant is reported
+  (`reghdfe.mata:3828–3855`). In the reproduced case the raw full minimum
+  eigenvalue is −3.73465800e−5 and legacy's final minimum is −2.86449739e−6;
+  the new full-matrix repair is PSD but yields different covariance values.
+  Johannes was asked whether to amend SPEC and match the pinned OLS sequence
+  (recommended given his Stata preference), keeping PPML's full-matrix policy.
+  Covariance-policy changes and full M4.5 admission await that decision;
+  unaffected factor/TS, sample/status/DoF and IID/robust/one-way checks continue.
+  The six executable complete-call fixtures also retain two frozen comparator
+  rejections: continuous-slope DoF report validation (seed 294) and finite-score
+  scale validation for a frequency-retained singleton factor (seed 66).
+  Across 2,320 designs these reject 11 and 69 legacy fits respectively;
+  independent full-dummy fits still check every supported new-engine root.
+  They are explicit parity exceptions, not passing legacy comparisons.
 
 - M3.6: the [million-row FE baseline](bench/history/2026-09-29-b7486de6-darwin-fe-projection.csv)
   passes every supported backend's accuracy checks and exact 1/8-worker output
@@ -129,6 +147,7 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
 
 ## Log (newest first; one line per task)
 
+- 2026-09-30 M4.5 complete-call coverage (this commit) — six fixtures qualify 2,320 designs and 6,297 supported auto/LSMR/CMG roots against independent recipe/sample/dummy-QR calculations and available frozen full-estimator results. Coverage includes none/aw/fw/pw, IID/HC1/one-to-three declared cluster dimensions, nested/interaction/repeated clusters, four DoF policies, no/one/two/interacted/slope-only FEs, authoritative base/omit flags, duplicate and vanished factors, materialized L/F/D with boundary/source masks, if/in and all availability reasons, frequency-aware singleton pruning, complete b/V/SE/t/F/statistics, requested saved contributions and sampled exact output-off/on and 1/8-worker science. Original-slot and subset-mask identity adapters preserve comparisons without changing either engine. Integrated factor-domain checks retain r(452) after availability and before singleton deletion, including omitted factors. Independent pre-repair covariance localizes seed 12 to the SPEC-versus-reghdfe repair sequence (maximum final covariance difference 1.99394357e−6); 1,237 reported-constant covariance comparisons remain pending that decision. Eleven frozen continuous-slope report and 69 retained-singleton finite-score scale rejections have executable regressions and independent new-engine fits; they are not counted as legacy parity. Full lean and include-ignored oracle suites pass, including unchanged PPML mean-bias and separation/inference campaigns; M4.5 admission, public seams and performance gates remain open, and defaults remain legacy.
 - 2026-09-30 M4.4 controller (this commit) — ols::fit and a consumed metadata/preloading Call use one admission, source plan, preparation owner, FE/WLS path, covariance/statistics and requested-only outputs; immutable final results retain stripes, b/V, bounded work and the original ledger, with no raw/within/score/solver cache. Default pw robust VCE, normalized-constant rank, nesting corrections and t/F laws are preserved; t/z standardization and loader-bound validation are shared. Five complete-fit fixtures and seven memory fixtures qualify closed-form weighted IID/HC1, original-axis holes, outputs off/on, exact 1/2/4/8-worker values/work, invalid requests/bounds, all phase Break callbacks and early r(909). Independent full-dummy fits qualify 2,200 designs/6,307 supported auto/LSMR/CMG roots across weights, slopes, disconnected graphs, robust/one-way VCE and independently counted nesting; unsupported explicit CMG slopes fail clearly. Ninety-six additional tracked controller calls cover native shadows and output-off/on owners (maximum observed native growth 1,284,582 bytes); repeated numerical ownership is released and injected preparation/inference allocations return r(909) with fresh restart. Full lean/long checks pass, including unchanged PPML mean-bias/inference/separation campaigns and both compiler mutation guards. M4.5 breadth, public Stata seam and performance gates remain open; defaults stay legacy.
 - 2026-09-30 M4.4 memory planner (this commit) — one metadata/preloading plan accounts for loaded capacities, original-axis banks, staged owners, shared primary/fallback FE/WLS state, fixed-block VCE replay, simplex cap, bounded exact/randomized bias work and native shadows. Only unavoidable bytes establish early r(909); sparse-fill/string bounds cannot veto a retained explicit solver. Six preflight tests and 288 independently tracked fresh OLS/PPML calls pass (all solvers, 1/8 workers, repeated hashes, weights/VCE/offsets, both bias modes and 18 saved banks; maximum medium native heap growth 1,532,373 bytes). Repeat windows retain no additional numerical storage; deferred executor reclamation is distinct from process-heap equality. Injected session reservation returns r(909), releases its owner and permits a fresh solve. Full lean/long checks pass, including 2,200-design bias support/information and complete separation/inference campaigns. Controller and public transaction remain open; defaults stay legacy.
 - 2026-09-30 M6.4 diagnostic schema (this commit) — the fixed 21-field serializer preserves retained Stata row names/order, exact probe/seed/stream zeros, unsigned-32 randomized controls, total solve counts, full nuisance-plus-finite increment maxima, physical unit-row bounds, accepted certificate tolerance, FE-level information and leverage lower bound. Every retained backend uses route 1 for the shared sparse information operator; requested/selected/used backend work remains separately observable. Workspace bytes are supplied by the sole call-level plan; the adapter introduces no estimate or admission controller. Schema checks read the retained ado directly, and exact/randomized numerical fixtures independently recompute full-system maxima, mean range, level information and leverage. Focused fixtures and full lean/long oracle suites pass. Complete call-level workspace bounds and Stata seam integration remain open.
