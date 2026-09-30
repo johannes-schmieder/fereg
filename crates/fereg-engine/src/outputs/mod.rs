@@ -1,17 +1,22 @@
 //! Requested-only output banks, certified before a single scatter to original rows.
+mod fixed;
 mod ols;
+mod ppml;
 use crate::{
     data::{DropReason, Prepared},
     error::{reserved, ErrorCode, FeregError, Result},
     fe::Certificate,
 };
 pub use ols::{ols, OlsFrame};
+pub use ppml::{ppml, PpmlRequest};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Residuals,
     Xb,
+    /// PPML eta/xbd aliases share this one bank.
     Xbd,
+    Mean,
     Absorbed,
     DropReason,
     /// Channel zero is the intercept when present; remaining channels are slopes.
@@ -30,17 +35,18 @@ pub struct Request {
     pub saved: Vec<(usize, usize)>,
 }
 impl Request {
-    fn kinds(&self) -> Result<Vec<Kind>> {
+    fn kinds(&self, mean: bool) -> Result<Vec<Kind>> {
         let mut kinds = reserved(
             self.saved
                 .len()
-                .checked_add(5)
+                .checked_add(6)
                 .ok_or_else(|| invalid("output count overflows"))?,
         )?;
         for (include, kind) in [
             (self.residuals, Kind::Residuals),
             (self.xb, Kind::Xb),
             (self.xbd, Kind::Xbd),
+            (mean, Kind::Mean),
             (self.absorbed, Kind::Absorbed),
             (self.drop_reason, Kind::DropReason),
         ] {

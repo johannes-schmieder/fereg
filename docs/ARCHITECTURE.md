@@ -276,10 +276,10 @@ unless nested. `vce` shares score/subset/PSD mechanics under each estimator's SP
 corrections; independent checks and statistics use original/accepted inputs.
 
 `outputs` constructs only requested residual/xb/d/eta/mu/saved-channel banks,
-normalizes within components, checks row reconstruction and scatters once.
-Bias contributions have their distinct fixed anchor. Certification uses the
-requested tolerance without legacy automatic 1e-14 output re-solves; PPML's
-strict accepted-Hessian requirements remain separately mandatory.
+checks reconstruction and scatters once. PPML certifies sealed qmu-normalized
+FE coefficients without a re-solve; its statistics use the accepted objective
+and offset-free reference null. Bias retains its distinct anchor; requests do
+not change inference or replace strict final-Hessian/tighter accuracy checks.
 
 ## PPML orchestration
 

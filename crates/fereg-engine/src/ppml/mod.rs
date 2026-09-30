@@ -4,5 +4,6 @@ pub mod control;
 pub mod family;
 pub mod inference;
 pub mod irls;
+pub mod residuals;
 pub mod separation;
 pub mod step;

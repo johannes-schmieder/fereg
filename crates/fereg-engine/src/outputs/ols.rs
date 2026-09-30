@@ -1,12 +1,8 @@
 use super::{
-    allocate, invalid, numerical, validate_scatter, Kind, OutputCertificate, Outputs, Request,
+    allocate, fixed, invalid, numerical, validate_scatter, Kind, OutputCertificate, Outputs,
+    Request,
 };
-use crate::{
-    data::DenseMatrix,
-    error::{reserved, Result},
-    fe::Design,
-    threads::ThreadTeam,
-};
+use crate::{data::DenseMatrix, error::Result, fe::Design, threads::ThreadTeam};
 
 #[derive(Debug)]
 pub struct OlsFrame<'a, 'data> {
@@ -29,13 +25,13 @@ pub fn ols(
 ) -> Result<Outputs> {
     validate(frame, request, tolerance)?;
     let sample = frame.design.sample();
-    let kinds = request.kinds()?;
+    let kinds = request.kinds(false)?;
     if kinds.iter().all(|k| *k == Kind::DropReason) {
         let output = allocate(sample, kinds)?;
         validate_scatter(sample, &output)?;
         return Ok(output);
     }
-    let mut alpha = normalized_alpha(frame, tolerance, team)?;
+    let mut alpha = fixed::normalized(frame.design, frame.absorbed_coefficients, tolerance, team)?;
     let n = sample.n_active();
     let mut rhs = DenseMatrix::zeros(n, 1)?;
     let mut residual = DenseMatrix::zeros(n, 1)?;
@@ -75,8 +71,9 @@ pub fn ols(
                 Kind::Xbd => xbd,
                 Kind::Absorbed => d,
                 Kind::DropReason => continue,
+                Kind::Mean => return Err(invalid("OLS mean output is unsupported")),
                 Kind::Saved { effect, channel } => {
-                    contribution(frame, &alpha, effect, channel, row)?
+                    fixed::contribution(frame.design, &alpha, effect, channel, row)?
                 }
             };
             if !value.is_finite() {
@@ -96,19 +93,6 @@ fn finite_row(frame: &OlsFrame<'_, '_>, row: usize, constant: f64) -> f64 {
     frame
         .finite_design
         .row_combination(row, frame.coefficients, constant)
-}
-fn normalized_alpha(
-    frame: &OlsFrame<'_, '_>,
-    tolerance: f64,
-    team: &ThreadTeam,
-) -> Result<DenseMatrix> {
-    let mut values = reserved(frame.absorbed_coefficients.nrows())?;
-    values.extend_from_slice(frame.absorbed_coefficients.as_slice());
-    let mut alpha = DenseMatrix::from_row_major(values.len(), 1, values)?;
-    frame
-        .design
-        .normalize_coefficients(&mut alpha, tolerance, team)?;
-    Ok(alpha)
 }
 // Certify the original numerical RHS before splitting out the reported
 // constant. A row with y == _cons must retain its original response scale;
@@ -132,17 +116,6 @@ fn transfer_constant(frame: &OlsFrame<'_, '_>, alpha: &mut DenseMatrix) -> Resul
     Ok(())
 }
 
-fn contribution(
-    frame: &OlsFrame<'_, '_>,
-    alpha: &DenseMatrix,
-    effect: usize,
-    channel: usize,
-    row: usize,
-) -> Result<f64> {
-    let level = frame.design.topology().effect_partition(effect)?.codes()[row] as usize;
-    let index = frame.design.coefficient_index(effect, channel, level)?;
-    Ok(alpha[(index, 0)] * frame.design.basis_value(effect, channel, row)?)
-}
 fn validate(frame: &OlsFrame<'_, '_>, request: &Request, tolerance: f64) -> Result<()> {
     let n = frame.design.nobs();
     if !tolerance.is_finite()
@@ -164,16 +137,5 @@ fn validate(frame: &OlsFrame<'_, '_>, request: &Request, tolerance: f64) -> Resu
     {
         return Err(invalid("OLS output frame is malformed or nonfinite"));
     }
-    for &(effect, channel) in &request.saved {
-        let layout = frame
-            .design
-            .layout()
-            .effects
-            .get(effect)
-            .ok_or_else(|| invalid("saved FE effect is out of range"))?;
-        if channel >= layout.channels {
-            return Err(invalid("saved FE channel is out of range"));
-        }
-    }
-    Ok(())
+    fixed::validate_channels(frame.design.topology(), request)
 }

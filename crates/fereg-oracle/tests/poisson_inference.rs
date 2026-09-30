@@ -1,4 +1,4 @@
-//! Independent full-dummy Newton roots, tuple meats and spectral positive parts.
+//! Independent full-dummy Newton roots, sandwiches, observation products and likelihoods.
 #![deny(clippy::too_many_lines)]
 use fereg_engine::{
     data::*,
@@ -21,6 +21,8 @@ use fereg_oracle::{
 mod inputs;
 #[path = "support/ppml_inference.rs"]
 mod pinned;
+#[path = "support/ppml_outputs.rs"]
+mod products;
 struct Fixture {
     sample: Prepared,
     columns: CompiledColumns,
@@ -117,6 +119,14 @@ fn fixture(seed: usize) -> Fixture {
         .map(|i| 0.5 + ((i * 17 + seed * 3) % 11) as f64 * 0.15)
         .collect();
     let mut sample = inputs::prepare(&effects, &y);
+    sample.n_original = 2 * n + 3;
+    sample.n_candidate = 2 * n + 2;
+    sample.original_row_by_active = (0..n).map(|i| 2 * i + 1).collect();
+    sample.drop_reasons = vec![DropReason::MissingOutcome; 2 * n + 3];
+    sample.drop_reasons[0] = DropReason::ExcludedByIfIn;
+    for &row in &sample.original_row_by_active {
+        sample.drop_reasons[row] = DropReason::Retained;
+    }
     let source = sample.regressors.len();
     sample.regressors.push(g.regressors[0].clone());
     let normalized = effects.iter().any(|e| e.has_intercept());
@@ -325,6 +335,7 @@ fn identical(a: &Inference, b: &Inference) {
     assert_eq!(a.covariance.subset_counts, b.covariance.subset_counts);
 }
 fn campaign(start: usize, count: usize) {
+    products::check_log_factorial();
     let one = ThreadTeam::new(1).unwrap();
     let eight = ThreadTeam::new(8).unwrap();
     let mut repaired = 0;
@@ -363,10 +374,12 @@ fn campaign(start: usize, count: usize) {
                 .unwrap_or_else(|e| panic!("inference seed={seed}/{solver:?}: {e}"));
             compare(&actual, &fit, &expected, seed);
             pinned::compare(&f.sample, &fit, &actual, &f.clusters, seed);
+            products::compare(&fit, &f.explicit, &expected, &one, seed);
             repaired += usize::from(actual.covariance.psd.adjusted);
             if seed % 41 == 0 {
                 let repeated = irls::fit_final_sample(&problem, options, &eight).unwrap();
                 assert_eq!(fit, repeated);
+                products::identical(&fit, &repeated, &one, &eight);
                 identical(
                     &actual,
                     &inference::estimate(&f.columns, &repeated, &views, kind, 1e-8, &eight)
@@ -378,11 +391,11 @@ fn campaign(start: usize, count: usize) {
     assert!(repaired > 0, "campaign must exercise multiway PSD repair");
 }
 #[test]
-fn accepted_inference_matches_dense_newton_and_pinned_legacy() {
+fn accepted_results_match_dense_newton_and_pinned_legacy() {
     campaign(0, 200);
 }
 #[test]
-#[ignore = "long PPML accepted-inference oracle and pinned differential campaign"]
-fn two_thousand_accepted_inference_designs() {
+#[ignore = "long PPML accepted-result oracle and pinned differential campaign"]
+fn two_thousand_accepted_result_designs() {
     campaign(200, 2000);
 }

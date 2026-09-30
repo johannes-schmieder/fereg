@@ -1,4 +1,5 @@
-//! Reference-scale OLS fit statistics. Undefined quantities remain absent.
+//! Estimator-specific fit statistics on one accepted reference experiment.
+mod ppml;
 use crate::{
     data::ReferenceWeights,
     dof::ResidualDof,
@@ -6,6 +7,7 @@ use crate::{
     spec::Estimator,
     threads::blocked_sum,
 };
+pub use ppml::{ppml, PpmlStatistics};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OlsStatistics {
     pub rss: f64,
