@@ -1,5 +1,8 @@
 //! Harvested from legacy/fereg-core at b1700e6d; no memory-mode admission.
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::{
+    error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 
 /// Compact dense matrix in observation-major order.
 #[derive(Debug, Clone, PartialEq)]
@@ -178,8 +181,17 @@ impl<'a> ModelMatrixBuilder<'a> {
         continuous: &'a [Vec<f64>],
         categorical: &'a [Vec<u32>],
     ) -> Result<Self> {
-        if continuous.iter().any(|column| column.len() != nrows)
-            || categorical.iter().any(|column| column.len() != nrows)
+        Self::with_nrows_polled(nrows, continuous, categorical, None)
+    }
+    pub(crate) fn with_nrows_polled(
+        nrows: usize,
+        continuous: &'a [Vec<f64>],
+        categorical: &'a [Vec<u32>],
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
+        if execution::any(continuous, |column| column.len() != nrows, poll)?
+            || execution::any(categorical, |column| column.len() != nrows, poll)?
         {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -203,18 +215,27 @@ impl<'a> ModelMatrixBuilder<'a> {
     }
 
     /// Bind reported recipes to the fitted columns without another N-by-K bank.
-    pub(crate) fn matches(&self, recipes: &[ColumnRecipe], matrix: &DenseMatrix) -> Result<bool> {
+    pub(crate) fn matches_polled(
+        &self,
+        recipes: &[ColumnRecipe],
+        matrix: &DenseMatrix,
+        poll: Poll<'_>,
+    ) -> Result<bool> {
+        execution::check(poll)?;
         if matrix.nrows() != self.nrows || matrix.ncols() != recipes.len() {
             return Ok(false);
         }
         for (column, recipe) in recipes.iter().enumerate() {
-            self.validate_recipe(recipe)?;
+            execution::check(poll)?;
+            self.validate_recipe_polled(recipe, poll)?;
             for row in 0..self.nrows {
-                if matrix[(row, column)] != self.value(recipe, row) {
+                execution::check_chunk(poll, row)?;
+                if matrix[(row, column)] != self.value(recipe, row, poll)? {
                     return Ok(false);
                 }
             }
         }
+        execution::check(poll)?;
         Ok(true)
     }
 
@@ -235,7 +256,7 @@ impl<'a> ModelMatrixBuilder<'a> {
         for (column, recipe) in selected.iter().enumerate() {
             self.validate_recipe(recipe)?;
             for row in 0..self.nrows {
-                matrix[(row, column)] = self.value(recipe, row);
+                matrix[(row, column)] = self.value(recipe, row, None)?;
             }
         }
         Ok(matrix)
@@ -265,20 +286,26 @@ impl<'a> ModelMatrixBuilder<'a> {
     }
 
     fn validate_recipe(&self, recipe: &ColumnRecipe) -> Result<()> {
+        self.validate_recipe_polled(recipe, None)
+    }
+    fn validate_recipe_polled(&self, recipe: &ColumnRecipe, poll: Poll<'_>) -> Result<()> {
         match recipe {
             ColumnRecipe::NumericIndicators { sources, levels } => {
                 if sources.is_empty()
                     || sources.len() != levels.len()
-                    || levels
-                        .iter()
-                        .any(|v| !v.is_finite() || *v < 0. || v.fract() != 0.)
+                    || execution::any(
+                        levels,
+                        |v| !v.is_finite() || *v < 0. || v.fract() != 0.,
+                        poll,
+                    )?
                 {
                     return Err(FeregError::new(
                         ErrorCode::InvalidArgument,
                         "invalid numeric indicator recipe",
                     ));
                 }
-                for source in sources {
+                for (position, source) in sources.iter().enumerate() {
+                    execution::check_chunk(poll, position)?;
                     self.check_continuous(*source)?;
                 }
                 Ok(())
@@ -293,7 +320,8 @@ impl<'a> ModelMatrixBuilder<'a> {
                         "categorical interaction must have equally many sources and levels",
                     ));
                 }
-                for source in sources {
+                for (position, source) in sources.iter().enumerate() {
+                    execution::check_chunk(poll, position)?;
                     self.check_categorical(*source)?;
                 }
                 Ok(())
@@ -313,7 +341,8 @@ impl<'a> ModelMatrixBuilder<'a> {
                         "continuous interaction must contain at least one source",
                     ));
                 }
-                for source in sources {
+                for (position, source) in sources.iter().enumerate() {
+                    execution::check_chunk(poll, position)?;
                     self.check_continuous(*source)?;
                 }
                 Ok(())
@@ -343,14 +372,15 @@ impl<'a> ModelMatrixBuilder<'a> {
         }
     }
 
-    fn value(&self, recipe: &ColumnRecipe, row: usize) -> f64 {
-        match recipe {
-            ColumnRecipe::NumericIndicators { sources, levels } => f64::from(u8::from(
-                sources
-                    .iter()
-                    .zip(levels)
-                    .all(|(source, level)| self.continuous[*source][row] == *level),
-            )),
+    fn value(&self, recipe: &ColumnRecipe, row: usize, poll: Poll<'_>) -> Result<f64> {
+        Ok(match recipe {
+            ColumnRecipe::NumericIndicators { sources, levels } => {
+                f64::from(u8::from(!execution::any(
+                    sources.iter().zip(levels),
+                    |(source, level)| self.continuous[*source][row] != *level,
+                    poll,
+                )?))
+            }
             ColumnRecipe::Intercept => 1.0,
             ColumnRecipe::Continuous { source } => self.continuous[*source][row],
             ColumnRecipe::Categorical { source, level } => {
@@ -361,11 +391,11 @@ impl<'a> ModelMatrixBuilder<'a> {
                 }
             }
             ColumnRecipe::CategoricalInteraction { sources, levels } => {
-                if sources
-                    .iter()
-                    .zip(levels)
-                    .all(|(source, level)| self.categorical[*source][row] == *level)
-                {
+                if !execution::any(
+                    sources.iter().zip(levels),
+                    |(source, level)| self.categorical[*source][row] != *level,
+                    poll,
+                )? {
                     1.0
                 } else {
                     0.0
@@ -382,11 +412,13 @@ impl<'a> ModelMatrixBuilder<'a> {
                     0.0
                 }
             }
-            ColumnRecipe::ContinuousInteraction { sources } => sources
-                .iter()
-                .map(|source| self.continuous[*source][row])
-                .product(),
-        }
+            ColumnRecipe::ContinuousInteraction { sources } => execution::fold(
+                sources.iter().map(|source| self.continuous[*source][row]),
+                1.,
+                poll,
+                |product, value| product * value,
+            )?,
+        })
     }
 }
 
@@ -437,3 +469,6 @@ mod tests {
         assert_eq!(starts, vec![(0, 2), (2, 2), (4, 2)]);
     }
 }
+
+#[cfg(test)]
+mod interruption_tests;

@@ -7,6 +7,7 @@ mod state;
 use crate::{
     data::{ReferenceWeights, WeightKind},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     threads::{CompensatedSum, ThreadTeam, REDUCTION_CHUNK},
 };
 use rayon::prelude::*;
@@ -35,6 +36,15 @@ impl<'a> Family<'a> {
         prior: ReferenceWeights<'a>,
         offset: Option<&'a [f64]>,
     ) -> Result<Self> {
+        Self::new_polled(outcome, prior, offset, None)
+    }
+    pub(crate) fn new_polled(
+        outcome: &'a [f64],
+        prior: ReferenceWeights<'a>,
+        offset: Option<&'a [f64]>,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
         if outcome.len() != prior.nobs() || offset.is_some_and(|v| v.len() != outcome.len()) {
             return Err(invalid("Poisson input lengths differ"));
         }
@@ -50,6 +60,7 @@ impl<'a> Family<'a> {
         let mut terms = reserved(outcome.len())?;
         let mut positive = false;
         for (row, &y) in outcome.iter().enumerate() {
+            execution::check_chunk(poll, row)?;
             if !y.is_finite() || y < 0. || offset.is_some_and(|values| !values[row].is_finite()) {
                 return Err(FeregError::new(
                     ErrorCode::InvalidData,
@@ -65,6 +76,7 @@ impl<'a> Family<'a> {
                 "Poisson sample has no positive outcome",
             ));
         }
+        execution::check(poll)?;
         Ok(Self {
             outcome,
             prior,

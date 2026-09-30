@@ -2,9 +2,9 @@
 use crate::{
     data::ReferenceWeights,
     error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     ppml::{family::Family, irls},
     spec::Estimator,
-    threads::compensated_sum,
 };
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct PpmlStatistics {
@@ -20,10 +20,15 @@ pub struct PpmlStatistics {
     pub converged: bool,
 }
 pub fn ppml(fit: &irls::Fit<'_>) -> Result<PpmlStatistics> {
+    ppml_polled(fit, None)
+}
+pub(crate) fn ppml_polled(fit: &irls::Fit<'_>, poll: Poll<'_>) -> Result<PpmlStatistics> {
+    execution::check(poll)?;
     let sample = fit.problem().sample;
-    let q = ReferenceWeights::new(&sample.weights, sample.n_active(), Estimator::Ppml)?;
-    let family = Family::new(&sample.outcome, q, None)?;
-    let null = family.null_objective()?;
+    let q =
+        ReferenceWeights::new_polled(&sample.weights, sample.n_active(), Estimator::Ppml, poll)?;
+    let family = Family::new_polled(&sample.outcome, q, None, poll)?;
+    let null = family.null_objective_polled(poll)?;
     // Retain the frozen public guard: an undefined ratio cannot be published.
     if null.log_likelihood == 0. {
         return Err(numerical(
@@ -31,19 +36,21 @@ pub fn ppml(fit: &irls::Fit<'_>) -> Result<PpmlStatistics> {
         ));
     }
     let pseudo_r_squared = 1. - fit.evaluation.objective.log_likelihood / null.log_likelihood;
-    let weighted_outcome_sum = compensated_sum(
+    let weighted_outcome_sum = execution::sum(
         sample
             .outcome
             .iter()
             .enumerate()
             .map(|(i, y)| q.value(i) * y),
-    );
+        poll,
+    )?;
     if !pseudo_r_squared.is_finite()
         || !weighted_outcome_sum.is_finite()
         || weighted_outcome_sum < 0.
     {
         return Err(numerical("PPML fit statistic is not representable"));
     }
+    execution::check(poll)?;
     Ok(PpmlStatistics {
         deviance: fit.evaluation.objective.deviance,
         log_likelihood: fit.evaluation.objective.log_likelihood,

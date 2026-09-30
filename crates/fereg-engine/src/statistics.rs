@@ -7,6 +7,7 @@ use crate::{
     execution::{self, Poll},
     spec::Estimator,
 };
+pub(crate) use ppml::ppml_polled;
 pub use ppml::{ppml, PpmlStatistics};
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct OlsStatistics {
@@ -30,23 +31,48 @@ pub fn ols(
     structural_intercept: bool,
     dof: ResidualDof,
 ) -> Result<OlsStatistics> {
+    ols_polled(
+        outcome,
+        within_outcome,
+        residuals,
+        weights,
+        structural_intercept,
+        dof,
+        None,
+    )
+}
+pub(crate) fn ols_polled(
+    outcome: &[f64],
+    within_outcome: &[f64],
+    residuals: &[f64],
+    weights: ReferenceWeights<'_>,
+    structural_intercept: bool,
+    dof: ResidualDof,
+    poll: Poll<'_>,
+) -> Result<OlsStatistics> {
+    execution::check(poll)?;
     let n = weights.nobs();
     if dof.estimator != Estimator::Ols
         || dof.effective != weights.effective()
         || [outcome, within_outcome, residuals]
             .iter()
-            .any(|x| x.len() != n || x.iter().any(|v| !v.is_finite()))
+            .any(|x| x.len() != n)
+        || execution::any(
+            outcome.iter().chain(within_outcome).chain(residuals),
+            |v| !v.is_finite(),
+            poll,
+        )?
     {
         return Err(invalid("OLS statistic inputs are not final-sample aligned"));
     }
     let mean = if structural_intercept {
-        weights.mean(outcome)?
+        weights.mean_polled(outcome, poll)?
     } else {
         0.
     };
-    let rss = squares(residuals, 0., weights)?;
-    let tss = squares(outcome, mean, weights)?;
-    let within_tss = squares(within_outcome, 0., weights)?;
+    let rss = squares_polled(residuals, 0., weights, poll)?;
+    let tss = squares_polled(outcome, mean, weights, poll)?;
+    let within_tss = squares_polled(within_outcome, 0., weights, poll)?;
     let n = dof.effective as f64;
     let fit_df = dof.fit as f64;
     let centered_df = n - f64::from(u8::from(structural_intercept));
@@ -74,10 +100,8 @@ pub fn ols(
     if !result.rmse.is_finite() || !result.mss.is_finite() {
         return Err(invalid("OLS statistic is not representable"));
     }
+    execution::check(poll)?;
     Ok(result)
-}
-pub(crate) fn squares(values: &[f64], center: f64, weights: ReferenceWeights<'_>) -> Result<f64> {
-    squares_polled(values, center, weights, None)
 }
 pub(crate) fn squares_polled(
     values: &[f64],
@@ -136,3 +160,6 @@ fn gaussian(ss: f64, n: f64) -> Result<Option<f64>> {
 fn invalid(message: &str) -> FeregError {
     FeregError::new(ErrorCode::InvalidData, message)
 }
+
+#[cfg(test)]
+mod interruption_tests;

@@ -2,7 +2,8 @@
 use super::{invalid, numerical, Family};
 use crate::{
     error::{reserved, Result},
-    threads::{compensated_sum, CompensatedSum, ThreadTeam},
+    execution::{self, Poll},
+    threads::{CompensatedSum, ThreadTeam},
     topology::FeTopology,
 };
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -54,13 +55,15 @@ impl Family<'_> {
         Ok(Some(coefficients))
     }
     fn start_for(&self, rows: impl Iterator<Item = usize> + Clone) -> Result<Option<f64>> {
-        let numerator = self.log_outcome_sum(rows.clone());
+        let numerator = self.log_outcome_sum(rows.clone(), None)?;
         if numerator == f64::NEG_INFINITY {
             return Ok(None);
         }
-        let denominator = log_sum(rows, |row| {
-            self.prior.value(row).ln() + self.offset.map_or(0., |offset| offset[row])
-        });
+        let denominator = log_sum(
+            rows,
+            |row| self.prior.value(row).ln() + self.offset.map_or(0., |offset| offset[row]),
+            None,
+        )?;
         let value = numerator - denominator;
         if value.is_finite() {
             Ok(Some(value))
@@ -68,21 +71,37 @@ impl Family<'_> {
             Err(numerical("Poisson start is not representable"))
         }
     }
-    fn log_outcome_sum(&self, rows: impl Iterator<Item = usize> + Clone) -> f64 {
-        log_sum(rows, |row| {
-            if self.outcome[row] > 0. {
-                self.prior.value(row).ln() + self.terms[row][0]
-            } else {
-                f64::NEG_INFINITY
-            }
-        })
+    fn log_outcome_sum(
+        &self,
+        rows: impl Iterator<Item = usize> + Clone,
+        poll: Poll<'_>,
+    ) -> Result<f64> {
+        log_sum(
+            rows,
+            |row| {
+                if self.outcome[row] > 0. {
+                    self.prior.value(row).ln() + self.terms[row][0]
+                } else {
+                    f64::NEG_INFINITY
+                }
+            },
+            poll,
+        )
     }
     pub fn null_objective(&self) -> Result<NullObjective> {
-        let (mean, log_mean) = if let Some(mean) = self.scaled_null_mean() {
+        self.null_objective_polled(None)
+    }
+    pub(crate) fn null_objective_polled(&self, poll: Poll<'_>) -> Result<NullObjective> {
+        execution::check(poll)?;
+        let (mean, log_mean) = if let Some(mean) = self.scaled_null_mean(poll)? {
             (mean, mean.ln())
         } else {
-            let log_mean = self.log_outcome_sum(0..self.outcome.len())
-                - log_sum(0..self.outcome.len(), |row| self.prior.value(row).ln());
+            let log_mean = self.log_outcome_sum(0..self.outcome.len(), poll)?
+                - log_sum(
+                    0..self.outcome.len(),
+                    |row| self.prior.value(row).ln(),
+                    poll,
+                )?;
             (log_mean.exp(), log_mean)
         };
         if !mean.is_finite() || mean <= 0. || !log_mean.is_finite() {
@@ -90,6 +109,7 @@ impl Family<'_> {
         }
         let mut likelihood = CompensatedSum::default();
         for row in 0..self.outcome.len() {
+            execution::check_chunk(poll, row)?;
             let term =
                 self.prior.value(row) * (self.outcome[row] * log_mean - mean - self.terms[row][1]);
             if !term.is_finite() {
@@ -101,6 +121,7 @@ impl Family<'_> {
         if !log_likelihood.is_finite() {
             return Err(numerical("Poisson null likelihood is not representable"));
         }
+        execution::check(poll)?;
         Ok(NullObjective {
             mean,
             log_likelihood,
@@ -108,37 +129,48 @@ impl Family<'_> {
     }
     // Harvested positive-mean safeguard: do not lose a subnormal intermediate
     // whose magnitude can matter again after restoring the outcome scale.
-    fn scaled_null_mean(&self) -> Option<f64> {
-        let max_q = (0..self.outcome.len())
-            .map(|row| self.prior.value(row))
-            .fold(0., f64::max);
-        let max_y = self.outcome.iter().copied().fold(0., f64::max);
+    fn scaled_null_mean(&self, poll: Poll<'_>) -> Result<Option<f64>> {
+        let max_q = execution::fold(
+            (0..self.outcome.len()).map(|row| self.prior.value(row)),
+            0.,
+            poll,
+            f64::max,
+        )?;
+        let max_y = execution::fold(self.outcome.iter().copied(), 0., poll, f64::max)?;
         let mut weights = CompensatedSum::default();
         let mut outcomes = CompensatedSum::default();
         for (row, &y) in self.outcome.iter().enumerate() {
+            execution::check_chunk(poll, row)?;
             let q = self.prior.value(row) / max_q;
             if !q.is_normal() {
-                return None;
+                return Ok(None);
             }
             weights.add(q);
             if y > 0. {
                 let scaled = y / max_y;
                 let product = q * scaled;
                 if !scaled.is_normal() || !product.is_normal() {
-                    return None;
+                    return Ok(None);
                 }
                 outcomes.add(product);
             }
         }
         let ratio = outcomes.total() / weights.total();
         let mean = max_y * ratio;
-        (ratio.is_normal() && mean.is_normal()).then_some(mean)
+        Ok((ratio.is_normal() && mean.is_normal()).then_some(mean))
     }
 }
-fn log_sum(rows: impl Iterator<Item = usize> + Clone, value: impl Fn(usize) -> f64) -> f64 {
-    let maximum = rows.clone().map(&value).fold(f64::NEG_INFINITY, f64::max);
+fn log_sum(
+    rows: impl Iterator<Item = usize> + Clone,
+    value: impl Fn(usize) -> f64,
+    poll: Poll<'_>,
+) -> Result<f64> {
+    let maximum = execution::fold(rows.clone().map(&value), f64::NEG_INFINITY, poll, f64::max)?;
     if maximum == f64::NEG_INFINITY {
-        return maximum;
+        return Ok(maximum);
     }
-    maximum + compensated_sum(rows.map(|row| (value(row) - maximum).exp())).ln()
+    Ok(maximum + execution::sum(rows.map(|row| (value(row) - maximum).exp()), poll)?.ln())
 }
+
+#[cfg(test)]
+mod interruption_tests;

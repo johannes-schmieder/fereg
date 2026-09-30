@@ -364,5 +364,5 @@ fn tuple_coding_and_dof_cancellation_release_every_complete_inference_owner() {
             aborted += 1;
         }
     }
-    eprintln!("{aborted} tracked complete inference aborts: tuple sorting, cluster banks, metadata validation, DoF and covariance; no retained numerical owners, exact fresh retries and one plan");
+    eprintln!("{aborted} tracked complete inference aborts: tuple sorting, cluster banks, metadata validation, DoF, reporting, covariance and statistics; no retained numerical owners, exact fresh retries and one plan");
 }

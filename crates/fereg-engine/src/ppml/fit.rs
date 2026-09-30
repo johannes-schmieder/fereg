@@ -134,11 +134,12 @@ pub(super) fn execute_in(
             probe.dense(),
         )?
     };
-    let statistics = statistics::ppml(&accepted)?;
-    let weights = WeightSummary::from(ReferenceWeights::new(
+    let statistics = statistics::ppml_polled(&accepted, probe.dense())?;
+    let weights = WeightSummary::from(ReferenceWeights::new_polled(
         &final_sample.sample().weights,
         final_sample.sample().n_active(),
         Estimator::Ppml,
+        probe.dense(),
     )?);
     timings.inference = clock.elapsed();
     interrupt(Phase::Inferred)?;

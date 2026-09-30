@@ -59,10 +59,11 @@ pub(crate) fn estimate_polled(
     if clusters.len() > 5 || (kind == Kind::Cluster) == clusters.is_empty() {
         return Err(invalid("PPML VCE and cluster declarations disagree"));
     }
-    let q = ReferenceWeights::new(
+    let q = ReferenceWeights::new_polled(
         &problem.sample.weights,
         problem.sample.n_active(),
         Estimator::Ppml,
+        poll,
     )?;
     let mut reported = reporting::mapped(
         columns,
@@ -70,12 +71,13 @@ pub(crate) fn estimate_polled(
         &fit.linear.within,
         &fit.linear.finite,
         false,
+        poll,
     )?;
     let constant = columns
         .constant_slot
         .ok_or_else(|| invalid("PPML reported constant is missing"))?;
     if columns.recipes[columns.slots[constant].generated.unwrap()] != ColumnRecipe::Intercept
-        || !columns.matches(problem.sample, problem.raw)?
+        || !columns.matches_polled(problem.sample, problem.raw, poll)?
     {
         return Err(invalid(
             "PPML report recipes disagree with the fitted raw columns",

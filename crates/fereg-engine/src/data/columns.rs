@@ -2,6 +2,7 @@
 use super::{ColumnRecipe, DenseMatrix, ModelMatrixBuilder, Prepared};
 use crate::{
     error::{copied_string, reserved, ErrorCode, FeregError, Result},
+    execution::Poll,
     spec::Estimator,
     wls::Role,
     ComponentKind, ExpandedTerm, LevelState, MetadataFlag, ModelSpec, RawTermKind, TimeSeriesState,
@@ -99,8 +100,16 @@ impl CompiledColumns {
             .generate(&self.recipes)
     }
     pub(crate) fn matches(&self, sample: &Prepared, raw: &DenseMatrix) -> Result<bool> {
-        ModelMatrixBuilder::with_nrows(sample.n_active(), &sample.regressors, &[])?
-            .matches(&self.recipes, raw)
+        self.matches_polled(sample, raw, None)
+    }
+    pub(crate) fn matches_polled(
+        &self,
+        sample: &Prepared,
+        raw: &DenseMatrix,
+        poll: Poll<'_>,
+    ) -> Result<bool> {
+        ModelMatrixBuilder::with_nrows_polled(sample.n_active(), &sample.regressors, &[], poll)?
+            .matches_polled(&self.recipes, raw, poll)
     }
 }
 fn compile_term(term: &ExpandedTerm) -> Result<ColumnRecipe> {

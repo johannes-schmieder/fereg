@@ -81,7 +81,12 @@ pub(super) fn execute_in(
     let mut clock = Instant::now();
     let sample = super::prepare::prepare_planned(call.model, loaded, &call.columns, &call.sources)?;
     let raw = call.columns.generate(&sample)?;
-    let weights = ReferenceWeights::new(&sample.weights, sample.n_active(), Estimator::Ols)?;
+    let weights = ReferenceWeights::new_polled(
+        &sample.weights,
+        sample.n_active(),
+        Estimator::Ols,
+        probe.dense(),
+    )?;
     let summary = WeightSummary::from(weights);
     timings.preparation = clock.elapsed();
     interrupt(Phase::Prepared)?;
@@ -107,13 +112,14 @@ pub(super) fn execute_in(
     timings.estimation = clock.elapsed();
     interrupt(Phase::Estimated)?;
     clock = Instant::now();
-    let reported = super::report(
+    let reported = super::report::report_polled(
         &call.columns,
         &raw,
         &linear.within,
         &sample.outcome,
         weights,
         &linear.finite,
+        probe.dense(),
     )?;
     let inference = infer(
         &call,
@@ -257,13 +263,14 @@ fn infer(
         &reported.coordinates,
         poll,
     )?;
-    let statistics = statistics::ols(
+    let statistics = statistics::ols_polled(
         &sample.outcome,
         &linear.within_outcome,
         &linear.residuals,
         weights,
         columns.structural_intercept,
         dof,
+        poll,
     )?;
     Ok(Inference {
         covariance,

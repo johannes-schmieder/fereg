@@ -3,6 +3,7 @@ use super::{Fit, Role, Status};
 use crate::{
     data::{CompiledColumns, DenseMatrix, SyntaxStatus},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
 };
 #[derive(Debug, PartialEq)]
 pub struct Reported {
@@ -22,8 +23,9 @@ pub(crate) fn mapped(
     within: &DenseMatrix,
     fit: &Fit,
     extend_constant: bool,
+    poll: Poll<'_>,
 ) -> Result<Reported> {
-    validate(columns, raw, within, fit)?;
+    validate_polled(columns, raw, within, fit, poll)?;
     let width = fit
         .kept
         .len()
@@ -42,6 +44,7 @@ pub(crate) fn mapped(
         constant_formula_error: 0.,
     };
     for (slot, column) in columns.slots.iter().enumerate() {
+        execution::check_chunk(poll, slot)?;
         let (value, status) = match column.generated {
             Some(generated) => (fit.coefficients[generated], fit.statuses[generated]),
             None => (
@@ -62,13 +65,17 @@ pub(crate) fn mapped(
         }
     }
     for (left, &generated) in fit.kept.iter().enumerate() {
+        execution::check(poll)?;
         for row in 0..raw.nrows() {
+            execution::check_chunk(poll, row)?;
             result.score_design[(row, left)] = within[(row, generated)];
         }
         for (right, &other) in fit.kept.iter().enumerate() {
+            execution::check_chunk(poll, right)?;
             result.bread[(left, right)] = fit.bread[(generated, other)];
         }
     }
+    execution::check(poll)?;
     Ok(result)
 }
 /// Called only after mapped has validated the complete canonical metadata.
@@ -83,6 +90,16 @@ pub(crate) fn validate(
     within: &DenseMatrix,
     fit: &Fit,
 ) -> Result<()> {
+    validate_polled(columns, raw, within, fit, None)
+}
+pub(crate) fn validate_polled(
+    columns: &CompiledColumns,
+    raw: &DenseMatrix,
+    within: &DenseMatrix,
+    fit: &Fit,
+    poll: Poll<'_>,
+) -> Result<()> {
+    execution::check(poll)?;
     let p = raw.ncols();
     if within.nrows() != raw.nrows()
         || within.ncols() != p
@@ -92,23 +109,25 @@ pub(crate) fn validate(
         || fit.statuses.len() != p
         || fit.bread.nrows() != p
         || fit.bread.ncols() != p
-        || fit.kept.iter().any(|&j| j >= p)
-        || fit.kept.windows(2).any(|v| v[0] >= v[1])
+        || execution::any(&fit.kept, |&j| j >= p, poll)?
+        || execution::any(fit.kept.windows(2), |v| v[0] >= v[1], poll)?
     {
         return Err(invalid("reported dimensions or kept indices disagree"));
     }
-    if raw
-        .as_slice()
-        .iter()
-        .chain(within.as_slice())
-        .chain(&fit.coefficients)
-        .chain(fit.bread.as_slice())
-        .any(|v| !v.is_finite())
-    {
+    if execution::any(
+        raw.as_slice()
+            .iter()
+            .chain(within.as_slice())
+            .chain(&fit.coefficients)
+            .chain(fit.bread.as_slice()),
+        |v| !v.is_finite(),
+        poll,
+    )? {
         return Err(invalid("reported inputs must be finite"));
     }
     let mut generated = 0;
-    for column in &columns.slots {
+    for (slot, column) in columns.slots.iter().enumerate() {
+        execution::check_chunk(poll, slot)?;
         if let Some(index) = column.generated {
             if index != generated || column.syntax != SyntaxStatus::Active {
                 return Err(invalid("noncanonical generated coefficient slots"));
@@ -120,6 +139,7 @@ pub(crate) fn validate(
         return Err(invalid("generated slots do not cover the finite design"));
     }
     for (j, status) in fit.statuses.iter().enumerate() {
+        execution::check_chunk(poll, j)?;
         if (columns.roles[j] == Role::AbsorbedIntercept)
             != (*status == Status::AbsorbedInterceptDeferred)
         {
@@ -142,17 +162,20 @@ pub(crate) fn validate(
             return Err(invalid("reported constant has an invalid canonical slot"));
         }
     }
-    if let Some(generated) = columns
-        .roles
-        .iter()
-        .position(|r| *r == Role::AbsorbedIntercept)
-    {
-        if columns
-            .roles
-            .iter()
-            .filter(|r| **r == Role::AbsorbedIntercept)
-            .count()
-            != 1
+    let (deferred, count) = execution::fold(
+        columns.roles.iter().enumerate(),
+        (None, 0usize),
+        poll,
+        |(first, count), (j, role)| {
+            if *role == Role::AbsorbedIntercept {
+                (first.or(Some(j)), count + 1)
+            } else {
+                (first, count)
+            }
+        },
+    )?;
+    if let Some(generated) = deferred {
+        if count != 1
             || columns
                 .constant_slot
                 .and_then(|slot| columns.slots[slot].generated)
@@ -161,7 +184,7 @@ pub(crate) fn validate(
             return Err(invalid("deferred constant is missing its reported slot"));
         }
     }
-    Ok(())
+    execution::check(poll)
 }
 fn invalid(message: &str) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)

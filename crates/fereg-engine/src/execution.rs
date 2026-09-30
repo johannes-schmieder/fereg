@@ -121,12 +121,20 @@ pub(crate) fn blocked_sum(
     value: impl Fn(usize) -> f64,
     poll: Poll<'_>,
 ) -> Result<f64> {
+    try_blocked_sum(length, |row| Ok(value(row)), poll)
+}
+pub(crate) fn try_blocked_sum(
+    length: usize,
+    value: impl Fn(usize) -> Result<f64>,
+    poll: Poll<'_>,
+) -> Result<f64> {
     let mut sum = CompensatedSum::default();
     for start in (0..length).step_by(REDUCTION_CHUNK) {
         check(poll)?;
-        sum.add(crate::threads::compensated_sum(
+        sum.add(try_sum(
             (start..start.saturating_add(REDUCTION_CHUNK).min(length)).map(&value),
-        ));
+            None,
+        )?);
     }
     Ok(sum.total())
 }
@@ -253,3 +261,6 @@ pub fn run<T: Send, P: Copy + Send>(
     });
     callback_failure.map_or(result, Err)
 }
+
+#[cfg(test)]
+pub(crate) mod interruption_tests;
