@@ -54,7 +54,12 @@ impl Estimate {
 }
 pub(super) fn estimate(request: Request<'_>) -> Result<Estimate> {
     validate(request)?;
-    let input_bytes = input(request, 9)?;
+    // Covers native scheduler/worker bookkeeping, not reserved OS stack pages.
+    // Uncertain executor storage never establishes early insufficiency.
+    let input_bytes = sum(&[
+        input(request, 9)?,
+        array(request.worker_threads, 512 * 1024)?,
+    ])?;
     let prepared = prepared(request)?;
     let raw = matrix(request.inputs.active_rows, request.finite_columns)?;
     let base = sum(&[input_bytes, prepared, raw])?;

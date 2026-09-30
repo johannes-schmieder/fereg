@@ -76,6 +76,7 @@ impl Layout {
             estimator: self.estimator,
             solver,
             clusters: self.clusters,
+            worker_threads: 0,
             observation_outputs: 0,
             publication_matrix_cells: 0,
             bias: None,

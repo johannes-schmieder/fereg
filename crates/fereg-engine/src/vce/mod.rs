@@ -12,12 +12,37 @@ use crate::{
     topology::LevelIndex,
 };
 use rayon::prelude::*;
+pub(crate) use wald::coefficient_statistics;
 pub use wald::{wald, Wald};
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Kind {
     Iid,
     Robust,
     Cluster,
+}
+/// Resolve OLS metadata before loading; numerical covariance stays on estimate.
+pub(crate) fn ols_kind(
+    requested: Option<Kind>,
+    weight: Option<WeightKind>,
+    clusters: usize,
+) -> Result<Kind> {
+    let kind = requested.unwrap_or(if clusters > 0 {
+        Kind::Cluster
+    } else if weight == Some(WeightKind::Probability) {
+        Kind::Robust
+    } else {
+        Kind::Iid
+    });
+    if (kind == Kind::Cluster) == (clusters == 0) {
+        return Err(invalid("OLS VCE and cluster declarations disagree"));
+    }
+    if kind == Kind::Iid && weight == Some(WeightKind::Probability) {
+        return Err(FeregError::new(
+            ErrorCode::Unsupported,
+            "probability-weight IID covariance is unsupported",
+        ));
+    }
+    Ok(kind)
 }
 #[derive(Debug)]
 pub struct Problem<'a> {

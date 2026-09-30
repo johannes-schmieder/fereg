@@ -36,6 +36,7 @@ fn request() -> Request<'static> {
         estimator: Estimator::Ppml,
         solver: Solver::Auto,
         clusters: 2,
+        worker_threads: 0,
         observation_outputs: 0,
         publication_matrix_cells: 81,
         bias: None,
@@ -239,6 +240,34 @@ fn payload_upper_bounds_do_not_become_false_capacity_proofs() {
     );
     assert!(small.estimate().peak_bytes() < large.estimate().peak_bytes());
     large.admit(Some(small.estimate().minimum_bytes())).unwrap();
+}
+#[test]
+fn executor_bookkeeping_changes_estimates_without_changing_admission() {
+    let base = request();
+    let first = Plan::new(base).unwrap();
+    let larger = Plan::new(Request {
+        worker_threads: 8,
+        ..base
+    })
+    .unwrap();
+    assert_eq!(
+        first.estimate().minimum_bytes(),
+        larger.estimate().minimum_bytes()
+    );
+    assert_eq!(
+        larger.estimate().phase_bytes(Phase::Estimation)
+            - first.estimate().phase_bytes(Phase::Estimation),
+        8 * 512 * 1024
+    );
+    assert_eq!(
+        Plan::new(Request {
+            worker_threads: usize::MAX,
+            ..base
+        })
+        .unwrap_err()
+        .return_code(),
+        909
+    );
 }
 
 #[test]

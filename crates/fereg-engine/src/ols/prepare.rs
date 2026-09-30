@@ -18,6 +18,14 @@ pub(super) fn prepare_compiled(
     loaded: &Loaded,
     columns: &CompiledColumns,
 ) -> Result<Prepared> {
+    prepare_planned(spec, loaded, columns, &SourcePlan::new(spec)?)
+}
+pub(super) fn prepare_planned(
+    spec: &ModelSpec,
+    loaded: &Loaded,
+    columns: &CompiledColumns,
+    sources: &SourcePlan,
+) -> Result<Prepared> {
     if loaded
         .weights
         .as_ref()
@@ -34,7 +42,7 @@ pub(super) fn prepare_compiled(
             "OLS does not support offset or exposure",
         ));
     }
-    let sample = SourcePlan::new(spec)?.prepare(loaded, &OlsPolicy)?;
+    let sample = sources.prepare(loaded, &OlsPolicy)?;
     let sample = prepare_fixed_effects(spec, sample)?;
     if sample.n_active() == 0 {
         return Err(FeregError::new(

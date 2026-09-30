@@ -117,22 +117,19 @@ pub fn estimate(
         team,
     )?
     .scatter(reported.coefficients.len(), &reported.coordinates)?;
-    let mut z_statistics = reserved(reported.coefficients.len())?;
-    z_statistics.resize(reported.coefficients.len(), f64::NAN);
+    let z_statistics = vce::coefficient_statistics(
+        &reported.coefficients,
+        &covariance.standard_errors,
+        &reported.coordinates,
+    )?;
     let mut tested = reserved(reported.coordinates.len())?;
-    for &slot in &reported.coordinates {
-        let se = covariance.standard_errors[slot];
-        if se > 0. {
-            let z = reported.coefficients[slot] / se;
-            if !z.is_finite() {
-                return Err(numerical("PPML z statistic is not representable"));
-            }
-            z_statistics[slot] = z;
-        }
-        if Some(slot) != columns.constant_slot {
-            tested.push(slot);
-        }
-    }
+    tested.extend(
+        reported
+            .coordinates
+            .iter()
+            .copied()
+            .filter(|&slot| Some(slot) != columns.constant_slot),
+    );
     let wald = vce::wald(
         &reported.coefficients,
         &covariance.values,
@@ -177,7 +174,4 @@ fn transfer_constant(report: &mut DofReport) -> Result<()> {
 }
 fn invalid(message: &str) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)
-}
-fn numerical(message: &str) -> FeregError {
-    FeregError::new(ErrorCode::NonConvergence, message)
 }

@@ -2,6 +2,7 @@
 mod checked;
 mod layout;
 mod loaded;
+mod metadata;
 mod phases;
 mod solver;
 use crate::{
@@ -42,6 +43,8 @@ pub struct Request<'a> {
     pub estimator: Estimator,
     pub solver: Solver,
     pub clusters: usize,
+    /// Planned worker count; executor storage is modeled, not an OS/RSS bound.
+    pub worker_threads: usize,
     /// Ordinary requested banks, excluding the optional eighteen bias banks.
     pub observation_outputs: usize,
     /// Exact cells in native result/shadow banks that coexist with outputs.
@@ -92,5 +95,16 @@ impl Admitted {
     #[must_use]
     pub const fn estimate(&self) -> &Estimate {
         &self.estimate
+    }
+}
+impl Inputs {
+    /// Inspect existing capacities without allocating another observation bank.
+    pub fn from_loaded(
+        loaded: &crate::data::Loaded,
+        metadata_bytes: u128,
+        parent_bytes: u128,
+    ) -> Result<Self> {
+        loaded.validate_alignment()?;
+        loaded::inputs(loaded, metadata_bytes, parent_bytes)
     }
 }

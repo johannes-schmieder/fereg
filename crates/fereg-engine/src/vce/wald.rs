@@ -115,3 +115,28 @@ pub fn wald(
     });
     Ok(report)
 }
+
+/// The standardized coefficient is shared; callers choose t or z reference laws.
+pub(crate) fn coefficient_statistics(
+    coefficients: &[f64],
+    errors: &[f64],
+    coordinates: &[usize],
+) -> Result<Vec<f64>> {
+    if coefficients.len() != errors.len()
+        || coordinates.iter().any(|&slot| slot >= coefficients.len())
+    {
+        return Err(invalid("coefficient statistic coordinates disagree"));
+    }
+    let mut values = reserved(coefficients.len())?;
+    values.resize(coefficients.len(), f64::NAN);
+    for &slot in coordinates {
+        if errors[slot] > 0. {
+            let value = coefficients[slot] / errors[slot];
+            if !value.is_finite() {
+                return Err(numerical("coefficient statistic is not representable"));
+            }
+            values[slot] = value;
+        }
+    }
+    Ok(values)
+}

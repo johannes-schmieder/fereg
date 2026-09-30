@@ -40,7 +40,7 @@ pub struct Request {
     pub saved: Vec<(usize, usize)>,
 }
 impl Request {
-    fn kinds(&self, mean: bool) -> Result<Vec<Kind>> {
+    pub(crate) fn kinds(&self, mean: bool) -> Result<Vec<Kind>> {
         let mut kinds = reserved(
             self.saved
                 .len()

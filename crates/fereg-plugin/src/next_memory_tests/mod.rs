@@ -1,5 +1,6 @@
 //! Temporary independent heap observation; production has no allocator coupling.
 mod fixture;
+mod ols_controller;
 use crate::ffi::{allocation_usage, begin_ols_allocation_observation};
 use fereg_engine::{
     data::{

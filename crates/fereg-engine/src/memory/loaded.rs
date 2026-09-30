@@ -73,3 +73,39 @@ fn numeric(column: &NumericColumn) -> Result<u128> {
         },
     ])
 }
+
+impl Inputs {
+    /// Bind loader capacities to the admitted dimensions without estimating or
+    /// admitting another plan. A host cannot grow banks behind this token.
+    pub(crate) fn bind_loaded(self, loaded: &Loaded) -> Result<()> {
+        use crate::{ErrorCode, FeregError};
+        let actual = Self::from_loaded(loaded, 0, 0)?;
+        if actual.original_rows != self.original_rows
+            || actual.active_rows > self.active_rows
+            || actual.sources != self.sources
+            || actual.string_sources != self.string_sources
+            || actual.weighted != self.weighted
+            || actual.adjustment != self.adjustment
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "loaded banks differ from preflight dimensions",
+            ));
+        }
+        // The input estimate has one missing byte per numeric bank, payload
+        // bounds and parent storage. Larger capacities violate this bound.
+        let numeric = add_count(
+            actual.sources - actual.string_sources,
+            1 + usize::from(actual.weighted) + usize::from(actual.adjustment),
+        )?;
+        let masks = mul(numeric as u128, actual.original_rows as u128)?;
+        let excess = sum(&[self.parent_bytes, self.string_bytes, masks])?;
+        if actual.parent_bytes > excess {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "loaded capacities exceed preflight storage bounds",
+            ));
+        }
+        Ok(())
+    }
+}
