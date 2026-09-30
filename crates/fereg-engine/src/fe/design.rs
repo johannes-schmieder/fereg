@@ -2,6 +2,7 @@
 use crate::{
     data::{DenseMatrix, Prepared, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     threads::{compensated_sum, ThreadTeam},
     topology::FeTopology,
 };
@@ -113,7 +114,16 @@ impl<'a> Design<'a> {
     }
     /// Each output row has a fixed accumulation order independent of worker count.
     pub fn multiply(&self, coefficients: &DenseMatrix, team: &ThreadTeam) -> Result<DenseMatrix> {
-        validate_matrix(coefficients, self.layout.total)?;
+        self.multiply_polled(coefficients, team, None)
+    }
+    pub(crate) fn multiply_polled(
+        &self,
+        coefficients: &DenseMatrix,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<DenseMatrix> {
+        execution::check(poll)?;
+        validate_matrix_polled(coefficients, self.layout.total, poll)?;
         let rhs = coefficients.ncols();
         let mut result = DenseMatrix::zeros(self.nobs(), rhs)?;
         team.install(|| {
@@ -121,28 +131,35 @@ impl<'a> Design<'a> {
                 .as_mut_slice()
                 .par_chunks_mut(rhs.max(1))
                 .enumerate()
-                .for_each(|(row, values)| {
+                .try_for_each(|(row, values)| -> Result<()> {
+                    execution::check_chunk(poll, row)?;
                     for (column, value) in values.iter_mut().enumerate() {
-                        *value = compensated_sum(self.layout.effects.iter().enumerate().flat_map(
-                            |(effect, layout)| {
-                                let level =
-                                    self.topology
-                                        .effect_partition(effect)
-                                        .expect("validated effect")
-                                        .codes()[row] as usize;
-                                (0..layout.channels).map(move |channel| {
-                                    self.basis(effect, channel, row)
-                                        * coefficients[(
-                                            layout.offset + channel * layout.levels + level,
-                                            column,
-                                        )]
-                                })
-                            },
-                        ));
+                        *value =
+                            execution::sum(
+                                self.layout.effects.iter().enumerate().flat_map(
+                                    |(effect, layout)| {
+                                        let level = self
+                                            .topology
+                                            .effect_partition(effect)
+                                            .expect("validated effect")
+                                            .codes()[row]
+                                            as usize;
+                                        (0..layout.channels).map(move |channel| {
+                                            self.basis(effect, channel, row)
+                                                * coefficients[(
+                                                    layout.offset + channel * layout.levels + level,
+                                                    column,
+                                                )]
+                                        })
+                                    },
+                                ),
+                                poll,
+                            )?;
                     }
+                    Ok(())
                 })
-        });
-        finite_result(result)
+        })?;
+        finite_result(result, poll)
     }
     /// CSR rows are canonical fixed partitions; workers never change a coefficient sum's order.
     pub fn transpose_weighted(
@@ -150,7 +167,16 @@ impl<'a> Design<'a> {
         values: &DenseMatrix,
         team: &ThreadTeam,
     ) -> Result<DenseMatrix> {
-        validate_matrix(values, self.nobs())?;
+        self.transpose_weighted_polled(values, team, None)
+    }
+    pub(crate) fn transpose_weighted_polled(
+        &self,
+        values: &DenseMatrix,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<DenseMatrix> {
+        execution::check(poll)?;
+        validate_matrix_polled(values, self.nobs(), poll)?;
         let rhs = values.ncols();
         let mut result = DenseMatrix::zeros(self.layout.total, rhs)?;
         team.install(|| {
@@ -158,7 +184,8 @@ impl<'a> Design<'a> {
                 .as_mut_slice()
                 .par_chunks_mut(rhs.max(1))
                 .enumerate()
-                .for_each(|(coefficient, output)| {
+                .try_for_each(|(coefficient, output)| -> Result<()> {
+                    execution::check_chunk(poll, coefficient)?;
                     let effect = self
                         .layout
                         .effects
@@ -176,15 +203,19 @@ impl<'a> Design<'a> {
                         .members(level)
                         .expect("validated level");
                     for (column, value) in output.iter_mut().enumerate() {
-                        *value = compensated_sum(members.iter().map(|&row| {
-                            self.weights.at(row)
-                                * self.basis(effect, channel, row)
-                                * values[(row, column)]
-                        }));
+                        *value = execution::sum(
+                            members.iter().map(|&row| {
+                                self.weights.at(row)
+                                    * self.basis(effect, channel, row)
+                                    * values[(row, column)]
+                            }),
+                            poll,
+                        )?;
                     }
+                    Ok(())
                 })
-        });
-        finite_result(result)
+        })?;
+        finite_result(result, poll)
     }
     pub fn level_gram(&self, effect: usize, level: usize) -> Result<DenseMatrix> {
         let layout = self
@@ -209,7 +240,7 @@ impl<'a> Design<'a> {
                 block[(right, left)] = value;
             }
         }
-        finite_result(block)
+        finite_result(block, None)
     }
     pub fn reconstruct(
         &self,
@@ -217,35 +248,64 @@ impl<'a> Design<'a> {
         coefficients: &DenseMatrix,
         team: &ThreadTeam,
     ) -> Result<DenseMatrix> {
-        validate_matrix(rhs, self.nobs())?;
+        self.reconstruct_polled(rhs, coefficients, team, None)
+    }
+    pub(crate) fn reconstruct_polled(
+        &self,
+        rhs: &DenseMatrix,
+        coefficients: &DenseMatrix,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<DenseMatrix> {
+        execution::check(poll)?;
+        validate_matrix_polled(rhs, self.nobs(), poll)?;
         if rhs.ncols() != coefficients.ncols() {
             return Err(invalid("FE coefficient and observation RHS counts differ"));
         }
-        let mut residual = self.multiply(coefficients, team)?;
-        for (value, &original) in residual.as_mut_slice().iter_mut().zip(rhs.as_slice()) {
+        let mut residual = self.multiply_polled(coefficients, team, poll)?;
+        for (position, (value, &original)) in residual
+            .as_mut_slice()
+            .iter_mut()
+            .zip(rhs.as_slice())
+            .enumerate()
+        {
+            execution::check_chunk(poll, position)?;
             *value = original - *value;
         }
-        finite_result(residual)
+        finite_result(residual, poll)
     }
 }
 pub(super) fn validate_matrix(matrix: &DenseMatrix, rows: usize) -> Result<()> {
+    validate_matrix_polled(matrix, rows, None)
+}
+pub(super) fn validate_matrix_polled(
+    matrix: &DenseMatrix,
+    rows: usize,
+    poll: Poll<'_>,
+) -> Result<()> {
     if matrix.nrows() != rows {
         return Err(invalid("FE matrix has an incompatible row count"));
     }
-    if matrix.as_slice().iter().any(|value| !value.is_finite()) {
-        return Err(FeregError::new(
-            ErrorCode::InvalidData,
-            "FE matrix contains nonfinite values",
-        ));
+    for (position, value) in matrix.as_slice().iter().enumerate() {
+        execution::check_chunk(poll, position)?;
+        if !value.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "FE matrix contains nonfinite values",
+            ));
+        }
     }
     Ok(())
 }
-fn finite_result(matrix: DenseMatrix) -> Result<DenseMatrix> {
-    if matrix.as_slice().iter().any(|value| !value.is_finite()) {
-        return Err(FeregError::new(
-            ErrorCode::NonConvergence,
-            "FE operator result is not representable",
-        ));
+fn finite_result(matrix: DenseMatrix, poll: Poll<'_>) -> Result<DenseMatrix> {
+    for (position, value) in matrix.as_slice().iter().enumerate() {
+        execution::check_chunk(poll, position)?;
+        if !value.is_finite() {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "FE operator result is not representable",
+            ));
+        }
     }
     Ok(matrix)
 }

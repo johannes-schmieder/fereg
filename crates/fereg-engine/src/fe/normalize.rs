@@ -6,8 +6,9 @@ use super::{
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    threads::{compensated_sum, ThreadTeam},
-    topology::{connected_components_all, LevelIndex},
+    execution::{self, Poll},
+    threads::ThreadTeam,
+    topology::{connected_components_all_polled, LevelIndex},
 };
 use rayon::prelude::*;
 impl Design<'_> {
@@ -20,8 +21,18 @@ impl Design<'_> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<()> {
+        self.normalize_coefficients_polled(coefficients, tolerance, team, None)
+    }
+    pub(crate) fn normalize_coefficients_polled(
+        &self,
+        coefficients: &mut DenseMatrix,
+        tolerance: f64,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<()> {
+        execution::check(poll)?;
         check_tolerance(tolerance)?;
-        let before = self.multiply(coefficients, team)?;
+        let before = self.multiply_polled(coefficients, team, poll)?;
         let mut intercepts = reserved(self.layout().effects.len())?;
         intercepts.extend(
             self.topology()
@@ -40,26 +51,34 @@ impl Design<'_> {
             codes.push(partition.codes());
             levels.push(partition.n_levels());
         }
-        let components = connected_components_all(&codes, &levels, self.nobs())?;
+        let components = connected_components_all_polled(&codes, &levels, self.nobs(), poll)?;
         let mut row_components = reserved(self.nobs())?;
-        for &level in codes[0] {
+        for (row, &level) in codes[0].iter().enumerate() {
+            execution::check_chunk(poll, row)?;
             row_components.push(
                 u32::try_from(components.component_by_effect_level[0][level as usize])
                     .map_err(|_| numerical("normalization component index overflows"))?,
             );
         }
-        let membership = LevelIndex::from_codes(&row_components, components.n_components)?;
+        let membership =
+            LevelIndex::from_codes_polled(&row_components, components.n_components, poll)?;
         let mut weights = reserved(components.n_components)?;
         for component in 0..components.n_components {
+            execution::check(poll)?;
             let members = membership.members(component)?;
-            let scale = members
-                .iter()
-                .map(|&row| self.weights().at(row))
-                .fold(0., f64::max);
+            let scale = execution::fold(
+                members.iter().map(|&row| self.weights().at(row)),
+                0.,
+                poll,
+                f64::max,
+            )?;
             let total = if scale == 0. {
                 0.
             } else {
-                compensated_sum(members.iter().map(|&row| self.weights().at(row) / scale))
+                execution::sum(
+                    members.iter().map(|&row| self.weights().at(row) / scale),
+                    poll,
+                )?
             };
             weights.push((scale, total));
         }
@@ -68,6 +87,7 @@ impl Design<'_> {
         let mut normalized =
             DenseMatrix::from_row_major(coefficients.nrows(), coefficients.ncols(), values)?;
         for (local, &effect) in intercepts.iter().enumerate().skip(1) {
+            execution::check(poll)?;
             let mut shifts = DenseMatrix::zeros(components.n_components, coefficients.ncols())?;
             let mut scales = DenseMatrix::zeros(components.n_components, coefficients.ncols())?;
             let offset = self.layout().effects[effect].offset;
@@ -78,6 +98,7 @@ impl Design<'_> {
                 .iter()
                 .enumerate()
             {
+                execution::check_chunk(poll, level)?;
                 for column in 0..coefficients.ncols() {
                     scales[(component, column)] = scales[(component, column)]
                         .max(coefficients[(offset + level, column)].abs());
@@ -88,7 +109,7 @@ impl Design<'_> {
                     .as_mut_slice()
                     .par_iter_mut()
                     .enumerate()
-                    .for_each(|(index, shift)| {
+                    .try_for_each(|(index, shift)| -> Result<()> {
                         let component = index / coefficients.ncols();
                         let column = index % coefficients.ncols();
                         *shift = self.component_mean(
@@ -96,16 +117,22 @@ impl Design<'_> {
                             membership.members(component).expect("validated component"),
                             coefficients,
                             column,
-                            weights[component],
-                            scales[(component, column)],
-                        );
-                    });
-            });
+                            (
+                                weights[component].0,
+                                weights[component].1,
+                                scales[(component, column)],
+                            ),
+                            poll,
+                        )?;
+                        Ok(())
+                    })
+            })?;
             if shifts.as_slice().iter().any(|value| !value.is_finite()) {
                 return Err(numerical("FE normalization mean is not representable"));
             }
             for (local_effect, index) in [(local, effect), (0, intercepts[0])] {
                 for level in 0..self.layout().effects[index].levels {
+                    execution::check_chunk(poll, level)?;
                     let component = components.component_by_effect_level[local_effect][level];
                     let coefficient = self.coefficient_index(index, 0, level)?;
                     for column in 0..coefficients.ncols() {
@@ -116,21 +143,23 @@ impl Design<'_> {
                 }
             }
         }
-        let after = self.multiply(&normalized, team)?;
-        let mut amplitude = self.contribution_amplitudes(coefficients, team)?;
-        let normalized_amplitude = self.contribution_amplitudes(&normalized, team)?;
+        let after = self.multiply_polled(&normalized, team, poll)?;
+        let mut amplitude = self.contribution_amplitudes(coefficients, team, poll)?;
+        let normalized_amplitude = self.contribution_amplitudes(&normalized, team, poll)?;
         // Centering can move a nonzero component mean onto a row whose old
         // contributions were all tiny. Its subtracting terms then round at
         // the new gauge's scale. Audit both representations symmetrically;
         // the final original-RHS/local-span certificate remains unchanged.
-        for (scale, &other) in amplitude
+        for (position, (scale, &other)) in amplitude
             .as_mut_slice()
             .iter_mut()
             .zip(normalized_amplitude.as_slice())
+            .enumerate()
         {
+            execution::check_chunk(poll, position)?;
             *scale = scale.max(other);
         }
-        if reconstruction_errors(&amplitude, &before, &after)?
+        if reconstruction_errors(&amplitude, &before, &after, poll)?
             .iter()
             .any(|&error| !error.is_finite() || error > tolerance)
         {
@@ -145,24 +174,29 @@ impl Design<'_> {
         members: &[usize],
         coefficients: &DenseMatrix,
         column: usize,
-        weights: (f64, f64),
-        value_scale: f64,
-    ) -> f64 {
+        weights: (f64, f64, f64),
+        poll: Poll<'_>,
+    ) -> Result<f64> {
+        execution::check(poll)?;
         let (offset, codes) = effect;
-        let (weight_scale, weight) = weights;
+        let (weight_scale, weight, value_scale) = weights;
         if value_scale == 0. || weight_scale == 0. {
-            return 0.;
+            return Ok(0.);
         }
-        let numerator = compensated_sum(members.iter().map(|&row| {
-            (self.weights().at(row) / weight_scale)
-                * (coefficients[(offset + codes[row] as usize, column)] / value_scale)
-        }));
-        (numerator / weight) * value_scale
+        let numerator = execution::sum(
+            members.iter().map(|&row| {
+                (self.weights().at(row) / weight_scale)
+                    * (coefficients[(offset + codes[row] as usize, column)] / value_scale)
+            }),
+            poll,
+        )?;
+        Ok((numerator / weight) * value_scale)
     }
     fn contribution_amplitudes(
         &self,
         coefficients: &DenseMatrix,
         team: &ThreadTeam,
+        poll: Poll<'_>,
     ) -> Result<DenseMatrix> {
         let mut amplitudes = DenseMatrix::zeros(self.nobs(), coefficients.ncols())?;
         // Both fitted passes validated the frame and coefficient shapes.
@@ -172,7 +206,8 @@ impl Design<'_> {
                 .as_mut_slice()
                 .par_chunks_mut(coefficients.ncols().max(1))
                 .enumerate()
-                .for_each(|(row, scales)| {
+                .try_for_each(|(row, scales)| -> Result<()> {
+                    execution::check_chunk(poll, row)?;
                     for (column, scale) in scales.iter_mut().enumerate() {
                         for (effect, layout) in self.layout().effects.iter().enumerate() {
                             let level = self
@@ -181,6 +216,7 @@ impl Design<'_> {
                                 .expect("validated effect")
                                 .codes()[row] as usize;
                             for channel in 0..layout.channels {
+                                execution::check_chunk(poll, channel)?;
                                 *scale = scale.max(
                                     (self
                                         .basis_value(effect, channel, row)
@@ -194,8 +230,9 @@ impl Design<'_> {
                             }
                         }
                     }
-                });
-        });
+                    Ok(())
+                })
+        })?;
         Ok(amplitudes)
     }
 }

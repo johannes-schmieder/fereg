@@ -119,7 +119,7 @@ pub(super) fn execute_in(
     timings.inference = clock.elapsed();
     interrupt(Phase::Inferred)?;
     clock = Instant::now();
-    let outputs = outputs::ols(
+    let outputs = outputs::ols_polled(
         &OlsFrame {
             design: &design,
             finite_design: &raw,
@@ -131,6 +131,7 @@ pub(super) fn execute_in(
         &call.request.outputs,
         call.options.tolerance,
         team,
+        probe.poll(),
     )?;
     timings.outputs = clock.elapsed();
     interrupt(Phase::Outputs)?;

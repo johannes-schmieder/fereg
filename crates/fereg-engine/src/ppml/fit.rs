@@ -142,11 +142,12 @@ pub(super) fn execute_in(
     timings.inference = clock.elapsed();
     interrupt(Phase::Inferred)?;
     clock = Instant::now();
-    let outputs = outputs::ppml(
+    let outputs = outputs::ppml_polled(
         &accepted,
         &call.request.outputs,
         call.options.tolerance,
         team,
+        probe.poll(),
     )?;
     timings.outputs = clock.elapsed();
     interrupt(Phase::Outputs)?;

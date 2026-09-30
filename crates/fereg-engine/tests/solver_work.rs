@@ -324,6 +324,7 @@ fn derived_rhs_recovery_reuses_the_complete_calls_worker_probe() {
         execution::{self, Probe},
         FeregError,
     };
+    use std::sync::atomic::{AtomicUsize, Ordering};
     let sample = support::prepared(&[3], false, 20, 0);
     let n = sample.n_active();
     let design = Design::new(&sample, Weights::Unit).unwrap();
@@ -345,6 +346,7 @@ fn derived_rhs_recovery_reuses_the_complete_calls_worker_probe() {
                 Ok(())
             })
             .unwrap();
+        let mut total_calls = 0;
         let fit = execution::run(
             &team,
             |poll| {
@@ -361,17 +363,24 @@ fn derived_rhs_recovery_reuses_the_complete_calls_worker_probe() {
                     &team,
                 )
             },
-            &mut |()| Ok(()),
+            &mut |()| {
+                total_calls += 1;
+                Ok(())
+            },
         )
         .unwrap();
         assert_eq!(fit.recovery_diagnostics.len(), 1);
+        assert_eq!(fit.model_refinements, 0);
+        assert!(total_calls > primary_calls);
         let mut calls = 0;
+        let last_rhs_count = AtomicUsize::new(0);
         let sentinel = FeregError::new(ErrorCode::NonConvergence, "recovery host error");
         let error = execution::run(
             &team,
             |poll| {
-                wls::solve_absorbed_recorded(
-                    &mut Engine::new(&design, Estimator::Ols, &options, &team)?,
+                let mut engine = Engine::new(&design, Estimator::Ols, &options, &team)?;
+                let result = wls::solve_absorbed_recorded(
+                    &mut engine,
                     &raw,
                     &y,
                     &[Role::Ordinary],
@@ -381,11 +390,16 @@ fn derived_rhs_recovery_reuses_the_complete_calls_worker_probe() {
                     },
                     &mut Work::default(),
                     &team,
-                )
+                );
+                last_rhs_count.store(engine.last_diagnostics().len(), Ordering::Relaxed);
+                result
             },
             &mut |()| {
                 calls += 1;
-                if calls == primary_calls + 1 {
+                // Post-primary normalization/certification now also polls.
+                // The last poll belongs to the derived one-RHS projection;
+                // the primary bank has two RHSs, independently checked below.
+                if calls == total_calls {
                     Err(sentinel.clone())
                 } else {
                     Ok(())
@@ -394,6 +408,7 @@ fn derived_rhs_recovery_reuses_the_complete_calls_worker_probe() {
         )
         .unwrap_err();
         assert_eq!(error, sentinel);
-        assert_eq!(calls, primary_calls + 1);
+        assert_eq!(calls, total_calls);
+        assert_eq!(last_rhs_count.load(Ordering::Relaxed), 1);
     }
 }

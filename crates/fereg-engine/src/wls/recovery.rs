@@ -38,10 +38,18 @@ pub(super) fn finish(
 ) -> Result<Recovered> {
     let design = engine.design();
     let tolerance = engine.plan().tolerance();
-    let mut residual = design.reconstruct(&target, &coefficients, team)?;
+    let mut residual =
+        design.reconstruct_polled(&target, &coefficients, team, model.probe.poll())?;
     let mut diagnostics = Vec::new();
     let mut setup = Vec::new();
-    let mut certificate = match design.certify(&target, &coefficients, &residual, tolerance, team) {
+    let mut certificate = match design.certify_polled(
+        &target,
+        &coefficients,
+        &residual,
+        tolerance,
+        team,
+        model.probe.poll(),
+    ) {
         Ok(certificate) => certificate,
         Err(error) if error.code == ErrorCode::NonConvergence => {
             // Cancellation can make the combined RHS much smaller than its
@@ -72,9 +80,21 @@ pub(super) fn finish(
         {
             *alpha += delta;
         }
-        design.normalize_coefficients(&mut coefficients, tolerance, team)?;
-        residual = design.reconstruct(&target, &coefficients, team)?;
-        certificate = design.certify(&target, &coefficients, &residual, tolerance, team)?;
+        design.normalize_coefficients_polled(
+            &mut coefficients,
+            tolerance,
+            team,
+            model.probe.poll(),
+        )?;
+        residual = design.reconstruct_polled(&target, &coefficients, team, model.probe.poll())?;
+        certificate = design.certify_polled(
+            &target,
+            &coefficients,
+            &residual,
+            tolerance,
+            team,
+            model.probe.poll(),
+        )?;
         let next = original_score_fn(engine, &model, &residual)?;
         refinements += 1;
         if next >= original_score {

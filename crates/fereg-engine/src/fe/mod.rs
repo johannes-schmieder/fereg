@@ -8,6 +8,8 @@ mod design;
 mod diagnostics;
 mod direct;
 mod engine;
+#[cfg(test)]
+mod interruption_tests;
 mod lsmr;
 mod lsmr_refine;
 mod monitor;

@@ -119,9 +119,9 @@ impl<'a, 'data> CmgSession<'a, 'data> {
                 "CMG nuisance projection did not converge; inspect setup progress",
             ));
         }
-        let residuals = self
-            .design
-            .reconstruct(&columns, &projected.coefficients, team)?;
+        let residuals =
+            self.design
+                .reconstruct_polled(&columns, &projected.coefficients, team, poll)?;
         let mut scaled = ScaledDesign::new(residuals, self.design.weights(), poll)?;
         scaled.reference_scales(&references, poll)?;
         let factor = WeightedQr::from_reference_scaled(scaled, rank_threshold, poll)?;
@@ -162,9 +162,9 @@ impl<'a, 'data> CmgSession<'a, 'data> {
             .ok_or_else(|| invalid("CMG nuisance preparation has not succeeded"))?;
         let poll = limits.poll;
         let mut candidate = self.core.solve_with_roundoff(rhs, limits, roundoff, team)?;
-        let mut residuals = self
-            .design
-            .reconstruct(rhs, &candidate.coefficients, team)?;
+        let mut residuals =
+            self.design
+                .reconstruct_polled(rhs, &candidate.coefficients, team, poll)?;
         for (column, attempt) in candidate.progress.iter().enumerate() {
             if attempt.stop != StopReason::Converged {
                 for row in 0..residuals.nrows() {

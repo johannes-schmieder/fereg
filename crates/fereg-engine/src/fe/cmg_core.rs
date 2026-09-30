@@ -145,7 +145,7 @@ impl<'a, 'data> CmgCore<'a, 'data> {
             self.workspaces
                 .push(PcgWorkspace::try_new(&self.preconditioner).map_err(cmg_error)?);
         }
-        let moments = self.design.transpose_weighted(rhs, team)?;
+        let moments = self.design.transpose_weighted_polled(rhs, team, poll)?;
         let mut results = reserved(rhs.ncols())?;
         results.resize_with(rhs.ncols(), || None);
         let context = SolveContext {

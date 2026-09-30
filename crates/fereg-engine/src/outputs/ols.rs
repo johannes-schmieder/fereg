@@ -2,7 +2,13 @@ use super::{
     allocate, fixed, invalid, numerical, validate_scatter, Kind, OutputCertificate, Outputs,
     Request,
 };
-use crate::{data::DenseMatrix, error::Result, fe::Design, threads::ThreadTeam};
+use crate::{
+    data::DenseMatrix,
+    error::Result,
+    execution::{self, Poll},
+    fe::Design,
+    threads::ThreadTeam,
+};
 
 #[derive(Debug)]
 pub struct OlsFrame<'a, 'data> {
@@ -23,6 +29,16 @@ pub fn ols(
     tolerance: f64,
     team: &ThreadTeam,
 ) -> Result<Outputs> {
+    ols_polled(frame, request, tolerance, team, None)
+}
+pub(crate) fn ols_polled(
+    frame: &OlsFrame<'_, '_>,
+    request: &Request,
+    tolerance: f64,
+    team: &ThreadTeam,
+    poll: Poll<'_>,
+) -> Result<Outputs> {
+    execution::check(poll)?;
     validate(frame, request, tolerance)?;
     let sample = frame.design.sample();
     let kinds = request.kinds(false)?;
@@ -31,22 +47,30 @@ pub fn ols(
         validate_scatter(sample, &output)?;
         return Ok(output);
     }
-    let mut alpha = fixed::normalized(frame.design, frame.absorbed_coefficients, tolerance, team)?;
+    let mut alpha = fixed::normalized(
+        frame.design,
+        frame.absorbed_coefficients,
+        tolerance,
+        team,
+        poll,
+    )?;
     let n = sample.n_active();
     let mut rhs = DenseMatrix::zeros(n, 1)?;
     let mut residual = DenseMatrix::zeros(n, 1)?;
     for row in 0..n {
+        execution::check_chunk(poll, row)?;
         rhs[(row, 0)] = sample.outcome[row] - finite_row(frame, row, 0.);
         residual[(row, 0)] = frame.residuals[row];
     }
     let certificate = frame
         .design
-        .certify(&rhs, &alpha, &residual, tolerance, team)?;
-    transfer_constant(frame, &mut alpha)?;
-    let absorbed = frame.design.multiply(&alpha, team)?;
+        .certify_polled(&rhs, &alpha, &residual, tolerance, team, poll)?;
+    transfer_constant(frame, &mut alpha, poll)?;
+    let absorbed = frame.design.multiply_polled(&alpha, team, poll)?;
     let mut output = allocate(sample, kinds)?;
     let mut reconstruction = 0_f64;
     for (row, &original) in sample.retained_rows().iter().enumerate() {
+        execution::check_chunk(poll, row)?;
         let xb = finite_row(frame, row, frame.reported_constant);
         let d = absorbed[(row, 0)];
         let r = frame.residuals[row];
@@ -98,7 +122,11 @@ fn finite_row(frame: &OlsFrame<'_, '_>, row: usize, constant: f64) -> f64 {
 // Certify the original numerical RHS before splitting out the reported
 // constant. A row with y == _cons must retain its original response scale;
 // centering it to zero cannot turn roundoff into a unit reconstruction error.
-fn transfer_constant(frame: &OlsFrame<'_, '_>, alpha: &mut DenseMatrix) -> Result<()> {
+fn transfer_constant(
+    frame: &OlsFrame<'_, '_>,
+    alpha: &mut DenseMatrix,
+    poll: Poll<'_>,
+) -> Result<()> {
     if frame.reported_constant != 0. {
         let effect = frame
             .design
@@ -110,6 +138,7 @@ fn transfer_constant(frame: &OlsFrame<'_, '_>, alpha: &mut DenseMatrix) -> Resul
         // A global transfer from the first intercept preserves the ordinary
         // per-component gauge of all later effects and every slope channel.
         for level in 0..frame.design.layout().effects[effect].levels {
+            execution::check_chunk(poll, level)?;
             let index = frame.design.coefficient_index(effect, 0, level)?;
             alpha[(index, 0)] -= frame.reported_constant;
         }

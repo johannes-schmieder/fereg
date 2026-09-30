@@ -41,19 +41,19 @@ where
         let mut previous_update = f64::INFINITY;
         loop {
             execution::check(poll)?;
-            let measured =
-                design
-                    .reconstruct(&original, &coefficients, team)
-                    .and_then(|residual| {
-                        let evidence = design.measure_certificate(
-                            &original,
-                            &coefficients,
-                            &residual,
-                            tolerance,
-                            team,
-                        )?;
-                        Ok((residual, evidence))
-                    });
+            let measured = design
+                .reconstruct_polled(&original, &coefficients, team, poll)
+                .and_then(|residual| {
+                    let evidence = design.measure_certificate(
+                        &original,
+                        &coefficients,
+                        &residual,
+                        tolerance,
+                        team,
+                        poll,
+                    )?;
+                    Ok((residual, evidence))
+                });
             let Some((residual, evidence)) = retain_numeric_stop(measured, progress)? else {
                 break;
             };
@@ -118,23 +118,25 @@ where
             let work = &work[0];
             progress.iterations += work.iterations;
             progress.refinements += 1;
-            let Some(fitted) = retain_numeric_stop(design.multiply(&correction, team), progress)?
+            let Some(fitted) =
+                retain_numeric_stop(design.multiply_polled(&correction, team, poll), progress)?
             else {
                 break;
             };
-            update = (0..fitted.nrows()).fold(0_f64, |norm, row| {
+            update = execution::fold(0..fitted.nrows(), 0_f64, poll, |norm, row| {
                 let value = design.weights().at(row).sqrt() * fitted[(row, 0)];
                 norm.hypot(if within_norm == 0. {
                     value
                 } else {
                     value / within_norm
                 })
-            });
+            })?;
             if !update.is_finite() {
                 progress.stop = StopReason::NumericalBreakdown;
                 break;
             }
             for row in 0..coefficients.nrows() {
+                execution::check_chunk(poll, row)?;
                 let next = coefficients[(row, 0)] + correction[(row, 0)];
                 if !next.is_finite() {
                     progress.stop = StopReason::NumericalBreakdown;

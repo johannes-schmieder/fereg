@@ -125,7 +125,9 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             ));
         }
         let initial = self.project_eliminated(rhs, team, poll)?;
-        let mut b = self.design.transpose_weighted(&initial, team)?;
+        let mut b = self
+            .design
+            .transpose_weighted_polled(&initial, team, poll)?;
         zero_effect(self.design, self.eliminated, &mut b);
         let mut x = match &self.warm {
             Some(warm) if warm_start && warm.ncols() == rhs.ncols() => copy_matrix(warm)?,
@@ -236,7 +238,9 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         team: &ThreadTeam,
         poll: Poll<'_>,
     ) -> Result<DenseMatrix> {
-        let remaining = self.design.reconstruct(rhs, coefficients, team)?;
+        let remaining = self
+            .design
+            .reconstruct_polled(rhs, coefficients, team, poll)?;
         let eliminated =
             self.blocks
                 .observation_solve(self.design, self.eliminated, &remaining, team, poll)?;
@@ -256,7 +260,8 @@ impl<'a, 'data> SchurSession<'a, 'data> {
                 "Schur recovered coefficients are not representable",
             ));
         }
-        self.design.reconstruct(rhs, coefficients, team)
+        self.design
+            .reconstruct_polled(rhs, coefficients, team, poll)
     }
     fn project_eliminated(
         &self,
@@ -267,7 +272,8 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         let coefficients =
             self.blocks
                 .observation_solve(self.design, self.eliminated, rhs, team, poll)?;
-        self.design.reconstruct(rhs, &coefficients, team)
+        self.design
+            .reconstruct_polled(rhs, &coefficients, team, poll)
     }
     fn apply(
         &self,
@@ -275,9 +281,11 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         team: &ThreadTeam,
         poll: Poll<'_>,
     ) -> Result<DenseMatrix> {
-        let fitted = self.design.multiply(reduced, team)?;
+        let fitted = self.design.multiply_polled(reduced, team, poll)?;
         let residual = self.project_eliminated(&fitted, team, poll)?;
-        let mut result = self.design.transpose_weighted(&residual, team)?;
+        let mut result = self
+            .design
+            .transpose_weighted_polled(&residual, team, poll)?;
         zero_effect(self.design, self.eliminated, &mut result);
         Ok(result)
     }

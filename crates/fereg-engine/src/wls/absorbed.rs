@@ -144,7 +144,12 @@ pub fn solve_absorbed_recorded(
         )?;
     }
     let tolerance = engine.plan().tolerance();
-    design.normalize_coefficients(&mut absorbed_coefficients, tolerance, team)?;
+    design.normalize_coefficients_polled(
+        &mut absorbed_coefficients,
+        tolerance,
+        team,
+        probe.poll(),
+    )?;
     let mut target = DenseMatrix::zeros(n, 1)?;
     for row in 0..n {
         execution::check_chunk(probe.dense(), row)?;

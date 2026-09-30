@@ -7,7 +7,9 @@ use crate::{
     error::{reserved, ErrorCode, FeregError, Result},
     fe::Certificate,
 };
+pub(crate) use ols::ols_polled;
 pub use ols::{ols, OlsFrame};
+pub(crate) use ppml::ppml_polled;
 pub use ppml::{ppml, PpmlRequest};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

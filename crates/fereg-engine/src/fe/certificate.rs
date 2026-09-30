@@ -1,12 +1,13 @@
 //! One coefficient reconstruction and weighted local-span acceptance rule.
 use super::{
-    certificate_basis::level_basis, design::validate_matrix, Certificate, Design, Projection,
-    RhsDiagnostics,
+    certificate_basis::level_basis, design::validate_matrix_polled, Certificate, Design,
+    Projection, RhsDiagnostics,
 };
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    threads::{compensated_sum, ThreadTeam, REDUCTION_CHUNK},
+    execution::{self, Poll},
+    threads::{ThreadTeam, REDUCTION_CHUNK},
 };
 use rayon::prelude::*;
 impl Design<'_> {
@@ -18,8 +19,19 @@ impl Design<'_> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<Certificate> {
+        self.certify_polled(rhs, coefficients, residuals, tolerance, team, None)
+    }
+    pub(crate) fn certify_polled(
+        &self,
+        rhs: &DenseMatrix,
+        coefficients: &DenseMatrix,
+        residuals: &DenseMatrix,
+        tolerance: f64,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<Certificate> {
         let certificate =
-            self.measure_certificate(rhs, coefficients, residuals, tolerance, team)?;
+            self.measure_certificate(rhs, coefficients, residuals, tolerance, team, poll)?;
         for (kind, errors) in [
             ("local-span", &certificate.relative_score),
             ("reconstruction", &certificate.relative_reconstruction),
@@ -44,16 +56,18 @@ impl Design<'_> {
         residuals: &DenseMatrix,
         tolerance: f64,
         team: &ThreadTeam,
+        poll: Poll<'_>,
     ) -> Result<Certificate> {
+        execution::check(poll)?;
         check_tolerance(tolerance)?;
-        validate_matrix(residuals, self.nobs())?;
-        let reconstructed = self.reconstruct(rhs, coefficients, team)?;
+        validate_matrix_polled(residuals, self.nobs(), poll)?;
+        let reconstructed = self.reconstruct_polled(rhs, coefficients, team, poll)?;
         if residuals.ncols() != rhs.ncols() {
             return Err(invalid("certificate RHS counts differ"));
         }
-        let reconstruction = reconstruction_errors(rhs, &reconstructed, residuals)?;
-        let reference_norm = weighted_norms(self, rhs, team)?;
-        let residual_norm = weighted_norms(self, residuals, team)?;
+        let reconstruction = reconstruction_errors(rhs, &reconstructed, residuals, poll)?;
+        let reference_norm = weighted_norms(self, rhs, team, poll)?;
+        let residual_norm = weighted_norms(self, residuals, team, poll)?;
         let mut scales = reserved(rhs.ncols())?;
         scales.extend(
             reference_norm
@@ -66,6 +80,7 @@ impl Design<'_> {
         let mut raw = zeros(rhs.ncols())?;
         let mut groups = 0;
         for effect in 0..self.layout().effects.len() {
+            execution::check(poll)?;
             let levels = self.layout().effects[effect].levels;
             let mut results = reserved(levels)?;
             results.resize_with(levels, || None);
@@ -74,10 +89,11 @@ impl Design<'_> {
                     .par_iter_mut()
                     .enumerate()
                     .for_each(|(level, result)| {
-                        *result = Some(check_level(self, effect, level, residuals, &scales));
+                        *result = Some(check_level(self, effect, level, residuals, &scales, poll));
                     })
             });
-            for result in results {
+            for (level, result) in results.into_iter().enumerate() {
+                execution::check_chunk(poll, level)?;
                 let (relative, moments) = result.expect("visited certificate level")?;
                 for column in 0..rhs.ncols() {
                     score[column] = score[column].max(relative[column]);
@@ -106,17 +122,29 @@ impl Design<'_> {
     pub fn finish_candidate(
         &self,
         rhs: &DenseMatrix,
-        mut coefficients: DenseMatrix,
+        coefficients: DenseMatrix,
         diagnostics: Vec<RhsDiagnostics>,
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<Projection> {
+        self.finish_candidate_polled(rhs, coefficients, diagnostics, tolerance, team, None)
+    }
+    pub(super) fn finish_candidate_polled(
+        &self,
+        rhs: &DenseMatrix,
+        mut coefficients: DenseMatrix,
+        diagnostics: Vec<RhsDiagnostics>,
+        tolerance: f64,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<Projection> {
+        execution::check(poll)?;
         check_tolerance(tolerance)?;
         if diagnostics.len() != rhs.ncols() {
             return Err(invalid("FE diagnostics and RHS counts differ"));
         }
-        self.normalize_coefficients(&mut coefficients, tolerance, team)?;
-        self.certified_projection(rhs, coefficients, diagnostics, tolerance, team)
+        self.normalize_coefficients_polled(&mut coefficients, tolerance, team, poll)?;
+        self.certified_projection(rhs, coefficients, diagnostics, tolerance, team, poll)
     }
     pub(super) fn certified_projection(
         &self,
@@ -125,12 +153,15 @@ impl Design<'_> {
         diagnostics: Vec<RhsDiagnostics>,
         tolerance: f64,
         team: &ThreadTeam,
+        poll: Poll<'_>,
     ) -> Result<Projection> {
+        execution::check(poll)?;
         if diagnostics.len() != rhs.ncols() {
             return Err(invalid("FE diagnostics and RHS counts differ"));
         }
-        let residuals = self.reconstruct(rhs, &coefficients, team)?;
-        let certificate = self.certify(rhs, &coefficients, &residuals, tolerance, team)?;
+        let residuals = self.reconstruct_polled(rhs, &coefficients, team, poll)?;
+        let certificate =
+            self.certify_polled(rhs, &coefficients, &residuals, tolerance, team, poll)?;
         Ok(Projection {
             coefficients,
             residuals,
@@ -146,31 +177,37 @@ fn check_level(
     level: usize,
     residuals: &DenseMatrix,
     scales: &[f64],
+    poll: Poll<'_>,
 ) -> Result<(Vec<f64>, Vec<f64>)> {
+    execution::check(poll)?;
     let members = design
         .topology()
         .effect_partition(effect)?
         .membership()
         .members(level)?;
-    let basis = level_basis(design, effect, level)?;
+    let basis = level_basis(design, effect, level, poll)?;
     let mut scores = zeros(residuals.ncols())?;
     let mut raw = zeros(residuals.ncols())?;
     for column in 0..residuals.ncols() {
+        execution::check(poll)?;
         for direction in &basis {
-            let projection = compensated_sum(members.iter().enumerate().map(|(local, &row)| {
-                let value = design.weights().at(row).sqrt() * residuals[(row, column)];
-                direction[local]
-                    * if scales[column] == 0. {
-                        value
-                    } else {
-                        value / scales[column]
-                    }
-            }));
+            let projection = execution::sum(
+                members.iter().enumerate().map(|(local, &row)| {
+                    let value = design.weights().at(row).sqrt() * residuals[(row, column)];
+                    direction[local]
+                        * if scales[column] == 0. {
+                            value
+                        } else {
+                            value / scales[column]
+                        }
+                }),
+                poll,
+            )?;
             scores[column] = scores[column].hypot(projection);
         }
         for channel in 0..design.layout().effects[effect].channels {
             raw[column] = raw[column].max(raw_moment(
-                design, effect, channel, members, residuals, column,
+                design, effect, channel, members, residuals, column, poll,
             )?);
         }
         if !scores[column].is_finite() {
@@ -186,10 +223,12 @@ fn raw_moment(
     members: &[usize],
     residuals: &DenseMatrix,
     column: usize,
+    poll: Poll<'_>,
 ) -> Result<f64> {
     let mut left_scale = 0_f64;
     let mut right_scale = 0_f64;
-    for &row in members {
+    for (local, &row) in members.iter().enumerate() {
+        execution::check_chunk(poll, local)?;
         let root = design.weights().at(row).sqrt();
         left_scale = left_scale.max((root * design.basis_value(effect, channel, row)?).abs());
         right_scale = right_scale.max((root * residuals[(row, column)]).abs());
@@ -197,15 +236,18 @@ fn raw_moment(
     if left_scale == 0. || right_scale == 0. {
         return Ok(0.);
     }
-    let normalized = compensated_sum(members.iter().map(|&row| {
-        let root = design.weights().at(row).sqrt();
-        (root
-            * design
-                .basis_value(effect, channel, row)
-                .expect("validated channel")
-            / left_scale)
-            * (root * residuals[(row, column)] / right_scale)
-    }));
+    let normalized = execution::sum(
+        members.iter().map(|&row| {
+            let root = design.weights().at(row).sqrt();
+            (root
+                * design
+                    .basis_value(effect, channel, row)
+                    .expect("validated channel")
+                / left_scale)
+                * (root * residuals[(row, column)] / right_scale)
+        }),
+        poll,
+    )?;
     if normalized == 0. {
         return Ok(0.);
     }
@@ -221,10 +263,14 @@ pub(super) fn reconstruction_errors(
     reference: &DenseMatrix,
     expected: &DenseMatrix,
     actual: &DenseMatrix,
+    poll: Poll<'_>,
 ) -> Result<Vec<f64>> {
+    execution::check(poll)?;
     let mut errors = zeros(reference.ncols())?;
     for column in 0..reference.ncols() {
+        execution::check(poll)?;
         for row in 0..reference.nrows() {
+            execution::check_chunk(poll, row)?;
             let scale = reference[(row, column)]
                 .abs()
                 .max(expected[(row, column)].abs())
@@ -243,7 +289,9 @@ fn weighted_norms(
     design: &Design<'_>,
     matrix: &DenseMatrix,
     team: &ThreadTeam,
+    poll: Poll<'_>,
 ) -> Result<Vec<f64>> {
+    execution::check(poll)?;
     let width = matrix.ncols();
     let mut partials = DenseMatrix::zeros(matrix.nrows().div_ceil(REDUCTION_CHUNK), width)?;
     // Hypot retains range safety. Fixed row partitions and an ordered merge
@@ -253,7 +301,8 @@ fn weighted_norms(
             .as_mut_slice()
             .par_chunks_mut(width.max(1))
             .enumerate()
-            .for_each(|(chunk, norms)| {
+            .try_for_each(|(chunk, norms)| -> Result<()> {
+                execution::check(poll)?;
                 let start = chunk * REDUCTION_CHUNK;
                 for row in start..start.saturating_add(REDUCTION_CHUNK).min(matrix.nrows()) {
                     let root = design.weights().at(row).sqrt();
@@ -261,11 +310,14 @@ fn weighted_norms(
                         *norm = norm.hypot(root * matrix[(row, column)]);
                     }
                 }
-            });
-    });
+                Ok(())
+            })
+    })?;
     let mut norms = zeros(matrix.ncols())?;
     for (column, norm) in norms.iter_mut().enumerate() {
+        execution::check(poll)?;
         for chunk in 0..partials.nrows() {
+            execution::check_chunk(poll, chunk)?;
             *norm = norm.hypot(partials[(chunk, column)]);
         }
         if !norm.is_finite() {

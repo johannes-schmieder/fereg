@@ -1,5 +1,8 @@
 //! Multipartite components, with canonical labels in effect/level traversal order.
-use crate::error::{reserved, ErrorCode, FeregError, Result};
+use crate::{
+    error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ComponentInfo {
@@ -11,9 +14,12 @@ struct UnionFind {
     rank: Vec<u8>,
 }
 impl UnionFind {
-    fn new(n: usize) -> Result<Self> {
+    fn new(n: usize, poll: Poll<'_>) -> Result<Self> {
         let mut parent = reserved(n)?;
-        parent.extend(0..n);
+        for node in 0..n {
+            execution::check_chunk(poll, node)?;
+            parent.push(node);
+        }
         let mut rank = reserved(n)?;
         rank.resize(n, 0);
         Ok(Self { parent, rank })
@@ -51,21 +57,31 @@ pub fn connected_components(
     levels: &[usize],
     active: &[bool],
 ) -> Result<ComponentInfo> {
-    components(codes, levels, active.len(), Some(active))
+    components(codes, levels, active.len(), Some(active), None)
 }
 pub(crate) fn connected_components_all(
     codes: &[&[u32]],
     levels: &[usize],
     nobs: usize,
 ) -> Result<ComponentInfo> {
-    components(codes, levels, nobs, None)
+    connected_components_all_polled(codes, levels, nobs, None)
+}
+pub(crate) fn connected_components_all_polled(
+    codes: &[&[u32]],
+    levels: &[usize],
+    nobs: usize,
+    poll: Poll<'_>,
+) -> Result<ComponentInfo> {
+    components(codes, levels, nobs, None, poll)
 }
 fn components(
     codes: &[&[u32]],
     levels: &[usize],
     nobs: usize,
     active: Option<&[bool]>,
+    poll: Poll<'_>,
 ) -> Result<ComponentInfo> {
+    execution::check(poll)?;
     if codes.len() != levels.len() || codes.iter().any(|column| column.len() != nobs) {
         return Err(invalid("component code, level and row dimensions differ"));
     }
@@ -81,10 +97,11 @@ fn components(
         );
     }
     let nodes = *offsets.last().unwrap();
-    let mut union = UnionFind::new(nodes)?;
+    let mut union = UnionFind::new(nodes, poll)?;
     let mut labels = reserved(nodes)?;
     labels.resize(nodes, usize::MAX);
     for row in 0..nobs {
+        execution::check_chunk(poll, row)?;
         if active.is_some_and(|active| !active[row]) {
             continue;
         }
@@ -105,10 +122,12 @@ fn components(
     }
     // Freeze roots before reusing the parent allocation for public labels.
     for node in 0..nodes {
+        execution::check_chunk(poll, node)?;
         union.find(node);
     }
     let mut count = 0usize;
     for (node, label) in labels.iter_mut().enumerate() {
+        execution::check_chunk(poll, node)?;
         if *label == usize::MAX {
             continue;
         }
@@ -125,6 +144,7 @@ fn components(
     }
     let mut by_effect = reserved(levels.len())?;
     for effect in 0..levels.len() {
+        execution::check(poll)?;
         let mut row = reserved(levels[effect])?;
         row.extend_from_slice(&labels[offsets[effect]..offsets[effect + 1]]);
         by_effect.push(row);

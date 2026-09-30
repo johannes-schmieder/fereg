@@ -13,8 +13,8 @@ use crate::{
 };
 pub use build::prepare_fixed_effects;
 pub(crate) use build::prepare_unpruned;
-pub(crate) use components::connected_components_all;
 pub use components::{connected_components, ComponentInfo};
+pub(crate) use components::{connected_components_all, connected_components_all_polled};
 pub use membership::LevelIndex;
 pub use singleton::{
     prune_singletons, prune_singletons_with_multiplicity, SingletonMultiplicity, SingletonResult,

@@ -56,19 +56,20 @@ impl SchurSession<'_, '_> {
                 Ok((correction.coefficients, correction.progress))
             },
         )?;
-        candidate.residuals = match design.reconstruct(rhs, &candidate.coefficients, team) {
-            Ok(residuals) => residuals,
-            Err(error)
-                if error.code == crate::error::ErrorCode::NonConvergence
-                    && candidate
-                        .progress
-                        .iter()
-                        .any(|work| work.stop != StopReason::Converged) =>
-            {
-                DenseMatrix::zeros(rhs.nrows(), rhs.ncols())?
-            }
-            Err(error) => return Err(error),
-        };
+        candidate.residuals =
+            match design.reconstruct_polled(rhs, &candidate.coefficients, team, poll) {
+                Ok(residuals) => residuals,
+                Err(error)
+                    if error.code == crate::error::ErrorCode::NonConvergence
+                        && candidate
+                            .progress
+                            .iter()
+                            .any(|work| work.stop != StopReason::Converged) =>
+                {
+                    DenseMatrix::zeros(rhs.nrows(), rhs.ncols())?
+                }
+                Err(error) => return Err(error),
+            };
         self.retain_refinement(
             &candidate.coefficients,
             candidate

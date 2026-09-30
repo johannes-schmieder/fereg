@@ -3,6 +3,7 @@ use super::{invalid, Request};
 use crate::{
     data::DenseMatrix,
     error::{reserved, Result},
+    execution::Poll,
     fe::Design,
     threads::ThreadTeam,
     topology::FeTopology,
@@ -12,12 +13,13 @@ pub(super) fn normalized(
     coefficients: &DenseMatrix,
     tolerance: f64,
     team: &ThreadTeam,
+    poll: Poll<'_>,
 ) -> Result<DenseMatrix> {
     let mut values = reserved(coefficients.as_slice().len())?;
     values.extend_from_slice(coefficients.as_slice());
     let mut alpha =
         DenseMatrix::from_row_major(coefficients.nrows(), coefficients.ncols(), values)?;
-    design.normalize_coefficients(&mut alpha, tolerance, team)?;
+    design.normalize_coefficients_polled(&mut alpha, tolerance, team, poll)?;
     Ok(alpha)
 }
 pub(super) fn contribution(

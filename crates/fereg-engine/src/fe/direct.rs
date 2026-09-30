@@ -66,7 +66,7 @@ impl Design<'_> {
                 }
             }
         }
-        let residuals = self.reconstruct(rhs, &coefficients, team)?;
+        let residuals = self.reconstruct_polled(rhs, &coefficients, team, poll)?;
         Ok(DirectCandidate {
             coefficients,
             residuals,

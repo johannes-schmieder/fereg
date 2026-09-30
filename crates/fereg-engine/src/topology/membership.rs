@@ -1,5 +1,8 @@
 //! One CSR membership index; codes and membership are independently checked.
-use crate::error::{reserved, ErrorCode, FeregError, Result};
+use crate::{
+    error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LevelIndex {
     offsets: Vec<usize>,
@@ -7,9 +10,14 @@ pub struct LevelIndex {
 }
 impl LevelIndex {
     pub fn from_codes(codes: &[u32], levels: usize) -> Result<Self> {
+        Self::from_codes_polled(codes, levels, None)
+    }
+    pub(crate) fn from_codes_polled(codes: &[u32], levels: usize, poll: Poll<'_>) -> Result<Self> {
+        execution::check(poll)?;
         let mut offsets = reserved(levels.checked_add(1).ok_or_else(allocation)?)?;
         offsets.resize(levels + 1, 0usize);
-        for &code in codes {
+        for (row, &code) in codes.iter().enumerate() {
+            execution::check_chunk(poll, row)?;
             let level = code as usize;
             if level >= levels {
                 return Err(FeregError::new(
@@ -20,6 +28,7 @@ impl LevelIndex {
             offsets[level + 1] = offsets[level + 1].checked_add(1).ok_or_else(allocation)?;
         }
         for level in 0..levels {
+            execution::check_chunk(poll, level)?;
             offsets[level + 1] = offsets[level + 1]
                 .checked_add(offsets[level])
                 .ok_or_else(allocation)?;
@@ -29,6 +38,7 @@ impl LevelIndex {
         let mut observations = reserved(codes.len())?;
         observations.resize(codes.len(), 0);
         for (row, &code) in codes.iter().enumerate() {
+            execution::check_chunk(poll, row)?;
             observations[next[code as usize]] = row;
             next[code as usize] += 1;
         }
@@ -36,7 +46,7 @@ impl LevelIndex {
             offsets,
             observations,
         };
-        result.validate(codes)?;
+        result.validate_polled(codes, poll)?;
         Ok(result)
     }
     #[must_use]
@@ -54,23 +64,38 @@ impl LevelIndex {
         Ok(&self.observations[self.offsets[level]..self.offsets[level + 1]])
     }
     pub fn validate(&self, codes: &[u32]) -> Result<()> {
+        self.validate_polled(codes, None)
+    }
+    fn validate_polled(&self, codes: &[u32], poll: Poll<'_>) -> Result<()> {
+        execution::check(poll)?;
         if self.offsets.is_empty()
             || self.offsets[0] != 0
             || self.offsets.last() != Some(&codes.len())
             || self.observations.len() != codes.len()
-            || self.offsets.windows(2).any(|x| x[0] > x[1])
         {
             return Err(invalid("membership offsets do not cover the row axis"));
         }
+        for (level, pair) in self.offsets.windows(2).enumerate() {
+            execution::check_chunk(poll, level)?;
+            if pair[0] > pair[1] {
+                return Err(invalid("membership offsets do not cover the row axis"));
+            }
+        }
         let mut count = 0usize;
         for level in 0..self.n_levels() {
+            execution::check_chunk(poll, level)?;
             let members = self.members(level)?;
-            if members.windows(2).any(|x| x[0] >= x[1])
-                || members
-                    .iter()
-                    .any(|&row| codes.get(row).copied() != Some(level as u32))
-            {
-                return Err(invalid("membership rows disagree with categorical codes"));
+            for (local, pair) in members.windows(2).enumerate() {
+                execution::check_chunk(poll, local)?;
+                if pair[0] >= pair[1] {
+                    return Err(invalid("membership rows disagree with categorical codes"));
+                }
+            }
+            for (local, &row) in members.iter().enumerate() {
+                execution::check_chunk(poll, local)?;
+                if codes.get(row).copied() != Some(level as u32) {
+                    return Err(invalid("membership rows disagree with categorical codes"));
+                }
             }
             count += members.len();
         }

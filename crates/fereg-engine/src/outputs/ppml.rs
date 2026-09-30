@@ -6,6 +6,7 @@ use super::{
 use crate::{
     data::{DenseMatrix, Weights},
     error::Result,
+    execution::{self, Poll},
     fe::Design,
     ppml::{
         family::mean_from_eta,
@@ -28,6 +29,16 @@ pub fn ppml(
     tolerance: f64,
     team: &ThreadTeam,
 ) -> Result<Outputs> {
+    ppml_polled(fit, request, tolerance, team, None)
+}
+pub(crate) fn ppml_polled(
+    fit: &irls::Fit<'_>,
+    request: &PpmlRequest,
+    tolerance: f64,
+    team: &ThreadTeam,
+    poll: Poll<'_>,
+) -> Result<Outputs> {
+    execution::check(poll)?;
     if !tolerance.is_finite() || tolerance <= 0. || tolerance >= 1. {
         return Err(invalid("PPML output tolerance is invalid"));
     }
@@ -53,21 +64,23 @@ pub fn ppml(
     // The sealed final-Hessian fit already owns the common qmu-normalized
     // gauge. Re-normalizing it could perturb a tiny original FE target.
     let alpha = &fit.point.absorbed;
-    let absorbed = design.multiply(alpha, team)?;
+    let absorbed = design.multiply_polled(alpha, team, poll)?;
     let offset = irls::input::offset(sample)?;
     let n = sample.n_active();
     let mut rhs = DenseMatrix::zeros(n, 1)?;
     let mut residual = DenseMatrix::zeros(n, 1)?;
     for row in 0..n {
+        execution::check_chunk(poll, row)?;
         rhs[(row, 0)] = fit.point.eta[row]
             - offset.as_deref().map_or(0., |v| v[row])
             - problem.raw.row_combination(row, &fit.point.finite, 0.);
         residual[(row, 0)] = fit.linear.residuals[row];
     }
-    let certificate = design.certify(&rhs, alpha, &residual, tolerance, team)?;
+    let certificate = design.certify_polled(&rhs, alpha, &residual, tolerance, team, poll)?;
     let mut output = allocate(sample, kinds)?;
     let mut reconstruction = 0_f64;
     for (row, &original) in sample.retained_rows().iter().enumerate() {
+        execution::check_chunk(poll, row)?;
         let adjustment = offset.as_deref().map_or(0., |v| v[row]);
         let finite = problem.raw.row_combination(row, &fit.point.finite, 0.);
         let xb = adjustment + finite;

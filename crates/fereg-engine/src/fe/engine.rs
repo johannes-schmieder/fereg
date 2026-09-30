@@ -152,8 +152,8 @@ impl<'a, 'data> Engine<'a, 'data> {
     }
     /// Project with caller-thread host checks, including each Krylov iteration
     /// and residual-refinement round. Cancellation publishes no projection.
-    /// Shared QR factors and triangular actions also poll internally;
-    /// certification/gauge kernels still run to their next boundary. Discard an aborted frame.
+    /// Shared operators, QR actions, fresh certificates and atomic gauges poll
+    /// internally. Discard an aborted frame.
     pub fn project_with(
         &mut self,
         rhs: &DenseMatrix,
@@ -193,7 +193,7 @@ impl<'a, 'data> Engine<'a, 'data> {
             });
         }
         execution::check(poll)?;
-        if let Some(mut accepted) = self.accept_bank(rhs, &coefficients, team)? {
+        if let Some(mut accepted) = self.accept_bank(rhs, &coefficients, team, poll)? {
             accepted.setup_diagnostics = diagnostics::copy_setup(&self.last_setup)?;
             return Ok(accepted);
         }
@@ -214,6 +214,7 @@ impl<'a, 'data> Engine<'a, 'data> {
             diagnostics::copy_rhs(&self.last_diagnostics)?,
             self.plan.tolerance(),
             team,
+            poll,
         )?;
         result.setup_diagnostics = diagnostics::copy_setup(&self.last_setup)?;
         Ok(result)
@@ -223,6 +224,7 @@ impl<'a, 'data> Engine<'a, 'data> {
         rhs: &DenseMatrix,
         coefficients: &DenseMatrix,
         team: &ThreadTeam,
+        poll: Poll<'_>,
     ) -> Result<Option<Projection>> {
         if self
             .last_diagnostics
@@ -239,12 +241,13 @@ impl<'a, 'data> Engine<'a, 'data> {
         values.extend_from_slice(coefficients.as_slice());
         let candidate =
             DenseMatrix::from_row_major(coefficients.nrows(), coefficients.ncols(), values)?;
-        match self.design.finish_candidate(
+        match self.design.finish_candidate_polled(
             rhs,
             candidate,
             diagnostics::copy_rhs(&self.last_diagnostics)?,
             self.plan.tolerance(),
             team,
+            poll,
         ) {
             Ok(result) => Ok(Some(result)),
             Err(failure) if failure.code == ErrorCode::NonConvergence => Ok(None),
@@ -401,7 +404,7 @@ impl<'a, 'data> Engine<'a, 'data> {
     ) -> Result<DenseMatrix> {
         execution::check(poll)?;
         if success(self.last_diagnostics[index].stop)
-            && !self.certifies(original, &mut coefficients, team)?
+            && !self.certifies(original, &mut coefficients, team, poll)?
         {
             self.last_diagnostics[index].stop = StopReason::CertificateFailure;
             self.last_diagnostics[index].attempts[0].stop = StopReason::CertificateFailure;
@@ -434,7 +437,9 @@ impl<'a, 'data> Engine<'a, 'data> {
             .expect("fallback LSMR session")
             .solve_refined_polled(original, remaining, self.plan.tolerance(), poll, team)?;
         let mut work = fallback.progress.remove(0);
-        if success(work.stop) && !self.certifies(original, &mut fallback.coefficients, team)? {
+        if success(work.stop)
+            && !self.certifies(original, &mut fallback.coefficients, team, poll)?
+        {
             work.stop = StopReason::CertificateFailure;
         }
         let report = &mut self.last_diagnostics[index];
@@ -459,13 +464,26 @@ impl<'a, 'data> Engine<'a, 'data> {
         rhs: &DenseMatrix,
         coefficients: &mut DenseMatrix,
         team: &ThreadTeam,
+        poll: Poll<'_>,
     ) -> Result<bool> {
         let result = (|| {
-            self.design
-                .normalize_coefficients(coefficients, self.plan.tolerance(), team)?;
-            let residuals = self.design.reconstruct(rhs, coefficients, team)?;
-            self.design
-                .certify(rhs, coefficients, &residuals, self.plan.tolerance(), team)
+            self.design.normalize_coefficients_polled(
+                coefficients,
+                self.plan.tolerance(),
+                team,
+                poll,
+            )?;
+            let residuals = self
+                .design
+                .reconstruct_polled(rhs, coefficients, team, poll)?;
+            self.design.certify_polled(
+                rhs,
+                coefficients,
+                &residuals,
+                self.plan.tolerance(),
+                team,
+                poll,
+            )
         })();
         match result {
             Ok(_) => Ok(true),
