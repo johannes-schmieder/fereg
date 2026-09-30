@@ -1,5 +1,8 @@
 //! Lexicographic tuple encoding without an N-by-arity tuple bank.
-use crate::error::{reserved, ErrorCode, FeregError, Result};
+use crate::{
+    error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone, Copy)]
@@ -16,7 +19,14 @@ pub struct EncodedInteraction {
 pub fn factorize_code_interaction(
     components: &[CategoricalCodeView<'_>],
 ) -> Result<EncodedInteraction> {
-    let n = validate_components(components)?;
+    factorize_code_interaction_polled(components, None)
+}
+pub(crate) fn factorize_code_interaction_polled(
+    components: &[CategoricalCodeView<'_>],
+    poll: Poll<'_>,
+) -> Result<EncodedInteraction> {
+    execution::check(poll)?;
+    let n = validate_components(components, poll)?;
     let compare = |a: usize, b: usize| {
         components
             .iter()
@@ -25,13 +35,17 @@ pub fn factorize_code_interaction(
             .unwrap_or(Ordering::Equal)
     };
     let mut order = reserved(n)?;
-    order.extend(0..n);
-    order.sort_unstable_by(|&a, &b| compare(a, b));
+    for row in 0..n {
+        execution::check_chunk(poll, row)?;
+        order.push(row);
+    }
+    execution::sort_unstable_by(&mut order, |&a, &b| compare(a, b), poll)?;
     let mut codes = reserved(n)?;
     codes.resize(n, 0);
     let mut n_levels = 0;
     let mut previous = None;
-    for row in order {
+    for (position, row) in order.into_iter().enumerate() {
+        execution::check_chunk(poll, position)?;
         if previous.is_none_or(|old| compare(old, row) != Ordering::Equal) {
             n_levels += 1;
         }
@@ -43,14 +57,16 @@ pub fn factorize_code_interaction(
         })? - 1;
         previous = Some(row);
     }
+    execution::check(poll)?;
     Ok(EncodedInteraction { codes, n_levels })
 }
-fn validate_components(components: &[CategoricalCodeView<'_>]) -> Result<usize> {
+fn validate_components(components: &[CategoricalCodeView<'_>], poll: Poll<'_>) -> Result<usize> {
     let first = components
         .first()
         .ok_or_else(|| invalid("categorical interaction requires at least one component source"))?;
     let nobs = first.codes.len();
     for (component_index, component) in components.iter().copied().enumerate() {
+        execution::check(poll)?;
         if component.codes.len() != nobs {
             return Err(invalid(format!(
                 "categorical interaction component {} has {} rows; expected {nobs}",
@@ -81,6 +97,7 @@ fn validate_components(components: &[CategoricalCodeView<'_>]) -> Result<usize> 
             )));
         }
         for (row, code) in component.codes.iter().copied().enumerate() {
+            execution::check_chunk(poll, row)?;
             if code as usize >= component.n_levels {
                 return Err(invalid_data(format!(
                     "categorical interaction component {} code at row {} is outside 0..{}",

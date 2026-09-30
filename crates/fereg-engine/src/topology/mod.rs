@@ -9,6 +9,7 @@ mod subset;
 use crate::{
     data::Prepared,
     error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     AbsorbTermId, SourceId,
 };
 pub use build::prepare_fixed_effects;
@@ -98,28 +99,41 @@ impl FeTopology {
             .ok_or_else(|| invalid("FE partition is out of range"))
     }
     pub fn validate(&self, sample: &Prepared) -> Result<()> {
+        self.validate_polled(sample, None)
+    }
+    pub(crate) fn validate_polled(&self, sample: &Prepared, poll: Poll<'_>) -> Result<()> {
+        execution::check(poll)?;
         if self.nobs != sample.n_active() {
             return Err(invalid("FE topology and prepared rows differ"));
         }
         for partition in &self.partitions {
+            execution::check(poll)?;
             if partition.codes.len() != self.nobs
                 || partition.membership.n_levels() != partition.n_levels()
             {
                 return Err(invalid("FE partition dimensions disagree"));
             }
-            partition.membership.validate(&partition.codes)?;
-            if (0..partition.n_levels()).any(|level| {
-                partition
-                    .membership
-                    .members(level)
-                    .is_ok_and(|rows| rows.is_empty())
-            }) {
+            partition
+                .membership
+                .validate_polled(&partition.codes, poll)?;
+            if execution::any(
+                0..partition.n_levels(),
+                |level| {
+                    partition
+                        .membership
+                        .members(level)
+                        .is_ok_and(|rows| rows.is_empty())
+                },
+                poll,
+            )? {
                 return Err(invalid("final FE partition contains an unused level"));
             }
         }
         for (index, effect) in self.effects.iter().enumerate() {
+            execution::check(poll)?;
             self.effect_partition(index)?;
             for slope in &effect.slopes {
+                execution::check(poll)?;
                 let values = sample
                     .regressors
                     .get(slope.source.get() as usize - 1)
@@ -127,7 +141,7 @@ impl FeTopology {
                 if values.len() != self.nobs {
                     return Err(invalid("FE slope values are not sample aligned"));
                 }
-                if values.iter().any(|value| !value.is_finite()) {
+                if execution::any(values, |value| !value.is_finite(), poll)? {
                     return Err(FeregError::new(
                         ErrorCode::InvalidData,
                         "FE slope source contains a nonfinite final-sample value",
@@ -135,7 +149,7 @@ impl FeTopology {
                 }
             }
         }
-        Ok(())
+        execution::check(poll)
     }
 }
 fn invalid(message: &str) -> FeregError {

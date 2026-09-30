@@ -1,6 +1,9 @@
 //! One stable compact axis, including later singleton and separation deletions.
 use super::sample::{DropReason, Prepared, PreparedAdjustment, PreparedWeights};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::{
+    error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 
 impl Prepared {
     #[must_use]
@@ -60,45 +63,43 @@ impl Prepared {
     }
 
     pub fn validate_alignment(&self) -> Result<()> {
+        self.validate_alignment_polled(None)
+    }
+    pub(crate) fn validate_alignment_polled(&self, poll: Poll<'_>) -> Result<()> {
+        execution::check(poll)?;
         let n = self.n_active();
         if self
             .topology
             .as_ref()
             .is_some_and(|topology| topology.nobs() != n)
             || self.outcome.len() != n
-            || self.regressors.iter().any(|column| column.len() != n)
+            || execution::any(&self.regressors, |column| column.len() != n, poll)?
             || matches!(&self.weights, PreparedWeights::Provided {values,..} if values.len()!=n)
             || matches!(&self.adjustment, PreparedAdjustment::Offset(values) | PreparedAdjustment::Exposure(values) if values.len()!=n)
             || self.n_candidate > self.n_original
             || n > self.n_candidate
-            || self
-                .drop_reasons
-                .iter()
-                .filter(|&&reason| reason == DropReason::Retained)
-                .count()
-                != n
-            || self
-                .drop_reasons
-                .iter()
-                .filter(|&&reason| reason != DropReason::ExcludedByIfIn)
-                .count()
-                != self.n_candidate
+            || execution::fold(&self.drop_reasons, 0usize, poll, |count, &reason| {
+                count + usize::from(reason == DropReason::Retained)
+            })? != n
+            || execution::fold(&self.drop_reasons, 0usize, poll, |count, &reason| {
+                count + usize::from(reason != DropReason::ExcludedByIfIn)
+            })? != self.n_candidate
             || self.drop_reasons.len() != self.n_original
-            || self
-                .original_row_by_active
-                .iter()
-                .enumerate()
-                .any(|(index, &row)| {
+            || execution::any(
+                self.original_row_by_active.iter().enumerate(),
+                |(index, &row)| {
                     row >= self.n_original
                         || self.drop_reasons[row] != DropReason::Retained
                         || (index > 0 && self.original_row_by_active[index - 1] >= row)
-                })
+                },
+                poll,
+            )?
         {
             return Err(invalid(
                 "prepared data are not aligned on one observation axis",
             ));
         }
-        Ok(())
+        execution::check(poll)
     }
 }
 

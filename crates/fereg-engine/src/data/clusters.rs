@@ -2,7 +2,10 @@
 use super::Prepared;
 use crate::{
     error::{reserved, ErrorCode, FeregError, Result},
-    factor::{factorize_code_interaction, factorize_f64, CategoricalCodeView, EncodedFactor},
+    execution::{self, Poll},
+    factor::{
+        factorize_code_interaction_polled, factorize_f64_polled, CategoricalCodeView, EncodedFactor,
+    },
     topology::FeTopology,
     ModelSpec, SourceId,
 };
@@ -21,8 +24,16 @@ pub struct ClusterFrame<'a> {
 }
 impl<'a> ClusterFrame<'a> {
     pub fn new(spec: &ModelSpec, sample: &'a Prepared) -> Result<Self> {
+        Self::new_polled(spec, sample, None)
+    }
+    pub(crate) fn new_polled(
+        spec: &ModelSpec,
+        sample: &'a Prepared,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
         spec.validate()?;
-        sample.validate_alignment()?;
+        sample.validate_alignment_polled(poll)?;
         if spec.model.sources.len() != sample.regressors.len() {
             return Err(invalid(
                 "cluster model registry and final source bank differ",
@@ -32,15 +43,16 @@ impl<'a> ClusterFrame<'a> {
             .topology
             .as_ref()
             .ok_or_else(|| invalid("clusters require final topology"))?;
-        topology.validate(sample)?;
+        topology.validate_polled(sample, poll)?;
         let mut partitions: Vec<Partition<'a>> = reserved(spec.clusters.len())?;
         let mut dimensions = reserved(spec.clusters.len())?;
         let mut sources: Vec<Option<EncodedFactor<f64>>> = reserved(sample.regressors.len())?;
         sources.resize_with(sample.regressors.len(), || None);
         for term in &spec.clusters {
+            execution::check(poll)?;
             let mut recipe = reserved(term.sources.len())?;
             recipe.extend_from_slice(&term.sources);
-            recipe.sort_unstable();
+            execution::sort_unstable_by(&mut recipe, Ord::cmp, poll)?;
             let index = if let Some(index) = partitions.iter().position(|p| p.recipe == recipe) {
                 index
             } else {
@@ -49,7 +61,7 @@ impl<'a> ClusterFrame<'a> {
                 {
                     (Cow::Borrowed(partition.codes()), partition.n_levels())
                 } else {
-                    encode(&recipe, sample, topology, &mut sources)?
+                    encode(&recipe, sample, topology, &mut sources, poll)?
                 };
                 let index = partitions.len();
                 partitions.push(Partition {
@@ -64,6 +76,7 @@ impl<'a> ClusterFrame<'a> {
         // Interactions have now borrowed their components. Transfer each
         // requested single-source bank once instead of retaining a second copy.
         for partition in &mut partitions {
+            execution::check(poll)?;
             if partition.recipe.len() == 1
                 && matches!(&partition.codes, Cow::Owned(values) if values.is_empty())
             {
@@ -75,6 +88,7 @@ impl<'a> ClusterFrame<'a> {
                 );
             }
         }
+        execution::check(poll)?;
         Ok(Self {
             partitions,
             dimensions,
@@ -97,12 +111,14 @@ fn encode<'a>(
     sample: &'a Prepared,
     topology: &FeTopology,
     sources: &mut [Option<EncodedFactor<f64>>],
+    poll: Poll<'_>,
 ) -> Result<(Cow<'a, [u32]>, usize)> {
     for &source in recipe {
+        execution::check(poll)?;
         let index = source.get() as usize - 1;
         if topology.partitions().iter().all(|p| p.recipe() != [source]) && sources[index].is_none()
         {
-            sources[index] = Some(factorize_f64(&sample.regressors[index])?);
+            sources[index] = Some(factorize_f64_polled(&sample.regressors[index], poll)?);
         }
     }
     if recipe.len() == 1 {
@@ -113,6 +129,7 @@ fn encode<'a>(
     }
     let mut components = reserved(recipe.len())?;
     for &source in recipe {
+        execution::check(poll)?;
         let view = if let Some(partition) = topology
             .partitions()
             .iter()
@@ -127,9 +144,12 @@ fn encode<'a>(
         };
         components.push(view);
     }
-    let encoded = factorize_code_interaction(&components)?;
+    let encoded = factorize_code_interaction_polled(&components, poll)?;
     Ok((Cow::Owned(encoded.codes), encoded.n_levels))
 }
 fn invalid(message: &str) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)
 }
+
+#[cfg(test)]
+mod interruption_tests;

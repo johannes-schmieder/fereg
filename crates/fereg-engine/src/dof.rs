@@ -3,7 +3,8 @@ mod residual;
 use crate::{
     data::Prepared,
     error::{copied_string, reserved, ErrorCode, FeregError, Result},
-    topology::{connected_components_all, Effect, FeTopology, Partition},
+    execution::{self, Poll},
+    topology::{connected_components_all_polled, Effect, FeTopology, Partition},
     AbsorbTermId, SourceId,
 };
 pub use residual::ResidualDof;
@@ -57,20 +58,38 @@ pub fn compute_absorbed_dof(
     policy: DofPolicy,
     clusters: &[&[u32]],
 ) -> Result<DofReport> {
-    sample.validate_alignment()?;
+    compute_absorbed_dof_polled(sample, structural_intercept, policy, clusters, None)
+}
+pub(crate) fn compute_absorbed_dof_polled(
+    sample: &Prepared,
+    structural_intercept: bool,
+    policy: DofPolicy,
+    clusters: &[&[u32]],
+    poll: Poll<'_>,
+) -> Result<DofReport> {
+    execution::check(poll)?;
+    sample.validate_alignment_polled(poll)?;
     let topology = sample
         .topology
         .as_ref()
         .ok_or_else(|| invalid("absorbed DoF requires prepared FE topology"))?;
-    topology.validate(sample)?;
-    validate_clusters(clusters, sample.n_active())?;
-    let adjustments = adjustments(topology, policy, clusters)?;
-    build_report(sample, topology, structural_intercept, policy, &adjustments)
+    topology.validate_polled(sample, poll)?;
+    validate_clusters(clusters, sample.n_active(), poll)?;
+    let adjustments = adjustments(topology, policy, clusters, poll)?;
+    build_report(
+        sample,
+        topology,
+        structural_intercept,
+        policy,
+        &adjustments,
+        poll,
+    )
 }
 fn adjustments(
     topology: &FeTopology,
     policy: DofPolicy,
     clusters: &[&[u32]],
+    poll: Poll<'_>,
 ) -> Result<Adjustments> {
     let count = topology.effects().len();
     let mut redundant = reserved(count)?;
@@ -82,11 +101,12 @@ fn adjustments(
     let mut eligible = reserved(count)?;
     let mut nested_categories = 0usize;
     for (index, effect) in topology.effects().iter().enumerate() {
+        execution::check(poll)?;
         if !effect.intercept {
             continue;
         }
         let partition = topology.effect_partition(index)?;
-        if is_nested(partition, clusters)? {
+        if is_nested(partition, clusters, poll)? {
             redundant[index] = partition.n_levels();
             exact[index] = true;
             nested[index] = true;
@@ -101,6 +121,7 @@ fn adjustments(
         exact[first] = true;
     }
     for (position, &index) in eligible.iter().enumerate() {
+        execution::check_chunk(poll, position)?;
         if position == 0 && nested_categories == 0 {
             continue;
         }
@@ -108,6 +129,7 @@ fn adjustments(
     }
     if matches!(policy, DofPolicy::FirstPair | DofPolicy::Pairwise) {
         for later_position in 1..eligible.len() {
+            execution::check(poll)?;
             if policy == DofPolicy::FirstPair && later_position > 1 {
                 break;
             }
@@ -115,10 +137,11 @@ fn adjustments(
             for (earlier_position, &earlier) in eligible[..later_position].iter().enumerate() {
                 let a = topology.effect_partition(earlier)?;
                 let b = topology.effect_partition(later)?;
-                let components = connected_components_all(
+                let components = connected_components_all_polled(
                     &[a.codes(), b.codes()],
                     &[a.n_levels(), b.n_levels()],
                     topology.nobs(),
+                    poll,
                 )?
                 .n_components;
                 redundant[later] = redundant[later].max(components);
@@ -135,12 +158,14 @@ fn adjustments(
         nested_categories,
     })
 }
-fn is_nested(partition: &Partition, clusters: &[&[u32]]) -> Result<bool> {
+fn is_nested(partition: &Partition, clusters: &[&[u32]], poll: Poll<'_>) -> Result<bool> {
     for cluster in clusters {
+        execution::check(poll)?;
         let mut groups = reserved(partition.n_levels())?;
         groups.resize(partition.n_levels(), u32::MAX);
         let mut nested = true;
-        for (&code, &group) in partition.codes().iter().zip(*cluster) {
+        for (row, (&code, &group)) in partition.codes().iter().zip(*cluster).enumerate() {
+            execution::check_chunk(poll, row)?;
             let mapped = &mut groups[code as usize];
             if *mapped == u32::MAX {
                 *mapped = group;
@@ -161,16 +186,18 @@ fn build_report(
     structural_intercept: bool,
     policy: DofPolicy,
     adjustments: &Adjustments,
+    poll: Poll<'_>,
 ) -> Result<DofReport> {
     let implicit = structural_intercept && topology.effects().is_empty() && topology.nobs() > 0;
-    let count = topology
-        .effects()
-        .iter()
-        .try_fold(usize::from(implicit), |sum, effect| {
+    let count = topology.effects().iter().enumerate().try_fold(
+        usize::from(implicit),
+        |sum, (index, effect)| {
+            execution::check_chunk(poll, index)?;
             sum.checked_add(usize::from(effect.intercept))
                 .and_then(|sum| sum.checked_add(effect.slopes.len()))
                 .ok_or_else(allocation)
-        })?;
+        },
+    )?;
     let mut effects = reserved(count)?;
     if implicit {
         effects.push(DofEffect {
@@ -185,6 +212,7 @@ fn build_report(
         });
     }
     for (index, effect) in topology.effects().iter().enumerate() {
+        execution::check(poll)?;
         let partition = topology.effect_partition(index)?;
         let categories = partition.n_levels();
         if effect.intercept {
@@ -199,11 +227,13 @@ fn build_report(
             )?);
         }
         for slope in &effect.slopes {
+            execution::check(poll)?;
             let redundant = if policy == DofPolicy::Continuous {
                 continuous_redundancy(
                     partition,
                     &sample.regressors[slope.source.get() as usize - 1],
                     effect.intercept,
+                    poll,
                 )?
             } else {
                 0
@@ -222,7 +252,8 @@ fn build_report(
     let mut initial_categories = 0usize;
     let mut redundant_categories = 0usize;
     let mut absorbed_rank = 0usize;
-    for effect in &effects {
+    for (index, effect) in effects.iter().enumerate() {
+        execution::check_chunk(poll, index)?;
         initial_categories = initial_categories
             .checked_add(effect.categories)
             .ok_or_else(allocation)?;
@@ -239,7 +270,8 @@ fn build_report(
             "absorbed DoF rank certificate did not pass",
         ));
     }
-    let is_approximate = effects.iter().any(|effect| !effect.redundancy_exact);
+    let is_approximate = execution::any(&effects, |effect| !effect.redundancy_exact, poll)?;
+    execution::check(poll)?;
     Ok(DofReport {
         policy,
         effects,
@@ -281,14 +313,23 @@ fn dof_row(
         slope_source,
     })
 }
-fn continuous_redundancy(partition: &Partition, values: &[f64], intercept: bool) -> Result<usize> {
+fn continuous_redundancy(
+    partition: &Partition,
+    values: &[f64],
+    intercept: bool,
+    poll: Poll<'_>,
+) -> Result<usize> {
     // Pinned continuous-DoF convention; distinct from numerical rank tolerances.
     const ZERO_TOLERANCE: f64 = 1e-6;
     let mut redundant = 0;
+    let mut visited = 0usize;
     for level in 0..partition.n_levels() {
+        execution::check_chunk(poll, level)?;
         let mut minimum = f64::INFINITY;
         let mut maximum = f64::NEG_INFINITY;
         for &row in partition.membership().members(level)? {
+            execution::check_chunk(poll, visited)?;
+            visited = visited.wrapping_add(1);
             minimum = minimum.min(values[row]);
             maximum = maximum.max(values[row]);
         }
@@ -301,17 +342,20 @@ fn continuous_redundancy(partition: &Partition, values: &[f64], intercept: bool)
     }
     Ok(redundant)
 }
-fn validate_clusters(clusters: &[&[u32]], nobs: usize) -> Result<()> {
+fn validate_clusters(clusters: &[&[u32]], nobs: usize, poll: Poll<'_>) -> Result<()> {
     if clusters.len() > 10 || clusters.iter().any(|codes| codes.len() != nobs) {
         return Err(invalid(
             "DoF cluster dimensions are invalid or not sample aligned",
         ));
     }
-    if clusters.iter().any(|codes| codes.contains(&u32::MAX)) {
-        return Err(FeregError::new(
-            ErrorCode::InvalidData,
-            "cluster codes cannot use u32::MAX",
-        ));
+    for codes in clusters {
+        execution::check(poll)?;
+        if execution::any(*codes, |&code| code == u32::MAX, poll)? {
+            return Err(FeregError::new(
+                ErrorCode::InvalidData,
+                "cluster codes cannot use u32::MAX",
+            ));
+        }
     }
     Ok(())
 }

@@ -1,8 +1,10 @@
 //! Scoped worker polling with host callbacks confined to the calling thread.
+mod sort;
 use crate::{
     threads::{CompensatedSum, ThreadTeam, REDUCTION_CHUNK},
     ErrorCode, FeregError, Result,
 };
+pub(crate) use sort::sort_unstable_by;
 use std::sync::{Condvar, Mutex, MutexGuard};
 
 /// Worker-safe cooperative poll. Thread-bound host APIs belong in `run`'s callback.
@@ -77,6 +79,22 @@ where
         result = add(result, value);
     }
     Ok(result)
+}
+pub(crate) fn any<I>(
+    values: I,
+    mut predicate: impl FnMut(I::Item) -> bool,
+    poll: Poll<'_>,
+) -> Result<bool>
+where
+    I: IntoIterator,
+{
+    for (position, value) in values.into_iter().enumerate() {
+        check_chunk(poll, position)?;
+        if predicate(value) {
+            return Ok(true);
+        }
+    }
+    Ok(false)
 }
 pub(crate) fn sum(values: impl IntoIterator<Item = f64>, poll: Poll<'_>) -> Result<f64> {
     Ok(

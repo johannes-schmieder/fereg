@@ -9,7 +9,7 @@ use crate::{
     dof::ResidualDof,
     error::{reserved, ErrorCode, FeregError, Result},
     execution::{self, Poll},
-    factor::{factorize_code_interaction, CategoricalCodeView},
+    factor::{factorize_code_interaction_polled, CategoricalCodeView},
     spec::Estimator,
     threads::ThreadTeam,
     topology::LevelIndex,
@@ -127,7 +127,7 @@ pub(crate) fn estimate_polled(
     let mut cluster_counts = reserved(problem.clusters.len())?;
     for cluster in problem.clusters {
         execution::check(poll)?;
-        cluster_counts.push(factorize_code_interaction(&[*cluster])?.n_levels);
+        cluster_counts.push(factorize_code_interaction_polled(&[*cluster], poll)?.n_levels);
         execution::check(poll)?;
     }
     let dof = ResidualDof::new(
@@ -246,7 +246,7 @@ fn clustered(
                 .enumerate()
                 .filter_map(|(j, c)| ((mask >> j) & 1 == 1).then_some(*c)),
         );
-        let encoded = factorize_code_interaction(&components)?;
+        let encoded = factorize_code_interaction_polled(&components, poll)?;
         execution::check(poll)?;
         let membership = LevelIndex::from_codes_polled(&encoded.codes, encoded.n_levels, poll)?;
         counts.push(encoded.n_levels);

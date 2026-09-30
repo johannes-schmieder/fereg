@@ -2,10 +2,10 @@
 use super::irls;
 use crate::{
     data::{ColumnRecipe, CompiledColumns, ReferenceWeights},
-    dof::{compute_absorbed_dof, DofPolicy, DofReport, ResidualDof},
+    dof::{compute_absorbed_dof_polled, DofPolicy, DofReport, ResidualDof},
     error::{reserved, ErrorCode, FeregError, Result},
     execution::{self, Poll},
-    factor::{factorize_code_interaction, CategoricalCodeView},
+    factor::{factorize_code_interaction_polled, CategoricalCodeView},
     spec::Estimator,
     threads::ThreadTeam,
     vce::{self, Covariance, Kind, Wald},
@@ -89,12 +89,17 @@ pub(crate) fn estimate_polled(
     let mut cluster_codes = reserved(clusters.len())?;
     for &view in clusters {
         execution::check(poll)?;
-        cluster_counts.push(factorize_code_interaction(&[view])?.n_levels);
+        cluster_counts.push(factorize_code_interaction_polled(&[view], poll)?.n_levels);
         execution::check(poll)?;
         cluster_codes.push(view.codes);
     }
-    let mut absorbed_dof =
-        compute_absorbed_dof(problem.sample, false, DofPolicy::Pairwise, &cluster_codes)?;
+    let mut absorbed_dof = compute_absorbed_dof_polled(
+        problem.sample,
+        false,
+        DofPolicy::Pairwise,
+        &cluster_codes,
+        poll,
+    )?;
     if normalized.is_some() {
         transfer_constant(&mut absorbed_dof)?;
     }

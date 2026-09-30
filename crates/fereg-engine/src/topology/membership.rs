@@ -66,7 +66,7 @@ impl LevelIndex {
     pub fn validate(&self, codes: &[u32]) -> Result<()> {
         self.validate_polled(codes, None)
     }
-    fn validate_polled(&self, codes: &[u32], poll: Poll<'_>) -> Result<()> {
+    pub(crate) fn validate_polled(&self, codes: &[u32], poll: Poll<'_>) -> Result<()> {
         execution::check(poll)?;
         if self.offsets.is_empty()
             || self.offsets[0] != 0

@@ -1,7 +1,7 @@
 use super::call::{Call, Phase, Request, Resources};
 use crate::{
     data::{ClusterFrame, Loaded, Prepared, ReferenceWeights, Weights},
-    dof::{compute_absorbed_dof, ResidualDof},
+    dof::{compute_absorbed_dof_polled, ResidualDof},
     error::reserved,
     execution::{self, Poll, Probe},
     fe::{Design, Engine},
@@ -196,7 +196,7 @@ fn infer(
     let columns = &call.columns;
     let request = call.request;
     let kind = call.kind;
-    let frame = ClusterFrame::new(model, sample)?;
+    let frame = ClusterFrame::new_polled(model, sample, poll)?;
     let clusters = frame.views()?;
     let mut codes = reserved(clusters.len())?;
     let mut counts = reserved(clusters.len())?;
@@ -204,8 +204,13 @@ fn infer(
         codes.push(cluster.codes);
         counts.push(cluster.n_levels);
     }
-    let absorbed_dof =
-        compute_absorbed_dof(sample, columns.structural_intercept, request.dof, &codes)?;
+    let absorbed_dof = compute_absorbed_dof_polled(
+        sample,
+        columns.structural_intercept,
+        request.dof,
+        &codes,
+        poll,
+    )?;
     let dof = ResidualDof::new(
         Estimator::Ols,
         weights.effective(),

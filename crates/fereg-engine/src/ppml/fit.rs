@@ -123,7 +123,7 @@ pub(super) fn execute_in(
     interrupt(Phase::Estimated)?;
     clock = Instant::now();
     let inferred = {
-        let frame = ClusterFrame::new(call.model, final_sample.sample())?;
+        let frame = ClusterFrame::new_polled(call.model, final_sample.sample(), probe.dense())?;
         inference::estimate_polled(
             &call.columns,
             &accepted,
