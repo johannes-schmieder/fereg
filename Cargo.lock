@@ -159,6 +159,7 @@ name = "fereg-plugin"
 version = "0.5.0"
 dependencies = [
  "fereg-core",
+ "fereg-engine",
  "libc",
  "rayon",
  "windows-sys",

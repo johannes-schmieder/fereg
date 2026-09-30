@@ -14,7 +14,7 @@ impl Method {
             stream: 0,
         }
     }
-    pub(super) fn validate(self) -> Result<()> {
+    pub(crate) fn validate(self) -> Result<()> {
         if matches!(self, Self::Randomized { probes: 0 | 1, .. }) {
             return Err(invalid(
                 "randomized bias correction requires at least two probes",

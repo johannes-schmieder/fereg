@@ -8,6 +8,7 @@ pub mod error;
 pub mod factor;
 pub mod fe;
 mod linalg;
+pub mod memory;
 pub mod ols;
 pub mod outputs;
 pub mod ppml;

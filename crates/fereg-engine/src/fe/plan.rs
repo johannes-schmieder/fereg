@@ -57,15 +57,7 @@ impl Plan {
         let shape = Shape::from_design(design)?;
         shape.validate_request(estimator, options.solver)?;
         let selected = match override_plan {
-            PlanOverride::Automatic => match options.solver {
-                Solver::Auto => match shape.levels.len() {
-                    0 => Backend::NoEffects,
-                    1 => Backend::Direct,
-                    _ => Backend::SchurPcg,
-                },
-                Solver::Lsmr => Backend::Lsmr,
-                Solver::Cmg => Backend::Cmg,
-            },
+            PlanOverride::Automatic => Self::default_backend(shape.levels.len(), options.solver),
             PlanOverride::Force(backend) => {
                 if options.solver != Solver::Auto {
                     return Err(invalid("backend overrides require an automatic request"));
@@ -77,10 +69,7 @@ impl Plan {
                 backend
             }
         };
-        let fallback = match selected {
-            Backend::NoEffects | Backend::Lsmr => None,
-            _ => Some(Backend::Lsmr),
-        };
+        let fallback = Self::default_fallback(selected);
         Ok(Self {
             requested: options.solver,
             selected,
@@ -121,6 +110,25 @@ impl Plan {
     #[must_use]
     pub const fn cmg_core(&self) -> Option<[usize; 2]> {
         self.cmg_core
+    }
+    /// Allocation planning reads the same policy; a byte estimate cannot
+    /// choose a backend or independently change a fallback.
+    pub(crate) const fn default_backend(effects: usize, solver: Solver) -> Backend {
+        match solver {
+            Solver::Auto => match effects {
+                0 => Backend::NoEffects,
+                1 => Backend::Direct,
+                _ => Backend::SchurPcg,
+            },
+            Solver::Lsmr => Backend::Lsmr,
+            Solver::Cmg => Backend::Cmg,
+        }
+    }
+    pub(crate) const fn default_fallback(backend: Backend) -> Option<Backend> {
+        match backend {
+            Backend::NoEffects | Backend::Lsmr => None,
+            _ => Some(Backend::Lsmr),
+        }
     }
 }
 struct Shape {
