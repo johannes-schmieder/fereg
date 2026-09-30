@@ -20,6 +20,19 @@ pub struct Summary {
     pub maximum_unit_information_share: f64,
 }
 impl Summary {
+    pub const COLUMN_NAMES: [&'static str; 11] = [
+        "levels",
+        "min_units",
+        "p25_units",
+        "median_units",
+        "p75_units",
+        "max_units",
+        "single_unit_levels",
+        "single_unit_fraction",
+        "min_info_units",
+        "median_info_units",
+        "max_unit_info_share",
+    ];
     /// SPEC's eleven support-matrix columns in declared order.
     #[must_use]
     pub fn values(&self) -> [f64; 11] {

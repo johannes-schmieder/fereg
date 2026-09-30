@@ -348,7 +348,7 @@ operator at the accepted state. A scoped frame borrows sealed final qmu and
 the accepted finite basis; shared WLS records all solve/recovery work. Raw eta
 recovery and every auxiliary action share a support-only component anchor,
 fresh reconstruction and original-coordinate scores. Validate all declared numeric terms, including omissions; stream exact units or fixed shared Philox signs for both increments.
-Probe-count weighted groups report D/C variance and covariance. Shared output allocation maps nine ordinary channels and requested FE banks; the atomic calculation leaves ordinary results unchanged and option-off creates no work.
+Probe-count weighted groups report D/C variance and covariance. Shared output allocation maps nine ordinary channels and requested FE banks; the fixed diagnostic schema takes its workspace bound from the call-level plan. The atomic calculation leaves ordinary results unchanged and option-off creates no work.
 
 ## Memory, threads and errors
 

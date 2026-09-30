@@ -2,6 +2,7 @@
 mod anchor;
 mod calculation;
 mod certificate;
+mod diagnostics;
 mod information;
 mod model;
 mod moments;
@@ -18,6 +19,7 @@ use crate::{
     spec::ModelSpec,
     threads::ThreadTeam,
 };
+pub use diagnostics::DiagnosticTable;
 pub use information::{with_information, Diagnostics, Information};
 pub use moments::Coefficients;
 pub use request::{Channel, Method, Request};
@@ -44,6 +46,7 @@ pub struct Correction {
     pub maximum_mean: f64,
     pub diagnostics: Diagnostics,
     pub elapsed_seconds: f64,
+    pub certificate_tolerance: f64,
 }
 /// None bypasses metadata, units, callbacks, allocations and numerical work.
 /// Typed exact requests carry no randomization controls; the syntax binder must
@@ -116,6 +119,7 @@ pub fn compute(
             maximum_mean: fit.evaluation.mean.iter().copied().fold(0., f64::max),
             diagnostics: info.diagnostics(),
             elapsed_seconds: started.elapsed().as_secs_f64(),
+            certificate_tolerance: fit.options().tolerance,
         }))
     })
     .map_err(|e| context(e, "correction", None, None))

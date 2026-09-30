@@ -546,3 +546,115 @@ fn exact_limits_refuse_work_without_changing_randomized_support() {
         }
     }
 }
+
+#[test]
+fn diagnostic_wire_preserves_requests_and_reports_full_system_scales() {
+    let team = ThreadTeam::new(1).unwrap();
+    let (sample, model, units) = fixture(Some(WeightKind::Probability));
+    let columns = CompiledColumns::new(&model, Estimator::Ppml).unwrap();
+    let raw = columns.generate(&sample).unwrap();
+    let fit = irls::fit_final_sample(
+        &irls::Problem {
+            sample: &sample,
+            raw: &raw,
+            roles: &columns.roles,
+        },
+        Options::for_estimator(Estimator::Ppml),
+        &team,
+    )
+    .unwrap();
+    for method in [
+        bias::Method::Exact,
+        bias::Method::Randomized {
+            probes: 3,
+            seed: u32::MAX,
+            stream: u32::MAX,
+        },
+    ] {
+        let result = bias::compute(
+            &fit,
+            &model,
+            Some(bias::Request {
+                method,
+                save_effects: true,
+            }),
+            Some(NumericColumnView::new(&units)),
+            &team,
+            &mut || Ok(()),
+        )
+        .unwrap()
+        .unwrap();
+        // An injected call-plan allowance is serialized, never chosen here.
+        let bytes = 1_234_567_890;
+        let values = result.diagnostic_table(bytes).unwrap().values;
+        assert!(values.iter().all(|value| value.is_finite()));
+        assert_eq!(
+            &values[..7],
+            if method == bias::Method::Exact {
+                &[1., 7., 0., 0., 0., 1., 9.]
+            } else {
+                &[2., 7., 3., 4_294_967_295., 4_294_967_295., 3., 9.]
+            }
+        );
+        assert!(values[7] <= fit.options().tolerance);
+        assert!(values[8] <= fit.options().tolerance);
+        assert!(values[9] >= 0.);
+        assert_eq!(values[10], bytes as f64);
+        let finite = result.ordinary[(bias::Channel::Total as usize, 0)].abs();
+        let maximum = result
+            .saved
+            .columns
+            .iter()
+            .filter(|column| {
+                matches!(
+                    column.kind,
+                    Kind::Bias {
+                        channel: bias::Channel::Total,
+                        ..
+                    }
+                )
+            })
+            .flat_map(|column| &column.values)
+            .filter(|value| value.is_finite())
+            .map(|value| value.abs())
+            .fold(finite, f64::max);
+        assert_eq!(values[11], maximum);
+        assert!(maximum > finite, "the maximum must include FE coordinates");
+        assert_eq!(
+            values[12],
+            fit.evaluation
+                .mean
+                .iter()
+                .copied()
+                .fold(f64::INFINITY, f64::min)
+        );
+        assert_eq!(
+            values[13],
+            fit.evaluation.mean.iter().copied().fold(0., f64::max)
+        );
+        assert_eq!(
+            &values[14..19],
+            &[17., 18., 1., 1., fit.options().tolerance]
+        );
+        let mut minimum = f64::INFINITY;
+        let mut leverage = 0_f64;
+        for effect in 0..2 {
+            let partition = sample
+                .topology
+                .as_ref()
+                .unwrap()
+                .effect_partition(effect)
+                .unwrap();
+            for level in 0..partition.n_levels() {
+                let rows = partition.membership().members(level).unwrap();
+                let information: f64 = rows.iter().map(|&row| fit.hessian_weights[row]).sum();
+                minimum = minimum.min(information);
+                for &row in rows {
+                    leverage = leverage.max(fit.hessian_weights[row] / information);
+                }
+            }
+        }
+        assert!((values[19] - minimum).abs() <= 1e-13 * minimum);
+        assert!((values[20] - leverage).abs() <= 1e-13);
+    }
+}
