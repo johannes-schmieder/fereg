@@ -5,6 +5,7 @@
 pub mod data;
 pub mod dof;
 pub mod error;
+pub mod execution;
 pub mod factor;
 pub mod fe;
 mod linalg;

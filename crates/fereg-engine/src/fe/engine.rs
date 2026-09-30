@@ -6,6 +6,7 @@ use super::{
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     spec::{Estimator, Options},
     threads::ThreadTeam,
 };
@@ -110,10 +111,35 @@ impl<'a, 'data> Engine<'a, 'data> {
         Ok(())
     }
     pub fn project(&mut self, rhs: &DenseMatrix, team: &ThreadTeam) -> Result<Projection> {
+        self.project_polled(rhs, None, team)
+    }
+    /// Project with caller-thread host checks, including each Krylov iteration
+    /// and residual-refinement round. Cancellation publishes no projection.
+    /// Dense setup/kernel boundaries are polled; individual dense kernels are
+    /// not yet interruptible internally. Discard this frame after an abort.
+    pub fn project_with(
+        &mut self,
+        rhs: &DenseMatrix,
+        team: &ThreadTeam,
+        interrupt: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<Projection> {
+        execution::run(
+            team,
+            |relay| self.project_polled(rhs, Some(&|| relay(())), team),
+            &mut |()| interrupt(),
+        )
+    }
+    pub(crate) fn project_polled(
+        &mut self,
+        rhs: &DenseMatrix,
+        poll: Poll<'_>,
+        team: &ThreadTeam,
+    ) -> Result<Projection> {
+        execution::check(poll)?;
         super::design::validate_matrix(rhs, self.design.nobs())?;
         self.last_diagnostics = reserved(rhs.ncols())?;
         self.last_setup = reserved(1)?;
-        let (mut coefficients, progress) = self.primary(rhs, team)?;
+        let (mut coefficients, progress) = self.primary(rhs, poll, team)?;
         for attempt in progress {
             let mut attempts = reserved(2)?;
             let (iterations, stop, backend) = (attempt.iterations, attempt.stop, attempt.backend);
@@ -129,6 +155,7 @@ impl<'a, 'data> Engine<'a, 'data> {
                 fallback: None,
             });
         }
+        execution::check(poll)?;
         if let Some(mut accepted) = self.accept_bank(rhs, &coefficients, team)? {
             accepted.setup_diagnostics = diagnostics::copy_setup(&self.last_setup)?;
             return Ok(accepted);
@@ -138,11 +165,12 @@ impl<'a, 'data> Engine<'a, 'data> {
         for column in 0..rhs.ncols() {
             let original = DenseMatrix::from_columns(&[rhs.column(column)?])?;
             let candidate = DenseMatrix::from_columns(&[coefficients.column(column)?])?;
-            let accepted = self.resolve(column, &original, candidate, team)?;
+            let accepted = self.resolve(column, &original, candidate, poll, team)?;
             for row in 0..coefficients.nrows() {
                 coefficients[(row, column)] = accepted[(row, 0)];
             }
         }
+        execution::check(poll)?;
         let mut result = self.design.certified_projection(
             rhs,
             coefficients,
@@ -189,6 +217,7 @@ impl<'a, 'data> Engine<'a, 'data> {
     fn primary(
         &mut self,
         rhs: &DenseMatrix,
+        poll: Poll<'_>,
         team: &ThreadTeam,
     ) -> Result<(DenseMatrix, Vec<Attempt>)> {
         if rhs.ncols() == 0 {
@@ -203,15 +232,21 @@ impl<'a, 'data> Engine<'a, 'data> {
                     .lsmr
                     .as_ref()
                     .expect("explicit LSMR session")
-                    .solve_refined(rhs, self.plan.linear_budget(), self.plan.tolerance(), team)?;
+                    .solve_refined_polled(
+                        rhs,
+                        self.plan.linear_budget(),
+                        self.plan.tolerance(),
+                        poll,
+                        team,
+                    )?;
                 Ok((candidate.coefficients, candidate.progress))
             }
             Backend::SchurPcg => {
-                let candidate = self.schur.as_mut().expect("Schur session").solve_refined(
-                    rhs,
-                    self.monitor,
-                    team,
-                );
+                let candidate = self
+                    .schur
+                    .as_mut()
+                    .expect("Schur session")
+                    .solve_refined_polled(rhs, self.monitor, poll, team);
                 match candidate {
                     Ok(candidate) => Ok((candidate.coefficients, candidate.progress)),
                     // Schur retains progress for every failure after iteration
@@ -228,7 +263,7 @@ impl<'a, 'data> Engine<'a, 'data> {
                 }
             }
             Backend::Cmg if self.plan.cmg_core().is_some() => {
-                if self.prepare_cmg(team)? != StopReason::Converged {
+                if self.prepare_cmg(poll, team)? != StopReason::Converged {
                     return Ok((
                         DenseMatrix::zeros(self.design.layout().total, rhs.ncols())?,
                         initial_progress(
@@ -238,12 +273,17 @@ impl<'a, 'data> Engine<'a, 'data> {
                         )?,
                     ));
                 }
-                let candidate = self.cmg.as_mut().expect("prepared CMG").solve_refined(
-                    rhs,
-                    self.plan.linear_budget(),
-                    self.plan.tolerance(),
-                    team,
-                )?;
+                let candidate = self
+                    .cmg
+                    .as_mut()
+                    .expect("prepared CMG")
+                    .solve_refined_polled(
+                        rhs,
+                        self.plan.linear_budget(),
+                        self.plan.tolerance(),
+                        poll,
+                        team,
+                    )?;
                 Ok((candidate.coefficients, candidate.progress))
             }
             _ => {
@@ -263,7 +303,7 @@ impl<'a, 'data> Engine<'a, 'data> {
             }
         }
     }
-    fn prepare_cmg(&mut self, team: &ThreadTeam) -> Result<StopReason> {
+    fn prepare_cmg(&mut self, poll: Poll<'_>, team: &ThreadTeam) -> Result<StopReason> {
         if let Some(failure) = &self.cmg_setup_error {
             return Err(failure.clone());
         }
@@ -287,7 +327,8 @@ impl<'a, 'data> Engine<'a, 'data> {
                     return Err(failure);
                 }
             };
-        let outcome = session.prepare(self.plan.linear_budget(), self.plan.tolerance(), team);
+        let outcome =
+            session.prepare_polled(self.plan.linear_budget(), self.plan.tolerance(), poll, team);
         let mut right_hand_sides = reserved(session.setup_progress().len())?;
         right_hand_sides.extend_from_slice(session.setup_progress());
         let stop = if outcome.is_ok() {
@@ -318,8 +359,10 @@ impl<'a, 'data> Engine<'a, 'data> {
         index: usize,
         original: &DenseMatrix,
         mut coefficients: DenseMatrix,
+        poll: Poll<'_>,
         team: &ThreadTeam,
     ) -> Result<DenseMatrix> {
+        execution::check(poll)?;
         if success(self.last_diagnostics[index].stop)
             && !self.certifies(original, &mut coefficients, team)?
         {
@@ -352,7 +395,7 @@ impl<'a, 'data> Engine<'a, 'data> {
             .lsmr
             .as_ref()
             .expect("fallback LSMR session")
-            .solve_refined(original, remaining, self.plan.tolerance(), team)?;
+            .solve_refined_polled(original, remaining, self.plan.tolerance(), poll, team)?;
         let mut work = fallback.progress.remove(0);
         if success(work.stop) && !self.certifies(original, &mut fallback.coefficients, team)? {
             work.stop = StopReason::CertificateFailure;

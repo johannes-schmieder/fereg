@@ -9,7 +9,7 @@ They are not relicensed by fereg.
 
 ## Pinned numerical dependencies
 
-The Rust `within` dependency is MIT licensed, pinned to
+The Rust `within` dependency is MIT licensed. The frozen legacy core pins
 `1ac3522a251c2622dbeab451415924f9ebe117b9` in
 `references.lock.toml`. It supplies modified LSMR and Schwarz preconditioning,
 not another public solver family. The legacy adapter in
@@ -28,7 +28,12 @@ that adapter uses prepared Laplacian topology, hierarchy/workspace construction
 and caller-buffer `solve_pcg_batch_*` interfaces. PPML's
 `ppml/categorical_fwl_cmg.rs` shares this graph adapter and refreshes numerical
 state with changing weights. Preserve CMG's original license and notices.
-The clean engine retains both pinned dependencies through narrow adapters.
+The clean engine and oracle use within
+`268a1f5d4fe71ec3521cb02ef977620389a2cf40`; the clean engine uses CMG
+`980064c30b02f6e403f9739619e31ab7bcfa3d9d`. These additive APIs provide
+cooperative iteration polling. The clean engine reconstructs and certifies
+original-coordinate results through narrow adapters; frozen legacy identities
+remain unchanged. All identities are recorded in `references.lock.toml`.
 
 Johannes approved GPLv3 as the project distribution direction. Project license
 metadata and corresponding-source packaging are migrated together at M7.3.

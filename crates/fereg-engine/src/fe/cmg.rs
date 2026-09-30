@@ -3,6 +3,7 @@ use super::{refinement, CmgCore, CmgCoreCandidate, Design, StopReason};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     linalg::{ScaledDesign, WeightedQr},
     threads::{compensated_sum, ThreadTeam},
 };
@@ -67,6 +68,16 @@ impl<'a, 'data> CmgSession<'a, 'data> {
     /// Each nuisance indicator is a separately reported auxiliary RHS with
     /// the same per-RHS budget. The factor is built at most once per frame.
     pub fn prepare(&mut self, budget: usize, tolerance: f64, team: &ThreadTeam) -> Result<()> {
+        self.prepare_polled(budget, tolerance, None, team)
+    }
+    pub(super) fn prepare_polled(
+        &mut self,
+        budget: usize,
+        tolerance: f64,
+        poll: Poll<'_>,
+        team: &ThreadTeam,
+    ) -> Result<()> {
+        execution::check(poll)?;
         if self.setup_started {
             return Err(invalid(
                 "CMG nuisance preparation has already been attempted",
@@ -87,9 +98,16 @@ impl<'a, 'data> CmgSession<'a, 'data> {
             8. * f64::EPSILON * self.design.nobs().max(columns.ncols()).max(1) as f64;
         // Setup projection error must be smaller than the original-column
         // rank guard. This is an accuracy target, never an acceptance relaxation.
-        let projected =
-            self.core
-                .solve(&columns, budget, tolerance.min(rank_threshold / 16.), team)?;
+        let projected = self.core.solve_with_roundoff(
+            &columns,
+            refinement::Limits {
+                budget,
+                tolerance: tolerance.min(rank_threshold / 16.),
+                poll,
+            },
+            0.,
+            team,
+        )?;
         self.setup_progress = projected.progress;
         if self
             .setup_progress
@@ -120,13 +138,21 @@ impl<'a, 'data> CmgSession<'a, 'data> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<CmgCoreCandidate> {
-        self.solve_with_roundoff(rhs, budget, tolerance, 0., team)
+        self.solve_with_roundoff(
+            rhs,
+            refinement::Limits {
+                budget,
+                tolerance,
+                poll: None,
+            },
+            0.,
+            team,
+        )
     }
     fn solve_with_roundoff(
         &mut self,
         rhs: &DenseMatrix,
-        budget: usize,
-        tolerance: f64,
+        limits: refinement::Limits<'_>,
         roundoff: f64,
         team: &ThreadTeam,
     ) -> Result<CmgCoreCandidate> {
@@ -134,9 +160,7 @@ impl<'a, 'data> CmgSession<'a, 'data> {
             .factor
             .as_ref()
             .ok_or_else(|| invalid("CMG nuisance preparation has not succeeded"))?;
-        let mut candidate = self
-            .core
-            .solve_with_roundoff(rhs, budget, tolerance, roundoff, team)?;
+        let mut candidate = self.core.solve_with_roundoff(rhs, limits, roundoff, team)?;
         let mut residuals = self
             .design
             .reconstruct(rhs, &candidate.coefficients, team)?;
@@ -182,20 +206,46 @@ impl<'a, 'data> CmgSession<'a, 'data> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<CmgCoreCandidate> {
+        self.solve_refined_polled(rhs, budget, tolerance, None, team)
+    }
+    pub(super) fn solve_refined_polled(
+        &mut self,
+        rhs: &DenseMatrix,
+        budget: usize,
+        tolerance: f64,
+        poll: Poll<'_>,
+        team: &ThreadTeam,
+    ) -> Result<CmgCoreCandidate> {
         let design = self.design;
-        let mut candidate = self.solve(rhs, budget, tolerance, team)?;
+        let mut candidate = self.solve_with_roundoff(
+            rhs,
+            refinement::Limits {
+                budget,
+                tolerance,
+                poll,
+            },
+            0.,
+            team,
+        )?;
         refinement::run(
             design,
             rhs,
             &mut candidate.coefficients,
             &mut candidate.progress,
-            refinement::Limits { budget, tolerance },
+            refinement::Limits {
+                budget,
+                tolerance,
+                poll,
+            },
             team,
             |residual, remaining, correction_tolerance, team| {
                 let correction = self.solve_with_roundoff(
                     residual,
-                    remaining,
-                    correction_tolerance,
+                    refinement::Limits {
+                        budget: remaining,
+                        tolerance: correction_tolerance,
+                        poll,
+                    },
                     f64::EPSILON,
                     team,
                 )?;

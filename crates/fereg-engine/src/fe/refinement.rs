@@ -3,26 +3,32 @@ use super::{Attempt, Design, StopReason};
 use crate::{
     data::DenseMatrix,
     error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     threads::ThreadTeam,
 };
 
-pub(super) struct Limits {
+pub(super) struct Limits<'a> {
     pub budget: usize,
     pub tolerance: f64,
+    pub poll: Poll<'a>,
 }
 pub(super) fn run<F>(
     design: &Design<'_>,
     rhs: &DenseMatrix,
     bank: &mut DenseMatrix,
     reports: &mut [Attempt],
-    limits: Limits,
+    limits: Limits<'_>,
     team: &ThreadTeam,
     mut solve: F,
 ) -> Result<()>
 where
     F: FnMut(&DenseMatrix, usize, f64, &ThreadTeam) -> Result<(DenseMatrix, Vec<Attempt>)>,
 {
-    let Limits { budget, tolerance } = limits;
+    let Limits {
+        budget,
+        tolerance,
+        poll,
+    } = limits;
     for column in 0..rhs.ncols() {
         if reports[column].stop != StopReason::Converged {
             continue;
@@ -34,6 +40,7 @@ where
         let mut update = f64::INFINITY;
         let mut previous_update = f64::INFINITY;
         loop {
+            execution::check(poll)?;
             let measured =
                 design
                     .reconstruct(&original, &coefficients, team)

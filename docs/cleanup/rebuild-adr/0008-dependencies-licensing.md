@@ -24,14 +24,16 @@ direction; native Stata/SPI distribution permissions have not been resolved.
 
 ## Consequences
 
-- New-engine/oracle within pin: b80e2991084a13bd4bea0715ababdf5f0824b8a1,
+- New-engine/oracle within pin: 268a1f5d4fe71ec3521cb02ef977620389a2cf40,
   [upstream repair PR 441](https://github.com/py-econometrics/within/pull/441).
   Fixed reductions, weighted Gram accumulation and raw-coordinate construction
-  preserve the shared determinism/rank contracts. Explicit additive
+  preserve the shared determinism/rank contracts; optional iteration polls
+  support caller-thread interruption through a scoped relay. Explicit additive
   `ParallelReduction` is required; upstream Auto is not the deterministic policy.
 - Frozen legacy retains within 1ac3522a251c2622dbeab451415924f9ebe117b9 until M7;
-  CMG remains 1d39c113f0c397f29653d92672090e5a42f80921. Both within revisions
-  are recorded separately in `references.lock.toml`.
+  legacy CMG remains 1d39c113f0c397f29653d92672090e5a42f80921. New-engine CMG pins
+  980064c30b02f6e403f9739619e31ab7bcfa3d9d for optional caller-buffer PCG iteration polls.
+  Frozen and rebuilt identities are separately recorded in `references.lock.toml`.
 - G-LICENSE is unpassed: SPI terms, the proprietary host boundary and any
   necessary exception/permission coverage still require examination.
 - Development may continue; changing a LICENSE label alone does not pass the gate.

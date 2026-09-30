@@ -34,12 +34,12 @@ use = "Development reference for model-matrix, OLS, PPML, and tests; not a runti
 [[reference]]
 name = "within"
 repository = "https://github.com/johannes-schmieder/within"
-commit = "b80e2991084a13bd4bea0715ababdf5f0824b8a1"
+commit = "268a1f5d4fe71ec3521cb02ef977620389a2cf40"
 version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/tests/", "crates/schwarz-precond/src/lsmr/tests/", "bench/history/"]
-use = "New-engine LSMR runtime and oracle dependency: current-parent port, fixed arithmetic for explicit ParallelReduction, compensated weighted Gram assembly, and raw-coordinate construction that leaves rank authority with fereg. Draft upstream PR 441; automatic solver policy unchanged."
+use = "New-engine LSMR runtime and oracle dependency: current-parent port, fixed arithmetic for explicit ParallelReduction, compensated weighted Gram assembly, raw-coordinate construction that leaves rank authority with fereg, and optional cooperative iteration polls. Draft upstream PR 441; automatic solver policy unchanged."
 
 [[reference]]
 name = "within-legacy"
@@ -54,12 +54,12 @@ use = "Frozen legacy core and comparator only, preserved unchanged until M7; not
 [[reference]]
 name = "cmg"
 repository = "https://github.com/johannes-schmieder/CMG"
-commit = "1d39c113f0c397f29653d92672090e5a42f80921"
+commit = "980064c30b02f6e403f9739619e31ab7bcfa3d9d"
 version = "0.1.0"
 license = "GPL-3.0-only"
 relevant_source_paths = ["src/", "Cargo.toml"]
 relevant_test_paths = ["tests/", "src/**/tests/"]
-use = "Exact runtime dependency for solver(cmg), including prepared fixed-topology assembly, caller-buffer PCG, capacity-union reporting, admitted construction and fixed workspaces, and joined worker retirement with explicitly estimated runtime allowances; parallel and experimental-components are compiled, with ordinary defaults unchanged."
+use = "Exact runtime dependency for solver(cmg), including optional cooperative PCG iteration polls, prepared fixed-topology assembly, caller-buffer PCG, capacity-union reporting, admitted construction and fixed workspaces, and joined worker retirement with explicitly estimated runtime allowances; parallel and experimental-components are compiled, with ordinary defaults unchanged."
 
 [[reference]]
 name = "reghdfe"
@@ -184,3 +184,13 @@ source_archive_url = "https://cran.r-project.org/src/contrib/fixest_0.14.2.tar.g
 source_archive_fallback_url = "https://cran.r-project.org/src/contrib/Archive/fixest/fixest_0.14.2.tar.gz"
 source_archive_sha256 = "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9"
 use = "Benchmark comparator at defaults and matched accuracy; installed from the verified archive into the private run library, never called by fereg."
+
+[[reference]]
+name = "cmg-legacy"
+version = "0.1.0"
+relevant_source_paths = ["src/", "Cargo.toml"]
+relevant_test_paths = ["tests/", "src/**/tests/"]
+repository = "https://github.com/johannes-schmieder/CMG"
+commit = "1d39c113f0c397f29653d92672090e5a42f80921"
+license = "GPL-3.0-only"
+use = "Frozen legacy runtime dependency until M7; its numerical and API identity is unchanged."

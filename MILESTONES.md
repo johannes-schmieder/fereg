@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.5 caller-thread interruption through separation/replay, simplex, IR/Mu/final IRLS and line search is qualified locally; next are individual FE/dense-kernel polling and native/Stata binding. Complete PPML calls retain both mean-bias modes, one memory admission and requested-only products. M4.5 covariance policy and further FE optimization still await Johannes; independent seam work continues. Both public defaults remain legacy, and the unrelated pre-merge stash is preserved.
+Current task: M6.5 caller-thread PPML loop checkpoints and scoped FE iteration polling are qualified locally; next are complete-controller wiring, dense-kernel polling and native/Stata binding. Complete PPML calls retain both mean-bias modes, one memory admission and requested-only products. M4.5 covariance policy and further FE optimization still await Johannes; independent seam work continues. Both public defaults remain legacy, and the unrelated pre-merge stash is preserved.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] partially implemented or verification pending.
 
@@ -44,7 +44,7 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
 - [x] M6.2 Separation (canonical chain, atomic cascades, current-generation capacity/replay and cold final roots qualified)
 - [x] M6.3 PPML inference and outputs (accepted-state inference, requested predictions/saved FEs/residuals and statistics qualified)
 - [x] M6.4 Bias correction (both modes/increments, support, anchors, uncertainty, diagnostic schema and complete PPML call/workspace integration qualified locally; public Stata transaction remains M6.5)
-- [~] M6.5 Tests and seam (caller-thread numerical-loop interruption qualified locally; individual FE/dense-kernel polling and native/Stata binding remain)
+- [~] M6.5 Tests and seam (caller-thread numerical-loop interruption qualified locally; complete-controller FE wiring, dense-kernel polling and native/Stata binding remain)
 - [ ] M6.6 Benchmarks and cutover
 - [ ] M7.1 Remove legacy after coverage acceptance
 - [ ] M7.2 Clean up the plugin
@@ -109,7 +109,8 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
   performance admission deferred and both public defaults still legacy.
 
 - M3.5: Johannes authorized repairing within upstream. [Draft PR #441](https://github.com/py-econometrics/within/pull/441)
-  is pushed at b80e299, including current-parent port, fixed parallel reductions,
+  is pushed at 268a1f5, including optional cooperative iteration polls,
+  current-parent port, fixed parallel reductions,
   compensated weighted Gram assembly and raw-coordinate construction. The new
   engine/oracle pin uses it; frozen legacy remains at 1ac3522 until M7.
   Explicit LSMR preserves slope span and reconstructs/certifies original inputs;
@@ -123,8 +124,9 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
   setup/attempt accounting and explicit CMG OLS/PPML comparisons. Full lean/long
   checks pass; M3.6 performance admission remains. No public default changes.
   The historical formal-vendor protocol deliberately rejects the temporary
-  mixed same-version within pins: no current-tree capture may claim that old
-  protocol's certification. Its identity/fail-closed tests pass; the rebuild's
+  mixed same-version dependency pins: no current-tree capture may claim that old
+  protocol's certification. Its identity/fail-closed tests pass; frozen CMG
+  also retains its old pin. The rebuild's
   Cargo build/test workflow supports both pins. M7 removes the frozen pin.
   Upstream [kernel timings](https://github.com/johannes-schmieder/within/blob/7e46f75/bench/history/2026-09-29-current-upstream-thread-determinism.csv)
   retain small-case overhead and baseline build failures; they are not the
@@ -138,7 +140,7 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
 - GitHub Actions run [36639076022](https://github.com/johannes-schmieder/fereg/actions/runs/36639076022)
   did not start: failed account payment or spending-limit restriction. Johannes
   was asked to resolve billing; the [86f13e8f run](https://github.com/johannes-schmieder/fereg/actions/runs/36690414881) confirms the same payment/spending-limit annotation on 2026-09-30,
-  with no started steps. The [a967a3b9 run](https://github.com/johannes-schmieder/fereg/actions/runs/36730296588) repeats the same annotation with no steps started. No repository fix or retry can supply this check.
+  with no started steps. The [5d749a55 run](https://github.com/johannes-schmieder/fereg/actions/runs/36737357439) repeats the same annotation with no steps started. No repository fix or retry can supply this check.
   Local Rust/FFI checks pass; committed-source Stata quick passes all 32 fixtures
   at b5a95266 (application rc=0 and sentinels). Independent rebuild work continues.
   Local diagnostic logs: `target/rebuild-m0/`.
@@ -146,6 +148,8 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-30 M6.5 FE iteration interruption (this commit) — optional within 268a1f5 hooks poll initialization/iterations/restarts and CMG 980064c3 hooks poll scalar PCG initialization/iterations without altering arithmetic, stopping or budgets; old APIs disable polling and frozen dependency identities remain intact. A safe stack-owned scoped relay serializes concurrent RHS requests on the calling thread, preserves original host errors (including r(430)) and joins on cancellation or either peer panic; nested worker relays fail clearly. The shared FE project path polls Schur/LSMR/CMG iterations, nuisance setup, refinements and fallback, with no stored callback or second admission. Seven fixtures qualify non-Send caller captures, one/eight workers, every executed FE boundary cancellation, no partial output, fresh retries, exact projection/diagnostic identity and direct/no-FE cases. Upstream Rust checks pass except two unchanged CMG Mac hierarchy-accounting failures reproduced on the exact parent; all remaining all-feature checks pass. Full fereg lean and long oracle checks pass. Complete-controller FE wiring, dense kernels and the native/Stata transaction remain open; defaults stay legacy.
 
 - 2026-09-30 M6.5 interruption (this commit) — synchronous caller-thread checkpoints cover separation generations and fresh terminal/capacity replay, simplex construction/reduction/pivots, IR/Mu/final IRLS, every line-search attempt, linear frames and strict checks; existing callbacks still cover correction. Optional callbacks require no Send/Sync bound, add no numerical owner or memory admission, and preserve the same default numerical path. A reproduced callback r(430) was being treated as a Mu line-search stall; explicit callback provenance now makes all poll errors fatal without changing numerical stall handling. Four complete-call fixtures and a halving fixture qualify all ten checkpoint kinds, cancellation at every executed numerical boundary, caller thread identity with Rc captures, panic/fresh retry, cancellation after ledger deletion and during capacity resolution, accepted/proposed state preservation at all ten attempts of a nine-halving step, and exact auto/LSMR/CMG 1/8-worker science, outputs and mean-bias products. Twenty independently tracked aborted calls release numerical owners and permit fresh result hashes. Final full lean and include-ignored oracle suites pass, including 17 isolated allocation audits, compiler mutation guards, sizes, mock SPI and unchanged dense/pinned/100-digit science. Internal FE/dense-kernel polling, the public Stata seam and all admission/cutover gates remain open; defaults stay legacy.
 - 2026-09-30 M6.4 controller (this commit) — ppml::fit and a consumed preloading Call bind one admission, shared preparation, ledger-owned initial singletons/separation, cold final IRLS, inference/statistics, requested outputs and both optional mean-bias modes to the same sealed accepted state. Original numeric model/outcome/weight/adjustment banks can supply explicit unit IDs without another input owner or minimum-storage charge; auxiliary units remain outside scientific sample availability and are read only on retained original rows. Immutable results retain nine ordinary correction channels, optional 18 FE banks, the sole-plan diagnostic bound and bounded work/ledger reports; raw/within/mean/solver and full bias-calculation owners are freed. Nine controller and eight memory fixtures qualify independent weighted constant-only Poisson/robust formulas, candidate/factor/exposure/weight errors, singleton plus exact-FE generations, binding refusal, all caller phase/bias Break boundaries, output/bias invariance and exact 1/8-worker science. Existing independent Newton/frozen-reference campaigns now also run 3,824 supported complete PPML roots across 2,200 designs (4,125 calls including sampled output-off and worker repeats), covering none/fw/pw, offsets/exposures, up to three FEs including slopes/disconnected graphs, omissions and up to five cluster dimensions. Another 288 independently tracked complete calls qualify native shadows, both bias modes, requested-only storage and repeated release; injected failures in preparation, final estimation, inference, correction and final assembly return r(909) and permit fresh restart. Final full lean and include-ignored oracle suites pass, including 16 isolated audits, three compiler mutation guards, sizes and mock SPI. Internal long-loop Break polling and the public Stata adapter remain M6.5; scientific/performance/licensing gates remain open and defaults stay legacy.

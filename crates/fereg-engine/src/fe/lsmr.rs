@@ -3,6 +3,7 @@ use super::{design::validate_matrix, Attempt, Backend, Design, StopReason};
 use crate::{
     data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     threads::ThreadTeam,
 };
 use within::{
@@ -76,6 +77,17 @@ impl<'a, 'data> LsmrSession<'a, 'data> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<LsmrCandidate> {
+        self.solve_polled(rhs, budget, tolerance, None, team)
+    }
+    pub(super) fn solve_polled(
+        &self,
+        rhs: &DenseMatrix,
+        budget: usize,
+        tolerance: f64,
+        poll: Poll<'_>,
+        team: &ThreadTeam,
+    ) -> Result<LsmrCandidate> {
+        execution::check(poll)?;
         validate_matrix(rhs, self.design.nobs())?;
         if budget == 0 || !tolerance.is_finite() || tolerance <= 0. || tolerance >= 1. {
             return Err(FeregError::new(
@@ -118,7 +130,7 @@ impl<'a, 'data> LsmrSession<'a, 'data> {
             local_size: None,
         };
         let result = team
-            .install(|| solver.solve_batch(&slices, &options))
+            .install(|| solver.solve_batch_with_poll(&slices, &options, poll))
             .map_err(solve_error)?;
         recover(self.design, &result, &mut coefficients)?;
         if result.converged.len() != rhs.ncols() || result.iterations.len() != rhs.ncols() {
@@ -199,6 +211,9 @@ fn build_error(error: BuildError) -> FeregError {
 fn solve_error(error: WithinError) -> FeregError {
     match error {
         WithinError::Build(error) => build_error(error),
+        WithinError::Solve(within::SolveError::Interrupted) => {
+            FeregError::new(ErrorCode::Interrupted, "LSMR solve interrupted")
+        }
         WithinError::Solve(within::SolveError::LocalSolveFailed { .. }) => FeregError::new(
             ErrorCode::NonConvergence,
             format!("LSMR solve failed: {error}"),

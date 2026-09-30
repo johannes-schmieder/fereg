@@ -60,6 +60,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "cmg"
+version = "0.1.0"
+source = "git+https://github.com/johannes-schmieder/CMG?rev=980064c30b02f6e403f9739619e31ab7bcfa3d9d#980064c30b02f6e403f9739619e31ab7bcfa3d9d"
+dependencies = [
+ "rayon",
+]
+
+[[package]]
 name = "cobs"
 version = "0.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -130,7 +138,7 @@ checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 name = "fereg-core"
 version = "0.5.0"
 dependencies = [
- "cmg",
+ "cmg 0.1.0 (git+https://github.com/johannes-schmieder/CMG?rev=1d39c113f0c397f29653d92672090e5a42f80921)",
  "rayon",
  "schwarz-precond 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9)",
  "within 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=1ac3522a251c2622dbeab451415924f9ebe117b9)",
@@ -140,9 +148,9 @@ dependencies = [
 name = "fereg-engine"
 version = "0.5.0"
 dependencies = [
- "cmg",
+ "cmg 0.1.0 (git+https://github.com/johannes-schmieder/CMG?rev=980064c30b02f6e403f9739619e31ab7bcfa3d9d)",
  "rayon",
- "within 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1)",
+ "within 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=268a1f5d4fe71ec3521cb02ef977620389a2cf40)",
 ]
 
 [[package]]
@@ -151,7 +159,7 @@ version = "0.5.0"
 dependencies = [
  "fereg-core",
  "fereg-engine",
- "within 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1)",
+ "within 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=268a1f5d4fe71ec3521cb02ef977620389a2cf40)",
 ]
 
 [[package]]
@@ -403,7 +411,7 @@ dependencies = [
 [[package]]
 name = "schwarz-precond"
 version = "0.4.0"
-source = "git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1#b80e2991084a13bd4bea0715ababdf5f0824b8a1"
+source = "git+https://github.com/johannes-schmieder/within?rev=268a1f5d4fe71ec3521cb02ef977620389a2cf40#268a1f5d4fe71ec3521cb02ef977620389a2cf40"
 dependencies = [
  "rayon",
  "serde",
@@ -547,7 +555,7 @@ dependencies = [
 [[package]]
 name = "within"
 version = "0.4.0"
-source = "git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1#b80e2991084a13bd4bea0715ababdf5f0824b8a1"
+source = "git+https://github.com/johannes-schmieder/within?rev=268a1f5d4fe71ec3521cb02ef977620389a2cf40#268a1f5d4fe71ec3521cb02ef977620389a2cf40"
 dependencies = [
  "approx-chol",
  "ndarray",
@@ -555,7 +563,7 @@ dependencies = [
  "postcard",
  "rayon",
  "rustc-hash",
- "schwarz-precond 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=b80e2991084a13bd4bea0715ababdf5f0824b8a1)",
+ "schwarz-precond 0.4.0 (git+https://github.com/johannes-schmieder/within?rev=268a1f5d4fe71ec3521cb02ef977620389a2cf40)",
  "serde",
  "thiserror",
 ]

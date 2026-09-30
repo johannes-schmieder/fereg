@@ -1,11 +1,12 @@
 //! Matrix-free Schur complement with independent, batched PCG recurrences.
 use super::{
-    blocks::Blocks, design::validate_matrix, monitor::Monitor, Attempt, Backend, Design,
-    MonitorControl, Plan, StopReason,
+    blocks::Blocks, design::validate_matrix, monitor::Monitor, refinement::Limits, Attempt,
+    Backend, Design, MonitorControl, Plan, StopReason,
 };
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
+    execution,
     threads::{compensated_sum, ThreadTeam},
 };
 
@@ -82,17 +83,32 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         control: MonitorControl,
         team: &ThreadTeam,
     ) -> Result<SchurCandidate> {
-        self.solve_budget(rhs, control, self.budget, true, self.tolerance, team)
+        self.solve_budget(
+            rhs,
+            control,
+            true,
+            Limits {
+                budget: self.budget,
+                tolerance: self.tolerance,
+                poll: None,
+            },
+            team,
+        )
     }
     pub(super) fn solve_budget(
         &mut self,
         rhs: &DenseMatrix,
         control: MonitorControl,
-        budget: usize,
         warm_start: bool,
-        tolerance: f64,
+        limits: Limits<'_>,
         team: &ThreadTeam,
     ) -> Result<SchurCandidate> {
+        let Limits {
+            budget,
+            tolerance,
+            poll,
+        } = limits;
+        execution::check(poll)?;
         validate_matrix(rhs, self.design.nobs())?;
         if control == MonitorControl::StopAfter(0) {
             return Err(invalid(
@@ -125,6 +141,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         let mut monitors = reserved(rhs.ncols())?;
         monitors.extend(state.rho.iter().map(|rho| Monitor::new(rho.sqrt())));
         for _ in 0..budget {
+            execution::check(poll)?;
             if !state.active.iter().any(|&active| active) {
                 break;
             }

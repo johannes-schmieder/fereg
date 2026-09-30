@@ -312,10 +312,11 @@ echo '{c_libraries / 'ld-linux-x86-64.so.2'} (0x00000002)'
         }
         self.assertEqual(identities, {
             ("cmg", "1d39c113f0c397f29653d92672090e5a42f80921"),
+            ("cmg", "980064c30b02f6e403f9739619e31ab7bcfa3d9d"),
             ("within", "1ac3522a251c2622dbeab451415924f9ebe117b9"),
             ("schwarz-precond", "1ac3522a251c2622dbeab451415924f9ebe117b9"),
-            ("within", "b80e2991084a13bd4bea0715ababdf5f0824b8a1"),
-            ("schwarz-precond", "b80e2991084a13bd4bea0715ababdf5f0824b8a1"),
+            ("within", "268a1f5d4fe71ec3521cb02ef977620389a2cf40"),
+            ("schwarz-precond", "268a1f5d4fe71ec3521cb02ef977620389a2cf40"),
         })
 
     def test_frozen_vendor_protocol_rejects_mixed_solver_versions(self) -> None:

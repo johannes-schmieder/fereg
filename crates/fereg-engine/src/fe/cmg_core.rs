@@ -1,13 +1,14 @@
 //! Bipartite CMG mapping harvested from legacy fe/cmg.rs; no legacy routing or polish.
-use super::{design::validate_matrix, Attempt, Backend, Design, StopReason};
+use super::{design::validate_matrix, refinement::Limits, Attempt, Backend, Design, StopReason};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     threads::ThreadTeam,
 };
 use cmg::{
-    solve_pcg_into_with_workspace, CmgError, CmgOptions, CmgPreconditioner, Laplacian, PcgOptions,
-    PcgWorkspace, PreparedLaplacianTopology,
+    solve_pcg_into_with_workspace_and_poll, CmgError, CmgOptions, CmgPreconditioner, Laplacian,
+    PcgOptions, PcgWorkspace, PreparedLaplacianTopology,
 };
 use rayon::prelude::*;
 
@@ -103,16 +104,30 @@ impl<'a, 'data> CmgCore<'a, 'data> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<CmgCoreCandidate> {
-        self.solve_with_roundoff(rhs, budget, tolerance, 0., team)
+        self.solve_with_roundoff(
+            rhs,
+            Limits {
+                budget,
+                tolerance,
+                poll: None,
+            },
+            0.,
+            team,
+        )
     }
     pub(super) fn solve_with_roundoff(
         &mut self,
         rhs: &DenseMatrix,
-        budget: usize,
-        tolerance: f64,
+        limits: Limits<'_>,
         roundoff: f64,
         team: &ThreadTeam,
     ) -> Result<CmgCoreCandidate> {
+        let Limits {
+            budget,
+            tolerance,
+            poll,
+        } = limits;
+        execution::check(poll)?;
         validate_matrix(rhs, self.design.nobs())?;
         if budget == 0 || !tolerance.is_finite() || tolerance <= 0. || tolerance >= 1. {
             return Err(FeregError::new(
@@ -145,6 +160,7 @@ impl<'a, 'data> CmgCore<'a, 'data> {
             tolerance,
             roundoff,
             minimum_mass_root: self.minimum_mass_root,
+            poll,
         };
         // Every RHS has the same scalar CMG arithmetic in the call-owned team.
         // No dependency-owned executor or worker-count-dependent reduction is used.
@@ -190,6 +206,7 @@ struct SolveContext<'a, 'data> {
     tolerance: f64,
     roundoff: f64,
     minimum_mass_root: f64,
+    poll: Poll<'a>,
 }
 impl SolveContext<'_, '_> {
     fn solve_column(
@@ -240,7 +257,7 @@ impl SolveContext<'_, '_> {
                 "CMG absolute residual target is not representable",
             ));
         }
-        match solve_pcg_into_with_workspace(
+        match solve_pcg_into_with_workspace_and_poll(
             self.graph,
             self.preconditioner,
             &rhs,
@@ -253,6 +270,7 @@ impl SolveContext<'_, '_> {
                 ..PcgOptions::default()
             },
             workspace,
+            self.poll,
         ) {
             Ok(diagnostics) => attempt.iterations = diagnostics.iterations(),
             Err(error) => match numerical_stop(&error) {
@@ -288,6 +306,7 @@ fn numerical_stop(error: &CmgError) -> Option<(usize, StopReason)> {
 }
 fn cmg_error(error: CmgError) -> FeregError {
     let code = match error {
+        CmgError::Interrupted => ErrorCode::Interrupted,
         CmgError::AllocationFailed { .. }
         | CmgError::MemoryBudgetExceeded { .. }
         | CmgError::ParallelRuntime { .. } => ErrorCode::Allocation,

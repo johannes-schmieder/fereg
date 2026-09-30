@@ -1,6 +1,6 @@
 //! Schur corrections reuse exact factors, never the original response's warm guess.
 use super::{refinement, MonitorControl, SchurCandidate, SchurSession, StopReason};
-use crate::{data::DenseMatrix, error::Result, threads::ThreadTeam};
+use crate::{data::DenseMatrix, error::Result, execution::Poll, threads::ThreadTeam};
 
 impl SchurSession<'_, '_> {
     pub fn solve_refined(
@@ -9,22 +9,48 @@ impl SchurSession<'_, '_> {
         control: MonitorControl,
         team: &ThreadTeam,
     ) -> Result<SchurCandidate> {
+        self.solve_refined_polled(rhs, control, None, team)
+    }
+    pub(super) fn solve_refined_polled(
+        &mut self,
+        rhs: &DenseMatrix,
+        control: MonitorControl,
+        poll: Poll<'_>,
+        team: &ThreadTeam,
+    ) -> Result<SchurCandidate> {
         let (design, budget, tolerance) = self.refinement_controls();
-        let mut candidate = self.solve_monitored(rhs, control, team)?;
+        let mut candidate = self.solve_budget(
+            rhs,
+            control,
+            true,
+            refinement::Limits {
+                budget,
+                tolerance,
+                poll,
+            },
+            team,
+        )?;
         refinement::run(
             design,
             rhs,
             &mut candidate.coefficients,
             &mut candidate.progress,
-            refinement::Limits { budget, tolerance },
+            refinement::Limits {
+                budget,
+                tolerance,
+                poll,
+            },
             team,
             |residual, remaining, correction_tolerance, team| {
                 let correction = self.solve_budget(
                     residual,
                     control,
-                    remaining,
                     false,
-                    correction_tolerance,
+                    refinement::Limits {
+                        budget: remaining,
+                        tolerance: correction_tolerance,
+                        poll,
+                    },
                     team,
                 )?;
                 Ok((correction.coefficients, correction.progress))

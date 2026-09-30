@@ -58,6 +58,14 @@ impl ThreadTeam {
         self.pool.as_ref().expect("live team").current_num_threads()
     }
 
+    pub(crate) fn is_worker(&self) -> bool {
+        self.pool
+            .as_ref()
+            .expect("live team")
+            .current_thread_index()
+            .is_some()
+    }
+
     pub fn install<T: Send>(&self, function: impl FnOnce() -> T + Send) -> T {
         self.pool.as_ref().expect("live team").install(function)
     }

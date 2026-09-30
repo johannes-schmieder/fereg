@@ -1,6 +1,10 @@
 # CMG admission and estimated runtime policy
 
-The runtime dependency is pinned to CMG
+This document describes the frozen legacy adapter and its evidence. The rebuild
+uses the shared FE interface in [ARCHITECTURE](ARCHITECTURE.md), with separate
+immutable dependency identities in `references.lock.toml`.
+
+The legacy runtime dependency is pinned to CMG
 `1d39c113f0c397f29653d92672090e5a42f80921`. Cargo enables `parallel` and
 `experimental-components`. Explicit `solver(cmg)` uses component-aware CMG:
 coarse-isolate pruning, preserved unpruned stopping, and component terminal
