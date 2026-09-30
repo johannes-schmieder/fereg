@@ -50,6 +50,43 @@ impl<'a, 'data> Engine<'a, 'data> {
         monitor: MonitorControl,
         team: &ThreadTeam,
     ) -> Result<Self> {
+        Self::with_controls_polled(
+            design,
+            estimator,
+            options,
+            override_plan,
+            monitor,
+            team,
+            None,
+        )
+    }
+    pub(crate) fn new_polled(
+        design: &'a Design<'data>,
+        estimator: Estimator,
+        options: &Options,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        Self::with_controls_polled(
+            design,
+            estimator,
+            options,
+            PlanOverride::Automatic,
+            MonitorControl::Automatic,
+            team,
+            poll,
+        )
+    }
+    fn with_controls_polled(
+        design: &'a Design<'data>,
+        estimator: Estimator,
+        options: &Options,
+        override_plan: PlanOverride,
+        monitor: MonitorControl,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
         let plan = Plan::with_override(design, estimator, options, override_plan)?;
         if monitor == MonitorControl::StopAfter(0) {
             return Err(error(
@@ -58,7 +95,7 @@ impl<'a, 'data> Engine<'a, 'data> {
             ));
         }
         let schur = if plan.selected() == Backend::SchurPcg {
-            Some(SchurSession::new(design, &plan, team)?)
+            Some(SchurSession::new_polled(design, &plan, team, poll)?)
         } else {
             None
         };
@@ -115,8 +152,8 @@ impl<'a, 'data> Engine<'a, 'data> {
     }
     /// Project with caller-thread host checks, including each Krylov iteration
     /// and residual-refinement round. Cancellation publishes no projection.
-    /// Dense setup/kernel boundaries are polled; individual dense kernels are
-    /// not yet interruptible internally. Discard this frame after an abort.
+    /// Shared QR factors and triangular actions also poll internally;
+    /// certification/gauge kernels still run to their next boundary. Discard an aborted frame.
     pub fn project_with(
         &mut self,
         rhs: &DenseMatrix,
@@ -287,7 +324,7 @@ impl<'a, 'data> Engine<'a, 'data> {
                 Ok((candidate.coefficients, candidate.progress))
             }
             _ => {
-                let candidate = self.design.direct_candidate(rhs, team)?;
+                let candidate = self.design.direct_candidate_polled(rhs, team, poll)?;
                 let backend = if self.design.layout().effects.is_empty() {
                     Backend::NoEffects
                 } else {

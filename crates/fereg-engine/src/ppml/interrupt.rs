@@ -14,6 +14,7 @@ pub enum InterruptPoint {
     LinearFrame,
     StrictCheckpoint,
     FixedEffects,
+    DenseLinearAlgebra,
 }
 
 /// No Send/Sync bound: a Stata host may borrow its main-thread-only SPI handle.

@@ -55,9 +55,14 @@ pub(super) fn execute(
         team,
         |relay| {
             let fe_poll = || relay(Phase::FixedEffects);
-            execute_in(call, loaded, team, Probe::new(&fe_poll), &mut |phase| {
-                execution::check(Some(&|| relay(phase)))
-            })
+            let dense_poll = || relay(Phase::DenseLinearAlgebra);
+            execute_in(
+                call,
+                loaded,
+                team,
+                Probe::with_dense(&fe_poll, &dense_poll),
+                &mut |phase| execution::check(Some(&|| relay(phase))),
+            )
         },
         interrupt,
     )
@@ -82,7 +87,8 @@ pub(super) fn execute_in(
     interrupt(Phase::Prepared)?;
     clock = Instant::now();
     let design = Design::new(&sample, Weights::Reference(weights))?;
-    let mut engine = Engine::new(&design, Estimator::Ols, &call.options, team)?;
+    let mut engine =
+        Engine::new_polled(&design, Estimator::Ols, &call.options, team, probe.dense())?;
     let mut work = wls::Work::default();
     let linear = wls::solve_absorbed_recorded(
         &mut engine,

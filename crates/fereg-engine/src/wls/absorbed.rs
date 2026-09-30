@@ -3,9 +3,9 @@ use super::{recovery, work::Phase, Fit, FrozenBasis, Policy, Problem, Role, Slot
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    execution::Probe,
+    execution::{self, Poll, Probe},
     fe::{Certificate, Engine, Projection, RhsDiagnostics, SetupDiagnostics},
-    threads::{compensated_sum, ThreadTeam},
+    threads::ThreadTeam,
 };
 #[derive(Debug, PartialEq)]
 pub struct AbsorbedFit {
@@ -84,6 +84,7 @@ pub fn solve_absorbed_recorded(
         basis,
         probe,
     } = controls;
+    execution::check(probe.dense())?;
     let design = engine.design();
     let n = design.nobs();
     let k = raw.ncols();
@@ -99,6 +100,7 @@ pub fn solve_absorbed_recorded(
         .ok_or_else(|| invalid("absorbed WLS width overflows"))?;
     let mut rhs = DenseMatrix::zeros(n, width)?;
     for row in 0..n {
+        execution::check_chunk(probe.dense(), row)?;
         rhs[(row, 0)] = outcome[row];
         for column in 0..k {
             rhs[(row, column + 1)] = raw[(row, column)];
@@ -108,12 +110,13 @@ pub fn solve_absorbed_recorded(
     let mut within = DenseMatrix::zeros(n, k)?;
     let within_outcome = projection.residuals.column(0)?;
     for row in 0..n {
+        execution::check_chunk(probe.dense(), row)?;
         for column in 0..k {
             within[(row, column)] = projection.residuals[(row, column + 1)];
         }
     }
-    let slots = reference_slots(raw, roles, design.weights())?;
-    let finite = super::solve_with_basis(
+    let slots = reference_slots(raw, roles, design.weights(), probe.dense())?;
+    let finite = super::solve_with_basis_polled(
         &Problem {
             design: &within,
             outcome: &within_outcome,
@@ -124,10 +127,12 @@ pub fn solve_absorbed_recorded(
         policy,
         basis,
         team,
+        probe.dense(),
     )?;
     let mut absorbed_coefficients = DenseMatrix::zeros(design.layout().total, 1)?;
     for index in 0..design.layout().total {
-        absorbed_coefficients[(index, 0)] = compensated_sum(
+        execution::check_chunk(probe.dense(), index)?;
+        absorbed_coefficients[(index, 0)] = execution::sum(
             std::iter::once(projection.coefficients[(index, 0)]).chain(
                 finite
                     .coefficients
@@ -135,12 +140,14 @@ pub fn solve_absorbed_recorded(
                     .enumerate()
                     .map(|(column, beta)| -beta * projection.coefficients[(index, column + 1)]),
             ),
-        );
+            probe.dense(),
+        )?;
     }
     let tolerance = engine.plan().tolerance();
     design.normalize_coefficients(&mut absorbed_coefficients, tolerance, team)?;
     let mut target = DenseMatrix::zeros(n, 1)?;
     for row in 0..n {
+        execution::check_chunk(probe.dense(), row)?;
         target[(row, 0)] = outcome[row] - raw.row_combination(row, &finite.coefficients, 0.);
     }
     let recovered = recovery::finish(
@@ -233,11 +240,14 @@ pub(super) fn original_score(
     outcome: &[f64],
     kept: &[usize],
     residuals: &[f64],
+    poll: Poll<'_>,
 ) -> Result<f64> {
+    execution::check(poll)?;
     let weights = engine.design().weights();
     let mut reference = 0_f64;
     let mut residual_norm = 0_f64;
     for row in 0..outcome.len() {
+        execution::check_chunk(poll, row)?;
         let root = weights.at(row).sqrt();
         reference = reference.hypot(root * outcome[row]);
         residual_norm = residual_norm.hypot(root * residuals[row]);
@@ -253,8 +263,10 @@ pub(super) fn original_score(
         return Ok(0.);
     }
     for &column in kept {
+        execution::check(poll)?;
         let mut norm = 0_f64;
         for row in 0..outcome.len() {
+            execution::check_chunk(poll, row)?;
             norm = norm.hypot(weights.at(row).sqrt() * raw[(row, column)]);
         }
         if !norm.is_finite() || norm == 0. {
@@ -262,10 +274,13 @@ pub(super) fn original_score(
                 "identified original WLS basis has an invalid norm",
             ));
         }
-        let score = compensated_sum((0..outcome.len()).map(|row| {
-            let root = weights.at(row).sqrt();
-            (root * raw[(row, column)] / norm) * (root * residuals[row] / scale)
-        }))
+        let score = execution::sum(
+            (0..outcome.len()).map(|row| {
+                let root = weights.at(row).sqrt();
+                (root * raw[(row, column)] / norm) * (root * residuals[row] / scale)
+            }),
+            poll,
+        )?
         .abs();
         if !score.is_finite() {
             return Err(numerical(
@@ -287,11 +302,14 @@ fn reference_slots(
     raw: &DenseMatrix,
     roles: &[Role],
     weights: crate::data::Weights<'_>,
+    poll: Poll<'_>,
 ) -> Result<Vec<Slot>> {
     let mut slots = reserved(raw.ncols())?;
     for (column, &role) in roles.iter().enumerate() {
+        execution::check(poll)?;
         let mut norm = 0_f64;
         for row in 0..raw.nrows() {
+            execution::check_chunk(poll, row)?;
             norm = norm.hypot(weights.at(row).sqrt() * raw[(row, column)]);
         }
         if !norm.is_finite() {
@@ -316,6 +334,33 @@ impl AbsorbedFit {
         policy: Policy,
         team: &ThreadTeam,
     ) -> Result<Fit> {
+        self.revalidate_basis_polled(
+            design,
+            raw,
+            roles,
+            AbsorbedControls {
+                finite: policy,
+                basis: Some(basis),
+                probe: Probe::default(),
+            },
+            team,
+        )
+    }
+    pub(crate) fn revalidate_basis_polled(
+        &self,
+        design: &crate::fe::Design<'_>,
+        raw: &DenseMatrix,
+        roles: &[Role],
+        controls: AbsorbedControls<'_>,
+        team: &ThreadTeam,
+    ) -> Result<Fit> {
+        let AbsorbedControls {
+            finite: policy,
+            basis,
+            probe,
+        } = controls;
+        let basis =
+            basis.ok_or_else(|| invalid("basis revalidation needs an authoritative basis"))?;
         if raw.nrows() != design.nobs()
             || raw.ncols() != roles.len()
             || self.within.nrows() != raw.nrows()
@@ -325,8 +370,8 @@ impl AbsorbedFit {
                 "basis revalidation has mismatched design dimensions",
             ));
         }
-        let slots = reference_slots(raw, roles, design.weights())?;
-        super::solve_with_basis(
+        let slots = reference_slots(raw, roles, design.weights(), probe.dense())?;
+        super::solve_with_basis_polled(
             &Problem {
                 design: &self.within,
                 outcome: &self.within_outcome,
@@ -337,6 +382,7 @@ impl AbsorbedFit {
             policy,
             Some(basis),
             team,
+            probe.dense(),
         )
     }
 }

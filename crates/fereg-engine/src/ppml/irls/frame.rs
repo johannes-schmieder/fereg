@@ -40,7 +40,13 @@ impl<'a> Context<'a, '_, '_> {
             tolerance,
             ..self.options
         };
-        let mut engine = Engine::new(&design, Estimator::Ppml, &options, self.team)?;
+        let mut engine = Engine::new_polled(
+            &design,
+            Estimator::Ppml,
+            &options,
+            self.team,
+            self.probe.dense(),
+        )?;
         if stage == Stage::Fisher {
             let width = self
                 .problem

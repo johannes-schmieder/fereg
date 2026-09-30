@@ -2,6 +2,7 @@ use super::{overflow, Model, View};
 use crate::{
     data::{DenseMatrix, Weights},
     error::Result,
+    execution::Poll,
     fe::{Design, Plan},
     linalg::WeightedQr,
     ppml::{Interrupt, InterruptPoint},
@@ -23,6 +24,7 @@ pub(super) fn span(
     matrix: DenseMatrix,
     tolerance: f64,
     interrupt: &mut Interrupt<'_>,
+    poll: Poll<'_>,
 ) -> Result<DenseMatrix> {
     let copy = |matrix: &DenseMatrix| -> Result<DenseMatrix> {
         let mut out = DenseMatrix::zeros(matrix.nrows(), matrix.ncols())?;
@@ -33,8 +35,8 @@ pub(super) fn span(
         * f64::EPSILON
         * matrix.nrows().max(matrix.ncols()).max(1) as f64;
     interrupt(InterruptPoint::SimplexModel)?;
-    let qr = WeightedQr::factor(copy(&matrix)?, Weights::Unit, threshold)?;
-    let coefficients = qr.solve(copy(&matrix)?)?;
+    let qr = WeightedQr::factor(copy(&matrix)?, Weights::Unit, threshold, poll)?;
+    let coefficients = qr.solve(copy(&matrix)?, poll)?;
     for column in 0..matrix.ncols() {
         interrupt(InterruptPoint::SimplexModel)?;
         let mut distance = 0_f64;

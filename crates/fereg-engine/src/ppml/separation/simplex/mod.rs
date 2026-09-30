@@ -138,7 +138,12 @@ impl View<'_> {
         }
         let matrix = model::explicit(&design, model, interrupt)?;
         drop(design);
-        let matrix = model::span(matrix, model.controls.projection_tolerance, interrupt)?;
+        let matrix = model::span(
+            matrix,
+            model.controls.projection_tolerance,
+            interrupt,
+            model.probe.dense(),
+        )?;
         report.span_rank = Some(matrix.ncols());
         detect::run(self, model, &matrix, report, interrupt)
     }

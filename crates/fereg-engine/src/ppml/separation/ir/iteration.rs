@@ -41,7 +41,13 @@ pub(super) fn run(
     interrupt(InterruptPoint::LinearFrame)?;
     let (basis, columns) = span_basis(view, model, model.span_options()?, &mut report.work, team)?;
     report.span_frames = 1;
-    let mut engine = Engine::new(&design, Estimator::Ppml, &options, team)?;
+    let mut engine = Engine::new_polled(
+        &design,
+        Estimator::Ppml,
+        &options,
+        team,
+        model.probe.dense(),
+    )?;
     let mut u = reserved(outcome.len())?;
     u.extend(outcome.iter().map(|&y| if y == 0. { 1. } else { 0. }));
     for iteration in 1..=report.budget {
@@ -109,7 +115,13 @@ fn span_basis(
     team: &ThreadTeam,
 ) -> Result<(FrozenBasis, DenseMatrix)> {
     let design = Design::new(view.sample(), Weights::Unit)?;
-    let mut engine = Engine::new(&design, Estimator::Ppml, &options, team)?;
+    let mut engine = Engine::new_polled(
+        &design,
+        Estimator::Ppml,
+        &options,
+        team,
+        model.probe.dense(),
+    )?;
     let mut zero = reserved(view.sample().n_active())?;
     zero.resize(view.sample().n_active(), 0.);
     let fit = wls::solve_absorbed_recorded(

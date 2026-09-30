@@ -2,20 +2,23 @@
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    threads::{blocked_sum, ThreadTeam},
+    execution::{self, Poll},
+    threads::ThreadTeam,
 };
 use rayon::prelude::*;
 pub(super) fn moments(
     design: &DenseMatrix,
     rhs: &DenseMatrix,
     team: &ThreadTeam,
+    poll: Poll<'_>,
 ) -> Result<(DenseMatrix, DenseMatrix)> {
+    execution::check(poll)?;
     let p = design.ncols();
     let mut rows = reserved(p)?;
     rows.resize_with(p, || None);
     team.install(|| {
         rows.par_iter_mut().enumerate().for_each(|(left, result)| {
-            *result = Some(moment_row(design, rhs, left));
+            *result = Some(moment_row(design, rhs, left, poll));
         })
     });
     let mut gram = DenseMatrix::zeros(p, p)?;
@@ -32,17 +35,26 @@ pub(super) fn moments(
     }
     Ok((gram, cross))
 }
-fn moment_row(design: &DenseMatrix, rhs: &DenseMatrix, left: usize) -> Result<Vec<f64>> {
+fn moment_row(
+    design: &DenseMatrix,
+    rhs: &DenseMatrix,
+    left: usize,
+    poll: Poll<'_>,
+) -> Result<Vec<f64>> {
     let mut result = reserved(design.ncols() - left + rhs.ncols())?;
     for right in left..design.ncols() {
-        result.push(blocked_sum(design.nrows(), |row| {
-            design[(row, left)] * design[(row, right)]
-        }));
+        result.push(execution::blocked_sum(
+            design.nrows(),
+            |row| design[(row, left)] * design[(row, right)],
+            poll,
+        )?);
     }
     for column in 0..rhs.ncols() {
-        result.push(blocked_sum(design.nrows(), |row| {
-            design[(row, left)] * rhs[(row, column)]
-        }));
+        result.push(execution::blocked_sum(
+            design.nrows(),
+            |row| design[(row, left)] * rhs[(row, column)],
+            poll,
+        )?);
     }
     if result.iter().any(|v| !v.is_finite()) {
         return Err(FeregError::new(

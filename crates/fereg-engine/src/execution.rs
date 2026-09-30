@@ -1,5 +1,8 @@
 //! Scoped worker polling with host callbacks confined to the calling thread.
-use crate::{threads::ThreadTeam, ErrorCode, FeregError, Result};
+use crate::{
+    threads::{CompensatedSum, ThreadTeam, REDUCTION_CHUNK},
+    ErrorCode, FeregError, Result,
+};
 use std::sync::{Condvar, Mutex, MutexGuard};
 
 /// Worker-safe cooperative poll. Thread-bound host APIs belong in `run`'s callback.
@@ -7,20 +10,39 @@ pub(crate) type Poll<'a> = Option<&'a (dyn Fn() -> bool + Sync)>;
 
 /// Borrowed worker-safe cancellation signal; host callbacks require a scoped relay.
 #[derive(Clone, Copy, Default)]
-pub struct Probe<'a>(Poll<'a>);
+pub struct Probe<'a> {
+    iterations: Poll<'a>,
+    dense: Poll<'a>,
+}
 impl<'a> Probe<'a> {
     pub fn new(poll: &'a (dyn Fn() -> bool + Sync)) -> Self {
-        Self(Some(poll))
+        Self {
+            iterations: Some(poll),
+            dense: None,
+        }
+    }
+    pub(crate) fn with_dense(
+        iterations: &'a (dyn Fn() -> bool + Sync),
+        dense: &'a (dyn Fn() -> bool + Sync),
+    ) -> Self {
+        Self {
+            iterations: Some(iterations),
+            dense: Some(dense),
+        }
     }
     pub(crate) fn poll(self) -> Poll<'a> {
-        self.0
+        self.iterations
+    }
+    pub(crate) fn dense(self) -> Poll<'a> {
+        self.dense
     }
 }
 impl std::fmt::Debug for Probe<'_> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         formatter
             .debug_struct("Probe")
-            .field("enabled", &self.0.is_some())
+            .field("iterations", &self.iterations.is_some())
+            .field("dense", &self.dense.is_some())
             .finish()
     }
 }
@@ -31,6 +53,53 @@ pub(crate) fn check(poll: Poll<'_>) -> Result<()> {
     } else {
         Ok(())
     }
+}
+
+/// Fixed work partitions bound host-poll latency without changing additions.
+pub(crate) fn check_chunk(poll: Poll<'_>, position: usize) -> Result<()> {
+    if poll.is_some() && position != 0 && position % REDUCTION_CHUNK == 0 {
+        check(poll)?;
+    }
+    Ok(())
+}
+pub(crate) fn fold<I, T>(
+    values: I,
+    initial: T,
+    poll: Poll<'_>,
+    mut add: impl FnMut(T, I::Item) -> T,
+) -> Result<T>
+where
+    I: IntoIterator,
+{
+    let mut result = initial;
+    for (position, value) in values.into_iter().enumerate() {
+        check_chunk(poll, position)?;
+        result = add(result, value);
+    }
+    Ok(result)
+}
+pub(crate) fn sum(values: impl IntoIterator<Item = f64>, poll: Poll<'_>) -> Result<f64> {
+    Ok(
+        fold(values, CompensatedSum::default(), poll, |mut sum, value| {
+            sum.add(value);
+            sum
+        })?
+        .total(),
+    )
+}
+pub(crate) fn blocked_sum(
+    length: usize,
+    value: impl Fn(usize) -> f64,
+    poll: Poll<'_>,
+) -> Result<f64> {
+    let mut sum = CompensatedSum::default();
+    for start in (0..length).step_by(REDUCTION_CHUNK) {
+        check(poll)?;
+        sum.add(crate::threads::compensated_sum(
+            (start..start.saturating_add(REDUCTION_CHUNK).min(length)).map(&value),
+        ));
+    }
+    Ok(sum.total())
 }
 
 fn interrupted() -> FeregError {

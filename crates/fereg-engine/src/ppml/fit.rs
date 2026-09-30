@@ -63,12 +63,13 @@ pub(super) fn execute(
         team,
         |relay| {
             let fe_poll = || relay(Phase::Numerical(super::InterruptPoint::FixedEffects));
+            let dense_poll = || relay(Phase::Numerical(super::InterruptPoint::DenseLinearAlgebra));
             execute_in(
                 call,
                 loaded,
                 units,
                 team,
-                Probe::new(&fe_poll),
+                Probe::with_dense(&fe_poll, &dense_poll),
                 &mut |phase| execution::check(Some(&|| relay(phase))),
             )
         },

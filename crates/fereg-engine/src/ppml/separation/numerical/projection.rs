@@ -27,7 +27,13 @@ pub(super) fn certify(
     );
     let design = Design::new(view.sample, Weights::Unit)?;
     let options = model.span_options()?;
-    let mut engine = Engine::new(&design, Estimator::Ppml, &options, team)?;
+    let mut engine = Engine::new_polled(
+        &design,
+        Estimator::Ppml,
+        &options,
+        team,
+        model.probe.dense(),
+    )?;
     let mut work = wls::Work::default();
     let fit = wls::solve_absorbed_recorded(
         &mut engine,

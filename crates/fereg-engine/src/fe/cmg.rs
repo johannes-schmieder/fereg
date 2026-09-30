@@ -122,9 +122,9 @@ impl<'a, 'data> CmgSession<'a, 'data> {
         let residuals = self
             .design
             .reconstruct(&columns, &projected.coefficients, team)?;
-        let mut scaled = ScaledDesign::new(residuals, self.design.weights())?;
-        scaled.reference_scales(&references)?;
-        let factor = WeightedQr::from_reference_scaled(scaled, rank_threshold)?;
+        let mut scaled = ScaledDesign::new(residuals, self.design.weights(), poll)?;
+        scaled.reference_scales(&references, poll)?;
+        let factor = WeightedQr::from_reference_scaled(scaled, rank_threshold, poll)?;
         self.core_columns = Some(projected.coefficients);
         self.factor = Some(factor);
         Ok(())
@@ -160,6 +160,7 @@ impl<'a, 'data> CmgSession<'a, 'data> {
             .factor
             .as_ref()
             .ok_or_else(|| invalid("CMG nuisance preparation has not succeeded"))?;
+        let poll = limits.poll;
         let mut candidate = self.core.solve_with_roundoff(rhs, limits, roundoff, team)?;
         let mut residuals = self
             .design
@@ -171,7 +172,7 @@ impl<'a, 'data> CmgSession<'a, 'data> {
                 }
             }
         }
-        let nuisance = factor.solve(residuals)?;
+        let nuisance = factor.solve(residuals, poll)?;
         let core_columns = self.core_columns.as_ref().expect("prepared CMG columns");
         for coefficient in 0..candidate.coefficients.nrows() {
             for column in 0..rhs.ncols() {

@@ -26,6 +26,7 @@ pub enum Phase {
     Inferred,
     Outputs,
     FixedEffects,
+    DenseLinearAlgebra,
 }
 pub struct Call<'a> {
     pub(super) model: &'a ModelSpec,
@@ -126,7 +127,7 @@ impl<'a> Call<'a> {
         let team = ThreadTeam::new(self.options.threads)?;
         super::fit::execute_in(self, loaded, &team, Default::default(), &mut |_| Ok(()))
     }
-    /// Callbacks execute on the caller at phases and individual FE iterations.
+    /// Callbacks execute on the caller at phases, FE operations and dense WLS checkpoints.
     pub fn run_with(
         self,
         loaded: &Loaded,

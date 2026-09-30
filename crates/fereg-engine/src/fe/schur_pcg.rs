@@ -6,7 +6,7 @@ use super::{
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
-    execution,
+    execution::{self, Poll},
     threads::{compensated_sum, ThreadTeam},
 };
 
@@ -30,6 +30,15 @@ pub struct SchurSession<'a, 'data> {
 }
 impl<'a, 'data> SchurSession<'a, 'data> {
     pub fn new(design: &'a Design<'data>, plan: &Plan, team: &ThreadTeam) -> Result<Self> {
+        Self::new_polled(design, plan, team, None)
+    }
+    pub(super) fn new_polled(
+        design: &'a Design<'data>,
+        plan: &Plan,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
         if plan.selected() != Backend::SchurPcg || design.layout().effects.len() < 2 {
             return Err(invalid("Schur session requires a multi-effect Schur plan"));
         }
@@ -50,7 +59,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         }
         Ok(Self {
             design,
-            blocks: Blocks::new(design, team)?,
+            blocks: Blocks::new(design, team, poll)?,
             eliminated,
             budget: plan.linear_budget(),
             tolerance: plan.tolerance(),
@@ -115,7 +124,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
                 "a forced monitor checkpoint requires positive work",
             ));
         }
-        let initial = self.project_eliminated(rhs, team)?;
+        let initial = self.project_eliminated(rhs, team, poll)?;
         let mut b = self.design.transpose_weighted(&initial, team)?;
         zero_effect(self.design, self.eliminated, &mut b);
         let mut x = match &self.warm {
@@ -123,10 +132,10 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             _ => DenseMatrix::zeros(self.design.layout().total, rhs.ncols())?,
         };
         zero_effect(self.design, self.eliminated, &mut x);
-        let applied = self.apply(&x, team)?;
+        let applied = self.apply(&x, team, poll)?;
         let mut r = copy_matrix(&b)?;
         subtract(&mut r, &applied);
-        let z = self.precondition(&r, team)?;
+        let z = self.precondition(&r, team, poll)?;
         let mut targets = reserved(rhs.ncols())?;
         for column in 0..rhs.ncols() {
             let norm = (0..rhs.nrows()).fold(0_f64, |norm, row| {
@@ -145,7 +154,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             if !state.active.iter().any(|&active| active) {
                 break;
             }
-            let applied = match self.apply(&state.p, team) {
+            let applied = match self.apply(&state.p, team, poll) {
                 Ok(applied) => applied,
                 Err(error) if error.code == ErrorCode::NonConvergence => {
                     state.fail_active(true);
@@ -154,7 +163,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
                 Err(error) => return Err(error),
             };
             state.advance(&applied);
-            let z = match self.precondition(&state.r, team) {
+            let z = match self.precondition(&state.r, team, poll) {
                 Ok(z) => z,
                 Err(error) if error.code == ErrorCode::NonConvergence => {
                     state.fail_active(false);
@@ -180,7 +189,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         }
         // Reconstruct eliminated coordinates from the original RHS and current
         // reduced coefficients; a recursive PCG residual never becomes output.
-        let residuals = match self.recover(rhs, &mut state.x, team) {
+        let residuals = match self.recover(rhs, &mut state.x, team, poll) {
             Ok(residuals) => {
                 if warm_start {
                     self.warm = Some(copy_matrix(&state.x)?);
@@ -225,11 +234,12 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         rhs: &DenseMatrix,
         coefficients: &mut DenseMatrix,
         team: &ThreadTeam,
+        poll: Poll<'_>,
     ) -> Result<DenseMatrix> {
         let remaining = self.design.reconstruct(rhs, coefficients, team)?;
         let eliminated =
             self.blocks
-                .observation_solve(self.design, self.eliminated, &remaining, team)?;
+                .observation_solve(self.design, self.eliminated, &remaining, team, poll)?;
         for (value, &addition) in coefficients
             .as_mut_slice()
             .iter_mut()
@@ -248,22 +258,37 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         }
         self.design.reconstruct(rhs, coefficients, team)
     }
-    fn project_eliminated(&self, rhs: &DenseMatrix, team: &ThreadTeam) -> Result<DenseMatrix> {
+    fn project_eliminated(
+        &self,
+        rhs: &DenseMatrix,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<DenseMatrix> {
         let coefficients =
             self.blocks
-                .observation_solve(self.design, self.eliminated, rhs, team)?;
+                .observation_solve(self.design, self.eliminated, rhs, team, poll)?;
         self.design.reconstruct(rhs, &coefficients, team)
     }
-    fn apply(&self, reduced: &DenseMatrix, team: &ThreadTeam) -> Result<DenseMatrix> {
+    fn apply(
+        &self,
+        reduced: &DenseMatrix,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<DenseMatrix> {
         let fitted = self.design.multiply(reduced, team)?;
-        let residual = self.project_eliminated(&fitted, team)?;
+        let residual = self.project_eliminated(&fitted, team, poll)?;
         let mut result = self.design.transpose_weighted(&residual, team)?;
         zero_effect(self.design, self.eliminated, &mut result);
         Ok(result)
     }
-    fn precondition(&self, rhs: &DenseMatrix, team: &ThreadTeam) -> Result<DenseMatrix> {
+    fn precondition(
+        &self,
+        rhs: &DenseMatrix,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<DenseMatrix> {
         self.blocks
-            .diagonal_solve(self.design, self.eliminated, rhs, team)
+            .diagonal_solve(self.design, self.eliminated, rhs, team, poll)
     }
 }
 struct Recurrences {

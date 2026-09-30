@@ -83,7 +83,7 @@ pub(crate) fn with_information_polled<T>(
         tolerance: controls.strict_tolerance(),
         ..fit.options()
     };
-    let engine = Engine::new(&design, Estimator::Ppml, &options, team)?;
+    let engine = Engine::new_polled(&design, Estimator::Ppml, &options, team, probe.dense())?;
     let basis = FrozenBasis::from_fit(&fit.linear.finite)?;
     let dimension = anchor
         .levels()

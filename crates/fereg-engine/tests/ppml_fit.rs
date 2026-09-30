@@ -649,6 +649,7 @@ fn numerical_callbacks_preserve_all_solvers_bias_outputs_and_worker_identity() {
                 InterruptPoint::LinearFrame,
                 InterruptPoint::StrictCheckpoint,
                 InterruptPoint::FixedEffects,
+                InterruptPoint::DenseLinearAlgebra,
             ] {
                 assert!(trace.contains(&point), "missing {point:?}: {trace:?}");
             }
@@ -667,7 +668,7 @@ fn numerical_callbacks_preserve_all_solvers_bias_outputs_and_worker_identity() {
     }
 }
 #[test]
-fn every_numerical_boundary_aborts_without_a_result_and_allows_fresh_restart() {
+fn every_outer_numerical_boundary_aborts_without_a_result_and_allows_fresh_restart() {
     let (loaded, _) = interrupted_fixture();
     let model = model(false);
     let mut request = request(true, None);
@@ -687,18 +688,28 @@ fn every_numerical_boundary_aborts_without_a_result_and_allows_fresh_restart() {
         .unwrap()
     };
     let caller = std::thread::current().id();
+    // FE and dense actions have exhaustive kernel cancellation tests. Replaying
+    // the full caller relay after each inner poll grows quadratically; complete
+    // calls cover those actions separately in each separation/IRLS/bias region.
+    let outer = |point| {
+        !matches!(
+            point,
+            InterruptPoint::FixedEffects | InterruptPoint::DenseLinearAlgebra
+        )
+    };
     let mut trace = vec![];
     let baseline = make()
         .run_with_team(&loaded, None, &team, &mut |phase| {
-            if let Phase::Numerical(point) = phase {
-                trace.push(point);
+            match phase {
+                Phase::Numerical(point) if outer(point) => trace.push(point),
+                _ => (),
             }
             Ok(())
         })
         .unwrap();
     assert!(trace.len() > 20);
     eprintln!(
-        "{} complete-call numerical checkpoints qualified",
+        "{} complete-call outer numerical checkpoints qualified",
         trace.len()
     );
     for stop in 0..trace.len() {
@@ -706,15 +717,18 @@ fn every_numerical_boundary_aborts_without_a_result_and_allows_fresh_restart() {
         let error = make()
             .run_with_team(&loaded, None, &team, &mut |phase| {
                 assert_eq!(std::thread::current().id(), caller);
-                if let Phase::Numerical(point) = phase {
-                    assert_eq!(point, trace[reached]);
-                    reached += 1;
-                    if reached == stop + 1 {
-                        return Err(FeregError::new(
-                            ErrorCode::Interrupted,
-                            "inner fixture Break",
-                        ));
+                match phase {
+                    Phase::Numerical(point) if outer(point) => {
+                        assert_eq!(point, trace[reached]);
+                        reached += 1;
+                        if reached == stop + 1 {
+                            return Err(FeregError::new(
+                                ErrorCode::Interrupted,
+                                "outer fixture Break",
+                            ));
+                        }
                     }
+                    _ => (),
                 }
                 Ok(())
             })
@@ -731,9 +745,12 @@ fn every_numerical_boundary_aborts_without_a_result_and_allows_fresh_restart() {
         let mut reached = 0;
         let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             make().run_with_team(&loaded, None, &team, &mut |phase| {
-                if let Phase::Numerical(_) = phase {
-                    reached += 1;
-                    assert_ne!(reached, stop + 1, "caller callback panic");
+                match phase {
+                    Phase::Numerical(point) if outer(point) => {
+                        reached += 1;
+                        assert_ne!(reached, stop + 1, "caller callback panic");
+                    }
+                    _ => (),
                 }
                 Ok(())
             })
@@ -1157,7 +1174,7 @@ fn outcome_weight_and_adjustment_bias_bindings_preserve_raw_original_ids() {
 }
 
 #[test]
-fn fe_cancellation_covers_separation_final_irls_and_both_bias_modes() {
+fn fe_and_dense_cancellation_cover_separation_final_irls_and_both_bias_modes() {
     use std::{cell::Cell, rc::Rc};
     let (loaded, units) = interrupted_fixture();
     let model = model(false);
@@ -1193,66 +1210,72 @@ fn fe_cancellation_covers_separation_final_irls_and_both_bias_modes() {
                     .unwrap()
                 };
                 let plain = make().run(&loaded, Some(&units)).unwrap();
-                let counts = Rc::new([Cell::new(0_usize), Cell::new(0), Cell::new(0)]);
-                let mut region = 0;
-                let polled = make()
-                    .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
-                        assert_eq!(std::thread::current().id(), caller);
-                        match phase {
-                            Phase::Separated => region = 1,
-                            Phase::Outputs => region = 2,
-                            Phase::Numerical(InterruptPoint::FixedEffects) => {
-                                counts[region].set(counts[region].get() + 1)
-                            }
-                            _ => (),
-                        }
-                        Ok(())
-                    })
-                    .unwrap();
-                same(&plain, &polled);
-                same_products(&plain, &polled);
-                assert!(counts.iter().all(|c| c.get() > 2));
-                if let Some(reference) = &reference {
-                    same(reference, &polled);
-                    same_products(reference, &polled);
-                } else {
-                    reference = Some(polled);
-                }
-                for cancelled_region in 0..3 {
-                    for stop in [
-                        1,
-                        counts[cancelled_region].get() / 2,
-                        counts[cancelled_region].get(),
-                    ] {
-                        let sentinel = FeregError::new(
-                            ErrorCode::NonConvergence,
-                            "host FE callback r430 must abort",
-                        );
-                        let mut calls = 0;
-                        let mut region = 0;
-                        let error = make()
-                            .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
-                                match phase {
-                                    Phase::Separated => region = 1,
-                                    Phase::Outputs => region = 2,
-                                    Phase::Numerical(InterruptPoint::FixedEffects)
-                                        if region == cancelled_region =>
-                                    {
-                                        calls += 1;
-                                        if calls == stop {
-                                            return Err(sentinel.clone());
-                                        }
-                                    }
-                                    _ => (),
+                for checkpoint in [
+                    InterruptPoint::FixedEffects,
+                    InterruptPoint::DenseLinearAlgebra,
+                ] {
+                    let counts = Rc::new([Cell::new(0_usize), Cell::new(0), Cell::new(0)]);
+                    let mut region = 0;
+                    let polled = make()
+                        .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
+                            assert_eq!(std::thread::current().id(), caller);
+                            match phase {
+                                Phase::Separated => region = 1,
+                                Phase::Outputs => region = 2,
+                                Phase::Numerical(point) if point == checkpoint => {
+                                    counts[region].set(counts[region].get() + 1)
                                 }
-                                Ok(())
-                            })
-                            .unwrap_err();
-                        assert_eq!(error, sentinel);
-                        assert_eq!(calls, stop);
-                        let retry = make().run(&loaded, Some(&units)).unwrap();
-                        same(&plain, &retry);
-                        same_products(&plain, &retry);
+                                _ => (),
+                            }
+                            Ok(())
+                        })
+                        .unwrap();
+                    same(&plain, &polled);
+                    same_products(&plain, &polled);
+                    assert!(counts.iter().all(|c| c.get() > 2));
+                    if let Some(reference) = &reference {
+                        same(reference, &polled);
+                        same_products(reference, &polled);
+                    } else {
+                        reference = Some(polled);
+                    }
+                    for cancelled_region in 0..3 {
+                        for stop in [
+                            1,
+                            counts[cancelled_region].get() / 2,
+                            counts[cancelled_region].get(),
+                        ] {
+                            let sentinel = FeregError::new(
+                                ErrorCode::NonConvergence,
+                                "host FE callback r430 must abort",
+                            );
+                            let mut calls = 0;
+                            let mut region = 0;
+                            let error = make()
+                                .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
+                                    match phase {
+                                        Phase::Separated => region = 1,
+                                        Phase::Outputs => region = 2,
+                                        Phase::Numerical(point)
+                                            if point == checkpoint
+                                                && region == cancelled_region =>
+                                        {
+                                            calls += 1;
+                                            if calls == stop {
+                                                return Err(sentinel.clone());
+                                            }
+                                        }
+                                        _ => (),
+                                    }
+                                    Ok(())
+                                })
+                                .unwrap_err();
+                            assert_eq!(error, sentinel);
+                            assert_eq!(calls, stop);
+                            let retry = make().run(&loaded, Some(&units)).unwrap();
+                            same(&plain, &retry);
+                            same_products(&plain, &retry);
+                        }
                     }
                 }
             }

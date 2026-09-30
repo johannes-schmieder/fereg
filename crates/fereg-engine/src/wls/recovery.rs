@@ -109,6 +109,7 @@ fn original_score_fn(
         model.outcome,
         &model.finite.kept,
         residual.as_slice(),
+        model.probe.dense(),
     )
 }
 fn append(

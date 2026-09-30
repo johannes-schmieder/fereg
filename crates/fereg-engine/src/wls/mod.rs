@@ -3,6 +3,8 @@ mod absorbed;
 mod basis;
 mod certificate;
 mod cholesky;
+#[cfg(test)]
+mod interrupt_tests;
 mod moments;
 mod recovery;
 pub(crate) mod reporting;
@@ -10,6 +12,7 @@ mod work;
 use crate::{
     data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     linalg::{ColumnScaling, ScaledDesign, WeightedQr},
     threads::ThreadTeam,
 };
@@ -128,26 +131,36 @@ pub fn solve_with_basis(
     basis: Option<&FrozenBasis>,
     team: &ThreadTeam,
 ) -> Result<Fit> {
+    solve_with_basis_polled(problem, policy, basis, team, None)
+}
+fn solve_with_basis_polled(
+    problem: &Problem<'_>,
+    policy: Policy,
+    basis: Option<&FrozenBasis>,
+    team: &ThreadTeam,
+    poll: Poll<'_>,
+) -> Result<Fit> {
+    execution::check(poll)?;
     let threshold = validate(problem, policy)?;
-    let scaled = ScaledDesign::new(copy_matrix(problem.design)?, problem.weights)?;
+    let scaled = ScaledDesign::new(copy_matrix(problem.design)?, problem.weights, poll)?;
     let (columns, mut statuses) = match basis {
         Some(basis) => basis.select(problem)?,
         None => select(problem, &scaled.scaling, policy)?,
     };
-    let mut scaled = scaled.select_columns(&columns)?;
+    let mut scaled = scaled.select_columns(&columns, poll)?;
     let mut references = reserved(columns.len())?;
     references.extend(
         columns
             .iter()
             .map(|&column| problem.slots[column].reference_norm),
     );
-    scaled.reference_scales(&references)?;
+    scaled.reference_scales(&references, poll)?;
     let rhs = outcome_matrix(problem.outcome)?;
-    let (weighted_rhs, rhs_scales) = scaled.scaling.rhs(copy_matrix(&rhs)?)?;
-    let (gram, cross) = moments::moments(&scaled.matrix, &weighted_rhs, team)?;
+    let (weighted_rhs, rhs_scales) = scaled.scaling.rhs(copy_matrix(&rhs)?, poll)?;
+    let (gram, cross) = moments::moments(&scaled.matrix, &weighted_rhs, team, poll)?;
     if policy.override_method != SolveOverride::Qr {
-        if let Some(factor) = Cholesky::factor(&gram, threshold)? {
-            let mut coefficients = factor.solve(&cross)?;
+        if let Some(factor) = Cholesky::factor(&gram, threshold, poll)? {
+            let mut coefficients = factor.solve(&cross, poll)?;
             for column in 0..columns.len() {
                 coefficients[(column, 0)] =
                     scaled
@@ -158,7 +171,7 @@ pub fn solve_with_basis(
             kept.extend(0..columns.len());
             let candidate = Candidate {
                 coefficients,
-                scaled_bread: factor.solve(&identity(columns.len())?)?,
+                scaled_bread: factor.solve(&identity(columns.len())?, poll)?,
                 kept,
                 refinements: 0,
                 method: if columns.is_empty() {
@@ -174,6 +187,7 @@ pub fn solve_with_basis(
                 &gram,
                 &candidate,
                 policy,
+                poll,
             )? {
                 return finish(products, candidate, columns, statuses);
             }
@@ -184,7 +198,7 @@ pub fn solve_with_basis(
             ));
         }
     }
-    let factor = WeightedQr::from_scaled(scaled, threshold)?;
+    let factor = WeightedQr::from_scaled(scaled, threshold, poll)?;
     if basis.is_some() && factor.rank() != columns.len() {
         return Err(numerical(
             "frozen finite WLS basis lost rank in the current weight frame",
@@ -193,8 +207,8 @@ pub fn solve_with_basis(
     let mut kept = reserved(factor.rank())?;
     kept.extend_from_slice(factor.kept());
     let mut candidate = Candidate {
-        coefficients: factor.solve(rhs)?,
-        scaled_bread: factor.scaled_inverse()?,
+        coefficients: factor.solve(rhs, poll)?,
+        scaled_bread: factor.scaled_inverse(poll)?,
         kept,
         refinements: 0,
         method: if columns.is_empty() {
@@ -203,7 +217,15 @@ pub fn solve_with_basis(
             Method::ColumnPivotedQr
         },
     };
-    let products = certify_qr(problem, &columns, &gram, &factor, &mut candidate, policy)?;
+    let products = certify_qr(
+        problem,
+        &columns,
+        &gram,
+        &factor,
+        &mut candidate,
+        policy,
+        poll,
+    )?;
     for &column in &columns {
         statuses[column] = Status::NumericallyRankDeficient;
     }
@@ -216,11 +238,20 @@ fn certify_qr(
     factor: &WeightedQr,
     candidate: &mut Candidate,
     policy: Policy,
+    poll: Poll<'_>,
 ) -> Result<Products> {
     let mut previous = f64::INFINITY;
     for refinement in 0..=2 {
         candidate.refinements = refinement;
-        match certificate::assess(problem, columns, factor.scaling(), gram, candidate, policy)? {
+        match certificate::assess(
+            problem,
+            columns,
+            factor.scaling(),
+            gram,
+            candidate,
+            policy,
+            poll,
+        )? {
             certificate::CandidateCheck::Pass(products) => return Ok(products),
             certificate::CandidateCheck::Fail { score, inverse } => {
                 if refinement == 2
@@ -235,8 +266,9 @@ fn certify_qr(
         }
         // Residual refinement reuses the same rank and factor; it cannot alter
         // omission decisions or replace the independent acceptance thresholds.
-        let (_, residuals) = certificate::reconstruct(problem, columns, &candidate.coefficients)?;
-        let correction = factor.solve(outcome_matrix(&residuals)?)?;
+        let (_, residuals) =
+            certificate::reconstruct(problem, columns, &candidate.coefficients, poll)?;
+        let correction = factor.solve(outcome_matrix(&residuals)?, poll)?;
         for (value, &correction) in candidate
             .coefficients
             .as_mut_slice()

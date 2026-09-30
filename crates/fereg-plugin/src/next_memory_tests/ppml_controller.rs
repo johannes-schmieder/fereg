@@ -273,6 +273,7 @@ fn ppml_numerical_break_releases_owners_at_every_checkpoint_kind() {
             InterruptPoint::LinearFrame,
             InterruptPoint::StrictCheckpoint,
             InterruptPoint::FixedEffects,
+            InterruptPoint::DenseLinearAlgebra,
         ] {
             let (before, _) = begin_ols_allocation_observation();
             let mut reached = false;
@@ -311,7 +312,7 @@ fn ppml_numerical_break_releases_owners_at_every_checkpoint_kind() {
 
 #[test]
 #[ignore = "process-global allocator audit; run with --test-threads=1"]
-fn ppml_fe_cancellation_releases_separation_final_irls_and_bias_owners() {
+fn ppml_fe_and_dense_cancellation_release_separation_final_irls_and_bias_owners() {
     let _guard = crate::instrumentation::lock_action_observation();
     let model = fixture::model(false);
     let mut loaded = fixture::loaded(1024, true, true);
@@ -372,42 +373,47 @@ fn ppml_fe_cancellation_releases_separation_final_irls_and_bias_owners() {
                     &mut expected,
                 );
                 drop(baseline);
-                for cancelled_region in 0..3 {
-                    let (before, _) = begin_ols_allocation_observation();
-                    let mut region = 0;
-                    let mut polls = 0;
-                    let error = make()
-                        .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
-                            match phase {
-                                Phase::Separated => region = 1,
-                                Phase::Outputs => region = 2,
-                                Phase::Numerical(InterruptPoint::FixedEffects)
-                                    if region == cancelled_region =>
-                                {
-                                    polls += 1;
-                                    if polls == 3 {
-                                        return Err(sentinel.clone());
+                for checkpoint in [
+                    InterruptPoint::FixedEffects,
+                    InterruptPoint::DenseLinearAlgebra,
+                ] {
+                    for cancelled_region in 0..3 {
+                        let (before, _) = begin_ols_allocation_observation();
+                        let mut region = 0;
+                        let mut polls = 0;
+                        let error = make()
+                            .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
+                                match phase {
+                                    Phase::Separated => region = 1,
+                                    Phase::Outputs => region = 2,
+                                    Phase::Numerical(point)
+                                        if point == checkpoint && region == cancelled_region =>
+                                    {
+                                        polls += 1;
+                                        if polls == 3 {
+                                            return Err(sentinel.clone());
+                                        }
                                     }
+                                    _ => (),
                                 }
-                                _ => (),
-                            }
-                            Ok(())
-                        })
-                        .unwrap_err();
-                    assert_eq!(polls, 3);
-                    assert_eq!(error, sentinel);
-                    drop(error);
-                    assert!(allocation_usage().current_bytes <= before.current_bytes);
-                    let retry = make()
-                        .run_with_team(&loaded, Some(&units), &team, &mut |_| Ok(()))
-                        .unwrap();
-                    let mut value = 0;
-                    hash(&retry.coefficients, &mut value);
-                    hash(retry.covariance.values.as_slice(), &mut value);
-                    hash(retry.bias.as_ref().unwrap().ordinary.as_slice(), &mut value);
-                    assert_eq!(value, expected);
-                    drop(retry);
-                    assert!(allocation_usage().current_bytes <= before.current_bytes);
+                                Ok(())
+                            })
+                            .unwrap_err();
+                        assert_eq!(polls, 3);
+                        assert_eq!(error, sentinel);
+                        drop(error);
+                        assert!(allocation_usage().current_bytes <= before.current_bytes);
+                        let retry = make()
+                            .run_with_team(&loaded, Some(&units), &team, &mut |_| Ok(()))
+                            .unwrap();
+                        let mut value = 0;
+                        hash(&retry.coefficients, &mut value);
+                        hash(retry.covariance.values.as_slice(), &mut value);
+                        hash(retry.bias.as_ref().unwrap().ordinary.as_slice(), &mut value);
+                        assert_eq!(value, expected);
+                        drop(retry);
+                        assert!(allocation_usage().current_bytes <= before.current_bytes);
+                    }
                 }
             }
         }

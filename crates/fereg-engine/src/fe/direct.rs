@@ -3,6 +3,7 @@ use super::Design;
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     threads::ThreadTeam,
 };
 use rayon::prelude::*;
@@ -22,6 +23,15 @@ impl Design<'_> {
         rhs: &DenseMatrix,
         team: &ThreadTeam,
     ) -> Result<DirectCandidate> {
+        self.direct_candidate_polled(rhs, team, None)
+    }
+    pub(super) fn direct_candidate_polled(
+        &self,
+        rhs: &DenseMatrix,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<DirectCandidate> {
+        execution::check(poll)?;
         super::design::validate_matrix(rhs, self.nobs())?;
         if self.layout().effects.len() > 1 {
             return Err(FeregError::new(
@@ -42,7 +52,7 @@ impl Design<'_> {
                 .par_iter_mut()
                 .enumerate()
                 .for_each(|(level, result)| {
-                    *result = Some(self.solve_level(rhs, level));
+                    *result = Some(self.solve_level(rhs, level, poll));
                 })
         });
         let mut level_ranks = reserved(levels)?;
@@ -63,9 +73,14 @@ impl Design<'_> {
             level_ranks,
         })
     }
-    fn solve_level(&self, rhs: &DenseMatrix, level: usize) -> Result<(DenseMatrix, usize)> {
-        let factor = super::blocks::factor_level(self, 0, level)?;
-        let block = super::blocks::solve_level(self, 0, level, &factor, rhs)?;
+    fn solve_level(
+        &self,
+        rhs: &DenseMatrix,
+        level: usize,
+        poll: Poll<'_>,
+    ) -> Result<(DenseMatrix, usize)> {
+        let factor = super::blocks::factor_level(self, 0, level, poll)?;
+        let block = super::blocks::solve_level(self, 0, level, &factor, rhs, poll)?;
         Ok((block, factor.rank()))
     }
 }

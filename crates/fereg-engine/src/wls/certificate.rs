@@ -3,8 +3,8 @@ use super::{Candidate, Policy, Problem, Products};
 use crate::{
     data::DenseMatrix,
     error::{reserved, Result},
+    execution::{self, Poll},
     linalg::ColumnScaling,
-    threads::compensated_sum,
 };
 pub(super) enum CandidateCheck {
     Pass(Products),
@@ -17,7 +17,9 @@ pub(super) fn assess(
     gram: &DenseMatrix,
     candidate: &Candidate,
     policy: Policy,
+    poll: Poll<'_>,
 ) -> Result<CandidateCheck> {
+    execution::check(poll)?;
     if candidate
         .coefficients
         .as_slice()
@@ -35,7 +37,7 @@ pub(super) fn assess(
     for (local, &column) in columns.iter().enumerate() {
         coefficients[column] = candidate.coefficients[(local, 0)];
     }
-    let (fitted, residuals) = reconstruct(problem, columns, &candidate.coefficients)?;
+    let (fitted, residuals) = reconstruct(problem, columns, &candidate.coefficients, poll)?;
     if fitted.iter().chain(&residuals).any(|v| !v.is_finite()) {
         return Ok(CandidateCheck::Fail {
             score: f64::INFINITY,
@@ -52,6 +54,7 @@ pub(super) fn assess(
     let mut residual_norm = 0_f64;
     if outcome_scale > 0. {
         for (row, &residual) in residuals.iter().enumerate() {
+            execution::check_chunk(poll, row)?;
             reference =
                 reference.hypot(scaling.roots[row] * (problem.outcome[row] / outcome_scale));
             residual_norm = residual_norm.hypot(scaling.roots[row] * (residual / outcome_scale));
@@ -61,16 +64,20 @@ pub(super) fn assess(
     let mut score = 0_f64;
     if denominator > 0. {
         for &local in &candidate.kept {
+            execution::check(poll)?;
             let column = columns[local];
             if scaling.norms[local] == 0. {
                 continue;
             }
-            let moment = compensated_sum((0..problem.outcome.len()).map(|row| {
-                let z = (problem.design[(row, column)] / scaling.maxima[local])
-                    * scaling.roots[row]
-                    / scaling.norms[local];
-                z * scaling.roots[row] * (residuals[row] / outcome_scale)
-            }));
+            let moment = execution::sum(
+                (0..problem.outcome.len()).map(|row| {
+                    let z = (problem.design[(row, column)] / scaling.maxima[local])
+                        * scaling.roots[row]
+                        / scaling.norms[local];
+                    z * scaling.roots[row] * (residuals[row] / outcome_scale)
+                }),
+                poll,
+            )?;
             if !moment.is_finite() {
                 return Ok(CandidateCheck::Fail {
                     score: f64::INFINITY,
@@ -80,7 +87,7 @@ pub(super) fn assess(
             score = score.max(moment.abs() / denominator / gram[(local, local)].sqrt());
         }
     }
-    let inverse_error = inverse_error(gram, &candidate.scaled_bread, &candidate.kept);
+    let inverse_error = inverse_error(gram, &candidate.scaled_bread, &candidate.kept, poll)?;
     if !score.is_finite()
         || score > policy.score_tolerance
         || inverse_error > policy.bread_tolerance
@@ -92,6 +99,7 @@ pub(super) fn assess(
     }
     let mut bread = DenseMatrix::zeros(problem.slots.len(), problem.slots.len())?;
     for &left in &candidate.kept {
+        execution::check(poll)?;
         for &right in &candidate.kept {
             let value = scaling.normal_coordinate(candidate.scaled_bread[(left, right)], left);
             bread[(columns[left], columns[right])] = scaling.normal_coordinate(value, right);
@@ -115,10 +123,16 @@ pub(super) fn assess(
 
 // Legacy's two-sided, component-scaled backward-error test; an ill-conditioned
 // retained inverse still needs independent forward-accuracy oracle coverage.
-fn inverse_error(gram: &DenseMatrix, bread: &DenseMatrix, kept: &[usize]) -> f64 {
+fn inverse_error(
+    gram: &DenseMatrix,
+    bread: &DenseMatrix,
+    kept: &[usize],
+    poll: Poll<'_>,
+) -> Result<f64> {
     let mut maximum = 0_f64;
     for reverse in [false, true] {
         for &row in kept {
+            execution::check(poll)?;
             let mut error = 0.;
             let mut scale = 1.;
             for &column in kept {
@@ -129,34 +143,38 @@ fn inverse_error(gram: &DenseMatrix, bread: &DenseMatrix, kept: &[usize]) -> f64
                         gram[(row, *inner)] * bread[(*inner, column)]
                     }
                 };
-                let value = compensated_sum(kept.iter().map(term));
-                let absolute = compensated_sum(kept.iter().map(|inner| term(inner).abs()));
+                let value = execution::sum(kept.iter().map(term), poll)?;
+                let absolute = execution::sum(kept.iter().map(|inner| term(inner).abs()), poll)?;
                 error += (value - if row == column { 1. } else { 0. }).abs();
                 scale += absolute;
             }
             if !error.is_finite() || !scale.is_finite() {
-                return f64::INFINITY;
+                return Ok(f64::INFINITY);
             }
             maximum = maximum.max(error / scale);
         }
     }
-    maximum
+    Ok(maximum)
 }
 
 pub(super) fn reconstruct(
     problem: &Problem<'_>,
     columns: &[usize],
     coefficients: &DenseMatrix,
+    poll: Poll<'_>,
 ) -> Result<(Vec<f64>, Vec<f64>)> {
+    execution::check(poll)?;
     let mut fitted = reserved(problem.outcome.len())?;
     let mut residuals = reserved(problem.outcome.len())?;
     for row in 0..problem.outcome.len() {
-        let value = compensated_sum(
+        execution::check_chunk(poll, row)?;
+        let value = execution::sum(
             columns
                 .iter()
                 .enumerate()
                 .map(|(local, &column)| problem.design[(row, column)] * coefficients[(local, 0)]),
-        );
+            poll,
+        )?;
         fitted.push(value);
         residuals.push(problem.outcome[row] - value);
     }

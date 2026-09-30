@@ -155,7 +155,7 @@ fn controller_allocation_failure_discards_preparation_or_inference_and_can_resta
 
 #[test]
 #[ignore = "process-global allocator audit; run with --test-threads=1"]
-fn ols_fe_cancellation_and_host_panic_release_complete_call_owners() {
+fn ols_fe_and_dense_cancellation_and_host_panic_release_complete_call_owners() {
     let _guard = crate::instrumentation::lock_action_observation();
     let model = fixture::model(false);
     let loaded = fixture::loaded(1024, true, false);
@@ -191,47 +191,49 @@ fn ols_fe_cancellation_and_host_panic_release_complete_call_owners() {
             hash(&baseline.coefficients, &mut expected);
             hash(baseline.covariance.values.as_slice(), &mut expected);
             drop(baseline);
-            for panic in [false, true] {
-                // Captured panic text belongs to the test harness and outlives
-                // the call; exclude that owner from this numerical-storage audit.
-                let saved_hook = panic.then(std::panic::take_hook);
-                if panic {
-                    std::panic::set_hook(Box::new(|_| {}));
-                }
-                let (before, _) = begin_ols_allocation_observation();
-                let mut polls = 0;
-                let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    make().run_with_team(&loaded, &team, &mut |phase| {
-                        if phase == Phase::FixedEffects {
-                            polls += 1;
-                            if polls == 3 {
-                                assert!(!panic, "tracked host panic");
-                                return Err(sentinel.clone());
+            for checkpoint in [Phase::FixedEffects, Phase::DenseLinearAlgebra] {
+                for panic in [false, true] {
+                    // Captured panic text belongs to the test harness and outlives
+                    // the call; exclude that owner from this numerical-storage audit.
+                    let saved_hook = panic.then(std::panic::take_hook);
+                    if panic {
+                        std::panic::set_hook(Box::new(|_| {}));
+                    }
+                    let (before, _) = begin_ols_allocation_observation();
+                    let mut polls = 0;
+                    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        make().run_with_team(&loaded, &team, &mut |phase| {
+                            if phase == checkpoint {
+                                polls += 1;
+                                if polls == 3 {
+                                    assert!(!panic, "tracked host panic");
+                                    return Err(sentinel.clone());
+                                }
                             }
-                        }
-                        Ok(())
-                    })
-                }));
-                if let Some(hook) = saved_hook {
-                    std::panic::set_hook(hook);
+                            Ok(())
+                        })
+                    }));
+                    if let Some(hook) = saved_hook {
+                        std::panic::set_hook(hook);
+                    }
+                    assert_eq!(polls, 3);
+                    if panic {
+                        assert!(result.is_err());
+                    } else {
+                        assert_eq!(result.as_ref().unwrap().as_ref().unwrap_err(), &sentinel);
+                    }
+                    drop(result);
+                    assert!(allocation_usage().current_bytes <= before.current_bytes);
+                    let retry = make()
+                        .run_with_team(&loaded, &team, &mut |_| Ok(()))
+                        .unwrap();
+                    let mut value = 0;
+                    hash(&retry.coefficients, &mut value);
+                    hash(retry.covariance.values.as_slice(), &mut value);
+                    assert_eq!(value, expected);
+                    drop(retry);
+                    assert!(allocation_usage().current_bytes <= before.current_bytes);
                 }
-                assert_eq!(polls, 3);
-                if panic {
-                    assert!(result.is_err());
-                } else {
-                    assert_eq!(result.as_ref().unwrap().as_ref().unwrap_err(), &sentinel);
-                }
-                drop(result);
-                assert!(allocation_usage().current_bytes <= before.current_bytes);
-                let retry = make()
-                    .run_with_team(&loaded, &team, &mut |_| Ok(()))
-                    .unwrap();
-                let mut value = 0;
-                hash(&retry.coefficients, &mut value);
-                hash(retry.covariance.values.as_slice(), &mut value);
-                assert_eq!(value, expected);
-                drop(retry);
-                assert!(allocation_usage().current_bytes <= before.current_bytes);
             }
         }
     }

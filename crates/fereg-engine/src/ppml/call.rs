@@ -175,8 +175,8 @@ impl<'a> Call<'a> {
         })
     }
     /// Callbacks run on the caller through separation/replay, IRLS and bias;
-    /// every FE iteration requests a caller-thread check through one scoped relay.
-    /// Individual dense kernels still run to their next boundary.
+    /// FE iterations and shared dense WLS kernels request checks through one scoped relay.
+    /// FE certification/gauge and covariance kernels still run to their next boundary.
     pub fn run_with(
         self,
         loaded: &Loaded,

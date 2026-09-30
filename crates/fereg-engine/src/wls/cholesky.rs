@@ -2,14 +2,19 @@
 use crate::{
     data::DenseMatrix,
     error::{reserved, Result},
-    threads::compensated_sum,
+    execution::{self, Poll},
 };
 pub(super) struct Cholesky {
     factor: DenseMatrix,
     permutation: Vec<usize>,
 }
 impl Cholesky {
-    pub(super) fn factor(gram: &DenseMatrix, threshold: f64) -> Result<Option<Self>> {
+    pub(super) fn factor(
+        gram: &DenseMatrix,
+        threshold: f64,
+        poll: Poll<'_>,
+    ) -> Result<Option<Self>> {
+        execution::check(poll)?;
         let p = gram.nrows();
         let mut values = reserved(gram.as_slice().len())?;
         values.extend_from_slice(gram.as_slice());
@@ -20,6 +25,7 @@ impl Cholesky {
         let initial = (0..p).map(|i| gram[(i, i)]).fold(0., f64::max);
         let guard = initial * threshold.sqrt();
         for step in 0..p {
+            execution::check(poll)?;
             let mut pivot = step;
             for candidate in step + 1..p {
                 let value = work[(candidate, candidate)];
@@ -42,6 +48,7 @@ impl Cholesky {
                     work[(pivot, column)] = value;
                 }
                 for row in 0..p {
+                    execution::check(poll)?;
                     let value = work[(row, step)];
                     work[(row, step)] = work[(row, pivot)];
                     work[(row, pivot)] = value;
@@ -55,9 +62,11 @@ impl Cholesky {
             }
             factor[(step, step)] = work[(step, step)].sqrt();
             for row in step + 1..p {
+                execution::check_chunk(poll, row - step)?;
                 factor[(row, step)] = work[(row, step)] / factor[(step, step)];
             }
             for row in step + 1..p {
+                execution::check_chunk(poll, row - step)?;
                 for column in row..p {
                     let value = work[(column, row)] - factor[(row, step)] * factor[(column, step)];
                     if !value.is_finite() {
@@ -73,27 +82,34 @@ impl Cholesky {
             permutation,
         }))
     }
-    pub(super) fn solve(&self, rhs: &DenseMatrix) -> Result<DenseMatrix> {
+    pub(super) fn solve(&self, rhs: &DenseMatrix, poll: Poll<'_>) -> Result<DenseMatrix> {
+        execution::check(poll)?;
         let p = self.permutation.len();
         let mut work = DenseMatrix::zeros(p, rhs.ncols())?;
         for row in 0..p {
+            execution::check(poll)?;
             for column in 0..rhs.ncols() {
-                let tail =
-                    compensated_sum((0..row).map(|i| self.factor[(row, i)] * work[(i, column)]));
+                let tail = execution::sum(
+                    (0..row).map(|i| self.factor[(row, i)] * work[(i, column)]),
+                    poll,
+                )?;
                 work[(row, column)] =
                     (rhs[(self.permutation[row], column)] - tail) / self.factor[(row, row)];
             }
         }
         for row in (0..p).rev() {
+            execution::check(poll)?;
             for column in 0..rhs.ncols() {
-                let tail = compensated_sum(
+                let tail = execution::sum(
                     (row + 1..p).map(|i| self.factor[(i, row)] * work[(i, column)]),
-                );
+                    poll,
+                )?;
                 work[(row, column)] = (work[(row, column)] - tail) / self.factor[(row, row)];
             }
         }
         let mut result = DenseMatrix::zeros(p, rhs.ncols())?;
         for row in 0..p {
+            execution::check(poll)?;
             for column in 0..rhs.ncols() {
                 result[(self.permutation[row], column)] = work[(row, column)];
             }

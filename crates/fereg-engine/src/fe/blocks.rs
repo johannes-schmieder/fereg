@@ -3,6 +3,7 @@ use super::Design;
 use crate::{
     data::{DenseMatrix, Weights},
     error::{reserved, Result},
+    execution::{self, Poll},
     linalg::WeightedQr,
     threads::ThreadTeam,
 };
@@ -12,7 +13,8 @@ pub(super) struct Blocks {
     factors: Vec<Vec<WeightedQr>>,
 }
 impl Blocks {
-    pub(super) fn new(design: &Design<'_>, team: &ThreadTeam) -> Result<Self> {
+    pub(super) fn new(design: &Design<'_>, team: &ThreadTeam, poll: Poll<'_>) -> Result<Self> {
+        execution::check(poll)?;
         let mut factors = reserved(design.layout().effects.len())?;
         for effect in 0..design.layout().effects.len() {
             let levels = design.layout().effects[effect].levels;
@@ -23,7 +25,7 @@ impl Blocks {
                     .par_iter_mut()
                     .enumerate()
                     .for_each(|(level, result)| {
-                        *result = Some(factor_level(design, effect, level));
+                        *result = Some(factor_level(design, effect, level, poll));
                     })
             });
             let mut blocks = reserved(levels)?;
@@ -40,12 +42,13 @@ impl Blocks {
         effect: usize,
         rhs: &DenseMatrix,
         team: &ThreadTeam,
+        poll: Poll<'_>,
     ) -> Result<DenseMatrix> {
         self.apply(design, rhs.ncols(), team, |e, level, factor| {
             if e != effect {
                 return Ok(None);
             }
-            Ok(Some(solve_level(design, e, level, factor, rhs)?))
+            Ok(Some(solve_level(design, e, level, factor, rhs, poll)?))
         })
     }
     pub(super) fn diagonal_solve(
@@ -54,6 +57,7 @@ impl Blocks {
         excluded: usize,
         rhs: &DenseMatrix,
         team: &ThreadTeam,
+        poll: Poll<'_>,
     ) -> Result<DenseMatrix> {
         self.apply(design, rhs.ncols(), team, |effect, level, factor| {
             if effect == excluded {
@@ -67,7 +71,7 @@ impl Blocks {
                     block[(channel, column)] = rhs[(coefficient, column)];
                 }
             }
-            Ok(Some(factor.solve_normal(&block)?))
+            Ok(Some(factor.solve_normal(&block, poll)?))
         })
     }
     fn apply<F>(
@@ -105,7 +109,13 @@ impl Blocks {
         Ok(output)
     }
 }
-pub(super) fn factor_level(design: &Design<'_>, effect: usize, level: usize) -> Result<WeightedQr> {
+pub(super) fn factor_level(
+    design: &Design<'_>,
+    effect: usize,
+    level: usize,
+    poll: Poll<'_>,
+) -> Result<WeightedQr> {
+    execution::check(poll)?;
     let members = design
         .topology()
         .effect_partition(effect)?
@@ -115,13 +125,14 @@ pub(super) fn factor_level(design: &Design<'_>, effect: usize, level: usize) -> 
     let mut matrix = DenseMatrix::zeros(members.len(), channels)?;
     let mut weights = reserved(members.len())?;
     for (local, &row) in members.iter().enumerate() {
+        execution::check_chunk(poll, local)?;
         weights.push(design.weights().at(row));
         for channel in 0..channels {
             matrix[(local, channel)] = design.basis_value(effect, channel, row)?;
         }
     }
     let threshold = 8. * f64::EPSILON * members.len().max(channels).max(1) as f64;
-    WeightedQr::factor(matrix, Weights::Provided(&weights), threshold)
+    WeightedQr::factor(matrix, Weights::Provided(&weights), threshold, poll)
 }
 pub(super) fn solve_level(
     design: &Design<'_>,
@@ -129,7 +140,9 @@ pub(super) fn solve_level(
     level: usize,
     factor: &WeightedQr,
     rhs: &DenseMatrix,
+    poll: Poll<'_>,
 ) -> Result<DenseMatrix> {
+    execution::check(poll)?;
     let members = design
         .topology()
         .effect_partition(effect)?
@@ -137,9 +150,10 @@ pub(super) fn solve_level(
         .members(level)?;
     let mut block = DenseMatrix::zeros(members.len(), rhs.ncols())?;
     for (local, &row) in members.iter().enumerate() {
+        execution::check_chunk(poll, local)?;
         for column in 0..rhs.ncols() {
             block[(local, column)] = rhs[(row, column)];
         }
     }
-    factor.solve(block)
+    factor.solve(block, poll)
 }

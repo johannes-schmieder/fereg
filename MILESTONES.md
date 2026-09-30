@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.5 complete OLS/PPML caller-thread FE polling is qualified locally; dense-kernel polling and native/Stata binding are next. Complete PPML calls retain both mean-bias modes, one memory admission and requested-only products. M4.5 covariance policy and further FE optimization still await Johannes; independent seam work continues. Both public defaults remain legacy, and the unrelated pre-merge stash is preserved.
+Current task: M6.5 shared QR/finite-WLS interruption is qualified locally; FE certification/gauge, covariance kernels and native/Stata binding remain. Complete PPML calls retain both mean-bias modes, one memory admission and requested-only products. M4.5 covariance policy and further FE optimization still await Johannes; independent seam work continues. Both public defaults remain legacy, and the unrelated pre-merge stash is preserved.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] partially implemented or verification pending.
 
@@ -44,7 +44,7 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
 - [x] M6.2 Separation (canonical chain, atomic cascades, current-generation capacity/replay and cold final roots qualified)
 - [x] M6.3 PPML inference and outputs (accepted-state inference, requested predictions/saved FEs/residuals and statistics qualified)
 - [x] M6.4 Bias correction (both modes/increments, support, anchors, uncertainty, diagnostic schema and complete PPML call/workspace integration qualified locally; public Stata transaction remains M6.5)
-- [~] M6.5 Tests and seam (complete-controller caller-thread FE/numerical-loop interruption qualified locally; dense-kernel polling and native/Stata binding remain)
+- [~] M6.5 Tests and seam (complete-controller caller-thread FE/loop polling qualified; shared QR/finite-WLS polling qualified locally; FE certification/gauge, covariance and native/Stata binding remain)
 - [ ] M6.6 Benchmarks and cutover
 - [ ] M7.1 Remove legacy after coverage acceptance
 - [ ] M7.2 Clean up the plugin
@@ -140,7 +140,7 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
 - GitHub Actions run [36639076022](https://github.com/johannes-schmieder/fereg/actions/runs/36639076022)
   did not start: failed account payment or spending-limit restriction. Johannes
   was asked to resolve billing; the [86f13e8f run](https://github.com/johannes-schmieder/fereg/actions/runs/36690414881) confirms the same payment/spending-limit annotation on 2026-09-30,
-  with no started steps. The [e2e392ef run](https://github.com/johannes-schmieder/fereg/actions/runs/36745533830) repeats the same annotation with no steps started. No repository fix or retry can supply this check.
+  with no started steps. The [efacbba9 run](https://github.com/johannes-schmieder/fereg/actions/runs/36752592959) repeats the same annotation with no steps started. No repository fix or retry can supply this check.
   Local Rust/FFI checks pass; committed-source Stata quick passes all 32 fixtures
   at b5a95266 (application rc=0 and sentinels). Independent rebuild work continues.
   Local diagnostic logs: `target/rebuild-m0/`.
@@ -148,6 +148,8 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-30 M6.5 shared dense interruption (this commit) — transient probes add caller-thread dense checkpoints to the same scaling, QR and finite-WLS implementation, including fixed row partitions, rank pivots, triangular RHS/normal/inverse actions, guarded Cholesky, Gram/cross moments, reconstructed finite scores, inverse certificates, strict frozen-basis revalidation and original-coordinate recovery scores. Complete calls also poll local FE factor construction; direct/Schur actions and CMG nuisance factors use shared QR checks, and simplex span QR uses the complete-call dense signal. No callback is retained in a factor, no owner/admission is added, and arithmetic/reduction order and scientific scales stay unchanged. Three kernel fixtures cover every executed checkpoint, rank loss, weighted irregular tails, reusable factors, both finite methods/bases and exact 1/8-worker identity. Complete-call fixtures exhaustively cancel outer numerical boundaries and check FE/dense cancellation at the first/middle/last point across separation/final IRLS/both bias modes; exhaustive kernel checks remain. A runtime probe localized quadratic replay of 21,834 complete-call inner checkpoints, so the outer fixture no longer duplicates exhaustive inner-kernel replay; expanded isolated audits track 96 aborted calls, including host panics and exact fresh retries. A new over-tight continuous toy QR assertion reproduced identical committed-head coefficients at T1/T8 (intercept 1.1999999999999789); hand-calculated kernel coefficients now use exact binary inputs with unchanged tolerance, while weighted/tail and independent oracle coverage remain. Full lean and include-ignored oracle suites pass, including all 19 isolated allocation audits, compiler mutation guards, size limits, mock SPI and unchanged dense/pinned/high-precision science. FE certification/gauge, covariance kernels, native/Stata binding and all admission/cutover gates remain open; defaults stay legacy.
 
 - 2026-09-30 M6.5 complete-call FE interruption (this commit) — callback-enabled OLS/PPML calls use one scoped relay and the same mathematical core as callback-free calls; transient shared-WLS probes cover primary projections, derived-RHS recovery, separation and replay, final IRLS/strict checks and both mean-bias modes. Non-Send host callbacks remain on the caller; worker cancellation is fatal and restores the original host error after all work joins. Three new engine regressions qualify every executed OLS FE boundary, first/middle/last FE cancellation in separation/final IRLS/both bias modes, and isolated derived-RHS recovery; existing full PPML checkpoint coverage now includes FE iterations. Default/polled results, diagnostics and requested products match exactly at one/eight workers for auto/LSMR/CMG. Two added isolated allocator audits qualify 48 aborted complete calls, including host panics, owner release and exact fresh retry hashes; the Loaded checkpoint now follows executor dispatch so injected preparation failures still return r(909). All 19 isolated allocator audits and the full lean/include-ignored oracle suites pass. Dense-kernel polls, native/Stata binding and admission/cutover gates remain open; defaults stay legacy.
 

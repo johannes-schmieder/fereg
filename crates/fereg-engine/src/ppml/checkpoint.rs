@@ -128,7 +128,8 @@ impl Checkpoint<'_, '_> {
             tolerance: controls.strict_tolerance(),
             ..self.options
         };
-        let mut engine = Engine::new(&fresh, Estimator::Ppml, &options, team)?;
+        let mut engine =
+            Engine::new_polled(&fresh, Estimator::Ppml, &options, team, probe.dense())?;
         // Strictness tightens FE projection; finite score/inverse guards keep
         // their shared scientific policy, as in the legacy strict solve.
         let policy = Policy::default();
@@ -146,7 +147,17 @@ impl Checkpoint<'_, '_> {
             &mut work,
             team,
         )?;
-        linear.revalidate_basis(&fresh, self.raw, self.roles, self.basis, policy, team)?;
+        linear.revalidate_basis_polled(
+            &fresh,
+            self.raw,
+            self.roles,
+            wls::AbsorbedControls {
+                finite: policy,
+                basis: Some(self.basis),
+                probe,
+            },
+            team,
+        )?;
         let basis_unchanged = self.basis.matches(&linear.finite);
         if stage == Stage::FinalHessian && !basis_unchanged {
             return Err(FeregError::new(

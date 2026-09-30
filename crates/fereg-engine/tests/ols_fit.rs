@@ -576,7 +576,7 @@ fn unsupported_requests_and_invalid_products_fail_before_estimation() {
 }
 
 #[test]
-fn fe_iteration_callbacks_abort_every_boundary_and_preserve_complete_ols_results() {
+fn numerical_callbacks_abort_every_fe_and_dense_boundary_and_preserve_complete_ols_results() {
     use std::{
         cell::Cell,
         panic::{catch_unwind, AssertUnwindSafe},
@@ -603,65 +603,67 @@ fn fe_iteration_callbacks_abort_every_boundary_and_preserve_complete_ols_results
                 .unwrap()
             };
             let plain = make().run(&input).unwrap();
-            let count = Rc::new(Cell::new(0));
-            let polled = make()
-                .run_with_team(&input, &team, &mut |phase| {
-                    assert_eq!(std::thread::current().id(), caller);
-                    if phase == Phase::FixedEffects {
-                        count.set(count.get() + 1);
-                    }
-                    Ok(())
-                })
-                .unwrap();
-            same(&plain, &polled);
-            for (a, b) in plain.outputs.columns.iter().zip(&polled.outputs.columns) {
-                assert_eq!(a.kind, b.kind);
-                assert_eq!(
-                    a.values.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
-                    b.values.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
-                );
-            }
-            assert!(count.get() > 2);
-            if let Some(reference) = &reference {
-                same(reference, &polled);
-            } else {
-                reference = Some(polled);
-            }
-            for stop in 1..=count.get() {
-                let code = [
-                    ErrorCode::Interrupted,
-                    ErrorCode::NonConvergence,
-                    ErrorCode::Allocation,
-                ][stop % 3];
-                let sentinel = FeregError::new(code, "OLS host FE sentinel");
-                let mut calls = 0;
-                let error = make()
+            for checkpoint in [Phase::FixedEffects, Phase::DenseLinearAlgebra] {
+                let count = Rc::new(Cell::new(0));
+                let polled = make()
                     .run_with_team(&input, &team, &mut |phase| {
-                        if phase == Phase::FixedEffects {
-                            calls += 1;
-                            if calls == stop {
-                                return Err(sentinel.clone());
-                            }
+                        assert_eq!(std::thread::current().id(), caller);
+                        if phase == checkpoint {
+                            count.set(count.get() + 1);
                         }
                         Ok(())
                     })
-                    .unwrap_err();
-                assert_eq!(error, sentinel);
-                assert_eq!(calls, stop);
+                    .unwrap();
+                same(&plain, &polled);
+                for (a, b) in plain.outputs.columns.iter().zip(&polled.outputs.columns) {
+                    assert_eq!(a.kind, b.kind);
+                    assert_eq!(
+                        a.values.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+                        b.values.iter().map(|x| x.to_bits()).collect::<Vec<_>>()
+                    );
+                }
+                assert!(count.get() > 2);
+                if let Some(reference) = &reference {
+                    same(reference, &polled);
+                } else {
+                    reference = Some(polled);
+                }
+                for stop in 1..=count.get() {
+                    let code = [
+                        ErrorCode::Interrupted,
+                        ErrorCode::NonConvergence,
+                        ErrorCode::Allocation,
+                    ][stop % 3];
+                    let sentinel = FeregError::new(code, "OLS host FE sentinel");
+                    let mut calls = 0;
+                    let error = make()
+                        .run_with_team(&input, &team, &mut |phase| {
+                            if phase == checkpoint {
+                                calls += 1;
+                                if calls == stop {
+                                    return Err(sentinel.clone());
+                                }
+                            }
+                            Ok(())
+                        })
+                        .unwrap_err();
+                    assert_eq!(error, sentinel);
+                    assert_eq!(calls, stop);
+                    same(&plain, &make().run(&input).unwrap());
+                }
+                assert!(catch_unwind(AssertUnwindSafe(|| make().run_with_team(
+                    &input,
+                    &team,
+                    &mut |phase| {
+                        if phase == checkpoint {
+                            panic!("host panic");
+                        }
+                        Ok(())
+                    }
+                )))
+                .is_err());
                 same(&plain, &make().run(&input).unwrap());
             }
-            assert!(catch_unwind(AssertUnwindSafe(|| make().run_with_team(
-                &input,
-                &team,
-                &mut |phase| {
-                    if phase == Phase::FixedEffects {
-                        panic!("host panic");
-                    }
-                    Ok(())
-                }
-            )))
-            .is_err());
-            same(&plain, &make().run(&input).unwrap());
         }
     }
 }

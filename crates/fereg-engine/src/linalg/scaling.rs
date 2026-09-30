@@ -3,6 +3,7 @@ use super::qr::scale_ratio;
 use crate::{
     data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
 };
 #[derive(Debug)]
 pub(crate) struct ColumnScaling {
@@ -17,7 +18,12 @@ pub(crate) struct ScaledDesign {
     pub(crate) scaling: ColumnScaling,
 }
 impl ScaledDesign {
-    pub(crate) fn new(mut matrix: DenseMatrix, weights: Weights<'_>) -> Result<Self> {
+    pub(crate) fn new(
+        mut matrix: DenseMatrix,
+        weights: Weights<'_>,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
         weights.validate(matrix.nrows())?;
         if matrix.as_slice().iter().any(|v| !v.is_finite()) {
             return Err(FeregError::new(
@@ -25,20 +31,31 @@ impl ScaledDesign {
                 "nonfinite weighted matrix",
             ));
         }
-        let root_scale = (0..matrix.nrows())
-            .map(|row| weights.at(row))
-            .fold(0., f64::max)
-            .sqrt();
+        let root_scale = execution::fold(
+            (0..matrix.nrows()).map(|row| weights.at(row)),
+            0.,
+            poll,
+            f64::max,
+        )?
+        .sqrt();
         let mut roots = reserved(matrix.nrows())?;
-        roots.extend((0..matrix.nrows()).map(|row| weights.at(row).sqrt() / root_scale));
+        for row in 0..matrix.nrows() {
+            execution::check_chunk(poll, row)?;
+            roots.push(weights.at(row).sqrt() / root_scale);
+        }
         let mut maxima = reserved(matrix.ncols())?;
         let mut norms = reserved(matrix.ncols())?;
         for column in 0..matrix.ncols() {
-            let maximum = (0..matrix.nrows())
-                .map(|r| matrix[(r, column)].abs())
-                .fold(0., f64::max);
+            execution::check(poll)?;
+            let maximum = execution::fold(
+                (0..matrix.nrows()).map(|r| matrix[(r, column)].abs()),
+                0.,
+                poll,
+                f64::max,
+            )?;
             maxima.push(maximum);
             for row in 0..matrix.nrows() {
+                execution::check_chunk(poll, row)?;
                 let original = matrix[(row, column)];
                 let value = if maximum == 0. {
                     0.
@@ -53,11 +70,13 @@ impl ScaledDesign {
                 }
                 matrix[(row, column)] = value;
             }
-            let norm =
-                (0..matrix.nrows()).fold(0_f64, |norm, row| norm.hypot(matrix[(row, column)]));
+            let norm = execution::fold(0..matrix.nrows(), 0_f64, poll, |norm, row| {
+                norm.hypot(matrix[(row, column)])
+            })?;
             norms.push(norm);
             if norm != 0. {
                 for row in 0..matrix.nrows() {
+                    execution::check_chunk(poll, row)?;
                     matrix[(row, column)] /= norm;
                 }
             }
@@ -74,7 +93,7 @@ impl ScaledDesign {
     }
     /// Finite FWL rank is measured against the unprojected column, so a weak
     /// within column must not be promoted to unit strength before pivoting.
-    pub(crate) fn reference_scales(&mut self, references: &[f64]) -> Result<()> {
+    pub(crate) fn reference_scales(&mut self, references: &[f64], poll: Poll<'_>) -> Result<()> {
         if references.len() != self.matrix.ncols() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -82,6 +101,7 @@ impl ScaledDesign {
             ));
         }
         for (column, &reference) in references.iter().enumerate() {
+            execution::check(poll)?;
             if !reference.is_finite() || reference <= 0. {
                 return Err(FeregError::new(
                     ErrorCode::InvalidData,
@@ -105,13 +125,15 @@ impl ScaledDesign {
                 ));
             }
             for row in 0..self.matrix.nrows() {
+                execution::check_chunk(poll, row)?;
                 self.matrix[(row, column)] *= old / norm;
             }
             self.scaling.norms[column] = norm;
         }
         Ok(())
     }
-    pub(crate) fn select_columns(self, columns: &[usize]) -> Result<Self> {
+    pub(crate) fn select_columns(self, columns: &[usize], poll: Poll<'_>) -> Result<Self> {
+        execution::check(poll)?;
         let n = self.matrix.nrows();
         let p = self.matrix.ncols();
         if columns.iter().any(|&column| column >= p)
@@ -124,6 +146,7 @@ impl ScaledDesign {
         }
         let mut data = self.matrix.into_row_major();
         for row in 0..n {
+            execution::check_chunk(poll, row)?;
             for (local, &column) in columns.iter().enumerate() {
                 data[row * columns.len() + local] = data[row * p + column];
             }
@@ -147,7 +170,12 @@ impl ScaledDesign {
     }
 }
 impl ColumnScaling {
-    pub(crate) fn rhs(&self, mut rhs: DenseMatrix) -> Result<(DenseMatrix, Vec<f64>)> {
+    pub(crate) fn rhs(
+        &self,
+        mut rhs: DenseMatrix,
+        poll: Poll<'_>,
+    ) -> Result<(DenseMatrix, Vec<f64>)> {
+        execution::check(poll)?;
         if rhs.nrows() != self.roots.len() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -162,11 +190,16 @@ impl ColumnScaling {
         }
         let mut scales = reserved(rhs.ncols())?;
         for column in 0..rhs.ncols() {
-            let scale = (0..rhs.nrows())
-                .map(|r| rhs[(r, column)].abs())
-                .fold(0., f64::max);
+            execution::check(poll)?;
+            let scale = execution::fold(
+                (0..rhs.nrows()).map(|r| rhs[(r, column)].abs()),
+                0.,
+                poll,
+                f64::max,
+            )?;
             scales.push(scale);
             for row in 0..rhs.nrows() {
+                execution::check_chunk(poll, row)?;
                 rhs[(row, column)] = if scale == 0. {
                     0.
                 } else {

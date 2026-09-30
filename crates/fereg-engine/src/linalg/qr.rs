@@ -4,7 +4,7 @@ use super::scaling::{ColumnScaling, ScaledDesign};
 use crate::{
     data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, FeregError, Result},
-    threads::compensated_sum,
+    execution::{self, Poll},
 };
 
 #[derive(Debug)]
@@ -19,19 +19,34 @@ impl WeightedQr {
         matrix: DenseMatrix,
         weights: Weights<'_>,
         threshold: f64,
+        poll: Poll<'_>,
     ) -> Result<Self> {
-        Self::from_scaled(ScaledDesign::new(matrix, weights)?, threshold)
+        Self::from_scaled(ScaledDesign::new(matrix, weights, poll)?, threshold, poll)
     }
-    pub(crate) fn from_scaled(scaled: ScaledDesign, threshold: f64) -> Result<Self> {
-        Self::factor_with_reference(scaled, threshold, 0.)
+    pub(crate) fn from_scaled(
+        scaled: ScaledDesign,
+        threshold: f64,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        Self::factor_with_reference(scaled, threshold, 0., poll)
     }
     /// Projected columns keep their original unit reference even if every
     /// surviving column is tiny. Renormalizing the rank test to projection
     /// noise would manufacture identified directions in a nested effect.
-    pub(crate) fn from_reference_scaled(scaled: ScaledDesign, threshold: f64) -> Result<Self> {
-        Self::factor_with_reference(scaled, threshold, 1.)
+    pub(crate) fn from_reference_scaled(
+        scaled: ScaledDesign,
+        threshold: f64,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        Self::factor_with_reference(scaled, threshold, 1., poll)
     }
-    fn factor_with_reference(scaled: ScaledDesign, threshold: f64, reference: f64) -> Result<Self> {
+    fn factor_with_reference(
+        scaled: ScaledDesign,
+        threshold: f64,
+        reference: f64,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
         if !threshold.is_finite() || threshold <= 0. {
             return Err(invalid("invalid QR rank threshold"));
         }
@@ -43,18 +58,20 @@ impl WeightedQr {
             scaling: scaled.scaling,
             permutation,
         };
-        factor.factor_scaled(threshold, reference)?;
+        factor.factor_scaled(threshold, reference, poll)?;
         Ok(factor)
     }
-    fn factor_scaled(&mut self, threshold: f64, reference: f64) -> Result<()> {
-        let initial = (0..self.qr.ncols())
-            .map(|c| column_norm(&self.qr, c, 0))
-            .fold(reference, f64::max);
+    fn factor_scaled(&mut self, threshold: f64, reference: f64, poll: Poll<'_>) -> Result<()> {
+        let mut initial = reference;
+        for column in 0..self.qr.ncols() {
+            initial = initial.max(column_norm(&self.qr, column, 0, poll)?);
+        }
         for step in 0..self.qr.nrows().min(self.qr.ncols()) {
+            execution::check(poll)?;
             let mut pivot = step;
-            let mut pivot_norm = column_norm(&self.qr, self.permutation[step], step);
+            let mut pivot_norm = column_norm(&self.qr, self.permutation[step], step, poll)?;
             for candidate in step + 1..self.qr.ncols() {
-                let norm = column_norm(&self.qr, self.permutation[candidate], step);
+                let norm = column_norm(&self.qr, self.permutation[candidate], step, poll)?;
                 let tied = (norm - pivot_norm).abs() <= 64. * f64::EPSILON * norm.max(pivot_norm);
                 if norm > pivot_norm && !tied
                     || tied && self.permutation[candidate] < self.permutation[pivot]
@@ -74,19 +91,22 @@ impl WeightedQr {
             let tau = (beta - first) / beta;
             self.qr[(step, column)] = beta;
             for row in step + 1..self.qr.nrows() {
+                execution::check_chunk(poll, row - step)?;
                 self.qr[(row, column)] /= denominator;
             }
             for target in step + 1..self.qr.ncols() {
                 let target = self.permutation[target];
                 let projection = tau
-                    * compensated_sum(
+                    * execution::sum(
                         std::iter::once(self.qr[(step, target)]).chain(
                             (step + 1..self.qr.nrows())
                                 .map(|row| self.qr[(row, column)] * self.qr[(row, target)]),
                         ),
-                    );
+                        poll,
+                    )?;
                 self.qr[(step, target)] -= projection;
                 for row in step + 1..self.qr.nrows() {
+                    execution::check_chunk(poll, row - step)?;
                     self.qr[(row, target)] -= self.qr[(row, column)] * projection;
                 }
             }
@@ -99,28 +119,37 @@ impl WeightedQr {
     }
     /// Identified principal-block inverse of X'WX. Dropped coordinates remain
     /// zero; compatible normal RHSs yield the same weighted projection as QR.
-    pub(crate) fn solve_normal(&self, rhs: &DenseMatrix) -> Result<DenseMatrix> {
+    pub(crate) fn solve_normal(&self, rhs: &DenseMatrix, poll: Poll<'_>) -> Result<DenseMatrix> {
+        execution::check(poll)?;
         if rhs.nrows() != self.qr.ncols() {
             return Err(invalid("QR normal RHS row count differs"));
         }
         let mut result = DenseMatrix::zeros(rhs.nrows(), rhs.ncols())?;
         for step in 0..self.rank() {
+            execution::check(poll)?;
             let basis = self.permutation[step];
             for column in 0..rhs.ncols() {
                 let value = self.scaling.normal_coordinate(rhs[(basis, column)], basis);
-                let tail = compensated_sum((0..step).map(|previous| {
-                    self.qr[(previous, basis)] * result[(self.permutation[previous], column)]
-                }));
+                let tail = execution::sum(
+                    (0..step).map(|previous| {
+                        self.qr[(previous, basis)] * result[(self.permutation[previous], column)]
+                    }),
+                    poll,
+                )?;
                 result[(basis, column)] = (value - tail) / self.qr[(step, basis)];
             }
         }
         for step in (0..self.rank()).rev() {
+            execution::check(poll)?;
             let basis = self.permutation[step];
             for column in 0..rhs.ncols() {
-                let tail = compensated_sum((step + 1..self.rank()).map(|next| {
-                    self.qr[(step, self.permutation[next])]
-                        * result[(self.permutation[next], column)]
-                }));
+                let tail = execution::sum(
+                    (step + 1..self.rank()).map(|next| {
+                        self.qr[(step, self.permutation[next])]
+                            * result[(self.permutation[next], column)]
+                    }),
+                    poll,
+                )?;
                 result[(basis, column)] = (result[(basis, column)] - tail) / self.qr[(step, basis)];
             }
         }
@@ -142,15 +171,20 @@ impl WeightedQr {
     pub(crate) fn scaling(&self) -> &ColumnScaling {
         &self.scaling
     }
-    pub(crate) fn scaled_inverse(&self) -> Result<DenseMatrix> {
+    pub(crate) fn scaled_inverse(&self, poll: Poll<'_>) -> Result<DenseMatrix> {
+        execution::check(poll)?;
         let p = self.qr.ncols();
         let mut inverse = DenseMatrix::zeros(p, p)?;
         for column in 0..self.rank() {
+            execution::check(poll)?;
             for row in (0..=column).rev() {
-                let tail = compensated_sum((row + 1..=column).map(|next| {
-                    self.qr[(row, self.permutation[next])]
-                        * inverse[(self.permutation[next], self.permutation[column])]
-                }));
+                let tail = execution::sum(
+                    (row + 1..=column).map(|next| {
+                        self.qr[(row, self.permutation[next])]
+                            * inverse[(self.permutation[next], self.permutation[column])]
+                    }),
+                    poll,
+                )?;
                 inverse[(self.permutation[row], self.permutation[column])] =
                     ((if row == column { 1. } else { 0. }) - tail)
                         / self.qr[(row, self.permutation[row])];
@@ -158,12 +192,14 @@ impl WeightedQr {
         }
         let mut bread = DenseMatrix::zeros(p, p)?;
         for &left in self.kept() {
+            execution::check(poll)?;
             for &right in self.kept() {
-                bread[(left, right)] = compensated_sum(
+                bread[(left, right)] = execution::sum(
                     self.kept()
                         .iter()
                         .map(|&column| inverse[(left, column)] * inverse[(right, column)]),
-                );
+                    poll,
+                )?;
             }
         }
         Ok(bread)
@@ -171,32 +207,39 @@ impl WeightedQr {
     pub(crate) fn rank(&self) -> usize {
         self.taus.len()
     }
-    pub(crate) fn solve(&self, rhs: DenseMatrix) -> Result<DenseMatrix> {
-        let (mut rhs, scales) = self.scaling.rhs(rhs)?;
+    pub(crate) fn solve(&self, rhs: DenseMatrix, poll: Poll<'_>) -> Result<DenseMatrix> {
+        let (mut rhs, scales) = self.scaling.rhs(rhs, poll)?;
         for (step, &tau) in self.taus.iter().enumerate() {
+            execution::check(poll)?;
             let basis = self.permutation[step];
             for column in 0..rhs.ncols() {
                 let projection = tau
-                    * compensated_sum(
+                    * execution::sum(
                         std::iter::once(rhs[(step, column)]).chain(
                             (step + 1..rhs.nrows())
                                 .map(|row| self.qr[(row, basis)] * rhs[(row, column)]),
                         ),
-                    );
+                        poll,
+                    )?;
                 rhs[(step, column)] -= projection;
                 for row in step + 1..rhs.nrows() {
+                    execution::check_chunk(poll, row - step)?;
                     rhs[(row, column)] -= self.qr[(row, basis)] * projection;
                 }
             }
         }
         let mut result = DenseMatrix::zeros(self.qr.ncols(), rhs.ncols())?;
         for step in (0..self.rank()).rev() {
+            execution::check(poll)?;
             let basis = self.permutation[step];
             for column in 0..rhs.ncols() {
-                let tail = compensated_sum((step + 1..self.rank()).map(|next| {
-                    self.qr[(step, self.permutation[next])]
-                        * result[(self.permutation[next], column)]
-                }));
+                let tail = execution::sum(
+                    (step + 1..self.rank()).map(|next| {
+                        self.qr[(step, self.permutation[next])]
+                            * result[(self.permutation[next], column)]
+                    }),
+                    poll,
+                )?;
                 result[(basis, column)] = (rhs[(step, column)] - tail) / self.qr[(step, basis)];
             }
         }
@@ -213,8 +256,10 @@ impl WeightedQr {
         Ok(result)
     }
 }
-fn column_norm(matrix: &DenseMatrix, column: usize, start: usize) -> f64 {
-    (start..matrix.nrows()).fold(0., |norm, row| norm.hypot(matrix[(row, column)]))
+fn column_norm(matrix: &DenseMatrix, column: usize, start: usize, poll: Poll<'_>) -> Result<f64> {
+    execution::fold(start..matrix.nrows(), 0_f64, poll, |norm, row| {
+        norm.hypot(matrix[(row, column)])
+    })
 }
 // Split exponents before rescaling: neither an intermediate overflow nor an
 // intermediate underflow may discard an otherwise representable coefficient.
@@ -269,6 +314,9 @@ fn numerical(message: &str) -> FeregError {
 }
 
 #[cfg(test)]
+#[path = "interrupt_tests.rs"]
+mod interrupt_tests;
+#[cfg(test)]
 mod tests {
     use super::{scale_ratio, ScaledDesign, WeightedQr};
     use crate::data::{DenseMatrix, Weights};
@@ -276,27 +324,27 @@ mod tests {
     fn projected_rank_keeps_original_scale_when_every_column_is_small() {
         let scaled = |size: f64| {
             let values = DenseMatrix::from_columns(&[vec![size, -size, size, -size]]).unwrap();
-            let mut scaled = ScaledDesign::new(values, Weights::Unit).unwrap();
-            scaled.reference_scales(&[2.]).unwrap();
+            let mut scaled = ScaledDesign::new(values, Weights::Unit, None).unwrap();
+            scaled.reference_scales(&[2.], None).unwrap();
             scaled
         };
         // Relative-only pivoting promotes an all-noise projected bank to rank one.
         assert_eq!(
-            WeightedQr::from_scaled(scaled(1e-16), 1e-12)
+            WeightedQr::from_scaled(scaled(1e-16), 1e-12, None)
                 .unwrap()
                 .rank(),
             1
         );
         assert_eq!(
-            WeightedQr::from_reference_scaled(scaled(1e-16), 1e-12)
+            WeightedQr::from_reference_scaled(scaled(1e-16), 1e-12, None)
                 .unwrap()
                 .rank(),
             0
         );
-        let factor = WeightedQr::from_reference_scaled(scaled(1e-8), 1e-12).unwrap();
+        let factor = WeightedQr::from_reference_scaled(scaled(1e-8), 1e-12, None).unwrap();
         assert_eq!(factor.rank(), 1);
         let rhs = DenseMatrix::from_columns(&[vec![1., -1., 1., -1.]]).unwrap();
-        assert!((factor.solve(rhs).unwrap()[(0, 0)] - 1e8).abs() < 1e-7);
+        assert!((factor.solve(rhs, None).unwrap()[(0, 0)] - 1e8).abs() < 1e-7);
     }
     #[test]
     fn exponent_rescaling_does_not_lose_representable_values() {

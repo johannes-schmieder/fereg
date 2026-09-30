@@ -189,7 +189,13 @@ impl View<'_> {
         team: &ThreadTeam,
     ) -> Result<Vec<f64>> {
         let design = Design::new(self.sample(), Weights::Unit)?;
-        let mut engine = Engine::new(&design, Estimator::Ppml, &model.span_options()?, team)?;
+        let mut engine = Engine::new_polled(
+            &design,
+            Estimator::Ppml,
+            &model.span_options()?,
+            team,
+            model.probe.dense(),
+        )?;
         let fit = wls::solve_absorbed_recorded(
             &mut engine,
             model.raw,
