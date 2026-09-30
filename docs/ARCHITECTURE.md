@@ -1,10 +1,8 @@
 # Clean-core architecture
 
-This is the target structure in [PLAN](cleanup/PLAN.md), governed by
-[SPEC](SPEC.md). It is not an implementation or qualification claim.
+This is the target structure in [PLAN](cleanup/PLAN.md), governed by [SPEC](SPEC.md). It is not an implementation or qualification claim.
 [MILESTONES](../MILESTONES.md) records the active engine and completed gates.
-The [preserved legacy architecture](cleanup/legacy-architecture.md) remains
-a migration source until M7; the relocation avoids case-only path collisions.
+The [preserved legacy architecture](cleanup/legacy-architecture.md) remains a migration source until M7; the relocation avoids case-only path collisions.
 
 ## Boundary and data flow
 
@@ -343,12 +341,14 @@ final-Hessian checks and rebases have separate counts. Setup is charged once
 per immutable frame, and overflow is a fatal error rather than saturation.
 The final accepted frame still carries its detailed per-RHS reports.
 
-Optional bias correction uses the full identified FE-plus-control information
-operator at the accepted state. A scoped frame borrows sealed final qmu and
-the accepted finite basis; shared WLS records all solve/recovery work. Raw eta
-recovery and every auxiliary action share a support-only component anchor,
-fresh reconstruction and original-coordinate scores. Validate all declared numeric terms, including omissions; stream exact units or fixed shared Philox signs for both increments.
-Probe-count weighted groups report D/C variance and covariance. Shared output allocation maps nine ordinary channels and requested FE banks; the fixed diagnostic schema takes its workspace bound from the call-level plan. The atomic calculation leaves ordinary results unchanged and option-off creates no work.
+Optional bias correction uses the full identified FE-plus-control information operator at the accepted state. A scoped frame borrows sealed final qmu and the accepted finite basis; shared WLS records all solve/recovery work.
+Raw eta recovery and every auxiliary action share a support-only component anchor, fresh reconstruction and original-coordinate scores. Validate all declared numeric terms, including omissions; stream exact units or fixed shared Philox signs for both increments.
+Probe-count weighted groups report D/C variance and covariance. Shared output allocation maps nine ordinary channels and requested FE banks; the fixed diagnostic schema takes its workspace bound from the sole call-level plan.
+The atomic calculation leaves ordinary results unchanged and option-off creates no work.
+
+`ppml::Call` binds metadata, requested products and original-axis bias units to one preloading admission; existing numeric banks are shared through explicit source bindings. Shared source preparation builds unpruned topology; the separation ledger owns initial singletons and every later deletion, then starts cold final IRLS.
+Inference, statistics, requested outputs and optional correction borrow the same sealed accepted state. `ppml::fit` uses this controller for loaded Rust clients. Caller-thread callbacks cover phase boundaries and bias checkpoints; polling inside separation, IRLS and FE solves remains host seam work.
+The immutable `PpmlFit` retains publication products, bounded diagnostics and the original-row ledger. Raw/within columns, accepted means, solver state and full bias calculation coefficients are released; observation banks survive only when requested.
 
 ## Memory, threads and errors
 

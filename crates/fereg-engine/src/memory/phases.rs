@@ -155,7 +155,10 @@ fn input(request: Request<'_>, numeric_bytes: usize) -> Result<u128> {
     let inputs = request.inputs;
     let numeric = add_count(
         inputs.sources - inputs.string_sources,
-        1 + usize::from(inputs.weighted) + usize::from(inputs.adjustment),
+        add_count(
+            1 + usize::from(inputs.weighted) + usize::from(inputs.adjustment),
+            inputs.auxiliary_numeric_sources,
+        )?,
     )?;
     let mut result = sum(&[
         inputs.parent_bytes,

@@ -12,6 +12,7 @@ use crate::{
     AbsorbTermId, SourceId,
 };
 pub use build::prepare_fixed_effects;
+pub(crate) use build::prepare_unpruned;
 pub(crate) use components::connected_components_all;
 pub use components::{connected_components, ComponentInfo};
 pub use membership::LevelIndex;

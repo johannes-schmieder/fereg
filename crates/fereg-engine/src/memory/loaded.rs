@@ -55,6 +55,7 @@ pub(super) fn inputs(loaded: &Loaded, metadata: u128, parent: u128) -> Result<In
         original_rows: n,
         active_rows: loaded.candidate.iter().filter(|&&v| v).count(),
         sources: loaded.sources.len(),
+        auxiliary_numeric_sources: 0,
         string_sources: strings,
         // Actual payload/capacity is already in the known resident excess.
         string_bytes: 0,
@@ -78,11 +79,22 @@ impl Inputs {
     /// Bind loader capacities to the admitted dimensions without estimating or
     /// admitting another plan. A host cannot grow banks behind this token.
     pub(crate) fn bind_loaded(self, loaded: &Loaded) -> Result<()> {
+        self.bind_loaded_with_auxiliary(loaded, None)
+    }
+    pub(crate) fn bind_loaded_with_auxiliary(
+        self,
+        loaded: &Loaded,
+        auxiliary: Option<&NumericColumn>,
+    ) -> Result<()> {
         use crate::{ErrorCode, FeregError};
-        let actual = Self::from_loaded(loaded, 0, 0)?;
+        let mut actual = Self::from_loaded(loaded, 0, 0)?;
+        if let Some(column) = auxiliary {
+            actual = actual.with_numeric_auxiliary(column)?;
+        }
         if actual.original_rows != self.original_rows
             || actual.active_rows > self.active_rows
             || actual.sources != self.sources
+            || actual.auxiliary_numeric_sources != self.auxiliary_numeric_sources
             || actual.string_sources != self.string_sources
             || actual.weighted != self.weighted
             || actual.adjustment != self.adjustment
@@ -96,7 +108,10 @@ impl Inputs {
         // bounds and parent storage. Larger capacities violate this bound.
         let numeric = add_count(
             actual.sources - actual.string_sources,
-            1 + usize::from(actual.weighted) + usize::from(actual.adjustment),
+            add_count(
+                1 + usize::from(actual.weighted) + usize::from(actual.adjustment),
+                actual.auxiliary_numeric_sources,
+            )?,
         )?;
         let masks = mul(numeric as u128, actual.original_rows as u128)?;
         let excess = sum(&[self.parent_bytes, self.string_bytes, masks])?;
@@ -107,5 +122,25 @@ impl Inputs {
             ));
         }
         Ok(())
+    }
+    /// Include one already-owned original-axis bank without a second plan.
+    pub fn with_numeric_auxiliary(mut self, column: &NumericColumn) -> Result<Self> {
+        if column.values.len() != self.original_rows
+            || column
+                .missing
+                .as_ref()
+                .is_some_and(|mask| mask.len() != self.original_rows)
+        {
+            return Err(crate::FeregError::new(
+                crate::ErrorCode::InvalidArgument,
+                "auxiliary numeric bank has the wrong length",
+            ));
+        }
+        self.auxiliary_numeric_sources = add_count(self.auxiliary_numeric_sources, 1)?;
+        self.parent_bytes = sum(&[
+            self.parent_bytes,
+            numeric(column)?.saturating_sub(array(self.original_rows, 8)?),
+        ])?;
+        Ok(self)
     }
 }

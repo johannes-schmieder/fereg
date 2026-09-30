@@ -1,6 +1,7 @@
 //! Temporary independent heap observation; production has no allocator coupling.
 mod fixture;
 mod ols_controller;
+mod ppml_controller;
 use crate::ffi::{allocation_usage, begin_ols_allocation_observation};
 use fereg_engine::{
     data::{
@@ -33,6 +34,7 @@ fn plan(model: &ModelSpec, case: Case) -> Plan {
             original_rows: case.rows,
             active_rows: case.rows,
             sources: 4,
+            auxiliary_numeric_sources: 0,
             string_sources: 0,
             string_bytes: 0,
             metadata_bytes: 16_384,

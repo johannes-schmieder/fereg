@@ -10,21 +10,7 @@ use crate::{
     },
 };
 pub(super) fn bind(fit: &irls::Fit<'_>, model: &ModelSpec) -> Result<CompiledColumns> {
-    model.validate()?;
-    if model.absorbed_terms.len() != 2
-        || model.absorbed_terms.iter().any(|t| {
-            !t.intercept || t.categorical_sources.is_empty() || !t.slope_sources.is_empty()
-        })
-        || model.model.terms.iter().any(|t| {
-            t.raw_kind != RawTermKind::Variable
-                || t.components.len() != 1
-                || t.components[0].kind != ComponentKind::Continuous
-                || t.components[0].level_state != LevelState::Absent
-        })
-    {
-        return Err(FeregError::new(ErrorCode::Unsupported,
-            "bias correction requires two categorical intercept FE sets and ordinary numeric controls, including omitted terms"));
-    }
+    validate_model(model)?;
     let topology = fit
         .problem()
         .sample
@@ -48,4 +34,22 @@ pub(super) fn bind(fit: &irls::Fit<'_>, model: &ModelSpec) -> Result<CompiledCol
         ));
     }
     CompiledColumns::new(model, Estimator::Ppml)
+}
+pub(crate) fn validate_model(model: &ModelSpec) -> Result<()> {
+    model.validate()?;
+    if model.absorbed_terms.len() != 2
+        || model.absorbed_terms.iter().any(|t| {
+            !t.intercept || t.categorical_sources.is_empty() || !t.slope_sources.is_empty()
+        })
+        || model.model.terms.iter().any(|t| {
+            t.raw_kind != RawTermKind::Variable
+                || t.components.len() != 1
+                || t.components[0].kind != ComponentKind::Continuous
+                || t.components[0].level_state != LevelState::Absent
+        })
+    {
+        return Err(FeregError::new(ErrorCode::Unsupported,
+            "bias correction requires two categorical intercept FE sets and ordinary numeric controls, including omitted terms"));
+    }
+    Ok(())
 }

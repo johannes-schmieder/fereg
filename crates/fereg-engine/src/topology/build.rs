@@ -16,7 +16,14 @@ struct PendingPartition {
 }
 
 /// Rebuild after any sample generation change; all slope channels borrow the same source bank.
-pub fn prepare_fixed_effects(spec: &ModelSpec, mut sample: Prepared) -> Result<Prepared> {
+pub fn prepare_fixed_effects(spec: &ModelSpec, sample: Prepared) -> Result<Prepared> {
+    prepare(spec, sample, spec.keep_singletons)
+}
+/// PPML's ledger owns the first singleton generation and its diagnostics.
+pub(crate) fn prepare_unpruned(spec: &ModelSpec, sample: Prepared) -> Result<Prepared> {
+    prepare(spec, sample, true)
+}
+fn prepare(spec: &ModelSpec, mut sample: Prepared, keep_singletons: bool) -> Result<Prepared> {
     spec.validate()?;
     sample.validate_alignment()?;
     if sample.regressors.len() != spec.model.sources.len() {
@@ -44,7 +51,7 @@ pub fn prepare_fixed_effects(spec: &ModelSpec, mut sample: Prepared) -> Result<P
         &levels,
         &active,
         multiplicity,
-        spec.keep_singletons,
+        keep_singletons,
     )?;
     drop(code_views);
     sample = sample.compact_active_rows(&pruned.active, DropReason::Singleton)?;

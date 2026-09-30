@@ -17,6 +17,8 @@ use fereg_oracle::{
     explicit_ols::DummyEffect,
     explicit_ppml::{fit_explicit_ppml, PpmlProblem, PpmlResult, PpmlWeights},
 };
+#[path = "support/ppml_call.rs"]
+mod complete;
 #[path = "support/engine.rs"]
 mod inputs;
 #[path = "support/ppml_inference.rs"]
@@ -375,11 +377,13 @@ fn campaign(start: usize, count: usize) {
             compare(&actual, &fit, &expected, seed);
             pinned::compare(&f.sample, &fit, &actual, &f.clusters, seed);
             products::compare(&fit, &f.explicit, &expected, &one, seed);
+            complete::compare(&fit, &actual, &f.clusters, options, &one, seed);
             repaired += usize::from(actual.covariance.psd.adjusted);
             if seed % 41 == 0 {
                 let repeated = irls::fit_final_sample(&problem, options, &eight).unwrap();
                 assert_eq!(fit, repeated);
                 products::identical(&fit, &repeated, &one, &eight);
+                complete::compare(&repeated, &actual, &f.clusters, options, &eight, seed);
                 identical(
                     &actual,
                     &inference::estimate(&f.columns, &repeated, &views, kind, 1e-8, &eight)

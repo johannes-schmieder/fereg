@@ -13,6 +13,12 @@ use crate::{
 pub use layout::Layout;
 pub use phases::{Estimate, Phase};
 
+#[derive(Debug, Default, Clone, Copy)]
+pub struct Resources {
+    pub usable_bytes: Option<u128>,
+    pub publication_matrix_cells: usize,
+}
+
 /// Bounds supplied before loading. Active rows and FE levels may be upper
 /// bounds; original-axis outputs always use the complete original row count.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -20,6 +26,8 @@ pub struct Inputs {
     pub original_rows: usize,
     pub active_rows: usize,
     pub sources: usize,
+    /// Original-axis numeric inputs outside the compacted model (bias units).
+    pub auxiliary_numeric_sources: usize,
     pub string_sources: usize,
     /// Payload upper bounds; neither establishes unavoidable storage.
     pub string_bytes: u128,

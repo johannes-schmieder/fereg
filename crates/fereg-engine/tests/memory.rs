@@ -23,6 +23,7 @@ fn request() -> Request<'static> {
             original_rows: 10_000,
             active_rows: 300,
             sources: 5,
+            auxiliary_numeric_sources: 0,
             string_sources: 0,
             string_bytes: 0,
             metadata_bytes: 4096,
@@ -341,5 +342,45 @@ fn model_layout_counts_implicit_constant_and_loaded_spare_capacities() {
             .unwrap_err()
             .code,
         ErrorCode::InvalidArgument
+    );
+}
+#[test]
+fn auxiliary_units_are_original_axis_inputs_in_every_phase_and_the_minimum() {
+    let base = request();
+    let first = Plan::new(base).unwrap();
+    let extra = Plan::new(Request {
+        inputs: Inputs {
+            auxiliary_numeric_sources: 1,
+            ..base.inputs
+        },
+        ..base
+    })
+    .unwrap();
+    let bytes = base.inputs.original_rows as u128 * 8;
+    assert_eq!(
+        extra.estimate().minimum_bytes() - first.estimate().minimum_bytes(),
+        bytes
+    );
+    for phase in Phase::ALL {
+        assert_eq!(
+            extra.estimate().phase_bytes(phase) - first.estimate().phase_bytes(phase),
+            if phase == Phase::BiasCorrection {
+                0
+            } else {
+                base.inputs.original_rows as u128 * 9
+            }
+        );
+    }
+    assert_eq!(
+        Plan::new(Request {
+            inputs: Inputs {
+                auxiliary_numeric_sources: usize::MAX,
+                ..base.inputs
+            },
+            ..base
+        })
+        .unwrap_err()
+        .return_code(),
+        909
     );
 }

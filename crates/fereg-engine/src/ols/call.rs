@@ -1,4 +1,5 @@
 //! Preflight binds immutable metadata, products and one admission before loading.
+pub use crate::memory::Resources;
 use crate::{
     data::{CompiledColumns, Loaded, SourcePlan, WeightKind},
     dof::DofPolicy,
@@ -16,11 +17,6 @@ pub struct Request {
     pub vce: Option<vce::Kind>,
     pub dof: DofPolicy,
     pub outputs: outputs::Request,
-}
-#[derive(Debug, Default, Clone, Copy)]
-pub struct Resources {
-    pub usable_bytes: Option<u128>,
-    pub publication_matrix_cells: usize,
 }
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Phase {
@@ -55,6 +51,9 @@ impl<'a> Call<'a> {
         options.validate()?;
         let columns = CompiledColumns::new(model, Estimator::Ols)?;
         let sources = SourcePlan::new(model)?;
+        if inputs.auxiliary_numeric_sources != 0 {
+            return Err(invalid("OLS has no auxiliary numeric input"));
+        }
         if inputs.weighted != weight_kind.is_some() {
             return Err(invalid(
                 "preflight weight declaration disagrees with input bounds",

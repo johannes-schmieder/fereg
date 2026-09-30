@@ -30,7 +30,7 @@ impl Default for RunControls {
     }
 }
 impl RunControls {
-    fn validate(self) -> Result<()> {
+    pub(crate) fn validate(self) -> Result<()> {
         self.numerical.validate()?;
         self.simplex.validate()?;
         if self.ir_iterations == 0
