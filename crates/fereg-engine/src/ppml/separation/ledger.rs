@@ -43,7 +43,7 @@ pub struct Commit {
 #[derive(Debug)]
 pub struct Ledger {
     sample: Prepared,
-    policy: Policy,
+    pub(super) policy: Policy,
     generation: usize,
     sample_digest: u64,
     trace_digest: u64,

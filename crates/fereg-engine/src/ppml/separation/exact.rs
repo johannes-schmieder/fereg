@@ -10,6 +10,8 @@ pub enum Status {
     NoCandidates,
     NoSeparation,
     Certified,
+    /// Scientific resource policy; this is never a no-separation certificate.
+    SkippedCapacity,
 }
 
 /// A representative original row identifies a level across compact-code changes.

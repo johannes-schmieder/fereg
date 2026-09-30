@@ -304,8 +304,21 @@ Generation-bound IR reports are proposals. A deletion needs fresh cone/span
 certification and the ledger's atomic cascade. A no-drop terminal state needs
 an exact deterministic replay from the initial rectifier with fresh factors;
 no saved success flag or projected state has terminal authority. Exhaustion,
-stale/tampered evidence and unsupported explicit solvers fail clearly. Simplex,
-Mu, capacity handling and complete method-chain replay remain coordinator work.
+stale/tampered evidence and unsupported explicit solvers fail clearly.
+
+Simplex counts the entire explicit finite/FE/channel width before dense work,
+including checked QR, null-space, tableau, topology and certificate storage.
+Column scaling preserves the cone; shared auxiliary QR removes full-model gauge
+redundancy and rechecks every original column's span. Positive-constraint
+elimination also reduces boundary rows, then homogeneous boundary coordinates
+keep small valid contrasts visible to Bland phase-I. A proposed ray still needs
+independent original-model cone/span certification; an infeasibility proposal
+needs a separately checked Farkas multiplier against the immutable boundary cone.
+No-drop reports require fresh deterministic replay. A resource skip has no
+terminal authority alone: the requested comprehensive IR must freshly replay
+the same current model and generation with no unhandled separation. An IR drop
+restarts the chain, invalidating the old skip. Mu and full-chain coordination
+remain to be integrated.
 
 IRLS evaluates the Poisson family, refreshes h=qmu, solves shared weighted
 linear frames, and step-halves the joint predictor/coefficient proposal.
