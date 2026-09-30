@@ -7,6 +7,24 @@ use crate::{
     wls::Role,
 };
 
+/// Reconstruct the complete fitted model rather than subtracting a nearly
+/// equal response and residual, which can erase a small separation direction.
+pub(super) fn fitted(
+    raw: &DenseMatrix,
+    design: &crate::fe::Design<'_>,
+    fit: &crate::wls::AbsorbedFit,
+    team: &ThreadTeam,
+) -> Result<DenseMatrix> {
+    if raw.nrows() != design.nobs() || raw.ncols() != fit.finite.coefficients.len() {
+        return Err(invalid("separation fitted-model dimensions differ"));
+    }
+    let mut result = design.multiply(&fit.absorbed_coefficients, team)?;
+    for row in 0..raw.nrows() {
+        result[(row, 0)] = raw.row_combination(row, &fit.finite.coefficients, result[(row, 0)]);
+    }
+    Ok(result)
+}
+
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Controls {
     pub tolerance: f64,

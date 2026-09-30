@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.2 Mu and separation orchestration. IR and full-model simplex/capacity/replay pass the full lean/long suites, each including 4,400 known-ray/paired-row designs; shared FE refinement retains its weighted forward-accuracy regressions. Simplex capacity skips need fresh requested IR against the same model and generation; Mu and complete chain/session coordination remain. Only the unrelated pre-merge user stash remains. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
+Current task: M6.2 separation orchestration. IR, full-model simplex/capacity/replay and Mu exploration pass the full lean/long suites, including 4,400 known-ray/paired-row designs per detector. Mu shares IRLS, requires fitted trajectory and fresh cone/span acceptance, discards its fitted session and needs fresh no-drop replay. Stable Fisher corrections resolve the localized exp-minus-one cancellation without FE tolerance or routing changes; complete chain/session coordination remains. Only the unrelated pre-merge user stash remains. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -41,7 +41,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M5.3 Benchmarks
 - [ ] M5.4 G-OLS, then flip the `fereg` default to `engine(next)`
 - [x] M6.1 `ppml::family` and IRLS; all backends match Newton oracles, accumulated frame-work reporting verified
-- [ ] M6.2 Separation (ledger, cone/span, IR and simplex/capacity/replay verified; Mu/coordinator pending)
+- [ ] M6.2 Separation (ledger, cone/span, IR, simplex/capacity/replay and Mu verified; coordinator pending)
 - [ ] M6.3 PPML inference and outputs
 - [ ] M6.4 Bias correction
 - [ ] M6.5 Tests and seam
@@ -128,6 +128,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M6.2 Mu qualification (this commit) — shared bounded IRLS yields private fitted exploration with accepted linear/state/mean/objective evidence, distinct from final-Hessian estimator publication. Small means only nominate a unit-metric full-model cone proposal; ledger acceptance independently checks original span/signs and commits the atomic drop. No-drop terminals require whole fresh deterministic replay; no exploratory parameters, means, basis or factors survive deletion or final fitting. Seed 1047 localized exp-minus-one loss of tiny Fisher corrections; expm1 preserves Newton arithmetic without changing FE scores, forward-update floors, budgets or solver selection. The captured 100-digit tiny-response witness retains auto/LSMR fail-closed work and explicit CMG accuracy without fallback; independent Taylor checks and seeds 111/207/351/1047 protect the working-frame repair. Five Mu fixtures, 4,400 isolated-ray/paired-row designs, weights/adjustments/slopes, supported explicit LSMR/CMG and exact worker identity pass. Full lean and long oracle suites pass. Complete chain coordination, coefficient mean bias correction (M6.4), G-M3 and public cutover remain open.
 
 - 2026-09-29 M6.2 simplex qualification (this commit) — full explicit finite/FE/slope width and checked QR/null-space/tableau/topology/certificate storage precede dense allocation. Shared auxiliary QR rechecks all original columns and removes full-model gauges; positive elimination also reduces boundary rows, and homogeneous coordinates preserve the binary small-contrast ray without tolerance changes. Seeds 3/210 retain categorical/sloped paired-row impossibility regressions; phase-I candidates need independent original cone/span checks or an immutable-cone Farkas certificate. No-drop terminals need exact fresh replay; a capacity skip closes only through requested comprehensive IR replay on the current model/generation, while any IR deletion invalidates the old skip. Eight detector fixtures, 4,400 ray/impossibility designs, eligible explicit LSMR/CMG, independent dense span checks and exact 1/8-worker certification pass. Column underflow and unrepresentable original-coordinate bread fail closed. Full lean and long oracle suites pass. Mu, chain/session orchestration, G-M3 and public cutover remain open.
 

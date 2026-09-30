@@ -65,7 +65,14 @@ impl<'a, 'data> Context<'a, 'data> {
             },
             &mut diagnostics.work,
             self.team,
-        )
+        ).map_err(|error| {
+            let minimum = accepted.evaluation().mean.iter().copied().fold(f64::INFINITY, f64::min);
+            let maximum = accepted.evaluation().mean.iter().copied().fold(0_f64, f64::max);
+            FeregError::new(error.code, format!(
+                "PPML {stage:?} frame {} failed after {} accepted iterations (inner tolerance={tolerance:e}, mean range={minimum:e}..{maximum:e}): {}",
+                diagnostics.linear_frames, diagnostics.accepted_iterations, error.message
+            ))
+        })
     }
     pub(super) fn represent(
         &self,

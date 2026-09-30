@@ -52,6 +52,42 @@ fn fractional_likelihood_deviance_and_working_state_match_analytic_values() {
     assert_eq!(z[0], eta[0] - offset[0] - 1.);
 }
 #[test]
+fn fisher_response_retains_newton_corrections_below_mean_roundoff() {
+    let eta = [
+        2_f64.powi(-26),
+        -2_f64.powi(-26),
+        2_f64.powi(-55),
+        -2_f64.powi(-55),
+    ];
+    let y = [1.; 4];
+    let q = ReferenceWeights::new(&PreparedWeights::None, 4, Estimator::Ppml).unwrap();
+    let family = Family::new(&y, q, None).unwrap();
+    let mut baseline = None;
+    for workers in [1, 2, 4, 8] {
+        let team = ThreadTeam::new(workers).unwrap();
+        let accepted = family.evaluate(&eta, &team).unwrap();
+        let mut h = [0.; 4];
+        let mut z = [0.; 4];
+        family
+            .working_into(&eta, &accepted, &mut h, &mut z, &team)
+            .unwrap();
+        for row in 0..4 {
+            // Independent Taylor expansion of eta + exp(-eta) - 1.
+            let t = eta[row];
+            let expected = t * t / 2. - t * t * t / 6. + t.powi(4) / 24.;
+            assert!((z[row] - expected).abs() <= f64::EPSILON * t.abs());
+            assert_eq!(h[row], accepted.mean[row]);
+        }
+        assert_eq!(accepted.mean[2], 1.);
+        assert_eq!(accepted.mean[3], 1.);
+        if let Some(prior) = &baseline {
+            assert_eq!(prior, &(h, z));
+        } else {
+            baseline = Some((h, z));
+        }
+    }
+}
+#[test]
 fn objective_and_working_arithmetic_are_identical_across_chunk_boundaries_and_workers() {
     for n in [1023, 1024, 1025, 4099] {
         let y: Vec<_> = (0..n).map(|i| [0., 0.25, 1., 5., 13.][i % 5]).collect();

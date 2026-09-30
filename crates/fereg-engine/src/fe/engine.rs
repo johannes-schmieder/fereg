@@ -367,7 +367,7 @@ impl<'a, 'data> Engine<'a, 'data> {
             return Err(error(
                 ErrorCode::NonConvergence,
                 &format!(
-                    "LSMR fallback stopped with {:?} after {} total iterations",
+                    "LSMR fallback stopped with {:?} for RHS {index} after {} total iterations",
                     report.stop, report.iterations
                 ),
             ));

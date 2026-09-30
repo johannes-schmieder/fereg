@@ -1,0 +1,124 @@
+//! A captured tiny FE response has an independently regenerated 100-digit witness.
+#![deny(clippy::too_many_lines)]
+use fereg_engine::{
+    data::{DenseMatrix, Weights},
+    fe::{Design, Engine},
+    spec::{Estimator, Options, Solver},
+    threads::ThreadTeam,
+};
+use fereg_oracle::explicit_ols::{
+    fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
+};
+#[path = "support/engine.rs"]
+mod inputs;
+const WITNESS: &str =
+    include_str!("../../../tests/reference/fe_cancellation_decimal_oracle_v1.csv");
+struct Fixture {
+    effects: Vec<DummyEffect>,
+    weights: Vec<f64>,
+    response: Vec<f64>,
+    residual: Vec<f64>,
+}
+fn fixture() -> Fixture {
+    let mut codes = vec![Vec::new(); 3];
+    let mut weights = Vec::new();
+    let mut response = Vec::new();
+    let mut residual = Vec::new();
+    for (row, line) in WITNESS.lines().skip(1).enumerate() {
+        let v: Vec<_> = line.split(',').collect();
+        assert_eq!(v.len(), 7);
+        assert_eq!(v[0].parse::<usize>().unwrap(), row);
+        for effect in 0..3 {
+            codes[effect].push(v[effect + 1].parse::<u32>().unwrap());
+        }
+        weights.push(v[4].parse().unwrap());
+        response.push(v[5].parse().unwrap());
+        residual.push(v[6].parse().unwrap());
+    }
+    Fixture {
+        effects: codes
+            .into_iter()
+            .map(|c| {
+                let levels = 1 + *c.iter().max().unwrap() as usize;
+                DummyEffect::new(c, levels, true, vec![]).unwrap()
+            })
+            .collect(),
+        weights,
+        response,
+        residual,
+    }
+}
+fn norm(values: &[f64], weights: &[f64]) -> f64 {
+    values
+        .iter()
+        .zip(weights)
+        .fold(0_f64, |n, (&v, &w)| n.hypot(w.sqrt() * v))
+}
+fn error(actual: &[f64], expected: &[f64], weights: &[f64]) -> f64 {
+    norm(
+        &actual
+            .iter()
+            .zip(expected)
+            .map(|(a, b)| a - b)
+            .collect::<Vec<_>>(),
+        weights,
+    ) / norm(expected, weights)
+}
+#[test]
+fn captured_tiny_recovery_retains_acceptance_and_independent_accuracy() {
+    let f = fixture();
+    assert_eq!(f.response.len(), 206);
+    let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+        outcome: f.response.clone(),
+        regressors: vec![],
+        effects: f.effects.clone(),
+        weights: OracleWeights::Wls(f.weights.clone()),
+        clusters: vec![],
+    })
+    .unwrap();
+    // Dense binary64 QR rounds the large fitted response before subtraction;
+    // the high-precision witness has authority over its tiny within contrast.
+    assert!(error(&oracle.residuals, &f.residual, &f.weights) <= 1e-9);
+    let sample = inputs::prepare(&f.effects, &f.response);
+    let design = Design::new(&sample, Weights::Provided(&f.weights)).unwrap();
+    let rhs = DenseMatrix::from_columns(&[f.response.clone()]).unwrap();
+    for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+        let mut reference = None;
+        for workers in [1, 2, 4, 8] {
+            let team = ThreadTeam::new(workers).unwrap();
+            let options = Options {
+                solver,
+                tolerance: 1e-12,
+                ..Options::for_estimator(Estimator::Ppml)
+            };
+            let mut engine = Engine::new(&design, Estimator::Ppml, &options, &team).unwrap();
+            let result = engine.project(&rhs, &team);
+            if solver == Solver::Cmg {
+                let fit = result.as_ref().unwrap();
+                assert!(error(&fit.residuals.column(0).unwrap(), &f.residual, &f.weights) <= 1e-9);
+                assert!(fit.certificate.relative_score[0] <= options.tolerance);
+                assert!(fit
+                    .diagnostics
+                    .iter()
+                    .all(|d| d.used == fereg_engine::fe::Backend::Cmg && d.fallback.is_none()));
+            } else {
+                // Sub-roundoff fitted corrections do not justify weakening
+                // the unchanged update guard or renewing a fallback budget.
+                assert_eq!(
+                    result.as_ref().unwrap_err().code,
+                    fereg_engine::ErrorCode::NonConvergence
+                );
+            }
+            let work = engine.last_diagnostics().to_vec();
+            assert!(!work.is_empty());
+            assert!(work
+                .iter()
+                .all(|r| r.requested == solver && r.iterations > 0));
+            if let Some(prior) = &reference {
+                assert_eq!(prior, &(result, work));
+            } else {
+                reference = Some((result, work));
+            }
+        }
+    }
+}

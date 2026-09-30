@@ -4,6 +4,7 @@ mod exact;
 mod ir;
 mod ledger;
 mod methods;
+mod mu;
 mod numerical;
 mod simplex;
 mod verify;
@@ -11,6 +12,7 @@ pub use exact::{ExactCertificate, ExactLevel, ExactProposal, Status};
 pub use ir::{IrFixedPoint, IrReport, IrTerminal};
 pub use ledger::{Commit, Ledger, Policy, View};
 pub use methods::{Method, Methods};
+pub use mu::{MuReport, MuTerminal, DEFAULT_MU_TOLERANCE};
 pub use numerical::{
     Controls, DirectionCertificate, DirectionProposal, Model, NumericalCommit, SpanValidation,
 };

@@ -1,5 +1,10 @@
-//! Bounded IRLS on a sample already finalized by separation and singleton pruning.
+//! Shared bounded IRLS for final publication and fitted-mean separation exploration.
+mod exploration;
 mod frame;
+mod trajectory;
+pub(crate) use exploration::{explore_mu, MeanThreshold};
+pub use exploration::{MuCertificate, MuStop};
+use trajectory::{Purpose, Trajectory};
 mod input;
 mod start;
 use super::{
@@ -23,7 +28,7 @@ pub struct Problem<'a> {
     pub raw: &'a DenseMatrix,
     pub roles: &'a [Role],
 }
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Diagnostics {
     pub accepted_iterations: usize,
     pub step_halvings: usize,
@@ -56,6 +61,20 @@ struct Context<'a, 'data> {
     offset: Option<&'a [f64]>,
 }
 pub fn fit_final_sample(problem: &Problem<'_>, options: Options, team: &ThreadTeam) -> Result<Fit> {
+    with_context(problem, options, team, |context| {
+        let trajectory = context.run(Purpose::Publication)?;
+        let report = trajectory
+            .final_checkpoint
+            .ok_or_else(|| invalid("publication trajectory has no accepted Hessian checkpoint"))?;
+        context.finish(trajectory.accepted, report, trajectory.diagnostics)
+    })
+}
+fn with_context<T>(
+    problem: &Problem<'_>,
+    options: Options,
+    team: &ThreadTeam,
+    run: impl FnOnce(Context<'_, '_>) -> Result<T>,
+) -> Result<T> {
     let controls = Controls::new(&options)?;
     problem.sample.validate_alignment()?;
     if problem.sample.n_active() == 0 {
@@ -83,7 +102,7 @@ pub fn fit_final_sample(problem: &Problem<'_>, options: Options, team: &ThreadTe
     )?;
     let family = Family::new(&problem.sample.outcome, q, offset.as_deref())?;
     let design = Design::new(problem.sample, Weights::Reference(q))?;
-    Context {
+    run(Context {
         problem,
         family: &family,
         design: &design,
@@ -91,83 +110,9 @@ pub fn fit_final_sample(problem: &Problem<'_>, options: Options, team: &ThreadTe
         controls,
         team,
         offset: offset.as_deref(),
-    }
-    .run()
+    })
 }
 impl<'a, 'data> Context<'a, 'data> {
-    fn run(&self) -> Result<Fit> {
-        let mut diagnostics = Diagnostics::default();
-        let mut accepted = self.start(&mut diagnostics)?;
-        // Only a canonical solve over the final sample has omission authority.
-        // Start helpers supply guesses and cannot choose a retained basis.
-        let initial = self.frame(
-            &accepted,
-            self.controls.strict_tolerance(),
-            None,
-            Stage::FinalHessian,
-            &mut diagnostics,
-        )?;
-        let mut basis = FrozenBasis::from_fit(&initial.finite)?;
-        accepted = self.represent(&accepted, &initial)?;
-        drop(initial);
-        let mut convergence = Convergence::new(self.controls);
-        loop {
-            let linear = self.frame(
-                &accepted,
-                convergence.next_inner_tolerance(),
-                Some(&basis),
-                Stage::Fisher,
-                &mut diagnostics,
-            )?;
-            let proposal =
-                self.family
-                    .point_from_linear(&linear, self.problem.raw, self.design, self.team)?;
-            drop(linear);
-            let old = accepted.evaluation().objective.deviance;
-            accepted = accepted.try_step(&proposal, self.team)?;
-            drop(proposal);
-            diagnostics.step_halvings += accepted.halvings();
-            accepted.certify_state(
-                self.problem.raw,
-                self.design,
-                self.controls.publication_tolerance(),
-                self.team,
-            )?;
-            let raw = super::checkpoint::score_columns(self.problem.raw, basis.kept())?;
-            let scores = self.family.score_certificate(
-                &accepted.point().eta,
-                &raw,
-                self.design,
-                self.controls.tolerance(),
-                self.team,
-            )?;
-            let decision = convergence.observe(
-                old,
-                accepted.evaluation().objective.deviance,
-                scores.convergence_scores(),
-            )?;
-            diagnostics.accepted_iterations = convergence.accepted_steps();
-            if decision == Decision::Continue {
-                continue;
-            }
-            let strict = self.checkpoint(&accepted, &basis, Stage::Fisher, &mut diagnostics)?;
-            let stable = strict.decision == CheckDecision::Stable;
-            let adopted = self.adopt(&mut accepted, &mut basis, strict, &mut diagnostics)?;
-            if !stable || !adopted {
-                diagnostics.strict_resumes += 1;
-                convergence.reject_strict()?;
-                continue;
-            }
-            let final_check =
-                self.checkpoint(&accepted, &basis, Stage::FinalHessian, &mut diagnostics)?;
-            if final_check.decision == CheckDecision::Stable {
-                return self.finish(accepted, final_check, diagnostics);
-            }
-            self.adopt(&mut accepted, &mut basis, final_check, &mut diagnostics)?;
-            diagnostics.strict_resumes += 1;
-            convergence.reject_strict()?;
-        }
-    }
     fn checkpoint(
         &self,
         accepted: &Accepted<'_, '_>,

@@ -117,7 +117,9 @@ impl Family<'_> {
             *response = match kind {
                 Response::Hessian => predictor,
                 Response::Fisher if self.outcome[row] == 0. => predictor - 1.,
-                Response::Fisher => predictor + ((self.terms[row][0] - eta[row]).exp() - 1.),
+                // Preserve Newton corrections near saturation: exp(x)-1
+                // rounds a small correction to zero and freezes FE noise.
+                Response::Fisher => predictor + (self.terms[row][0] - eta[row]).exp_m1(),
             };
             if !weight.is_finite() || *weight <= 0. || !response.is_finite() {
                 return Err(numerical("Poisson working state is not representable"));

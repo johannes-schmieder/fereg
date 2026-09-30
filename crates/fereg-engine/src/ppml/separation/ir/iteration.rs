@@ -55,13 +55,7 @@ pub(super) fn run(
             &mut report.work,
             team,
         )?;
-        // Reconstruct from coefficients. Subtracting nearly equal u and its
-        // residual would erase a small fitted direction before sign checks.
-        let mut fitted = design.multiply(&fit.absorbed_coefficients, team)?;
-        for row in 0..outcome.len() {
-            fitted[(row, 0)] =
-                columns.row_combination(row, &fit.finite.coefficients, fitted[(row, 0)]);
-        }
+        let fitted = super::super::numerical::fitted(&columns, &design, &fit, team)?;
         drop(fit);
         let point = metrics(outcome, &fitted)?;
         let threshold = model.controls.tolerance * point.direction_scale.max(1.);

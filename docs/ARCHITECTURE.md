@@ -300,11 +300,10 @@ the registered IR projection target; fresh certification of the resulting cone
 direction uses the original model and strict unit-metric projection. Every
 frame and correction contributes observable work.
 
-Generation-bound IR reports are proposals. A deletion needs fresh cone/span
-certification and the ledger's atomic cascade. A no-drop terminal state needs
-an exact deterministic replay from the initial rectifier with fresh factors;
-no saved success flag or projected state has terminal authority. Exhaustion,
-stale/tampered evidence and unsupported explicit solvers fail clearly.
+Generation-bound IR reports are proposals. Deletions need fresh cone/span
+certification and atomic cascades; no-drop terminals need exact fresh
+recurrence replay. Cached success/projected state has no terminal authority.
+Exhaustion, stale/tampered evidence and unsupported solvers fail clearly.
 
 Simplex counts the entire explicit finite/FE/channel width before dense work,
 including checked QR, null-space, tableau, topology and certificate storage.
@@ -317,8 +316,15 @@ needs a separately checked Farkas multiplier against the immutable boundary cone
 No-drop reports require fresh deterministic replay. A resource skip has no
 terminal authority alone: the requested comprehensive IR must freshly replay
 the same current model and generation with no unhandled separation. An IR drop
-restarts the chain, invalidating the old skip. Mu and full-chain coordination
-remain to be integrated.
+restarts the chain, invalidating the old skip. Full-chain coordination remains.
+
+Mu uses the same bounded IRLS trajectory in exploration mode; accepted
+linear/state/mean/objective evidence is required, but a finite root is not.
+Small means nominate candidates only: a fresh unit-metric full-model
+projection proposes a cone direction, then independent ledger span/sign
+certification decides deletion. No-drop reports require full deterministic
+replay on the current model/generation. Discard exploratory means, parameters,
+basis and factors; final-sample IRLS starts afresh.
 
 IRLS evaluates the Poisson family, refreshes h=qmu, solves shared weighted
 linear frames, and step-halves the joint predictor/coefficient proposal.
