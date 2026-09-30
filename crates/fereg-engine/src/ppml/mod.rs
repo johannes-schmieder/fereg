@@ -1,4 +1,5 @@
 //! PPML family and accepted-state estimation components.
+pub mod bias;
 pub mod checkpoint;
 pub mod control;
 pub mod family;

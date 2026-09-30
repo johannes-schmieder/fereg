@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.4 coefficient mean bias correction, including exact/randomized cD and cC. M6.3 is complete: requested-only mu/eta/xb/d/residual/saved-FE products borrow the sealed final-Hessian state and scatter through the ledger; compact fit statistics retain the offset-free null. Eight focused fixtures and the extended 2,200-design campaign (3,824 primary solver fits) pass independent/pinned comparisons and exact worker checks; full lean/long suites pass. Only the unrelated pre-merge user stash remains. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
+Current task: M6.4 coefficient mean bias correction. Its retained-axis support screen and pinned Philox generator are qualified by focused/independent checks, including 2,200 designs/6,600 auto/LSMR/CMG fits and full lean/long suites. Next are the full-system information solves and fixed anchors, followed by exact/randomized cD and cC, numerical uncertainty, finite-model/request validation and result publication. M6.3 inference, requested outputs and statistics are complete. Only the unrelated pre-merge user stash remains. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] partially implemented or verification pending.
 
@@ -43,7 +43,7 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
 - [x] M6.1 `ppml::family` and IRLS; all backends match Newton oracles, accumulated frame-work reporting verified
 - [x] M6.2 Separation (canonical chain, atomic cascades, current-generation capacity/replay and cold final roots qualified)
 - [x] M6.3 PPML inference and outputs (accepted-state inference, requested predictions/saved FEs/residuals and statistics qualified)
-- [ ] M6.4 Bias correction
+- [~] M6.4 Bias correction (support/Philox qualified; full-system solves, increments, anchors, uncertainty and publication open)
 - [ ] M6.5 Tests and seam
 - [ ] M6.6 Benchmarks and cutover
 - [ ] M7.1 Remove legacy after coverage acceptance
@@ -128,6 +128,8 @@ Legend: [ ] todo · [x] done · [~] partially implemented or verification pendin
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-30 M6.4 prerequisites (this commit) — the support screen borrows sealed final qmu, reads explicit numeric unit IDs only on retained original rows, counts actual distinct units and reports nearest-rank counts/information concentration without a dense FE-by-unit table. Signed zero shares an identity; missing retained IDs, unsupported FE grammar and all four separation reasons fail before any correction result. Host-thread interruption boundaries return no partial result. Philox4x32-10 matches all three pinned Random123 answers after verifying the required vector-file SHA-256, plus seven independent vectorized 64-sign masks across defaults, streams, negative/fractional and extreme units. Five support fixtures cover literal frequency replication, row reordering, prior information concentration, masks/missingness, each interruption boundary and exact 1/2/4/8-worker results. Independent per-level tables qualify 2,200 graph/weight/adjustment/unit designs and 6,600 auto/LSMR/CMG roots, including necessary-support refusals and sampled exact worker identity. Full lean and long oracle suites pass. This is prerequisite qualification only; both correction increments, exact/randomized calculation, anchors, uncertainty and public seam remain open.
 
 - 2026-09-30 M6.3 outputs (this commit) — requested-only original-axis mu/eta/xb/d/saved-FE products reuse sealed qmu-normalized coefficients, reconstruct/certify without re-solving and preserve dropped-row missingness; all six residual formulas remain on the raw outcome scale. Compact accepted deviance/likelihood, offset-free null/pseudo-R², sum_y and complete iteration counts publish no OLS statistics. Shared FE channel mapping keeps the OLS fixtures passing. Eight new fixtures include disconnected sloped/duplicate gauges, prior-vs-Hessian centering, every output subset, offset/exposure-once, post-separation drops, half-integer likelihoods, extreme constant adjustments, refusal paths and exact 1/2/4/8-worker identity. The 2,200-design/3,824-fit campaign adds independent dense-Newton predictions and recurrence/Stirling likelihoods plus frozen residual/statistics differentials, ledger holes and sampled worker checks. Full lean and long oracle suites pass; M6.3 is complete, M6.4 and public seam/cutover remain open.
 
