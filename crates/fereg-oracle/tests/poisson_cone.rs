@@ -119,7 +119,7 @@ fn campaign(start: usize, count: usize) {
                 assert!(distance < 1e-10, "seed={seed}, distance={distance:e}");
                 if seed == 27 {
                     assert!(
-                        nominal_span_distance(ledger.view(), &p, &model, &one)
+                        raw_span_distance(ledger.view(), &p, &model, &one)
                             > model.controls.projection_tolerance
                     );
                 }
@@ -150,14 +150,14 @@ fn campaign(start: usize, count: usize) {
     }
 }
 
-fn nominal_span_distance(
+fn raw_span_distance(
     view: View<'_>,
     proposal: &DirectionProposal,
     model: &Model<'_>,
     team: &ThreadTeam,
 ) -> f64 {
     use fereg_engine::{
-        fe::{Design, Engine, Weights},
+        fe::{Design, Plan, SchurSession, Weights},
         wls,
     };
     let normalized: Vec<_> = proposal
@@ -170,12 +170,55 @@ fn nominal_span_distance(
         tolerance: model.controls.projection_tolerance,
         ..model.options
     };
-    let mut engine = Engine::new(&design, Estimator::Ppml, &options, team).unwrap();
-    let fit = wls::solve_absorbed(
-        &mut engine,
-        model.raw,
-        &normalized,
-        model.roles,
+    // Preserve the original unrefined recurrence as an executable witness:
+    // local FE certification alone did not establish full-model distance.
+    let mut columns = vec![normalized.clone()];
+    for column in 0..model.raw.ncols() {
+        columns.push(model.raw.column(column).unwrap());
+    }
+    let rhs = DenseMatrix::from_columns(&columns).unwrap();
+    let plan = Plan::new(&design, Estimator::Ppml, &options).unwrap();
+    let mut projection = SchurSession::new(&design, &plan, team)
+        .unwrap()
+        .solve(&rhs, team)
+        .unwrap();
+    design
+        .normalize_coefficients(&mut projection.coefficients, options.tolerance, team)
+        .unwrap();
+    let residuals = design
+        .reconstruct(&rhs, &projection.coefficients, team)
+        .unwrap();
+    design
+        .certify(
+            &rhs,
+            &projection.coefficients,
+            &residuals,
+            options.tolerance,
+            team,
+        )
+        .unwrap();
+    let within = DenseMatrix::from_columns(
+        &(1..rhs.ncols())
+            .map(|c| residuals.column(c).unwrap())
+            .collect::<Vec<_>>(),
+    )
+    .unwrap();
+    let slots: Vec<_> = columns[1..]
+        .iter()
+        .zip(model.roles)
+        .map(|(values, &role)| wls::Slot {
+            role,
+            reference_norm: values.iter().fold(0_f64, |norm, &v| norm.hypot(v)),
+        })
+        .collect();
+    let fit = wls::solve(
+        &wls::Problem {
+            design: &within,
+            outcome: &residuals.column(0).unwrap(),
+            weights: Weights::Unit,
+            slots: &slots,
+            has_absorbed_intercept: true,
+        },
         wls::Policy {
             score_tolerance: model.controls.projection_tolerance,
             ..wls::Policy::default()
@@ -183,7 +226,38 @@ fn nominal_span_distance(
         team,
     )
     .unwrap();
-    fit.residuals.iter().fold(0_f64, |a, &v| a.hypot(v))
+    let mut alpha = DenseMatrix::zeros(design.layout().total, 1).unwrap();
+    for row in 0..alpha.nrows() {
+        alpha[(row, 0)] = std::iter::once(projection.coefficients[(row, 0)])
+            .chain(
+                fit.coefficients
+                    .iter()
+                    .enumerate()
+                    .map(|(c, &b)| -b * projection.coefficients[(row, c + 1)]),
+            )
+            .sum::<f64>();
+    }
+    design
+        .normalize_coefficients(&mut alpha, options.tolerance, team)
+        .unwrap();
+    let target: Vec<_> = normalized
+        .iter()
+        .enumerate()
+        .map(|(row, &y)| {
+            y - fit
+                .coefficients
+                .iter()
+                .enumerate()
+                .map(|(c, &b)| model.raw[(row, c)] * b)
+                .sum::<f64>()
+        })
+        .collect();
+    let target = DenseMatrix::from_columns(&[target]).unwrap();
+    let residuals = design.reconstruct(&target, &alpha, team).unwrap();
+    design
+        .certify(&target, &alpha, &residuals, options.tolerance, team)
+        .unwrap();
+    residuals.as_slice().iter().fold(0_f64, |a, &v| a.hypot(v))
         / normalized.iter().fold(0_f64, |a, &v| a.hypot(v))
 }
 

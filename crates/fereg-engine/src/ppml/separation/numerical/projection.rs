@@ -3,8 +3,8 @@ use crate::{
     data::Weights,
     error::{reserved, Result},
     fe::{Design, Engine},
-    ppml::separation::{invalid, View},
-    spec::{Estimator, Options},
+    ppml::separation::View,
+    spec::Estimator,
     threads::ThreadTeam,
     wls,
 };
@@ -15,12 +15,7 @@ pub(super) fn certify(
     model: &Model<'_>,
     team: &ThreadTeam,
 ) -> Result<SpanValidation> {
-    model.options.validate()?;
-    if model.raw.nrows() != view.sample.n_active() || model.raw.ncols() != model.roles.len() {
-        return Err(invalid(
-            "separation model is not aligned to the active generation",
-        ));
-    }
+    model.validate(view)?;
     // A positive rescaling preserves the cone and prevents magnitude alone
     // from overflowing or underflowing the fresh span solve and its norm ratio.
     let mut normalized = reserved(proposal.direction.len())?;
@@ -31,30 +26,19 @@ pub(super) fn certify(
             .map(|v| v / proposal.certificate.direction_scale),
     );
     let design = Design::new(view.sample, Weights::Unit)?;
-    let mut options = Options {
-        tolerance: model
-            .options
-            .tolerance
-            .min(model.controls.projection_tolerance),
-        ..model.options
-    };
-    // FE score and whole-model span residual use different scales. A detector
-    // projection at the publication target can pass the former while missing
-    // the latter; certification uses the shared strict PPML inner policy.
-    options.tolerance = crate::ppml::control::Controls::new(&options)?.strict_tolerance();
+    let options = model.span_options()?;
     let mut engine = Engine::new(&design, Estimator::Ppml, &options, team)?;
-    let policy = wls::Policy {
-        score_tolerance: wls::Policy::default()
-            .score_tolerance
-            .min(model.controls.projection_tolerance),
-        ..wls::Policy::default()
-    };
-    let fit = wls::solve_absorbed(
+    let mut work = wls::Work::default();
+    let fit = wls::solve_absorbed_recorded(
         &mut engine,
         model.raw,
         &normalized,
         model.roles,
-        policy,
+        wls::AbsorbedControls {
+            finite: model.linear_policy(),
+            basis: None,
+        },
+        &mut work,
         team,
     )?;
     let norm = normalized.iter().fold(0_f64, |n, &v| n.hypot(v));
@@ -74,5 +58,6 @@ pub(super) fn certify(
         projection_diagnostics: fit.projection_diagnostics,
         recovery_diagnostics: fit.recovery_diagnostics,
         setup_diagnostics: fit.setup_diagnostics,
+        work,
     })
 }

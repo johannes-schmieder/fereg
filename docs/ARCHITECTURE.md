@@ -175,13 +175,18 @@ rank decisions. Retain coefficients and reconstruct residuals independently.
 Use static additive Schwarz with explicit `ParallelReduction` in the call-owned
 team; no nested pool or upstream worker-dependent Auto policy.
 
-The preconditioned recurrence's stopping metric differs from the shared FE
-span target. A stopped candidate can continue through same-factor residual
-corrections at the same tolerance, measured against the original RHS. Each
-correction consumes the remaining per-RHS budget and increments the attempt's
-refinement count; stagnation/breakdown/exhaustion fails closed. This remains
-one LSMR backend attempt. Only the shared final certificate accepts a projection;
-automatic fallback uses this same adapter.
+The preconditioned recurrences' stopping metrics differ from the shared FE
+span target. Schur-PCG, LSMR and the complete CMG nuisance frame use one
+original-input residual-refinement protocol. It requires the unchanged FE
+score target and stable fitted corrections at the within-residual scale,
+bounded below by machine precision at the original RHS scale. A mostly
+orthogonal residual cannot stop a correction at zero work merely because its
+local normal score is small: the internal target also reduces that initial
+score, with a double-precision floor. Each correction consumes the remaining
+per-RHS budget and increments the same backend attempt's refinement count;
+stagnation/breakdown/exhaustion fails closed. Schur corrections start without
+the original-response warm guess and reuse exact factors. Only the shared
+final certificate accepts a projection; fallback uses the same refined LSMR.
 
 CMG maps the supported two-intercept core to a weighted bipartite Laplacian,
 anchors components, and eliminates supported nuisance intercept columns using
@@ -190,9 +195,12 @@ then use common residual reconstruction and normalization. Core RHSs use the
 call-owned worker team with fixed scalar CMG arithmetic per RHS and reusable
 workspaces; dependency-owned executors and size-based execution policies are
 not used. The graph solve uses an absolute residual target derived from the
-original weighted RHS norm and minimum core level mass, with zero relative
-backward-error tolerance. Growing coefficient norms on weak graphs cannot
-loosen that target. Common FE acceptance remains independently authoritative.
+original weighted RHS norm and minimum core level mass. Initial and nuisance
+setup solves retain zero relative backward-error tolerance. True-residual
+corrections permit an epsilon backward-error allowance inside PCG to avoid
+exhaustion at its representational floor; this never changes the original-input
+FE certificate or establishes forward accuracy. Full-model exact-ray and
+independent weak-graph oracles remain mandatory alongside fitted-update checks.
 No slopes or unsupported multiway graph can be smuggled through a graph adapter.
 The small nuisance Schur block is represented by the core-projected indicator
 columns, factored with the shared weighted pivoted QR instead of squaring their
@@ -279,6 +287,25 @@ The separation coordinator owns immutable detector proposals, certificate
 acceptance, singleton cascades and generation rebasing. Detectors do not mutate
 the sample. FE/simplex/IR/Mu and capacity/error behavior follow SPEC exactly.
 Initial rank selection happens on the final separation sample.
+
+IR uses an immutable artificial weight frame (unit interior weights and
+`tol^2/N0` boundary weights), independent of prior weights and adjustments.
+Before recurrence it freezes the full auxiliary finite span in a fresh strict
+unit-metric WLS frame. Estimator FE-omission thresholds cannot remove a cone
+direction: the auxiliary guard trims only squared machine-roundoff residuals,
+and shared QR owns numerical span rank. The recurrence uses those unit-within
+columns, a span-preserving FE re-expression that avoids cancellation between
+large finite coefficients and their FE counterparts. Weighted recurrence uses
+the registered IR projection target; fresh certification of the resulting cone
+direction uses the original model and strict unit-metric projection. Every
+frame and correction contributes observable work.
+
+Generation-bound IR reports are proposals. A deletion needs fresh cone/span
+certification and the ledger's atomic cascade. A no-drop terminal state needs
+an exact deterministic replay from the initial rectifier with fresh factors;
+no saved success flag or projected state has terminal authority. Exhaustion,
+stale/tampered evidence and unsupported explicit solvers fail clearly. Simplex,
+Mu, capacity handling and complete method-chain replay remain coordinator work.
 
 IRLS evaluates the Poisson family, refreshes h=qmu, solves shared weighted
 linear frames, and step-halves the joint predictor/coefficient proposal.

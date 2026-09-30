@@ -82,6 +82,17 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         control: MonitorControl,
         team: &ThreadTeam,
     ) -> Result<SchurCandidate> {
+        self.solve_budget(rhs, control, self.budget, true, self.tolerance, team)
+    }
+    pub(super) fn solve_budget(
+        &mut self,
+        rhs: &DenseMatrix,
+        control: MonitorControl,
+        budget: usize,
+        warm_start: bool,
+        tolerance: f64,
+        team: &ThreadTeam,
+    ) -> Result<SchurCandidate> {
         validate_matrix(rhs, self.design.nobs())?;
         if control == MonitorControl::StopAfter(0) {
             return Err(invalid(
@@ -92,7 +103,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         let mut b = self.design.transpose_weighted(&initial, team)?;
         zero_effect(self.design, self.eliminated, &mut b);
         let mut x = match &self.warm {
-            Some(warm) if warm.ncols() == rhs.ncols() => copy_matrix(warm)?,
+            Some(warm) if warm_start && warm.ncols() == rhs.ncols() => copy_matrix(warm)?,
             _ => DenseMatrix::zeros(self.design.layout().total, rhs.ncols())?,
         };
         zero_effect(self.design, self.eliminated, &mut x);
@@ -108,12 +119,12 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             if !norm.is_finite() {
                 return Err(numerical("Schur RHS norm is not representable"));
             }
-            targets.push(self.tolerance * norm);
+            targets.push(tolerance * norm);
         }
         let mut state = Recurrences::new(x, r, z, targets)?;
         let mut monitors = reserved(rhs.ncols())?;
         monitors.extend(state.rho.iter().map(|rho| Monitor::new(rho.sqrt())));
-        for _ in 0..self.budget {
+        for _ in 0..budget {
             if !state.active.iter().any(|&active| active) {
                 break;
             }
@@ -141,7 +152,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
                         state.rho[column].sqrt(),
                         state.targets[column],
                         state.progress[column].iterations,
-                        self.budget,
+                        budget,
                         control,
                     ) {
                         state.finish(column, stop);
@@ -154,7 +165,9 @@ impl<'a, 'data> SchurSession<'a, 'data> {
         // reduced coefficients; a recursive PCG residual never becomes output.
         let residuals = match self.recover(rhs, &mut state.x, team) {
             Ok(residuals) => {
-                self.warm = Some(copy_matrix(&state.x)?);
+                if warm_start {
+                    self.warm = Some(copy_matrix(&state.x)?);
+                }
                 residuals
             }
             Err(error) if error.code == ErrorCode::NonConvergence => {
@@ -174,6 +187,21 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             residuals,
             progress: state.progress,
         })
+    }
+    pub(super) fn refinement_controls(&self) -> (&'a Design<'data>, usize, f64) {
+        (self.design, self.budget, self.tolerance)
+    }
+    pub(super) fn retain_refinement(
+        &mut self,
+        coefficients: &DenseMatrix,
+        complete: bool,
+    ) -> Result<()> {
+        self.warm = if complete {
+            Some(copy_matrix(coefficients)?)
+        } else {
+            None
+        };
+        Ok(())
     }
     fn recover(
         &self,

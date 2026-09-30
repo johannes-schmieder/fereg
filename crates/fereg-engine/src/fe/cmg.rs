@@ -1,5 +1,5 @@
 //! Small nuisance Schur complement in factored FWL form, using the shared QR.
-use super::{CmgCore, CmgCoreCandidate, Design, StopReason};
+use super::{refinement, CmgCore, CmgCoreCandidate, Design, StopReason};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
@@ -120,11 +120,23 @@ impl<'a, 'data> CmgSession<'a, 'data> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<CmgCoreCandidate> {
+        self.solve_with_roundoff(rhs, budget, tolerance, 0., team)
+    }
+    fn solve_with_roundoff(
+        &mut self,
+        rhs: &DenseMatrix,
+        budget: usize,
+        tolerance: f64,
+        roundoff: f64,
+        team: &ThreadTeam,
+    ) -> Result<CmgCoreCandidate> {
         let factor = self
             .factor
             .as_ref()
             .ok_or_else(|| invalid("CMG nuisance preparation has not succeeded"))?;
-        let mut candidate = self.core.solve(rhs, budget, tolerance, team)?;
+        let mut candidate = self
+            .core
+            .solve_with_roundoff(rhs, budget, tolerance, roundoff, team)?;
         let mut residuals = self
             .design
             .reconstruct(rhs, &candidate.coefficients, team)?;
@@ -161,6 +173,35 @@ impl<'a, 'data> CmgSession<'a, 'data> {
                 "CMG recovered coefficients are not representable",
             ));
         }
+        Ok(candidate)
+    }
+    pub fn solve_refined(
+        &mut self,
+        rhs: &DenseMatrix,
+        budget: usize,
+        tolerance: f64,
+        team: &ThreadTeam,
+    ) -> Result<CmgCoreCandidate> {
+        let design = self.design;
+        let mut candidate = self.solve(rhs, budget, tolerance, team)?;
+        refinement::run(
+            design,
+            rhs,
+            &mut candidate.coefficients,
+            &mut candidate.progress,
+            refinement::Limits { budget, tolerance },
+            team,
+            |residual, remaining, correction_tolerance, team| {
+                let correction = self.solve_with_roundoff(
+                    residual,
+                    remaining,
+                    correction_tolerance,
+                    f64::EPSILON,
+                    team,
+                )?;
+                Ok((correction.coefficients, correction.progress))
+            },
+        )?;
         Ok(candidate)
     }
     fn nuisance_columns(&self) -> Result<DenseMatrix> {

@@ -31,7 +31,7 @@ fn project(
     session.prepare(16_000, 1e-12, team).unwrap();
     let setup = session.setup_progress().to_vec();
     assert!(setup.iter().all(|p| p.stop == StopReason::Converged));
-    let result = session.solve(rhs, 16_000, 1e-12, team).unwrap();
+    let result = session.solve_refined(rhs, 16_000, 1e-12, team).unwrap();
     assert_eq!(session.setup_progress(), setup);
     (result, setup)
 }

@@ -72,6 +72,7 @@ pub struct SpanValidation {
     pub projection_diagnostics: Vec<RhsDiagnostics>,
     pub recovery_diagnostics: Vec<RhsDiagnostics>,
     pub setup_diagnostics: Vec<crate::fe::SetupDiagnostics>,
+    pub work: crate::wls::Work,
 }
 #[derive(Debug, PartialEq)]
 pub struct NumericalCommit {
@@ -131,12 +132,56 @@ impl View<'_> {
         projection::certify(self, proposal, model, team)
     }
 
-    fn numerical_identity(self) -> u64 {
+    pub(super) fn numerical_identity(self) -> u64 {
         let mut hash = 0xcbf29ce484222325_u64;
         for (&row, &y) in self.sample.retained_rows().iter().zip(&self.sample.outcome) {
             hash = (hash ^ row as u64).wrapping_mul(0x100000001b3);
             hash = (hash ^ y.to_bits()).wrapping_mul(0x100000001b3);
         }
         hash
+    }
+}
+
+impl Model<'_> {
+    pub(super) fn validate(&self, view: View<'_>) -> Result<()> {
+        self.controls.validate()?;
+        self.options.validate()?;
+        if self.raw.nrows() != view.sample.n_active()
+            || self.raw.ncols() != self.roles.len()
+            || self.raw.as_slice().iter().any(|v| !v.is_finite())
+        {
+            return Err(invalid(
+                "separation model is malformed or not aligned to this generation",
+            ));
+        }
+        Ok(())
+    }
+    pub(super) fn projection_options(&self) -> Options {
+        Options {
+            tolerance: self
+                .options
+                .tolerance
+                .min(self.controls.projection_tolerance),
+            ..self.options
+        }
+    }
+    pub(super) fn span_options(&self) -> Result<Options> {
+        let mut options = self.projection_options();
+        // The fresh unit-metric whole-model distance needs a stricter FE score
+        // than the weighted rectifier recurrence's registered projection target.
+        options.tolerance = crate::ppml::control::Controls::new(&options)?.strict_tolerance();
+        Ok(options)
+    }
+    pub(super) fn linear_policy(&self) -> crate::wls::Policy {
+        crate::wls::Policy {
+            // An estimator's FE-omission threshold cannot remove a finite
+            // cone direction. Shared QR still owns numerical span rank at its
+            // unchanged original-column scales; this guard only trims roundoff.
+            fe_collinearity: f64::EPSILON.powi(2),
+            score_tolerance: crate::wls::Policy::default()
+                .score_tolerance
+                .min(self.controls.projection_tolerance),
+            ..crate::wls::Policy::default()
+        }
     }
 }

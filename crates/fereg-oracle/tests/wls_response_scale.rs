@@ -99,7 +99,8 @@ fn original_response_score_is_repaired_without_relaxing_the_guard_or_changing_th
         )
         .unwrap();
         assert!(basis.matches(&fit.finite));
-        assert!(fit.model_refinements > 0);
+        assert!(work.projection().counts().refinements > 0);
+        assert!(fit.model_refinements <= 3);
         assert!(fit.relative_original_finite_score <= policy.score_tolerance);
         assert!(fit.model_certificate.relative_score[0] <= options.tolerance);
         assert!((fit.finite.coefficients[0] + 1.).abs() <= 1e-10);

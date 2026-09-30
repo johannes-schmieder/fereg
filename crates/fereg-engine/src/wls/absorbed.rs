@@ -177,9 +177,10 @@ pub fn solve_absorbed_recorded(
         reconstruction = reconstruction.max(error);
     }
     if reconstruction > tolerance.max(policy.score_tolerance) {
-        return Err(numerical(
-            "absorbed WLS original and within residuals disagree",
-        ));
+        return Err(numerical(&format!(
+            "absorbed WLS original and within residuals disagree: {reconstruction:.17e} > {:.17e}; original score={:.17e}, model refinements={}",
+            tolerance.max(policy.score_tolerance), recovered.original_score, recovered.refinements,
+        )));
     }
     Ok(AbsorbedFit {
         finite,

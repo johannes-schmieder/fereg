@@ -301,7 +301,7 @@ fn bank_acceptance_matches_individual_original_input_certificates_exactly() {
                 let plan = Plan::new(&design, Estimator::Ols, &controls).unwrap();
                 SchurSession::new(&design, &plan, &team)
                     .unwrap()
-                    .solve(&rhs, &team)
+                    .solve_refined(&rhs, MonitorControl::Disabled, &team)
                     .unwrap()
                     .coefficients
             };

@@ -103,6 +103,16 @@ impl<'a, 'data> CmgCore<'a, 'data> {
         tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<CmgCoreCandidate> {
+        self.solve_with_roundoff(rhs, budget, tolerance, 0., team)
+    }
+    pub(super) fn solve_with_roundoff(
+        &mut self,
+        rhs: &DenseMatrix,
+        budget: usize,
+        tolerance: f64,
+        roundoff: f64,
+        team: &ThreadTeam,
+    ) -> Result<CmgCoreCandidate> {
         validate_matrix(rhs, self.design.nobs())?;
         if budget == 0 || !tolerance.is_finite() || tolerance <= 0. || tolerance >= 1. {
             return Err(FeregError::new(
@@ -133,6 +143,7 @@ impl<'a, 'data> CmgCore<'a, 'data> {
             moments: &moments,
             budget,
             tolerance,
+            roundoff,
             minimum_mass_root: self.minimum_mass_root,
         };
         // Every RHS has the same scalar CMG arithmetic in the call-owned team.
@@ -177,6 +188,7 @@ struct SolveContext<'a, 'data> {
     moments: &'a DenseMatrix,
     budget: usize,
     tolerance: f64,
+    roundoff: f64,
     minimum_mass_root: f64,
 }
 impl SolveContext<'_, '_> {
@@ -214,8 +226,12 @@ impl SolveContext<'_, '_> {
             return Ok((potential, attempt));
         }
         // ||D'Wr|| <= tol ||sqrt(W)y|| sqrt(min level mass) bounds every
-        // normalized categorical level score. A backward-error stop that grows
-        // with coefficient magnitude cannot supply this guarantee on weak graphs.
+        // normalized categorical level score. Only true-residual corrections
+        // permit machine-roundoff backward error in the inner PCG recurrence;
+        // initial and nuisance-setup solves retain the absolute target. Tiny
+        // corrections can otherwise exhaust their budget at a representational
+        // floor. Neither stop accepts a projection: shared refinement and the
+        // original-input certificate own acceptance on weak graphs.
         let mut factors = [self.tolerance, norm, self.minimum_mass_root];
         factors.sort_unstable_by(f64::total_cmp);
         let absolute_tolerance = (factors[0] * factors[2]) * factors[1];
@@ -231,7 +247,7 @@ impl SolveContext<'_, '_> {
             None,
             &mut potential,
             PcgOptions {
-                relative_tolerance: 0.,
+                relative_tolerance: self.roundoff,
                 absolute_tolerance,
                 max_iterations: self.budget,
                 ..PcgOptions::default()

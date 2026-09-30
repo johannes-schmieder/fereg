@@ -207,7 +207,7 @@ impl<'a, 'data> Engine<'a, 'data> {
                 Ok((candidate.coefficients, candidate.progress))
             }
             Backend::SchurPcg => {
-                let candidate = self.schur.as_mut().expect("Schur session").solve_monitored(
+                let candidate = self.schur.as_mut().expect("Schur session").solve_refined(
                     rhs,
                     self.monitor,
                     team,
@@ -238,7 +238,7 @@ impl<'a, 'data> Engine<'a, 'data> {
                         )?,
                     ));
                 }
-                let candidate = self.cmg.as_mut().expect("prepared CMG").solve(
+                let candidate = self.cmg.as_mut().expect("prepared CMG").solve_refined(
                     rhs,
                     self.plan.linear_budget(),
                     self.plan.tolerance(),

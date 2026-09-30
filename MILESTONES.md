@@ -2,7 +2,7 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.2 comprehensive IR detection and fresh terminal replay through shared FE/WLS. The original-response finite-score repair at 85f307e9 passes the full lean/long suites. Experimental IR qualification remains open: weighted slope seed 155 fails the stricter 1e-12 FE certificate after bounded Schur/LSMR work; using the retained IR recurrence target 1e-10 instead exposes an original/within residual mismatch on seed 55. Preserve both failures and their executable cases; do not accept a false terminal result or relax the residual guard. The experimental detector is preserved locally in the M6.2 stash. Simplex, Mu and separation orchestration remain. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
+Current task: M6.2 full-model simplex/capacity, Mu and separation orchestration. IR detection, fresh terminal replay and shared FE refinement pass the full lean/long suites, including 4,400 known-ray/paired-row models and the weighted forward-accuracy regressions. The earlier IR experiments are now qualified code; only the unrelated pre-merge user stash remains. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
 Default engine: fereg = legacy, feppml = legacy.
 Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 
@@ -41,7 +41,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M5.3 Benchmarks
 - [ ] M5.4 G-OLS, then flip the `fereg` default to `engine(next)`
 - [x] M6.1 `ppml::family` and IRLS; all backends match Newton oracles, accumulated frame-work reporting verified
-- [ ] M6.2 Separation (ledger and numerical certificates verified; detectors/orchestration pending)
+- [ ] M6.2 Separation (ledger, cone/span certificates and IR/replay verified; simplex/Mu/coordinator pending)
 - [ ] M6.3 PPML inference and outputs
 - [ ] M6.4 Bias correction
 - [ ] M6.5 Tests and seam
@@ -128,6 +128,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-29 M6.2 IR qualification (this commit) — immutable weighted rectification freezes a fresh unit-metric auxiliary basis and uses its within columns, preserving finite cone directions that estimator omission/cancellation could hide. Generation-bound no-drop reports need exact fresh replay; deletions still need independent original-model cone/span certification and atomic ledger acceptance. One Schur/LSMR/complete-CMG refinement protocol resolves weak weighted frames at original FE score limits and within-update scales, retaining all work within the same per-RHS budget. CMG initial/setup absolute targets remain unchanged; correction-only epsilon backward allowance avoids a localized PCG rounding floor without accepting a projection. Seeds 55/155/1523 retain exact-ray coefficient/residual bounds of 1e-9; explicit CMG is checked without fallback, and the original-response regression retains 1e-12 residual accuracy. Seven detector regressions, 4,400 ray/impossibility models, strict original span witnesses and exact 1/2/4/8-worker result/work identity pass. Full lean and long oracle suites pass. Simplex, Mu, capacity/chain coordination, G-M3 and public cutover remain open.
 
 - 2026-09-29 M6.2 IR policy localization (this commit) — retained runner/projection sources use the registered 1e-10 rectifier projection target; SPEC's strict 1e-12 final-IRLS policy applies to final estimator checks, and the previously qualified fresh unit-span check remains strict. Separating those targets in the experimental detector does not resolve qualification: seed 55 now rejects an original/within residual mismatch, while the stricter seed 155 experiment stagnates above its FE score limit. All unqualified detector/oracle work remains in the local M6.2 stash; no failing detector is published, no residual guard is relaxed, and M6.2 stays open. The qualified 85f307e9 engine's long oracle suite and the complete lean suite pass; no public default changes.
 
