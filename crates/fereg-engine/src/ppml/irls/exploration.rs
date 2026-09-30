@@ -63,8 +63,8 @@ pub(crate) fn explore_mu(
         context.finish_exploration(trajectory)
     })
 }
-impl<'a, 'data> Context<'a, 'data> {
-    fn finish_exploration(&self, trajectory: Trajectory<'a, 'data>) -> Result<Exploration> {
+impl<'a> Context<'a, '_> {
+    fn finish_exploration(&self, trajectory: Trajectory<'a, 'a>) -> Result<Exploration> {
         let state = trajectory.accepted.certify_state(
             self.problem.raw,
             self.design,

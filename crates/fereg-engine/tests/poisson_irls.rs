@@ -8,13 +8,13 @@ use fereg_engine::{
     ErrorCode,
 };
 mod support;
-fn run(
-    sample: &Prepared,
-    raw: &DenseMatrix,
-    roles: &[Role],
+fn run<'a>(
+    sample: &'a Prepared,
+    raw: &'a DenseMatrix,
+    roles: &'a [Role],
     options: Options,
     workers: usize,
-) -> fereg_engine::Result<Fit> {
+) -> fereg_engine::Result<Fit<'a>> {
     fit_final_sample(
         &Problem { sample, raw, roles },
         options,
@@ -104,10 +104,13 @@ fn exposure_and_logged_offset_share_one_input_state_without_double_logging() {
     let raw =
         DenseMatrix::from_columns(&[vec![1.; n], (0..n).map(|i| (i % 11) as f64 / 11.).collect()])
             .unwrap();
-    assert_eq!(
-        run(&sample, &raw, &[Role::Ordinary; 2], options(), 1).unwrap(),
-        run(&logged, &raw, &[Role::Ordinary; 2], options(), 1).unwrap()
-    );
+    let roles = [Role::Ordinary; 2];
+    let exposure_fit = run(&sample, &raw, &roles, options(), 1).unwrap();
+    let logged_fit = run(&logged, &raw, &roles, options(), 1).unwrap();
+    assert_eq!(exposure_fit.problem().sample.adjustment, sample.adjustment);
+    assert_eq!(logged_fit.problem().sample.adjustment, logged.adjustment);
+    assert_ne!(exposure_fit.problem(), logged_fit.problem());
+    assert_eq!(exposure_fit.into_state(), logged_fit.into_state());
 }
 #[test]
 fn strict_resumption_preserves_the_outer_budget() {
@@ -166,7 +169,9 @@ fn implicit_constant_and_aliases_keep_canonical_zero_slots() {
     let n = sample.n_active();
     sample.outcome = (0..n).map(|i| (1 + i % 7) as f64).collect();
     let raw = DenseMatrix::from_columns(&[vec![1.; n], vec![1.; n]]).unwrap();
-    let ordinary = run(&sample, &raw, &[Role::Ordinary; 2], options(), 1).unwrap();
+    let ordinary = run(&sample, &raw, &[Role::Ordinary; 2], options(), 1)
+        .unwrap()
+        .into_state();
     assert_eq!(
         ordinary.linear.finite.statuses,
         vec![Status::Kept, Status::NumericallyRankDeficient]

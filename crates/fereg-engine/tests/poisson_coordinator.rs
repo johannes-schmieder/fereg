@@ -224,6 +224,8 @@ fn canonical_methods_and_atomic_cascades_rebuild_the_final_columns_and_rank() {
         )
         .unwrap();
         assert_eq!(fit, cold);
+        drop(cold);
+        let fit = fit.into_state();
         if let Some(prior) = &reference {
             assert_eq!(prior, &(result, fit));
         } else {

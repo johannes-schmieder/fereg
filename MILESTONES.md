@@ -2,9 +2,9 @@
 
 Plan: [docs/cleanup/PLAN.md](docs/cleanup/PLAN.md), copied from [issue #28](https://github.com/johannes-schmieder/fereg/issues/28).
 Legacy snapshot: `legacy-v0.5.0-beta` at `e61cb9ee0ed8f575bd972cf45fea08af27826bc8`.
-Current task: M6.3 PPML inference and outputs through the shared VCE/output modules at the accepted state. M6.2 is qualified: one ledger runs the canonical chain, atomically commits cascades, regenerates recipes after every deletion and seals fresh current-generation terminals. Mu sessions never cross into cold final-sample fitting. Six engine fixtures, 4,400 ray/paired-row full-chain designs, independent dense Newton roots, eligible explicit LSMR/CMG, exact worker identity and full lean/long suites pass. Coefficient mean bias correction remains required in M6.4. Only the unrelated pre-merge user stash remains. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
+Current task: M6.3 PPML inference and outputs. The accepted-state inference foundation now binds immutable fitted inputs, streams recipe validation and uses the common slot map/VCE. Six engine fixtures and 2,200 independent dense-Newton/pinned-legacy designs pass, including eligible explicit LSMR/CMG and exact worker identity; both mandatory suites pass. Requested predictions, saved FEs and fit statistics remain open. Coefficient mean bias correction remains required in M6.4. Only the unrelated pre-merge user stash remains. Further FE performance work awaits Johannes: the focused auto repair remains 2.188/18.655 times legacy at T1/T8. Recommended next step for that gate is bringing M8.3 shared-operator work forward, retaining all scientific/API rules. M4.4 OLS integration remains open.
 Default engine: fereg = legacy, feppml = legacy.
-Legend: [ ] todo · [x] done · [~] implemented, verification pending.
+Legend: [ ] todo · [x] done · [~] partially implemented or verification pending.
 
 ## Tasks
 - [x] M0.1 Tag, plan, milestones
@@ -42,7 +42,7 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
 - [ ] M5.4 G-OLS, then flip the `fereg` default to `engine(next)`
 - [x] M6.1 `ppml::family` and IRLS; all backends match Newton oracles, accumulated frame-work reporting verified
 - [x] M6.2 Separation (canonical chain, atomic cascades, current-generation capacity/replay and cold final roots qualified)
-- [ ] M6.3 PPML inference and outputs
+- [~] M6.3 PPML inference and outputs (accepted-state inference qualified; predictions/statistics open)
 - [ ] M6.4 Bias correction
 - [ ] M6.5 Tests and seam
 - [ ] M6.6 Benchmarks and cutover
@@ -128,6 +128,8 @@ Legend: [ ] todo · [x] done · [~] implemented, verification pending.
   prerequisite to native-plugin distribution, not a completed gate.
 
 ## Log (newest first; one line per task)
+
+- 2026-09-30 M6.3 inference (this commit) — sealed accepted fits bind immutable sample/raw/roles/means/bread; detached numerical states have no inference authority. The shared canonical slot mapper serves both estimators, with streamed recipe binding and identified-only covariance scatter. No-absorb and slope-only PPML constants remain estimated with SE/z; absorbed constants are exactly zero outside the sandwich, with the pinned pairwise/nesting rank allocation. Robust/five-way tuple sums, CGM PSD and z/chi-squared laws use shared VCE with PPML corrections. Six fixtures cover omissions, normalized/ordinary constants, literal frequency replication, probability scaling, malformed metadata, empty compact rank and exact workers; 2,200 independent dense Newton/full-design sandwiches plus frozen legacy inference comparisons pass across eligible explicit LSMR/CMG. All 3,824 primary solver fits, full lean/long suites and the CI compiler mutation guard pass; predictions/statistics remain open.
 
 - 2026-09-30 M6.2 coordinator (this commit) — one Prepared ledger runs canonical FE/simplex/IR/Mu subsets, commits singleton/FE unions atomically and regenerates raw recipes after every deletion. Current-generation fresh replay closes terminals; a capacity skip needs requested comprehensive IR on that same generation, while an IR drop invalidates the old skip. Sealed final samples carry no exploratory parameters, projected columns or factors into cold rank/final-Hessian estimation. Fixed method totals, 64 prefix events and deterministic sample/ledger/trace digests retain discarded-generation work without observation-sized diagnostics. Seed 634 localized a deferred constant's subtraction roundoff becoming an artificial recurrence RHS: validated exact intercept span preserves its zero within column; varying mislabeled constants fail, and ordinary columns/original cone certification/FE guards stay unchanged. Six engine fixtures include canonical reasons/cascades, implicit/frequency behavior, capacity resolution, fatal errors, Mu-session discard and 70 restarts; 4,400 ray/paired-row models match known sample proofs and independent dense Newton roots across weights, offsets/exposure, FE slopes and eligible explicit LSMR/CMG, with exact worker identity. Full lean and long oracle suites pass, including retained tiny-response and 100-digit weak-graph guards. M6.2 is complete; M6.3, coefficient mean bias correction (M6.4), G-M3 and public cutover remain open.
 

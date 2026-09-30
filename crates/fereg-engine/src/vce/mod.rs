@@ -40,6 +40,33 @@ pub struct Covariance {
     pub reconstruction_error: f64,
     pub psd: psd::PsdReport,
 }
+impl Covariance {
+    /// Scatter identified coordinates only. Omitted covariance cells stay
+    /// zero and their undefined standard errors remain IEEE NaN for the wire.
+    pub fn scatter(mut self, slots: usize, coordinates: &[usize]) -> Result<Self> {
+        let k = coordinates.len();
+        if self.values.nrows() != k
+            || self.values.ncols() != k
+            || self.standard_errors.len() != k
+            || coordinates.iter().any(|&slot| slot >= slots)
+            || coordinates.windows(2).any(|w| w[0] >= w[1])
+        {
+            return Err(invalid("covariance scatter coordinates disagree"));
+        }
+        let mut values = DenseMatrix::zeros(slots, slots)?;
+        let mut errors = reserved(slots)?;
+        errors.resize(slots, f64::NAN);
+        for (i, &left) in coordinates.iter().enumerate() {
+            errors[left] = self.standard_errors[i];
+            for (j, &right) in coordinates.iter().enumerate() {
+                values[(left, right)] = self.values[(i, j)];
+            }
+        }
+        self.values = values;
+        self.standard_errors = errors;
+        Ok(self)
+    }
+}
 pub fn estimate(
     problem: &Problem<'_>,
     kind: Kind,

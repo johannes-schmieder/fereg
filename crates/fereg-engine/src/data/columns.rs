@@ -33,7 +33,7 @@ impl CompiledColumns {
         if estimator == Estimator::Ppml && !spec.include_intercept {
             return Err(unsupported("PPML requires a reported structural constant"));
         }
-        let implicit_constant = spec.absorbed_terms.is_empty();
+        let implicit_constant = estimator == Estimator::Ols && spec.absorbed_terms.is_empty();
         let absorbed_intercept =
             implicit_constant || spec.absorbed_terms.iter().any(|t| t.intercept);
         let structural_intercept = estimator == Estimator::Ppml || absorbed_intercept;
@@ -97,6 +97,10 @@ impl CompiledColumns {
         sample.validate_alignment()?;
         ModelMatrixBuilder::with_nrows(sample.n_active(), &sample.regressors, &[])?
             .generate(&self.recipes)
+    }
+    pub(crate) fn matches(&self, sample: &Prepared, raw: &DenseMatrix) -> Result<bool> {
+        ModelMatrixBuilder::with_nrows(sample.n_active(), &sample.regressors, &[])?
+            .matches(&self.recipes, raw)
     }
 }
 fn compile_term(term: &ExpandedTerm) -> Result<ColumnRecipe> {

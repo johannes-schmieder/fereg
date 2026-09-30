@@ -14,6 +14,8 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --no-default-features --profile "$profile" -- -D warnings
 cargo clippy -p fereg-plugin --all-targets --features ffi --profile "$profile" -- -D warnings
 cargo test --workspace --all-targets --no-default-features --profile "$profile"
+# Accepted-state authority includes a compiler-enforced mutation contract.
+cargo test -p fereg-engine --doc --profile "$profile"
 # The FFI allocator observes every test's allocations, even outside an audit.
 cargo test -p fereg-plugin --features ffi --lib --profile "$profile" -- --test-threads=1
 # Exercise the explicitly isolated allocator audits as well.

@@ -4,7 +4,7 @@ use crate::{
     fe::Engine,
     wls::{self, AbsorbedControls, Policy},
 };
-impl<'a, 'data> Context<'a, 'data> {
+impl<'a> Context<'a, '_> {
     pub(super) fn frame(
         &self,
         accepted: &Accepted<'_, '_>,
@@ -78,7 +78,7 @@ impl<'a, 'data> Context<'a, 'data> {
         &self,
         accepted: &Accepted<'_, '_>,
         linear: &AbsorbedFit,
-    ) -> Result<Accepted<'a, 'data>> {
+    ) -> Result<Accepted<'a, 'a>> {
         let mut point =
             self.family
                 .point_from_linear(linear, self.problem.raw, self.design, self.team)?;

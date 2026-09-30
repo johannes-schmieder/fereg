@@ -160,6 +160,15 @@ fn slope_only_constant_policy_and_unsupported_grammar_are_explicit() {
     .is_err());
 }
 #[test]
+fn no_absorb_ppml_constant_is_an_identified_finite_coordinate() {
+    let compiled = CompiledColumns::new(&spec(vec![]), Estimator::Ppml).unwrap();
+    assert!(!compiled.implicit_constant);
+    assert!(compiled.structural_intercept);
+    assert_eq!(compiled.constant_slot, Some(0));
+    assert_eq!(compiled.roles, [Role::Ordinary]);
+    assert_eq!(compiled.recipes, [ColumnRecipe::Intercept]);
+}
+#[test]
 fn virtual_constant_uses_shared_projection_and_dof_without_a_declared_effect() {
     let mut sample = support::prepared(&[], false, 2, 0);
     sample.outcome = (0..sample.n_active()).map(|i| i as f64).collect();

@@ -5,7 +5,7 @@ mod trajectory;
 pub(crate) use exploration::{explore_mu, MeanThreshold};
 pub use exploration::{MuCertificate, MuStop};
 use trajectory::{Purpose, Trajectory};
-mod input;
+pub(crate) mod input;
 mod start;
 use super::{
     checkpoint::{Checkpoint, Decision as CheckDecision, Stage},
@@ -23,6 +23,7 @@ use crate::{
 };
 /// No sample mutation or cached numerical state crosses this call. Raw offsets
 /// and exposures are read from the sole prepared sample owner.
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Problem<'a> {
     pub sample: &'a Prepared,
     pub raw: &'a DenseMatrix,
@@ -42,7 +43,7 @@ pub struct Diagnostics {
     pub work: Work,
 }
 #[derive(Debug, PartialEq)]
-pub struct Fit {
+pub struct FittedState {
     pub point: Point,
     pub evaluation: Evaluation,
     pub hessian_weights: Vec<f64>,
@@ -51,16 +52,52 @@ pub struct Fit {
     pub state: StateCertificate,
     pub diagnostics: Diagnostics,
 }
+/// The accepted state borrows the exact immutable sample, raw columns and
+/// role map which passed strict final-Hessian validation. Read access cannot
+/// mutate coefficients, means or bread and retain their publication authority.
+///
+/// ```compile_fail
+/// fn change_mean(fit: &mut fereg_engine::ppml::irls::Fit<'_>) {
+///     fit.evaluation.mean[0] = 0.;
+/// }
+/// ```
+#[derive(Debug, PartialEq)]
+pub struct Fit<'data> {
+    problem: Problem<'data>,
+    accepted: FittedState,
+}
+impl<'data> Fit<'data> {
+    #[must_use]
+    pub const fn problem(&self) -> &Problem<'data> {
+        &self.problem
+    }
+    /// Consuming the certificate releases its input borrows. The detached
+    /// numerical state cannot be supplied to accepted-state inference/outputs.
+    #[must_use]
+    pub fn into_state(self) -> FittedState {
+        self.accepted
+    }
+}
+impl std::ops::Deref for Fit<'_> {
+    type Target = FittedState;
+    fn deref(&self) -> &Self::Target {
+        &self.accepted
+    }
+}
 struct Context<'a, 'data> {
     problem: &'a Problem<'data>,
-    family: &'a Family<'data>,
-    design: &'a Design<'data>,
+    family: &'a Family<'a>,
+    design: &'a Design<'a>,
     options: Options,
     controls: Controls,
     team: &'a ThreadTeam,
     offset: Option<&'a [f64]>,
 }
-pub fn fit_final_sample(problem: &Problem<'_>, options: Options, team: &ThreadTeam) -> Result<Fit> {
+pub fn fit_final_sample<'data>(
+    problem: &Problem<'data>,
+    options: Options,
+    team: &ThreadTeam,
+) -> Result<Fit<'data>> {
     with_context(problem, options, team, |context| {
         let trajectory = context.run(Purpose::Publication)?;
         let report = trajectory
@@ -69,11 +106,11 @@ pub fn fit_final_sample(problem: &Problem<'_>, options: Options, team: &ThreadTe
         context.finish(trajectory.accepted, report, trajectory.diagnostics)
     })
 }
-fn with_context<T>(
-    problem: &Problem<'_>,
+fn with_context<'data, T>(
+    problem: &Problem<'data>,
     options: Options,
     team: &ThreadTeam,
-    run: impl FnOnce(Context<'_, '_>) -> Result<T>,
+    run: impl FnOnce(Context<'_, 'data>) -> Result<T>,
 ) -> Result<T> {
     let controls = Controls::new(&options)?;
     problem.sample.validate_alignment()?;
@@ -140,7 +177,7 @@ impl<'a, 'data> Context<'a, 'data> {
     }
     fn adopt(
         &self,
-        accepted: &mut Accepted<'a, 'data>,
+        accepted: &mut Accepted<'a, 'a>,
         basis: &mut FrozenBasis,
         report: super::checkpoint::Report,
         diagnostics: &mut Diagnostics,
@@ -186,7 +223,7 @@ impl<'a, 'data> Context<'a, 'data> {
         accepted: Accepted<'_, '_>,
         report: super::checkpoint::Report,
         diagnostics: Diagnostics,
-    ) -> Result<Fit> {
+    ) -> Result<Fit<'data>> {
         let candidate = report
             .candidate
             .ok_or_else(|| invalid("stable Hessian checkpoint has no candidate"))?;
@@ -204,13 +241,16 @@ impl<'a, 'data> Context<'a, 'data> {
             self.team,
         )?;
         Ok(Fit {
-            point,
-            evaluation,
-            hessian_weights: candidate.hessian_weights,
-            linear: candidate.linear,
-            scores: report.accepted_scores,
-            state,
-            diagnostics,
+            problem: *self.problem,
+            accepted: FittedState {
+                point,
+                evaluation,
+                hessian_weights: candidate.hessian_weights,
+                linear: candidate.linear,
+                scores: report.accepted_scores,
+                state,
+                diagnostics,
+            },
         })
     }
 }

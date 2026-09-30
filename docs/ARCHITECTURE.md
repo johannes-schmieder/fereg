@@ -254,9 +254,8 @@ explicit-CMG regression, not merely a test of a replacement auto route.
 
 `wls` forms deterministic moments, tries guarded pivoted Cholesky and falls
 back to scaled pivoted Householder QR. QR controls canonical rank/status.
-One result type carries identified coefficients, bread and slot mapping.
-Reuse its information-operator solves for PPML bias; do not build another
-estimator or substitute ordinary e(V) for full-system information.
+One result carries coefficients, bread and slots. PPML bias reuses its information
+operator, never substitutes e(V) for full-system information or builds another estimator.
 
 Shared FWL assembly reconstructs the original residual and checks both its FE
 certificate and finite score. Cancellation may require a derived FE-target
@@ -269,11 +268,12 @@ exhaustion or any remaining score failure rejects the result. These solves
 retain their full recovery reports and counts. Rank, finite coefficients and
 all mathematical acceptance limits remain unchanged.
 
-`vce` uses the same fitted view for IID/HC1/cluster scores, deterministic subset
-aggregation and PSD policy. OLS and PPML supply their distinct weight, DoF
-and finite-sample policies from SPEC; shared mechanics do not erase those
-differences. Independent validation uses fresh quantities, not copies of the
-producer's success flag. Fit statistics come from original/accepted inputs.
+`wls::reporting` supplies one canonical slot map for OLS and PPML. PPML inference
+borrows a sealed fit: the exact sample, raw columns, means and final-Hessian bread
+stay immutable, with streamed recipe validation. Its ordinary constant is
+identified; an absorbed one is zero outside the sandwich, with one DoF transfer
+unless nested. `vce` shares score/subset/PSD mechanics under each estimator's SPEC
+corrections; independent checks and statistics use original/accepted inputs.
 
 `outputs` constructs only requested residual/xb/d/eta/mu/saved-channel banks,
 normalizes within components, checks row reconstruction and scatters once.

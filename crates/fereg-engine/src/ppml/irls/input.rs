@@ -3,7 +3,7 @@ use crate::{
     error::{reserved, ErrorCode, FeregError, Result},
 };
 use std::borrow::Cow;
-pub(super) fn offset(sample: &Prepared) -> Result<Option<Cow<'_, [f64]>>> {
+pub(crate) fn offset(sample: &Prepared) -> Result<Option<Cow<'_, [f64]>>> {
     match &sample.adjustment {
         PreparedAdjustment::None => Ok(None),
         PreparedAdjustment::Offset(values) => {

@@ -5,6 +5,7 @@ mod certificate;
 mod cholesky;
 mod moments;
 mod recovery;
+pub(crate) mod reporting;
 mod work;
 use crate::{
     data::{DenseMatrix, Weights},
@@ -18,6 +19,7 @@ pub use absorbed::{
 };
 pub use basis::FrozenBasis;
 use cholesky::Cholesky;
+pub use reporting::Reported;
 pub use work::{AttemptWork, Counts, ProjectionWork, SetupWork, Work};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

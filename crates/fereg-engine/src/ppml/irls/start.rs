@@ -1,7 +1,7 @@
 use super::*;
 use crate::error::reserved;
-impl<'a, 'data> Context<'a, 'data> {
-    pub(super) fn start(&self, diagnostics: &mut Diagnostics) -> Result<Accepted<'a, 'data>> {
+impl<'a> Context<'a, '_> {
+    pub(super) fn start(&self, diagnostics: &mut Diagnostics) -> Result<Accepted<'a, 'a>> {
         let value = self.family.global_start()?;
         let mut finite = reserved(self.problem.raw.ncols())?;
         finite.resize(self.problem.raw.ncols(), 0.);

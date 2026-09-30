@@ -52,8 +52,8 @@ impl Integrity {
         }
     }
 }
-impl<'a, 'data> Context<'a, 'data> {
-    pub(super) fn run(&self, purpose: Purpose) -> Result<Trajectory<'a, 'data>> {
+impl<'a> Context<'a, '_> {
+    pub(super) fn run(&self, purpose: Purpose) -> Result<Trajectory<'a, 'a>> {
         let mut diagnostics = Diagnostics::default();
         let mut accepted = self.start(&mut diagnostics)?;
         // The same canonical auxiliary basis is used by both purposes. It

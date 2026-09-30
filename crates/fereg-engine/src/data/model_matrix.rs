@@ -202,6 +202,22 @@ impl<'a> ModelMatrixBuilder<'a> {
         self.generate_range(recipes, 0, recipes.len())
     }
 
+    /// Bind reported recipes to the fitted columns without another N-by-K bank.
+    pub(crate) fn matches(&self, recipes: &[ColumnRecipe], matrix: &DenseMatrix) -> Result<bool> {
+        if matrix.nrows() != self.nrows || matrix.ncols() != recipes.len() {
+            return Ok(false);
+        }
+        for (column, recipe) in recipes.iter().enumerate() {
+            self.validate_recipe(recipe)?;
+            for row in 0..self.nrows {
+                if matrix[(row, column)] != self.value(recipe, row) {
+                    return Ok(false);
+                }
+            }
+        }
+        Ok(true)
+    }
+
     pub fn generate_range(
         &self,
         recipes: &[ColumnRecipe],
