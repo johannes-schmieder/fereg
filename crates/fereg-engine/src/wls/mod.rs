@@ -13,6 +13,7 @@ use crate::{
     linalg::{ColumnScaling, ScaledDesign, WeightedQr},
     threads::ThreadTeam,
 };
+pub(crate) use absorbed::recorded_projection;
 pub use absorbed::{
     solve_absorbed, solve_absorbed_recorded, solve_absorbed_with_basis, AbsorbedControls,
     AbsorbedFit,
@@ -20,6 +21,7 @@ pub use absorbed::{
 pub use basis::FrozenBasis;
 use cholesky::Cholesky;
 pub use reporting::Reported;
+pub(crate) use work::Phase;
 pub use work::{AttemptWork, Counts, ProjectionWork, SetupWork, Work};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

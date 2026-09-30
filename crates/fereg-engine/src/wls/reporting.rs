@@ -77,7 +77,7 @@ pub(crate) fn deferred_slot(columns: &CompiledColumns) -> Option<usize> {
         columns.roles[columns.slots[slot].generated.unwrap()] == Role::AbsorbedIntercept
     })
 }
-fn validate(
+pub(crate) fn validate(
     columns: &CompiledColumns,
     raw: &DenseMatrix,
     within: &DenseMatrix,

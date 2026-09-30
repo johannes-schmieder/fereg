@@ -344,11 +344,11 @@ per immutable frame, and overflow is a fatal error rather than saturation.
 The final accepted frame still carries its detailed per-RHS reports.
 
 Optional bias correction uses the full identified FE-plus-control information
-operator at the accepted state. Stream exact unit contractions or fixed
-Philox probes through shared linear algebra. Carry both derivative and
-curvature terms, support/refusal rules, group numerical uncertainty and fixed
-anchors. Ordinary results stay unchanged and correction participates in the
-same transaction. Option-off creates no correction work or state.
+operator at the accepted state. A scoped frame borrows sealed final qmu and
+the accepted finite basis; shared WLS records all solve/recovery work. Raw eta
+recovery and every auxiliary action share a support-only component anchor,
+fresh reconstruction and original-coordinate scores. Stream exact units or
+fixed Philox probes for both increments and group uncertainty. Ordinary results stay unchanged; the transaction is atomic and option-off creates no correction work.
 
 ## Memory, threads and errors
 

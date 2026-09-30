@@ -214,7 +214,7 @@ pub struct Work {
     setup: SetupWork,
 }
 #[derive(Debug, Clone, Copy)]
-pub(super) enum Phase {
+pub(crate) enum Phase {
     Projection,
     Recovery,
 }

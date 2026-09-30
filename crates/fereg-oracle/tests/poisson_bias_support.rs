@@ -5,11 +5,15 @@ use fereg_engine::{
     ppml::{bias, irls},
     spec::{Estimator, Options, Solver},
     threads::ThreadTeam,
-    wls::Role,
     ErrorCode,
 };
-use fereg_oracle::designs::{generate, DesignSpec, Graph};
+use fereg_oracle::{
+    designs::{generate, DesignSpec, Graph},
+    explicit_ols::DummyEffect,
+};
 use std::collections::BTreeMap;
+#[path = "support/ppml_bias_information.rs"]
+mod information;
 #[path = "support/engine.rs"]
 mod inputs;
 fn close(a: f64, b: f64, seed: usize) {
@@ -183,13 +187,15 @@ fn campaign(start: usize, count: usize) {
                 (i % 7) as f64 - 3.5
             };
         }
-        let raw = DenseMatrix::from_columns(&[g.regressors[0].clone(), vec![1.; n]]).unwrap();
-        let roles = [Role::Ordinary, Role::AbsorbedIntercept];
+        let source = sample.regressors.len();
+        sample.regressors.push(g.regressors[0].clone());
+        let columns = information::columns(source);
+        let raw = columns.generate(&sample).unwrap();
         for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
             let problem = irls::Problem {
                 sample: &sample,
                 raw: &raw,
-                roles: &roles,
+                roles: &columns.roles,
             };
             let options = Options {
                 solver,
@@ -198,11 +204,16 @@ fn campaign(start: usize, count: usize) {
             let fit = irls::fit_final_sample(&problem, options, &one)
                 .unwrap_or_else(|e| panic!("root seed={seed}/{solver:?}: {e}"));
             let actual = compare(&fit, &units, seed);
+            let actions = information::compare(&fit, &columns, &g.effects, &one, seed);
             if let Some(actual) = actual {
                 accepted += 1;
                 if seed % 41 == 0 {
                     let repeated = irls::fit_final_sample(&problem, options, &eight).unwrap();
                     assert_eq!(fit, repeated);
+                    assert_eq!(
+                        actions,
+                        information::compare(&repeated, &columns, &g.effects, &eight, seed)
+                    );
                     assert_eq!(actual, compare(&repeated, &units, seed).unwrap());
                 }
             } else {
@@ -220,4 +231,150 @@ fn bias_support_matches_independent_tables_across_weights_graphs_and_backends() 
 #[ignore = "long accepted-information unit-support campaign"]
 fn two_thousand_bias_support_designs() {
     campaign(200, 2000);
+}
+#[test]
+fn tiny_mean_duration_raw_recovery_and_actions_match_explicit_full_design_qr() {
+    // Preserve tests/stata/bias/final_recovery_precision.do's numerical trigger.
+    let n = 4096;
+    let effects = vec![
+        DummyEffect::new((0..n).map(|i| (i % 8) as u32).collect(), 8, true, vec![]).unwrap(),
+        DummyEffect::new(
+            (0..n).map(|i| ((i / 8) % 8) as u32).collect(),
+            8,
+            true,
+            vec![],
+        )
+        .unwrap(),
+    ];
+    let y: Vec<_> = (0..n).map(|i| 2. + (i % 5) as f64).collect();
+    let mut sample = inputs::prepare(&effects, &y);
+    sample
+        .regressors
+        .push((0..n).map(|i| (i as f64 * 0.37).sin()).collect());
+    let mut exposure: Vec<_> = (0..n).map(|i| 0.2 + (i % 17) as f64 / 8.).collect();
+    exposure[37] = 5e-7;
+    sample.adjustment = PreparedAdjustment::Exposure(exposure);
+    let columns = information::columns(2);
+    let raw = columns.generate(&sample).unwrap();
+    let one = ThreadTeam::new(1).unwrap();
+    let eight = ThreadTeam::new(8).unwrap();
+    for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+        let options = Options {
+            solver,
+            tolerance: 1e-9,
+            ..Options::for_estimator(Estimator::Ppml)
+        };
+        let problem = irls::Problem {
+            sample: &sample,
+            raw: &raw,
+            roles: &columns.roles,
+        };
+        let fit = irls::fit_final_sample(&problem, options, &one).unwrap();
+        assert!(fit.evaluation.mean[37] < 1e-5);
+        let expected = information::compare(&fit, &columns, &effects, &one, 3000);
+        let repeated = irls::fit_final_sample(&problem, options, &eight).unwrap();
+        assert_eq!(fit, repeated);
+        assert_eq!(
+            expected,
+            information::compare(&repeated, &columns, &effects, &eight, 3000)
+        );
+    }
+}
+
+#[test]
+fn weak_information_bridge_recovers_known_anchored_coordinates() {
+    // A tiny bridge identifies an O(1) gauge transfer which small backward
+    // moments alone cannot certify. Binary coefficients give an exact witness.
+    let n = 33;
+    let effects = vec![
+        DummyEffect::new(
+            (0..n).map(|i| u32::from((16..32).contains(&i))).collect(),
+            2,
+            true,
+            vec![],
+        )
+        .unwrap(),
+        DummyEffect::new(
+            (0..n).map(|i| u32::from(i >= 16)).collect(),
+            2,
+            true,
+            vec![],
+        )
+        .unwrap(),
+    ];
+    let response: Vec<_> = (0..n)
+        .map(|i| {
+            if i < 16 {
+                0.25
+            } else if i < 32 {
+                1.25
+            } else {
+                2.25
+            }
+        })
+        .collect();
+    for bridge in [1e-8, 1e-18] {
+        let mut sample = inputs::prepare(&effects, &vec![1.; n]);
+        sample.regressors.push(vec![0.; n]);
+        let mut weights = vec![1.; n];
+        weights[n - 1] = bridge;
+        sample.weights = PreparedWeights::Provided {
+            kind: WeightKind::Probability,
+            values: weights,
+        };
+        let columns = information::columns(2);
+        let raw = columns.generate(&sample).unwrap();
+        for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+            let options = Options {
+                solver,
+                ..Options::for_estimator(Estimator::Ppml)
+            };
+            let problem = irls::Problem {
+                sample: &sample,
+                raw: &raw,
+                roles: &columns.roles,
+            };
+            let mut reference = None;
+            for workers in [1, 8] {
+                let team = ThreadTeam::new(workers).unwrap();
+                let fit = irls::fit_final_sample(&problem, options, &team).unwrap();
+                let actual = bias::with_information(
+                    &fit,
+                    &columns,
+                    &team,
+                    &mut || Ok(()),
+                    |info, interrupt| {
+                        assert!(info.finite_slots().is_empty());
+                        let mut prediction = vec![0.; n];
+                        let mut coefficients = vec![0.; info.dimension()];
+                        info.solve(
+                            &response,
+                            &mut prediction,
+                            Some(&mut coefficients),
+                            interrupt,
+                        )?;
+                        for (&a, b) in coefficients.iter().zip([0.25, -0.75, 0., 2.]) {
+                            assert!(
+                                (a - b).abs() <= 2e-11,
+                                "bridge {bridge:e}/{solver:?}: {coefficients:?}"
+                            );
+                        }
+                        for (&a, &b) in prediction.iter().zip(&response) {
+                            assert!(
+                                (a - b).abs() <= 2e-11,
+                                "bridge {bridge:e}/{solver:?}: {a} != {b}"
+                            );
+                        }
+                        Ok((coefficients, prediction, info.diagnostics()))
+                    },
+                )
+                .unwrap_or_else(|e| panic!("bridge {bridge:e}/{solver:?}: {e}"));
+                if let Some(prior) = &reference {
+                    assert_eq!(prior, &actual);
+                } else {
+                    reference = Some(actual);
+                }
+            }
+        }
+    }
 }

@@ -53,7 +53,6 @@ where
             let score = evidence.relative_score[0];
             let reference = evidence.weighted_rhs_norm[0];
             let within_norm = evidence.weighted_residual_norm[0];
-            let residual_small = within_norm <= tolerance * reference;
             // Subtracting the fitted FE part rounds at the original response
             // scale. A tiny within contrast cannot demand fitted corrections
             // smaller than that observation-coordinate representation error.
@@ -67,7 +66,10 @@ where
                 progress.stop = StopReason::NumericalBreakdown;
                 break;
             }
-            if score <= tolerance && (update <= update_target || residual_small) {
+            // A small weighted residual can still hide a material anchored
+            // coefficient error across a weak bridge. Only an exactly zero
+            // reconstruction can dispense with measuring a fitted correction.
+            if score <= tolerance && (update <= update_target || within_norm == 0.) {
                 break;
             }
             if (score > tolerance && score >= previous)

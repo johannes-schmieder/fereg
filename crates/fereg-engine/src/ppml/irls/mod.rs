@@ -64,12 +64,17 @@ pub struct FittedState {
 #[derive(Debug, PartialEq)]
 pub struct Fit<'data> {
     problem: Problem<'data>,
+    options: Options,
     accepted: FittedState,
 }
 impl<'data> Fit<'data> {
     #[must_use]
     pub const fn problem(&self) -> &Problem<'data> {
         &self.problem
+    }
+    #[must_use]
+    pub const fn options(&self) -> Options {
+        self.options
     }
     /// Consuming the certificate releases its input borrows. The detached
     /// numerical state cannot be supplied to accepted-state inference/outputs.
@@ -242,6 +247,7 @@ impl<'a, 'data> Context<'a, 'data> {
         )?;
         Ok(Fit {
             problem: *self.problem,
+            options: self.options,
             accepted: FittedState {
                 point,
                 evaluation,

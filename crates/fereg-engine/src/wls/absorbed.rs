@@ -198,7 +198,7 @@ pub fn solve_absorbed_recorded(
         relative_original_finite_score: recovered.original_score,
     })
 }
-pub(super) fn recorded_projection(
+pub(crate) fn recorded_projection(
     engine: &mut Engine<'_, '_>,
     rhs: &DenseMatrix,
     phase: Phase,
