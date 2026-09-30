@@ -65,7 +65,7 @@ pub(super) fn execute(
     timings.preparation = clock.elapsed();
     interrupt(Phase::Prepared)?;
     clock = Instant::now();
-    let final_sample = separation::run(
+    let final_sample = separation::run_with(
         sample,
         &call.columns,
         call.options,
@@ -75,12 +75,13 @@ pub(super) fn execute(
         },
         call.request.separation_controls,
         team,
+        &mut |point| interrupt(Phase::Numerical(point)),
     )?;
     timings.separation = clock.elapsed();
     interrupt(Phase::Separated)?;
     clock = Instant::now();
     // Final rank, mean and Hessian authority are cold on this exact generation.
-    let accepted = final_sample.fit(team)?;
+    let accepted = final_sample.fit_with(team, &mut |point| interrupt(Phase::Numerical(point)))?;
     timings.estimation = clock.elapsed();
     interrupt(Phase::Estimated)?;
     clock = Instant::now();

@@ -34,6 +34,8 @@ pub struct Request {
 pub enum Phase {
     Loaded,
     Prepared,
+    /// Repeated caller-thread checkpoints in separation and IRLS.
+    Numerical(super::InterruptPoint),
     Separated,
     Estimated,
     Inferred,
@@ -168,8 +170,8 @@ impl<'a> Call<'a> {
     pub fn run(self, loaded: &Loaded, units: Option<&NumericColumn>) -> Result<super::PpmlFit> {
         self.run_with(loaded, units, &mut |_| Ok(()))
     }
-    /// Callbacks run on the caller at phase boundaries and bias checkpoints;
-    /// this does not yet poll inside separation, IRLS or individual FE solves.
+    /// Callbacks run on the caller through separation/replay, IRLS and bias;
+    /// individual FE solves and dense kernels still run to their next boundary.
     pub fn run_with(
         self,
         loaded: &Loaded,

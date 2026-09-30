@@ -3,7 +3,7 @@ use fereg_engine::{
     data::*,
     memory::Inputs,
     outputs::{self, Kind},
-    ppml::{self, bias, separation, Call, Phase, Request, Resources},
+    ppml::{self, bias, separation, Call, InterruptPoint, Phase, Request, Resources},
     spec::{ClusterTerm, Estimator, Options, Solver},
     threads::ThreadTeam,
     vce, *,
@@ -540,6 +540,338 @@ fn all_caller_boundaries_discard_partial_results_and_allow_fresh_calls() {
             Resources::default(),
         )
         .unwrap();
+    }
+}
+fn interrupted_fixture() -> (Loaded, NumericColumn) {
+    let (mut loaded, units) = fixture(Some(WeightKind::Frequency));
+    let LoadedSource::Numeric(x) = &mut loaded.sources[0] else {
+        unreachable!()
+    };
+    // Opposite boundary contrasts share both FE levels. They need phase-I
+    // rather than a single signed ray, and neither row may be separated.
+    x.values[3..].fill(0.);
+    x.values[3] = 1.;
+    x.values[23] = -1.;
+    loaded.outcome.values[3] = 0.;
+    loaded.outcome.values[23] = 0.;
+    (loaded, units)
+}
+fn same_outputs(a: &outputs::Outputs, b: &outputs::Outputs) {
+    assert_eq!(a.certificate, b.certificate);
+    assert_eq!(a.columns.len(), b.columns.len());
+    for (a, b) in a.columns.iter().zip(&b.columns) {
+        assert_eq!(a.kind, b.kind);
+        assert_eq!(a.values.len(), b.values.len());
+        for (a, b) in a.values.iter().zip(&b.values) {
+            assert_eq!(a.to_bits(), b.to_bits());
+        }
+    }
+}
+fn same_products(a: &ppml::PpmlFit, b: &ppml::PpmlFit) {
+    same_outputs(&a.outputs, &b.outputs);
+    match (&a.bias, &b.bias) {
+        (Some(a), Some(b)) => {
+            assert_eq!(a.request, b.request);
+            assert_eq!(a.ordinary, b.ordinary);
+            assert_eq!(a.support, b.support);
+            assert_eq!(a.first_levels, b.first_levels);
+            assert_eq!(a.second_levels, b.second_levels);
+            assert_eq!(a.finite_slots, b.finite_slots);
+            assert_eq!(a.diagnostics, b.diagnostics);
+            same_outputs(&a.saved, &b.saved);
+            for row in (0..21).filter(|&row| row != 9 && row != 10) {
+                assert_eq!(a.table.values[row], b.table.values[row]);
+            }
+        }
+        (None, None) => (),
+        _ => panic!("different bias products"),
+    }
+}
+#[test]
+fn numerical_callbacks_preserve_all_solvers_bias_outputs_and_worker_identity() {
+    use std::{cell::Cell, rc::Rc};
+    let (loaded, units) = interrupted_fixture();
+    let model = model(true);
+    let mut request = request(true, Some(bias::Method::Exact));
+    request.separation = separation::Methods::parse("fe simplex ir mu").unwrap();
+    let inputs = Inputs::from_loaded(&loaded, 0, 0)
+        .unwrap()
+        .with_numeric_auxiliary(&units)
+        .unwrap();
+    let caller = std::thread::current().id();
+    for solver in [Solver::Auto, Solver::Lsmr, Solver::Cmg] {
+        let mut first_trace = None;
+        let mut first_fit = None;
+        for workers in [1, 8] {
+            let options = options(solver, workers);
+            let plain = ppml::fit_requested(
+                &model,
+                &loaded,
+                &options,
+                &request,
+                Some(&units),
+                Resources::default(),
+            )
+            .unwrap();
+            let count = Rc::new(Cell::new(0));
+            let mut trace = vec![];
+            let polled = Call::new(
+                &model,
+                &options,
+                &request,
+                inputs,
+                Some(WeightKind::Frequency),
+                Resources::default(),
+            )
+            .unwrap()
+            .run_with(&loaded, Some(&units), &mut |phase| {
+                assert_eq!(std::thread::current().id(), caller);
+                count.set(count.get() + 1);
+                if let Phase::Numerical(point) = phase {
+                    trace.push(point);
+                }
+                Ok(())
+            })
+            .unwrap();
+            assert!(count.get() > trace.len());
+            same(&plain, &polled);
+            same_products(&plain, &polled);
+            assert_eq!(plain.separation.generation, 0);
+            for point in [
+                InterruptPoint::SeparationRound,
+                InterruptPoint::SimplexModel,
+                InterruptPoint::SimplexReduction,
+                InterruptPoint::SimplexPivot,
+                InterruptPoint::RectifierIteration,
+                InterruptPoint::MuIteration,
+                InterruptPoint::IrlsIteration,
+                InterruptPoint::LineSearch,
+                InterruptPoint::LinearFrame,
+                InterruptPoint::StrictCheckpoint,
+            ] {
+                assert!(trace.contains(&point), "missing {point:?}: {trace:?}");
+            }
+            if let Some(first) = &first_trace {
+                assert_eq!(first, &trace);
+            } else {
+                first_trace = Some(trace);
+            }
+            if let Some(first) = &first_fit {
+                same(first, &polled);
+                same_products(first, &polled);
+            } else {
+                first_fit = Some(polled);
+            }
+        }
+    }
+}
+#[test]
+fn every_numerical_boundary_aborts_without_a_result_and_allows_fresh_restart() {
+    let (loaded, _) = interrupted_fixture();
+    let model = model(false);
+    let mut request = request(true, None);
+    request.separation = separation::Methods::parse("fe simplex ir mu").unwrap();
+    let options = options(Solver::Auto, 8);
+    let team = ThreadTeam::new(8).unwrap();
+    let inputs = Inputs::from_loaded(&loaded, 0, 0).unwrap();
+    let make = || {
+        Call::new(
+            &model,
+            &options,
+            &request,
+            inputs,
+            Some(WeightKind::Frequency),
+            Resources::default(),
+        )
+        .unwrap()
+    };
+    let caller = std::thread::current().id();
+    let mut trace = vec![];
+    let baseline = make()
+        .run_with_team(&loaded, None, &team, &mut |phase| {
+            if let Phase::Numerical(point) = phase {
+                trace.push(point);
+            }
+            Ok(())
+        })
+        .unwrap();
+    assert!(trace.len() > 20);
+    eprintln!(
+        "{} complete-call numerical checkpoints qualified",
+        trace.len()
+    );
+    for stop in 0..trace.len() {
+        let mut reached = 0;
+        let error = make()
+            .run_with_team(&loaded, None, &team, &mut |phase| {
+                assert_eq!(std::thread::current().id(), caller);
+                if let Phase::Numerical(point) = phase {
+                    assert_eq!(point, trace[reached]);
+                    reached += 1;
+                    if reached == stop + 1 {
+                        return Err(FeregError::new(
+                            ErrorCode::Interrupted,
+                            "inner fixture Break",
+                        ));
+                    }
+                }
+                Ok(())
+            })
+            .unwrap_err();
+        assert_eq!(error.return_code(), 1);
+        assert_eq!(reached, stop + 1);
+        let retry = make()
+            .run_with_team(&loaded, None, &team, &mut |_| Ok(()))
+            .unwrap();
+        same(&baseline, &retry);
+        same_products(&baseline, &retry);
+    }
+    for stop in [0, trace.len() / 2, trace.len() - 1] {
+        let mut reached = 0;
+        let panic = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            make().run_with_team(&loaded, None, &team, &mut |phase| {
+                if let Phase::Numerical(_) = phase {
+                    reached += 1;
+                    assert_ne!(reached, stop + 1, "caller callback panic");
+                }
+                Ok(())
+            })
+        }));
+        assert!(panic.is_err());
+        same(
+            &baseline,
+            &make()
+                .run_with_team(&loaded, None, &team, &mut |_| Ok(()))
+                .unwrap(),
+        );
+    }
+}
+#[test]
+fn break_after_ledger_deletion_and_during_capacity_resolution_keeps_inputs_intact() {
+    for capacity_skip in [false, true] {
+        let (mut loaded, _) = if capacity_skip {
+            interrupted_fixture()
+        } else {
+            fixture(None)
+        };
+        let mut model = model(false);
+        let mut request = request(true, None);
+        if capacity_skip {
+            request.separation = separation::Methods::parse("simplex ir mu").unwrap();
+            request.separation_controls.simplex.max_cells = 1;
+        } else {
+            model.keep_singletons = false;
+            let LoadedSource::Numeric(g) = &mut loaded.sources[1] else {
+                unreachable!()
+            };
+            g.values[117] = 98.;
+            g.values[118..].fill(99.);
+            loaded.outcome.values[118..].fill(0.);
+        }
+        let options = options(Solver::Auto, 8);
+        let team = ThreadTeam::new(8).unwrap();
+        let inputs = Inputs::from_loaded(&loaded, 0, 0).unwrap();
+        let make = || {
+            Call::new(
+                &model,
+                &options,
+                &request,
+                inputs,
+                loaded.weights.as_ref().map(|(kind, _)| *kind),
+                Resources::default(),
+            )
+            .unwrap()
+        };
+        let mut trace = vec![];
+        let baseline = make()
+            .run_with_team(&loaded, None, &team, &mut |phase| {
+                if let Phase::Numerical(point) = phase {
+                    trace.push(point);
+                }
+                Ok(())
+            })
+            .unwrap();
+        let stop_point = if capacity_skip {
+            assert_eq!(baseline.separation.capacity_resolutions, 1);
+            InterruptPoint::RectifierIteration
+        } else {
+            assert_eq!(baseline.separation.generation, 2);
+            InterruptPoint::SeparationRound
+        };
+        let stops: Vec<_> = trace
+            .iter()
+            .enumerate()
+            .filter_map(|(i, &p)| (p == stop_point).then_some(i))
+            .collect();
+        assert!(stops.len() >= 2);
+        for stop in stops.into_iter().skip(1) {
+            let mut polls = 0;
+            let error = make()
+                .run_with_team(&loaded, None, &team, &mut |phase| {
+                    if let Phase::Numerical(_) = phase {
+                        polls += 1;
+                        if polls == stop + 1 {
+                            return Err(FeregError::new(
+                                ErrorCode::Interrupted,
+                                "ledger/replay Break",
+                            ));
+                        }
+                    }
+                    Ok(())
+                })
+                .unwrap_err();
+            assert_eq!(error.return_code(), 1);
+            assert_eq!(polls, stop + 1);
+            let retry = make()
+                .run_with_team(&loaded, None, &team, &mut |_| Ok(()))
+                .unwrap();
+            same(&baseline, &retry);
+            same_products(&baseline, &retry);
+        }
+    }
+}
+#[test]
+fn callback_errors_cannot_be_treated_as_a_stalled_mu_trajectory() {
+    let mut request = request(false, None);
+    request.separation = separation::Methods::only(separation::Method::Mu);
+    let options = options(Solver::Auto, 8);
+    for effects in [1, 2] {
+        let (mut loaded, _) = interrupted_fixture();
+        let mut model = model(false);
+        model.absorbed_terms.truncate(effects);
+        model.model.sources.truncate(effects + 1);
+        loaded.sources.truncate(effects + 1);
+        for stop in [1, 2] {
+            for code in [
+                ErrorCode::Interrupted,
+                ErrorCode::Allocation,
+                ErrorCode::NonConvergence,
+            ] {
+                let mut line_searches = 0;
+                let error = Call::new(
+                    &model,
+                    &options,
+                    &request,
+                    Inputs::from_loaded(&loaded, 0, 0).unwrap(),
+                    Some(WeightKind::Frequency),
+                    Resources::default(),
+                )
+                .unwrap()
+                .run_with(&loaded, None, &mut |phase| {
+                    if phase == Phase::Numerical(InterruptPoint::LineSearch) {
+                        line_searches += 1;
+                        if line_searches == stop {
+                            return Err(FeregError::new(code, "fatal poll sentinel"));
+                        }
+                    }
+                    Ok(())
+                })
+                .unwrap_err();
+                assert_eq!(line_searches, stop);
+                assert_eq!(error.code, code);
+                assert!(error.message.contains("fatal poll sentinel"));
+            }
+        }
     }
 }
 #[test]

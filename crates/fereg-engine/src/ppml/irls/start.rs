@@ -1,7 +1,11 @@
 use super::*;
 use crate::error::reserved;
 impl<'a> Context<'a, '_> {
-    pub(super) fn start(&self, diagnostics: &mut Diagnostics) -> Result<Accepted<'a, 'a>> {
+    pub(super) fn start(
+        &self,
+        diagnostics: &mut Diagnostics,
+        interrupt: &mut Interrupt<'_>,
+    ) -> Result<Accepted<'a, 'a>> {
         let value = self.family.global_start()?;
         let mut finite = reserved(self.problem.raw.ncols())?;
         finite.resize(self.problem.raw.ncols(), 0.);
@@ -71,14 +75,18 @@ impl<'a> Context<'a, '_> {
             absorbed,
             eta,
         };
-        match global.try_step(&proposal, self.team) {
+        match global.try_step_checked(&proposal, self.team, interrupt) {
             Ok(next) => {
                 diagnostics.analytic_start = true;
                 diagnostics.step_halvings += next.halvings();
                 Ok(next)
             }
-            Err(error) if error.code == ErrorCode::NonConvergence => Ok(global),
-            Err(error) => Err(error),
+            Err(failure)
+                if !failure.callback && failure.error.code == ErrorCode::NonConvergence =>
+            {
+                Ok(global)
+            }
+            Err(failure) => Err(failure.error),
         }
     }
 }

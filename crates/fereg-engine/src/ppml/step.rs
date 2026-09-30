@@ -1,5 +1,6 @@
 //! Transactional objective acceptance; publication still requires strict scientific checks.
 use super::family::{Evaluation, Family, StateCertificate};
+use super::{Interrupt, InterruptPoint};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
@@ -21,6 +22,10 @@ pub struct Accepted<'family, 'data> {
     step: f64,
     halvings: usize,
 }
+pub(crate) struct AttemptError {
+    pub error: FeregError,
+    pub callback: bool,
+}
 impl<'family, 'data> Accepted<'family, 'data> {
     /// The estimator owns the coefficient-to-predictor reconstruction check.
     pub fn start(family: &'family Family<'data>, point: Point, team: &ThreadTeam) -> Result<Self> {
@@ -35,6 +40,14 @@ impl<'family, 'data> Accepted<'family, 'data> {
         })
     }
     pub fn try_step(&self, candidate: &Point, team: &ThreadTeam) -> Result<Self> {
+        self.try_step_with(candidate, team, &mut |_| Ok(()))
+    }
+    pub fn try_step_with(
+        &self,
+        candidate: &Point,
+        team: &ThreadTeam,
+        interrupt: &mut Interrupt<'_>,
+    ) -> Result<Self> {
         candidate.validate()?;
         if candidate.finite.len() != self.point.finite.len()
             || candidate.absorbed.nrows() != self.point.absorbed.nrows()
@@ -48,6 +61,7 @@ impl<'family, 'data> Accepted<'family, 'data> {
         let slack = OBJECTIVE_SLACK * current.abs().max(1.);
         let mut step = 1.;
         for halvings in 0..=MAX_HALVINGS {
+            interrupt(InterruptPoint::LineSearch)?;
             let point = match self.point.interpolate(candidate, step) {
                 Ok(point) => point,
                 Err(error) if error.code == ErrorCode::NonConvergence => {
@@ -79,6 +93,22 @@ impl<'family, 'data> Accepted<'family, 'data> {
             ErrorCode::NonConvergence,
             "PPML step-halving exhausted 25 halvings without an acceptable finite objective",
         ))
+    }
+    /// Exploratory/analytic callers may handle a numerical line-search stall,
+    /// but a callback error with that same code still has abort authority.
+    pub(crate) fn try_step_checked(
+        &self,
+        candidate: &Point,
+        team: &ThreadTeam,
+        interrupt: &mut Interrupt<'_>,
+    ) -> std::result::Result<Self, AttemptError> {
+        let mut callback = false;
+        let result = self.try_step_with(candidate, team, &mut |point| {
+            let result = interrupt(point);
+            callback = result.is_err();
+            result
+        });
+        result.map_err(|error| AttemptError { error, callback })
     }
     pub(crate) fn into_parts(self) -> (Point, Evaluation) {
         (self.point, self.evaluation)

@@ -6,6 +6,7 @@ use super::{
 use crate::{
     data::DenseMatrix,
     error::{ErrorCode, Result},
+    ppml::{Interrupt, InterruptPoint},
     threads::compensated_sum,
 };
 
@@ -14,6 +15,7 @@ pub(super) fn run(
     model: &Model<'_>,
     matrix: &DenseMatrix,
     mut report: SimplexReport,
+    interrupt: &mut Interrupt<'_>,
 ) -> Result<SimplexReport> {
     let y = &view.sample().outcome;
     let mut positive = Vec::new();
@@ -33,7 +35,13 @@ pub(super) fn run(
     let nullspace::Nullspace {
         mut basis,
         mut cone,
-    } = nullspace::reduce(matrix, &positive, &boundary, model.controls.tolerance)?;
+    } = nullspace::reduce(
+        matrix,
+        &positive,
+        &boundary,
+        model.controls.tolerance,
+        interrupt,
+    )?;
     drop(positive);
     drop(boundary);
     if basis.is_empty() {
@@ -50,6 +58,7 @@ pub(super) fn run(
     // Homogeneous sign checks have no unit floor: a small coefficient-space
     // image can be a perfectly valid normalized recession direction.
     for (column, direction) in basis.iter().enumerate() {
+        interrupt(InterruptPoint::SimplexReduction)?;
         for sign in [1., -1.] {
             let minimum = cone
                 .iter()
@@ -77,7 +86,12 @@ pub(super) fn run(
             }
         }
     }
-    match phase_one_cone(&cone, report.limits.max_pivots, model.controls.tolerance)? {
+    match phase_one_cone(
+        &cone,
+        report.limits.max_pivots,
+        model.controls.tolerance,
+        interrupt,
+    )? {
         PhaseOneConeOutcome::Feasible {
             coordinates,
             iterations,

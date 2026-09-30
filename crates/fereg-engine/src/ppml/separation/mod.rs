@@ -10,7 +10,7 @@ mod numerical;
 mod simplex;
 mod verify;
 pub use coordinator::{
-    run, Event, EventKind, FinalSample, MethodSummary, Report, RunControls, TRACE_LIMIT,
+    run, run_with, Event, EventKind, FinalSample, MethodSummary, Report, RunControls, TRACE_LIMIT,
 };
 pub use exact::{ExactCertificate, ExactLevel, ExactProposal, Status};
 pub use ir::{IrFixedPoint, IrReport, IrTerminal};

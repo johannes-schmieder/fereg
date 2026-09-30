@@ -4,10 +4,11 @@ use fereg_engine::{
         control::*,
         family::Family,
         step::{Accepted, Point},
+        InterruptPoint,
     },
     spec::{Estimator, Options},
     threads::ThreadTeam,
-    ErrorCode,
+    ErrorCode, FeregError,
 };
 fn point(finite: f64, absorbed: f64, n: usize) -> Point {
     Point {
@@ -46,6 +47,42 @@ fn rejected_full_steps_halve_predictors_and_both_coefficient_banks_together() {
             assert_eq!(&result, expected);
         } else {
             baseline = Some(result);
+        }
+    }
+}
+#[test]
+fn break_at_each_rejected_step_preserves_the_accepted_state_and_retry() {
+    let q = ReferenceWeights::new(&PreparedWeights::None, 3, Estimator::Ppml).unwrap();
+    let family = Family::new(&[1.; 3], q, None).unwrap();
+    let caller = std::thread::current().id();
+    for workers in [1, 8] {
+        let team = ThreadTeam::new(workers).unwrap();
+        let current = Accepted::start(&family, point(-2., 0., 3), &team).unwrap();
+        let proposal = point(500., 500., 3);
+        let expected = current.try_step(&proposal, &team).unwrap();
+        assert_eq!(expected.halvings(), 9);
+        for stop in 0..=expected.halvings() {
+            let mut polls = 0;
+            let error = current
+                .try_step_with(&proposal, &team, &mut |point| {
+                    assert_eq!(std::thread::current().id(), caller);
+                    assert_eq!(point, InterruptPoint::LineSearch);
+                    polls += 1;
+                    if polls == stop + 1 {
+                        Err(FeregError::new(ErrorCode::Interrupted, "halving Break"))
+                    } else {
+                        Ok(())
+                    }
+                })
+                .err()
+                .unwrap();
+            assert_eq!(error.return_code(), 1);
+            assert_eq!(polls, stop + 1);
+            assert_eq!(current.point(), &point(-2., 0., 3));
+            assert_eq!(proposal, point(500., 500., 3));
+            let retry = current.try_step(&proposal, &team).unwrap();
+            assert_eq!(expected.point(), retry.point());
+            assert_eq!(expected.evaluation(), retry.evaluation());
         }
     }
 }

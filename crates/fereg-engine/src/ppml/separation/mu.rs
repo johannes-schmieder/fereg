@@ -4,7 +4,10 @@ use crate::{
     data::Weights,
     error::{reserved, ErrorCode, FeregError, Result},
     fe::{Design, Engine, Plan},
-    ppml::irls::{self, Diagnostics, MuCertificate, Problem},
+    ppml::{
+        irls::{self, Diagnostics, MuCertificate, Problem},
+        Interrupt, InterruptPoint,
+    },
     spec::{Estimator, Solver},
     threads::ThreadTeam,
     wls::{self, Work},
@@ -61,6 +64,15 @@ impl View<'_> {
         mu_tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<MuReport> {
+        self.fitted_mu_with(model, mu_tolerance, team, &mut |_| Ok(()))
+    }
+    pub fn fitted_mu_with(
+        self,
+        model: &Model<'_>,
+        mu_tolerance: f64,
+        team: &ThreadTeam,
+        interrupt: &mut Interrupt<'_>,
+    ) -> Result<MuReport> {
         model.validate(self)?;
         let design = Design::new(self.sample(), Weights::Unit)?;
         Plan::new(&design, Estimator::Ppml, &model.options)?;
@@ -74,6 +86,7 @@ impl View<'_> {
             model.options,
             mu_tolerance,
             team,
+            interrupt,
         )?
         .into_parts();
         let threshold = irls::MeanThreshold::new(&self.sample().outcome, &mean, mu_tolerance);
@@ -109,6 +122,7 @@ impl View<'_> {
         if candidates == 0 {
             return Ok(report);
         }
+        interrupt(InterruptPoint::LinearFrame)?;
         let direction = self.mu_projection(&candidate, model, &mut report.work, team)?;
         report.projection_frames = 1;
         let proposal = self.direction_proposal(
@@ -130,6 +144,16 @@ impl View<'_> {
         mu_tolerance: f64,
         team: &ThreadTeam,
     ) -> Result<MuTerminal> {
+        self.replay_mu_with(observed, model, mu_tolerance, team, &mut |_| Ok(()))
+    }
+    pub fn replay_mu_with(
+        self,
+        observed: &MuReport,
+        model: &Model<'_>,
+        mu_tolerance: f64,
+        team: &ThreadTeam,
+        interrupt: &mut Interrupt<'_>,
+    ) -> Result<MuTerminal> {
         if observed.generation != self.generation()
             || observed.sample_identity != self.numerical_identity()
             || observed.mu_tolerance != mu_tolerance
@@ -143,7 +167,7 @@ impl View<'_> {
                 "Mu terminal replay requires a fitted no-candidate result",
             ));
         }
-        let fresh = self.fitted_mu(model, mu_tolerance, team)?;
+        let fresh = self.fitted_mu_with(model, mu_tolerance, team, interrupt)?;
         if &fresh != observed {
             return Err(failed(
                 "Mu fitted trajectory failed fresh deterministic replay",

@@ -1,4 +1,4 @@
-use super::{failed, IrFixedPoint, IrReport};
+use super::{failed, Interrupt, InterruptPoint, IrFixedPoint, IrReport};
 use crate::{
     data::{DenseMatrix, Weights},
     error::{reserved, ErrorCode, Result},
@@ -15,6 +15,7 @@ pub(super) fn run(
     options: Options,
     mut report: IrReport,
     team: &ThreadTeam,
+    interrupt: &mut Interrupt<'_>,
 ) -> Result<IrReport> {
     let outcome = &view.sample().outcome;
     let boundary = outcome.iter().filter(|&&y| y == 0.).count();
@@ -37,12 +38,15 @@ pub(super) fn run(
     // Artificial boundary weights cannot decide the homogeneous model span.
     // Freeze the ordinary unit-metric basis before using rectifier weights;
     // neither this auxiliary basis nor its factors cross a generation boundary.
+    interrupt(InterruptPoint::LinearFrame)?;
     let (basis, columns) = span_basis(view, model, model.span_options()?, &mut report.work, team)?;
     report.span_frames = 1;
     let mut engine = Engine::new(&design, Estimator::Ppml, &options, team)?;
     let mut u = reserved(outcome.len())?;
     u.extend(outcome.iter().map(|&y| if y == 0. { 1. } else { 0. }));
     for iteration in 1..=report.budget {
+        interrupt(InterruptPoint::RectifierIteration)?;
+        interrupt(InterruptPoint::LinearFrame)?;
         let fit = wls::solve_absorbed_recorded(
             &mut engine,
             &columns,

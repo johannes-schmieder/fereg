@@ -2,6 +2,7 @@
 mod exploration;
 mod frame;
 mod trajectory;
+use super::{Interrupt, InterruptPoint};
 pub(crate) use exploration::{explore_mu, MeanThreshold};
 pub use exploration::{MuCertificate, MuStop};
 use trajectory::{Purpose, Trajectory};
@@ -103,8 +104,16 @@ pub fn fit_final_sample<'data>(
     options: Options,
     team: &ThreadTeam,
 ) -> Result<Fit<'data>> {
+    fit_final_sample_with(problem, options, team, &mut |_| Ok(()))
+}
+pub fn fit_final_sample_with<'data>(
+    problem: &Problem<'data>,
+    options: Options,
+    team: &ThreadTeam,
+    interrupt: &mut Interrupt<'_>,
+) -> Result<Fit<'data>> {
     with_context(problem, options, team, |context| {
-        let trajectory = context.run(Purpose::Publication)?;
+        let trajectory = context.run(Purpose::Publication, interrupt)?;
         let report = trajectory
             .final_checkpoint
             .ok_or_else(|| invalid("publication trajectory has no accepted Hessian checkpoint"))?;
@@ -186,14 +195,19 @@ impl<'a, 'data> Context<'a, 'data> {
         basis: &mut FrozenBasis,
         report: super::checkpoint::Report,
         diagnostics: &mut Diagnostics,
+        interrupt: &mut Interrupt<'_>,
     ) -> Result<bool> {
         let Some(candidate) = report.candidate else {
             return Ok(false);
         };
-        let next = match accepted.try_step(&candidate.point, self.team) {
+        let next = match accepted.try_step_checked(&candidate.point, self.team, interrupt) {
             Ok(next) => next,
-            Err(error) if error.code == ErrorCode::NonConvergence => return Ok(false),
-            Err(error) => return Err(error),
+            Err(failure)
+                if !failure.callback && failure.error.code == ErrorCode::NonConvergence =>
+            {
+                return Ok(false)
+            }
+            Err(failure) => return Err(failure.error),
         };
         let halvings = next.halvings();
         let next = if candidate.basis_unchanged {
@@ -201,6 +215,7 @@ impl<'a, 'data> Context<'a, 'data> {
         } else {
             let new_basis = FrozenBasis::from_fit(&candidate.linear.finite)?;
             diagnostics.basis_rebases += 1;
+            interrupt(InterruptPoint::LinearFrame)?;
             let rebase = self
                 .frame(
                     &next,

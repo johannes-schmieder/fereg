@@ -4,6 +4,7 @@ use crate::{
     error::Result,
     fe::{Design, Plan},
     linalg::WeightedQr,
+    ppml::{Interrupt, InterruptPoint},
     spec::Estimator,
     wls::Role,
 };
@@ -18,7 +19,11 @@ pub(super) fn design<'a>(view: View<'a>, model: &Model<'_>) -> Result<Design<'a>
 /// Quotient only full-model gauges, using the common auxiliary QR rank rule.
 /// Public finite-rank selection still happens after separation. Recheck every
 /// original column so an incomplete auxiliary span cannot close this detector.
-pub(super) fn span(matrix: DenseMatrix, tolerance: f64) -> Result<DenseMatrix> {
+pub(super) fn span(
+    matrix: DenseMatrix,
+    tolerance: f64,
+    interrupt: &mut Interrupt<'_>,
+) -> Result<DenseMatrix> {
     let copy = |matrix: &DenseMatrix| -> Result<DenseMatrix> {
         let mut out = DenseMatrix::zeros(matrix.nrows(), matrix.ncols())?;
         out.as_mut_slice().copy_from_slice(matrix.as_slice());
@@ -27,9 +32,11 @@ pub(super) fn span(matrix: DenseMatrix, tolerance: f64) -> Result<DenseMatrix> {
     let threshold = crate::wls::Policy::default().rank_multiplier
         * f64::EPSILON
         * matrix.nrows().max(matrix.ncols()).max(1) as f64;
+    interrupt(InterruptPoint::SimplexModel)?;
     let qr = WeightedQr::factor(copy(&matrix)?, Weights::Unit, threshold)?;
     let coefficients = qr.solve(copy(&matrix)?)?;
     for column in 0..matrix.ncols() {
+        interrupt(InterruptPoint::SimplexModel)?;
         let mut distance = 0_f64;
         let mut norm = 0_f64;
         for row in 0..matrix.nrows() {
@@ -64,10 +71,17 @@ pub(super) fn width(design: &Design<'_>, model: &Model<'_>) -> Result<usize> {
 }
 /// The detector gets the whole model, before public finite-rank selection.
 /// User-declared omitted/base slots consume width but have no model authority.
-pub(super) fn explicit(design: &Design<'_>, model: &Model<'_>) -> Result<DenseMatrix> {
+pub(super) fn explicit(
+    design: &Design<'_>,
+    model: &Model<'_>,
+    interrupt: &mut Interrupt<'_>,
+) -> Result<DenseMatrix> {
     let finite = model.raw.ncols();
     let mut matrix = DenseMatrix::zeros(design.nobs(), width(design, model)?)?;
     for row in 0..matrix.nrows() {
+        if row % crate::threads::REDUCTION_CHUNK == 0 {
+            interrupt(InterruptPoint::SimplexModel)?;
+        }
         for (column, role) in model.roles.iter().enumerate() {
             if matches!(role, Role::Ordinary | Role::AbsorbedIntercept) {
                 matrix[(row, column)] = model.raw[(row, column)];
@@ -87,6 +101,7 @@ pub(super) fn explicit(design: &Design<'_>, model: &Model<'_>) -> Result<DenseMa
     // squared-norm overflow and small columns becoming absolute zero. Binary
     // categorical channels retain their exact coefficients in this frame.
     for column in 0..matrix.ncols() {
+        interrupt(InterruptPoint::SimplexModel)?;
         let scale = (0..matrix.nrows()).fold(0_f64, |s, row| s.max(matrix[(row, column)].abs()));
         if scale > 0. {
             for row in 0..matrix.nrows() {

@@ -2,10 +2,10 @@
 use super::{fixture, hash};
 use crate::ffi::{self, allocation_usage, begin_ols_allocation_observation};
 use fereg_engine::{
-    data::NumericColumn,
+    data::{LoadedSource, NumericColumn},
     memory::Inputs,
     outputs,
-    ppml::{self, bias, Call, Phase, Resources},
+    ppml::{self, bias, separation, Call, InterruptPoint, Phase, Resources},
     spec::{Estimator, Options, Solver},
     threads::ThreadTeam,
 };
@@ -214,5 +214,96 @@ fn ppml_controller_allocation_failure_discards_all_phases_and_can_restart() {
                 .run_with_team(&loaded, Some(&units), &team, &mut |_| Ok(()))
                 .unwrap(),
         );
+    }
+}
+#[test]
+#[ignore = "process-global allocator audit; run with --test-threads=1"]
+fn ppml_numerical_break_releases_owners_at_every_checkpoint_kind() {
+    let _guard = crate::instrumentation::lock_action_observation();
+    let model = fixture::model(false);
+    let mut loaded = fixture::loaded(1024, true, true);
+    let LoadedSource::Numeric(x) = &mut loaded.sources[2] else {
+        unreachable!()
+    };
+    x.values.fill(0.);
+    x.values[3] = 1.;
+    x.values[67] = -1.;
+    loaded.outcome.values[3] = 0.;
+    loaded.outcome.values[67] = 0.;
+    let units = units(1024);
+    let mut request = request(true, Some(bias::Method::Exact));
+    request.separation = separation::Methods::parse("fe simplex ir mu").unwrap();
+    for workers in [1, 8] {
+        let options = Options {
+            threads: workers,
+            ..Options::for_estimator(Estimator::Ppml)
+        };
+        let team = ThreadTeam::new(workers).unwrap();
+        let inputs = Inputs::from_loaded(&loaded, 0, 0)
+            .unwrap()
+            .with_numeric_auxiliary(&units)
+            .unwrap();
+        let make = || {
+            Call::new(
+                &model,
+                &options,
+                &request,
+                inputs,
+                loaded.weights.as_ref().map(|(kind, _)| *kind),
+                Resources::default(),
+            )
+            .unwrap()
+        };
+        let baseline = make()
+            .run_with_team(&loaded, Some(&units), &team, &mut |_| Ok(()))
+            .unwrap();
+        let mut expected = 0;
+        hash(&baseline.coefficients, &mut expected);
+        hash(baseline.covariance.values.as_slice(), &mut expected);
+        drop(baseline);
+        for stop in [
+            InterruptPoint::SeparationRound,
+            InterruptPoint::SimplexModel,
+            InterruptPoint::SimplexReduction,
+            InterruptPoint::SimplexPivot,
+            InterruptPoint::RectifierIteration,
+            InterruptPoint::MuIteration,
+            InterruptPoint::IrlsIteration,
+            InterruptPoint::LineSearch,
+            InterruptPoint::LinearFrame,
+            InterruptPoint::StrictCheckpoint,
+        ] {
+            let (before, _) = begin_ols_allocation_observation();
+            let mut reached = false;
+            let error = make()
+                .run_with_team(&loaded, Some(&units), &team, &mut |phase| {
+                    if phase == Phase::Numerical(stop) {
+                        reached = true;
+                        Err(fereg_engine::FeregError::new(
+                            fereg_engine::ErrorCode::Interrupted,
+                            "tracked Break",
+                        ))
+                    } else {
+                        Ok(())
+                    }
+                })
+                .unwrap_err();
+            assert!(reached, "unreached {stop:?}");
+            assert_eq!(error.return_code(), 1);
+            drop(error);
+            assert!(
+                allocation_usage().current_bytes <= before.current_bytes,
+                "{stop:?} retained numerical storage"
+            );
+            let fit = make()
+                .run_with_team(&loaded, Some(&units), &team, &mut |_| Ok(()))
+                .unwrap();
+            let mut value = 0;
+            hash(&fit.coefficients, &mut value);
+            hash(fit.covariance.values.as_slice(), &mut value);
+            assert_eq!(value, expected);
+            drop(fit);
+            assert!(allocation_usage().current_bytes <= before.current_bytes);
+        }
     }
 }

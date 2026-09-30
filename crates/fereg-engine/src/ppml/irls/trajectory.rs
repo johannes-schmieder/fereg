@@ -53,12 +53,18 @@ impl Integrity {
     }
 }
 impl<'a> Context<'a, '_> {
-    pub(super) fn run(&self, purpose: Purpose) -> Result<Trajectory<'a, 'a>> {
+    pub(super) fn run(
+        &self,
+        purpose: Purpose,
+        interrupt: &mut Interrupt<'_>,
+    ) -> Result<Trajectory<'a, 'a>> {
         let mut diagnostics = Diagnostics::default();
-        let mut accepted = self.start(&mut diagnostics)?;
+        interrupt(InterruptPoint::LinearFrame)?;
+        let mut accepted = self.start(&mut diagnostics, interrupt)?;
         // The same canonical auxiliary basis is used by both purposes. It
         // has public omission authority only after the separation sample is
         // final; exploratory state never becomes an estimator result.
+        interrupt(InterruptPoint::LinearFrame)?;
         let initial = self.frame(
             &accepted,
             self.controls.strict_tolerance(),
@@ -75,6 +81,12 @@ impl<'a> Context<'a, '_> {
         drop(initial);
         let mut convergence = Convergence::new(self.controls);
         loop {
+            interrupt(if purpose.exploration() {
+                InterruptPoint::MuIteration
+            } else {
+                InterruptPoint::IrlsIteration
+            })?;
+            interrupt(InterruptPoint::LinearFrame)?;
             let linear = self.frame(
                 &accepted,
                 convergence.next_inner_tolerance(),
@@ -88,12 +100,16 @@ impl<'a> Context<'a, '_> {
                     .point_from_linear(&linear, self.problem.raw, self.design, self.team)?;
             drop(linear);
             let old = accepted.evaluation().objective.deviance;
-            accepted = match accepted.try_step(&proposal, self.team) {
+            accepted = match accepted.try_step_checked(&proposal, self.team, interrupt) {
                 Ok(next) => next,
-                Err(error) if purpose.exploration() && error.code == ErrorCode::NonConvergence => {
+                Err(failure)
+                    if !failure.callback
+                        && purpose.exploration()
+                        && failure.error.code == ErrorCode::NonConvergence =>
+                {
                     return Ok(integrity.finish(accepted, diagnostics, MuStop::LineSearchStalled));
                 }
-                Err(error) => return Err(error),
+                Err(failure) => return Err(failure.error),
             };
             drop(proposal);
             integrity.observe(old, accepted.evaluation().objective.deviance);
@@ -126,10 +142,17 @@ impl<'a> Context<'a, '_> {
             if decision == Decision::Continue {
                 continue;
             }
+            interrupt(InterruptPoint::StrictCheckpoint)?;
             let strict = self.checkpoint(&accepted, &basis, Stage::Fisher, &mut diagnostics)?;
             let stable = strict.decision == CheckDecision::Stable;
             let old = accepted.evaluation().objective.deviance;
-            let adopted = self.adopt(&mut accepted, &mut basis, strict, &mut diagnostics)?;
+            let adopted = self.adopt(
+                &mut accepted,
+                &mut basis,
+                strict,
+                &mut diagnostics,
+                interrupt,
+            )?;
             integrity.observe(old, accepted.evaluation().objective.deviance);
             if !stable || !adopted {
                 if self.resume(&mut convergence, &mut diagnostics, purpose)? {
@@ -137,6 +160,7 @@ impl<'a> Context<'a, '_> {
                 }
                 continue;
             }
+            interrupt(InterruptPoint::StrictCheckpoint)?;
             let final_check =
                 self.checkpoint(&accepted, &basis, Stage::FinalHessian, &mut diagnostics)?;
             if final_check.decision == CheckDecision::Stable {
@@ -145,7 +169,13 @@ impl<'a> Context<'a, '_> {
                 return Ok(trajectory);
             }
             let old = accepted.evaluation().objective.deviance;
-            self.adopt(&mut accepted, &mut basis, final_check, &mut diagnostics)?;
+            self.adopt(
+                &mut accepted,
+                &mut basis,
+                final_check,
+                &mut diagnostics,
+                interrupt,
+            )?;
             integrity.observe(old, accepted.evaluation().objective.deviance);
             if self.resume(&mut convergence, &mut diagnostics, purpose)? {
                 return Ok(integrity.finish(accepted, diagnostics, MuStop::MaximumIterations));

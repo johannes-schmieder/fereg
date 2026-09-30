@@ -6,10 +6,12 @@ mod model;
 mod nullspace;
 mod tableau;
 use super::{
-    invalid, DirectionProposal, IrReport, IrTerminal, Ledger, Method, Model, Status, View,
+    invalid, DirectionProposal, IrReport, IrTerminal, Ledger, Method, Model, RunControls, Status,
+    View,
 };
 use crate::{
     error::{ErrorCode, FeregError, Result},
+    ppml::{Interrupt, InterruptPoint},
     spec::Solver,
     threads::ThreadTeam,
 };
@@ -102,7 +104,16 @@ impl View<'_> {
         capacity::estimate(self, &design, model.raw.ncols())
     }
     pub fn model_simplex(self, model: &Model<'_>, limits: SimplexLimits) -> Result<SimplexReport> {
+        self.model_simplex_with(model, limits, &mut |_| Ok(()))
+    }
+    pub fn model_simplex_with(
+        self,
+        model: &Model<'_>,
+        limits: SimplexLimits,
+        interrupt: &mut Interrupt<'_>,
+    ) -> Result<SimplexReport> {
         limits.validate()?;
+        interrupt(InterruptPoint::SimplexModel)?;
         let design = model::design(self, model)?;
         let capacity = capacity::estimate(self, &design, model.raw.ncols())?;
         let mut report = SimplexReport {
@@ -125,17 +136,26 @@ impl View<'_> {
             report.status = Status::SkippedCapacity;
             return Ok(report);
         }
-        let matrix = model::explicit(&design, model)?;
+        let matrix = model::explicit(&design, model, interrupt)?;
         drop(design);
-        let matrix = model::span(matrix, model.controls.projection_tolerance)?;
+        let matrix = model::span(matrix, model.controls.projection_tolerance, interrupt)?;
         report.span_rank = Some(matrix.ncols());
-        detect::run(self, model, &matrix, report)
+        detect::run(self, model, &matrix, report, interrupt)
     }
     pub fn replay_simplex(
         self,
         observed: &SimplexReport,
         model: &Model<'_>,
         limits: SimplexLimits,
+    ) -> Result<SimplexTerminal> {
+        self.replay_simplex_with(observed, model, limits, &mut |_| Ok(()))
+    }
+    pub fn replay_simplex_with(
+        self,
+        observed: &SimplexReport,
+        model: &Model<'_>,
+        limits: SimplexLimits,
+        interrupt: &mut Interrupt<'_>,
     ) -> Result<SimplexTerminal> {
         binding(self, observed, limits)?;
         if observed.direction.is_some()
@@ -145,7 +165,7 @@ impl View<'_> {
                 "simplex replay requires a no-drop result, not a capacity skip",
             ));
         }
-        let fresh = self.model_simplex(model, limits)?;
+        let fresh = self.model_simplex_with(model, limits, interrupt)?;
         if &fresh != observed {
             return Err(failed("simplex terminal evidence failed fresh replay"));
         }
@@ -162,6 +182,30 @@ impl Ledger {
         ir_budget: usize,
         team: &ThreadTeam,
     ) -> Result<(SimplexTerminal, IrTerminal)> {
+        self.resolve_simplex_skip_with(
+            observed,
+            ir,
+            model,
+            RunControls {
+                simplex: limits,
+                ir_iterations: ir_budget,
+                ..RunControls::default()
+            },
+            team,
+            &mut |_| Ok(()),
+        )
+    }
+    pub fn resolve_simplex_skip_with(
+        &self,
+        observed: &SimplexReport,
+        ir: &IrReport,
+        model: &Model<'_>,
+        controls: RunControls,
+        team: &ThreadTeam,
+        interrupt: &mut Interrupt<'_>,
+    ) -> Result<(SimplexTerminal, IrTerminal)> {
+        let limits = controls.simplex;
+        let ir_budget = controls.ir_iterations;
         binding(self.view(), observed, limits)?;
         if !self.policy.methods.contains(Method::Simplex)
             || !self.policy.methods.contains(Method::IteratedRectifier)
@@ -171,7 +215,7 @@ impl Ledger {
             return Err(FeregError::new(ErrorCode::Allocation,
                 "simplex capacity skip requires requested comprehensive IR to close the same generation"));
         }
-        let fresh = self.view().model_simplex(model, limits)?;
+        let fresh = self.view().model_simplex_with(model, limits, interrupt)?;
         if &fresh != observed {
             return Err(invalid(
                 "simplex capacity evidence differs from the current model",
@@ -179,7 +223,9 @@ impl Ledger {
         }
         // Replay the actual current model, rather than accepting a terminal
         // seal produced for another raw/FE span with the same row identities.
-        let terminal = self.view().replay_ir(ir, model, ir_budget, team)?;
+        let terminal = self
+            .view()
+            .replay_ir_with(ir, model, ir_budget, team, interrupt)?;
         Ok((seal(&fresh), terminal))
     }
 }

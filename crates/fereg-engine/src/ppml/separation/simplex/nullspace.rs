@@ -1,6 +1,10 @@
 //! Complete-pivot positive constraints and their boundary images.
 use super::{failed, filled, overflow, reserve};
-use crate::{data::DenseMatrix, error::Result};
+use crate::{
+    data::DenseMatrix,
+    error::Result,
+    ppml::{Interrupt, InterruptPoint},
+};
 
 pub(super) struct Nullspace {
     pub basis: Vec<Vec<f64>>,
@@ -11,6 +15,7 @@ pub(super) fn reduce(
     positive: &[usize],
     boundary: &[usize],
     tolerance: f64,
+    interrupt: &mut Interrupt<'_>,
 ) -> Result<Nullspace> {
     let width = model.ncols();
     let rows = model.nrows();
@@ -33,6 +38,7 @@ pub(super) fn reduce(
         positive.len(),
         &mut permutation,
         tolerance,
+        interrupt,
     )?;
     let mut basis = Vec::new();
     reserve(&mut basis, width - rank, "simplex null-space basis")?;
@@ -42,6 +48,7 @@ pub(super) fn reduce(
         cone.push(filled(width - rank, 0., "simplex boundary cone row")?);
     }
     for free in rank..width {
+        interrupt(InterruptPoint::SimplexReduction)?;
         let mut direction = filled(width, 0., "simplex null-space direction")?;
         direction[permutation[free]] = 1.;
         for pivot in 0..rank {
@@ -65,6 +72,7 @@ fn eliminate(
     positive: usize,
     permutation: &mut [usize],
     tolerance: f64,
+    interrupt: &mut Interrupt<'_>,
 ) -> Result<usize> {
     let width = permutation.len();
     let maximum = matrix[..positive * width]
@@ -73,6 +81,7 @@ fn eliminate(
     let threshold = tolerance * maximum.max(1.);
     let mut rank = 0;
     while rank < positive.min(width) {
+        interrupt(InterruptPoint::SimplexReduction)?;
         let mut pivot = None;
         let mut maximum = threshold;
         for row in rank..positive {

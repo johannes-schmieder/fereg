@@ -1,5 +1,6 @@
 //! Retained phase-I tableau with Bland pivoting; candidates need separate checks.
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::ppml::{Interrupt, InterruptPoint};
 
 use super::{filled, reserve};
 
@@ -19,9 +20,11 @@ pub(super) fn phase_one_cone(
     cone: &[Vec<f64>],
     max_iterations: usize,
     tolerance: f64,
+    interrupt: &mut Interrupt<'_>,
 ) -> Result<PhaseOneConeOutcome> {
     let mut state = Tableau::new(cone)?;
     for iteration in 0..max_iterations {
+        interrupt(InterruptPoint::SimplexPivot)?;
         let Some(entering) = state.entering(tolerance) else {
             return state.outcome(iteration, tolerance);
         };

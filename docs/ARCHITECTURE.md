@@ -347,7 +347,7 @@ Probe-count weighted groups report D/C variance and covariance. Shared output al
 The atomic calculation leaves ordinary results unchanged and option-off creates no work.
 
 `ppml::Call` binds metadata, requested products and original-axis bias units to one preloading admission; existing numeric banks are shared through explicit source bindings. Shared source preparation builds unpruned topology; the separation ledger owns initial singletons and every later deletion, then starts cold final IRLS.
-Inference, statistics, requested outputs and optional correction borrow the same sealed accepted state. `ppml::fit` uses this controller for loaded Rust clients. Caller-thread callbacks cover phase boundaries and bias checkpoints; polling inside separation, IRLS and FE solves remains host seam work.
+Inference, statistics, requested outputs and optional correction borrow the same sealed accepted state. `ppml::fit` uses this controller for loaded Rust clients. Synchronous caller-thread callbacks cover phases, separation generations/replay, simplex construction/reduction/pivots, IR/Mu/final IRLS, line search, linear-frame/strict boundaries and bias. Break is fatal; callbacks need no Send/Sync bound. Polling inside individual FE solves/dense kernels and the native adapter remains host seam work.
 The immutable `PpmlFit` retains publication products, bounded diagnostics and the original-row ledger. Raw/within columns, accepted means, solver state and full bias calculation coefficients are released; observation banks survive only when requested.
 
 ## Memory, threads and errors

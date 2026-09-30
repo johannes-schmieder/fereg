@@ -5,7 +5,7 @@ use super::{invalid, Controls, Ledger, Policy, SimplexLimits, DEFAULT_MU_TOLERAN
 use crate::{
     data::{CompiledColumns, DenseMatrix, Prepared},
     error::{reserved, ErrorCode, FeregError, Result},
-    ppml::irls,
+    ppml::{irls, Interrupt, InterruptPoint},
     spec::Options,
     threads::ThreadTeam,
     wls::Role,
@@ -73,7 +73,10 @@ impl FinalSample {
     }
     /// Rank and final-Hessian authority are recomputed on the final sample.
     pub fn fit(&self, team: &ThreadTeam) -> Result<irls::Fit> {
-        irls::fit_final_sample(
+        self.fit_with(team, &mut |_| Ok(()))
+    }
+    pub fn fit_with(&self, team: &ThreadTeam, interrupt: &mut Interrupt<'_>) -> Result<irls::Fit> {
+        irls::fit_final_sample_with(
             &irls::Problem {
                 sample: &self.sample,
                 raw: &self.raw,
@@ -81,6 +84,7 @@ impl FinalSample {
             },
             self.options,
             team,
+            interrupt,
         )
     }
     #[must_use]
@@ -96,6 +100,25 @@ pub fn run(
     policy: Policy,
     controls: RunControls,
     team: &ThreadTeam,
+) -> Result<FinalSample> {
+    run_with(
+        sample,
+        columns,
+        options,
+        policy,
+        controls,
+        team,
+        &mut |_| Ok(()),
+    )
+}
+pub fn run_with(
+    sample: Prepared,
+    columns: &CompiledColumns,
+    options: Options,
+    policy: Policy,
+    controls: RunControls,
+    team: &ThreadTeam,
+    interrupt: &mut Interrupt<'_>,
 ) -> Result<FinalSample> {
     options.validate()?;
     controls.validate()?;
@@ -113,10 +136,12 @@ pub fn run(
     roles.extend_from_slice(&columns.roles);
     let mut ledger = Ledger::new(sample, policy)?;
     let mut report = Report::new(policy, &ledger);
+    interrupt(InterruptPoint::SeparationRound)?;
     if let Some(commit) = ledger.prune_initial_singletons()? {
         report.commit(None, commit)?;
     }
     loop {
+        interrupt(InterruptPoint::SeparationRound)?;
         report.begin_round(ledger.view().generation())?;
         if round::exact(&mut ledger, &mut report)? {
             continue;
@@ -124,15 +149,14 @@ pub fn run(
         // Recipes read only the new owner. No old projected columns or
         // factors are compacted into the next numerical generation.
         let raw = columns.generate(ledger.view().sample())?;
-        if round::numerical(
-            &mut ledger,
-            &raw,
-            &roles,
+        if (round::Runtime {
             options,
             controls,
-            &mut report,
             team,
-        )? {
+            interrupt,
+        })
+        .run(&mut ledger, &raw, &roles, &mut report)?
+        {
             continue;
         }
         report.finish(&ledger)?;

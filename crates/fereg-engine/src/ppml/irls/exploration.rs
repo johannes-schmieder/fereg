@@ -52,6 +52,7 @@ pub(crate) fn explore_mu(
     options: Options,
     tolerance: f64,
     team: &ThreadTeam,
+    interrupt: &mut Interrupt<'_>,
 ) -> Result<Exploration> {
     if !tolerance.is_finite() || tolerance <= 0. || tolerance >= 1. {
         return Err(invalid(
@@ -59,7 +60,7 @@ pub(crate) fn explore_mu(
         ));
     }
     with_context(problem, options, team, |context| {
-        let trajectory = context.run(Purpose::Mu { tolerance })?;
+        let trajectory = context.run(Purpose::Mu { tolerance }, interrupt)?;
         context.finish_exploration(trajectory)
     })
 }

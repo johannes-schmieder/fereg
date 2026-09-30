@@ -3,6 +3,7 @@ mod iteration;
 use super::{invalid, Controls, DirectionProposal, Model, Status, View};
 use crate::{
     error::{ErrorCode, FeregError, Result},
+    ppml::{Interrupt, InterruptPoint},
     spec::Solver,
     threads::ThreadTeam,
     wls::Work,
@@ -71,6 +72,15 @@ impl View<'_> {
         max_iterations: usize,
         team: &ThreadTeam,
     ) -> Result<IrReport> {
+        self.iterated_rectifier_with(model, max_iterations, team, &mut |_| Ok(()))
+    }
+    pub fn iterated_rectifier_with(
+        self,
+        model: &Model<'_>,
+        max_iterations: usize,
+        team: &ThreadTeam,
+        interrupt: &mut Interrupt<'_>,
+    ) -> Result<IrReport> {
         model.validate(self)?;
         if max_iterations == 0 {
             return Err(invalid("IR iteration budget must be positive"));
@@ -91,7 +101,7 @@ impl View<'_> {
             fixed_point: None,
             work: Work::default(),
         };
-        iteration::run(self, model, options, report, team)
+        iteration::run(self, model, options, report, team, interrupt)
     }
     pub fn replay_ir(
         self,
@@ -99,6 +109,16 @@ impl View<'_> {
         model: &Model<'_>,
         max_iterations: usize,
         team: &ThreadTeam,
+    ) -> Result<IrTerminal> {
+        self.replay_ir_with(observed, model, max_iterations, team, &mut |_| Ok(()))
+    }
+    pub fn replay_ir_with(
+        self,
+        observed: &IrReport,
+        model: &Model<'_>,
+        max_iterations: usize,
+        team: &ThreadTeam,
+        interrupt: &mut Interrupt<'_>,
     ) -> Result<IrTerminal> {
         if observed.generation != self.generation()
             || observed.sample_identity != self.numerical_identity()
@@ -117,7 +137,7 @@ impl View<'_> {
         }
         // Restart with the initial rectifier and fresh factors, rather than
         // accepting a producer's fixed-point flag or saved projected state.
-        let replayed = self.iterated_rectifier(model, max_iterations, team)?;
+        let replayed = self.iterated_rectifier_with(model, max_iterations, team, interrupt)?;
         if &replayed != observed {
             return Err(failed(
                 "terminal IR evidence failed fresh deterministic replay",
