@@ -12,6 +12,8 @@
 
 10. **Clarifications approved by Johannes, 2026-09-29:** repair the `within` thread-determinism defect upstream and qualify the exact replacement pin against the shared certificates and independent oracles; do not weaken reproducibility or add a nested single-worker workaround. Ordinary factor validation follows built-in Stata's sample precedence: apply availability, `if/in` and weight exclusions first, then validate eligible factor values before singleton/separation/rank deletion (SPEC §2 and rebuild ADR 0009). Pinned reghdfe's invalid-factor errors on otherwise excluded rows are not the desired behavior. The retained LSMR/CMG options and feppml mean bias correction, including exact/randomized cD+cC, remain required.
 
+11. **Size amendment approved by Johannes, 2026-09-30:** waive the aggregate 25,000-line engine ceiling and use the engine module figures as planning estimates. Keep modules cohesive, shared kernels and one implementation per concept. The 1,500-line file and 150-line function limits, total-production and plugin ceilings, and other architecture rules remain in force (rebuild ADR 0010).
+
 ## 1. Why: problems with the current codebase
 
 Findings from a review of HEAD `b41f18e` (2026-09-28):
@@ -56,7 +58,7 @@ End state:
 - One prepared-data representation, one FE engine interface with direct, coefficient-space Schur-PCG, `within` LSMR and CMG backends, one finite WLS solver, one VCE module, and shared independent result checks. Public `solver(auto|lsmr|cmg)` is retained for both estimators.
 - Automatic algorithm choice depends on model structure and observed convergence, with comparative evidence for the default policy. Honor explicit solver requests within each backend's documented support. Do not recreate routing keyed on N, regressor count, thread count, weight kind or memory.
 - Every backend reconstructs residuals explicitly from FE coefficients and checks D'Wr with the same scales and tolerances. These checks do not alone establish forward accuracy on ill-conditioned designs: retain independent weak-graph/high-precision oracles and estimator-level accuracy checks. Results are identical across thread counts. There is a single memory mode.
-- At most 35K lines of production Rust (engine ≤ 25K, plugin ≤ 8K); no file over 1,500 lines and no function over 150 lines.
+- At most 35K lines of production Rust and 8K in the plugin; engine module sizes are planning estimates with no aggregate engine ceiling. No file over 1,500 lines and no function over 150 lines; keep cohesive responsibilities and one implementation per concept.
 - CI on every push; property tests against dense oracles; a small benchmark suite (Mac + SCC) with compact summaries in git; `MILESTONES.md` as the only status document; ADRs only for real decisions.
 - Performance targets against fixest tracked by the suite (§7).
 
@@ -321,7 +323,7 @@ ado parse → wire request → plugin: load columns via SPI (main thread only)
   → plugin validates the complete result → writes shadows → ado posts e() atomically
 ```
 
-**Crate `fereg-engine` modules** (budget ≤ 25K lines):
+**Crate `fereg-engine` modules** (planning estimates in ARCHITECTURE; no aggregate engine ceiling):
 - `error` — error codes and Stata return codes.
 - `threads` — team plus fixed-partition reduction helpers.
 - `spec` — model wire parsing (harvested).
@@ -433,7 +435,7 @@ Every task: do → checks → tick `MILESTONES.md` → commit → push. "Rust ch
   - Fold any license or provenance facts from `docs/upstream_map.md` into `THIRD_PARTY_NOTICES.md`.
   - Retain the source docs and ADRs after consolidation; M7.5 performs cleanup only after replacement checks pass. Identify superseded files in the coverage mapping without rewriting historical evidence.
   - Checks: every retained public option and documented behavior appears in SPEC; removed options are explicitly listed; the contract-to-test mapping has no unexplained omissions.
-- **M1.2 `docs/ARCHITECTURE.md`.** Expand §5: module map with line budgets, data flow, FE engine math, plugin seam and engine switch, error model, threading. Maximum 400 lines.
+- **M1.2 `docs/ARCHITECTURE.md`.** Expand §5: module map with planning line estimates, data flow, FE engine math, plugin seam and engine switch, error model, threading. Maximum 400 lines.
 - **M1.3 `crates/fereg-oracle`.**
   - Copy the dense explicit-dummy OLS oracle (`crates/fereg-testkit/src/explicit_ols.rs`, `explicit_dummy.rs`; the legacy testkit keeps its copy until M7). Add a dense Poisson IRLS oracle, porting `tests/oracles/ppml_explicit_dummy_oracle.py`.
   - Add `designs.rs`, a seeded random design generator covering: N; number of FEs; levels; graph type (dense panel, AKM strong/weak mobility, chain/barbell, disconnected components); slopes; weight kinds; missing values; singletons; collinear regressors; clusters; zero outcomes for PPML.

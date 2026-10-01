@@ -26,15 +26,15 @@ and estimation loops in ado/Mata are not. SPI is called only on Stata's thread.
 Workers receive Rust-owned buffers. Safe crates use `#![forbid(unsafe_code)]`;
 project-owned unsafe operations live only in the plugin FFI boundary.
 
-## Crates and budgets
+## Crates and size guidance
 
-Production Rust must stay at most 35,000 lines; engine at most 25,000 and plugin
-at most 8,000. These are ceilings, not targets to fill. Files are at most 1,500
-lines, functions at most 150. New engine/oracle limits apply immediately;
-all crates are covered after M7. Split by cohesive responsibility, not suffixes
-for another memory mode, VCE pipeline or special model envelope.
+Johannes waived the engine's 25,000-line ceiling; module figures below are
+planning estimates ([ADR 0010](cleanup/rebuild-adr/0010-engine-size-guidance.md)).
+Production Rust retains the 35,000-line ceiling; the plugin retains 8,000.
+Files are at most 1,500 lines, functions at most 150; engine/oracle limits apply
+now, all crates after M7. Keep cohesive responsibilities and one shared pipeline per concept.
 
-| Engine module | Responsibility | Production-line budget |
+| Engine module | Responsibility | Initial production-line estimate |
 |---|---|---:|
 | error | Typed failures and Stata return mapping | 150 |
 | threads | Call-owned team, fixed partitions and reductions | 450 |
@@ -50,7 +50,7 @@ for another memory mode, VCE pipeline or special model envelope.
 | ppml | Family, IRLS, separation coordinator/detectors, bias | 4,000 |
 | outputs | Reconstruction, normalization and requested row products | 800 |
 | result | Certified estimator results and diagnostics | 600 |
-| Total | Leaves 500 lines of engine headroom | 24,500 |
+| Total | Initial estimate across shared modules | 24,500 |
 
 The plugin's 8,000-line ceiling covers FFI/panic containment, safe input loading,
 wire/result validation, engine adapters, publication and installed diagnostics.
