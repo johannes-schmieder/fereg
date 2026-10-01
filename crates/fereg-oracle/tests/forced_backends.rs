@@ -125,7 +125,11 @@ fn campaign(start: usize, count: usize) {
                 for report in &actual.diagnostics {
                     assert_eq!(report.requested, Solver::Auto);
                     assert_eq!(report.selected, backend);
-                    assert_eq!(report.attempts.len(), 1, "seed {seed}, {backend:?}");
+                    assert_eq!(
+                        report.attempts.len(),
+                        1,
+                        "seed {seed}, {backend:?}: {report:?}"
+                    );
                     assert!(report.fallback.is_none());
                     assert!(report.iterations <= options.iterations);
                 }

@@ -24,6 +24,7 @@ pub struct SchurSession<'a, 'data> {
     design: &'a Design<'data>,
     blocks: Blocks,
     eliminated: usize,
+    eliminated_covers: bool,
     budget: usize,
     tolerance: f64,
     warm: Option<DenseMatrix>,
@@ -61,6 +62,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             design,
             blocks: Blocks::new(design, team, poll)?,
             eliminated,
+            eliminated_covers: eliminated_covers(design, eliminated, poll)?,
             budget: plan.linear_budget(),
             tolerance: plan.tolerance(),
             warm: None,
@@ -129,11 +131,19 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             .design
             .transpose_weighted_polled(&initial, team, poll)?;
         zero_effect(self.design, self.eliminated, &mut b);
+        // Exact span identity makes the reduced operator zero. Floating
+        // projection moments must not manufacture an identified direction.
+        if self.eliminated_covers {
+            b.as_mut_slice().fill(0.);
+        }
         let mut x = match &self.warm {
             Some(warm) if warm_start && warm.ncols() == rhs.ncols() => copy_matrix(warm)?,
             _ => DenseMatrix::zeros(self.design.layout().total, rhs.ncols())?,
         };
         zero_effect(self.design, self.eliminated, &mut x);
+        if self.eliminated_covers {
+            x.as_mut_slice().fill(0.);
+        }
         let applied = self.apply(&x, team, poll)?;
         let mut r = copy_matrix(&b)?;
         subtract(&mut r, &applied);
@@ -148,7 +158,7 @@ impl<'a, 'data> SchurSession<'a, 'data> {
             }
             targets.push(tolerance * norm);
         }
-        let mut state = Recurrences::new(x, r, z, targets)?;
+        let mut state = Recurrences::new(x, r, z, targets, !warm_start)?;
         let mut monitors = reserved(rhs.ncols())?;
         monitors.extend(state.rho.iter().map(|rho| Monitor::new(rho.sqrt())));
         for _ in 0..budget {
@@ -309,7 +319,13 @@ struct Recurrences {
     progress: Vec<Attempt>,
 }
 impl Recurrences {
-    fn new(x: DenseMatrix, r: DenseMatrix, p: DenseMatrix, targets: Vec<f64>) -> Result<Self> {
+    fn new(
+        x: DenseMatrix,
+        r: DenseMatrix,
+        p: DenseMatrix,
+        targets: Vec<f64>,
+        correction: bool,
+    ) -> Result<Self> {
         let mut rho = reserved(x.ncols())?;
         let mut active = reserved(x.ncols())?;
         let mut progress = reserved(x.ncols())?;
@@ -320,7 +336,11 @@ impl Recurrences {
                     "Schur preconditioned norm is not finite and nonnegative",
                 ));
             }
-            let converged = value.sqrt() <= target;
+            // A mostly orthogonal correction RHS can dwarf its nonzero
+            // normal residual. Measure a fitted correction before allowing
+            // the shared update guard to accept zero work. Subsequent PCG
+            // iterations retain the established representation floor.
+            let converged = value == 0. || !correction && value.sqrt() <= target;
             rho.push(value);
             active.push(!converged);
             progress.push(Attempt {
@@ -427,6 +447,46 @@ impl Recurrences {
 fn dot_column(left: &DenseMatrix, right: &DenseMatrix, column: usize) -> f64 {
     compensated_sum((0..left.nrows()).map(|row| left[(row, column)] * right[(row, column)]))
 }
+fn eliminated_covers(design: &Design<'_>, eliminated: usize, poll: Poll<'_>) -> Result<bool> {
+    let codes = design.topology().effect_partition(eliminated)?.codes();
+    let eliminated_channels = design.layout().effects[eliminated].channels;
+    for (effect, layout) in design.layout().effects.iter().enumerate() {
+        execution::check(poll)?;
+        if effect == eliminated {
+            continue;
+        }
+        let other = design.topology().effect_partition(effect)?.codes();
+        for (row, (&left, &right)) in codes.iter().zip(other).enumerate() {
+            execution::check_chunk(poll, row)?;
+            if left != right {
+                return Ok(false);
+            }
+        }
+        for channel in 0..layout.channels {
+            let mut represented = false;
+            for eliminated_channel in 0..eliminated_channels {
+                let mut identical = true;
+                for row in 0..design.nobs() {
+                    execution::check_chunk(poll, row)?;
+                    if design.basis_value(effect, channel, row)?
+                        != design.basis_value(eliminated, eliminated_channel, row)?
+                    {
+                        identical = false;
+                        break;
+                    }
+                }
+                if identical {
+                    represented = true;
+                    break;
+                }
+            }
+            if !represented {
+                return Ok(false);
+            }
+        }
+    }
+    Ok(true)
+}
 fn zero_effect(design: &Design<'_>, effect: usize, values: &mut DenseMatrix) {
     let layout = &design.layout().effects[effect];
     for row in layout.offset..layout.offset + layout.levels * layout.channels {
@@ -463,6 +523,7 @@ mod tests {
             matrix(1.),
             matrix(1.),
             vec![1e-10; 2],
+            false,
         )
         .unwrap();
         state.advance(&matrix(1e-308));

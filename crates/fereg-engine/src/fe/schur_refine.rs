@@ -1,6 +1,10 @@
 //! Schur corrections reuse exact factors, never the original response's warm guess.
 use super::{refinement, MonitorControl, SchurCandidate, SchurSession, StopReason};
 use crate::{data::DenseMatrix, error::Result, execution::Poll, threads::ThreadTeam};
+#[cfg(test)]
+mod correction_tests;
+#[cfg(test)]
+mod refinement_tests;
 
 impl SchurSession<'_, '_> {
     pub fn solve_refined(
