@@ -2,7 +2,7 @@
 #![deny(clippy::too_many_lines)]
 use fereg_engine::{
     data::{DenseMatrix, Weights},
-    fe::{Backend, Design, Engine},
+    fe::{Backend, Design, Engine, MonitorControl, Plan, SchurSession},
     spec::{Estimator, Options, Solver},
     threads::ThreadTeam,
     wls::{self, AbsorbedControls, FrozenBasis, Role, Work},
@@ -67,6 +67,9 @@ fn separately_certified_frames_retain_exact_full_model_rays_at_boundary_weights(
             for workers in [1, 2, 4, 8] {
                 let team = ThreadTeam::new(workers).unwrap();
                 let mut engine = Engine::new(&design, Estimator::Ppml, &options, &team).unwrap();
+                if seed == 155 && workers == 1 && solver == Solver::Auto {
+                    schur_evidence(&design, &options, &raw, &u, &team);
+                }
                 let mut work = Work::default();
                 let fit = wls::solve_absorbed_recorded(
                     &mut engine,
@@ -81,7 +84,14 @@ fn separately_certified_frames_retain_exact_full_model_rays_at_boundary_weights(
                     &mut work,
                     &team,
                 )
-                .unwrap_or_else(|e| panic!("seed={seed}, solver={solver:?}: {e}"));
+                .unwrap_or_else(|e| {
+                    panic!(
+                        "seed={seed}, solver={solver:?}: {e}; reports={:?}, work={:?}, projection_work={:?}, recovery_work={:?}",
+                        engine.last_diagnostics(), work.counts(),
+                        work.projection().counts(), work.recovery().counts()
+                    )
+                });
+                frame_evidence(seed, solver, workers, &fit, &design, &work);
                 assert!(basis.matches(&fit.finite));
                 for (column, &beta) in fit.finite.coefficients.iter().enumerate() {
                     let expected = if column + 1 == raw.ncols() { -1. } else { 0. };
@@ -123,4 +133,82 @@ fn separately_certified_frames_retain_exact_full_model_rays_at_boundary_weights(
             }
         }
     }
+}
+
+// Independent public candidates localize projection versus combined-model
+// recovery without influencing the engine used by the authoritative assertions.
+fn schur_evidence(
+    design: &Design<'_>,
+    options: &Options,
+    raw: &DenseMatrix,
+    outcome: &[f64],
+    team: &ThreadTeam,
+) {
+    let mut columns = vec![outcome.to_vec()];
+    for column in 0..raw.ncols() {
+        columns.push(raw.column(column).unwrap());
+    }
+    let rhs = DenseMatrix::from_columns(&columns).unwrap();
+    let plan = Plan::new(design, Estimator::Ppml, options).unwrap();
+    for refined in [false, true] {
+        let mut session = SchurSession::new(design, &plan, team).unwrap();
+        let candidate = if refined {
+            session.solve_refined(&rhs, MonitorControl::Automatic, team)
+        } else {
+            session.solve_monitored(&rhs, MonitorControl::Automatic, team)
+        };
+        match candidate {
+            Ok(candidate) => {
+                let mut ray_max = 0_f64;
+                let mut ray_norm = 0_f64;
+                for row in 0..rhs.nrows() {
+                    // u plus the last raw column is a known complete FE ray.
+                    let value =
+                        candidate.residuals[(row, 0)] + candidate.residuals[(row, raw.ncols())];
+                    ray_max = ray_max.max(value.abs());
+                    ray_norm = ray_norm.hypot(design.weights().at(row).sqrt() * value);
+                }
+                let certificate = design.certify(
+                    &rhs,
+                    &candidate.coefficients,
+                    &candidate.residuals,
+                    options.tolerance,
+                    team,
+                );
+                eprintln!(
+                    "seed=155 Schur refined={refined}: ray_max={ray_max:.17e}, weighted_ray_norm={ray_norm:.17e}, progress={:?}, original_certificate={certificate:?}",
+                    candidate.progress
+                );
+            }
+            Err(error) => eprintln!("seed=155 Schur refined={refined}: {error}"),
+        }
+    }
+}
+
+fn frame_evidence(
+    seed: usize,
+    solver: Solver,
+    workers: usize,
+    fit: &wls::AbsorbedFit,
+    design: &Design<'_>,
+    work: &Work,
+) {
+    let mut residual_max = 0_f64;
+    let mut worst_row = 0;
+    let mut weighted_norm = 0_f64;
+    for (row, &residual) in fit.residuals.iter().enumerate() {
+        if residual.abs() > residual_max {
+            residual_max = residual.abs();
+            worst_row = row;
+        }
+        weighted_norm = weighted_norm.hypot(design.weights().at(row).sqrt() * residual);
+    }
+    eprintln!(
+        "frame seed={seed}, solver={solver:?}, workers={workers}: beta={:?}, residual_max={residual_max:.17e}, worst_row={worst_row}, worst_weight={:.17e}, weighted_residual_norm={weighted_norm:.17e}, original_finite_score={:.17e}, reconstruction={:.17e}, model_refinements={}, projection={:?}, model={:?}, reports={:?}, recovery={:?}, work={:?}, projection_work={:?}, recovery_work={:?}",
+        fit.finite.coefficients, design.weights().at(worst_row),
+        fit.relative_original_finite_score, fit.relative_residual_reconstruction,
+        fit.model_refinements, fit.projection_certificate, fit.model_certificate,
+        fit.projection_diagnostics, fit.recovery_diagnostics,
+        work.counts(), work.projection().counts(), work.recovery().counts(),
+    );
 }
