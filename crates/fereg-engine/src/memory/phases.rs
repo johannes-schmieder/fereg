@@ -3,7 +3,7 @@ use super::{
     checked::{add_count, array, matrix, mul, sum},
     solver, Request,
 };
-use crate::{data::DropReason, error::Result, spec::Estimator, ErrorCode, FeregError};
+use crate::{data::DropReason, error::Result, execution, spec::Estimator, ErrorCode, FeregError};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(usize)]
@@ -52,22 +52,26 @@ impl Estimate {
         self.bias_workspace
     }
 }
-pub(super) fn estimate(request: Request<'_>) -> Result<Estimate> {
-    validate(request)?;
+pub(super) fn estimate(
+    request: Request<'_>,
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<Estimate> {
+    poll()?;
+    validate(request, poll)?;
     // Covers native scheduler/worker bookkeeping, not reserved OS stack pages.
     // Uncertain executor storage never establishes early insufficiency.
     let input_bytes = sum(&[
         input(request, 9)?,
         array(request.worker_threads, 512 * 1024)?,
     ])?;
-    let prepared = prepared(request)?;
+    let prepared = prepared(request, poll)?;
     let raw = matrix(request.inputs.active_rows, request.finite_columns)?;
     let base = sum(&[input_bytes, prepared, raw])?;
-    let linear = linear_workspace(request)?;
-    let fit = retained_fit(request)?;
+    let linear = linear_workspace(request, poll)?;
+    let fit = retained_fit(request, poll)?;
     let outputs = outputs(request)?;
     let inference = inference(request)?;
-    let bias_work = bias_workspace(request)?;
+    let bias_work = bias_workspace(request, poll)?;
     let publication = array(request.publication_matrix_cells, 8)?;
     let minimum = sum(&[
         input(request, 8)?,
@@ -102,6 +106,7 @@ pub(super) fn estimate(request: Request<'_>) -> Result<Estimate> {
         0
     };
     let publication_phase = sum(&[base, fit, inference, outputs, publication])?;
+    poll()?;
     Ok(Estimate {
         phases: [
             preparation,
@@ -121,11 +126,11 @@ pub(super) fn estimate(request: Request<'_>) -> Result<Estimate> {
         },
     })
 }
-fn validate(request: Request<'_>) -> Result<()> {
+fn validate(request: Request<'_>, poll: &mut impl FnMut() -> Result<()>) -> Result<()> {
     if request.inputs.active_rows > request.inputs.original_rows
         || request.inputs.string_sources > request.inputs.sources
         || request.finite_columns > request.coefficient_slots
-        || request.effects.iter().any(|e| e.channels == 0)
+        || execution::any_with(request.effects, |e| e.channels == 0, poll)?
         || request.clusters
             > if request.estimator == Estimator::Ols {
                 10
@@ -142,7 +147,9 @@ fn validate(request: Request<'_>) -> Result<()> {
     }
     if let Some(bias) = request.bias {
         bias.method.validate()?;
-        if request.effects.len() != 2 || request.effects.iter().any(|e| e.channels != 1) {
+        if request.effects.len() != 2
+            || execution::any_with(request.effects, |e| e.channels != 1, poll)?
+        {
             return Err(FeregError::new(
                 ErrorCode::Unsupported,
                 "bias storage requires two categorical intercept effects",
@@ -179,7 +186,7 @@ fn input(request: Request<'_>, numeric_bytes: usize) -> Result<u128> {
     }
     Ok(result)
 }
-fn prepared(request: Request<'_>) -> Result<u128> {
+fn prepared(request: Request<'_>, poll: &mut impl FnMut() -> Result<()>) -> Result<u128> {
     let inputs = request.inputs;
     let numeric = add_count(
         inputs.sources,
@@ -191,7 +198,8 @@ fn prepared(request: Request<'_>) -> Result<u128> {
         array(inputs.original_rows, size_of::<DropReason>())?,
         array(inputs.sources, size_of::<Vec<f64>>())?,
     ])?;
-    for effect in request.effects {
+    for (index, effect) in request.effects.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
         // Codes, membership, level/component maps, sorting/union-find copies,
         // and per-effect metadata. Shared partitions may make this an upper bound.
         result = sum(&[
@@ -203,10 +211,10 @@ fn prepared(request: Request<'_>) -> Result<u128> {
     }
     Ok(result)
 }
-fn linear_workspace(request: Request<'_>) -> Result<u128> {
+fn linear_workspace(request: Request<'_>, poll: &mut impl FnMut() -> Result<()>) -> Result<u128> {
     let n = request.inputs.active_rows;
     let k = request.finite_columns;
-    let solver = solver::estimate(request, add_count(k, 1)?)?;
+    let solver = solver::estimate(request, add_count(k, 1)?, poll)?;
     sum(&[
         solver.retained,
         solver.scratch,
@@ -216,11 +224,11 @@ fn linear_workspace(request: Request<'_>) -> Result<u128> {
         array(k, 512)?,
     ])
 }
-fn retained_fit(request: Request<'_>) -> Result<u128> {
+fn retained_fit(request: Request<'_>, poll: &mut impl FnMut() -> Result<()>) -> Result<u128> {
     let n = request.inputs.active_rows;
     sum(&[
         matrix(n, request.finite_columns)?,
-        matrix(solver::parameters(request.effects)?, 1)?,
+        matrix(solver::parameters(request.effects, poll)?, 1)?,
         mul(matrix(request.finite_columns, request.finite_columns)?, 2)?,
         array(request.coefficient_slots, 256)?,
         // Finite fitted/residual, within outcome, model residual and diagnostics;
@@ -275,14 +283,17 @@ fn bias_outputs(request: Request<'_>) -> Result<u128> {
         },
     )
 }
-fn bias_workspace(request: Request<'_>) -> Result<u128> {
+fn bias_workspace(request: Request<'_>, poll: &mut impl FnMut() -> Result<()>) -> Result<u128> {
     if request.bias.is_none() {
         return Ok(0);
     }
     let n = request.inputs.active_rows;
-    let dimension = add_count(solver::parameters(request.effects)?, request.finite_columns)?;
+    let dimension = add_count(
+        solver::parameters(request.effects, poll)?,
+        request.finite_columns,
+    )?;
     sum(&[
-        linear_workspace(request)?,
+        linear_workspace(request, poll)?,
         // Unit identities/codes/support scratch, eight information/contraction
         // row banks and bounded group moments; no probe history or FE square.
         array(n, 192)?,

@@ -5,6 +5,7 @@ use super::{
 };
 use crate::{
     error::Result,
+    execution,
     fe::{Backend, Plan},
     linalg::WeightedQr,
 };
@@ -14,32 +15,44 @@ pub(super) struct SolverStorage {
     pub retained: u128,
     pub scratch: u128,
 }
-pub(super) fn estimate(request: Request<'_>, rhs: usize) -> Result<SolverStorage> {
+pub(super) fn estimate(
+    request: Request<'_>,
+    rhs: usize,
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<SolverStorage> {
+    poll()?;
     let primary = Plan::default_backend(request.effects.len(), request.solver);
-    let first = backend(request, rhs, primary)?;
+    let first = backend(request, rhs, primary, poll)?;
     let fallback = match Plan::default_fallback(primary) {
-        Some(backend_kind) => backend(request, rhs, backend_kind)?,
+        Some(backend_kind) => backend(request, rhs, backend_kind, poll)?,
         None => SolverStorage {
             retained: 0,
             scratch: 0,
         },
     };
+    poll()?;
     Ok(SolverStorage {
         // The engine keeps the primary session while constructing LSMR.
         retained: sum(&[first.retained, fallback.retained])?,
         scratch: first.scratch.max(fallback.scratch),
     })
 }
-fn backend(request: Request<'_>, rhs: usize, backend: Backend) -> Result<SolverStorage> {
+fn backend(
+    request: Request<'_>,
+    rhs: usize,
+    backend: Backend,
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<SolverStorage> {
     let n = request.inputs.active_rows;
-    let parameters = parameters(request.effects)?;
+    let parameters = parameters(request.effects, poll)?;
     let coefficients = matrix(parameters, rhs)?;
     let observations = matrix(n, rhs)?;
     let mut retained = 0;
     match backend {
         Backend::NoEffects => (),
         Backend::Direct | Backend::SchurPcg => {
-            for effect in request.effects {
+            for (index, effect) in request.effects.iter().enumerate() {
+                execution::check_chunk_with(index, poll)?;
                 retained = sum(&[retained, blocks(n, *effect)?])?;
             }
             if backend == Backend::SchurPcg {
@@ -47,20 +60,19 @@ fn backend(request: Request<'_>, rhs: usize, backend: Backend) -> Result<SolverS
             }
         }
         Backend::Lsmr => {
-            retained = lsmr(request)?;
+            retained = lsmr(request, poll)?;
         }
         Backend::Cmg => {
-            retained = cmg(request, rhs)?;
+            retained = cmg(request, rhs, poll)?;
         }
     }
     // Includes raw/corrected candidate banks, independent certificates, bank
     // refinement and temporary per-column views; it is independent of workers.
-    let maximum_channels = request
-        .effects
-        .iter()
-        .map(|e| e.channels)
-        .max()
-        .unwrap_or(0);
+    let mut maximum_channels = 0;
+    for (index, effect) in request.effects.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
+        maximum_channels = maximum_channels.max(effect.channels);
+    }
     let scratch = sum(&[
         mul(observations, 12)?,
         mul(coefficients, 16)?,
@@ -78,13 +90,14 @@ fn blocks(rows: usize, effect: Effect) -> Result<u128> {
         array(effect.levels, size_of::<Vec<f64>>())?,
     ])
 }
-fn lsmr(request: Request<'_>) -> Result<u128> {
+fn lsmr(request: Request<'_>, poll: &mut impl FnMut() -> Result<()>) -> Result<u128> {
     let n = request.inputs.active_rows;
-    let parameters = parameters(request.effects)?;
-    let channels = request
-        .effects
-        .iter()
-        .try_fold(0usize, |s, e| add_count(s, e.channels))?;
+    let parameters = parameters(request.effects, poll)?;
+    let mut channels = 0;
+    for (index, effect) in request.effects.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
+        channels = add_count(channels, effect.channels)?;
+    }
     let mut total = sum(&[
         // Prepared labels/membership, locality maps, sqrt weights and compact
         // additive contribution storage are retained by the pinned raw solver.
@@ -93,7 +106,9 @@ fn lsmr(request: Request<'_>) -> Result<u128> {
         array(parameters, 128)?,
     ])?;
     for (i, left) in request.effects.iter().enumerate() {
-        for right in &request.effects[i + 1..] {
+        execution::check_chunk_with(i, poll)?;
+        for (index, right) in request.effects[i + 1..].iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
             let coordinates = add_count(
                 left.levels
                     .checked_mul(left.channels)
@@ -123,8 +138,8 @@ fn lsmr(request: Request<'_>) -> Result<u128> {
     }
     Ok(total)
 }
-fn cmg(request: Request<'_>, rhs: usize) -> Result<u128> {
-    let vertices = parameters(request.effects)?;
+fn cmg(request: Request<'_>, rhs: usize, poll: &mut impl FnMut() -> Result<()>) -> Result<u128> {
+    let vertices = parameters(request.effects, poll)?;
     let options = cmg::CmgOptions::default();
     let levels = options.max_levels as u128;
     let nnz = sum(&[
@@ -156,14 +171,20 @@ fn cmg(request: Request<'_>, rhs: usize) -> Result<u128> {
         matrix(vertices, nuisance)?,
     ])
 }
-pub(super) fn parameters(effects: &[Effect]) -> Result<usize> {
-    effects.iter().try_fold(0usize, |total, effect| {
-        add_count(
+pub(super) fn parameters(
+    effects: &[Effect],
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<usize> {
+    let mut total = 0;
+    for (index, effect) in effects.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
+        total = add_count(
             total,
             effect
                 .levels
                 .checked_mul(effect.channels)
                 .ok_or_else(overflow)?,
-        )
-    })
+        )?;
+    }
+    Ok(total)
 }

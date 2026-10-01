@@ -3,7 +3,10 @@ pub mod metadata;
 pub mod options;
 pub mod protocol;
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::{
+    error::{ErrorCode, FeregError, Result},
+    execution,
+};
 use metadata::{AbsorbedTerm, CompiledTermGraph, ModelWireV2, SourceId};
 pub use options::{Estimator, Options, Solver};
 
@@ -27,7 +30,14 @@ pub struct ModelSpec {
 
 impl ModelSpec {
     pub fn from_wire(wire: &ModelWireV2) -> Result<Self> {
-        let decoded = wire.decode_specification()?;
+        Self::from_wire_with(wire, &mut || Ok(()))
+    }
+    /// Native hosts decode on their caller before accessing observations.
+    pub fn from_wire_with(
+        wire: &ModelWireV2,
+        interrupt: &mut impl FnMut() -> Result<()>,
+    ) -> Result<Self> {
+        let decoded = wire.decode_specification_with(interrupt)?;
         let specification = Self {
             model: decoded.model,
             absorbed_terms: decoded.absorbed_terms,
@@ -35,45 +45,52 @@ impl ModelSpec {
             include_intercept: true,
             keep_singletons: false,
         };
-        specification.validate()?;
+        specification.validate_polled(interrupt)?;
         Ok(specification)
     }
 
     pub fn validate(&self) -> Result<()> {
-        self.model.validate_executable_metadata()?;
-        metadata::validate_absorbed_terms(&self.absorbed_terms, self.model.sources.len())?;
+        self.validate_polled(&mut || Ok(()))
+    }
+    pub(crate) fn validate_polled(&self, poll: &mut impl FnMut() -> Result<()>) -> Result<()> {
+        self.model.validate_executable_metadata_polled(poll)?;
+        metadata::validate_absorbed_terms_polled(
+            &self.absorbed_terms,
+            self.model.sources.len(),
+            poll,
+        )?;
         if self.clusters.len() > 10 {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
                 "at most ten cluster dimensions are supported",
             ));
         }
-        for term in &self.clusters {
+        for (index, term) in self.clusters.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
             if term.label.trim().is_empty()
                 || term.sources.is_empty()
-                || term
-                    .sources
-                    .iter()
-                    .any(|source| source.get() as usize > self.model.sources.len())
+                || execution::any_with(
+                    &term.sources,
+                    |source| source.get() as usize > self.model.sources.len(),
+                    poll,
+                )?
             {
                 return Err(FeregError::new(
                     ErrorCode::InvalidArgument,
                     "invalid cluster source graph",
                 ));
             }
-            if term
-                .sources
-                .iter()
-                .enumerate()
-                .any(|(index, source)| term.sources[..index].contains(source))
-            {
-                return Err(FeregError::new(
-                    ErrorCode::InvalidArgument,
-                    "cluster interaction repeats a source",
-                ));
+            for (position, source) in term.sources.iter().enumerate() {
+                execution::check_chunk_with(position, poll)?;
+                if execution::any_with(&term.sources[..position], |prior| prior == source, poll)? {
+                    return Err(FeregError::new(
+                        ErrorCode::InvalidArgument,
+                        "cluster interaction repeats a source",
+                    ));
+                }
             }
         }
-        Ok(())
+        poll()
     }
 }
 
@@ -111,3 +128,6 @@ mod tests {
         assert!(specification.validate().is_err());
     }
 }
+
+#[cfg(test)]
+mod preflight_tests;

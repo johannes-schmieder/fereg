@@ -3,6 +3,7 @@ pub use crate::memory::Resources;
 use crate::{
     data::{CompiledColumns, Loaded, SourcePlan, WeightKind},
     dof::DofPolicy,
+    execution,
     memory::{self, Admitted, Inputs, Layout, Plan},
     outputs,
     spec::{Estimator, Options},
@@ -45,14 +46,35 @@ impl<'a> Call<'a> {
         model: &'a ModelSpec,
         options: &Options,
         request: &'a Request,
-        mut inputs: Inputs,
+        inputs: Inputs,
         weight_kind: Option<WeightKind>,
         resources: Resources,
     ) -> Result<Self> {
+        Self::new_with(
+            model,
+            options,
+            request,
+            inputs,
+            weight_kind,
+            resources,
+            &mut || Ok(()),
+        )
+    }
+    /// Preflight callbacks run only on this caller and are never retained.
+    pub fn new_with(
+        model: &'a ModelSpec,
+        options: &Options,
+        request: &'a Request,
+        mut inputs: Inputs,
+        weight_kind: Option<WeightKind>,
+        resources: Resources,
+        interrupt: &mut impl FnMut() -> Result<()>,
+    ) -> Result<Self> {
         let started = Instant::now();
+        interrupt()?;
         options.validate()?;
-        let columns = CompiledColumns::new(model, Estimator::Ols)?;
-        let sources = SourcePlan::new(model)?;
+        let columns = CompiledColumns::new_polled(model, Estimator::Ols, interrupt)?;
+        let sources = SourcePlan::new_polled(model, interrupt)?;
         if inputs.auxiliary_numeric_sources != 0 {
             return Err(invalid("OLS has no auxiliary numeric input"));
         }
@@ -74,8 +96,9 @@ impl<'a> Call<'a> {
             ));
         }
         let kind = vce::ols_kind(request.vce, weight_kind, model.clusters.len())?;
-        let products = request.outputs.kinds(false)?;
-        for &(effect, channel) in &request.outputs.saved {
+        let products = request.outputs.kinds_polled(false, interrupt)?;
+        for (index, &(effect, channel)) in request.outputs.saved.iter().enumerate() {
+            execution::check_chunk_with(index, interrupt)?;
             let channels = if columns.implicit_constant && effect == 0 {
                 Some(1)
             } else {
@@ -90,21 +113,24 @@ impl<'a> Call<'a> {
                 ));
             }
         }
-        inputs = inputs.with_model(
+        inputs = inputs.with_model_polled(
             model,
             request.outputs.saved.capacity() as u128 * 2 * size_of::<usize>() as u128,
+            interrupt,
         )?;
         let mut options = *options;
         if options.threads == 0 {
             options.threads =
                 std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
         }
-        let layout = Layout::new(model, inputs, Estimator::Ols)?;
+        let layout =
+            Layout::from_columns_polled(model, inputs, Estimator::Ols, &columns, interrupt)?;
         let mut storage = layout.request(options.solver);
         storage.observation_outputs = products.len();
         storage.publication_matrix_cells = resources.publication_matrix_cells;
         storage.worker_threads = options.threads;
-        let admitted = Plan::new(storage)?.admit(resources.usable_bytes)?;
+        let admitted = Plan::new_polled(storage, interrupt)?.admit(resources.usable_bytes)?;
+        interrupt()?;
         Ok(Self {
             model,
             request,

@@ -13,7 +13,13 @@ pub struct SourcePlan {
 }
 impl SourcePlan {
     pub fn new(spec: &ModelSpec) -> Result<Self> {
-        spec.validate()?;
+        Self::new_polled(spec, &mut || Ok(()))
+    }
+    pub(crate) fn new_polled(
+        spec: &ModelSpec,
+        poll: &mut impl FnMut() -> Result<()>,
+    ) -> Result<Self> {
+        spec.validate_polled(poll)?;
         let mut uses = reserved(spec.model.sources.len())?;
         uses.resize(
             spec.model.sources.len(),
@@ -28,44 +34,55 @@ impl SourcePlan {
         let mut numeric_required = reserved(uses.len())?;
         numeric_required.resize(uses.len(), false);
         // Omitted columns still contribute their declared source availability.
-        for term in &spec.model.terms {
-            for component in &term.components {
+        for (index, term) in spec.model.terms.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
+            for (position, component) in term.components.iter().enumerate() {
+                execution::check_chunk_with(position, poll)?;
                 let source = component.source.get() as usize - 1;
                 uses[source].ordinary = true;
                 numeric_required[source] = true;
                 ordinary_categorical[source] |= component.kind == ComponentKind::Categorical;
             }
         }
-        for effect in &spec.absorbed_terms {
-            for source in effect
+        for (index, effect) in spec.absorbed_terms.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
+            for (position, source) in effect
                 .categorical_sources
                 .iter()
                 .chain(&effect.slope_sources)
+                .enumerate()
             {
+                execution::check_chunk_with(position, poll)?;
                 uses[source.get() as usize - 1].fixed_effect = true;
             }
         }
-        for source in spec
+        for (index, source) in spec
             .absorbed_terms
             .iter()
             .flat_map(|effect| &effect.slope_sources)
+            .enumerate()
         {
+            execution::check_chunk_with(index, poll)?;
             numeric_required[source.get() as usize - 1] = true;
         }
-        for cluster in &spec.clusters {
-            for source in &cluster.sources {
+        for (index, cluster) in spec.clusters.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
+            for (position, source) in cluster.sources.iter().enumerate() {
+                execution::check_chunk_with(position, poll)?;
                 uses[source.get() as usize - 1].cluster = true;
             }
         }
-        if uses
-            .iter()
-            .any(|usage| !usage.ordinary && !usage.fixed_effect && !usage.cluster)
-        {
+        if execution::any_with(
+            &uses,
+            |usage| !usage.ordinary && !usage.fixed_effect && !usage.cluster,
+            poll,
+        )? {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
                 "model registry contains an unused source",
             ));
         }
+        poll()?;
         Ok(Self {
             uses,
             ordinary_categorical,

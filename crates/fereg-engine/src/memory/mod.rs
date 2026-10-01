@@ -75,8 +75,14 @@ impl Plan {
     /// Model the loaded owner as live through validation/publication. Callers
     /// include worker/host owners outside these banks in `parent_bytes`.
     pub fn new(request: Request<'_>) -> Result<Self> {
+        Self::new_polled(request, &mut || Ok(()))
+    }
+    pub(crate) fn new_polled(
+        request: Request<'_>,
+        poll: &mut impl FnMut() -> Result<()>,
+    ) -> Result<Self> {
         Ok(Self {
-            estimate: phases::estimate(request)?,
+            estimate: phases::estimate(request, poll)?,
         })
     }
     #[must_use]

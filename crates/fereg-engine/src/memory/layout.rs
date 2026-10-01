@@ -3,6 +3,7 @@ use super::{checked::add_count, Effect, Inputs, Request};
 use crate::{
     data::{CompiledColumns, Loaded},
     error::{reserved, Result},
+    execution,
     spec::{Estimator, ModelSpec, Solver},
     ErrorCode, FeregError,
 };
@@ -21,6 +22,17 @@ impl Layout {
     /// These bounds do not use factor values to decide scientific eligibility.
     pub fn new(model: &ModelSpec, inputs: Inputs, estimator: Estimator) -> Result<Self> {
         let columns = CompiledColumns::new(model, estimator)?;
+        Self::from_columns_polled(model, inputs, estimator, &columns, &mut || Ok(()))
+    }
+    // Call preflight lends its validated columns rather than compiling a second owner.
+    pub(crate) fn from_columns_polled(
+        model: &ModelSpec,
+        inputs: Inputs,
+        estimator: Estimator,
+        columns: &CompiledColumns,
+        poll: &mut impl FnMut() -> Result<()>,
+    ) -> Result<Self> {
+        poll()?;
         if inputs.sources != model.model.sources.len() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -28,7 +40,8 @@ impl Layout {
             ));
         }
         let mut effects = reserved(add_count(model.absorbed_terms.len(), 1)?)?;
-        for term in &model.absorbed_terms {
+        for (index, term) in model.absorbed_terms.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
             effects.push(Effect {
                 levels: inputs.active_rows,
                 channels: add_count(term.slope_sources.len(), usize::from(term.intercept))?,
@@ -40,6 +53,7 @@ impl Layout {
                 channels: 1,
             });
         }
+        poll()?;
         Ok(Self {
             inputs,
             effects,

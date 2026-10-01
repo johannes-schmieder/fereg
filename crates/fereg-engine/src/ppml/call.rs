@@ -3,6 +3,7 @@ use super::{bias, separation};
 pub use crate::memory::Resources;
 use crate::{
     data::{CompiledColumns, Loaded, LoadedSource, NumericColumn, SourcePlan, WeightKind},
+    execution,
     memory::{self, Admitted, Inputs, Layout, Plan},
     outputs::PpmlRequest,
     spec::{Estimator, Options},
@@ -61,15 +62,36 @@ impl<'a> Call<'a> {
         model: &'a ModelSpec,
         options: &Options,
         request: &'a Request,
-        mut inputs: Inputs,
+        inputs: Inputs,
         weight_kind: Option<WeightKind>,
         resources: Resources,
     ) -> Result<Self> {
+        Self::new_with(
+            model,
+            options,
+            request,
+            inputs,
+            weight_kind,
+            resources,
+            &mut || Ok(()),
+        )
+    }
+    /// Preflight callbacks run only on this caller and are never retained.
+    pub fn new_with(
+        model: &'a ModelSpec,
+        options: &Options,
+        request: &'a Request,
+        mut inputs: Inputs,
+        weight_kind: Option<WeightKind>,
+        resources: Resources,
+        interrupt: &mut impl FnMut() -> Result<()>,
+    ) -> Result<Self> {
         let started = Instant::now();
+        interrupt()?;
         options.validate()?;
         request.separation_controls.validate()?;
-        let columns = CompiledColumns::new(model, Estimator::Ppml)?;
-        let sources = SourcePlan::new(model)?;
+        let columns = CompiledColumns::new_polled(model, Estimator::Ppml, interrupt)?;
+        let sources = SourcePlan::new_polled(model, interrupt)?;
         if request.bias_unit_source.is_some_and(|source| {
             request.bias.is_none()
                 || match source {
@@ -114,11 +136,15 @@ impl<'a> Call<'a> {
         if model.clusters.len() > 5 || (kind == vce::Kind::Cluster) == model.clusters.is_empty() {
             return Err(invalid("PPML VCE and cluster declarations disagree"));
         }
-        let products = request.outputs.common.kinds(request.outputs.mean)?;
+        let products = request
+            .outputs
+            .common
+            .kinds_polled(request.outputs.mean, interrupt)?;
         if request.outputs.residual_type.is_some() && !request.outputs.common.residuals {
             return Err(invalid("PPML residual type requires a residual output"));
         }
-        for &(effect, channel) in &request.outputs.common.saved {
+        for (index, &(effect, channel)) in request.outputs.common.saved.iter().enumerate() {
+            execution::check_chunk_with(index, interrupt)?;
             if model.absorbed_terms.get(effect).is_none_or(|term| {
                 channel >= term.slope_sources.len() + usize::from(term.intercept)
             }) {
@@ -129,18 +155,20 @@ impl<'a> Call<'a> {
         }
         if let Some(bias) = request.bias {
             bias.method.validate()?;
-            bias::validate_model(model)?;
+            bias::validate_model_polled(model, interrupt)?;
         }
-        inputs = inputs.with_model(
+        inputs = inputs.with_model_polled(
             model,
             request.outputs.common.saved.capacity() as u128 * 2 * size_of::<usize>() as u128,
+            interrupt,
         )?;
         let mut options = *options;
         if options.threads == 0 {
             options.threads =
                 std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get);
         }
-        let layout = Layout::new(model, inputs, Estimator::Ppml)?;
+        let layout =
+            Layout::from_columns_polled(model, inputs, Estimator::Ppml, &columns, interrupt)?;
         let mut storage = layout.request(options.solver);
         storage.observation_outputs = products.len();
         storage.publication_matrix_cells = resources.publication_matrix_cells;
@@ -149,7 +177,8 @@ impl<'a> Call<'a> {
         if request.separation.contains(separation::Method::Simplex) {
             storage.simplex_cells = request.separation_controls.simplex.max_cells;
         }
-        let admitted = Plan::new(storage)?.admit(resources.usable_bytes)?;
+        let admitted = Plan::new_polled(storage, interrupt)?.admit(resources.usable_bytes)?;
+        interrupt()?;
         Ok(Self {
             model,
             request,

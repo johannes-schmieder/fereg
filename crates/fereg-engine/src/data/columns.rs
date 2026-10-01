@@ -2,7 +2,7 @@
 use super::{ColumnRecipe, DenseMatrix, ModelMatrixBuilder, Prepared};
 use crate::{
     error::{copied_string, reserved, ErrorCode, FeregError, Result},
-    execution::Poll,
+    execution::{self, Poll},
     spec::Estimator,
     wls::Role,
     ComponentKind, ExpandedTerm, LevelState, MetadataFlag, ModelSpec, RawTermKind, TimeSeriesState,
@@ -30,13 +30,20 @@ pub struct CompiledColumns {
 }
 impl CompiledColumns {
     pub fn new(spec: &ModelSpec, estimator: Estimator) -> Result<Self> {
-        spec.validate()?;
+        Self::new_polled(spec, estimator, &mut || Ok(()))
+    }
+    pub(crate) fn new_polled(
+        spec: &ModelSpec,
+        estimator: Estimator,
+        poll: &mut impl FnMut() -> Result<()>,
+    ) -> Result<Self> {
+        spec.validate_polled(poll)?;
         if estimator == Estimator::Ppml && !spec.include_intercept {
             return Err(unsupported("PPML requires a reported structural constant"));
         }
         let implicit_constant = estimator == Estimator::Ols && spec.absorbed_terms.is_empty();
         let absorbed_intercept =
-            implicit_constant || spec.absorbed_terms.iter().any(|t| t.intercept);
+            implicit_constant || execution::any_with(&spec.absorbed_terms, |t| t.intercept, poll)?;
         let structural_intercept = estimator == Estimator::Ppml || absorbed_intercept;
         let report = structural_intercept && spec.include_intercept;
         let capacity = spec
@@ -53,13 +60,15 @@ impl CompiledColumns {
             structural_intercept,
             implicit_constant,
         };
-        for term in &spec.model.terms {
-            let recipe = compile_term(term)?;
+        for (index, term) in spec.model.terms.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
+            let recipe = compile_term(term, poll)?;
             // Component flags describe stripes. Only the whole-column flag
             // decides whether Stata intended a numerical regressor.
             let syntax = if !term.whole_column_omitted {
                 SyntaxStatus::Active
-            } else if term.components.iter().any(|c| c.base == MetadataFlag::True) {
+            } else if execution::any_with(&term.components, |c| c.base == MetadataFlag::True, poll)?
+            {
                 SyntaxStatus::Base
             } else {
                 SyntaxStatus::ExplicitlyOmitted
@@ -92,6 +101,7 @@ impl CompiledColumns {
                 Role::Ordinary
             });
         }
+        poll()?;
         Ok(result)
     }
     pub fn generate(&self, sample: &Prepared) -> Result<DenseMatrix> {
@@ -115,23 +125,27 @@ impl CompiledColumns {
             .matches_polled(&self.recipes, raw, poll)
     }
 }
-fn compile_term(term: &ExpandedTerm) -> Result<ColumnRecipe> {
+fn compile_term(
+    term: &ExpandedTerm,
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<ColumnRecipe> {
     match (term.raw_kind,term.components.as_slice()) {
         (RawTermKind::Variable,[c]) if c.kind==ComponentKind::Continuous && c.level_state==LevelState::Absent
             && c.base==MetadataFlag::False && matches!(c.time_series_state,TimeSeriesState::None|TimeSeriesState::Materialized)
             && matches!(c.raw_operator.as_str(),""|"c"|"co")=>Ok(ColumnRecipe::Continuous{source:c.source.get() as usize-1}),
         (RawTermKind::Factor,[c]) if c.kind==ComponentKind::Categorical && c.level_state==LevelState::Present
-            && matches!(c.time_series_state,TimeSeriesState::None|TimeSeriesState::Materialized)=>indicators(term),
+            && matches!(c.time_series_state,TimeSeriesState::None|TimeSeriesState::Materialized)=>indicators(term, poll),
         (RawTermKind::Interaction|RawTermKind::Product,components) if components.len()>=2
-            && components.iter().all(|c|c.kind==ComponentKind::Categorical && c.level_state==LevelState::Present
-                && c.time_series_state==TimeSeriesState::None)=>indicators(term),
+            && !execution::any_with(components, |c| c.kind!=ComponentKind::Categorical || c.level_state!=LevelState::Present
+                || c.time_series_state!=TimeSeriesState::None, poll)?=>indicators(term, poll),
         _=>Err(unsupported("finite terms support continuous variables, factor levels and all-categorical interactions only")),
     }
 }
-fn indicators(term: &ExpandedTerm) -> Result<ColumnRecipe> {
+fn indicators(term: &ExpandedTerm, poll: &mut impl FnMut() -> Result<()>) -> Result<ColumnRecipe> {
     let mut sources = reserved(term.components.len())?;
     let mut levels = reserved(term.components.len())?;
-    for c in &term.components {
+    for (index, c) in term.components.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
         if !c.level_value.is_finite() || c.level_value < 0. || c.level_value.fract() != 0. {
             return Err(FeregError::new(
                 ErrorCode::InvalidData,

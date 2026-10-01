@@ -112,7 +112,8 @@ fn captured_tiny_recovery_retains_acceptance_and_independent_accuracy() {
                     assert_ne!(
                         solver,
                         Solver::Cmg,
-                        "explicit CMG must recover this fixture"
+                        "explicit CMG must recover this fixture: {failure:?}; work={:?}",
+                        engine.last_diagnostics()
                     );
                     assert_eq!(failure.code, fereg_engine::ErrorCode::NonConvergence);
                 }

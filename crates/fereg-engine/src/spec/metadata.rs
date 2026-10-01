@@ -1,6 +1,7 @@
 //! Harvested from legacy/fereg-core at b1700e6d; scientific validation is preserved.
 use super::protocol::MODEL_WIRE_VERSION;
 use crate::error::{copied_string, reserved, ErrorCode, FeregError, Result};
+use crate::execution;
 
 pub const SOURCE_ROW_WIDTH: usize = 2;
 pub const TERM_ROW_WIDTH: usize = 8;
@@ -208,7 +209,10 @@ pub struct CompiledTermGraph {
 
 impl CompiledTermGraph {
     pub fn validate(&self) -> Result<()> {
-        validate_graph(self)
+        self.validate_polled(&mut || Ok(()))
+    }
+    pub(crate) fn validate_polled(&self, poll: &mut impl FnMut() -> Result<()>) -> Result<()> {
+        validate_graph(self, poll)
     }
 
     /// Rejects unavailable metadata that an executable binder must interpret.
@@ -218,12 +222,17 @@ impl CompiledTermGraph {
     /// and the authoritative omission decision is the term's
     /// `whole_column_omitted` flag.
     pub fn validate_bindable(&self) -> Result<()> {
-        self.validate()?;
-        for term in &self.terms {
+        self.validate_bindable_polled(&mut || Ok(()))
+    }
+    fn validate_bindable_polled(&self, poll: &mut impl FnMut() -> Result<()>) -> Result<()> {
+        self.validate_polled(poll)?;
+        for (index, term) in self.terms.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
             if term.raw_kind == RawTermKind::Unavailable {
                 return Err(unsupported("term kind is unavailable and cannot be bound"));
             }
-            for component in &term.components {
+            for (position, component) in term.components.iter().enumerate() {
+                execution::check_chunk_with(position, poll)?;
                 if component.kind == ComponentKind::Unavailable
                     || component.level_state == LevelState::Unavailable
                     || component.base == MetadataFlag::Unavailable
@@ -243,9 +252,17 @@ impl CompiledTermGraph {
     /// Also rejects pending Stata time-series materialization. This is not an
     /// estimator compiler and does not produce executable columns.
     pub fn validate_executable_metadata(&self) -> Result<()> {
-        self.validate_bindable()?;
-        for term in &self.terms {
-            for component in &term.components {
+        self.validate_executable_metadata_polled(&mut || Ok(()))
+    }
+    pub(crate) fn validate_executable_metadata_polled(
+        &self,
+        poll: &mut impl FnMut() -> Result<()>,
+    ) -> Result<()> {
+        self.validate_bindable_polled(poll)?;
+        for (index, term) in self.terms.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
+            for (position, component) in term.components.iter().enumerate() {
+                execution::check_chunk_with(position, poll)?;
                 if component.time_series_state == TimeSeriesState::PendingMaterialization {
                     return Err(unsupported(format!(
                         "term {} component {} still requires Stata time-series materialization",
@@ -307,8 +324,11 @@ pub struct CompiledModelSpecification {
 
 impl CompiledModelSpecification {
     pub fn validate(&self) -> Result<()> {
-        self.model.validate()?;
-        validate_absorbed_terms(&self.absorbed_terms, self.model.sources.len())
+        self.validate_polled(&mut || Ok(()))
+    }
+    fn validate_polled(&self, poll: &mut impl FnMut() -> Result<()>) -> Result<()> {
+        self.model.validate_polled(poll)?;
+        validate_absorbed_terms_polled(&self.absorbed_terms, self.model.sources.len(), poll)
     }
 }
 
@@ -487,6 +507,14 @@ impl ModelWireV2 {
     }
 
     pub fn decode_specification(&self) -> Result<CompiledModelSpecification> {
+        self.decode_specification_with(&mut || Ok(()))
+    }
+    /// Decode owned metadata with caller-thread polls and original error identity.
+    pub fn decode_specification_with(
+        &self,
+        interrupt: &mut impl FnMut() -> Result<()>,
+    ) -> Result<CompiledModelSpecification> {
+        interrupt()?;
         let major = positive_u16(self.major, "model-wire major")?;
         let minor = nonnegative_u16(self.minor, "model-wire minor")?;
         if major != MODEL_WIRE_VERSION.major {
@@ -508,9 +536,14 @@ impl ModelWireV2 {
             ));
         }
 
-        let source_rows = normalized_rows(&self.sources, SOURCE_ROW_WIDTH, "source")?;
-        let term_rows = normalized_rows(&self.terms, TERM_ROW_WIDTH, "term")?;
-        let component_rows = normalized_rows(&self.components, COMPONENT_ROW_WIDTH, "component")?;
+        let source_rows = normalized_rows(&self.sources, SOURCE_ROW_WIDTH, "source", interrupt)?;
+        let term_rows = normalized_rows(&self.terms, TERM_ROW_WIDTH, "term", interrupt)?;
+        let component_rows = normalized_rows(
+            &self.components,
+            COMPONENT_ROW_WIDTH,
+            "component",
+            interrupt,
+        )?;
         require_registry(&self.source_names, source_rows.len(), "source-name")?;
         require_registry(&self.canonical_tokens, term_rows.len(), "canonical-token")?;
         require_registry(
@@ -524,24 +557,30 @@ impl ModelWireV2 {
             "raw-time-series-operator",
         )?;
 
-        let sources = decode_sources(self, source_rows)?;
-        let terms = decode_terms(self, term_rows, component_rows, sources.len())?;
+        let sources = decode_sources(self, source_rows, interrupt)?;
+        let terms = decode_terms(self, term_rows, component_rows, sources.len(), interrupt)?;
         let graph = CompiledTermGraph { sources, terms };
-        graph.validate()?;
-        let absorbed_terms = decode_absorbed_terms(self, minor, graph.sources.len())?;
+        graph.validate_polled(interrupt)?;
+        let absorbed_terms = decode_absorbed_terms(self, minor, graph.sources.len(), interrupt)?;
         let specification = CompiledModelSpecification {
             model: graph,
             absorbed_terms,
         };
-        specification.validate()?;
+        specification.validate_polled(interrupt)?;
+        interrupt()?;
         Ok(specification)
     }
 }
 
-fn decode_sources(wire: &ModelWireV2, source_rows: &[Vec<f64>]) -> Result<Vec<SourceEntry>> {
+fn decode_sources(
+    wire: &ModelWireV2,
+    source_rows: &[Vec<f64>],
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<Vec<SourceEntry>> {
     let mut source_names = reserved(source_rows.len())?;
     let mut sources = reserved(source_rows.len())?;
     for (index, row) in source_rows.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
         let expected = checked_index(index, "source")?;
         let id = positive_u32(row[0], "source id")?;
         if id != expected {
@@ -554,7 +593,7 @@ fn decode_sources(wire: &ModelWireV2, source_rows: &[Vec<f64>]) -> Result<Vec<So
         if name.is_empty() {
             return Err(invalid("source-name registry contains an empty entry"));
         }
-        if source_names.contains(&name) {
+        if execution::any_with(&source_names, |prior| *prior == name, poll)? {
             return Err(invalid(format!("duplicate source registry name {name:?}")));
         }
         source_names.push(name);
@@ -572,10 +611,12 @@ fn decode_terms(
     term_rows: &[Vec<f64>],
     component_rows: &[Vec<f64>],
     source_count: usize,
+    poll: &mut impl FnMut() -> Result<()>,
 ) -> Result<Vec<ExpandedTerm>> {
     let mut term_headers = reserved(term_rows.len())?;
     let mut expected_components = 0_usize;
     for (index, row) in term_rows.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
         let expected = checked_index(index, "term")?;
         let id = positive_u32(row[0], "term id")?;
         let order = positive_u32(row[1], "term order")?;
@@ -617,9 +658,11 @@ fn decode_terms(
     let mut component_index = 0_usize;
     let mut terms = reserved(term_headers.len())?;
     for (term_index, header) in term_headers.into_iter().enumerate() {
+        execution::check_chunk_with(term_index, poll)?;
         let (id, order, slot, raw_kind, component_count, whole_omitted, token) = header;
         let mut components = reserved(component_count)?;
         for local_index in 0..component_count {
+            execution::check_chunk_with(local_index, poll)?;
             let row = &component_rows[component_index];
             let expected_component = checked_index(local_index, "component")?;
             let row_term = positive_u32(row[0], "component term id")?;
@@ -703,12 +746,19 @@ fn decode_absorbed_terms(
     wire: &ModelWireV2,
     minor: u16,
     source_count: usize,
+    poll: &mut impl FnMut() -> Result<()>,
 ) -> Result<Vec<AbsorbedTerm>> {
-    let term_rows = normalized_rows(&wire.absorb_terms, ABSORB_TERM_ROW_WIDTH, "absorbed term")?;
+    let term_rows = normalized_rows(
+        &wire.absorb_terms,
+        ABSORB_TERM_ROW_WIDTH,
+        "absorbed term",
+        poll,
+    )?;
     let component_rows = normalized_rows(
         &wire.absorb_components,
         ABSORB_COMPONENT_ROW_WIDTH,
         "absorbed component",
+        poll,
     )?;
     require_registry(&wire.absorb_labels, term_rows.len(), "absorbed-label")?;
     require_registry(
@@ -736,6 +786,7 @@ fn decode_absorbed_terms(
         .map_err(|_| allocation("unable to reserve absorbed-term headers"))?;
     let mut expected_components = 0_usize;
     for (index, row) in term_rows.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
         let expected_id = checked_index(index, "absorbed term")?;
         let id = positive_u32(row[0], "absorbed-term id")?;
         if id != expected_id {
@@ -781,7 +832,10 @@ fn decode_absorbed_terms(
     terms
         .try_reserve_exact(headers.len())
         .map_err(|_| allocation("unable to reserve absorbed terms"))?;
-    for (id, n_categorical, intercept, n_slopes, label, saved_name) in headers {
+    for (index, (id, n_categorical, intercept, n_slopes, label, saved_name)) in
+        headers.into_iter().enumerate()
+    {
+        execution::check_chunk_with(index, poll)?;
         let mut categorical_sources = Vec::new();
         categorical_sources
             .try_reserve_exact(n_categorical)
@@ -795,6 +849,7 @@ fn decode_absorbed_terms(
             (AbsorbComponentRole::Slope, n_slopes),
         ] {
             for local_index in 0..expected_role.1 {
+                execution::check_chunk_with(local_index, poll)?;
                 let row = &component_rows[component_index];
                 let row_term = positive_u32(row[0], "absorbed-component term id")?;
                 let role = AbsorbComponentRole::from_code(positive_u32(
@@ -838,8 +893,14 @@ fn decode_absorbed_terms(
     Ok(terms)
 }
 
-pub(super) fn validate_absorbed_terms(terms: &[AbsorbedTerm], source_count: usize) -> Result<()> {
+pub(super) fn validate_absorbed_terms_polled(
+    terms: &[AbsorbedTerm],
+    source_count: usize,
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<()> {
+    poll()?;
     for (index, term) in terms.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
         let expected = checked_index(index, "absorbed term")?;
         if term.id.get() != expected {
             return Err(invalid("absorbed-term ids must be contiguous and ordered"));
@@ -857,35 +918,37 @@ pub(super) fn validate_absorbed_terms(terms: &[AbsorbedTerm], source_count: usiz
         if term.label.trim().is_empty() {
             return Err(invalid("absorbed-term label must be nonempty"));
         }
-        if term
-            .categorical_sources
-            .iter()
-            .chain(&term.slope_sources)
-            .any(|source| source.get() as usize > source_count)
-        {
+        if execution::any_with(
+            term.categorical_sources.iter().chain(&term.slope_sources),
+            |source| source.get() as usize > source_count,
+            poll,
+        )? {
             return Err(invalid(
                 "absorbed term references a source outside the source registry",
             ));
         }
     }
-    Ok(())
+    poll()
 }
 
-fn validate_graph(graph: &CompiledTermGraph) -> Result<()> {
+fn validate_graph(graph: &CompiledTermGraph, poll: &mut impl FnMut() -> Result<()>) -> Result<()> {
+    poll()?;
     let source_count = graph.sources.len();
     let mut names = reserved(source_count)?;
     for (index, source) in graph.sources.iter().enumerate() {
+        execution::check_chunk_with(index, poll)?;
         let expected = checked_index(index, "source")?;
         if source.id.get() != expected {
             return Err(invalid("source ids must be contiguous and ordered"));
         }
-        if source.canonical_name.trim().is_empty() || names.contains(&source.canonical_name.trim())
-        {
+        let name = source.canonical_name.trim();
+        if name.is_empty() || execution::any_with(&names, |prior| *prior == name, poll)? {
             return Err(invalid("source names must be nonempty and unique"));
         }
-        names.push(source.canonical_name.trim());
+        names.push(name);
     }
     for (term_index, term) in graph.terms.iter().enumerate() {
+        execution::check_chunk_with(term_index, poll)?;
         let expected = checked_index(term_index, "term")?;
         if term.id.get() != expected
             || term.order.get() != expected
@@ -899,6 +962,7 @@ fn validate_graph(graph: &CompiledTermGraph) -> Result<()> {
             return Err(invalid("terms require a canonical token and components"));
         }
         for (component_index, component) in term.components.iter().enumerate() {
+            execution::check_chunk_with(component_index, poll)?;
             let expected_component = checked_index(component_index, "component")?;
             if component.order.get() != expected_component
                 || component.source.get() as usize > source_count
@@ -918,7 +982,7 @@ fn validate_graph(graph: &CompiledTermGraph) -> Result<()> {
         }
         validate_term_shape(term.raw_kind, &term.components, term_index + 1)?;
     }
-    Ok(())
+    poll()
 }
 
 fn validate_term_shape(kind: RawTermKind, components: &[TermComponent], row: usize) -> Result<()> {
@@ -1059,9 +1123,10 @@ fn normalized_rows<'a>(
     table: &'a NumericWireTable,
     width: usize,
     label: &str,
+    poll: &mut impl FnMut() -> Result<()>,
 ) -> Result<&'a [Vec<f64>]> {
     let count = nonnegative_usize(table.declared_count, &format!("{label} row count"))?;
-    if table.rows.iter().any(|row| row.len() != width) {
+    if execution::any_with(&table.rows, |row| row.len() != width, poll)? {
         return Err(invalid(format!(
             "{label} table rows must have width {width}"
         )));
@@ -1079,7 +1144,11 @@ fn normalized_rows<'a>(
             table.rows.len()
         )))
     } else {
-        if table.rows.iter().flatten().any(|value| !value.is_finite()) {
+        if execution::any_with(
+            table.rows.iter().flatten(),
+            |value| !value.is_finite(),
+            poll,
+        )? {
             return Err(invalid(format!(
                 "{label} table contains a nonfinite numeric field"
             )));

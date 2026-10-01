@@ -5,6 +5,7 @@ mod ppml;
 use crate::{
     data::{DropReason, Prepared},
     error::{reserved, ErrorCode, FeregError, Result},
+    execution,
     fe::Certificate,
 };
 pub(crate) use ols::ols_polled;
@@ -43,6 +44,14 @@ pub struct Request {
 }
 impl Request {
     pub(crate) fn kinds(&self, mean: bool) -> Result<Vec<Kind>> {
+        self.kinds_polled(mean, &mut || Ok(()))
+    }
+    pub(crate) fn kinds_polled(
+        &self,
+        mean: bool,
+        poll: &mut impl FnMut() -> Result<()>,
+    ) -> Result<Vec<Kind>> {
+        poll()?;
         let mut kinds = reserved(
             self.saved
                 .len()
@@ -61,13 +70,15 @@ impl Request {
                 kinds.push(kind);
             }
         }
-        for &(effect, channel) in &self.saved {
+        for (index, &(effect, channel)) in self.saved.iter().enumerate() {
+            execution::check_chunk_with(index, poll)?;
             let kind = Kind::Saved { effect, channel };
-            if kinds.contains(&kind) {
+            if execution::any_with(&kinds, |prior| *prior == kind, poll)? {
                 return Err(invalid("saved FE channel requested more than once"));
             }
             kinds.push(kind);
         }
+        poll()?;
         Ok(kinds)
     }
 }

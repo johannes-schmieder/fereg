@@ -25,3 +25,4 @@ remain distinct until migration.
 | [0008](0008-dependencies-licensing.md) | Dependencies and GPLv3 direction | Accepted |
 | [0009](0009-factor-domain-precedence.md) | Ordinary factor sample precedence | Accepted |
 | [0010](0010-engine-size-guidance.md) | Engine size guidance and retained limits | Accepted |
+| [0011](0011-caller-preflight-callbacks.md) | Caller callbacks cover preloading admission | Accepted |

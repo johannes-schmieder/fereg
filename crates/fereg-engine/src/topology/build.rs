@@ -44,7 +44,7 @@ fn prepare(
     poll: Poll<'_>,
 ) -> Result<Prepared> {
     execution::check(poll)?;
-    spec.validate()?;
+    spec.validate_polled(&mut || execution::check(poll))?;
     sample.validate_alignment_polled(poll)?;
     if sample.regressors.len() != spec.model.sources.len() {
         return Err(invalid("prepared source bank and model registry differ"));

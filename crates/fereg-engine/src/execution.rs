@@ -59,8 +59,19 @@ pub(crate) fn check(poll: Poll<'_>) -> Result<()> {
 
 /// Fixed work partitions bound host-poll latency without changing additions.
 pub(crate) fn check_chunk(poll: Poll<'_>, position: usize) -> Result<()> {
-    if poll.is_some() && position != 0 && position % REDUCTION_CHUNK == 0 {
-        check(poll)?;
+    if poll.is_some() {
+        check_chunk_with(position, &mut || check(poll))?;
+    }
+    Ok(())
+}
+
+/// Preflight has no worker team yet; its borrowed callback stays on the caller.
+pub(crate) fn check_chunk_with(
+    position: usize,
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<()> {
+    if position != 0 && position % REDUCTION_CHUNK == 0 {
+        poll()?;
     }
     Ok(())
 }
@@ -82,14 +93,24 @@ where
 }
 pub(crate) fn any<I>(
     values: I,
-    mut predicate: impl FnMut(I::Item) -> bool,
+    predicate: impl FnMut(I::Item) -> bool,
     poll: Poll<'_>,
 ) -> Result<bool>
 where
     I: IntoIterator,
 {
+    any_with(values, predicate, &mut || check(poll))
+}
+pub(crate) fn any_with<I>(
+    values: I,
+    mut predicate: impl FnMut(I::Item) -> bool,
+    poll: &mut impl FnMut() -> Result<()>,
+) -> Result<bool>
+where
+    I: IntoIterator,
+{
     for (position, value) in values.into_iter().enumerate() {
-        check_chunk(poll, position)?;
+        check_chunk_with(position, poll)?;
         if predicate(value) {
             return Ok(true);
         }

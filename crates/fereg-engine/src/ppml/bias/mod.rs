@@ -5,7 +5,7 @@ mod certificate;
 mod diagnostics;
 mod information;
 mod model;
-pub(crate) use model::validate_model;
+pub(crate) use model::validate_model_polled;
 mod moments;
 pub mod philox;
 mod publication;
