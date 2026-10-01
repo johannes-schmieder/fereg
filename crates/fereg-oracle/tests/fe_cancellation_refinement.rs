@@ -2,7 +2,7 @@
 #![deny(clippy::too_many_lines)]
 use fereg_engine::{
     data::{DenseMatrix, Weights},
-    fe::{Design, Engine},
+    fe::{CmgSession, Design, Engine, Plan},
     spec::{Estimator, Options, Solver},
     threads::ThreadTeam,
 };
@@ -64,6 +64,74 @@ fn error(actual: &[f64], expected: &[f64], weights: &[f64]) -> f64 {
         weights,
     ) / norm(expected, weights)
 }
+fn candidate_evidence(
+    label: &str,
+    design: &Design<'_>,
+    rhs: &DenseMatrix,
+    coefficients: &DenseMatrix,
+    fixture: &Fixture,
+    tolerance: f64,
+    team: &ThreadTeam,
+) -> fereg_engine::Result<()> {
+    let residuals = design.reconstruct(rhs, coefficients, team)?;
+    let residual = residuals.column(0)?;
+    eprintln!(
+        "CMG {label}: witness error={:.17e}, weighted RHS norm={:.17e}, weighted residual norm={:.17e}, certificate={:?}",
+        error(&residual, &fixture.residual, &fixture.weights),
+        norm(&fixture.response, &fixture.weights),
+        norm(&residual, &fixture.weights),
+        design.certify(rhs, coefficients, &residuals, tolerance, team),
+    );
+    Ok(())
+}
+fn cmg_candidate_evidence(
+    design: &Design<'_>,
+    rhs: &DenseMatrix,
+    fixture: &Fixture,
+    options: &Options,
+    team: &ThreadTeam,
+) -> fereg_engine::Result<()> {
+    let plan = Plan::new(design, Estimator::Ppml, options)?;
+    let mut session = CmgSession::new(design, plan.cmg_core().unwrap())?;
+    let preparation = session.prepare(plan.linear_budget(), plan.tolerance(), team);
+    eprintln!("CMG diagnostic setup work={:?}", session.setup_progress());
+    preparation?;
+    let initial = session.solve(rhs, plan.linear_budget(), plan.tolerance(), team)?;
+    eprintln!("CMG initial candidate work={:?}", initial.progress);
+    candidate_evidence(
+        "initial",
+        design,
+        rhs,
+        &initial.coefficients,
+        fixture,
+        plan.tolerance(),
+        team,
+    )?;
+    let refined = session.solve_refined(rhs, plan.linear_budget(), plan.tolerance(), team)?;
+    eprintln!("CMG refined candidate work={:?}", refined.progress);
+    candidate_evidence(
+        "refined",
+        design,
+        rhs,
+        &refined.coefficients,
+        fixture,
+        plan.tolerance(),
+        team,
+    )?;
+    let mut gauged = DenseMatrix::from_columns(&[refined.coefficients.column(0)?])?;
+    let normalization = design.normalize_coefficients(&mut gauged, plan.tolerance(), team);
+    eprintln!("CMG diagnostic gauge result={normalization:?}");
+    normalization?;
+    candidate_evidence(
+        "gauged",
+        design,
+        rhs,
+        &gauged,
+        fixture,
+        plan.tolerance(),
+        team,
+    )
+}
 #[test]
 fn captured_tiny_recovery_retains_acceptance_and_independent_accuracy() {
     let f = fixture();
@@ -93,6 +161,14 @@ fn captured_tiny_recovery_retains_acceptance_and_independent_accuracy() {
             };
             let mut engine = Engine::new(&design, Estimator::Ppml, &options, &team).unwrap();
             let result = engine.project(&rhs, &team);
+            // Observe a fresh unaccepted candidate without changing publication
+            // guards; Linux can reject a refinement that settles on this Mac.
+            if solver == Solver::Cmg && workers == 1 {
+                eprintln!(
+                    "CMG candidate diagnostic result={:?}",
+                    cmg_candidate_evidence(&design, &rhs, &f, &options, &team),
+                );
+            }
             // Machine roundoff can change whether a tiny fitted update is
             // accepted. Every success still needs the unchanged independent
             // witness and original score certificate.
