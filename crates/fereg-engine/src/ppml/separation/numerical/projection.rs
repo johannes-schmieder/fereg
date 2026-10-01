@@ -2,6 +2,7 @@ use super::{cone::failed, DirectionProposal, Model, SpanValidation};
 use crate::{
     data::Weights,
     error::{reserved, Result},
+    execution,
     fe::{Design, Engine},
     ppml::separation::View,
     spec::Estimator,
@@ -16,16 +17,15 @@ pub(super) fn certify(
     team: &ThreadTeam,
 ) -> Result<SpanValidation> {
     model.validate(view)?;
+    let poll = model.probe.dense();
     // A positive rescaling preserves the cone and prevents magnitude alone
     // from overflowing or underflowing the fresh span solve and its norm ratio.
     let mut normalized = reserved(proposal.direction.len())?;
-    normalized.extend(
-        proposal
-            .direction
-            .iter()
-            .map(|v| v / proposal.certificate.direction_scale),
-    );
-    let design = Design::new(view.sample, Weights::Unit)?;
+    for (row, &value) in proposal.direction.iter().enumerate() {
+        execution::check_chunk(poll, row)?;
+        normalized.push(value / proposal.certificate.direction_scale);
+    }
+    let design = Design::new_polled(view.sample, Weights::Unit, poll)?;
     let options = model.span_options()?;
     let mut engine = Engine::new_polled(
         &design,
@@ -48,8 +48,8 @@ pub(super) fn certify(
         &mut work,
         team,
     )?;
-    let norm = normalized.iter().fold(0_f64, |n, &v| n.hypot(v));
-    let residual_norm = fit.residuals.iter().fold(0_f64, |n, &v| n.hypot(v));
+    let norm = execution::fold(&normalized, 0_f64, poll, |n, &v| n.hypot(v))?;
+    let residual_norm = execution::fold(&fit.residuals, 0_f64, poll, |n, &v| n.hypot(v))?;
     let span_residual_relative = residual_norm / norm;
     if !span_residual_relative.is_finite()
         || span_residual_relative > model.controls.projection_tolerance
@@ -59,6 +59,7 @@ pub(super) fn certify(
             model.controls.projection_tolerance, fit.relative_original_finite_score
         )));
     }
+    execution::check(poll)?;
     Ok(SpanValidation {
         certificate: proposal.certificate,
         span_residual_relative,

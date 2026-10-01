@@ -81,13 +81,25 @@ impl DenseMatrix {
 
     /// Callers validate row/coefficient dimensions before iterating a frame.
     pub(crate) fn row_combination(&self, row: usize, coefficients: &[f64], constant: f64) -> f64 {
-        crate::threads::compensated_sum(
+        self.row_combination_polled(row, coefficients, constant, None)
+            .expect("disabled polling cannot fail")
+    }
+
+    pub(crate) fn row_combination_polled(
+        &self,
+        row: usize,
+        coefficients: &[f64],
+        constant: f64,
+        poll: Poll<'_>,
+    ) -> Result<f64> {
+        execution::sum(
             std::iter::once(constant).chain(
                 coefficients
                     .iter()
                     .enumerate()
                     .map(|(column, beta)| self[(row, column)] * beta),
             ),
+            poll,
         )
     }
 

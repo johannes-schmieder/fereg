@@ -12,7 +12,7 @@ use crate::{
 
 pub(super) fn design<'a>(view: View<'a>, model: &Model<'_>) -> Result<Design<'a>> {
     model.validate(view)?;
-    let design = Design::new(view.sample(), Weights::Unit)?;
+    let design = Design::new_polled(view.sample(), Weights::Unit, model.probe.dense())?;
     Plan::new(&design, Estimator::Ppml, &model.options)?;
     Ok(design)
 }

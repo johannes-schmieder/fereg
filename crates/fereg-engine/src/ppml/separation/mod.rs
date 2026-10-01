@@ -34,3 +34,5 @@ pub(crate) use coordinator::run_polled;
 
 #[cfg(test)]
 mod generation_tests;
+#[cfg(test)]
+mod numerical_interruption_tests;

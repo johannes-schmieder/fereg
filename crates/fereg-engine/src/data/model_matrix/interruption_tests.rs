@@ -2,6 +2,44 @@ use super::*;
 use crate::{execution::interruption_tests::every_checkpoint, threads::ThreadTeam};
 
 #[test]
+fn compensated_row_combinations_cancel_long_columns_without_changing_bits() {
+    let width = 4099;
+    let values: Vec<_> = (0..2)
+        .flat_map(|row| {
+            (0..width).map(move |column| {
+                (row + 1) as f64
+                    * if column + 1 == width {
+                        -0.25
+                    } else {
+                        [1e16, 1., -1e16][column % 3]
+                    }
+            })
+        })
+        .collect();
+    let matrix = DenseMatrix::from_row_major(2, width, values).unwrap();
+    let coefficients = vec![1.; width];
+    for workers in [1, 8] {
+        let team = ThreadTeam::new(workers).unwrap();
+        for row in 0..2 {
+            let expected = (row + 1) as f64 * 1365.75;
+            assert_eq!(
+                matrix.row_combination(row, &coefficients, 0.).to_bits(),
+                expected.to_bits()
+            );
+            let count = team.install(|| {
+                every_checkpoint(|poll| {
+                    let value =
+                        matrix.row_combination_polled(row, &coefficients, -expected, poll)?;
+                    assert_eq!(value.to_bits(), 0_f64.to_bits());
+                    Ok(value)
+                })
+            });
+            assert_eq!(count, 4);
+        }
+    }
+}
+
+#[test]
 fn reported_recipe_binding_cancels_rows_columns_and_long_interactions_without_regeneration() {
     let n = 2053;
     let continuous = vec![(0..n).map(|i| (i % 3) as f64).collect(), vec![1.; n]];

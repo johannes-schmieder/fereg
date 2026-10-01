@@ -1,19 +1,21 @@
 use super::*;
+use crate::execution::{self, Poll};
 #[derive(Debug, Clone, Copy)]
 pub(super) enum Purpose {
     Publication,
     Mu { tolerance: f64 },
 }
 impl Purpose {
-    fn candidate(self, outcome: &[f64], mean: &[f64]) -> bool {
+    fn candidate(self, outcome: &[f64], mean: &[f64], poll: Poll<'_>) -> Result<bool> {
         let Self::Mu { tolerance } = self else {
-            return false;
+            return Ok(false);
         };
-        let threshold = MeanThreshold::new(outcome, mean, tolerance);
-        outcome
-            .iter()
-            .zip(mean)
-            .any(|(&y, &mu)| threshold.candidate(y, mu))
+        let threshold = MeanThreshold::new_polled(outcome, mean, tolerance, poll)?;
+        execution::any(
+            outcome.iter().zip(mean),
+            |(&y, &mu)| threshold.candidate(y, mu),
+            poll,
+        )
     }
     fn exploration(self) -> bool {
         matches!(self, Self::Mu { .. })
@@ -116,7 +118,11 @@ impl<'a> Context<'a, '_, '_> {
             diagnostics.step_halvings += accepted.halvings();
             let scores = self.accepted_scores(&accepted, &basis)?;
             diagnostics.accepted_iterations = convergence.accepted_steps() + 1;
-            if purpose.candidate(&self.problem.sample.outcome, &accepted.evaluation().mean) {
+            if purpose.candidate(
+                &self.problem.sample.outcome,
+                &accepted.evaluation().mean,
+                self.probe.dense(),
+            )? {
                 return Ok(integrity.finish(
                     accepted,
                     diagnostics,

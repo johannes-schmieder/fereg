@@ -118,7 +118,7 @@ impl View<'_> {
         let capacity = capacity::estimate(self, &design, model.raw.ncols())?;
         let mut report = SimplexReport {
             generation: self.generation(),
-            sample_identity: self.numerical_identity(),
+            sample_identity: self.numerical_identity_polled(model.probe.dense())?,
             solver: model.options.solver,
             controls: model.controls,
             limits,
@@ -162,7 +162,7 @@ impl View<'_> {
         limits: SimplexLimits,
         interrupt: &mut Interrupt<'_>,
     ) -> Result<SimplexTerminal> {
-        binding(self, observed, limits)?;
+        binding(self, observed, limits, model.probe.dense())?;
         if observed.direction.is_some()
             || !matches!(observed.status, Status::NoCandidates | Status::NoSeparation)
         {
@@ -211,7 +211,7 @@ impl Ledger {
     ) -> Result<(SimplexTerminal, IrTerminal)> {
         let limits = controls.simplex;
         let ir_budget = controls.ir_iterations;
-        binding(self.view(), observed, limits)?;
+        binding(self.view(), observed, limits, model.probe.dense())?;
         if !self.policy.methods.contains(Method::Simplex)
             || !self.policy.methods.contains(Method::IteratedRectifier)
             || observed.status != Status::SkippedCapacity
@@ -234,9 +234,14 @@ impl Ledger {
         Ok((seal(&fresh), terminal))
     }
 }
-fn binding(view: View<'_>, observed: &SimplexReport, limits: SimplexLimits) -> Result<()> {
+fn binding(
+    view: View<'_>,
+    observed: &SimplexReport,
+    limits: SimplexLimits,
+    poll: crate::execution::Poll<'_>,
+) -> Result<()> {
     if observed.generation != view.generation()
-        || observed.sample_identity != view.numerical_identity()
+        || observed.sample_identity != view.numerical_identity_polled(poll)?
         || observed.limits != limits
     {
         return Err(invalid(

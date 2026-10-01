@@ -27,16 +27,24 @@ pub struct Design<'a> {
 }
 impl<'a> Design<'a> {
     pub fn new(sample: &'a Prepared, weights: Weights<'a>) -> Result<Self> {
-        sample.validate_alignment()?;
+        Self::new_polled(sample, weights, None)
+    }
+    pub(crate) fn new_polled(
+        sample: &'a Prepared,
+        weights: Weights<'a>,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        sample.validate_alignment_polled(poll)?;
         let topology = sample
             .topology
             .as_ref()
             .ok_or_else(|| invalid("FE design requires prepared topology"))?;
-        topology.validate(sample)?;
-        weights.validate(sample.n_active())?;
+        topology.validate_polled(sample, poll)?;
+        weights.validate_polled(sample.n_active(), poll)?;
         let mut effects = reserved(topology.effects().len())?;
         let mut total = 0usize;
         for (index, effect) in topology.effects().iter().enumerate() {
+            execution::check_chunk(poll, index)?;
             let levels = topology.effect_partition(index)?.n_levels();
             let channels = usize::from(effect.intercept)
                 .checked_add(effect.slopes.len())
@@ -50,6 +58,7 @@ impl<'a> Design<'a> {
                 .checked_add(levels.checked_mul(channels).ok_or_else(allocation)?)
                 .ok_or_else(allocation)?;
         }
+        execution::check(poll)?;
         Ok(Self {
             sample,
             topology,

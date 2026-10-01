@@ -1,19 +1,36 @@
 use super::*;
+use crate::execution::{self, Poll};
+#[cfg(test)]
+mod interruption_tests;
 pub(crate) struct MeanThreshold {
     pub(crate) reference: f64,
     tolerance: f64,
 }
 impl MeanThreshold {
-    pub(crate) fn new(outcome: &[f64], mean: &[f64], tolerance: f64) -> Self {
-        let reference = outcome
-            .iter()
-            .zip(mean)
-            .filter_map(|(&y, &mu)| (y > 0.).then_some(mu))
-            .fold(f64::INFINITY, f64::min);
-        Self {
+    pub(crate) fn new_polled(
+        outcome: &[f64],
+        mean: &[f64],
+        tolerance: f64,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
+        let reference = execution::fold(
+            outcome.iter().zip(mean),
+            f64::INFINITY,
+            poll,
+            |reference, (&y, &mu)| {
+                if y > 0. {
+                    reference.min(mu)
+                } else {
+                    reference
+                }
+            },
+        )?;
+        execution::check(poll)?;
+        Ok(Self {
             reference,
             tolerance,
-        }
+        })
     }
     pub(crate) fn candidate(&self, y: f64, mu: f64) -> bool {
         y == 0. && mu <= self.tolerance * self.reference

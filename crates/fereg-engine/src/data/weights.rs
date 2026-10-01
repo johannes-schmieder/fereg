@@ -43,7 +43,15 @@ impl Weights<'_> {
         }
     }
     pub(crate) fn validate(self, nobs: usize) -> crate::error::Result<()> {
+        self.validate_polled(nobs, None)
+    }
+    pub(crate) fn validate_polled(
+        self,
+        nobs: usize,
+        poll: crate::execution::Poll<'_>,
+    ) -> crate::error::Result<()> {
         use crate::error::{ErrorCode, FeregError};
+        crate::execution::check(poll)?;
         let length = match self {
             Self::Unit => nobs,
             Self::Provided(values) => values.len(),
@@ -56,16 +64,13 @@ impl Weights<'_> {
             ));
         }
         if let Self::Provided(values) = self {
-            if values
-                .iter()
-                .any(|value| !value.is_finite() || *value <= 0.)
-            {
+            if crate::execution::any(values, |value| !value.is_finite() || *value <= 0., poll)? {
                 return Err(FeregError::new(
                     ErrorCode::InvalidData,
                     "objective weights must be positive and finite",
                 ));
             }
         }
-        Ok(())
+        crate::execution::check(poll)
     }
 }

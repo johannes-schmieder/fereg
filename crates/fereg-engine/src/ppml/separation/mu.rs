@@ -3,6 +3,7 @@ use super::{invalid, Controls, DirectionProposal, Method, Model, Status, View};
 use crate::{
     data::Weights,
     error::{reserved, ErrorCode, FeregError, Result},
+    execution,
     fe::{Design, Engine, Plan},
     ppml::{
         irls::{self, Diagnostics, MuCertificate, Problem},
@@ -74,7 +75,8 @@ impl View<'_> {
         interrupt: &mut Interrupt<'_>,
     ) -> Result<MuReport> {
         model.validate(self)?;
-        let design = Design::new(self.sample(), Weights::Unit)?;
+        let poll = model.probe.dense();
+        let design = Design::new_polled(self.sample(), Weights::Unit, poll)?;
         Plan::new(&design, Estimator::Ppml, &model.options)?;
         drop(design);
         let (mean, trajectory, diagnostics) = irls::explore_mu(
@@ -90,19 +92,17 @@ impl View<'_> {
             model.probe,
         )?
         .into_parts();
-        let threshold = irls::MeanThreshold::new(&self.sample().outcome, &mean, mu_tolerance);
+        let threshold =
+            irls::MeanThreshold::new_polled(&self.sample().outcome, &mean, mu_tolerance, poll)?;
         let mut candidate = reserved(self.sample().n_active())?;
-        candidate.extend(self.sample().outcome.iter().zip(&mean).map(|(&y, &mu)| {
-            if threshold.candidate(y, mu) {
-                1.
-            } else {
-                0.
-            }
-        }));
-        let candidates = candidate.iter().filter(|&&v| v == 1.).count();
+        for (row, (&y, &mu)) in self.sample().outcome.iter().zip(&mean).enumerate() {
+            execution::check_chunk(poll, row)?;
+            candidate.push(if threshold.candidate(y, mu) { 1. } else { 0. });
+        }
+        let candidates = execution::fold(&candidate, 0, poll, |n, &v| n + usize::from(v == 1.))?;
         let mut report = MuReport {
             generation: self.generation(),
-            sample_identity: self.numerical_identity(),
+            sample_identity: self.numerical_identity_polled(poll)?,
             controls: model.controls,
             solver: model.options.solver,
             linear_tolerance: model.options.tolerance,
@@ -121,21 +121,24 @@ impl View<'_> {
         // final estimator fit always starts fresh after separation completes.
         drop(mean);
         if candidates == 0 {
+            execution::check(poll)?;
             return Ok(report);
         }
         interrupt(InterruptPoint::LinearFrame)?;
         let direction = self.mu_projection(&candidate, model, &mut report.work, team)?;
         report.projection_frames = 1;
-        let proposal = self.direction_proposal(
+        let proposal = self.direction_proposal_polled(
             Method::Mu,
             report.trajectory.accepted_iterations,
             direction,
             model.controls,
+            poll,
         )?;
         // This is still only a cone claim. The ledger independently certifies
         // its original-model span before accepting any row.
         report.status = Status::Certified;
         report.direction = Some(proposal);
+        execution::check(poll)?;
         Ok(report)
     }
     pub fn replay_mu(
@@ -156,7 +159,7 @@ impl View<'_> {
         interrupt: &mut Interrupt<'_>,
     ) -> Result<MuTerminal> {
         if observed.generation != self.generation()
-            || observed.sample_identity != self.numerical_identity()
+            || observed.sample_identity != self.numerical_identity_polled(model.probe.dense())?
             || observed.mu_tolerance != mu_tolerance
         {
             return Err(invalid(
@@ -188,7 +191,8 @@ impl View<'_> {
         work: &mut Work,
         team: &ThreadTeam,
     ) -> Result<Vec<f64>> {
-        let design = Design::new(self.sample(), Weights::Unit)?;
+        let poll = model.probe.dense();
+        let design = Design::new_polled(self.sample(), Weights::Unit, poll)?;
         let mut engine = Engine::new_polled(
             &design,
             Estimator::Ppml,
@@ -210,8 +214,12 @@ impl View<'_> {
             team,
         )?;
         let mut direction =
-            super::numerical::fitted(model.raw, &design, &fit, team)?.into_row_major();
-        direction.iter_mut().for_each(|v| *v = -*v);
+            super::numerical::fitted(model.raw, &design, &fit, team, poll)?.into_row_major();
+        for (row, value) in direction.iter_mut().enumerate() {
+            execution::check_chunk(poll, row)?;
+            *value = -*value;
+        }
+        execution::check(poll)?;
         Ok(direction)
     }
 }

@@ -3,7 +3,12 @@ mod cone;
 mod projection;
 use super::{invalid, Commit, Method, Status, View};
 use crate::{
-    data::DenseMatrix, error::Result, fe::RhsDiagnostics, spec::Options, threads::ThreadTeam,
+    data::DenseMatrix,
+    error::Result,
+    execution::{self, Poll},
+    fe::RhsDiagnostics,
+    spec::Options,
+    threads::ThreadTeam,
     wls::Role,
 };
 
@@ -14,14 +19,19 @@ pub(super) fn fitted(
     design: &crate::fe::Design<'_>,
     fit: &crate::wls::AbsorbedFit,
     team: &ThreadTeam,
+    poll: Poll<'_>,
 ) -> Result<DenseMatrix> {
+    execution::check(poll)?;
     if raw.nrows() != design.nobs() || raw.ncols() != fit.finite.coefficients.len() {
         return Err(invalid("separation fitted-model dimensions differ"));
     }
-    let mut result = design.multiply(&fit.absorbed_coefficients, team)?;
+    let mut result = design.multiply_polled(&fit.absorbed_coefficients, team, poll)?;
     for row in 0..raw.nrows() {
-        result[(row, 0)] = raw.row_combination(row, &fit.finite.coefficients, result[(row, 0)]);
+        execution::check_chunk(poll, row)?;
+        result[(row, 0)] =
+            raw.row_combination_polled(row, &fit.finite.coefficients, result[(row, 0)], poll)?;
     }
+    execution::check(poll)?;
     Ok(result)
 }
 
@@ -108,15 +118,27 @@ impl View<'_> {
         direction: Vec<f64>,
         controls: Controls,
     ) -> Result<DirectionProposal> {
+        self.direction_proposal_polled(method, iterations, direction, controls, None)
+    }
+    pub(crate) fn direction_proposal_polled(
+        self,
+        method: Method,
+        iterations: usize,
+        direction: Vec<f64>,
+        controls: Controls,
+        poll: Poll<'_>,
+    ) -> Result<DirectionProposal> {
         if method == Method::FixedEffects || iterations == 0 {
             return Err(invalid(
                 "invalid numerical separation method or iteration count",
             ));
         }
-        let (rows, certificate) = cone::claim(self, &direction, controls)?;
+        let (rows, certificate) = cone::claim(self, &direction, controls, poll)?;
+        let sample_identity = self.numerical_identity_polled(poll)?;
+        execution::check(poll)?;
         Ok(DirectionProposal {
             generation: self.generation,
-            sample_identity: self.numerical_identity(),
+            sample_identity,
             method,
             status: Status::Certified,
             iterations,
@@ -132,8 +154,10 @@ impl View<'_> {
         model: &Model<'_>,
         team: &ThreadTeam,
     ) -> Result<SpanValidation> {
+        let poll = model.probe.dense();
+        execution::check(poll)?;
         if proposal.generation != self.generation
-            || proposal.sample_identity != self.numerical_identity()
+            || proposal.sample_identity != self.numerical_identity_polled(poll)?
             || proposal.method == Method::FixedEffects
             || proposal.iterations == 0
             || proposal.status != Status::Certified
@@ -142,8 +166,11 @@ impl View<'_> {
                 "stale or inconsistent numerical separation proposal",
             ));
         }
-        let (rows, certificate) = cone::claim(self, &proposal.direction, model.controls)?;
-        if proposal.rows != rows || proposal.certificate != certificate {
+        let (rows, certificate) = cone::claim(self, &proposal.direction, model.controls, poll)?;
+        if proposal.rows.len() != rows.len()
+            || execution::any(proposal.rows.iter().zip(&rows), |(a, b)| a != b, poll)?
+            || proposal.certificate != certificate
+        {
             return Err(invalid(
                 "numerical proposal rows or certificate disagree with its direction",
             ));
@@ -151,13 +178,22 @@ impl View<'_> {
         projection::certify(self, proposal, model, team)
     }
 
-    pub(super) fn numerical_identity(self) -> u64 {
+    pub(super) fn numerical_identity_polled(self, poll: Poll<'_>) -> Result<u64> {
+        execution::check(poll)?;
         let mut hash = 0xcbf29ce484222325_u64;
-        for (&row, &y) in self.sample.retained_rows().iter().zip(&self.sample.outcome) {
+        for (index, (&row, &y)) in self
+            .sample
+            .retained_rows()
+            .iter()
+            .zip(&self.sample.outcome)
+            .enumerate()
+        {
+            execution::check_chunk(poll, index)?;
             hash = (hash ^ row as u64).wrapping_mul(0x100000001b3);
             hash = (hash ^ y.to_bits()).wrapping_mul(0x100000001b3);
         }
-        hash
+        execution::check(poll)?;
+        Ok(hash)
     }
 }
 
@@ -167,13 +203,13 @@ impl Model<'_> {
         self.options.validate()?;
         if self.raw.nrows() != view.sample.n_active()
             || self.raw.ncols() != self.roles.len()
-            || self.raw.as_slice().iter().any(|v| !v.is_finite())
+            || execution::any(self.raw.as_slice(), |v| !v.is_finite(), self.probe.dense())?
         {
             return Err(invalid(
                 "separation model is malformed or not aligned to this generation",
             ));
         }
-        Ok(())
+        execution::check(self.probe.dense())
     }
     pub(super) fn projection_options(&self) -> Options {
         Options {

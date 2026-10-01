@@ -1,6 +1,7 @@
 //! Temporary independent heap observation; production has no allocator coupling.
 mod fixture;
 mod generation;
+mod numerical;
 mod ols_controller;
 mod ppml_controller;
 mod preflight;

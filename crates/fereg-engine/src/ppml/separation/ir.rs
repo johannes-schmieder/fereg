@@ -88,7 +88,7 @@ impl View<'_> {
         let options = model.projection_options();
         let report = IrReport {
             generation: self.generation(),
-            sample_identity: self.numerical_identity(),
+            sample_identity: self.numerical_identity_polled(model.probe.dense())?,
             controls: model.controls,
             solver: options.solver,
             linear_tolerance: options.tolerance,
@@ -121,7 +121,7 @@ impl View<'_> {
         interrupt: &mut Interrupt<'_>,
     ) -> Result<IrTerminal> {
         if observed.generation != self.generation()
-            || observed.sample_identity != self.numerical_identity()
+            || observed.sample_identity != self.numerical_identity_polled(model.probe.dense())?
             || observed.budget != max_iterations
         {
             return Err(invalid(

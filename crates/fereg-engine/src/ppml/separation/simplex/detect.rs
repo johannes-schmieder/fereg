@@ -74,7 +74,13 @@ pub(super) fn run(
                 && maximum > 0.
             {
                 let z = multiply(matrix, direction, -sign)?;
-                match view.direction_proposal(Method::Simplex, 1, z, model.controls) {
+                match view.direction_proposal_polled(
+                    Method::Simplex,
+                    1,
+                    z,
+                    model.controls,
+                    model.probe.dense(),
+                ) {
                     Ok(proposal) => {
                         report.status = Status::Certified;
                         report.direction = Some(proposal);
@@ -101,11 +107,12 @@ pub(super) fn run(
             let direction = multiply(matrix, &gamma, -1.)?;
             // A shortcut/zero-pivot solution is still one executed detector
             // pass; the actual phase-I pivot count is separately exact.
-            let proposal: DirectionProposal = view.direction_proposal(
+            let proposal: DirectionProposal = view.direction_proposal_polled(
                 Method::Simplex,
                 iterations.max(1),
                 direction,
                 model.controls,
+                model.probe.dense(),
             )?;
             report.status = Status::Certified;
             report.direction = Some(proposal);
