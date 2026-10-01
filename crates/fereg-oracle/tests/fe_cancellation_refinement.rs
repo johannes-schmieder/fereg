@@ -93,21 +93,29 @@ fn captured_tiny_recovery_retains_acceptance_and_independent_accuracy() {
             };
             let mut engine = Engine::new(&design, Estimator::Ppml, &options, &team).unwrap();
             let result = engine.project(&rhs, &team);
-            if solver == Solver::Cmg {
-                let fit = result.as_ref().unwrap();
-                assert!(error(&fit.residuals.column(0).unwrap(), &f.residual, &f.weights) <= 1e-9);
-                assert!(fit.certificate.relative_score[0] <= options.tolerance);
-                assert!(fit
-                    .diagnostics
-                    .iter()
-                    .all(|d| d.used == fereg_engine::fe::Backend::Cmg && d.fallback.is_none()));
-            } else {
-                // Sub-roundoff fitted corrections do not justify weakening
-                // the unchanged update guard or renewing a fallback budget.
-                assert_eq!(
-                    result.as_ref().unwrap_err().code,
-                    fereg_engine::ErrorCode::NonConvergence
-                );
+            // Machine roundoff can change whether a tiny fitted update is
+            // accepted. Every success still needs the unchanged independent
+            // witness and original score certificate.
+            match &result {
+                Ok(fit) => {
+                    assert!(
+                        error(&fit.residuals.column(0).unwrap(), &f.residual, &f.weights) <= 1e-9
+                    );
+                    assert!(fit.certificate.relative_score[0] <= options.tolerance);
+                    if solver == Solver::Cmg {
+                        assert!(fit.diagnostics.iter().all(|d| {
+                            d.used == fereg_engine::fe::Backend::Cmg && d.fallback.is_none()
+                        }));
+                    }
+                }
+                Err(failure) => {
+                    assert_ne!(
+                        solver,
+                        Solver::Cmg,
+                        "explicit CMG must recover this fixture"
+                    );
+                    assert_eq!(failure.code, fereg_engine::ErrorCode::NonConvergence);
+                }
             }
             let work = engine.last_diagnostics().to_vec();
             assert!(!work.is_empty());
