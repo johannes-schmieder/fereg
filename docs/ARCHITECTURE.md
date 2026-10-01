@@ -184,7 +184,7 @@ score, with a double-precision floor. Each correction consumes the remaining
 per-RHS budget and increments the same backend attempt's refinement count;
 stagnation/breakdown/exhaustion fails closed. Schur corrections start without
 the original-response warm guess and reuse exact factors. Only the shared
-final certificate accepts a projection; fallback uses the same refined LSMR. A private transient observer can inspect the actual shared guard measurements and borrowed coefficients; callback-free refinement uses that same implementation with a no-op observer. Observations have no numerical authority and are never retained by a factor or session.
+final certificate accepts a projection; fallback uses the same refined LSMR. If fresh reconstruction before/after coefficient addition is exactly unchanged, the effective update is zero; intended corrections still undergo finite-value checks. Otherwise the original fitted-update test remains: response subtraction can add rounding noise at the original RHS floor. A private transient observer can inspect the actual shared guard measurements and borrowed coefficients; callback-free refinement uses that same implementation with a no-op observer. Observations have no numerical authority and are never retained by a factor or session.
 
 CMG maps the supported two-intercept core to a weighted bipartite Laplacian,
 anchors components, and eliminates supported nuisance intercept columns using

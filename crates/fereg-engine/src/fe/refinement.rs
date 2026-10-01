@@ -6,6 +6,8 @@ use crate::{
     execution::{self, Poll},
     threads::ThreadTeam,
 };
+#[cfg(test)]
+mod tests;
 
 pub(super) struct Limits<'a> {
     pub budget: usize,
@@ -66,25 +68,27 @@ where
         let original = DenseMatrix::from_columns(&[rhs.column(column)?])?;
         let mut coefficients = DenseMatrix::from_columns(&[bank.column(column)?])?;
         let progress = &mut reports[column];
+        let Some(mut residual) = retain_numeric_stop(
+            design.reconstruct_polled(&original, &coefficients, team, poll),
+            progress,
+        )?
+        else {
+            continue;
+        };
         let mut previous = f64::INFINITY;
         let mut update = f64::INFINITY;
         let mut previous_update = f64::INFINITY;
         loop {
             execution::check(poll)?;
-            let measured = design
-                .reconstruct_polled(&original, &coefficients, team, poll)
-                .and_then(|residual| {
-                    let evidence = design.measure_certificate(
-                        &original,
-                        &coefficients,
-                        &residual,
-                        tolerance,
-                        team,
-                        poll,
-                    )?;
-                    Ok((residual, evidence))
-                });
-            let Some((residual, evidence)) = retain_numeric_stop(measured, progress)? else {
+            let measured = design.measure_certificate(
+                &original,
+                &coefficients,
+                &residual,
+                tolerance,
+                team,
+                poll,
+            );
+            let Some(evidence) = retain_numeric_stop(measured, progress)? else {
                 break;
             };
             let score = evidence.relative_score[0];
@@ -172,22 +176,34 @@ where
                 progress.stop = StopReason::NumericalBreakdown;
                 break;
             }
-            for row in 0..coefficients.nrows() {
-                execution::check_chunk(poll, row)?;
-                let next = coefficients[(row, 0)] + correction[(row, 0)];
-                if !next.is_finite() {
-                    progress.stop = StopReason::NumericalBreakdown;
-                    break;
-                }
-                coefficients[(row, 0)] = next;
-            }
-            if progress.stop != StopReason::Converged {
+            drop(fitted);
+            if !add_correction(&mut coefficients, &correction, poll)? {
+                progress.stop = StopReason::NumericalBreakdown;
                 break;
             }
             if work.stop != StopReason::Converged {
                 progress.stop = work.stop;
                 break;
             }
+            let Some(next) = retain_numeric_stop(
+                design.reconstruct_polled(&original, &coefficients, team, poll),
+                progress,
+            )?
+            else {
+                break;
+            };
+            // A correction rounded away by coefficient addition/reconstruction
+            // cannot make progress in the returned model. Otherwise retain the
+            // intended fitted-update test: response subtraction can add noise
+            // at the original RHS precision floor to a representable update.
+            if !execution::any(
+                residual.as_slice().iter().zip(next.as_slice()),
+                |(old, new)| old != new,
+                poll,
+            )? {
+                update = 0.;
+            }
+            residual = next;
         }
         for row in 0..coefficients.nrows() {
             bank[(row, column)] = coefficients[(row, 0)];
@@ -209,6 +225,21 @@ fn update_norm(
             value / within_norm
         })
     })
+}
+fn add_correction(
+    coefficients: &mut DenseMatrix,
+    correction: &DenseMatrix,
+    poll: Poll<'_>,
+) -> Result<bool> {
+    for row in 0..coefficients.nrows() {
+        execution::check_chunk(poll, row)?;
+        let next = coefficients[(row, 0)] + correction[(row, 0)];
+        if !next.is_finite() {
+            return Ok(false);
+        }
+        coefficients[(row, 0)] = next;
+    }
+    Ok(true)
 }
 fn correction_target(tolerance: f64, score: f64, reference: f64, within_norm: f64) -> f64 {
     let relative_normal = if within_norm == 0. {

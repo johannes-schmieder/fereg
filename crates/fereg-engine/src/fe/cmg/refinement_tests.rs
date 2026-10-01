@@ -133,20 +133,31 @@ fn captured_tiny_cmg_refinement_observes_the_exact_stopping_measurements() {
             |point, coefficients| {
                 let residual = design.reconstruct(&rhs, coefficients, &team).unwrap();
                 let residual = residual.column(0).unwrap();
-                let applied = previous_residual
-                    .as_ref()
-                    .map(|previous: &Vec<f64>| distance(&residual, previous, &weights));
+                let applied = previous_residual.as_ref().map(
+                    |(previous, within): &(Vec<f64>, f64)| {
+                        residual.iter().zip(previous).zip(&weights).fold(
+                            0_f64,
+                            |norm, ((next, old), weight)| {
+                                norm.hypot(weight.sqrt() * (old - next) / within)
+                            },
+                        )
+                    },
+                );
+                if applied == Some(0.) {
+                    assert_eq!(point.update, 0.);
+                }
                 let forward = distance(&residual, &witness, &weights);
                 eprintln!(
                     "CMG refinement workers={workers}: {point:?}, applied residual update={applied:?}, witness error={forward:.17e}"
                 );
-                previous_residual = Some(residual);
+                previous_residual = Some((residual, point.within_norm));
                 measurements.push(point);
             },
         )
         .unwrap();
         assert_eq!(observed, expected, "observer changed the numerical path");
         assert!(measurements.len() > 1);
+        assert_eq!(measurements.last().unwrap().update, 0.);
         assert_eq!(
             *reference.get_or_insert((measurements.clone(), expected)),
             (measurements, observed)
