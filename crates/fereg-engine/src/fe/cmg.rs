@@ -7,6 +7,8 @@ use crate::{
     linalg::{ScaledDesign, WeightedQr},
     threads::{compensated_sum, ThreadTeam},
 };
+#[cfg(test)]
+mod refinement_tests;
 
 /// One immutable weight frame. Setup work remains observable even when setup
 /// fails; retrying preparation cannot silently acquire a fresh Krylov budget.

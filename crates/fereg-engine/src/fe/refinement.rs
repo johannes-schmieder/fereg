@@ -12,6 +12,18 @@ pub(super) struct Limits<'a> {
     pub tolerance: f64,
     pub poll: Poll<'a>,
 }
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct Measurement {
+    pub column: usize,
+    pub attempt: Attempt,
+    pub score: f64,
+    pub reference_norm: f64,
+    pub within_norm: f64,
+    pub update: f64,
+    pub update_target: f64,
+    pub previous_score: f64,
+    pub previous_update: f64,
+}
 pub(super) fn run<F>(
     design: &Design<'_>,
     rhs: &DenseMatrix,
@@ -19,11 +31,29 @@ pub(super) fn run<F>(
     reports: &mut [Attempt],
     limits: Limits<'_>,
     team: &ThreadTeam,
-    mut solve: F,
+    solve: F,
 ) -> Result<()>
 where
     F: FnMut(&DenseMatrix, usize, f64, &ThreadTeam) -> Result<(DenseMatrix, Vec<Attempt>)>,
 {
+    run_observed(design, rhs, (bank, reports), limits, team, solve, |_, _| ())
+}
+/// A transient observer sees the same measurements that decide refinement;
+/// neither its presence nor its observations have numerical authority.
+pub(super) fn run_observed<F, O>(
+    design: &Design<'_>,
+    rhs: &DenseMatrix,
+    output: (&mut DenseMatrix, &mut [Attempt]),
+    limits: Limits<'_>,
+    team: &ThreadTeam,
+    mut solve: F,
+    mut observe: O,
+) -> Result<()>
+where
+    F: FnMut(&DenseMatrix, usize, f64, &ThreadTeam) -> Result<(DenseMatrix, Vec<Attempt>)>,
+    O: FnMut(Measurement, &DenseMatrix),
+{
+    let (bank, reports) = output;
     let Limits {
         budget,
         tolerance,
@@ -69,6 +99,20 @@ where
             } else {
                 tolerance.max(f64::EPSILON * reference / within_norm)
             };
+            observe(
+                Measurement {
+                    column,
+                    attempt: progress.clone(),
+                    score,
+                    reference_norm: reference,
+                    within_norm,
+                    update,
+                    update_target,
+                    previous_score: previous,
+                    previous_update,
+                },
+                &coefficients,
+            );
             if !update_target.is_finite() {
                 progress.stop = StopReason::NumericalBreakdown;
                 break;
@@ -123,14 +167,7 @@ where
             else {
                 break;
             };
-            update = execution::fold(0..fitted.nrows(), 0_f64, poll, |norm, row| {
-                let value = design.weights().at(row).sqrt() * fitted[(row, 0)];
-                norm.hypot(if within_norm == 0. {
-                    value
-                } else {
-                    value / within_norm
-                })
-            })?;
+            update = update_norm(design, &fitted, within_norm, poll)?;
             if !update.is_finite() {
                 progress.stop = StopReason::NumericalBreakdown;
                 break;
@@ -157,6 +194,21 @@ where
         }
     }
     Ok(())
+}
+fn update_norm(
+    design: &Design<'_>,
+    fitted: &DenseMatrix,
+    within_norm: f64,
+    poll: Poll<'_>,
+) -> Result<f64> {
+    execution::fold(0..fitted.nrows(), 0_f64, poll, |norm, row| {
+        let value = design.weights().at(row).sqrt() * fitted[(row, 0)];
+        norm.hypot(if within_norm == 0. {
+            value
+        } else {
+            value / within_norm
+        })
+    })
 }
 fn correction_target(tolerance: f64, score: f64, reference: f64, within_norm: f64) -> f64 {
     let relative_normal = if within_norm == 0. {
