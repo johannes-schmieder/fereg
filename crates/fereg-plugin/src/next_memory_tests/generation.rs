@@ -134,7 +134,11 @@ fn ppml_generation_interruptions_release_every_staged_sample_before_final_fittin
             assert_eq!(rounds.get(), 3);
             assert_eq!(count.get(), total);
             drop(error);
-            assert!(allocation_usage().current_bytes <= before.current_bytes);
+            let after = allocation_usage();
+            assert!(
+                after.current_bytes <= before.current_bytes,
+                "fresh generation restart retained storage: workers={workers}, stop={stop}/{total}, before={before:?}, after={after:?}"
+            );
             tracked += 1;
         }
     }

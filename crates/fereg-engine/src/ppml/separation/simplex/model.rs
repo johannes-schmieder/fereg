@@ -2,7 +2,7 @@ use super::{overflow, Model, View};
 use crate::{
     data::{DenseMatrix, Weights},
     error::Result,
-    execution::Poll,
+    execution::{self, Poll, WorkPoll},
     fe::{Design, Plan},
     linalg::WeightedQr,
     ppml::{Interrupt, InterruptPoint},
@@ -26,9 +26,18 @@ pub(super) fn span(
     interrupt: &mut Interrupt<'_>,
     poll: Poll<'_>,
 ) -> Result<DenseMatrix> {
+    execution::check(poll)?;
     let copy = |matrix: &DenseMatrix| -> Result<DenseMatrix> {
         let mut out = DenseMatrix::zeros(matrix.nrows(), matrix.ncols())?;
-        out.as_mut_slice().copy_from_slice(matrix.as_slice());
+        for (position, (value, &original)) in out
+            .as_mut_slice()
+            .iter_mut()
+            .zip(matrix.as_slice())
+            .enumerate()
+        {
+            execution::check_chunk(poll, position)?;
+            *value = original;
+        }
         Ok(out)
     };
     let threshold = crate::wls::Policy::default().rank_multiplier
@@ -37,16 +46,20 @@ pub(super) fn span(
     interrupt(InterruptPoint::SimplexModel)?;
     let qr = WeightedQr::factor(copy(&matrix)?, Weights::Unit, threshold, poll)?;
     let coefficients = qr.solve(copy(&matrix)?, poll)?;
+    let mut work = WorkPoll::new(poll)?;
     for column in 0..matrix.ncols() {
         interrupt(InterruptPoint::SimplexModel)?;
         let mut distance = 0_f64;
         let mut norm = 0_f64;
         for row in 0..matrix.nrows() {
-            let fitted = crate::threads::compensated_sum(
+            execution::check_chunk(poll, row)?;
+            let fitted = execution::sum(
                 qr.kept()
                     .iter()
                     .map(|&basis| matrix[(row, basis)] * coefficients[(basis, column)]),
-            );
+                poll,
+            )?;
+            work.advance(qr.kept().len().max(1))?;
             distance = distance.hypot(matrix[(row, column)] - fitted);
             norm = norm.hypot(matrix[(row, column)]);
         }
@@ -58,10 +71,14 @@ pub(super) fn span(
     }
     let mut span = DenseMatrix::zeros(matrix.nrows(), qr.rank())?;
     for (column, &basis) in qr.kept().iter().enumerate() {
+        execution::check_chunk(poll, column)?;
         for row in 0..matrix.nrows() {
+            work.step()?;
+            execution::check_chunk(poll, row)?;
             span[(row, column)] = matrix[(row, basis)];
         }
     }
+    execution::check(poll)?;
     Ok(span)
 }
 pub(super) fn width(design: &Design<'_>, model: &Model<'_>) -> Result<usize> {
@@ -78,20 +95,27 @@ pub(super) fn explicit(
     model: &Model<'_>,
     interrupt: &mut Interrupt<'_>,
 ) -> Result<DenseMatrix> {
+    let poll = model.probe.dense();
+    execution::check(poll)?;
     let finite = model.raw.ncols();
     let mut matrix = DenseMatrix::zeros(design.nobs(), width(design, model)?)?;
+    let mut work = WorkPoll::new(poll)?;
     for row in 0..matrix.nrows() {
+        execution::check_chunk(poll, row)?;
         if row % crate::threads::REDUCTION_CHUNK == 0 {
             interrupt(InterruptPoint::SimplexModel)?;
         }
         for (column, role) in model.roles.iter().enumerate() {
+            work.step()?;
             if matches!(role, Role::Ordinary | Role::AbsorbedIntercept) {
                 matrix[(row, column)] = model.raw[(row, column)];
             }
         }
         for (effect, layout) in design.layout().effects.iter().enumerate() {
+            work.step()?;
             let level = design.topology().effect_partition(effect)?.codes()[row] as usize;
             for channel in 0..layout.channels {
+                work.step()?;
                 matrix[(
                     row,
                     finite + layout.offset + channel * layout.levels + level,
@@ -104,9 +128,12 @@ pub(super) fn explicit(
     // categorical channels retain their exact coefficients in this frame.
     for column in 0..matrix.ncols() {
         interrupt(InterruptPoint::SimplexModel)?;
-        let scale = (0..matrix.nrows()).fold(0_f64, |s, row| s.max(matrix[(row, column)].abs()));
+        let scale = execution::fold(0..matrix.nrows(), 0_f64, poll, |s, row| {
+            s.max(matrix[(row, column)].abs())
+        })?;
         if scale > 0. {
             for row in 0..matrix.nrows() {
+                execution::check_chunk(poll, row)?;
                 let original = matrix[(row, column)];
                 let value = original / scale;
                 if original != 0. && value == 0. {
@@ -116,5 +143,6 @@ pub(super) fn explicit(
             }
         }
     }
+    execution::check(poll)?;
     Ok(matrix)
 }

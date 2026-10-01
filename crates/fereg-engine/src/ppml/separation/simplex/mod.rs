@@ -2,6 +2,8 @@
 mod capacity;
 mod detect;
 mod dual;
+#[cfg(test)]
+mod interruption_tests;
 mod model;
 mod nullspace;
 mod tableau;
@@ -11,6 +13,7 @@ use super::{
 };
 use crate::{
     error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     ppml::{Interrupt, InterruptPoint},
     spec::Solver,
     threads::ThreadTeam,
@@ -101,7 +104,7 @@ impl SimplexTerminal {
 impl View<'_> {
     pub fn simplex_capacity(self, model: &Model<'_>) -> Result<SimplexCapacity> {
         let design = model::design(self, model)?;
-        capacity::estimate(self, &design, model.raw.ncols())
+        capacity::estimate(self, &design, model.raw.ncols(), model.probe.dense())
     }
     pub fn model_simplex(self, model: &Model<'_>, limits: SimplexLimits) -> Result<SimplexReport> {
         self.model_simplex_with(model, limits, &mut |_| Ok(()))
@@ -115,7 +118,8 @@ impl View<'_> {
         limits.validate()?;
         interrupt(InterruptPoint::SimplexModel)?;
         let design = model::design(self, model)?;
-        let capacity = capacity::estimate(self, &design, model.raw.ncols())?;
+        let poll = model.probe.dense();
+        let capacity = capacity::estimate(self, &design, model.raw.ncols(), poll)?;
         let mut report = SimplexReport {
             generation: self.generation(),
             sample_identity: self.numerical_identity_polled(model.probe.dense())?,
@@ -129,7 +133,9 @@ impl View<'_> {
             evidence: None,
             direction: None,
         };
-        if capacity.explicit_width == 0 || !self.sample().outcome.contains(&0.) {
+        if capacity.explicit_width == 0
+            || !execution::any(&self.sample().outcome, |&value| value == 0., poll)?
+        {
             return Ok(report);
         }
         if capacity.required_cells > limits.max_cells {
@@ -263,10 +269,20 @@ fn reserve<T>(target: &mut Vec<T>, additional: usize, label: &'static str) -> Re
         .try_reserve_exact(additional)
         .map_err(|_| FeregError::new(ErrorCode::Allocation, label))
 }
-fn filled<T: Clone>(length: usize, value: T, label: &'static str) -> Result<Vec<T>> {
+fn filled<T: Clone>(
+    length: usize,
+    value: T,
+    label: &'static str,
+    poll: Poll<'_>,
+) -> Result<Vec<T>> {
+    execution::check(poll)?;
     let mut result = Vec::new();
     reserve(&mut result, length, label)?;
-    result.resize(length, value);
+    while result.len() < length {
+        execution::check(poll)?;
+        let end = result.len() + (length - result.len()).min(crate::threads::REDUCTION_CHUNK);
+        result.resize(end, value.clone());
+    }
     Ok(result)
 }
 fn overflow() -> FeregError {

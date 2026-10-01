@@ -5,6 +5,8 @@ mod numerical;
 mod ols_controller;
 mod ppml_controller;
 mod preflight;
+mod scoped;
+mod simplex;
 use crate::ffi::{allocation_usage, begin_ols_allocation_observation};
 use fereg_engine::{
     data::{

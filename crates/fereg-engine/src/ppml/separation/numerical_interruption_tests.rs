@@ -13,7 +13,7 @@ use crate::{
 };
 use std::{cell::Cell, rc::Rc};
 
-fn sample(n: usize, effects: usize, wide: bool) -> Prepared {
+pub(super) fn sample(n: usize, effects: usize, wide: bool) -> Prepared {
     let source = |id| SourceId::new(id).unwrap();
     let spec = ModelSpec {
         model: CompiledTermGraph {

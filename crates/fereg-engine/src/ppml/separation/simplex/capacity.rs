@@ -1,5 +1,9 @@
 use super::{overflow, View};
-use crate::{error::Result, fe::Design};
+use crate::{
+    error::Result,
+    execution::{self, Poll, WorkPoll},
+    fe::Design,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct SimplexCapacity {
@@ -60,9 +64,13 @@ pub(super) fn estimate(
     view: View<'_>,
     design: &Design<'_>,
     finite: usize,
+    poll: Poll<'_>,
 ) -> Result<SimplexCapacity> {
+    let mut work = WorkPoll::new(poll)?;
     let rows = view.sample().n_active();
-    let positive = view.sample().outcome.iter().filter(|&&v| v > 0.).count();
+    let positive = execution::fold(&view.sample().outcome, 0, poll, |count, &v| {
+        count + usize::from(v > 0.)
+    })?;
     let boundary = rows - positive;
     let fe = design.layout().total;
     let width = add(finite, fe)?;
@@ -70,7 +78,9 @@ pub(super) fn estimate(
     let mut topology_cells = add(mul(24, design.layout().effects.len())?, 16)?;
     // Codes, membership CSR, original levels, components, metadata and headers
     // remain resident while the explicit model and detector scratch are live.
-    for partition in design.topology().partitions() {
+    for (index, partition) in design.topology().partitions().iter().enumerate() {
+        work.step()?;
+        execution::check_chunk(poll, index)?;
         topology_cells = add(
             topology_cells,
             add(mul(3, rows)?, add(mul(4, partition.n_levels())?, 24)?)?,
@@ -82,6 +92,8 @@ pub(super) fn estimate(
         )?;
     }
     for (index, effect) in design.topology().effects().iter().enumerate() {
+        work.step()?;
+        execution::check_chunk(poll, index)?;
         // Effects sharing a partition still own distinct component-level
         // labels; do not count those once per deduplicated partition.
         topology_cells = add(
@@ -99,7 +111,9 @@ pub(super) fn estimate(
                 mul(8, effect.slopes.len())?,
             )?,
         )?;
-        for slope in &effect.slopes {
+        for (index, slope) in effect.slopes.iter().enumerate() {
+            work.step()?;
+            execution::check_chunk(poll, index)?;
             topology_cells = add(
                 topology_cells,
                 slope.label.len() / 8 + usize::from(slope.label.len() % 8 != 0),
@@ -110,6 +124,7 @@ pub(super) fn estimate(
     // cone/dual certificates are additional to the retained kernel bound.
     let certificate_cells = add(add(mul(8, rows)?, mul(4, width)?)?, 64)?;
     let required_cells = add(add(kernel_cells, topology_cells)?, certificate_cells)?;
+    execution::check(poll)?;
     Ok(SimplexCapacity {
         finite_columns: finite,
         fe_columns: fe,

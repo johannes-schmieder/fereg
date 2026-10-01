@@ -65,6 +65,30 @@ pub(crate) fn check_chunk(poll: Poll<'_>, position: usize) -> Result<()> {
     Ok(())
 }
 
+/// Nested loops can each be shorter than a chunk while their product is large.
+/// Count visited work across those loops without changing numerical partitions.
+pub(crate) struct WorkPoll<'a> {
+    poll: Poll<'a>,
+    position: usize,
+}
+impl<'a> WorkPoll<'a> {
+    pub(crate) fn new(poll: Poll<'a>) -> Result<Self> {
+        check(poll)?;
+        Ok(Self { poll, position: 0 })
+    }
+    pub(crate) fn step(&mut self) -> Result<()> {
+        self.advance(1)
+    }
+    /// Account for a visited block whose inner kernel already polls its work.
+    pub(crate) fn advance(&mut self, visited: usize) -> Result<()> {
+        if visited >= REDUCTION_CHUNK - self.position {
+            check(self.poll)?;
+        }
+        self.position = (self.position + visited % REDUCTION_CHUNK) % REDUCTION_CHUNK;
+        Ok(())
+    }
+}
+
 /// Preflight has no worker team yet; its borrowed callback stays on the caller.
 pub(crate) fn check_chunk_with(
     position: usize,

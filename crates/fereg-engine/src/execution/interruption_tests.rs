@@ -1,6 +1,39 @@
 use super::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
+#[test]
+fn nested_work_polls_when_each_loop_is_short_and_preserves_value_and_error_identity() {
+    for batched in [false, true] {
+        let checkpoints = every_checkpoint(|poll| {
+            let mut work = WorkPoll::new(poll)?;
+            let mut value = 0;
+            for row in 0..37 {
+                for column in 0..31 {
+                    value += row + column;
+                    if !batched {
+                        work.step()?;
+                    }
+                }
+                if batched {
+                    work.advance(31)?;
+                }
+            }
+            check(poll)?;
+            Ok(value)
+        });
+        assert_eq!(checkpoints, 3);
+    }
+    let calls = AtomicUsize::new(0);
+    let observe = || {
+        calls.fetch_add(1, Ordering::Relaxed);
+        true
+    };
+    let mut work = WorkPoll::new(Some(&observe)).unwrap();
+    work.advance(usize::MAX).unwrap();
+    work.step().unwrap();
+    assert_eq!(calls.load(Ordering::Relaxed), 3);
+}
+
 pub(crate) fn every_checkpoint<T: std::fmt::Debug + PartialEq>(
     run: impl Fn(Poll<'_>) -> Result<T>,
 ) -> usize {

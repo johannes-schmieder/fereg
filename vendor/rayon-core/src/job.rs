@@ -165,8 +165,10 @@ where
     BODY: FnOnce() + Send,
 {
     unsafe fn execute(this: *const ()) {
-        let this = Box::from_raw(this as *mut Self);
-        (this.job)();
+        // Jobs can signal scope completion. Free their container first so a
+        // returning caller cannot observe metadata left behind by completed work.
+        let job = (*Box::from_raw(this as *mut Self)).job;
+        job();
     }
 }
 

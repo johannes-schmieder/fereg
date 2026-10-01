@@ -1,5 +1,6 @@
 //! Retained phase-I tableau with Bland pivoting; candidates need separate checks.
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::execution::{self, Poll, WorkPoll};
 use crate::ppml::{Interrupt, InterruptPoint};
 
 use super::{filled, reserve};
@@ -21,14 +22,15 @@ pub(super) fn phase_one_cone(
     max_iterations: usize,
     tolerance: f64,
     interrupt: &mut Interrupt<'_>,
+    poll: Poll<'_>,
 ) -> Result<PhaseOneConeOutcome> {
-    let mut state = Tableau::new(cone)?;
+    let mut state = Tableau::new(cone, poll)?;
     for iteration in 0..max_iterations {
         interrupt(InterruptPoint::SimplexPivot)?;
-        let Some(entering) = state.entering(tolerance) else {
-            return state.outcome(iteration, tolerance);
+        let Some(entering) = state.entering(tolerance, poll)? else {
+            return state.outcome(iteration, tolerance, poll);
         };
-        let leaving = state.leaving(entering, tolerance)?;
+        let leaving = state.leaving(entering, tolerance, poll)?;
         pivot(
             &mut state.values,
             state.basis.len(),
@@ -36,6 +38,7 @@ pub(super) fn phase_one_cone(
             leaving,
             entering,
             tolerance,
+            poll,
         )?;
         state.basis[leaving] = entering;
     }
@@ -53,10 +56,14 @@ struct Tableau {
     original_variables: usize,
 }
 impl Tableau {
-    fn new(cone: &[Vec<f64>]) -> Result<Self> {
+    fn new(cone: &[Vec<f64>], poll: Poll<'_>) -> Result<Self> {
+        let mut work = WorkPoll::new(poll)?;
         let boundary = cone.len();
         let dimension = cone.first().map_or(0, Vec::len);
-        if boundary == 0 || dimension == 0 || cone.iter().any(|row| row.len() != dimension) {
+        if boundary == 0
+            || dimension == 0
+            || execution::any(cone, |row| row.len() != dimension, poll)?
+        {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
                 "simplex phase-I requires an aligned nonempty boundary cone",
@@ -72,11 +79,13 @@ impl Tableau {
             .ok_or_else(super::overflow)?;
         let width = total_variables.checked_add(1).ok_or_else(super::overflow)?;
         let cells = rows.checked_mul(width).ok_or_else(super::overflow)?;
-        let mut values = filled(cells, 0., "simplex phase-I tableau")?;
+        let mut values = filled(cells, 0., "simplex phase-I tableau", poll)?;
         let mut basis = Vec::new();
         reserve(&mut basis, rows, "simplex phase-I basis")?;
         for (row, constraint) in cone.iter().enumerate() {
+            work.step()?;
             for (column, &value) in constraint.iter().enumerate() {
+                work.step()?;
                 values[row * width + column] = value;
                 values[row * width + dimension + column] = -value;
             }
@@ -86,13 +95,18 @@ impl Tableau {
             basis.push(artificial);
         }
         for slack in 0..boundary {
+            work.step()?;
             values[boundary * width + 2 * dimension + slack] = 1.;
         }
         values[boundary * width + original_variables + boundary] = 1.;
         values[boundary * width + total_variables] = 1.;
         basis.push(original_variables + boundary);
-        let mut costs = filled(total_variables, 0., "simplex phase-I costs")?;
-        costs[original_variables..].fill(-1.);
+        let mut costs = filled(total_variables, 0., "simplex phase-I costs", poll)?;
+        for cost in &mut costs[original_variables..] {
+            work.step()?;
+            *cost = -1.;
+        }
+        execution::check(poll)?;
         Ok(Self {
             values,
             basis,
@@ -102,26 +116,39 @@ impl Tableau {
             original_variables,
         })
     }
-    fn entering(&self, tolerance: f64) -> Option<usize> {
+    fn entering(&self, tolerance: f64, poll: Poll<'_>) -> Result<Option<usize>> {
+        let mut work = WorkPoll::new(poll)?;
         for (column, &cost) in self.costs.iter().enumerate() {
-            if self.basis.contains(&column) {
+            work.step()?;
+            let mut basic_column = false;
+            for &basic in &self.basis {
+                work.step()?;
+                if basic == column {
+                    basic_column = true;
+                    break;
+                }
+            }
+            if basic_column {
                 continue;
             }
             let mut reduced = cost;
             for (row, &basic) in self.basis.iter().enumerate() {
+                work.step()?;
                 reduced -= self.costs[basic] * self.values[row * self.width + column];
             }
             if reduced > tolerance {
-                return Some(column); // Bland's rule
+                return Ok(Some(column)); // Bland's rule
             }
         }
-        None
+        Ok(None)
     }
-    fn leaving(&self, entering: usize, tolerance: f64) -> Result<usize> {
+    fn leaving(&self, entering: usize, tolerance: f64, poll: Poll<'_>) -> Result<usize> {
+        let mut work = WorkPoll::new(poll)?;
         let mut leaving = None;
         let mut best_ratio = f64::INFINITY;
         let mut best_basic = usize::MAX;
         for (row, &basic) in self.basis.iter().enumerate() {
+            work.step()?;
             let coefficient = self.values[row * self.width + entering];
             if coefficient <= tolerance {
                 continue;
@@ -138,42 +165,59 @@ impl Tableau {
         }
         leaving.ok_or_else(|| super::failed("simplex phase-I tableau became unbounded"))
     }
-    fn outcome(&self, iterations: usize, tolerance: f64) -> Result<PhaseOneConeOutcome> {
+    fn outcome(
+        &self,
+        iterations: usize,
+        tolerance: f64,
+        poll: Poll<'_>,
+    ) -> Result<PhaseOneConeOutcome> {
+        let mut work = WorkPoll::new(poll)?;
         let rhs_column = self.costs.len();
-        let objective = self
-            .basis
-            .iter()
-            .enumerate()
-            .fold(0_f64, |sum, (row, &basic)| {
+        let objective = execution::fold(
+            self.basis.iter().enumerate(),
+            0_f64,
+            poll,
+            |sum, (row, &basic)| {
                 self.costs[basic].mul_add(self.values[row * self.width + rhs_column], sum)
-            });
+            },
+        )?;
         if objective < -100. * tolerance {
             // Original artificial columns are an identity block, hence their
             // canonical tableau columns are B^-1. Extract c_B' B^-1; the caller
             // separately verifies this candidate against the immutable cone.
-            let mut dual = filled(self.basis.len(), 0., "simplex phase-I dual")?;
+            let mut dual = filled(self.basis.len(), 0., "simplex phase-I dual", poll)?;
             for (constraint, value) in dual.iter_mut().enumerate() {
                 let artificial = self.original_variables + constraint;
                 for (row, &basic) in self.basis.iter().enumerate() {
+                    work.step()?;
                     *value = self.costs[basic]
                         .mul_add(self.values[row * self.width + artificial], *value);
                 }
             }
-            if dual.iter().any(|v| !v.is_finite()) {
+            if execution::any(&dual, |v| !v.is_finite(), poll)? {
                 return Err(super::failed("simplex phase-I dual became nonfinite"));
             }
+            execution::check(poll)?;
             return Ok(PhaseOneConeOutcome::Infeasible { dual, iterations });
         }
-        let mut solution = filled(self.original_variables, 0., "simplex phase-I solution")?;
+        let mut solution = filled(
+            self.original_variables,
+            0.,
+            "simplex phase-I solution",
+            poll,
+        )?;
         for (row, &basic) in self.basis.iter().enumerate() {
+            work.step()?;
             if basic < self.original_variables {
                 solution[basic] = self.values[row * self.width + rhs_column].max(0.);
             }
         }
-        let mut coordinates = filled(self.dimension, 0., "simplex phase-I coordinates")?;
+        let mut coordinates = filled(self.dimension, 0., "simplex phase-I coordinates", poll)?;
         for (column, value) in coordinates.iter_mut().enumerate() {
+            work.step()?;
             *value = solution[column] - solution[self.dimension + column];
         }
+        execution::check(poll)?;
         Ok(PhaseOneConeOutcome::Feasible {
             coordinates,
             iterations,
@@ -188,7 +232,9 @@ fn pivot(
     pivot_row: usize,
     pivot_column: usize,
     tolerance: f64,
+    poll: Poll<'_>,
 ) -> Result<()> {
+    let mut work = WorkPoll::new(poll)?;
     let pivot = tableau[pivot_row * width + pivot_column];
     if !pivot.is_finite() || pivot.abs() <= tolerance {
         return Err(FeregError::new(
@@ -197,9 +243,11 @@ fn pivot(
         ));
     }
     for column in 0..width {
+        work.step()?;
         tableau[pivot_row * width + column] /= pivot;
     }
     for row in 0..rows {
+        work.step()?;
         if row == pivot_row {
             continue;
         }
@@ -208,14 +256,16 @@ fn pivot(
             continue;
         }
         for column in 0..width {
+            work.step()?;
             tableau[row * width + column] -= factor * tableau[pivot_row * width + column];
         }
     }
-    if tableau.iter().any(|value| !value.is_finite()) {
+    if execution::any(tableau.iter(), |value| !value.is_finite(), poll)? {
         return Err(FeregError::new(
             ErrorCode::NonConvergence,
             "simplex tableau became nonfinite",
         ));
     }
+    execution::check(poll)?;
     Ok(())
 }
