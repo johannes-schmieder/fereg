@@ -3,12 +3,14 @@ use super::{invalid, ExactCertificate, ExactLevel, ExactProposal, Status, View};
 use crate::{
     data::Prepared,
     error::{reserved, Result},
+    execution::{self, Poll},
 };
 
-pub(super) fn proposal(view: View<'_>, proposal: &ExactProposal) -> Result<()> {
+pub(super) fn proposal(view: View<'_>, proposal: &ExactProposal, poll: Poll<'_>) -> Result<()> {
+    execution::check(poll)?;
     if proposal.generation != view.generation
         || proposal.iterations != 1
-        || proposal.rows.windows(2).any(|pair| pair[0] >= pair[1])
+        || execution::any(proposal.rows.windows(2), |pair| pair[0] >= pair[1], poll)?
     {
         return Err(invalid(
             "invalid exact FE proposal generation, iterations or row order",
@@ -26,7 +28,8 @@ pub(super) fn proposal(view: View<'_>, proposal: &ExactProposal) -> Result<()> {
     }
     let mut selected = reserved(view.sample.n_active())?;
     selected.resize(view.sample.n_active(), false);
-    for &original in &proposal.rows {
+    for (index, &original) in proposal.rows.iter().enumerate() {
+        execution::check_chunk(poll, index)?;
         let row = view
             .sample
             .retained_rows()
@@ -39,7 +42,7 @@ pub(super) fn proposal(view: View<'_>, proposal: &ExactProposal) -> Result<()> {
     }
     let mut active = reserved(view.sample.n_active())?;
     active.resize(view.sample.n_active(), true);
-    certificate(view.sample, &active, &selected, &proposal.certificate)
+    certificate(view.sample, &active, &selected, &proposal.certificate, poll)
 }
 
 pub(super) fn certificate(
@@ -47,13 +50,17 @@ pub(super) fn certificate(
     active: &[bool],
     selected: &[bool],
     certificate: &ExactCertificate,
+    poll: Poll<'_>,
 ) -> Result<()> {
+    execution::check(poll)?;
     let identities = &certificate.zero_only_levels;
     if active.len() != sample.n_active()
         || selected.len() != active.len()
-        || identities
-            .windows(2)
-            .any(|pair| pair[0].key() >= pair[1].key())
+        || execution::any(
+            identities.windows(2),
+            |pair| pair[0].key() >= pair[1].key(),
+            poll,
+        )?
     {
         return Err(invalid(
             "invalid exact FE certificate dimensions or stable identities",
@@ -65,6 +72,7 @@ pub(super) fn certificate(
     let mut zero_levels = 0;
     if let Some(topology) = &sample.topology {
         for (index, effect) in topology.effects().iter().enumerate() {
+            execution::check_chunk(poll, index)?;
             if !effect.intercept {
                 continue;
             }
@@ -75,6 +83,7 @@ pub(super) fn certificate(
             let mut positive = reserved(partition.n_levels())?;
             positive.resize(partition.n_levels(), false);
             for (row, &code) in partition.codes().iter().enumerate() {
+                execution::check_chunk(poll, row)?;
                 if active[row] {
                     anchors[code as usize] =
                         anchors[code as usize].min(sample.retained_rows()[row]);
@@ -82,6 +91,7 @@ pub(super) fn certificate(
                 }
             }
             for (level, &anchor) in anchors.iter().enumerate() {
+                execution::check_chunk(poll, level)?;
                 if anchor != usize::MAX && !positive[level] {
                     zero_levels += 1;
                     let key = ExactLevel {
@@ -100,17 +110,18 @@ pub(super) fn certificate(
                 }
             }
             for (row, &code) in partition.codes().iter().enumerate() {
+                execution::check_chunk(poll, row)?;
                 replay[row] |= active[row] && !positive[code as usize];
             }
         }
     }
     if checked != certificate.checked_intercept_effects
         || zero_levels != identities.len()
-        || replay != selected
+        || execution::any(replay.iter().zip(selected), |(a, b)| a != b, poll)?
     {
         return Err(invalid(
             "exact FE certificate counts or complete row union failed replay",
         ));
     }
-    Ok(())
+    execution::check(poll)
 }

@@ -15,9 +15,9 @@ use crate::{
 };
 pub use build::prepare_fixed_effects;
 pub(crate) use build::{prepare_fixed_effects_polled, prepare_unpruned};
+pub(crate) use components::connected_components_all_polled;
 pub(crate) use components::connected_components_polled;
 pub use components::{connected_components, ComponentInfo};
-pub(crate) use components::{connected_components_all, connected_components_all_polled};
 pub use membership::LevelIndex;
 pub(crate) use singleton::prune_singletons_polled;
 pub use singleton::{

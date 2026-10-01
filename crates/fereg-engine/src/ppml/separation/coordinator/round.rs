@@ -12,18 +12,22 @@ use crate::{
     wls::{Role, Work},
 };
 
-pub(super) fn exact(ledger: &mut Ledger, report: &mut Report) -> Result<bool> {
+pub(super) fn exact(
+    ledger: &mut Ledger,
+    report: &mut Report,
+    poll: crate::execution::Poll<'_>,
+) -> Result<bool> {
     if !ledger.policy.methods.contains(Method::FixedEffects) {
         return Ok(false);
     }
-    let proposal = ledger.view().exact_proposal()?;
+    let proposal = ledger.view().exact_proposal_polled(poll)?;
     report.detector(
         Method::FixedEffects,
         proposal.status,
         proposal.iterations,
         Work::default(),
     )?;
-    if let Some(commit) = ledger.accept_exact(&proposal)? {
+    if let Some(commit) = ledger.accept_exact_polled(&proposal, poll)? {
         report.commit(Some(Method::FixedEffects), commit)?;
         return Ok(true);
     }

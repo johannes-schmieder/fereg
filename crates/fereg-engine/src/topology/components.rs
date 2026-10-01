@@ -67,13 +67,6 @@ pub(crate) fn connected_components_polled(
 ) -> Result<ComponentInfo> {
     components(codes, levels, active.len(), Some(active), poll)
 }
-pub(crate) fn connected_components_all(
-    codes: &[&[u32]],
-    levels: &[usize],
-    nobs: usize,
-) -> Result<ComponentInfo> {
-    connected_components_all_polled(codes, levels, nobs, None)
-}
 pub(crate) fn connected_components_all_polled(
     codes: &[&[u32]],
     levels: &[usize],

@@ -31,3 +31,6 @@ fn invalid(message: &str) -> FeregError {
 }
 
 pub(crate) use coordinator::run_polled;
+
+#[cfg(test)]
+mod generation_tests;

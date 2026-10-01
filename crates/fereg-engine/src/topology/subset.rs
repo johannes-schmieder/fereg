@@ -1,23 +1,31 @@
 //! Preserve source/term identities while rebasing a committed row union once.
 use super::{
-    connected_components_all, invalid, Effect, FeTopology, LevelIndex, Partition, SlopeChannel,
+    connected_components_all_polled, invalid, Effect, FeTopology, LevelIndex, Partition,
+    SlopeChannel,
 };
-use crate::error::{copied_string, reserved, Result};
+use crate::{
+    error::{copied_string, reserved, Result},
+    execution::{self, Poll},
+};
 
 impl FeTopology {
-    pub(crate) fn subset(&self, keep: &[bool]) -> Result<Self> {
+    pub(crate) fn subset_polled(&self, keep: &[bool], poll: Poll<'_>) -> Result<Self> {
+        execution::check(poll)?;
         if keep.len() != self.nobs {
             return Err(invalid("topology subset mask is not sample aligned"));
         }
-        let nobs = keep.iter().filter(|&&k| k).count();
+        let nobs = execution::fold(keep, 0, poll, |n, &keep| n + usize::from(keep))?;
         let mut partitions = reserved(self.partitions.len())?;
-        for partition in &self.partitions {
-            partitions.push(partition.subset(keep, nobs)?);
+        for (index, partition) in self.partitions.iter().enumerate() {
+            execution::check_chunk(poll, index)?;
+            partitions.push(partition.subset(keep, nobs, poll)?);
         }
         let mut effects = reserved(self.effects.len())?;
-        for effect in &self.effects {
+        for (index, effect) in self.effects.iter().enumerate() {
+            execution::check_chunk(poll, index)?;
             let mut slopes = reserved(effect.slopes.len())?;
-            for slope in &effect.slopes {
+            for (channel, slope) in effect.slopes.iter().enumerate() {
+                execution::check_chunk(poll, channel)?;
                 slopes.push(SlopeChannel {
                     source: slope.source,
                     label: copied_string(&slope.label)?,
@@ -26,7 +34,7 @@ impl FeTopology {
             effects.push(Effect {
                 term_id: effect.term_id,
                 partition: effect.partition,
-                categorical_sources: copied(&effect.categorical_sources)?,
+                categorical_sources: copied(&effect.categorical_sources, poll)?,
                 intercept: effect.intercept,
                 slopes,
                 label: copied_string(&effect.label)?,
@@ -34,11 +42,13 @@ impl FeTopology {
         }
         let mut codes = reserved(partitions.len())?;
         let mut levels = reserved(partitions.len())?;
-        for partition in &partitions {
+        for (index, partition) in partitions.iter().enumerate() {
+            execution::check_chunk(poll, index)?;
             codes.push(partition.codes.as_slice());
             levels.push(partition.n_levels());
         }
-        let components = connected_components_all(&codes, &levels, nobs)?;
+        let components = connected_components_all_polled(&codes, &levels, nobs, poll)?;
+        execution::check(poll)?;
         Ok(Self {
             nobs,
             partitions,
@@ -49,32 +59,36 @@ impl FeTopology {
 }
 
 impl Partition {
-    fn subset(&self, keep: &[bool], n: usize) -> Result<Self> {
+    fn subset(&self, keep: &[bool], n: usize, poll: Poll<'_>) -> Result<Self> {
         let mut remap = reserved(self.n_levels())?;
         remap.resize(self.n_levels(), u32::MAX);
-        for (&code, &retain) in self.codes.iter().zip(keep) {
+        for (row, (&code, &retain)) in self.codes.iter().zip(keep).enumerate() {
+            execution::check_chunk(poll, row)?;
             if retain {
                 remap[code as usize] = 0;
             }
         }
-        let used = remap.iter().filter(|&&code| code != u32::MAX).count();
+        let used = execution::fold(&remap, 0, poll, |n, &code| {
+            n + usize::from(code != u32::MAX)
+        })?;
         let mut original_levels = reserved(used)?;
         for (level, code) in remap.iter_mut().enumerate() {
+            execution::check_chunk(poll, level)?;
             if *code != u32::MAX {
                 *code = original_levels.len() as u32;
                 original_levels.push(self.original_levels[level]);
             }
         }
         let mut codes = reserved(n)?;
-        codes.extend(
-            self.codes
-                .iter()
-                .zip(keep)
-                .filter_map(|(&code, &retain)| retain.then_some(remap[code as usize])),
-        );
-        let membership = LevelIndex::from_codes(&codes, original_levels.len())?;
+        for (row, (&code, &retain)) in self.codes.iter().zip(keep).enumerate() {
+            execution::check_chunk(poll, row)?;
+            if retain {
+                codes.push(remap[code as usize]);
+            }
+        }
+        let membership = LevelIndex::from_codes_polled(&codes, original_levels.len(), poll)?;
         Ok(Self {
-            recipe: copied(&self.recipe)?,
+            recipe: copied(&self.recipe, poll)?,
             codes,
             original_levels,
             membership,
@@ -82,8 +96,11 @@ impl Partition {
     }
 }
 
-fn copied<T: Copy>(source: &[T]) -> Result<Vec<T>> {
+fn copied<T: Copy>(source: &[T], poll: Poll<'_>) -> Result<Vec<T>> {
     let mut result = reserved(source.len())?;
-    result.extend_from_slice(source);
+    for (index, &value) in source.iter().enumerate() {
+        execution::check_chunk(poll, index)?;
+        result.push(value);
+    }
     Ok(result)
 }

@@ -2,6 +2,7 @@ use super::{invalid, verify, View};
 use crate::{
     data::Prepared,
     error::{reserved, Result},
+    execution::{self, Poll},
     AbsorbTermId,
 };
 
@@ -45,15 +46,21 @@ pub struct ExactProposal {
 
 impl View<'_> {
     pub fn exact_proposal(self) -> Result<ExactProposal> {
+        self.exact_proposal_polled(None)
+    }
+    pub(crate) fn exact_proposal_polled(self, poll: Poll<'_>) -> Result<ExactProposal> {
+        execution::check(poll)?;
         let mut active = reserved(self.sample.n_active())?;
         active.resize(self.sample.n_active(), true);
-        let (mask, certificate) = detect(self.sample, &active)?;
-        let mut rows = reserved(mask.iter().filter(|&&drop| drop).count())?;
-        rows.extend(
-            mask.iter()
-                .zip(self.sample.retained_rows())
-                .filter_map(|(&drop, &row)| drop.then_some(row)),
-        );
+        let (mask, certificate) = detect(self.sample, &active, poll)?;
+        let count = execution::fold(&mask, 0, poll, |n, &drop| n + usize::from(drop))?;
+        let mut rows = reserved(count)?;
+        for (index, (&drop, &row)) in mask.iter().zip(self.sample.retained_rows()).enumerate() {
+            execution::check_chunk(poll, index)?;
+            if drop {
+                rows.push(row);
+            }
+        }
         let status = if certificate.checked_intercept_effects == 0 {
             Status::NoCandidates
         } else if rows.is_empty() {
@@ -61,6 +68,7 @@ impl View<'_> {
         } else {
             Status::Certified
         };
+        execution::check(poll)?;
         Ok(ExactProposal {
             generation: self.generation,
             rows,
@@ -71,7 +79,12 @@ impl View<'_> {
     }
 }
 
-pub(super) fn detect(sample: &Prepared, active: &[bool]) -> Result<(Vec<bool>, ExactCertificate)> {
+pub(super) fn detect(
+    sample: &Prepared,
+    active: &[bool],
+    poll: Poll<'_>,
+) -> Result<(Vec<bool>, ExactCertificate)> {
+    execution::check(poll)?;
     if active.len() != sample.n_active() {
         return Err(invalid("exact FE mask is not sample aligned"));
     }
@@ -86,6 +99,7 @@ pub(super) fn detect(sample: &Prepared, active: &[bool]) -> Result<(Vec<bool>, E
     };
     let mut count = 0usize;
     for (index, effect) in topology.effects().iter().enumerate() {
+        execution::check_chunk(poll, index)?;
         if effect.intercept {
             count = count
                 .checked_add(topology.effect_partition(index)?.n_levels())
@@ -99,16 +113,19 @@ pub(super) fn detect(sample: &Prepared, active: &[bool]) -> Result<(Vec<bool>, E
     }
     certificate.zero_only_levels = reserved(count)?;
     for (index, effect) in topology.effects().iter().enumerate() {
+        execution::check_chunk(poll, index)?;
         if !effect.intercept {
             continue;
         }
         certificate.checked_intercept_effects += 1;
         let partition = topology.effect_partition(index)?;
         for level in 0..partition.n_levels() {
+            execution::check_chunk(poll, level)?;
             let members = partition.membership().members(level)?;
             let mut representative = None;
             let mut positive = false;
-            for &row in members {
+            for (index, &row) in members.iter().enumerate() {
+                execution::check_chunk(poll, index)?;
                 if active[row] {
                     representative.get_or_insert(sample.retained_rows()[row]);
                     positive |= sample.outcome[row] > 0.;
@@ -119,15 +136,19 @@ pub(super) fn detect(sample: &Prepared, active: &[bool]) -> Result<(Vec<bool>, E
                     effect: effect.term_id,
                     representative_original_row,
                 });
-                for &row in members {
+                for (index, &row) in members.iter().enumerate() {
+                    execution::check_chunk(poll, index)?;
                     drops[row] |= active[row];
                 }
             }
         }
     }
-    certificate
-        .zero_only_levels
-        .sort_unstable_by_key(|level| level.key());
-    verify::certificate(sample, active, &drops, &certificate)?;
+    execution::sort_unstable_by(
+        &mut certificate.zero_only_levels,
+        |a, b| a.key().cmp(&b.key()),
+        poll,
+    )?;
+    verify::certificate(sample, active, &drops, &certificate, poll)?;
+    execution::check(poll)?;
     Ok((drops, certificate))
 }

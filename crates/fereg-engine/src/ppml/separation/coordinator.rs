@@ -167,16 +167,16 @@ pub(crate) fn run_polled(
     }
     let mut roles = reserved(columns.roles.len())?;
     roles.extend_from_slice(&columns.roles);
-    let mut ledger = Ledger::new(sample, policy)?;
+    let mut ledger = Ledger::new_polled(sample, policy, probe.dense())?;
     let mut report = Report::new(policy, &ledger);
     interrupt(InterruptPoint::SeparationRound)?;
-    if let Some(commit) = ledger.prune_initial_singletons()? {
+    if let Some(commit) = ledger.prune_initial_singletons_polled(probe.dense())? {
         report.commit(None, commit)?;
     }
     loop {
         interrupt(InterruptPoint::SeparationRound)?;
         report.begin_round(ledger.view().generation())?;
-        if round::exact(&mut ledger, &mut report)? {
+        if round::exact(&mut ledger, &mut report, probe.dense())? {
             continue;
         }
         // Recipes read only the new owner. No old projected columns or
