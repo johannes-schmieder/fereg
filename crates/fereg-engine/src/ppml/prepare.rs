@@ -19,7 +19,7 @@ pub(super) fn prepare(
             "PPML has no positive outcome after preparation",
         ));
     }
-    prepare_unpruned(model, sample)
+    prepare_unpruned(model, sample, poll)
 }
 struct PpmlPolicy;
 impl NumericDomainPolicy for PpmlPolicy {

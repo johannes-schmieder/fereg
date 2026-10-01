@@ -372,12 +372,15 @@ fn tuple_coding_and_dof_cancellation_release_every_complete_inference_owner() {
 fn source_preparation_cancellation_releases_encoded_strings_and_finite_columns() {
     use fereg_engine::data::LoadedSource;
     let _guard = crate::instrumentation::lock_action_observation();
-    let model = fixture::model(false);
+    let mut model = fixture::model(false);
+    model.keep_singletons = false;
     let mut loaded = fixture::loaded(1029, true, false);
     loaded.sources[1] = LoadedSource::Strings(
         (0..1029)
             .map(|row| {
-                if row % 41 == 0 {
+                if row == 1028 {
+                    "Ωsingleton".into()
+                } else if row % 41 == 0 {
                     String::new()
                 } else {
                     format!("Ω{:02}", row % 8)
@@ -385,6 +388,7 @@ fn source_preparation_cancellation_releases_encoded_strings_and_finite_columns()
             })
             .collect(),
     );
+    loaded.weights.as_mut().unwrap().1.values[1028] = 1.;
     let request = request(true);
     let inputs = Inputs::from_loaded(&loaded, 0, 0).unwrap();
     let caller = std::thread::current().id();
@@ -426,6 +430,10 @@ fn source_preparation_cancellation_releases_encoded_strings_and_finite_columns()
                 Ok(())
             })
             .unwrap();
+        assert_eq!(
+            baseline.sample.drop_reasons[1028],
+            fereg_engine::data::DropReason::Singleton
+        );
         let mut expected = 0;
         hash(&baseline.coefficients, &mut expected);
         hash(baseline.covariance.values.as_slice(), &mut expected);
@@ -473,6 +481,10 @@ fn source_preparation_cancellation_releases_encoded_strings_and_finite_columns()
             let retry = make()
                 .run_with_team(&loaded, &team, &mut |_| Ok(()))
                 .unwrap();
+            assert_eq!(
+                retry.sample.drop_reasons[1028],
+                fereg_engine::data::DropReason::Singleton
+            );
             let mut value = 0;
             hash(&retry.coefficients, &mut value);
             hash(retry.covariance.values.as_slice(), &mut value);
@@ -483,5 +495,5 @@ fn source_preparation_cancellation_releases_encoded_strings_and_finite_columns()
             aborted += 1;
         }
     }
-    eprintln!("{aborted} tracked complete source-preparation aborts: encoded strings, compact source banks and finite columns; no retained owners, original host errors and exact fresh retries within one plan");
+    eprintln!("{aborted} tracked complete source-preparation aborts: encoded strings, FE coding/singletons/compaction/membership and finite columns; no retained owners, original host errors and exact fresh retries within one plan");
 }

@@ -5,7 +5,7 @@ use crate::{
     },
     execution::Poll,
     spec::Estimator,
-    topology::{prepare_fixed_effects, prepare_implicit_constant},
+    topology::{prepare_fixed_effects_polled, prepare_implicit_constant_polled},
     ErrorCode, FeregError, ModelSpec, Result,
 };
 
@@ -45,7 +45,7 @@ pub(super) fn prepare_planned(
         ));
     }
     let sample = sources.prepare_polled(loaded, &OlsPolicy, poll)?;
-    let sample = prepare_fixed_effects(spec, sample)?;
+    let sample = prepare_fixed_effects_polled(spec, sample, poll)?;
     if sample.n_active() == 0 {
         return Err(FeregError::new(
             ErrorCode::InsufficientObservations,
@@ -53,7 +53,7 @@ pub(super) fn prepare_planned(
         ));
     }
     if columns.implicit_constant {
-        prepare_implicit_constant(sample)
+        prepare_implicit_constant_polled(sample, poll)
     } else {
         Ok(sample)
     }

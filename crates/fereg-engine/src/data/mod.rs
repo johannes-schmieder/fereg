@@ -7,7 +7,7 @@ mod loaded;
 mod model_matrix;
 mod prepare;
 mod prepared;
-pub(crate) use prepared::retain_rows;
+pub(crate) use prepared::retain_rows_polled;
 mod reference_weights;
 mod sample;
 mod source_plan;

@@ -57,7 +57,15 @@ pub fn connected_components(
     levels: &[usize],
     active: &[bool],
 ) -> Result<ComponentInfo> {
-    components(codes, levels, active.len(), Some(active), None)
+    connected_components_polled(codes, levels, active, None)
+}
+pub(crate) fn connected_components_polled(
+    codes: &[&[u32]],
+    levels: &[usize],
+    active: &[bool],
+    poll: Poll<'_>,
+) -> Result<ComponentInfo> {
+    components(codes, levels, active.len(), Some(active), poll)
 }
 pub(crate) fn connected_components_all(
     codes: &[&[u32]],
@@ -82,12 +90,13 @@ fn components(
     poll: Poll<'_>,
 ) -> Result<ComponentInfo> {
     execution::check(poll)?;
-    if codes.len() != levels.len() || codes.iter().any(|column| column.len() != nobs) {
+    if codes.len() != levels.len() || execution::any(codes, |column| column.len() != nobs, poll)? {
         return Err(invalid("component code, level and row dimensions differ"));
     }
     let mut offsets = reserved(levels.len().checked_add(1).ok_or_else(allocation)?)?;
     offsets.push(0usize);
-    for &count in levels {
+    for (effect, &count) in levels.iter().enumerate() {
+        execution::check_chunk(poll, effect)?;
         offsets.push(
             offsets
                 .last()
@@ -106,6 +115,7 @@ fn components(
             continue;
         }
         for (effect, column) in codes.iter().enumerate() {
+            execution::check_chunk(poll, effect)?;
             let level = column[row] as usize;
             if level >= levels[effect] {
                 return Err(FeregError::new(
@@ -149,6 +159,7 @@ fn components(
         row.extend_from_slice(&labels[offsets[effect]..offsets[effect + 1]]);
         by_effect.push(row);
     }
+    execution::check(poll)?;
     Ok(ComponentInfo {
         n_components: count,
         component_by_effect_level: by_effect,

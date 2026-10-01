@@ -32,33 +32,47 @@ impl Prepared {
     }
 
     /// Consume the owner so a failed validation cannot expose a partially compacted sample.
-    pub fn compact_active_rows(mut self, keep: &[bool], reason: DropReason) -> Result<Self> {
+    pub fn compact_active_rows(self, keep: &[bool], reason: DropReason) -> Result<Self> {
+        self.compact_active_rows_polled(keep, reason, None)
+    }
+    pub(crate) fn compact_active_rows_polled(
+        mut self,
+        keep: &[bool],
+        reason: DropReason,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        execution::check(poll)?;
         if matches!(reason, DropReason::Retained | DropReason::ExcludedByIfIn)
             || keep.len() != self.n_active()
         {
             return Err(invalid("invalid compact-row mask or deletion reason"));
         }
-        self.validate_alignment()?;
+        self.validate_alignment_polled(poll)?;
         self.topology = None;
-        for (&row, &retained) in self.original_row_by_active.iter().zip(keep) {
+        for (position, (&row, &retained)) in
+            self.original_row_by_active.iter().zip(keep).enumerate()
+        {
+            execution::check_chunk(poll, position)?;
             if !retained {
                 self.drop_reasons[row] = reason;
             }
         }
-        retain_rows(&mut self.original_row_by_active, keep);
-        retain_rows(&mut self.outcome, keep);
-        for column in &mut self.regressors {
-            retain_rows(column, keep);
+        retain_rows_polled(&mut self.original_row_by_active, keep, poll)?;
+        retain_rows_polled(&mut self.outcome, keep, poll)?;
+        for (index, column) in self.regressors.iter_mut().enumerate() {
+            execution::check_chunk(poll, index)?;
+            retain_rows_polled(column, keep, poll)?;
         }
         if let PreparedWeights::Provided { values, .. } = &mut self.weights {
-            retain_rows(values, keep);
+            retain_rows_polled(values, keep, poll)?;
         }
         match &mut self.adjustment {
             PreparedAdjustment::Offset(values) | PreparedAdjustment::Exposure(values) => {
-                retain_rows(values, keep)
+                retain_rows_polled(values, keep, poll)?
             }
             PreparedAdjustment::None => (),
         }
+        execution::check(poll)?;
         Ok(self)
     }
 
@@ -103,13 +117,26 @@ impl Prepared {
     }
 }
 
-pub(crate) fn retain_rows<T>(values: &mut Vec<T>, keep: &[bool]) {
-    let mut row = 0;
-    values.retain(|_| {
-        let retain = keep[row];
-        row += 1;
-        retain
-    });
+// Every row bank is Copy. A stable in-place prefix needs no second bank or
+// cancellation unwind; callers discard their owned work on any failure.
+pub(crate) fn retain_rows_polled<T: Copy>(
+    values: &mut Vec<T>,
+    keep: &[bool],
+    poll: Poll<'_>,
+) -> Result<()> {
+    execution::check(poll)?;
+    let mut written = 0;
+    for row in 0..values.len() {
+        execution::check_chunk(poll, row)?;
+        if keep[row] {
+            if written != row {
+                values[written] = values[row];
+            }
+            written += 1;
+        }
+    }
+    values.truncate(written);
+    execution::check(poll)
 }
 
 fn invalid(message: &str) -> FeregError {

@@ -1,5 +1,8 @@
 //! Harvested queue/XOR singleton fixed point; frequency mass is not a row count.
-use crate::error::{reserved, ErrorCode, FeregError, Result};
+use crate::{
+    error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 use std::collections::VecDeque;
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SingletonMultiplicity<'a> {
@@ -28,10 +31,22 @@ pub fn prune_singletons_with_multiplicity(
     multiplicity: SingletonMultiplicity<'_>,
     keep: bool,
 ) -> Result<SingletonResult> {
-    validate_inputs(codes, levels, active, multiplicity)?;
+    prune_singletons_polled(codes, levels, active, multiplicity, keep, None)
+}
+pub(crate) fn prune_singletons_polled(
+    codes: &[&[u32]],
+    levels: &[usize],
+    active: &[bool],
+    multiplicity: SingletonMultiplicity<'_>,
+    keep: bool,
+    poll: Poll<'_>,
+) -> Result<SingletonResult> {
+    execution::check(poll)?;
+    validate_inputs(codes, levels, active, multiplicity, poll)?;
     let mut retained = reserved(active.len())?;
     retained.extend_from_slice(active);
     if keep || codes.is_empty() || active.is_empty() {
+        execution::check(poll)?;
         return Ok(SingletonResult {
             active: retained,
             dropped_observations: Vec::new(),
@@ -40,7 +55,8 @@ pub fn prune_singletons_with_multiplicity(
     }
     let mut offsets = reserved(levels.len().checked_add(1).ok_or_else(allocation)?)?;
     offsets.push(0usize);
-    for &level in levels {
+    for (effect, &level) in levels.iter().enumerate() {
+        execution::check_chunk(poll, effect)?;
         offsets.push(
             offsets
                 .last()
@@ -53,11 +69,13 @@ pub fn prune_singletons_with_multiplicity(
     let mut counts = reserved(count)?;
     counts.resize(count, 0.0);
     for (row, &keep) in active.iter().enumerate() {
+        execution::check_chunk(poll, row)?;
         if !keep {
             continue;
         }
         let weight = multiplicity.contribution(row)?;
         for (effect, column) in codes.iter().enumerate() {
+            execution::check_chunk(poll, effect)?;
             let cell = offsets[effect] + column[row] as usize;
             counts[cell] += weight;
             if !counts[cell].is_finite() {
@@ -68,16 +86,20 @@ pub fn prune_singletons_with_multiplicity(
             }
         }
     }
-    if !counts.iter().copied().any(is_singleton) {
+    if !execution::any(&counts, |&count| is_singleton(count), poll)? {
+        execution::check(poll)?;
         return Ok(SingletonResult {
             active: retained,
             dropped_observations: Vec::new(),
             cascade_events: 0,
         });
     }
-    let mut state = QueueState::new(codes, active, offsets, counts)?;
+    let mut state = QueueState::new(codes, active, offsets, counts, poll)?;
     let mut dropped = reserved(active.len())?;
+    let mut visits = 0usize;
     while let Some(index) = state.queue.pop_front() {
+        execution::check_chunk(poll, visits)?;
+        visits = visits.wrapping_add(1);
         state.queued[index] = false;
         if !is_singleton(state.counts[index]) {
             continue;
@@ -96,9 +118,10 @@ pub fn prune_singletons_with_multiplicity(
         }
         retained[row] = false;
         dropped.push(row);
-        state.remove(codes, row, multiplicity.contribution(row)?)?;
+        state.remove(codes, row, multiplicity.contribution(row)?, poll)?;
     }
     let cascade_events = dropped.len();
+    execution::check(poll)?;
     Ok(SingletonResult {
         active: retained,
         dropped_observations: dropped,
@@ -118,12 +141,15 @@ impl QueueState {
         active: &[bool],
         offsets: Vec<usize>,
         counts: Vec<f64>,
+        poll: Poll<'_>,
     ) -> Result<Self> {
         let cells = counts.len();
         let mut rows_xor = reserved(cells)?;
         rows_xor.resize(cells, 0usize);
         for (effect, column) in codes.iter().enumerate() {
+            execution::check_chunk(poll, effect)?;
             for (row, &code) in column.iter().enumerate() {
+                execution::check_chunk(poll, row)?;
                 if active[row] {
                     rows_xor[offsets[effect] + code as usize] ^= row;
                 }
@@ -134,6 +160,7 @@ impl QueueState {
         let mut queue = VecDeque::new();
         queue.try_reserve(cells).map_err(|_| allocation())?;
         for (index, &count) in counts.iter().enumerate() {
+            execution::check_chunk(poll, index)?;
             if is_singleton(count) {
                 queue.push_back(index);
                 queued[index] = true;
@@ -147,8 +174,9 @@ impl QueueState {
             queue,
         })
     }
-    fn remove(&mut self, codes: &[&[u32]], row: usize, weight: f64) -> Result<()> {
+    fn remove(&mut self, codes: &[&[u32]], row: usize, weight: f64, poll: Poll<'_>) -> Result<()> {
         for (effect, column) in codes.iter().enumerate() {
+            execution::check_chunk(poll, effect)?;
             let index = self.offsets[effect] + column[row] as usize;
             self.rows_xor[index] ^= row;
             self.counts[index] -= weight;
@@ -172,7 +200,7 @@ impl QueueState {
 }
 
 impl SingletonMultiplicity<'_> {
-    fn validate(self, nobs: usize) -> Result<()> {
+    fn validate(self, nobs: usize, poll: Poll<'_>) -> Result<()> {
         if let Self::Frequency(values) = self {
             if values.len() != nobs {
                 return Err(FeregError::new(
@@ -180,10 +208,11 @@ impl SingletonMultiplicity<'_> {
                     "singleton frequency multiplicity length differs from sample",
                 ));
             }
-            if values
-                .iter()
-                .any(|value| !value.is_finite() || *value <= 0.0 || value.fract() != 0.0)
-            {
+            if execution::any(
+                values,
+                |value| !value.is_finite() || *value <= 0.0 || value.fract() != 0.0,
+                poll,
+            )? {
                 return Err(FeregError::new(
                     ErrorCode::InvalidData,
                     "singleton frequency multiplicities must be positive finite integers",
@@ -211,6 +240,7 @@ fn validate_inputs(
     effect_levels: &[usize],
     initially_active: &[bool],
     multiplicity: SingletonMultiplicity<'_>,
+    poll: Poll<'_>,
 ) -> Result<()> {
     if effect_codes.len() != effect_levels.len() {
         return Err(FeregError::new(
@@ -218,8 +248,9 @@ fn validate_inputs(
             "singleton effect codes and level counts differ in length",
         ));
     }
-    multiplicity.validate(initially_active.len())?;
+    multiplicity.validate(initially_active.len(), poll)?;
     for (effect, codes) in effect_codes.iter().enumerate() {
+        execution::check_chunk(poll, effect)?;
         if codes.len() != initially_active.len() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -232,10 +263,7 @@ fn validate_inputs(
                 "nonempty singleton effect declares zero levels",
             ));
         }
-        if codes
-            .iter()
-            .any(|code| *code as usize >= effect_levels[effect])
-        {
+        if execution::any(*codes, |code| *code as usize >= effect_levels[effect], poll)? {
             return Err(FeregError::new(
                 ErrorCode::InvalidData,
                 "singleton effect code exceeds its declared level count",
