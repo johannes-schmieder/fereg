@@ -5,7 +5,8 @@ use super::{
 };
 use crate::{
     error::{reserved, ErrorCode, FeregError, Result},
-    factor::factorize_strings,
+    execution::{self, Poll},
+    factor::factorize_strings_polled,
 };
 
 #[derive(Debug)]
@@ -44,10 +45,15 @@ pub struct Loaded {
 impl Loaded {
     /// Validate all row banks before candidate-domain checks or string encoding.
     pub fn validate_alignment(&self) -> Result<()> {
+        self.validate_alignment_polled(None)
+    }
+    pub(crate) fn validate_alignment_polled(&self, poll: Poll<'_>) -> Result<()> {
+        execution::check(poll)?;
         use super::sample::validate_column;
         let n = self.candidate.len();
         validate_column("outcome", self.outcome.view(), n)?;
-        for source in &self.sources {
+        for (index, source) in self.sources.iter().enumerate() {
+            execution::check_chunk(poll, index)?;
             match source {
                 LoadedSource::Numeric(column) => validate_column("source", column.view(), n)?,
                 LoadedSource::Strings(values) if values.len() != n => {
@@ -75,15 +81,25 @@ impl Loaded {
         uses: &[NumericSourceUse],
         policy: &P,
     ) -> Result<Prepared> {
+        self.prepare_polled(uses, policy, None)
+    }
+    pub(crate) fn prepare_polled<P: NumericDomainPolicy>(
+        &self,
+        uses: &[NumericSourceUse],
+        policy: &P,
+        poll: Poll<'_>,
+    ) -> Result<Prepared> {
+        execution::check(poll)?;
         if uses.len() != self.sources.len() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
                 "loaded source roles have the wrong length",
             ));
         }
-        self.validate_alignment()?;
+        self.validate_alignment_polled(poll)?;
         let mut encoded = reserved(self.sources.len())?;
-        for (source, usage) in self.sources.iter().zip(uses) {
+        for (index, (source, usage)) in self.sources.iter().zip(uses).enumerate() {
+            execution::check_chunk(poll, index)?;
             encoded.push(match source {
                 LoadedSource::Numeric(_) => None,
                 LoadedSource::Strings(values) => {
@@ -93,12 +109,13 @@ impl Loaded {
                             "string ordinary regressors are unsupported",
                         ));
                     }
-                    Some(encode_strings(values)?)
+                    Some(encode_strings(values, poll)?)
                 }
             });
         }
         let mut sources = reserved(self.sources.len())?;
-        for (source, converted) in self.sources.iter().zip(&encoded) {
+        for (index, (source, converted)) in self.sources.iter().zip(&encoded).enumerate() {
+            execution::check_chunk(poll, index)?;
             sources.push(match source {
                 LoadedSource::Numeric(column) => column.view(),
                 LoadedSource::Strings(_) => {
@@ -118,7 +135,7 @@ impl Loaded {
             LoadedAdjustment::Offset(column) => AdjustmentInput::Offset(column.view()),
             LoadedAdjustment::Exposure(column) => AdjustmentInput::Exposure(column.view()),
         };
-        super::prepare_numeric_sample_with_source_uses(
+        super::prepare::prepare_sample(
             &NumericPreparationInput {
                 candidate: &self.candidate,
                 outcome: self.outcome.view(),
@@ -126,18 +143,26 @@ impl Loaded {
                 weights,
                 adjustment,
             },
-            uses,
+            Some(uses),
             policy,
+            poll,
         )
     }
 }
 
-fn encode_strings(values: &[String]) -> Result<NumericColumn> {
-    let encoded = factorize_strings(values)?;
+fn encode_strings(values: &[String], poll: Poll<'_>) -> Result<NumericColumn> {
+    let encoded = factorize_strings_polled(values, poll)?;
     let mut numeric = reserved(values.len())?;
-    numeric.extend(encoded.codes.into_iter().map(f64::from));
+    for (row, code) in encoded.codes.into_iter().enumerate() {
+        execution::check_chunk(poll, row)?;
+        numeric.push(f64::from(code));
+    }
     let mut missing = reserved(values.len())?;
-    missing.extend(values.iter().map(String::is_empty));
+    for (row, value) in values.iter().enumerate() {
+        execution::check_chunk(poll, row)?;
+        missing.push(value.is_empty());
+    }
+    execution::check(poll)?;
     Ok(NumericColumn {
         values: numeric,
         missing: Some(missing),

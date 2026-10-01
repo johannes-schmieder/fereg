@@ -366,3 +366,122 @@ fn tuple_coding_and_dof_cancellation_release_every_complete_inference_owner() {
     }
     eprintln!("{aborted} tracked complete inference aborts: tuple sorting, cluster banks, metadata validation, DoF, reporting, covariance and statistics; no retained numerical owners, exact fresh retries and one plan");
 }
+
+#[test]
+#[ignore = "process-global allocator audit; run with --test-threads=1"]
+fn source_preparation_cancellation_releases_encoded_strings_and_finite_columns() {
+    use fereg_engine::data::LoadedSource;
+    let _guard = crate::instrumentation::lock_action_observation();
+    let model = fixture::model(false);
+    let mut loaded = fixture::loaded(1029, true, false);
+    loaded.sources[1] = LoadedSource::Strings(
+        (0..1029)
+            .map(|row| {
+                if row % 41 == 0 {
+                    String::new()
+                } else {
+                    format!("Ω{:02}", row % 8)
+                }
+            })
+            .collect(),
+    );
+    let request = request(true);
+    let inputs = Inputs::from_loaded(&loaded, 0, 0).unwrap();
+    let caller = std::thread::current().id();
+    let sentinel = fereg_engine::FeregError::new(
+        fereg_engine::ErrorCode::NonConvergence,
+        "preparation host r(430) must discard encoded and compact owners",
+    );
+    let mut scientific = None;
+    let mut checkpoint_count = None;
+    let mut aborted = 0;
+    for workers in [1, 8] {
+        let options = Options {
+            threads: workers,
+            ..Options::for_estimator(Estimator::Ols)
+        };
+        let team = ThreadTeam::new(workers).unwrap();
+        let make = || {
+            Call::new(
+                &model,
+                &options,
+                &request,
+                inputs,
+                loaded.weights.as_ref().map(|(kind, _)| *kind),
+                Resources::default(),
+            )
+            .unwrap()
+        };
+        let mut region = false;
+        let mut total = 0;
+        let baseline = make()
+            .run_with_team(&loaded, &team, &mut |phase| {
+                assert_eq!(std::thread::current().id(), caller);
+                match phase {
+                    Phase::Loaded => region = true,
+                    Phase::Prepared => region = false,
+                    Phase::DenseLinearAlgebra if region => total += 1,
+                    _ => (),
+                }
+                Ok(())
+            })
+            .unwrap();
+        let mut expected = 0;
+        hash(&baseline.coefficients, &mut expected);
+        hash(baseline.covariance.values.as_slice(), &mut expected);
+        hash(
+            &[baseline.statistics.rss, baseline.statistics.tss],
+            &mut expected,
+        );
+        let estimate = baseline.memory.peak_bytes();
+        assert_eq!(*scientific.get_or_insert(expected), expected);
+        assert_eq!(*checkpoint_count.get_or_insert(total), total);
+        assert!(total > 20);
+        drop(baseline);
+        for stop in 1..=total {
+            let (before, _) = begin_ols_allocation_observation();
+            let mut region = false;
+            let mut polls = 0;
+            let error = make()
+                .run_with_team(&loaded, &team, &mut |phase| {
+                    assert_eq!(std::thread::current().id(), caller);
+                    match phase {
+                        Phase::Loaded => region = true,
+                        Phase::Prepared => region = false,
+                        Phase::DenseLinearAlgebra if region => {
+                            polls += 1;
+                            if polls == stop {
+                                return Err(sentinel.clone());
+                            }
+                        }
+                        _ => (),
+                    }
+                    Ok(())
+                })
+                .unwrap_err();
+            assert_eq!(error, sentinel);
+            assert_eq!(polls, stop);
+            drop(error);
+            assert!(allocation_usage().current_bytes <= before.current_bytes);
+            assert!(
+                u128::from(
+                    allocation_usage()
+                        .peak_bytes
+                        .saturating_sub(before.current_bytes)
+                ) <= estimate
+            );
+            let retry = make()
+                .run_with_team(&loaded, &team, &mut |_| Ok(()))
+                .unwrap();
+            let mut value = 0;
+            hash(&retry.coefficients, &mut value);
+            hash(retry.covariance.values.as_slice(), &mut value);
+            hash(&[retry.statistics.rss, retry.statistics.tss], &mut value);
+            assert_eq!(value, expected);
+            drop(retry);
+            assert!(allocation_usage().current_bytes <= before.current_bytes);
+            aborted += 1;
+        }
+    }
+    eprintln!("{aborted} tracked complete source-preparation aborts: encoded strings, compact source banks and finite columns; no retained owners, original host errors and exact fresh retries within one plan");
+}

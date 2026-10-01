@@ -54,15 +54,23 @@ pub fn factorize_i64(values: &[i64]) -> Result<EncodedFactor<i64>> {
 }
 
 pub fn factorize_strings<S: AsRef<str>>(values: &[S]) -> Result<EncodedFactor<String>> {
+    factorize_strings_polled(values, None)
+}
+pub(crate) fn factorize_strings_polled<S: AsRef<str>>(
+    values: &[S],
+    poll: Poll<'_>,
+) -> Result<EncodedFactor<String>> {
     let encoded = encode(
         values.iter().map(|value| Ok(value.as_ref())),
         Ord::cmp,
-        None,
+        poll,
     )?;
     let mut levels = reserved(encoded.levels.len())?;
-    for level in encoded.levels {
+    for (index, level) in encoded.levels.into_iter().enumerate() {
+        execution::check_chunk(poll, index)?;
         levels.push(copied_string(level)?);
     }
+    execution::check(poll)?;
     Ok(EncodedFactor {
         codes: encoded.codes,
         levels,

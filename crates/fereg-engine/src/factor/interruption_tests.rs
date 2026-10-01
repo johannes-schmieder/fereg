@@ -70,3 +70,35 @@ fn numeric_and_tuple_coding_cancel_every_checkpoint_without_changing_canonical_c
         factorize_code_interaction_polled(&[CategoricalCodeView::new(&[], 0)], poll)
     });
 }
+
+#[test]
+fn string_coding_cancels_every_checkpoint_with_identical_owned_canonical_levels() {
+    let values: Vec<_> = (0..4099)
+        .map(|i| {
+            if i % 13 == 0 {
+                String::new()
+            } else {
+                format!("Ω{:05}", (i * 37) % 2053)
+            }
+        })
+        .collect();
+    let mut reference = None;
+    for workers in [1, 8] {
+        let team = ThreadTeam::new(workers).unwrap();
+        let count =
+            team.install(|| every_checkpoint(|poll| factorize_strings_polled(&values, poll)));
+        assert!(count > 20);
+        assert_eq!(*reference.get_or_insert(count), count);
+    }
+    let encoded = factorize_strings(&values).unwrap();
+    assert!(encoded
+        .levels
+        .windows(2)
+        .all(|levels| levels[0] < levels[1]));
+    for (row, value) in values.iter().enumerate() {
+        assert_eq!(
+            encoded.codes[row] as usize,
+            encoded.levels.binary_search(value).unwrap()
+        );
+    }
+}

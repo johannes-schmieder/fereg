@@ -211,7 +211,14 @@ impl<'a> ModelMatrixBuilder<'a> {
     }
 
     pub fn generate(&self, recipes: &[ColumnRecipe]) -> Result<DenseMatrix> {
-        self.generate_range(recipes, 0, recipes.len())
+        self.generate_polled(recipes, None)
+    }
+    pub(crate) fn generate_polled(
+        &self,
+        recipes: &[ColumnRecipe],
+        poll: Poll<'_>,
+    ) -> Result<DenseMatrix> {
+        self.generate_range_polled(recipes, 0, recipes.len(), poll)
     }
 
     /// Bind reported recipes to the fitted columns without another N-by-K bank.
@@ -245,6 +252,16 @@ impl<'a> ModelMatrixBuilder<'a> {
         start: usize,
         end: usize,
     ) -> Result<DenseMatrix> {
+        self.generate_range_polled(recipes, start, end, None)
+    }
+    fn generate_range_polled(
+        &self,
+        recipes: &[ColumnRecipe],
+        start: usize,
+        end: usize,
+        poll: Poll<'_>,
+    ) -> Result<DenseMatrix> {
+        execution::check(poll)?;
         if start > end || end > recipes.len() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -254,11 +271,14 @@ impl<'a> ModelMatrixBuilder<'a> {
         let selected = &recipes[start..end];
         let mut matrix = DenseMatrix::zeros(self.nrows, selected.len())?;
         for (column, recipe) in selected.iter().enumerate() {
-            self.validate_recipe(recipe)?;
+            execution::check(poll)?;
+            self.validate_recipe_polled(recipe, poll)?;
             for row in 0..self.nrows {
-                matrix[(row, column)] = self.value(recipe, row, None)?;
+                execution::check_chunk(poll, row)?;
+                matrix[(row, column)] = self.value(recipe, row, poll)?;
             }
         }
+        execution::check(poll)?;
         Ok(matrix)
     }
 
@@ -285,9 +305,6 @@ impl<'a> ModelMatrixBuilder<'a> {
         Ok(())
     }
 
-    fn validate_recipe(&self, recipe: &ColumnRecipe) -> Result<()> {
-        self.validate_recipe_polled(recipe, None)
-    }
     fn validate_recipe_polled(&self, recipe: &ColumnRecipe, poll: Poll<'_>) -> Result<()> {
         match recipe {
             ColumnRecipe::NumericIndicators { sources, levels } => {

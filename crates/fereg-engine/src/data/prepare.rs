@@ -1,20 +1,23 @@
 //! Harvested from legacy/fereg-core at b1700e6d; no memory-mode admission.
 use super::sample::*;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::{
+    error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 
 pub(super) fn prepare_sample<P: NumericDomainPolicy>(
     input: &NumericPreparationInput<'_>,
     source_uses: Option<&[NumericSourceUse]>,
     policy: &P,
+    poll: Poll<'_>,
 ) -> Result<Prepared> {
+    execution::check(poll)?;
     let n_original = input.candidate.len();
-    validate_input(input, n_original)?;
-    validate_source_uses(input, source_uses)?;
-    let n_candidate = input
-        .candidate
-        .iter()
-        .filter(|candidate| **candidate)
-        .count();
+    validate_input(input, n_original, poll)?;
+    validate_source_uses(input, source_uses, poll)?;
+    let n_candidate = execution::fold(input.candidate, 0usize, poll, |count, &candidate| {
+        count + usize::from(candidate)
+    })?;
     check_output_dimensions(input, n_original, n_candidate)?;
 
     let mut drop_reasons = reserved_vec(n_original, "drop-reason mask")?;
@@ -22,7 +25,8 @@ pub(super) fn prepare_sample<P: NumericDomainPolicy>(
     let mut outcome = reserved_vec(n_candidate, "outcome")?;
 
     let mut regressors = reserved_vec(input.regressors.len(), "regressor column table")?;
-    for _ in 0..input.regressors.len() {
+    for column in 0..input.regressors.len() {
+        execution::check_chunk(poll, column)?;
         regressors.push(reserved_vec(n_candidate, "regressor column")?);
     }
 
@@ -44,7 +48,8 @@ pub(super) fn prepare_sample<P: NumericDomainPolicy>(
     };
 
     for original_row in 0..n_original {
-        let reason = classify_row(input, source_uses, policy, original_row)?;
+        execution::check_chunk(poll, original_row)?;
+        let reason = classify_row(input, source_uses, policy, original_row, poll)?;
         drop_reasons.push(reason);
         if reason != DropReason::Retained {
             continue;
@@ -52,7 +57,10 @@ pub(super) fn prepare_sample<P: NumericDomainPolicy>(
 
         original_row_by_active.push(original_row);
         outcome.push(input.outcome.values[original_row]);
-        for (destination, source) in regressors.iter_mut().zip(input.regressors) {
+        for (column, (destination, source)) in
+            regressors.iter_mut().zip(input.regressors).enumerate()
+        {
+            execution::check_chunk(poll, column)?;
             destination.push(source.values[original_row]);
         }
         if let (PreparedWeights::Provided { values, .. }, WeightInput::Provided { column, .. }) =
@@ -70,14 +78,19 @@ pub(super) fn prepare_sample<P: NumericDomainPolicy>(
     }
 
     debug_assert_eq!(drop_reasons.len(), n_original);
-    debug_assert!(original_row_by_active
-        .windows(2)
-        .all(|rows| rows[0] < rows[1]));
+    debug_assert!(!execution::any(
+        original_row_by_active.windows(2),
+        |rows| rows[0] >= rows[1],
+        poll
+    )?);
     debug_assert_eq!(outcome.len(), original_row_by_active.len());
-    debug_assert!(regressors
-        .iter()
-        .all(|column| column.len() == original_row_by_active.len()));
+    debug_assert!(!execution::any(
+        &regressors,
+        |column| column.len() != original_row_by_active.len(),
+        poll
+    )?);
 
+    execution::check(poll)?;
     Ok(Prepared {
         topology: None,
         n_original,
@@ -98,3 +111,6 @@ fn reserved_vec<T>(elements: usize, label: &str) -> Result<Vec<T>> {
     })?;
     Ok(values)
 }
+
+#[cfg(test)]
+mod interruption_tests;

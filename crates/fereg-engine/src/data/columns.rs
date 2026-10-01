@@ -95,9 +95,12 @@ impl CompiledColumns {
         Ok(result)
     }
     pub fn generate(&self, sample: &Prepared) -> Result<DenseMatrix> {
-        sample.validate_alignment()?;
-        ModelMatrixBuilder::with_nrows(sample.n_active(), &sample.regressors, &[])?
-            .generate(&self.recipes)
+        self.generate_polled(sample, None)
+    }
+    pub(crate) fn generate_polled(&self, sample: &Prepared, poll: Poll<'_>) -> Result<DenseMatrix> {
+        sample.validate_alignment_polled(poll)?;
+        ModelMatrixBuilder::with_nrows_polled(sample.n_active(), &sample.regressors, &[], poll)?
+            .generate_polled(&self.recipes, poll)
     }
     pub(crate) fn matches(&self, sample: &Prepared, raw: &DenseMatrix) -> Result<bool> {
         self.matches_polled(sample, raw, None)

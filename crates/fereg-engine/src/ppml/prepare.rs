@@ -1,5 +1,6 @@
 use crate::{
     data::{DomainDecision, Loaded, NumericDomainPolicy, Prepared, SourcePlan, WeightKind},
+    execution::{self, Poll},
     topology::prepare_unpruned,
     ErrorCode, FeregError, ModelSpec, Result,
 };
@@ -9,9 +10,10 @@ pub(super) fn prepare(
     model: &ModelSpec,
     loaded: &Loaded,
     sources: &SourcePlan,
+    poll: Poll<'_>,
 ) -> Result<Prepared> {
-    let sample = sources.prepare(loaded, &PpmlPolicy)?;
-    if !sample.outcome.iter().any(|&y| y > 0.) {
+    let sample = sources.prepare_polled(loaded, &PpmlPolicy, poll)?;
+    if !execution::any(&sample.outcome, |&y| y > 0., poll)? {
         return Err(FeregError::new(
             ErrorCode::InsufficientObservations,
             "PPML has no positive outcome after preparation",

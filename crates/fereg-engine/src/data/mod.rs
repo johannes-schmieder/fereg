@@ -31,7 +31,7 @@ pub fn prepare_numeric_sample<P: NumericDomainPolicy>(
     input: &NumericPreparationInput<'_>,
     policy: &P,
 ) -> Result<Prepared> {
-    prepare::prepare_sample(input, None, policy)
+    prepare::prepare_sample(input, None, policy, None)
 }
 
 pub fn prepare_numeric_sample_with_source_uses<P: NumericDomainPolicy>(
@@ -39,5 +39,5 @@ pub fn prepare_numeric_sample_with_source_uses<P: NumericDomainPolicy>(
     uses: &[NumericSourceUse],
     policy: &P,
 ) -> Result<Prepared> {
-    prepare::prepare_sample(input, Some(uses), policy)
+    prepare::prepare_sample(input, Some(uses), policy, None)
 }

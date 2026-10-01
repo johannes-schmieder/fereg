@@ -181,7 +181,7 @@ pub(crate) fn run_polled(
         }
         // Recipes read only the new owner. No old projected columns or
         // factors are compacted into the next numerical generation.
-        let raw = columns.generate(ledger.view().sample())?;
+        let raw = columns.generate_polled(ledger.view().sample(), probe.dense())?;
         if (round::Runtime {
             options,
             controls,

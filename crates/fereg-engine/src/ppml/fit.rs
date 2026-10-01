@@ -89,7 +89,7 @@ pub(super) fn execute_in(
     let units = call.units(loaded, units)?;
     let mut timings = Timings::default();
     let mut clock = Instant::now();
-    let sample = super::prepare::prepare(call.model, loaded, &call.sources)?;
+    let sample = super::prepare::prepare(call.model, loaded, &call.sources, probe.dense())?;
     timings.preparation = clock.elapsed();
     interrupt(Phase::Prepared)?;
     clock = Instant::now();

@@ -3,6 +3,7 @@ use crate::{
         CompiledColumns, DomainDecision, Loaded, LoadedAdjustment, NumericDomainPolicy, Prepared,
         SourcePlan, WeightKind,
     },
+    execution::Poll,
     spec::Estimator,
     topology::{prepare_fixed_effects, prepare_implicit_constant},
     ErrorCode, FeregError, ModelSpec, Result,
@@ -18,13 +19,14 @@ pub(super) fn prepare_compiled(
     loaded: &Loaded,
     columns: &CompiledColumns,
 ) -> Result<Prepared> {
-    prepare_planned(spec, loaded, columns, &SourcePlan::new(spec)?)
+    prepare_planned(spec, loaded, columns, &SourcePlan::new(spec)?, None)
 }
 pub(super) fn prepare_planned(
     spec: &ModelSpec,
     loaded: &Loaded,
     columns: &CompiledColumns,
     sources: &SourcePlan,
+    poll: Poll<'_>,
 ) -> Result<Prepared> {
     if loaded
         .weights
@@ -42,7 +44,7 @@ pub(super) fn prepare_planned(
             "OLS does not support offset or exposure",
         ));
     }
-    let sample = sources.prepare(loaded, &OlsPolicy)?;
+    let sample = sources.prepare_polled(loaded, &OlsPolicy, poll)?;
     let sample = prepare_fixed_effects(spec, sample)?;
     if sample.n_active() == 0 {
         return Err(FeregError::new(

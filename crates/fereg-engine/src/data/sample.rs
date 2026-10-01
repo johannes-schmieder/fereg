@@ -1,6 +1,9 @@
 //! Harvested from legacy/fereg-core at b1700e6d; no memory-mode admission.
 use super::weights::WeightKind;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::{
+    error::{ErrorCode, FeregError, Result},
+    execution::{self, Poll},
+};
 use std::mem::size_of;
 
 /// Authoritative observation-level exclusion reason.
@@ -191,6 +194,7 @@ pub(super) fn classify_row<P: NumericDomainPolicy>(
     source_uses: Option<&[NumericSourceUse]>,
     policy: &P,
     original_row: usize,
+    poll: Poll<'_>,
 ) -> Result<DropReason> {
     if !input.candidate[original_row] {
         return Ok(DropReason::ExcludedByIfIn);
@@ -203,9 +207,13 @@ pub(super) fn classify_row<P: NumericDomainPolicy>(
         return Ok(DropReason::OtherModelExclusion);
     }
 
-    if input.regressors.iter().enumerate().any(|(index, column)| {
-        source_is_ordinary(source_uses, index) && column.is_unavailable(original_row)
-    }) {
+    if execution::any(
+        input.regressors.iter().enumerate(),
+        |(index, column)| {
+            source_is_ordinary(source_uses, index) && column.is_unavailable(original_row)
+        },
+        poll,
+    )? {
         return Ok(DropReason::MissingRegressor);
     }
 
@@ -218,15 +226,23 @@ pub(super) fn classify_row<P: NumericDomainPolicy>(
         }
     }
 
-    if input.regressors.iter().enumerate().any(|(index, column)| {
-        source_is_fixed_effect(source_uses, index) && column.is_unavailable(original_row)
-    }) {
+    if execution::any(
+        input.regressors.iter().enumerate(),
+        |(index, column)| {
+            source_is_fixed_effect(source_uses, index) && column.is_unavailable(original_row)
+        },
+        poll,
+    )? {
         return Ok(DropReason::MissingFixedEffect);
     }
 
-    if input.regressors.iter().enumerate().any(|(index, column)| {
-        source_is_cluster(source_uses, index) && column.is_unavailable(original_row)
-    }) {
+    if execution::any(
+        input.regressors.iter().enumerate(),
+        |(index, column)| {
+            source_is_cluster(source_uses, index) && column.is_unavailable(original_row)
+        },
+        poll,
+    )? {
         return Ok(DropReason::MissingCluster);
     }
 
@@ -268,6 +284,7 @@ fn source_is_cluster(source_uses: Option<&[NumericSourceUse]>, index: usize) -> 
 pub(super) fn validate_source_uses(
     input: &NumericPreparationInput<'_>,
     source_uses: Option<&[NumericSourceUse]>,
+    poll: Poll<'_>,
 ) -> Result<()> {
     let Some(source_uses) = source_uses else {
         return Ok(());
@@ -282,10 +299,11 @@ pub(super) fn validate_source_uses(
             ),
         ));
     }
-    if source_uses
-        .iter()
-        .any(|usage| !usage.ordinary && !usage.fixed_effect && !usage.cluster)
-    {
+    if execution::any(
+        source_uses,
+        |usage| !usage.ordinary && !usage.fixed_effect && !usage.cluster,
+        poll,
+    )? {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
             "numeric source-use entries must select an ordinary, fixed-effect, or cluster role",
@@ -294,9 +312,14 @@ pub(super) fn validate_source_uses(
     Ok(())
 }
 
-pub(super) fn validate_input(input: &NumericPreparationInput<'_>, n: usize) -> Result<()> {
+pub(super) fn validate_input(
+    input: &NumericPreparationInput<'_>,
+    n: usize,
+    poll: Poll<'_>,
+) -> Result<()> {
     validate_column("outcome", input.outcome, n)?;
-    for column in input.regressors {
+    for (index, column) in input.regressors.iter().enumerate() {
+        execution::check_chunk(poll, index)?;
         validate_column("regressor", *column, n)?;
     }
     if let WeightInput::Provided { column, .. } = input.weights {

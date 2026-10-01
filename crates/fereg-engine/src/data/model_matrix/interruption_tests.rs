@@ -80,3 +80,40 @@ fn reported_recipe_binding_cancels_rows_columns_and_long_interactions_without_re
             .unwrap_err()
     );
 }
+
+#[test]
+fn finite_generation_cancels_every_checkpoint_in_rows_columns_and_interaction_components() {
+    let values = vec![vec![1.; 2053], (0..2053).map(|i| (i % 7) as f64).collect()];
+    let builder = ModelMatrixBuilder::new(&values, &[]).unwrap();
+    let recipes = [
+        ColumnRecipe::Intercept,
+        ColumnRecipe::Continuous { source: 1 },
+        ColumnRecipe::NumericIndicators {
+            sources: vec![1],
+            levels: vec![2.],
+        },
+    ];
+    let short_values = vec![vec![0.5; 3]];
+    let short = ModelMatrixBuilder::new(&short_values, &[]).unwrap();
+    let long = [ColumnRecipe::ContinuousInteraction {
+        sources: vec![0; 2053],
+    }];
+    let mut reference = None;
+    for workers in [1, 8] {
+        let team = ThreadTeam::new(workers).unwrap();
+        let rows =
+            team.install(|| every_checkpoint(|poll| builder.generate_polled(&recipes, poll)));
+        let components =
+            team.install(|| every_checkpoint(|poll| short.generate_polled(&long, poll)));
+        let columns = team.install(|| {
+            every_checkpoint(|poll| {
+                short.generate_polled(&vec![ColumnRecipe::Intercept; 2053], poll)
+            })
+        });
+        assert_eq!(
+            *reference.get_or_insert((rows, components, columns)),
+            (rows, components, columns)
+        );
+    }
+    assert_eq!(short.generate(&long).unwrap().as_slice(), &[0.; 3]);
+}

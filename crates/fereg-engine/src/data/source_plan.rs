@@ -2,6 +2,7 @@
 use super::{Loaded, LoadedSource, NumericDomainPolicy, NumericSourceUse, Prepared};
 use crate::{
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     ComponentKind, ModelSpec,
 };
 
@@ -76,7 +77,16 @@ impl SourcePlan {
         &self.uses
     }
     pub fn prepare<P: NumericDomainPolicy>(&self, loaded: &Loaded, policy: &P) -> Result<Prepared> {
-        loaded.validate_alignment()?;
+        self.prepare_polled(loaded, policy, None)
+    }
+    pub(crate) fn prepare_polled<P: NumericDomainPolicy>(
+        &self,
+        loaded: &Loaded,
+        policy: &P,
+        poll: Poll<'_>,
+    ) -> Result<Prepared> {
+        execution::check(poll)?;
+        loaded.validate_alignment_polled(poll)?;
         if loaded.sources.len() != self.uses.len() {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -84,6 +94,7 @@ impl SourcePlan {
             ));
         }
         for (index, source) in loaded.sources.iter().enumerate() {
+            execution::check_chunk(poll, index)?;
             if !self.numeric_required[index] {
                 continue;
             }
@@ -94,14 +105,16 @@ impl SourcePlan {
                 ));
             };
         }
-        let sample = loaded.prepare(&self.uses, policy)?;
+        let sample = loaded.prepare_polled(&self.uses, policy, poll)?;
         // Built-in Stata validates factors on the available sample, before
         // estimator-specific deletions can hide an invalid factor value.
         for (source, &categorical) in self.ordinary_categorical.iter().enumerate() {
+            execution::check_chunk(poll, source)?;
             if !categorical {
                 continue;
             }
             for (row, &value) in sample.regressors[source].iter().enumerate() {
+                execution::check_chunk(poll, row)?;
                 if value < 0. || value.fract() != 0. {
                     return Err(FeregError::new(
                         ErrorCode::InvalidFactor,
@@ -114,6 +127,10 @@ impl SourcePlan {
                 }
             }
         }
+        execution::check(poll)?;
         Ok(sample)
     }
 }
+
+#[cfg(test)]
+mod interruption_tests;

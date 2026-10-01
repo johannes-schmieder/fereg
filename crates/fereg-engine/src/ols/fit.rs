@@ -79,8 +79,14 @@ pub(super) fn execute_in(
     interrupt(Phase::Loaded)?;
     let mut timings = Timings::default();
     let mut clock = Instant::now();
-    let sample = super::prepare::prepare_planned(call.model, loaded, &call.columns, &call.sources)?;
-    let raw = call.columns.generate(&sample)?;
+    let sample = super::prepare::prepare_planned(
+        call.model,
+        loaded,
+        &call.columns,
+        &call.sources,
+        probe.dense(),
+    )?;
+    let raw = call.columns.generate_polled(&sample, probe.dense())?;
     let weights = ReferenceWeights::new_polled(
         &sample.weights,
         sample.n_active(),
