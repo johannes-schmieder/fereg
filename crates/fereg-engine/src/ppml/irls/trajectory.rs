@@ -102,7 +102,12 @@ impl<'a> Context<'a, '_, '_> {
                     .point_from_linear(&linear, self.problem.raw, self.design, self.team)?;
             drop(linear);
             let old = accepted.evaluation().objective.deviance;
-            accepted = match accepted.try_step_checked(&proposal, self.team, interrupt) {
+            accepted = match accepted.try_step_checked(
+                &proposal,
+                self.team,
+                interrupt,
+                self.probe.dense(),
+            ) {
                 Ok(next) => next,
                 Err(failure)
                     if !failure.callback

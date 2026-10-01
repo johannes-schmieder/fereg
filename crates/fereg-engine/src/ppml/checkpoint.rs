@@ -168,20 +168,24 @@ impl Checkpoint<'_, '_> {
         let candidate = self
             .family
             .point_from_linear(&linear, self.raw, &fresh, team)?;
-        let candidate_evaluation = match self.family.evaluate(&candidate.eta, team) {
-            Ok(value) => value,
-            Err(error) if error.code == ErrorCode::NonConvergence => {
-                return Ok(Report {
-                    stage,
-                    decision: Decision::ResumeAccepted,
-                    candidate: None,
-                    accepted_scores,
-                    accepted_state,
-                    work,
-                });
-            }
-            Err(error) => return Err(error),
-        };
+        let candidate_evaluation =
+            match self
+                .family
+                .evaluate_polled(&candidate.eta, team, probe.dense())
+            {
+                Ok(value) => value,
+                Err(error) if error.code == ErrorCode::NonConvergence => {
+                    return Ok(Report {
+                        stage,
+                        decision: Decision::ResumeAccepted,
+                        candidate: None,
+                        accepted_scores,
+                        accepted_state,
+                        work,
+                    });
+                }
+                Err(error) => return Err(error),
+            };
         let movement = Movement::between(point, evaluation, &candidate, &candidate_evaluation)?;
         let candidate_raw = score_columns(self.raw, &linear.finite.kept)?;
         let scores = self.family.score_certificate(

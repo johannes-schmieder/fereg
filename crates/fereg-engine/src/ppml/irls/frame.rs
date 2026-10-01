@@ -100,6 +100,6 @@ impl<'a> Context<'a, '_, '_> {
             self.controls.publication_tolerance(),
             self.team,
         )?;
-        Accepted::start(self.family, point, self.team)
+        Accepted::start_polled(self.family, point, self.team, self.probe.dense())
     }
 }

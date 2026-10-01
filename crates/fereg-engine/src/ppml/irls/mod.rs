@@ -219,7 +219,12 @@ impl<'a, 'data> Context<'a, 'data, '_> {
         let Some(candidate) = report.candidate else {
             return Ok(false);
         };
-        let next = match accepted.try_step_checked(&candidate.point, self.team, interrupt) {
+        let next = match accepted.try_step_checked(
+            &candidate.point,
+            self.team,
+            interrupt,
+            self.probe.dense(),
+        ) {
             Ok(next) => next,
             Err(failure)
                 if !failure.callback && failure.error.code == ErrorCode::NonConvergence =>

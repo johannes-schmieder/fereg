@@ -48,7 +48,15 @@ pub(crate) fn every_checkpoint<T: std::fmt::Debug + PartialEq>(
     assert!(total > 0);
     for stop in 1..=total {
         count.store(0, Ordering::Relaxed);
-        let cancel = || count.fetch_add(1, Ordering::Relaxed) + 1 < stop;
+        // In-flight workers may poll after the first cancellation. Like the
+        // host relay, retain that failed ordinal and keep returning false.
+        let cancel = || {
+            count
+                .fetch_update(Ordering::Relaxed, Ordering::Relaxed, |visited| {
+                    (visited < stop).then(|| visited + 1)
+                })
+                .is_ok_and(|visited| visited + 1 < stop)
+        };
         assert_eq!(run(Some(&cancel)).unwrap_err().code, ErrorCode::Interrupted);
         assert_eq!(count.load(Ordering::Relaxed), stop);
         assert_eq!(run(None).unwrap(), expected);

@@ -40,7 +40,7 @@ impl<'a> Context<'a, '_, '_> {
         eta.extend(
             (0..self.problem.raw.nrows()).map(|row| self.offset.map_or(0., |v| v[row]) + value),
         );
-        let global = Accepted::start(
+        let global = Accepted::start_polled(
             self.family,
             Point {
                 finite,
@@ -48,6 +48,7 @@ impl<'a> Context<'a, '_, '_> {
                 eta,
             },
             self.team,
+            self.probe.dense(),
         )?;
         global.certify_state(
             self.problem.raw,
@@ -75,7 +76,7 @@ impl<'a> Context<'a, '_, '_> {
             absorbed,
             eta,
         };
-        match global.try_step_checked(&proposal, self.team, interrupt) {
+        match global.try_step_checked(&proposal, self.team, interrupt, self.probe.dense()) {
             Ok(next) => {
                 diagnostics.analytic_start = true;
                 diagnostics.step_halvings += next.halvings();

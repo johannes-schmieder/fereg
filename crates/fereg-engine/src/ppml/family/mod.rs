@@ -1,5 +1,7 @@
 //! Immutable Poisson inputs; trial evaluation never mutates an accepted state.
 mod frame;
+#[cfg(test)]
+mod interruption_tests;
 mod math;
 mod score;
 mod start;
@@ -85,24 +87,40 @@ impl<'a> Family<'a> {
         })
     }
     pub fn evaluate(&self, eta: &[f64], team: &ThreadTeam) -> Result<Evaluation> {
+        self.evaluate_polled(eta, team, None)
+    }
+    pub(crate) fn evaluate_polled(
+        &self,
+        eta: &[f64],
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<Evaluation> {
+        execution::check(poll)?;
         if eta.len() != self.outcome.len() {
             return Err(invalid("Poisson predictor length differs"));
         }
         let mut mean = reserved(eta.len())?;
-        mean.resize(eta.len(), 0.);
+        for start in (0..eta.len()).step_by(REDUCTION_CHUNK) {
+            execution::check(poll)?;
+            mean.resize(start.saturating_add(REDUCTION_CHUNK).min(eta.len()), 0.);
+        }
         let mut partials = reserved(eta.len().div_ceil(REDUCTION_CHUNK))?;
-        partials.resize_with(eta.len().div_ceil(REDUCTION_CHUNK), || None);
+        for block in 0..eta.len().div_ceil(REDUCTION_CHUNK) {
+            execution::check_chunk(poll, block)?;
+            partials.push(None);
+        }
         team.install(|| {
             mean.par_chunks_mut(REDUCTION_CHUNK)
                 .zip(partials.par_iter_mut())
                 .enumerate()
                 .for_each(|(block, (means, output))| {
-                    *output = Some(self.evaluate_block(eta, block * REDUCTION_CHUNK, means));
+                    *output = Some(self.evaluate_block(eta, block * REDUCTION_CHUNK, means, poll));
                 });
         });
         let mut deviance = CompensatedSum::default();
         let mut likelihood = CompensatedSum::default();
-        for partial in partials {
+        for (block, partial) in partials.into_iter().enumerate() {
+            execution::check_chunk(poll, block)?;
             let value = partial.expect("visited objective block")?;
             deviance.add(value.deviance);
             likelihood.add(value.log_likelihood);
@@ -114,9 +132,17 @@ impl<'a> Family<'a> {
         if !objective.deviance.is_finite() || !objective.log_likelihood.is_finite() {
             return Err(numerical("Poisson objective is not representable"));
         }
+        execution::check(poll)?;
         Ok(Evaluation { mean, objective })
     }
-    fn evaluate_block(&self, eta: &[f64], start: usize, mean: &mut [f64]) -> Result<Objective> {
+    fn evaluate_block(
+        &self,
+        eta: &[f64],
+        start: usize,
+        mean: &mut [f64],
+        poll: Poll<'_>,
+    ) -> Result<Objective> {
+        execution::check(poll)?;
         let mut deviance = CompensatedSum::default();
         let mut likelihood = CompensatedSum::default();
         for (local, mu) in mean.iter_mut().enumerate() {

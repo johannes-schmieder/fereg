@@ -4,9 +4,12 @@ use super::{Interrupt, InterruptPoint};
 use crate::{
     data::DenseMatrix,
     error::{reserved, ErrorCode, FeregError, Result},
+    execution::{self, Poll},
     fe::Design,
     threads::ThreadTeam,
 };
+#[cfg(test)]
+mod interruption_tests;
 const MAX_HALVINGS: usize = 25;
 const OBJECTIVE_SLACK: f64 = 1e-12;
 #[derive(Debug, PartialEq)]
@@ -29,8 +32,16 @@ pub(crate) struct AttemptError {
 impl<'family, 'data> Accepted<'family, 'data> {
     /// The estimator owns the coefficient-to-predictor reconstruction check.
     pub fn start(family: &'family Family<'data>, point: Point, team: &ThreadTeam) -> Result<Self> {
-        point.validate()?;
-        let evaluation = family.evaluate(&point.eta, team)?;
+        Self::start_polled(family, point, team, None)
+    }
+    pub(crate) fn start_polled(
+        family: &'family Family<'data>,
+        point: Point,
+        team: &ThreadTeam,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        point.validate_polled(poll)?;
+        let evaluation = family.evaluate_polled(&point.eta, team, poll)?;
         Ok(Self {
             family,
             point,
@@ -48,7 +59,16 @@ impl<'family, 'data> Accepted<'family, 'data> {
         team: &ThreadTeam,
         interrupt: &mut Interrupt<'_>,
     ) -> Result<Self> {
-        candidate.validate()?;
+        self.try_step_polled(candidate, team, interrupt, None)
+    }
+    pub(crate) fn try_step_polled(
+        &self,
+        candidate: &Point,
+        team: &ThreadTeam,
+        interrupt: &mut Interrupt<'_>,
+        poll: Poll<'_>,
+    ) -> Result<Self> {
+        candidate.validate_polled(poll)?;
         if candidate.finite.len() != self.point.finite.len()
             || candidate.absorbed.nrows() != self.point.absorbed.nrows()
             || candidate.eta.len() != self.point.eta.len()
@@ -62,7 +82,7 @@ impl<'family, 'data> Accepted<'family, 'data> {
         let mut step = 1.;
         for halvings in 0..=MAX_HALVINGS {
             interrupt(InterruptPoint::LineSearch)?;
-            let point = match self.point.interpolate(candidate, step) {
+            let point = match self.point.interpolate(candidate, step, poll) {
                 Ok(point) => point,
                 Err(error) if error.code == ErrorCode::NonConvergence => {
                     step *= 0.5;
@@ -70,7 +90,7 @@ impl<'family, 'data> Accepted<'family, 'data> {
                 }
                 Err(error) => return Err(error),
             };
-            match self.family.evaluate(&point.eta, team) {
+            match self.family.evaluate_polled(&point.eta, team, poll) {
                 Ok(evaluation)
                     if evaluation.objective.deviance <= current
                         || evaluation.objective.deviance - current <= slack =>
@@ -101,13 +121,19 @@ impl<'family, 'data> Accepted<'family, 'data> {
         candidate: &Point,
         team: &ThreadTeam,
         interrupt: &mut Interrupt<'_>,
+        poll: Poll<'_>,
     ) -> std::result::Result<Self, AttemptError> {
         let mut callback = false;
-        let result = self.try_step_with(candidate, team, &mut |point| {
-            let result = interrupt(point);
-            callback = result.is_err();
-            result
-        });
+        let result = self.try_step_polled(
+            candidate,
+            team,
+            &mut |point| {
+                let result = interrupt(point);
+                callback = result.is_err();
+                result
+            },
+            poll,
+        );
         result.map_err(|error| AttemptError { error, callback })
     }
     pub(crate) fn into_parts(self) -> (Point, Evaluation) {
@@ -142,16 +168,22 @@ impl<'family, 'data> Accepted<'family, 'data> {
 }
 impl Point {
     pub(crate) fn validate(&self) -> Result<()> {
+        self.validate_polled(None)
+    }
+    fn validate_polled(&self, poll: Poll<'_>) -> Result<()> {
+        execution::check(poll)?;
         if self.absorbed.ncols() != 1 {
             return Err(invalid("PPML FE parameters require one coefficient RHS"));
         }
-        if self
-            .finite
-            .iter()
-            .chain(self.absorbed.as_slice())
-            .chain(&self.eta)
-            .any(|v| !v.is_finite())
-        {
+        if execution::any(
+            self.finite
+                .iter()
+                .chain(self.absorbed.as_slice())
+                .chain(&self.eta)
+                .copied(),
+            |v| !v.is_finite(),
+            poll,
+        )? {
             return Err(FeregError::new(
                 ErrorCode::NonConvergence,
                 "PPML parameter point is nonfinite",
@@ -159,15 +191,16 @@ impl Point {
         }
         Ok(())
     }
-    fn interpolate(&self, candidate: &Self, step: f64) -> Result<Self> {
-        let finite = interpolate(&self.finite, &candidate.finite, step)?;
+    fn interpolate(&self, candidate: &Self, step: f64, poll: Poll<'_>) -> Result<Self> {
+        let finite = interpolate(&self.finite, &candidate.finite, step, poll)?;
         let values = interpolate(
             self.absorbed.as_slice(),
             candidate.absorbed.as_slice(),
             step,
+            poll,
         )?;
         let absorbed = DenseMatrix::from_row_major(self.absorbed.nrows(), 1, values)?;
-        let eta = interpolate(&self.eta, &candidate.eta, step)?;
+        let eta = interpolate(&self.eta, &candidate.eta, step, poll)?;
         Ok(Self {
             finite,
             absorbed,
@@ -175,9 +208,11 @@ impl Point {
         })
     }
 }
-fn interpolate(current: &[f64], candidate: &[f64], step: f64) -> Result<Vec<f64>> {
+fn interpolate(current: &[f64], candidate: &[f64], step: f64, poll: Poll<'_>) -> Result<Vec<f64>> {
+    execution::check(poll)?;
     let mut result = reserved(current.len())?;
-    for (&old, &new) in current.iter().zip(candidate) {
+    for (index, (&old, &new)) in current.iter().zip(candidate).enumerate() {
+        execution::check_chunk(poll, index)?;
         // Preserve the exact full proposal; use a convex form only when the
         // difference of two finite endpoints itself overflows.
         let value = if step == 1. {

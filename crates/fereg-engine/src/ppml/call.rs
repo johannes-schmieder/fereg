@@ -206,7 +206,8 @@ impl<'a> Call<'a> {
     /// Callbacks run on the caller through separation/replay, IRLS and bias;
     /// FE iterations and shared dense WLS kernels request checks through one scoped relay.
     /// FE certificates/gauges and covariance/Wald kernels also poll; tuple sorting,
-    /// reporting and remaining replay/correction kernels run to their next boundary.
+    /// Poisson objectives and trial parameters also poll internally.
+    /// Remaining family/state/replay/correction kernels run to their next boundary.
     pub fn run_with(
         self,
         loaded: &Loaded,

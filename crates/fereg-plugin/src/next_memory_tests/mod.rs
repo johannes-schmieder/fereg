@@ -2,6 +2,7 @@
 mod fixture;
 mod generation;
 mod numerical;
+mod objective;
 mod ols_controller;
 mod ppml_controller;
 mod preflight;
