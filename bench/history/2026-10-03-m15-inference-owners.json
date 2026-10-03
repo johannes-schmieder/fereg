@@ -1,0 +1,58 @@
+{
+  "schema": 1,
+  "milestone": "M15",
+  "implementation": "Three report-parameterized certified VCE owners retain concrete ordinary/categorical absorbed-DoF types through the existing public names. Duplicate field layouts/getters and clustered intermediate owner/assembly are deleted; IID/HC1 report attachment is shared. All scientific composition/validators remain.",
+  "complexity": {
+    "core_before": 104750,
+    "core_after": 104584,
+    "delta": -166,
+    "long_functions_before_after": [
+      98,
+      98
+    ],
+    "large_files_before_after": [
+      19,
+      19
+    ]
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "malformed_source_bound_report": true,
+    "six_route_allocator_owner_accounting": true,
+    "mac_universal_abi": true,
+    "native_parent_replay": {
+      "cases": 73,
+      "exact": true,
+      "science": 73,
+      "next_sha256": "563d8722d256fb2fe5f9150ca5100a241d5c536304a2d4029720c374116a2511",
+      "parent_sha256": "cbad80c7a89ae30053d4d2bfd127b63c42121fb28cc003c8b9e16173af0d0fa0"
+    },
+    "licensed_stata": {
+      "status": "success",
+      "fixtures": [
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+          "status": "success"
+        }
+      ]
+    }
+  },
+  "qualification": {
+    "clean_binary_timings": "pending",
+    "linux_ci": "pending"
+  },
+  "limits": "This removes duplicate owner policy and field transfers; it does not remove an observation-scale numerical pass or establish a speedup."
+}

@@ -113,9 +113,9 @@ impl PreparedOlsRobustCovariance {
 /// The observation-by-kept-coordinate score design is destroyed before this
 /// value is returned.
 #[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedOlsRobust {
+pub struct CertifiedPreparedOlsRobust<A = PreparedOlsAbsorbedDofReport> {
     fit: CertifiedPreparedOlsFit,
-    absorbed_dof: PreparedOlsAbsorbedDofReport,
+    absorbed_dof: A,
     weights: PreparedOlsReferenceWeightReport,
     dof: PreparedOlsResidualDofReport,
     statistics: PreparedOlsFitStatistics,
@@ -123,12 +123,11 @@ pub struct CertifiedPreparedOlsRobust {
     certificate: PreparedOlsRobustCertificate,
 }
 
-impl CertifiedPreparedOlsRobust {
+impl<A> CertifiedPreparedOlsRobust<A> {
     /// Heap owners retained after inference, excluding the borrowed prepared data.
     #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
+    fn inference_buffer_bytes(&self) -> u128 {
         self.fit.owned_buffer_bytes()
-            + self.absorbed_dof.owned_buffer_bytes()
             + crate::memory::vec_capacity_bytes(&self.covariance.values)
             + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
     }
@@ -139,7 +138,7 @@ impl CertifiedPreparedOlsRobust {
     }
 
     #[must_use]
-    pub const fn absorbed_dof(&self) -> &PreparedOlsAbsorbedDofReport {
+    pub const fn absorbed_dof(&self) -> &A {
         &self.absorbed_dof
     }
 
@@ -174,68 +173,23 @@ impl CertifiedPreparedOlsRobust {
     }
 }
 
-/// Same-call categorical-interaction fit, absorbed rank, HC1 covariance, and
-/// fit statistics. The categorical topology DoF report remains exact and is
-/// retained without changing the legacy result or plugin wire identity.
-#[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedCategoricalOlsRobust {
-    fit: CertifiedPreparedOlsFit,
-    absorbed_dof: CategoricalTopologyDofReport,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsResidualDofReport,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsRobustCovariance,
-    certificate: PreparedOlsRobustCertificate,
-}
+/// The categorical report retains its exact topology identities.
+pub type CertifiedPreparedCategoricalOlsRobust =
+    CertifiedPreparedOlsRobust<CategoricalTopologyDofReport>;
 
-impl CertifiedPreparedCategoricalOlsRobust {
-    /// Heap owners retained after inference, excluding the borrowed prepared data.
+impl CertifiedPreparedOlsRobust<PreparedOlsAbsorbedDofReport> {
+    /// Heap owners retained after inference, excluding borrowed prepared data.
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
-        self.fit.owned_buffer_bytes()
-            + self.absorbed_dof.owned_buffer_bytes()
-            + crate::memory::vec_capacity_bytes(&self.covariance.values)
-            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
+        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
     }
+}
 
+impl CertifiedPreparedOlsRobust<CategoricalTopologyDofReport> {
+    /// Heap owners retained after inference, excluding borrowed prepared data.
     #[must_use]
-    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
-        &self.fit
-    }
-
-    #[must_use]
-    pub const fn absorbed_dof(&self) -> &CategoricalTopologyDofReport {
-        &self.absorbed_dof
-    }
-
-    #[must_use]
-    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
-        self.weights
-    }
-
-    #[must_use]
-    pub const fn dof(&self) -> PreparedOlsResidualDofReport {
-        self.dof
-    }
-
-    #[must_use]
-    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
-        self.statistics
-    }
-
-    #[must_use]
-    pub const fn covariance(&self) -> &PreparedOlsRobustCovariance {
-        &self.covariance
-    }
-
-    #[must_use]
-    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
-        self.fit.bread().coordinates()
-    }
-
-    #[must_use]
-    pub const fn certificate(&self) -> PreparedOlsRobustCertificate {
-        self.certificate
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
     }
 }
 
@@ -247,6 +201,20 @@ struct PreparedOlsRobustComponents {
     statistics: PreparedOlsFitStatistics,
     covariance: PreparedOlsRobustCovariance,
     certificate: PreparedOlsRobustCertificate,
+}
+
+impl PreparedOlsRobustComponents {
+    fn with_absorbed_dof<A>(self, absorbed_dof: A) -> CertifiedPreparedOlsRobust<A> {
+        CertifiedPreparedOlsRobust {
+            fit: self.fit,
+            absorbed_dof,
+            weights: self.weights,
+            dof: self.dof,
+            statistics: self.statistics,
+            covariance: self.covariance,
+            certificate: self.certificate,
+        }
+    }
 }
 
 struct PreparedOlsRobustCovarianceBuild {
@@ -461,15 +429,7 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
             score_scratch,
             outcome_tss,
         )?;
-        Ok(CertifiedPreparedCategoricalOlsRobust {
-            fit: components.fit,
-            absorbed_dof,
-            weights: components.weights,
-            dof: components.dof,
-            statistics: components.statistics,
-            covariance: components.covariance,
-            certificate: components.certificate,
-        })
+        Ok(components.with_absorbed_dof(absorbed_dof))
     })?
 }
 
@@ -497,15 +457,7 @@ fn compose_internal<R: PreparedInferenceReservation>(
         score_scratch,
         outcome_tss,
     )?;
-    Ok(CertifiedPreparedOlsRobust {
-        fit: components.fit,
-        absorbed_dof,
-        weights: components.weights,
-        dof: components.dof,
-        statistics: components.statistics,
-        covariance: components.covariance,
-        certificate: components.certificate,
-    })
+    Ok(components.with_absorbed_dof(absorbed_dof))
 }
 
 // Keep the legacy workspace and ownership boundaries explicit during migration.

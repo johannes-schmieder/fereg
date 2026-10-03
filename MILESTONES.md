@@ -2,7 +2,7 @@
 
 Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M12 categorical availability owner; M12–M21 authorized with Astra high-effort plan.
+Current task: M15 certified OLS owners; M12 clean Mac/Linux qualification complete.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -46,7 +46,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M11.2 Shared storage/owner totals/admission; core -12 lines; full/30 oracles, 73 native and 7 Stata pass.
 - [x] M11.3 Clean 73/five-thread replay, 46 Stata, 34 timing pairs, Linux CI 37137263330 and Astra max assessment complete.
 
-- [ ] M12 Categorical availability owner; retire disposable ordinary topology, preserve reusable membership.
+- [x] M12 Availability owner; disposable topology retired; full/30, Mac exact73/9 Stata/ABI, clean timings and Linux CI pass.
 - [ ] M13 Source-role encoding after classification; retire slope-only categorical codes.
 - [ ] M14 Transfer unchanged non-FE encodings; retain changed-axis recoding.
 - [ ] M15 Three report-parameterized certified OLS VCE owners.
@@ -143,3 +143,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 G-M9–M11 a5cd94ba — clean 73/five-thread replay, 46 Stata, 34 ranges overlap and CI 37137263330 pass; [evidence/review](bench/history/2026-10-03-m11-memory.json).
 - 2026-10-03 M12–M21 scope this commit — Astra high-effort plan recorded; three tranches retire stages/owners; separate Astra review after implementation.
 - 2026-10-03 M12.1 this commit — discarded ordinary topology retired; core +42 declared; full/30 oracles, exact73 native, Mac ABI and 9 Stata pass; clean/CI pending.
+- 2026-10-03 M12.2 b2ae8daf — clean exact73 and CI 37144472911 pass; 76 pairs exact per timing run; fresh12 ranges overlap; [evidence](bench/history/2026-10-03-m12-availability.json).
+- 2026-10-03 M15.1 this commit — six certified owners become three; core -166; full/30 oracles, exact73 native, Mac ABI and 4 Stata pass; clean/CI pending.

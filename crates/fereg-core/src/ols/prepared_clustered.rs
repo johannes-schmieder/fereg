@@ -193,165 +193,7 @@ pub struct PreparedOlsClusteredCertificate {
 /// and independent certificates. No observation-scale inference matrix or
 /// subset ordering survives in this returned value.
 #[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedOlsClustered {
-    fit: CertifiedPreparedOlsFit,
-    absorbed_dof: PreparedOlsAbsorbedDofReport,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsClusteredDofReport,
-    cluster_counts: Vec<usize>,
-    subsets: Vec<PreparedOlsClusterSubsetCertificate>,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsClusteredCovariance,
-    certificate: PreparedOlsClusteredCertificate,
-}
-
-impl CertifiedPreparedOlsClustered {
-    /// Heap owners retained after inference, excluding prepared data/cluster codes.
-    #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        use crate::memory::vec_capacity_bytes as bytes;
-        self.fit.owned_buffer_bytes()
-            + self.absorbed_dof.owned_buffer_bytes()
-            + bytes(&self.cluster_counts)
-            + bytes(&self.subsets)
-            + bytes(&self.covariance.raw_values)
-            + bytes(&self.covariance.values)
-            + bytes(&self.covariance.standard_errors)
-    }
-
-    #[must_use]
-    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
-        &self.fit
-    }
-
-    #[must_use]
-    pub const fn absorbed_dof(&self) -> &PreparedOlsAbsorbedDofReport {
-        &self.absorbed_dof
-    }
-
-    #[must_use]
-    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
-        self.weights
-    }
-
-    #[must_use]
-    pub const fn dof(&self) -> PreparedOlsClusteredDofReport {
-        self.dof
-    }
-
-    #[must_use]
-    pub fn cluster_counts(&self) -> &[usize] {
-        &self.cluster_counts
-    }
-
-    #[must_use]
-    pub fn subsets(&self) -> &[PreparedOlsClusterSubsetCertificate] {
-        &self.subsets
-    }
-
-    #[must_use]
-    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
-        self.statistics
-    }
-
-    #[must_use]
-    pub const fn covariance(&self) -> &PreparedOlsClusteredCovariance {
-        &self.covariance
-    }
-
-    #[must_use]
-    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
-        self.fit.bread().coordinates()
-    }
-
-    #[must_use]
-    pub const fn certificate(&self) -> PreparedOlsClusteredCertificate {
-        self.certificate
-    }
-}
-
-/// Categorical-interaction same-call fit, cluster-aware absorbed DoF,
-/// multiway covariance, statistics, and independent certificates.
-#[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedCategoricalOlsClustered {
-    fit: CertifiedPreparedOlsFit,
-    absorbed_dof: CategoricalTopologyDofReport,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsClusteredDofReport,
-    cluster_counts: Vec<usize>,
-    subsets: Vec<PreparedOlsClusterSubsetCertificate>,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsClusteredCovariance,
-    certificate: PreparedOlsClusteredCertificate,
-}
-
-impl CertifiedPreparedCategoricalOlsClustered {
-    /// Heap owners retained after inference, excluding prepared data/cluster codes.
-    #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        use crate::memory::vec_capacity_bytes as bytes;
-        self.fit.owned_buffer_bytes()
-            + self.absorbed_dof.owned_buffer_bytes()
-            + bytes(&self.cluster_counts)
-            + bytes(&self.subsets)
-            + bytes(&self.covariance.raw_values)
-            + bytes(&self.covariance.values)
-            + bytes(&self.covariance.standard_errors)
-    }
-
-    #[must_use]
-    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
-        &self.fit
-    }
-
-    #[must_use]
-    pub const fn absorbed_dof(&self) -> &CategoricalTopologyDofReport {
-        &self.absorbed_dof
-    }
-
-    #[must_use]
-    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
-        self.weights
-    }
-
-    #[must_use]
-    pub const fn dof(&self) -> PreparedOlsClusteredDofReport {
-        self.dof
-    }
-
-    #[must_use]
-    pub fn cluster_counts(&self) -> &[usize] {
-        &self.cluster_counts
-    }
-
-    #[must_use]
-    pub fn subsets(&self) -> &[PreparedOlsClusterSubsetCertificate] {
-        &self.subsets
-    }
-
-    #[must_use]
-    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
-        self.statistics
-    }
-
-    #[must_use]
-    pub const fn covariance(&self) -> &PreparedOlsClusteredCovariance {
-        &self.covariance
-    }
-
-    #[must_use]
-    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
-        self.fit.bread().coordinates()
-    }
-
-    #[must_use]
-    pub const fn certificate(&self) -> PreparedOlsClusteredCertificate {
-        self.certificate
-    }
-}
-
-#[derive(Debug, PartialEq)]
-struct PreparedOlsClusteredComponents<A> {
+pub struct CertifiedPreparedOlsClustered<A = PreparedOlsAbsorbedDofReport> {
     fit: CertifiedPreparedOlsFit,
     absorbed_dof: A,
     weights: PreparedOlsReferenceWeightReport,
@@ -361,6 +203,90 @@ struct PreparedOlsClusteredComponents<A> {
     statistics: PreparedOlsFitStatistics,
     covariance: PreparedOlsClusteredCovariance,
     certificate: PreparedOlsClusteredCertificate,
+}
+
+impl<A> CertifiedPreparedOlsClustered<A> {
+    /// Heap owners retained after inference, excluding prepared data/cluster codes.
+    #[must_use]
+    fn inference_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        self.fit.owned_buffer_bytes()
+            + bytes(&self.cluster_counts)
+            + bytes(&self.subsets)
+            + bytes(&self.covariance.raw_values)
+            + bytes(&self.covariance.values)
+            + bytes(&self.covariance.standard_errors)
+    }
+
+    #[must_use]
+    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
+        &self.fit
+    }
+
+    #[must_use]
+    pub const fn absorbed_dof(&self) -> &A {
+        &self.absorbed_dof
+    }
+
+    #[must_use]
+    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
+        self.weights
+    }
+
+    #[must_use]
+    pub const fn dof(&self) -> PreparedOlsClusteredDofReport {
+        self.dof
+    }
+
+    #[must_use]
+    pub fn cluster_counts(&self) -> &[usize] {
+        &self.cluster_counts
+    }
+
+    #[must_use]
+    pub fn subsets(&self) -> &[PreparedOlsClusterSubsetCertificate] {
+        &self.subsets
+    }
+
+    #[must_use]
+    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
+        self.statistics
+    }
+
+    #[must_use]
+    pub const fn covariance(&self) -> &PreparedOlsClusteredCovariance {
+        &self.covariance
+    }
+
+    #[must_use]
+    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
+        self.fit.bread().coordinates()
+    }
+
+    #[must_use]
+    pub const fn certificate(&self) -> PreparedOlsClusteredCertificate {
+        self.certificate
+    }
+}
+
+/// The categorical report retains its exact topology identities.
+pub type CertifiedPreparedCategoricalOlsClustered =
+    CertifiedPreparedOlsClustered<CategoricalTopologyDofReport>;
+
+impl CertifiedPreparedOlsClustered<PreparedOlsAbsorbedDofReport> {
+    /// Heap owners retained after inference, excluding borrowed prepared data.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+    }
+}
+
+impl CertifiedPreparedOlsClustered<CategoricalTopologyDofReport> {
+    /// Heap owners retained after inference, excluding borrowed prepared data.
+    #[must_use]
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+    }
 }
 
 #[derive(Debug)]
@@ -578,17 +504,7 @@ pub fn fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
         let mut reservation = SystemPreparedInferenceReservation;
         fit_clustered_view_with_reservation(prepared, config, &mut reservation, rows)
     })??;
-    Ok(CertifiedPreparedCategoricalOlsClustered {
-        fit: components.fit,
-        absorbed_dof: components.absorbed_dof,
-        weights: components.weights,
-        dof: components.dof,
-        cluster_counts: components.cluster_counts,
-        subsets: components.subsets,
-        statistics: components.statistics,
-        covariance: components.covariance,
-        certificate: components.certificate,
-    })
+    Ok(components)
 }
 
 #[cfg(test)]
@@ -607,17 +523,7 @@ fn fit_with_loaded_reservation<R: PreparedInferenceReservation>(
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsClustered> {
     let components = fit_clustered_view_with_reservation(prepared, config, reservation, rows)?;
-    Ok(CertifiedPreparedOlsClustered {
-        fit: components.fit,
-        absorbed_dof: components.absorbed_dof,
-        weights: components.weights,
-        dof: components.dof,
-        cluster_counts: components.cluster_counts,
-        subsets: components.subsets,
-        statistics: components.statistics,
-        covariance: components.covariance,
-        certificate: components.certificate,
-    })
+    Ok(components)
 }
 
 fn fit_clustered_view_with_reservation<
@@ -628,7 +534,7 @@ fn fit_clustered_view_with_reservation<
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
     rows: Option<super::LoadedOlsRows>,
-) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
+) -> Result<CertifiedPreparedOlsClustered<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     validate_config(prepared, config)?;
     let ols = prepared.clustered_ols();
@@ -668,17 +574,7 @@ fn compose<R: PreparedInferenceReservation>(
         None,
         None,
     )?;
-    Ok(CertifiedPreparedOlsClustered {
-        fit: components.fit,
-        absorbed_dof: components.absorbed_dof,
-        weights: components.weights,
-        dof: components.dof,
-        cluster_counts: components.cluster_counts,
-        subsets: components.subsets,
-        statistics: components.statistics,
-        covariance: components.covariance,
-        certificate: components.certificate,
-    })
+    Ok(components)
 }
 
 fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceReservation>(
@@ -689,7 +585,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     perturbations: ClusteredPerturbations,
     score_scratch: Option<PreparedOlsScratch>,
     mut outcome_tss: DeferredOutcome<'_>,
-) -> Result<PreparedOlsClusteredComponents<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
+) -> Result<CertifiedPreparedOlsClustered<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     let ols = prepared.clustered_ols();
     let dimensions = borrow_cluster_dimensions(prepared, reservation)?;
@@ -922,7 +818,7 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
             "prepared clustered final group-count capacity exhausted",
         )?;
     }
-    Ok(PreparedOlsClusteredComponents {
+    Ok(CertifiedPreparedOlsClustered {
         fit,
         absorbed_dof,
         weights,

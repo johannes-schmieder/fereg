@@ -130,9 +130,9 @@ impl PreparedOlsUnadjustedCovariance {
 /// or absorbed-DoF report from another prepared sample cannot be composed with
 /// it accidentally.  It is not a Stata result and performs no SPI writes.
 #[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedOlsUnadjusted {
+pub struct CertifiedPreparedOlsUnadjusted<A = PreparedOlsAbsorbedDofReport> {
     fit: CertifiedPreparedOlsFit,
-    absorbed_dof: PreparedOlsAbsorbedDofReport,
+    absorbed_dof: A,
     weights: PreparedOlsReferenceWeightReport,
     dof: PreparedOlsResidualDofReport,
     statistics: PreparedOlsFitStatistics,
@@ -140,12 +140,11 @@ pub struct CertifiedPreparedOlsUnadjusted {
     certificate: PreparedOlsUnadjustedCertificate,
 }
 
-impl CertifiedPreparedOlsUnadjusted {
+impl<A> CertifiedPreparedOlsUnadjusted<A> {
     /// Heap owners retained after inference, excluding the borrowed prepared data.
     #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
+    fn inference_buffer_bytes(&self) -> u128 {
         self.fit.owned_buffer_bytes()
-            + self.absorbed_dof.owned_buffer_bytes()
             + crate::memory::vec_capacity_bytes(&self.covariance.values)
             + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
     }
@@ -156,7 +155,7 @@ impl CertifiedPreparedOlsUnadjusted {
     }
 
     #[must_use]
-    pub const fn absorbed_dof(&self) -> &PreparedOlsAbsorbedDofReport {
+    pub const fn absorbed_dof(&self) -> &A {
         &self.absorbed_dof
     }
 
@@ -191,71 +190,23 @@ impl CertifiedPreparedOlsUnadjusted {
     }
 }
 
-/// Certified categorical-interaction iid OLS/WLS result.
-///
-/// The numerical fit, covariance, statistics, and certificates are produced by
-/// the same common pipeline as [`CertifiedPreparedOlsUnadjusted`].  This result
-/// retains the interaction-aware absorbed-DoF identities rather than weakening
-/// them to the legacy single-source representation.
-#[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedCategoricalOlsUnadjusted {
-    fit: CertifiedPreparedOlsFit,
-    absorbed_dof: CategoricalTopologyDofReport,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsResidualDofReport,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsUnadjustedCovariance,
-    certificate: PreparedOlsUnadjustedCertificate,
-}
+/// The categorical report retains its exact topology identities.
+pub type CertifiedPreparedCategoricalOlsUnadjusted =
+    CertifiedPreparedOlsUnadjusted<CategoricalTopologyDofReport>;
 
-impl CertifiedPreparedCategoricalOlsUnadjusted {
-    /// Heap owners retained after inference, excluding the borrowed prepared data.
+impl CertifiedPreparedOlsUnadjusted<PreparedOlsAbsorbedDofReport> {
+    /// Heap owners retained after inference, excluding borrowed prepared data.
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
-        self.fit.owned_buffer_bytes()
-            + self.absorbed_dof.owned_buffer_bytes()
-            + crate::memory::vec_capacity_bytes(&self.covariance.values)
-            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
+        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
     }
+}
 
+impl CertifiedPreparedOlsUnadjusted<CategoricalTopologyDofReport> {
+    /// Heap owners retained after inference, excluding borrowed prepared data.
     #[must_use]
-    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
-        &self.fit
-    }
-
-    #[must_use]
-    pub const fn absorbed_dof(&self) -> &CategoricalTopologyDofReport {
-        &self.absorbed_dof
-    }
-
-    #[must_use]
-    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
-        self.weights
-    }
-
-    #[must_use]
-    pub const fn dof(&self) -> PreparedOlsResidualDofReport {
-        self.dof
-    }
-
-    #[must_use]
-    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
-        self.statistics
-    }
-
-    #[must_use]
-    pub const fn covariance(&self) -> &PreparedOlsUnadjustedCovariance {
-        &self.covariance
-    }
-
-    #[must_use]
-    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
-        self.fit.bread().coordinates()
-    }
-
-    #[must_use]
-    pub const fn certificate(&self) -> PreparedOlsUnadjustedCertificate {
-        self.certificate
+    pub fn owned_buffer_bytes(&self) -> u128 {
+        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
     }
 }
 
@@ -267,6 +218,20 @@ struct PreparedOlsUnadjustedComponents {
     statistics: PreparedOlsFitStatistics,
     covariance: PreparedOlsUnadjustedCovariance,
     certificate: PreparedOlsUnadjustedCertificate,
+}
+
+impl PreparedOlsUnadjustedComponents {
+    fn with_absorbed_dof<A>(self, absorbed_dof: A) -> CertifiedPreparedOlsUnadjusted<A> {
+        CertifiedPreparedOlsUnadjusted {
+            fit: self.fit,
+            absorbed_dof,
+            weights: self.weights,
+            dof: self.dof,
+            statistics: self.statistics,
+            covariance: self.covariance,
+            certificate: self.certificate,
+        }
+    }
 }
 
 trait InferenceReservation {
@@ -600,15 +565,7 @@ fn fit_categorical_with_outcome_overlap(
             InferencePerturbations::default(),
             outcome_tss,
         )?;
-        Ok(CertifiedPreparedCategoricalOlsUnadjusted {
-            fit: components.fit,
-            absorbed_dof,
-            weights: components.weights,
-            dof: components.dof,
-            statistics: components.statistics,
-            covariance: components.covariance,
-            certificate: components.certificate,
-        })
+        Ok(components.with_absorbed_dof(absorbed_dof))
     })?
 }
 
@@ -716,15 +673,7 @@ fn compose_internal<R: InferenceReservation>(
         perturbations,
         outcome_tss,
     )?;
-    Ok(CertifiedPreparedOlsUnadjusted {
-        fit: components.fit,
-        absorbed_dof,
-        weights: components.weights,
-        dof: components.dof,
-        statistics: components.statistics,
-        covariance: components.covariance,
-        certificate: components.certificate,
-    })
+    Ok(components.with_absorbed_dof(absorbed_dof))
 }
 
 fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReservation>(
