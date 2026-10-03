@@ -31,13 +31,7 @@ pub(crate) struct PreparedOlsAbsorbedDofSummary {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum LegacyNestingState {
-    Iid,
-    ClusterAware,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CategoricalNestingState {
+enum NestingState {
     Iid,
     ClusterAware,
 }
@@ -86,7 +80,7 @@ impl PreparedOlsInferenceView for PreparedOlsData {
         report: &Self::AbsorbedDofReport,
         expected_policy: PreparedOlsAbsorbedDofPolicy,
     ) -> Result<PreparedOlsAbsorbedDofSummary> {
-        validate_legacy_report(self, report, expected_policy, LegacyNestingState::Iid)
+        validate_legacy_report(self, report, expected_policy, NestingState::Iid)
     }
 
     fn inference_compute_clustered_absorbed_dof(
@@ -102,12 +96,7 @@ impl PreparedOlsInferenceView for PreparedOlsData {
         report: &Self::AbsorbedDofReport,
         expected_policy: PreparedOlsAbsorbedDofPolicy,
     ) -> Result<PreparedOlsAbsorbedDofSummary> {
-        validate_legacy_report(
-            self,
-            report,
-            expected_policy,
-            LegacyNestingState::ClusterAware,
-        )
+        validate_legacy_report(self, report, expected_policy, NestingState::ClusterAware)
     }
 
     fn inference_has_explicit_absorbed_effects(&self) -> bool {
@@ -130,7 +119,7 @@ impl PreparedOlsInferenceView for PreparedCategoricalOlsData {
         report: &Self::AbsorbedDofReport,
         expected_policy: PreparedOlsAbsorbedDofPolicy,
     ) -> Result<PreparedOlsAbsorbedDofSummary> {
-        validate_categorical_report(self, report, expected_policy, CategoricalNestingState::Iid)
+        validate_categorical_report(self, report, expected_policy, NestingState::Iid)
     }
 
     fn inference_compute_clustered_absorbed_dof(
@@ -146,12 +135,7 @@ impl PreparedOlsInferenceView for PreparedCategoricalOlsData {
         report: &Self::AbsorbedDofReport,
         expected_policy: PreparedOlsAbsorbedDofPolicy,
     ) -> Result<PreparedOlsAbsorbedDofSummary> {
-        validate_categorical_report(
-            self,
-            report,
-            expected_policy,
-            CategoricalNestingState::ClusterAware,
-        )
+        validate_categorical_report(self, report, expected_policy, NestingState::ClusterAware)
     }
 
     fn inference_has_explicit_absorbed_effects(&self) -> bool {
@@ -159,11 +143,60 @@ impl PreparedOlsInferenceView for PreparedCategoricalOlsData {
     }
 }
 
+impl PreparedOlsAbsorbedDofSummary {
+    // Each caller validates row identity and estimator-specific rank semantics
+    // before accumulation. Checked sums preserve overflow and error order.
+    fn include(
+        &mut self,
+        categories: usize,
+        redundant: usize,
+        coefficients: usize,
+        nested: bool,
+        exact: bool,
+    ) -> Result<()> {
+        self.initial_categories = self
+            .initial_categories
+            .checked_add(categories)
+            .ok_or_else(|| allocation("absorbed category total overflows"))?;
+        self.redundant_categories = self
+            .redundant_categories
+            .checked_add(redundant)
+            .ok_or_else(|| allocation("absorbed redundancy total overflows"))?;
+        self.absorbed_rank = self
+            .absorbed_rank
+            .checked_add(coefficients)
+            .ok_or_else(|| allocation("absorbed rank total overflows"))?;
+        if nested {
+            self.nested_categories = self
+                .nested_categories
+                .checked_add(categories)
+                .ok_or_else(|| allocation("absorbed nested category total overflows"))?;
+        }
+        self.is_approximate |= !exact;
+        Ok(())
+    }
+}
+
+pub(super) fn categorical_dof_after_fit(
+    prepared: &PreparedCategoricalOlsData,
+    policy: PreparedOlsAbsorbedDofPolicy,
+    deferred: Option<
+        Result<Option<crate::prepared_categorical_data::ValidatedCategoricalDofInputs<'_>>>,
+    >,
+) -> Result<(CategoricalTopologyDofReport, PreparedOlsAbsorbedDofSummary)> {
+    let report = match deferred.transpose()?.flatten() {
+        Some(inputs) => inputs.compute(categorical_policy(policy), &[])?,
+        None => prepared.inference_compute_absorbed_dof(policy)?,
+    };
+    let summary = prepared.inference_absorbed_dof_summary(&report, policy)?;
+    Ok((report, summary))
+}
+
 fn validate_legacy_report(
     prepared: &PreparedOlsData,
     report: &PreparedOlsAbsorbedDofReport,
     expected_policy: PreparedOlsAbsorbedDofPolicy,
-    nesting_state: LegacyNestingState,
+    nesting_state: NestingState,
 ) -> Result<PreparedOlsAbsorbedDofSummary> {
     if report.policy != expected_policy {
         return Err(invalid(
@@ -180,18 +213,14 @@ fn validate_legacy_report(
         .checked_add(usize::from(implicit_no_absorb))
         .ok_or_else(|| allocation("prepared absorbed-DoF row count overflows"))?;
     if report.effects.len() != expected_rows
-        || (nesting_state == LegacyNestingState::Iid && report.nested_categories != 0)
+        || (nesting_state == NestingState::Iid && report.nested_categories != 0)
     {
         return Err(invalid(
             "prepared absorbed-DoF report dimensions or iid nesting state are inconsistent",
         ));
     }
 
-    let mut initial = 0_usize;
-    let mut redundant = 0_usize;
-    let mut rank = 0_usize;
-    let mut nested_categories = 0_usize;
-    let mut approximate = false;
+    let mut computed = summary(0, 0, 0, 0, false);
     let mut rows = report.effects.as_slice();
     if implicit_no_absorb {
         let (implicit, remaining) = rows
@@ -209,8 +238,8 @@ fn validate_legacy_report(
                 "prepared implicit no-absorb DoF row is inconsistent",
             ));
         }
-        initial = 1;
-        rank = 1;
+        computed.initial_categories = 1;
+        computed.absorbed_rank = 1;
         rows = remaining;
     }
 
@@ -235,54 +264,38 @@ fn validate_legacy_report(
                 "prepared absorbed-DoF explicit row is inconsistent",
             ));
         }
-        initial = initial
-            .checked_add(row.categories)
-            .ok_or_else(|| allocation("prepared absorbed category total overflows"))?;
-        redundant = redundant
-            .checked_add(row.redundant)
-            .ok_or_else(|| allocation("prepared absorbed redundancy total overflows"))?;
-        rank = rank
-            .checked_add(row.coefficients)
-            .ok_or_else(|| allocation("prepared absorbed rank total overflows"))?;
-        if row.nested {
-            nested_categories = nested_categories
-                .checked_add(row.categories)
-                .ok_or_else(|| allocation("prepared absorbed nested category total overflows"))?;
-        }
-        approximate |= !row.redundancy_exact;
+        computed.include(
+            row.categories,
+            row.redundant,
+            row.coefficients,
+            row.nested,
+            row.redundancy_exact,
+        )?;
     }
-    if nested_categories != report.nested_categories {
+    if computed.nested_categories != report.nested_categories {
         return Err(invalid(
             "prepared absorbed-DoF nested category total is inconsistent",
         ));
     }
-    validate_totals(
-        report.initial_categories,
-        report.redundant_categories,
-        report.absorbed_rank,
-        report.is_approximate,
-        initial,
-        redundant,
-        rank,
-        approximate,
-    )?;
-    Ok(summary(
+    let reported = summary(
         report.initial_categories,
         report.redundant_categories,
         report.absorbed_rank,
         report.nested_categories,
         report.is_approximate,
-    ))
+    );
+    validate_totals(reported, computed)?;
+    Ok(reported)
 }
 
 fn legacy_nesting_row_is_valid(
-    nesting_state: LegacyNestingState,
+    nesting_state: NestingState,
     row: &PreparedOlsAbsorbedDofEffect,
 ) -> bool {
     match (nesting_state, row.nested) {
-        (LegacyNestingState::Iid, false) | (LegacyNestingState::ClusterAware, false) => true,
-        (LegacyNestingState::Iid, true) => false,
-        (LegacyNestingState::ClusterAware, true) => {
+        (NestingState::Iid, false) | (NestingState::ClusterAware, false) => true,
+        (NestingState::Iid, true) => false,
+        (NestingState::ClusterAware, true) => {
             row.redundant == row.categories && row.coefficients == 0 && row.redundancy_exact
         }
     }
@@ -292,7 +305,7 @@ fn validate_categorical_report(
     prepared: &PreparedCategoricalOlsData,
     report: &CategoricalTopologyDofReport,
     expected_policy: PreparedOlsAbsorbedDofPolicy,
-    nesting_state: CategoricalNestingState,
+    nesting_state: NestingState,
 ) -> Result<PreparedOlsAbsorbedDofSummary> {
     if report.policy != categorical_policy(expected_policy) {
         return Err(invalid(
@@ -314,18 +327,14 @@ fn validate_categorical_report(
         .ok_or_else(|| allocation("categorical absorbed-DoF row count overflows"))?;
     if report.effects.len() != expected_rows
         || topology.effect_to_topology().len() != specs.len()
-        || (nesting_state == CategoricalNestingState::Iid && report.nested_categories != 0)
+        || (nesting_state == NestingState::Iid && report.nested_categories != 0)
     {
         return Err(invalid(
             "categorical absorbed-DoF report dimensions or iid nesting state are inconsistent",
         ));
     }
 
-    let mut initial = 0_usize;
-    let mut redundant = 0_usize;
-    let mut rank = 0_usize;
-    let mut nested_categories = 0_usize;
-    let mut approximate = false;
+    let mut computed = summary(0, 0, 0, 0, false);
     let mut rows = report.effects.as_slice();
     if implicit_no_absorb {
         let (implicit, remaining) = rows
@@ -344,8 +353,8 @@ fn validate_categorical_report(
                 "categorical implicit no-absorb DoF row is inconsistent",
             ));
         }
-        initial = 1;
-        rank = 1;
+        computed.initial_categories = 1;
+        computed.absorbed_rank = 1;
         rows = remaining;
     }
 
@@ -380,24 +389,13 @@ fn validate_categorical_report(
                     "categorical absorbed-DoF explicit row is inconsistent",
                 ));
             }
-            initial = initial
-                .checked_add(row.categories)
-                .ok_or_else(|| allocation("categorical absorbed category total overflows"))?;
-            redundant = redundant
-                .checked_add(row.redundant)
-                .ok_or_else(|| allocation("categorical absorbed redundancy total overflows"))?;
-            rank = rank
-                .checked_add(row.coefficients)
-                .ok_or_else(|| allocation("categorical absorbed rank total overflows"))?;
-            if row.nested {
-                nested_categories =
-                    nested_categories
-                        .checked_add(row.categories)
-                        .ok_or_else(|| {
-                            allocation("categorical absorbed nested category total overflows")
-                        })?;
-            }
-            approximate |= !row.redundancy_exact;
+            computed.include(
+                row.categories,
+                row.redundant,
+                row.coefficients,
+                row.nested,
+                row.redundancy_exact,
+            )?;
         }
 
         for slope in &spec.slopes {
@@ -427,16 +425,13 @@ fn validate_categorical_report(
                     "categorical absorbed-DoF slope row is inconsistent",
                 ));
             }
-            initial = initial
-                .checked_add(slope_row.categories)
-                .ok_or_else(|| allocation("categorical absorbed-slope category total overflows"))?;
-            redundant = redundant.checked_add(slope_row.redundant).ok_or_else(|| {
-                allocation("categorical absorbed-slope redundancy total overflows")
-            })?;
-            rank = rank
-                .checked_add(slope_row.coefficients)
-                .ok_or_else(|| allocation("categorical absorbed-slope rank total overflows"))?;
-            approximate |= !slope_row.redundancy_exact;
+            computed.include(
+                slope_row.categories,
+                slope_row.redundant,
+                slope_row.coefficients,
+                slope_row.nested,
+                slope_row.redundancy_exact,
+            )?;
         }
     }
     if row_index != rows.len() {
@@ -444,62 +439,45 @@ fn validate_categorical_report(
             "categorical absorbed-DoF report contains trailing rows",
         ));
     }
-    if nested_categories != report.nested_categories {
+    if computed.nested_categories != report.nested_categories {
         return Err(invalid(
             "categorical absorbed-DoF nested category total is inconsistent",
         ));
     }
-    validate_totals(
-        report.initial_categories,
-        report.redundant_categories,
-        report.absorbed_rank,
-        report.is_approximate,
-        initial,
-        redundant,
-        rank,
-        approximate,
-    )?;
-    Ok(summary(
+    let reported = summary(
         report.initial_categories,
         report.redundant_categories,
         report.absorbed_rank,
         report.nested_categories,
         report.is_approximate,
-    ))
+    );
+    validate_totals(reported, computed)?;
+    Ok(reported)
 }
 
 fn categorical_nesting_row_is_valid(
-    nesting_state: CategoricalNestingState,
+    nesting_state: NestingState,
     row: &crate::topology_dof::CategoricalTopologyDofEffect,
 ) -> bool {
     match (nesting_state, row.nested) {
-        (CategoricalNestingState::Iid, false) | (CategoricalNestingState::ClusterAware, false) => {
-            true
-        }
-        (CategoricalNestingState::Iid, true) => false,
-        (CategoricalNestingState::ClusterAware, true) => {
+        (NestingState::Iid, false) | (NestingState::ClusterAware, false) => true,
+        (NestingState::Iid, true) => false,
+        (NestingState::ClusterAware, true) => {
             row.redundant == row.categories && row.coefficients == 0 && row.redundancy_exact
         }
     }
 }
 
-#[allow(clippy::too_many_arguments)]
 fn validate_totals(
-    reported_initial: usize,
-    reported_redundant: usize,
-    reported_rank: usize,
-    reported_approximate: bool,
-    computed_initial: usize,
-    computed_redundant: usize,
-    computed_rank: usize,
-    computed_approximate: bool,
+    reported: PreparedOlsAbsorbedDofSummary,
+    computed: PreparedOlsAbsorbedDofSummary,
 ) -> Result<()> {
-    if reported_initial != computed_initial
-        || reported_redundant != computed_redundant
-        || reported_rank != computed_rank
-        || reported_approximate != computed_approximate
-        || reported_redundant > reported_initial
-        || reported_rank != reported_initial - reported_redundant
+    if reported.initial_categories != computed.initial_categories
+        || reported.redundant_categories != computed.redundant_categories
+        || reported.absorbed_rank != computed.absorbed_rank
+        || reported.is_approximate != computed.is_approximate
+        || reported.redundant_categories > reported.initial_categories
+        || reported.absorbed_rank != reported.initial_categories - reported.redundant_categories
     {
         return Err(invalid("absorbed-DoF report totals are inconsistent"));
     }

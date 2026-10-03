@@ -585,15 +585,11 @@ fn fit_categorical_with_outcome_overlap(
     // Surface prefix-validation errors after the fit. Metadata validation and
     // DoF report allocation retain their original position on the same team.
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let absorbed_dof = match dof_inputs.transpose()?.flatten() {
-            Some(inputs) => inputs.compute(
-                super::prepared_inference_view::categorical_policy(config.absorbed_dof),
-                &[],
-            )?,
-            None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
-        };
-        let summary =
-            prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+        let (absorbed_dof, summary) = super::prepared_inference_view::categorical_dof_after_fit(
+            prepared,
+            config.absorbed_dof,
+            dof_inputs,
+        )?;
         let mut reservation = SystemInferenceReservation;
         let components = compose_view_internal(
             prepared,

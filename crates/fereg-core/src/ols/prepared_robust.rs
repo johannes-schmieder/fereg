@@ -444,15 +444,12 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
             true,
         )?;
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let absorbed_dof = match dof_inputs.transpose()?.flatten() {
-            Some(inputs) => inputs.compute(
-                super::prepared_inference_view::categorical_policy(config.absorbed_dof),
-                &[],
-            )?,
-            None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
-        };
-        let absorbed_summary =
-            prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
+        let (absorbed_dof, absorbed_summary) =
+            super::prepared_inference_view::categorical_dof_after_fit(
+                prepared,
+                config.absorbed_dof,
+                dof_inputs,
+            )?;
         let mut reservation = SystemPreparedInferenceReservation;
         let components = compose_view_internal(
             prepared,
