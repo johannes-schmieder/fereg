@@ -21,15 +21,6 @@ CFLAGS=(-std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow -Wstrict-prototy
 python3 "$ROOT/scripts/audit_binary.py" "$BUILD/fereg_mock_linux.plugin" > "$BUILD/audit.json"
 "$BUILD/plugin_loader_test" "$BUILD/fereg_mock_linux.plugin"
 
-# Validate the target-native actual-Rust harness against a behaviorally faithful
-# C dispatcher so harness defects are caught even when Rust is unavailable.
-"$CC_BIN" "${CFLAGS[@]}" -c "$ROOT/tests/mock_spi/fake_actual_dispatch.c" -o "$BUILD/fake_actual_dispatch.o"
-"$CC_BIN" -shared -Wl,-z,relro,-z,now,--no-undefined \
-  -Wl,--version-script="$ROOT/plugin/exports_linux.map" \
-  "$BUILD/stplugin.o" "$BUILD/stata_bridge.o" "$BUILD/fake_actual_dispatch.o" \
-  -o "$BUILD/fereg_fake_actual.plugin"
-"$CC_BIN" -std=c11 -Wall -Wextra -Wpedantic -Wconversion -Wshadow \
-  -Wstrict-prototypes -Wmissing-prototypes -Werror -DSYSTEM=OPUNIX \
-  -I"$ROOT/plugin" "$ROOT/tests/mock_spi/actual_plugin_loader_test.c" -ldl \
-  -o "$BUILD/actual_plugin_loader_test"
-"$BUILD/actual_plugin_loader_test" "$BUILD/fereg_fake_actual.plugin"
+# The actual harness now requires complete OLS/PPML behavior. CI's mandatory
+# replay job runs its unchanged assertions against the real release binary;
+# a diagnostics-only C impersonation cannot validate those scientific actions.

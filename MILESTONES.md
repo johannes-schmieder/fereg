@@ -50,3 +50,4 @@ The old source-string assertion for fit_absorb_matrix also fails against unchang
 - 2026-10-02 M0.2b this commit — canonical Windows 1c8ac304 verified; hosted build/ABI/audit and draft storage pass; all platforms registered.
 - 2026-10-02 M0.4 this commit — Mac 73 exact/repeat cases, 70 dense passes, 3 known defects; full local harness/ABI and 4 replay acceptance tests pass.
 - 2026-10-02 M0.4 this commit — CI download repair: isolate draft-read permission in a job without repository code; replay keeps read-only access.
+- 2026-10-02 M0.4 this commit — use qualified glibc-2.28 build image; remove obsolete diagnostics-only fake estimator; real ABI/bridge checks pass locally.
