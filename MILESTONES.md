@@ -2,7 +2,7 @@
 
 Plan: [M0–M7](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M3 shared OLS completion; M3–M7 authorized on 2026-10-03.
+Current task: M4 shared QR completion; M3 local qualification passes, hosted CI follows.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -27,7 +27,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M2.2 Shared classification; full/long tests, exact parent replay, five-thread science/repeats, native ABI and 3 Stata fixtures pass.
 - [x] M2.3 All 34 timing ranges overlap; 214 coefficient/sample pairs exact; complexity lowered; M3 proposal documented for discussion.
 
-- [ ] M3 Shared OLS completion across six host branches, qualification and deletion.
+- [x] M3 Shared OLS completion; full local checks, 73 exact native replay and 4 licensed output/transaction fixtures pass.
 - [ ] M4 Shared fast/low QR solve and finalization, qualification and deletion.
 - [ ] M5 Shared robust/clustered Wald calculation, qualification and deletion.
 - [ ] M6 Shared categorical DoF consumption, qualification and deletion.
@@ -92,3 +92,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M2.3 7b1bae2b — clean Mac ABI/73 replay pass; 34 timing ranges overlap, 214 pairs exact; CI 37118979350 full/Linux replay pass.
 - 2026-10-03 G-M2 this commit — checks and compact [evidence](bench/history/2026-10-03-m2-classification.json) complete; M3 completion-path proposal remains unimplemented.
 - 2026-10-03 M3.0 this commit — next five milestones scoped; M2 remains the qualified comparison; no solver-policy or legacy changes authorized.
+- 2026-10-03 M3.1 this commit — six completion sequences to one; host -5 lines; full checks, 73 exact/scientific replay, Mac ABI and 4 Stata pass.

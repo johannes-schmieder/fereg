@@ -50,7 +50,7 @@ impl OlsVceKind {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum PreparedAbsorbedDofData<'a> {
+pub(crate) enum PreparedAbsorbedDofData<'a> {
     Legacy(&'a PreparedOlsAbsorbedDofReport),
     Categorical(&'a CategoricalTopologyDofReport),
 }
@@ -114,7 +114,7 @@ impl<'a> CertifiedOlsInference<'a> {
         }
     }
 
-    fn absorbed_dof(&self) -> PreparedAbsorbedDofData<'a> {
+    pub(crate) fn absorbed_dof(&self) -> PreparedAbsorbedDofData<'a> {
         match self {
             Self::Iid(value) => PreparedAbsorbedDofData::Legacy(value.absorbed_dof()),
             Self::Robust(value) => PreparedAbsorbedDofData::Legacy(value.absorbed_dof()),

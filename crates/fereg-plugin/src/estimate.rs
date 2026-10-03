@@ -6,10 +6,10 @@ use std::time::Instant;
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{self, ResourceSnapshot};
 use crate::result::{
-    build_shadow_result, CertifiedOlsInference, OlsShadowResult, OlsVceKind, CERTIFICATE_ROWS,
-    CLUSTER_COLUMNS, COEFFICIENT_STATUS_COLUMNS, DOF_ROWS, FE_COLUMNS, FIT_ROWS, RECEIPT_COLUMNS,
-    RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, RUNTIME_ROWS, SOLVER_COLUMNS, SOLVER_ROWS,
-    SUBSET_COLUMNS,
+    build_shadow_result, CertifiedOlsInference, OlsShadowResult, OlsVceKind,
+    PreparedAbsorbedDofData, CERTIFICATE_ROWS, CLUSTER_COLUMNS, COEFFICIENT_STATUS_COLUMNS,
+    DOF_ROWS, FE_COLUMNS, FIT_ROWS, RECEIPT_COLUMNS, RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC,
+    RUNTIME_ROWS, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
 };
 use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use fereg_core::error::{ErrorCode, FeregError, Result};
@@ -315,32 +315,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
-            let outputs_started = Instant::now();
-            let result_data = PreparedOlsResultData::legacy(&prepared);
-            let derived = build_derived_observation_outputs(
-                result_data,
-                None,
-                inference.fit(),
-                &action.outputs,
-                false,
-                action.fit,
-            )?;
-            let outputs_seconds = outputs_started.elapsed().as_secs_f64();
-            let shadow_started = Instant::now();
-            let shadow = build_shadow_result(
-                result_data,
+            complete_ols(
+                &action,
+                PreparedOlsResultData::legacy(&prepared),
                 None,
                 CertifiedOlsInference::Iid(&inference),
-                action.outputs.residual.is_some(),
-            )?;
-            let shadow_seconds = shadow_started.elapsed().as_secs_f64();
-            if trace_enabled {
-                eprintln!(
-                    "FEREG_PHASE|iid_plugin|prepare={prepare_seconds:.9}|inference={inference_seconds:.9}|outputs={outputs_seconds:.9}|shadow={shadow_seconds:.9}|prestore_total={:.9}",
-                    trace_started.elapsed().as_secs_f64()
-                );
-            }
-            precommit_and_store(&action, &shadow, &derived, &observation, spi)
+                &observation,
+                spi,
+                trace_enabled.then_some(OlsPhaseTrace {
+                    label: "iid_plugin",
+                    started: trace_started,
+                    prepare_seconds,
+                    inference_seconds,
+                }),
+            )
         }
         (OlsVceKind::Robust, false) => {
             let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
@@ -365,32 +353,20 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
             let inference_seconds = inference_started.elapsed().as_secs_f64();
-            let outputs_started = Instant::now();
-            let result_data = PreparedOlsResultData::legacy(&prepared);
-            let derived = build_derived_observation_outputs(
-                result_data,
-                None,
-                inference.fit(),
-                &action.outputs,
-                false,
-                action.fit,
-            )?;
-            let outputs_seconds = outputs_started.elapsed().as_secs_f64();
-            let shadow_started = Instant::now();
-            let shadow = build_shadow_result(
-                result_data,
+            complete_ols(
+                &action,
+                PreparedOlsResultData::legacy(&prepared),
                 None,
                 CertifiedOlsInference::Robust(&inference),
-                action.outputs.residual.is_some(),
-            )?;
-            let shadow_seconds = shadow_started.elapsed().as_secs_f64();
-            if trace_enabled {
-                eprintln!(
-                    "FEREG_PHASE|robust_plugin|prepare={prepare_seconds:.9}|inference={inference_seconds:.9}|outputs={outputs_seconds:.9}|shadow={shadow_seconds:.9}|prestore_total={:.9}",
-                    trace_started.elapsed().as_secs_f64()
-                );
-            }
-            precommit_and_store(&action, &shadow, &derived, &observation, spi)
+                &observation,
+                spi,
+                trace_enabled.then_some(OlsPhaseTrace {
+                    label: "robust_plugin",
+                    started: trace_started,
+                    prepare_seconds,
+                    inference_seconds,
+                }),
+            )
         }
         (OlsVceKind::Clustered, false) => {
             let request = OlsClusteredRequestV1 {
@@ -416,22 +392,15 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                 loaded_rows,
             )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
-            let result_data = PreparedOlsResultData::legacy(prepared.ols());
-            let derived = build_derived_observation_outputs(
-                result_data,
-                None,
-                inference.fit(),
-                &action.outputs,
-                false,
-                action.fit,
-            )?;
-            let shadow = build_shadow_result(
-                result_data,
+            complete_ols(
+                &action,
+                PreparedOlsResultData::legacy(prepared.ols()),
                 Some(PreparedOlsClusteredResultData::legacy(&prepared)),
                 CertifiedOlsInference::Clustered(&inference),
-                action.outputs.residual.is_some(),
-            )?;
-            precommit_and_store(&action, &shadow, &derived, &observation, spi)
+                &observation,
+                spi,
+                None,
+            )
         }
         (OlsVceKind::Iid, true) => {
             let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
@@ -452,22 +421,15 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     loaded_rows,
                 )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
-            let result_data = PreparedOlsResultData::categorical(&prepared);
-            let derived = build_derived_observation_outputs(
-                result_data,
-                Some(&prepared),
-                inference.fit(),
-                &action.outputs,
-                normalization_known_connected(inference.absorbed_dof()),
-                action.fit,
-            )?;
-            let shadow = build_shadow_result(
-                result_data,
+            complete_ols(
+                &action,
+                PreparedOlsResultData::categorical(&prepared),
                 None,
                 CertifiedOlsInference::CategoricalIid(&inference),
-                action.outputs.residual.is_some(),
-            )?;
-            precommit_and_store(&action, &shadow, &derived, &observation, spi)
+                &observation,
+                spi,
+                None,
+            )
         }
         (OlsVceKind::Robust, true) => {
             let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
@@ -488,22 +450,15 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     loaded_rows,
                 )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
-            let result_data = PreparedOlsResultData::categorical(&prepared);
-            let derived = build_derived_observation_outputs(
-                result_data,
-                Some(&prepared),
-                inference.fit(),
-                &action.outputs,
-                normalization_known_connected(inference.absorbed_dof()),
-                action.fit,
-            )?;
-            let shadow = build_shadow_result(
-                result_data,
+            complete_ols(
+                &action,
+                PreparedOlsResultData::categorical(&prepared),
                 None,
                 CertifiedOlsInference::CategoricalRobust(&inference),
-                action.outputs.residual.is_some(),
-            )?;
-            precommit_and_store(&action, &shadow, &derived, &observation, spi)
+                &observation,
+                spi,
+                None,
+            )
         }
         (OlsVceKind::Clustered, true) => {
             let request = OlsClusteredRequestV1 {
@@ -530,24 +485,68 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
                     loaded_rows,
                 )?;
             action.admit_output_parent(inference.owned_buffer_bytes())?;
-            let result_data = PreparedOlsResultData::categorical(prepared.ols());
-            let derived = build_derived_observation_outputs(
-                result_data,
-                Some(prepared.ols()),
-                inference.fit(),
-                &action.outputs,
-                normalization_known_connected(inference.absorbed_dof()),
-                action.fit,
-            )?;
-            let shadow = build_shadow_result(
-                result_data,
+            complete_ols(
+                &action,
+                PreparedOlsResultData::categorical(prepared.ols()),
                 Some(PreparedOlsClusteredResultData::categorical(&prepared)),
                 CertifiedOlsInference::CategoricalClustered(&inference),
-                action.outputs.residual.is_some(),
-            )?;
-            precommit_and_store(&action, &shadow, &derived, &observation, spi)
+                &observation,
+                spi,
+                None,
+            )
         }
     }
+}
+
+struct OlsPhaseTrace {
+    label: &'static str,
+    started: Instant,
+    prepare_seconds: f64,
+    inference_seconds: f64,
+}
+
+// Keep all six inference variants behind the same output/transaction boundary.
+// Borrowed views preserve prepared owners until the validated result is stored.
+fn complete_ols(
+    action: &EstimateAction,
+    data: PreparedOlsResultData<'_>,
+    clusters: Option<PreparedOlsClusteredResultData<'_>>,
+    inference: CertifiedOlsInference<'_>,
+    observation: &ActionObservation,
+    spi: &mut dyn SpiApi,
+    trace: Option<OlsPhaseTrace>,
+) -> Result<()> {
+    let outputs_started = Instant::now();
+    let categorical = match data {
+        PreparedOlsResultData::Legacy(_) => None,
+        PreparedOlsResultData::Categorical(data) => Some(data),
+    };
+    let known_connected = match inference.absorbed_dof() {
+        PreparedAbsorbedDofData::Categorical(report) => normalization_known_connected(report),
+        PreparedAbsorbedDofData::Legacy(_) => false,
+    };
+    let derived = build_derived_observation_outputs(
+        data,
+        categorical,
+        inference.fit(),
+        &action.outputs,
+        known_connected,
+        action.fit,
+    )?;
+    let outputs_seconds = outputs_started.elapsed().as_secs_f64();
+    let shadow_started = Instant::now();
+    let shadow = build_shadow_result(data, clusters, inference, action.outputs.residual.is_some())?;
+    let shadow_seconds = shadow_started.elapsed().as_secs_f64();
+    if let Some(trace) = trace {
+        eprintln!(
+            "FEREG_PHASE|{}|prepare={:.9}|inference={:.9}|outputs={outputs_seconds:.9}|shadow={shadow_seconds:.9}|prestore_total={:.9}",
+            trace.label,
+            trace.prepare_seconds,
+            trace.inference_seconds,
+            trace.started.elapsed().as_secs_f64()
+        );
+    }
+    precommit_and_store(action, &shadow, &derived, observation, spi)
 }
 
 // Preparation and raw moments borrow disjoint Rust-owned inputs. The optional
