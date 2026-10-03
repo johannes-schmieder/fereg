@@ -72,7 +72,14 @@
       "science": 73,
       "universal_abi": true
     },
-    "linux_ci": "pending",
+    "linux_ci": {
+      "run": 37148222890,
+      "source": "322231291b134978792c9bfcb026fa36a1ae6b2f",
+      "conclusion": "success",
+      "native_scientific_cases": 73,
+      "next_sha256": "d5d26ea25fbdb537c794155d5c55204f985b0a6231444970479d9577fcf94ff5",
+      "frozen_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc"
+    },
     "timings": {
       "identities": {
         "parent": {

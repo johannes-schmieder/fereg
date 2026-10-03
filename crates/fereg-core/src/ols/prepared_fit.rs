@@ -1707,18 +1707,69 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
     })?
 }
 
+// Inline storage preserves existing allocation/admission boundaries. Only one
+// workspace is live; completed attempts remain solely in diagnostic history.
+#[allow(clippy::large_enum_variant)]
+enum ActiveFeAbsorber<'a> {
+    Canonical,
+    Slopes(Box<[super::slope_absorber::OlsSlopeAbsorber; 1]>),
+    SingleSlope(crate::fe::SingleSlopeAbsorber<'a>),
+    OneFe(crate::fe::BorrowedInterceptEffect<'a>),
+    Cmg(CmgAbsorber<'a>),
+    Lsmr(crate::fe::BorrowedLsmrAbsorber<'a>),
+    PendingSchur(PreparedOlsFitConfig),
+}
+
 struct FitFeAbsorber<'a> {
-    slopes: Option<Box<[super::slope_absorber::OlsSlopeAbsorber; 1]>>,
-    single_slope: Option<crate::fe::SingleSlopeAbsorber<'a>>,
-    one_fe: Option<crate::fe::BorrowedInterceptEffect<'a>>,
-    session: Option<CmgAbsorber<'a>>,
-    lsmr: Option<crate::fe::BorrowedLsmrAbsorber<'a>>,
+    active: ActiveFeAbsorber<'a>,
     auto_direct_solver: Option<FeSolverKind>,
     auto_discarded_setup_seconds: f64,
     auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak,
     auto_setup_warning: Option<String>,
-    schur_config: Option<PreparedOlsFitConfig>,
     schur_probe: Option<f64>,
+}
+
+impl<'a> FitFeAbsorber<'a> {
+    fn new(active: ActiveFeAbsorber<'a>) -> Self {
+        Self {
+            active,
+            auto_direct_solver: None,
+            auto_discarded_setup_seconds: 0.0,
+            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
+            auto_setup_warning: None,
+            schur_probe: None,
+        }
+    }
+
+    fn take_cmg(&mut self) -> Option<CmgAbsorber<'a>> {
+        if !matches!(self.active, ActiveFeAbsorber::Cmg(_)) {
+            return None;
+        }
+        let ActiveFeAbsorber::Cmg(session) =
+            std::mem::replace(&mut self.active, ActiveFeAbsorber::Canonical)
+        else {
+            unreachable!()
+        };
+        Some(session)
+    }
+
+    fn take_schur(&mut self) -> Option<PreparedOlsFitConfig> {
+        if !matches!(self.active, ActiveFeAbsorber::PendingSchur(_)) {
+            return None;
+        }
+        let ActiveFeAbsorber::PendingSchur(config) =
+            std::mem::replace(&mut self.active, ActiveFeAbsorber::Canonical)
+        else {
+            unreachable!()
+        };
+        Some(config)
+    }
+
+    fn retire_lsmr(&mut self) {
+        if matches!(self.active, ActiveFeAbsorber::Lsmr(_)) {
+            self.active = ActiveFeAbsorber::Canonical;
+        }
+    }
 }
 
 fn build_fit_fe_absorber<'a, P: PreparedOlsFitView + ?Sized>(
@@ -1743,21 +1794,7 @@ fn build_fit_fe_absorber_with_one_fe_reuse<'a, P: PreparedOlsFitView + ?Sized>(
         config,
         &mut attempted_peak,
     ) {
-        Ok(Some(slopes)) => {
-            return Ok(FitFeAbsorber {
-                slopes: Some(slopes),
-                single_slope: None,
-                one_fe: None,
-                session: None,
-                lsmr: None,
-                auto_direct_solver: None,
-                auto_discarded_setup_seconds: 0.0,
-                auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-                auto_setup_warning: None,
-                schur_config: None,
-                schur_probe: None,
-            })
-        }
+        Ok(Some(slopes)) => return Ok(FitFeAbsorber::new(ActiveFeAbsorber::Slopes(slopes))),
         Ok(None) => {}
         Err(error) if error.code == ErrorCode::Allocation => {}
         Err(error) => return Err(error),
@@ -1811,19 +1848,9 @@ fn build_fit_fe_absorber_without_multipartition<'a, P: PreparedOlsFitView + ?Siz
                 Err(error) => return Err(error),
             };
             if let Some(single_slope) = single_slope {
-                return Ok(FitFeAbsorber {
-                    slopes: None,
-                    single_slope: Some(single_slope),
-                    one_fe: None,
-                    session: None,
-                    lsmr: None,
-                    auto_direct_solver: None,
-                    auto_discarded_setup_seconds: 0.0,
-                    auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-                    auto_setup_warning: None,
-                    schur_config: None,
-                    schur_probe: None,
-                });
+                return Ok(FitFeAbsorber::new(ActiveFeAbsorber::SingleSlope(
+                    single_slope,
+                )));
             }
             let discarded_seconds = started.elapsed().as_secs_f64();
             let mut fallback = build_fit_fe_absorber_legacy(prepared, weights, config)?;
@@ -1857,19 +1884,9 @@ fn build_fit_fe_absorber_without_multipartition<'a, P: PreparedOlsFitView + ?Siz
                 "one-FE routing metadata differs from its validated design",
             ));
         }
-        return Ok(FitFeAbsorber {
-            slopes: None,
-            single_slope: None,
-            one_fe: Some(design.effects()[0]),
-            session: None,
-            lsmr: None,
-            auto_direct_solver: None,
-            auto_discarded_setup_seconds: 0.0,
-            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-            auto_setup_warning: None,
-            schur_config: None,
-            schur_probe: None,
-        });
+        return Ok(FitFeAbsorber::new(ActiveFeAbsorber::OneFe(
+            design.effects()[0],
+        )));
     }
     if config.absorb.solver == FeSolverKind::Auto
         && config.execution.mode == PreparedOlsExecutionMode::Fast
@@ -1902,19 +1919,7 @@ fn build_fit_fe_absorber_without_multipartition<'a, P: PreparedOlsFitView + ?Siz
                 .solver_memory_budget
                 .is_none_or(|budget| budget.fits(planned))
             {
-                return Ok(FitFeAbsorber {
-                    slopes: None,
-                    single_slope: None,
-                    one_fe: None,
-                    session: None,
-                    lsmr: None,
-                    auto_direct_solver: None,
-                    auto_discarded_setup_seconds: 0.0,
-                    auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-                    auto_setup_warning: None,
-                    schur_probe: None,
-                    schur_config: Some(config),
-                });
+                return Ok(FitFeAbsorber::new(ActiveFeAbsorber::PendingSchur(config)));
             }
         }
     }
@@ -1929,50 +1934,18 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
     if config.absorb.solver != FeSolverKind::Cmg
         && (config.absorb.solver != FeSolverKind::Auto || !prepared.fit_supports_cmg_auto())
     {
-        return Ok(FitFeAbsorber {
-            slopes: None,
-            single_slope: None,
-            one_fe: None,
-            schur_config: None,
-            schur_probe: None,
-            session: None,
-            lsmr: None,
-            auto_direct_solver: None,
-            auto_discarded_setup_seconds: 0.0,
-            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-            auto_setup_warning: None,
-        });
+        return Ok(FitFeAbsorber::new(ActiveFeAbsorber::Canonical));
     }
     let design = prepared.fit_borrowed_cmg_design()?;
     if config.absorb.solver == FeSolverKind::Auto && design.effects().len() <= 1 {
-        return Ok(FitFeAbsorber {
-            slopes: None,
-            single_slope: None,
-            one_fe: None,
-            schur_config: None,
-            schur_probe: None,
-            session: None,
-            lsmr: None,
-            auto_direct_solver: None,
-            auto_discarded_setup_seconds: 0.0,
-            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-            auto_setup_warning: None,
-        });
+        return Ok(FitFeAbsorber::new(ActiveFeAbsorber::Canonical));
     }
     let profile = CmgTopologyProfile::analyze(&design)?;
     if config.absorb.solver == FeSolverKind::Auto && !profile.auto_favorable() {
         return Ok(FitFeAbsorber {
-            slopes: None,
-            single_slope: None,
-            one_fe: None,
-            schur_config: None,
-            schur_probe: None,
-            session: None,
-            lsmr: None,
+            active: ActiveFeAbsorber::Canonical,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
-            auto_discarded_setup_seconds: 0.0,
-            auto_discarded_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-            auto_setup_warning: None,
+            ..FitFeAbsorber::new(ActiveFeAbsorber::Canonical)
         });
     }
     let cmg_config = CmgConfig {
@@ -2015,60 +1988,36 @@ fn build_fit_fe_absorber_legacy<'a, P: PreparedOlsFitView + ?Sized>(
     };
     match built {
         Ok(CmgAutoBuildOutcome::Ready(session)) => Ok(FitFeAbsorber {
-            slopes: None,
-            single_slope: None,
-            one_fe: None,
-            schur_config: None,
-            schur_probe: None,
-            session: Some(session.with_ols_final_reuse(config.allow_final_fe_recovery)),
-            lsmr: None,
-            auto_direct_solver: None,
-            auto_discarded_setup_seconds: 0.0,
+            active: ActiveFeAbsorber::Cmg(
+                session.with_ols_final_reuse(config.allow_final_fe_recovery),
+            ),
             auto_discarded_workspace_peak: attempted_peak,
-            auto_setup_warning: None,
+            ..FitFeAbsorber::new(ActiveFeAbsorber::Canonical)
         }),
         Ok(CmgAutoBuildOutcome::HierarchyRejected { setup_seconds }) => Ok(FitFeAbsorber {
-            slopes: None,
-            single_slope: None,
-            one_fe: None,
-            schur_config: None,
-            schur_probe: None,
-            session: None,
-            lsmr: None,
+            active: ActiveFeAbsorber::Canonical,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
             auto_discarded_setup_seconds: setup_seconds,
             auto_discarded_workspace_peak: attempted_peak,
-            auto_setup_warning: None,
+            ..FitFeAbsorber::new(ActiveFeAbsorber::Canonical)
         }),
         // The legacy CG certificate misses projection-span errors. A direct
         // route recommendation must use LSMR until that kernel is retired.
         Ok(CmgAutoBuildOutcome::DirectCgPreferred { setup_seconds }) => Ok(FitFeAbsorber {
-            slopes: None,
-            single_slope: None,
-            one_fe: None,
-            schur_config: None,
-            schur_probe: None,
-            session: None,
-            lsmr: None,
+            active: ActiveFeAbsorber::Canonical,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
             auto_discarded_setup_seconds: setup_seconds,
             auto_discarded_workspace_peak: attempted_peak,
-            auto_setup_warning: None,
+            ..FitFeAbsorber::new(ActiveFeAbsorber::Canonical)
         }),
         Err(error) if config.absorb.solver == FeSolverKind::Auto => Ok(FitFeAbsorber {
-            slopes: None,
-            single_slope: None,
-            one_fe: None,
-            schur_config: None,
-            schur_probe: None,
-            session: None,
-            lsmr: None,
+            active: ActiveFeAbsorber::Canonical,
             auto_direct_solver: Some(FeSolverKind::Lsmr),
-            auto_discarded_setup_seconds: 0.0,
             auto_discarded_workspace_peak: attempted_peak,
             auto_setup_warning: Some(format!(
                 "automatic CMG setup was unavailable ({error}); used certified direct LSMR"
             )),
+            ..FitFeAbsorber::new(ActiveFeAbsorber::Canonical)
         }),
         Err(error) => Err(error),
     }
@@ -2086,15 +2035,15 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
     initial: bool,
     final_residual: bool,
 ) -> Result<CertifiedBorrowedMap> {
-    if let Some(slopes) = cmg.slopes.as_mut() {
+    if let ActiveFeAbsorber::Slopes(slopes) = &mut cmg.active {
         let result = slopes[0].absorb(values, config.map, final_residual)?;
         if final_residual {
-            cmg.slopes = None;
+            cmg.active = ActiveFeAbsorber::Canonical;
         }
         return Ok(result);
     }
     let mut slope_rejected_iterations = 0;
-    if let Some(session) = cmg.single_slope.as_mut() {
+    if let ActiveFeAbsorber::SingleSlope(session) = &mut cmg.active {
         match session.absorb(
             values,
             config.map.tolerance,
@@ -2104,7 +2053,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
         )? {
             crate::fe::SingleSlopeAttempt::Certified(result) => {
                 if final_residual {
-                    cmg.single_slope = None;
+                    cmg.active = ActiveFeAbsorber::Canonical;
                 }
                 return Ok(result);
             }
@@ -2115,7 +2064,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
                 iterations,
             } => {
                 values = original;
-                cmg.single_slope = None;
+                cmg.active = ActiveFeAbsorber::Canonical;
                 cmg.auto_discarded_workspace_peak = cmg.auto_discarded_workspace_peak.max(peak);
                 cmg.auto_discarded_setup_seconds += seconds;
                 cmg.auto_setup_warning = Some("single-partition slope projection unavailable; resumed from the original input".to_owned());
@@ -2125,7 +2074,7 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
         }
     }
     if initial {
-        if let Some(mut fit_config) = cmg.schur_config.take() {
+        if let Some(mut fit_config) = cmg.take_schur() {
             let (contraction, probe_peak, probe_seconds, design) = if (3..=8)
                 .contains(&values.ncols())
             {
@@ -2209,59 +2158,64 @@ fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
             );
         }
     }
-    let final_cmg = if final_residual {
-        cmg.session.take()
-    } else {
-        None
-    };
-    let mut absorbed = if let Some(effect) = cmg.one_fe {
-        let mut effects = Vec::new();
-        effects
-            .try_reserve_exact(1)
-            .map_err(|_| allocation("unable to reserve borrowed FE design effects"))?;
-        effects.push(effect);
-        let design =
-            crate::fe::BorrowedInterceptFeDesign::new(prepared.fit_sample().n_active(), effects)?;
-        if initial {
-            crate::fe::absorb_borrowed_intercept_auto_initial_with_structural_constant_certified(
-                &design,
-                weights,
-                values,
-                config.map,
-                config.lsmr,
-                config.solver_memory_budget,
-            )
-        } else {
-            crate::fe::absorb_borrowed_intercept_auto_with_structural_constant_certified(
-                &design,
-                weights,
-                values,
-                config.map,
-                config.lsmr,
-                config.solver_memory_budget,
-            )
-        }
-    } else if let Some(session) = final_cmg {
+    let final_cmg = if final_residual { cmg.take_cmg() } else { None };
+    let mut absorbed = if let Some(session) = final_cmg {
         session.absorb_final_residual(values, config.map.tolerance)
-    } else if let Some(session) = cmg.session.as_mut() {
-        session.absorb(values)
-    } else if let Some(lsmr) = cmg.lsmr.as_mut() {
-        lsmr.absorb(values)
     } else {
-        match cmg.auto_direct_solver {
-            Some(FeSolverKind::Lsmr) => {
-                prepared.fit_absorb_auto_direct_lsmr(weights, values, config)
+        match &mut cmg.active {
+            ActiveFeAbsorber::OneFe(effect) => {
+                let mut effects = Vec::new();
+                effects
+                    .try_reserve_exact(1)
+                    .map_err(|_| allocation("unable to reserve borrowed FE design effects"))?;
+                effects.push(*effect);
+                let design = crate::fe::BorrowedInterceptFeDesign::new(
+                    prepared.fit_sample().n_active(),
+                    effects,
+                )?;
+                if initial {
+                    crate::fe::absorb_borrowed_intercept_auto_initial_with_structural_constant_certified(
+                &design,
+                weights,
+                values,
+                config.map,
+                config.lsmr,
+                config.solver_memory_budget,
+            )
+                } else {
+                    crate::fe::absorb_borrowed_intercept_auto_with_structural_constant_certified(
+                        &design,
+                        weights,
+                        values,
+                        config.map,
+                        config.lsmr,
+                        config.solver_memory_budget,
+                    )
+                }
             }
-            Some(FeSolverKind::Cg) => {
-                let mut direct_config = config;
-                direct_config.solver = FeSolverKind::Cg;
-                prepared.fit_absorb_cg(weights, values, direct_config)
+            ActiveFeAbsorber::Cmg(session) => session.absorb(values),
+            ActiveFeAbsorber::Lsmr(lsmr) => lsmr.absorb(values),
+            ActiveFeAbsorber::Canonical | ActiveFeAbsorber::PendingSchur(_) => {
+                match cmg.auto_direct_solver {
+                    Some(FeSolverKind::Lsmr) => {
+                        prepared.fit_absorb_auto_direct_lsmr(weights, values, config)
+                    }
+                    Some(FeSolverKind::Cg) => {
+                        let mut direct_config = config;
+                        direct_config.solver = FeSolverKind::Cg;
+                        prepared.fit_absorb_cg(weights, values, direct_config)
+                    }
+                    Some(_) => unreachable!("unsupported planned automatic direct solver"),
+                    None if initial => prepared.fit_absorb_initial_matrix(weights, values, config),
+                    None => prepared.fit_absorb_matrix(weights, values, config),
+                }
             }
-            Some(_) => unreachable!("unsupported planned automatic direct solver"),
-            None if initial => prepared.fit_absorb_initial_matrix(weights, values, config),
-            None => prepared.fit_absorb_matrix(weights, values, config),
+            ActiveFeAbsorber::Slopes(_) | ActiveFeAbsorber::SingleSlope(_) => {
+                unreachable!("specialized slope dispatch completed above")
+            }
         }
     }?;
+
     let discarded_setup_seconds = std::mem::take(&mut cmg.auto_discarded_setup_seconds);
     let discarded_peak = std::mem::replace(
         &mut cmg.auto_discarded_workspace_peak,
@@ -2591,7 +2545,7 @@ fn fit_with_controls_internal_mode_with_frame<
         None
     };
     if retain_fast_score_cache && raw_moments.is_none() {
-        if cmg.single_slope.is_some()
+        if matches!(cmg.active, ActiveFeAbsorber::SingleSlope(_))
             && rayon::current_num_threads() == 1
             && generated_columns <= 64
         {
@@ -2681,7 +2635,8 @@ fn fit_with_controls_internal_mode_with_frame<
             weights,
             reservation,
             max_fast_score_cache_bytes,
-            cmg.single_slope.is_some() && rayon::current_num_threads() == 1,
+            matches!(cmg.active, ActiveFeAbsorber::SingleSlope(_))
+                && rayon::current_num_threads() == 1,
         )?
     } else {
         None
@@ -3388,7 +3343,7 @@ fn fit_with_controls_low_internal_with_frame<
     {
         let design = prepared.fit_borrowed_cmg_design()?;
         if !design.effects().is_empty() {
-            cmg.lsmr = Some(crate::fe::BorrowedLsmrAbsorber::new(
+            cmg.active = ActiveFeAbsorber::Lsmr(crate::fe::BorrowedLsmrAbsorber::new(
                 design,
                 weights.borrowed(),
                 config.absorb,
@@ -3545,7 +3500,7 @@ fn fit_with_controls_low_internal_with_frame<
     }
     // Retained setup belongs only to projection. Do not overlap it with QR,
     // covariance, or a later independent residual-certification workspace.
-    drop(cmg.lsmr.take());
+    cmg.retire_lsmr();
     drop(projection_phase);
 
     let finite_phase = LinearSessionPhaseAllocationGuard::new(
@@ -3628,7 +3583,7 @@ fn fit_with_controls_low_internal_with_frame<
     // contains the full FE contribution, unlike the Fast within residual.
     // Project it with CMG itself; the near-orthogonal final-residual polish
     // is not a substitute for this projection.
-    let residual_absorbed = if let Some(session) = cmg.session.take() {
+    let residual_absorbed = if let Some(session) = cmg.take_cmg() {
         session.absorb_raw_final_residual(
             residual_matrix,
             config.final_absorb_config().map.tolerance,
@@ -7756,6 +7711,27 @@ fn insufficient_observations(message: &'static str) -> FeregError {
 
 #[cfg(test)]
 mod tests {
+
+    impl FitFeAbsorber<'_> {
+        fn single_slope(&self) -> Option<&crate::fe::SingleSlopeAbsorber<'_>> {
+            match &self.active {
+                ActiveFeAbsorber::SingleSlope(value) => Some(value),
+                _ => None,
+            }
+        }
+        fn slopes(&self) -> Option<&[super::super::slope_absorber::OlsSlopeAbsorber; 1]> {
+            match &self.active {
+                ActiveFeAbsorber::Slopes(value) => Some(value),
+                _ => None,
+            }
+        }
+        fn schur_config(&self) -> Option<PreparedOlsFitConfig> {
+            match self.active {
+                ActiveFeAbsorber::PendingSchur(value) => Some(value),
+                _ => None,
+            }
+        }
+    }
     use super::*;
     use crate::metadata::{
         AbsorbTermId, AbsorbedTerm, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
@@ -8288,7 +8264,10 @@ mod tests {
         ] {
             let mut session =
                 build_fit_fe_absorber(&data, BorrowedMapWeights::Unit, config).unwrap();
-            assert!(session.session.is_none() && session.auto_direct_solver.is_none());
+            assert!(
+                !matches!(session.active, ActiveFeAbsorber::Cmg(_))
+                    && session.auto_direct_solver.is_none()
+            );
             session.auto_discarded_workspace_peak = discarded;
             for first in [true, false] {
                 let result = absorb_fit_matrix(
@@ -8617,18 +8596,9 @@ mod tests {
                                         1 => view.fit_absorb_matrix(weights, values, config),
                                         _ => {
                                             let mut session = FitFeAbsorber {
-                                                slopes: None,
-                                                single_slope: None,
-                                                one_fe: None,
-                                                session: None,
-                                                lsmr: None,
+                                                active: ActiveFeAbsorber::Canonical,
                                                 auto_direct_solver: Some(FeSolverKind::Cg),
-                                                auto_discarded_setup_seconds: 0.0,
-                                                auto_discarded_workspace_peak:
-                                                    crate::memory::SolverWorkspacePeak::ZERO,
-                                                auto_setup_warning: None,
-                                                schur_config: None,
-                                                schur_probe: None,
+                                                ..FitFeAbsorber::new(ActiveFeAbsorber::Canonical)
                                             };
                                             absorb_fit_matrix(
                                                 None,
@@ -9088,7 +9058,7 @@ mod tests {
                 assert!(
                     build_fit_fe_absorber(&data, BorrowedMapWeights::Unit, config)
                         .unwrap()
-                        .single_slope
+                        .single_slope()
                         .is_none()
                 );
                 let admitted = build_fit_fe_absorber_with_one_fe_reuse(
@@ -9099,7 +9069,7 @@ mod tests {
                     true,
                 )
                 .unwrap();
-                assert_eq!(admitted.single_slope.is_some(), n >= 16_384);
+                assert_eq!(admitted.single_slope().is_some(), n >= 16_384);
                 drop(admitted);
                 for unavailable in 0..4 {
                     let mut guarded = config;
@@ -9123,7 +9093,7 @@ mod tests {
                         true
                     )
                     .unwrap()
-                    .single_slope
+                    .single_slope()
                     .is_none());
                 }
                 let mut legacy = config;
@@ -9257,7 +9227,7 @@ mod tests {
                         .install(|| {
                             let mut session =
                                 build_fit_fe_absorber(&data, weights, config).unwrap();
-                            assert!(session.slopes.is_some());
+                            assert!(session.slopes().is_some());
                             let raw = DenseMatrix::from_row_major(n, 1, outcome.clone()).unwrap();
                             let actual = absorb_fit_matrix(
                                 None,
@@ -9293,7 +9263,7 @@ mod tests {
                                 }
                                 assert!(build_fit_fe_absorber(&data, weights, refused)
                                     .unwrap()
-                                    .slopes
+                                    .slopes()
                                     .is_none());
                             }
                             let mut bounded = config;
@@ -9304,7 +9274,7 @@ mod tests {
                                 });
                             assert!(build_fit_fe_absorber(&data, weights, bounded)
                                 .unwrap()
-                                .slopes
+                                .slopes()
                                 .is_some());
                             let residual = DenseMatrix::from_row_major(n, 1, vec![0.; n]).unwrap();
                             let actual = absorb_fit_matrix(
@@ -9319,7 +9289,7 @@ mod tests {
                             )
                             .unwrap();
                             assert_eq!(actual.report().iterations, 0);
-                            assert!(session.slopes.is_none());
+                            assert!(session.slopes().is_none());
                         })
                         .unwrap();
                 }
@@ -11541,7 +11511,7 @@ mod tests {
         let config = PreparedOlsFitConfig::default();
         let mut session =
             build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, config).unwrap();
-        assert!(session.schur_config.is_some());
+        assert!(session.schur_config().is_some());
         let values = prepared.fit_build_rhs().unwrap();
         let contraction = crate::fe::schur_ols_probe(
             &prepared.fit_borrowed_cmg_design().unwrap(),
@@ -11577,7 +11547,7 @@ mod tests {
         saved.allow_final_fe_recovery = true;
         let mut saved_session =
             build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, saved).unwrap();
-        assert!(saved_session.schur_config.is_some());
+        assert!(saved_session.schur_config().is_some());
         let saved_result = absorb_fit_matrix(
             None,
             &prepared,
@@ -11626,7 +11596,7 @@ mod tests {
             assert!(
                 build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, config)
                     .unwrap()
-                    .schur_config
+                    .schur_config()
                     .is_none()
             );
         }
@@ -11634,7 +11604,7 @@ mod tests {
         assert!(
             build_fit_fe_absorber(&prepared, BorrowedMapWeights::Provided(&weights), config)
                 .unwrap()
-                .schur_config
+                .schur_config()
                 .is_some()
         );
         for (rhs, eligible) in [
@@ -11652,7 +11622,7 @@ mod tests {
             assert_eq!(
                 build_fit_fe_absorber(&boundary, BorrowedMapWeights::Provided(&weights), config)
                     .unwrap()
-                    .schur_config
+                    .schur_config()
                     .is_some(),
                 eligible
             );
@@ -11662,7 +11632,7 @@ mod tests {
         assert!(
             build_fit_fe_absorber(&prepared, BorrowedMapWeights::Provided(&weights), low)
                 .unwrap()
-                .schur_config
+                .schur_config()
                 .is_none()
         );
         let mut limited = config;
@@ -11673,14 +11643,14 @@ mod tests {
         assert!(
             build_fit_fe_absorber(&prepared, BorrowedMapWeights::Provided(&weights), limited)
                 .unwrap()
-                .schur_config
+                .schur_config()
                 .is_none()
         );
         let narrow = prepared_multiway_categorical(&y, &x[..0], &effects);
         assert!(
             build_fit_fe_absorber(&narrow, BorrowedMapWeights::Unit, config)
                 .unwrap()
-                .schur_config
+                .schur_config()
                 .is_none()
         );
         let third = (0..n).map(|r| (r % 3) as f64).collect::<Vec<_>>();
@@ -11689,7 +11659,7 @@ mod tests {
         assert!(
             build_fit_fe_absorber(&three, BorrowedMapWeights::Unit, config)
                 .unwrap()
-                .schur_config
+                .schur_config()
                 .is_none()
         );
     }
@@ -11725,7 +11695,7 @@ mod tests {
                 ] {
                     let eligible = threads >= 8;
                     let mut session = build_fit_fe_absorber(&prepared, weights, config).unwrap();
-                    assert_eq!(session.schur_config.is_some(), eligible);
+                    assert_eq!(session.schur_config().is_some(), eligible);
                     if eligible {
                         crate::ThreadTeam::new(config.execution.threads)
                             .install(|| {
@@ -11808,7 +11778,7 @@ mod tests {
             .install(|| {
                 let mut session =
                     build_fit_fe_absorber(&prepared, BorrowedMapWeights::Unit, config).unwrap();
-                assert!(session.schur_config.is_some());
+                assert!(session.schur_config().is_some());
                 let result = absorb_fit_matrix(
                     None,
                     &prepared,
@@ -11824,7 +11794,7 @@ mod tests {
                 assert_eq!(result.report().pilot_iterations, 8);
                 assert!(result.report().pilot_contraction > crate::fe::OLS_SCHUR_MAX_CONTRACTION);
                 assert!(result.report().iterations <= config.absorb.map.max_iterations);
-                assert!(session.schur_config.is_none());
+                assert!(session.schur_config().is_none());
             })
             .unwrap();
     }

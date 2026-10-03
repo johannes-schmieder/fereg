@@ -65,11 +65,3143 @@
     }
   },
   "qualification": {
-    "clean_mac": "pending",
-    "linux_ci": "pending",
-    "tranche_five_thread_science": "pending",
-    "tranche_46_stata": "pending",
-    "timings": "pending"
+    "clean_mac": {
+      "source": "e47f1e1098fae67b403adff42befce0a078a328c",
+      "sha256": "7cb442748741cfee305941f1cd11a22e5838effd55bbcc21e96eacfac76c3b70",
+      "exact_parent_cases": 73,
+      "science": 73,
+      "universal_abi": true
+    },
+    "linux_ci": {
+      "run": 37149147552,
+      "source": "e47f1e1098fae67b403adff42befce0a078a328c",
+      "conclusion": "success",
+      "native_scientific_cases": 73,
+      "next_sha256": "6c0589dbd7587b56a5ad0118641260eb7c4f291c3efa74121b1e805e4281a982",
+      "frozen_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc"
+    },
+    "tranche_five_thread_science": {
+      "passed": true,
+      "cases": 73,
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "fixed_thread_repeats": true,
+      "stable_discrete_decisions": true
+    },
+    "tranche_46_stata": {
+      "status": "success",
+      "tests_passed": 46,
+      "fixtures": [
+        {
+          "fixture": "ci/feppml_smoke.do",
+          "status": "success"
+        },
+        {
+          "fixture": "ci/fereg_smoke.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/development/reference_factor_precedence.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/documentation/help_examples.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/engine_selection.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/estimate_ols_categorical_interaction.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/factor_availability.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/frequency_singleton_validation.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/installation_smoke.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/reload_loop.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/slope_dof_validation.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_iweight_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_string_fe_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_time_series_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/absorbed_slopes_and_clusters.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/candidate_sample.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/model_wire_v2_capture.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/ordinary_factor_terms.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/reject_ambiguous_absorb.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/string_sources.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/time_series_marker.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/postestimation/fail_closed.do",
+          "status": "success"
+        }
+      ]
+    },
+    "timings": {
+      "encoding": {
+        "identities": {
+          "parent": {
+            "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+            "binary_source": "322231291b134978792c9bfcb026fa36a1ae6b2f",
+            "binary_sha256": "038e1b843c4438f694cd1e69d6398f320344edb106c6051ccd7445d6896fa131",
+            "dirty": false
+          },
+          "next": {
+            "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+            "binary_source": "e47f1e1098fae67b403adff42befce0a078a328c",
+            "binary_sha256": "7cb442748741cfee305941f1cd11a22e5838effd55bbcc21e96eacfac76c3b70",
+            "dirty": false
+          }
+        },
+        "protocol": {
+          "warmups": 1,
+          "repetitions": 5,
+          "coefficient_rtol": 1e-07,
+          "coefficient_atol": 1e-10,
+          "reference_tolerance": 1e-12,
+          "fresh_process_per_command": true
+        },
+        "datasets": {
+          "ols-factor-cluster-encoding": {
+            "sha256": "054d5bc2bc608283d042c6476c55cb78c148130ed70555d75fc0d9b1746355cb",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ppml-cluster-only-encoding": {
+            "sha256": "4812d50948d294d33d3329eafe9e711245dcb5f267d635f6919ac5940aedb224",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ppml-factor-cluster-encoding": {
+            "sha256": "4812d50948d294d33d3329eafe9e711245dcb5f267d635f6919ac5940aedb224",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ols-cluster-only-encoding": {
+            "sha256": "054d5bc2bc608283d042c6476c55cb78c148130ed70555d75fc0d9b1746355cb",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          }
+        },
+        "exact_pairs": 76,
+        "geometric_mean_ratio": 1.033388182067086,
+        "pairs": [
+          {
+            "cell": "ols-factor-cluster-encoding",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.029,
+              "seconds_min": 0.029,
+              "seconds_max": 0.03,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.029,
+                0.03,
+                0.03,
+                0.029,
+                0.029
+              ]
+            },
+            "next": {
+              "seconds": 0.03,
+              "seconds_min": 0.029,
+              "seconds_max": 0.031,
+              "seconds_mad": 0.0009999999999999974,
+              "measurements": [
+                0.029,
+                0.03,
+                0.029,
+                0.031,
+                0.03
+              ]
+            },
+            "ratio": 1.0344827586206895,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ols-factor-cluster-encoding",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.028,
+              "seconds_min": 0.026,
+              "seconds_max": 0.028,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.026,
+                0.028,
+                0.028,
+                0.028,
+                0.028
+              ]
+            },
+            "next": {
+              "seconds": 0.028,
+              "seconds_min": 0.027,
+              "seconds_max": 0.029,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.028,
+                0.029,
+                0.027,
+                0.028,
+                0.027
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ols-factor-cluster-encoding",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.033,
+              "seconds_min": 0.032,
+              "seconds_max": 0.036,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.035,
+                0.032,
+                0.033,
+                0.036,
+                0.032
+              ]
+            },
+            "next": {
+              "seconds": 0.032,
+              "seconds_min": 0.03,
+              "seconds_max": 0.036,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.032,
+                0.03,
+                0.036,
+                0.031,
+                0.033
+              ]
+            },
+            "ratio": 0.9696969696969697,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ols-cluster-only-encoding",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.017,
+              "seconds_min": 0.016,
+              "seconds_max": 0.017,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.016,
+                0.017,
+                0.017,
+                0.016,
+                0.017
+              ]
+            },
+            "next": {
+              "seconds": 0.017,
+              "seconds_min": 0.016,
+              "seconds_max": 0.017,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.016,
+                0.016,
+                0.017,
+                0.017,
+                0.017
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ols-cluster-only-encoding",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.015,
+              "seconds_min": 0.015,
+              "seconds_max": 0.016,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.015,
+                0.015,
+                0.016,
+                0.015,
+                0.015
+              ]
+            },
+            "next": {
+              "seconds": 0.015,
+              "seconds_min": 0.015,
+              "seconds_max": 0.016,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.015,
+                0.015,
+                0.016,
+                0.015,
+                0.015
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ols-cluster-only-encoding",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.018,
+              "seconds_min": 0.018,
+              "seconds_max": 0.02,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.02,
+                0.018,
+                0.018,
+                0.018,
+                0.02
+              ]
+            },
+            "next": {
+              "seconds": 0.022,
+              "seconds_min": 0.018,
+              "seconds_max": 0.026,
+              "seconds_mad": 0.004,
+              "measurements": [
+                0.018,
+                0.022,
+                0.026,
+                0.018,
+                0.024
+              ]
+            },
+            "ratio": 1.2222222222222223,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-factor-cluster-encoding",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.07,
+              "seconds_min": 0.069,
+              "seconds_max": 0.072,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.072,
+                0.07,
+                0.071,
+                0.069,
+                0.069
+              ]
+            },
+            "next": {
+              "seconds": 0.069,
+              "seconds_min": 0.068,
+              "seconds_max": 0.072,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.068,
+                0.069,
+                0.069,
+                0.072,
+                0.07
+              ]
+            },
+            "ratio": 0.9857142857142857,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-factor-cluster-encoding",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.054,
+              "seconds_min": 0.054,
+              "seconds_max": 0.062,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.054,
+                0.062,
+                0.054,
+                0.054,
+                0.056
+              ]
+            },
+            "next": {
+              "seconds": 0.053,
+              "seconds_min": 0.053,
+              "seconds_max": 0.053,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.053,
+                0.053,
+                0.053,
+                0.053,
+                0.053
+              ]
+            },
+            "ratio": 0.9814814814814815,
+            "ranges_overlap": false
+          },
+          {
+            "cell": "ppml-factor-cluster-encoding",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.075,
+              "seconds_min": 0.07,
+              "seconds_max": 0.084,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.075,
+                0.084,
+                0.075,
+                0.074,
+                0.07
+              ]
+            },
+            "next": {
+              "seconds": 0.07,
+              "seconds_min": 0.067,
+              "seconds_max": 0.089,
+              "seconds_mad": 0.0030000000000000027,
+              "measurements": [
+                0.089,
+                0.07,
+                0.08,
+                0.069,
+                0.067
+              ]
+            },
+            "ratio": 0.9333333333333335,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-cluster-only-encoding",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.045,
+              "seconds_min": 0.044,
+              "seconds_max": 0.045,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.044,
+                0.044,
+                0.045,
+                0.045,
+                0.045
+              ]
+            },
+            "next": {
+              "seconds": 0.045,
+              "seconds_min": 0.044,
+              "seconds_max": 0.051,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.045,
+                0.045,
+                0.046,
+                0.044,
+                0.051
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-cluster-only-encoding",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.038,
+              "seconds_min": 0.037,
+              "seconds_max": 0.04,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.037,
+                0.038,
+                0.038,
+                0.04,
+                0.039
+              ]
+            },
+            "next": {
+              "seconds": 0.038,
+              "seconds_min": 0.036,
+              "seconds_max": 0.04,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.04,
+                0.038,
+                0.038,
+                0.036,
+                0.038
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-cluster-only-encoding",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.053,
+              "seconds_min": 0.052,
+              "seconds_max": 0.074,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.074,
+                0.069,
+                0.052,
+                0.053,
+                0.053
+              ]
+            },
+            "next": {
+              "seconds": 0.071,
+              "seconds_min": 0.057,
+              "seconds_max": 0.082,
+              "seconds_mad": 0.0050000000000000044,
+              "measurements": [
+                0.071,
+                0.082,
+                0.057,
+                0.071,
+                0.076
+              ]
+            },
+            "ratio": 1.3396226415094339,
+            "ranges_overlap": true
+          }
+        ]
+      },
+      "smoke": {
+        "primary": {
+          "identities": {
+            "parent": {
+              "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_source": "322231291b134978792c9bfcb026fa36a1ae6b2f",
+              "binary_sha256": "038e1b843c4438f694cd1e69d6398f320344edb106c6051ccd7445d6896fa131",
+              "dirty": false
+            },
+            "next": {
+              "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_source": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_sha256": "7cb442748741cfee305941f1cd11a22e5838effd55bbcc21e96eacfac76c3b70",
+              "dirty": false
+            }
+          },
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 5,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true
+          },
+          "datasets": {
+            "ppml-1fe": {
+              "sha256": "192d50266e722cdca54ab6d1444271b08c91d37bef386e8599624478c401e2b6",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "ols-2fe-dense": {
+              "sha256": "69d56e314043c8c39c6cc93eddeb8d15c023390cb0a8a9b2655c87534445f2bd",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "ppml-2fe-gravity": {
+              "sha256": "075f611a2f88038fd11a3ee00c3a1a127c47d196ed64b57775151d5e82a55568",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "ols-1fe": {
+              "sha256": "7e5783d99bc4ece24a727c7ae789fb2272987cb3db2e68a844152cb7d9a1a529",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            }
+          },
+          "exact_pairs": 28,
+          "geometric_mean_ratio": 0.977844259770517,
+          "pairs": [
+            {
+              "cell": "ols-1fe",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.03,
+                "seconds_min": 0.029,
+                "seconds_max": 0.031,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.031,
+                  0.03,
+                  0.03,
+                  0.03,
+                  0.029
+                ]
+              },
+              "next": {
+                "seconds": 0.029,
+                "seconds_min": 0.028,
+                "seconds_max": 0.031,
+                "seconds_mad": 0.0009999999999999974,
+                "measurements": [
+                  0.029,
+                  0.028,
+                  0.029,
+                  0.03,
+                  0.031
+                ]
+              },
+              "ratio": 0.9666666666666668,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "ols-2fe-dense",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.082,
+                "seconds_min": 0.081,
+                "seconds_max": 0.085,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.085,
+                  0.084,
+                  0.082,
+                  0.081,
+                  0.082
+                ]
+              },
+              "next": {
+                "seconds": 0.081,
+                "seconds_min": 0.08,
+                "seconds_max": 0.083,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.081,
+                  0.083,
+                  0.082,
+                  0.08,
+                  0.081
+                ]
+              },
+              "ratio": 0.9878048780487805,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "ppml-1fe",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.13,
+                "seconds_min": 0.128,
+                "seconds_max": 0.131,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.131,
+                  0.13,
+                  0.131,
+                  0.129,
+                  0.128
+                ]
+              },
+              "next": {
+                "seconds": 0.126,
+                "seconds_min": 0.123,
+                "seconds_max": 0.127,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.126,
+                  0.123,
+                  0.127,
+                  0.127,
+                  0.126
+                ]
+              },
+              "ratio": 0.9692307692307692,
+              "ranges_overlap": false
+            },
+            {
+              "cell": "ppml-2fe-gravity",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.165,
+                "seconds_min": 0.163,
+                "seconds_max": 0.168,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.168,
+                  0.168,
+                  0.164,
+                  0.165,
+                  0.163
+                ]
+              },
+              "next": {
+                "seconds": 0.163,
+                "seconds_min": 0.158,
+                "seconds_max": 0.164,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.164,
+                  0.162,
+                  0.158,
+                  0.163,
+                  0.163
+                ]
+              },
+              "ratio": 0.9878787878787879,
+              "ranges_overlap": true
+            }
+          ]
+        },
+        "reverse_followup": {
+          "identities": {
+            "parent": {
+              "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_source": "322231291b134978792c9bfcb026fa36a1ae6b2f",
+              "binary_sha256": "038e1b843c4438f694cd1e69d6398f320344edb106c6051ccd7445d6896fa131",
+              "dirty": false
+            },
+            "next": {
+              "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_source": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_sha256": "7cb442748741cfee305941f1cd11a22e5838effd55bbcc21e96eacfac76c3b70",
+              "dirty": false
+            }
+          },
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 5,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true
+          },
+          "datasets": {
+            "ppml-1fe": {
+              "sha256": "192d50266e722cdca54ab6d1444271b08c91d37bef386e8599624478c401e2b6",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "ols-2fe-dense": {
+              "sha256": "69d56e314043c8c39c6cc93eddeb8d15c023390cb0a8a9b2655c87534445f2bd",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "ppml-2fe-gravity": {
+              "sha256": "075f611a2f88038fd11a3ee00c3a1a127c47d196ed64b57775151d5e82a55568",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "ols-1fe": {
+              "sha256": "7e5783d99bc4ece24a727c7ae789fb2272987cb3db2e68a844152cb7d9a1a529",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            }
+          },
+          "exact_pairs": 28,
+          "geometric_mean_ratio": 1.008072359984683,
+          "pairs": [
+            {
+              "cell": "ols-1fe",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.03,
+                "seconds_min": 0.029,
+                "seconds_max": 0.03,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.03,
+                  0.03,
+                  0.029,
+                  0.03,
+                  0.029
+                ]
+              },
+              "next": {
+                "seconds": 0.03,
+                "seconds_min": 0.029,
+                "seconds_max": 0.033,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.029,
+                  0.033,
+                  0.03,
+                  0.03,
+                  0.03
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "ols-2fe-dense",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.082,
+                "seconds_min": 0.08,
+                "seconds_max": 0.085,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.084,
+                  0.08,
+                  0.082,
+                  0.085,
+                  0.08
+                ]
+              },
+              "next": {
+                "seconds": 0.083,
+                "seconds_min": 0.081,
+                "seconds_max": 0.083,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.083,
+                  0.082,
+                  0.083,
+                  0.081,
+                  0.083
+                ]
+              },
+              "ratio": 1.0121951219512195,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "ppml-1fe",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.127,
+                "seconds_min": 0.124,
+                "seconds_max": 0.128,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.125,
+                  0.127,
+                  0.128,
+                  0.128,
+                  0.124
+                ]
+              },
+              "next": {
+                "seconds": 0.128,
+                "seconds_min": 0.125,
+                "seconds_max": 0.13,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.125,
+                  0.126,
+                  0.128,
+                  0.13,
+                  0.13
+                ]
+              },
+              "ratio": 1.0078740157480315,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "ppml-2fe-gravity",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.163,
+                "seconds_min": 0.161,
+                "seconds_max": 0.169,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.169,
+                  0.163,
+                  0.164,
+                  0.161,
+                  0.162
+                ]
+              },
+              "next": {
+                "seconds": 0.165,
+                "seconds_min": 0.163,
+                "seconds_max": 0.166,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.165,
+                  0.164,
+                  0.163,
+                  0.165,
+                  0.166
+                ]
+              },
+              "ratio": 1.0122699386503067,
+              "ranges_overlap": true
+            }
+          ]
+        }
+      },
+      "scaling": {
+        "primary": {
+          "identities": {
+            "parent": {
+              "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_source": "322231291b134978792c9bfcb026fa36a1ae6b2f",
+              "binary_sha256": "038e1b843c4438f694cd1e69d6398f320344edb106c6051ccd7445d6896fa131",
+              "dirty": false
+            },
+            "next": {
+              "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_source": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_sha256": "7cb442748741cfee305941f1cd11a22e5838effd55bbcc21e96eacfac76c3b70",
+              "dirty": false
+            }
+          },
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 5,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true
+          },
+          "datasets": {
+            "m1-ols-n16383-k8": {
+              "sha256": "e3be92f8dfb3e0d5f3e555236ad451c1b794effeb033a9de521d0db509534e78",
+              "seed": 739391,
+              "rows": 16383,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ppml-n16384-k8": {
+              "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+              "seed": 739391,
+              "rows": 16384,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ols-n100000-k16": {
+              "sha256": "64bef8add11e327349a2b63139c8d7012b995c520418e87f46dacf849a300485",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ols-n16384-k8": {
+              "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+              "seed": 739391,
+              "rows": 16384,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ppml-n100000-k16": {
+              "sha256": "4c63eb34d47b561374b5a2a31685d233291517987195eeb4629db8e805b0c834",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ppml-n16383-k8": {
+              "sha256": "794f8c6d35c0010bbb9d456baaacf2cf81cffe5fb3e93ee023be06ecd13a6722",
+              "seed": 739391,
+              "rows": 16383,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            }
+          },
+          "exact_pairs": 186,
+          "geometric_mean_ratio": 0.997941882877843,
+          "pairs": [
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.026,
+                "seconds_min": 0.025,
+                "seconds_max": 0.028,
+                "seconds_mad": 0.0009999999999999974,
+                "measurements": [
+                  0.025,
+                  0.026,
+                  0.028,
+                  0.025,
+                  0.026
+                ]
+              },
+              "next": {
+                "seconds": 0.026,
+                "seconds_min": 0.025,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.026,
+                  0.026,
+                  0.026,
+                  0.025,
+                  0.025
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.022,
+                "seconds_min": 0.022,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.022,
+                  0.022,
+                  0.022,
+                  0.022,
+                  0.023
+                ]
+              },
+              "next": {
+                "seconds": 0.022,
+                "seconds_min": 0.022,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.023,
+                  0.022,
+                  0.022,
+                  0.022,
+                  0.023
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.021,
+                "seconds_min": 0.02,
+                "seconds_max": 0.021,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.02,
+                  0.021,
+                  0.021,
+                  0.021,
+                  0.021
+                ]
+              },
+              "next": {
+                "seconds": 0.021,
+                "seconds_min": 0.02,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.022,
+                  0.023,
+                  0.02,
+                  0.02,
+                  0.021
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.022,
+                "seconds_min": 0.021,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0009999999999999974,
+                "measurements": [
+                  0.022,
+                  0.023,
+                  0.022,
+                  0.021,
+                  0.021
+                ]
+              },
+              "next": {
+                "seconds": 0.022,
+                "seconds_min": 0.021,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0009999999999999974,
+                "measurements": [
+                  0.023,
+                  0.023,
+                  0.021,
+                  0.022,
+                  0.021
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.024,
+                "seconds_min": 0.024,
+                "seconds_max": 0.024,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.024,
+                  0.024,
+                  0.024,
+                  0.024,
+                  0.024
+                ]
+              },
+              "next": {
+                "seconds": 0.026,
+                "seconds_min": 0.023,
+                "seconds_max": 0.029,
+                "seconds_mad": 0.002999999999999999,
+                "measurements": [
+                  0.029,
+                  0.024,
+                  0.029,
+                  0.026,
+                  0.023
+                ]
+              },
+              "ratio": 1.0833333333333333,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.024,
+                "seconds_min": 0.023,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.024,
+                  0.024,
+                  0.026,
+                  0.023,
+                  0.024
+                ]
+              },
+              "next": {
+                "seconds": 0.024,
+                "seconds_min": 0.024,
+                "seconds_max": 0.027,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.024,
+                  0.025,
+                  0.024,
+                  0.024,
+                  0.027
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.02,
+                "seconds_min": 0.02,
+                "seconds_max": 0.02,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.02,
+                  0.02,
+                  0.02,
+                  0.02,
+                  0.02
+                ]
+              },
+              "next": {
+                "seconds": 0.02,
+                "seconds_min": 0.019,
+                "seconds_max": 0.02,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.02,
+                  0.02,
+                  0.02,
+                  0.019,
+                  0.02
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.019,
+                "seconds_min": 0.018,
+                "seconds_max": 0.019,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.018,
+                  0.019,
+                  0.019,
+                  0.018,
+                  0.019
+                ]
+              },
+              "next": {
+                "seconds": 0.019,
+                "seconds_min": 0.019,
+                "seconds_max": 0.02,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.019,
+                  0.019,
+                  0.02,
+                  0.02,
+                  0.019
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.018,
+                "seconds_min": 0.017,
+                "seconds_max": 0.019,
+                "seconds_mad": 0.0009999999999999974,
+                "measurements": [
+                  0.019,
+                  0.017,
+                  0.018,
+                  0.017,
+                  0.018
+                ]
+              },
+              "next": {
+                "seconds": 0.018,
+                "seconds_min": 0.017,
+                "seconds_max": 0.018,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.018,
+                  0.017,
+                  0.018,
+                  0.017,
+                  0.018
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.024,
+                "seconds_min": 0.022,
+                "seconds_max": 0.027,
+                "seconds_mad": 0.0019999999999999983,
+                "measurements": [
+                  0.023,
+                  0.026,
+                  0.027,
+                  0.022,
+                  0.024
+                ]
+              },
+              "next": {
+                "seconds": 0.021,
+                "seconds_min": 0.02,
+                "seconds_max": 0.025,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.021,
+                  0.02,
+                  0.023,
+                  0.021,
+                  0.025
+                ]
+              },
+              "ratio": 0.875,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.086,
+                "seconds_min": 0.08,
+                "seconds_max": 0.089,
+                "seconds_mad": 0.0030000000000000027,
+                "measurements": [
+                  0.083,
+                  0.08,
+                  0.089,
+                  0.086,
+                  0.089
+                ]
+              },
+              "next": {
+                "seconds": 0.083,
+                "seconds_min": 0.08,
+                "seconds_max": 0.088,
+                "seconds_mad": 0.002999999999999989,
+                "measurements": [
+                  0.08,
+                  0.083,
+                  0.088,
+                  0.082,
+                  0.086
+                ]
+              },
+              "ratio": 0.9651162790697676,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.057,
+                "seconds_min": 0.055,
+                "seconds_max": 0.059,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.057,
+                  0.055,
+                  0.058,
+                  0.057,
+                  0.059
+                ]
+              },
+              "next": {
+                "seconds": 0.059,
+                "seconds_min": 0.055,
+                "seconds_max": 0.06,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.055,
+                  0.059,
+                  0.058,
+                  0.06,
+                  0.06
+                ]
+              },
+              "ratio": 1.0350877192982455,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.047,
+                "seconds_min": 0.045,
+                "seconds_max": 0.047,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.047,
+                  0.047,
+                  0.045,
+                  0.047,
+                  0.047
+                ]
+              },
+              "next": {
+                "seconds": 0.046,
+                "seconds_min": 0.045,
+                "seconds_max": 0.047,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.046,
+                  0.045,
+                  0.047,
+                  0.046,
+                  0.045
+                ]
+              },
+              "ratio": 0.9787234042553191,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.042,
+                "seconds_min": 0.041,
+                "seconds_max": 0.044,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.042,
+                  0.044,
+                  0.041,
+                  0.041,
+                  0.044
+                ]
+              },
+              "next": {
+                "seconds": 0.042,
+                "seconds_min": 0.041,
+                "seconds_max": 0.044,
+                "seconds_mad": 0.000999999999999994,
+                "measurements": [
+                  0.043,
+                  0.042,
+                  0.041,
+                  0.042,
+                  0.044
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.053,
+                "seconds_min": 0.046,
+                "seconds_max": 0.056,
+                "seconds_mad": 0.0030000000000000027,
+                "measurements": [
+                  0.056,
+                  0.053,
+                  0.046,
+                  0.056,
+                  0.048
+                ]
+              },
+              "next": {
+                "seconds": 0.05,
+                "seconds_min": 0.045,
+                "seconds_max": 0.065,
+                "seconds_mad": 0.0040000000000000036,
+                "measurements": [
+                  0.046,
+                  0.065,
+                  0.045,
+                  0.05,
+                  0.053
+                ]
+              },
+              "ratio": 0.9433962264150945,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.056,
+                "seconds_min": 0.055,
+                "seconds_max": 0.056,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.055,
+                  0.056,
+                  0.056,
+                  0.056
+                ]
+              },
+              "next": {
+                "seconds": 0.056,
+                "seconds_min": 0.055,
+                "seconds_max": 0.056,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.056,
+                  0.056,
+                  0.055,
+                  0.055
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.047,
+                "seconds_min": 0.047,
+                "seconds_max": 0.047,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.047,
+                  0.047,
+                  0.047,
+                  0.047,
+                  0.047
+                ]
+              },
+              "next": {
+                "seconds": 0.046,
+                "seconds_min": 0.046,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.046,
+                  0.046,
+                  0.048,
+                  0.047,
+                  0.046
+                ]
+              },
+              "ratio": 0.9787234042553191,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.043,
+                "seconds_min": 0.042,
+                "seconds_max": 0.044,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.043,
+                  0.043,
+                  0.043,
+                  0.044,
+                  0.042
+                ]
+              },
+              "next": {
+                "seconds": 0.043,
+                "seconds_min": 0.042,
+                "seconds_max": 0.043,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.043,
+                  0.042,
+                  0.043,
+                  0.043,
+                  0.043
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.046,
+                "seconds_min": 0.045,
+                "seconds_max": 0.046,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.045,
+                  0.045,
+                  0.046,
+                  0.046,
+                  0.046
+                ]
+              },
+              "next": {
+                "seconds": 0.047,
+                "seconds_min": 0.047,
+                "seconds_max": 0.049,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.049,
+                  0.047,
+                  0.047,
+                  0.047,
+                  0.047
+                ]
+              },
+              "ratio": 1.0217391304347827,
+              "ranges_overlap": false
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.056,
+                "seconds_min": 0.056,
+                "seconds_max": 0.067,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.067,
+                  0.056,
+                  0.056,
+                  0.057
+                ]
+              },
+              "next": {
+                "seconds": 0.057,
+                "seconds_min": 0.054,
+                "seconds_max": 0.065,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.057,
+                  0.065,
+                  0.054,
+                  0.055,
+                  0.057
+                ]
+              },
+              "ratio": 1.0178571428571428,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.056,
+                "seconds_min": 0.056,
+                "seconds_max": 0.065,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.056,
+                  0.056,
+                  0.065,
+                  0.057
+                ]
+              },
+              "next": {
+                "seconds": 0.056,
+                "seconds_min": 0.056,
+                "seconds_max": 0.057,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.056,
+                  0.057,
+                  0.057,
+                  0.056
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.047,
+                "seconds_min": 0.046,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.047,
+                  0.048,
+                  0.047,
+                  0.047,
+                  0.046
+                ]
+              },
+              "next": {
+                "seconds": 0.047,
+                "seconds_min": 0.046,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.046,
+                  0.048,
+                  0.047,
+                  0.048,
+                  0.047
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.042,
+                "seconds_min": 0.042,
+                "seconds_max": 0.043,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.042,
+                  0.042,
+                  0.043,
+                  0.042,
+                  0.042
+                ]
+              },
+              "next": {
+                "seconds": 0.043,
+                "seconds_min": 0.042,
+                "seconds_max": 0.044,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.043,
+                  0.043,
+                  0.042,
+                  0.044,
+                  0.043
+                ]
+              },
+              "ratio": 1.0238095238095237,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.045,
+                "seconds_min": 0.044,
+                "seconds_max": 0.046,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.046,
+                  0.045,
+                  0.046,
+                  0.045,
+                  0.044
+                ]
+              },
+              "next": {
+                "seconds": 0.047,
+                "seconds_min": 0.045,
+                "seconds_max": 0.047,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.047,
+                  0.045,
+                  0.047,
+                  0.046,
+                  0.047
+                ]
+              },
+              "ratio": 1.0444444444444445,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.055,
+                "seconds_min": 0.054,
+                "seconds_max": 0.055,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.055,
+                  0.055,
+                  0.055,
+                  0.055,
+                  0.054
+                ]
+              },
+              "next": {
+                "seconds": 0.055,
+                "seconds_min": 0.054,
+                "seconds_max": 0.057,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.054,
+                  0.056,
+                  0.055,
+                  0.055,
+                  0.057
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.353,
+                "seconds_min": 0.349,
+                "seconds_max": 0.353,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.353,
+                  0.353,
+                  0.349,
+                  0.353,
+                  0.352
+                ]
+              },
+              "next": {
+                "seconds": 0.353,
+                "seconds_min": 0.35,
+                "seconds_max": 0.353,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.35,
+                  0.353,
+                  0.353,
+                  0.351,
+                  0.353
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.248,
+                "seconds_min": 0.246,
+                "seconds_max": 0.253,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.253,
+                  0.246,
+                  0.248,
+                  0.248,
+                  0.25
+                ]
+              },
+              "next": {
+                "seconds": 0.25,
+                "seconds_min": 0.247,
+                "seconds_max": 0.255,
+                "seconds_mad": 0.0030000000000000027,
+                "measurements": [
+                  0.25,
+                  0.255,
+                  0.247,
+                  0.249,
+                  0.253
+                ]
+              },
+              "ratio": 1.0080645161290323,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.196,
+                "seconds_min": 0.194,
+                "seconds_max": 0.201,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.201,
+                  0.196,
+                  0.2,
+                  0.196,
+                  0.194
+                ]
+              },
+              "next": {
+                "seconds": 0.196,
+                "seconds_min": 0.193,
+                "seconds_max": 0.199,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.196,
+                  0.193,
+                  0.196,
+                  0.199,
+                  0.197
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.179,
+                "seconds_min": 0.178,
+                "seconds_max": 0.1820000000000001,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.178,
+                  0.178,
+                  0.1820000000000001,
+                  0.179,
+                  0.18
+                ]
+              },
+              "next": {
+                "seconds": 0.18,
+                "seconds_min": 0.179,
+                "seconds_max": 0.181,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.18,
+                  0.18,
+                  0.179,
+                  0.181,
+                  0.18
+                ]
+              },
+              "ratio": 1.005586592178771,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.196,
+                "seconds_min": 0.187,
+                "seconds_max": 0.211,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.211,
+                  0.195,
+                  0.198,
+                  0.196,
+                  0.187
+                ]
+              },
+              "next": {
+                "seconds": 0.191,
+                "seconds_min": 0.188,
+                "seconds_max": 0.195,
+                "seconds_mad": 0.0030000000000000027,
+                "measurements": [
+                  0.195,
+                  0.188,
+                  0.191,
+                  0.188,
+                  0.192
+                ]
+              },
+              "ratio": 0.9744897959183674,
+              "ranges_overlap": true
+            }
+          ]
+        },
+        "reverse_followup": {
+          "identities": {
+            "parent": {
+              "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_source": "322231291b134978792c9bfcb026fa36a1ae6b2f",
+              "binary_sha256": "038e1b843c4438f694cd1e69d6398f320344edb106c6051ccd7445d6896fa131",
+              "dirty": false
+            },
+            "next": {
+              "checkout": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_source": "e47f1e1098fae67b403adff42befce0a078a328c",
+              "binary_sha256": "7cb442748741cfee305941f1cd11a22e5838effd55bbcc21e96eacfac76c3b70",
+              "dirty": false
+            }
+          },
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 5,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true
+          },
+          "datasets": {
+            "m1-ols-n16383-k8": {
+              "sha256": "e3be92f8dfb3e0d5f3e555236ad451c1b794effeb033a9de521d0db509534e78",
+              "seed": 739391,
+              "rows": 16383,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ppml-n16384-k8": {
+              "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+              "seed": 739391,
+              "rows": 16384,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ols-n100000-k16": {
+              "sha256": "64bef8add11e327349a2b63139c8d7012b995c520418e87f46dacf849a300485",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ols-n16384-k8": {
+              "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+              "seed": 739391,
+              "rows": 16384,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ppml-n100000-k16": {
+              "sha256": "4c63eb34d47b561374b5a2a31685d233291517987195eeb4629db8e805b0c834",
+              "seed": 739391,
+              "rows": 100000,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            },
+            "m1-ppml-n16383-k8": {
+              "sha256": "794f8c6d35c0010bbb9d456baaacf2cf81cffe5fb3e93ee023be06ecd13a6722",
+              "seed": 739391,
+              "rows": 16383,
+              "numpy": "2.3.5",
+              "pandas": "2.2.3",
+              "recipe": "bench/generate.py"
+            }
+          },
+          "exact_pairs": 186,
+          "geometric_mean_ratio": 1.0024048365279237,
+          "pairs": [
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.026,
+                "seconds_min": 0.026,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.026,
+                  0.026,
+                  0.026,
+                  0.026,
+                  0.026
+                ]
+              },
+              "next": {
+                "seconds": 0.026,
+                "seconds_min": 0.025,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.025,
+                  0.026,
+                  0.026,
+                  0.026,
+                  0.026
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.022,
+                "seconds_min": 0.022,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.022,
+                  0.022,
+                  0.026,
+                  0.025,
+                  0.022
+                ]
+              },
+              "next": {
+                "seconds": 0.022,
+                "seconds_min": 0.022,
+                "seconds_max": 0.022,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.022,
+                  0.022,
+                  0.022,
+                  0.022,
+                  0.022
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.02,
+                "seconds_min": 0.02,
+                "seconds_max": 0.022,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.02,
+                  0.02,
+                  0.021,
+                  0.02,
+                  0.022
+                ]
+              },
+              "next": {
+                "seconds": 0.021,
+                "seconds_min": 0.021,
+                "seconds_max": 0.022,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.022,
+                  0.021,
+                  0.021,
+                  0.021,
+                  0.021
+                ]
+              },
+              "ratio": 1.05,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.021,
+                "seconds_min": 0.02,
+                "seconds_max": 0.022,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.02,
+                  0.021,
+                  0.021,
+                  0.021,
+                  0.022
+                ]
+              },
+              "next": {
+                "seconds": 0.02,
+                "seconds_min": 0.02,
+                "seconds_max": 0.024,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.02,
+                  0.02,
+                  0.02,
+                  0.021,
+                  0.024
+                ]
+              },
+              "ratio": 0.9523809523809523,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.025,
+                "seconds_min": 0.022,
+                "seconds_max": 0.028,
+                "seconds_mad": 0.0019999999999999983,
+                "measurements": [
+                  0.022,
+                  0.028,
+                  0.024,
+                  0.027,
+                  0.025
+                ]
+              },
+              "next": {
+                "seconds": 0.026,
+                "seconds_min": 0.023,
+                "seconds_max": 0.032,
+                "seconds_mad": 0.002999999999999999,
+                "measurements": [
+                  0.024,
+                  0.026,
+                  0.023,
+                  0.032,
+                  0.03
+                ]
+              },
+              "ratio": 1.0399999999999998,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.024,
+                "seconds_min": 0.024,
+                "seconds_max": 0.025,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.024,
+                  0.024,
+                  0.024,
+                  0.024,
+                  0.025
+                ]
+              },
+              "next": {
+                "seconds": 0.024,
+                "seconds_min": 0.024,
+                "seconds_max": 0.025,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.024,
+                  0.024,
+                  0.024,
+                  0.024,
+                  0.025
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.02,
+                "seconds_min": 0.02,
+                "seconds_max": 0.021,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.021,
+                  0.02,
+                  0.02,
+                  0.02,
+                  0.02
+                ]
+              },
+              "next": {
+                "seconds": 0.02,
+                "seconds_min": 0.019,
+                "seconds_max": 0.021,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.021,
+                  0.02,
+                  0.019,
+                  0.021,
+                  0.02
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.019,
+                "seconds_min": 0.018,
+                "seconds_max": 0.019,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.019,
+                  0.019,
+                  0.019,
+                  0.019,
+                  0.018
+                ]
+              },
+              "next": {
+                "seconds": 0.019,
+                "seconds_min": 0.018,
+                "seconds_max": 0.019,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.019,
+                  0.019,
+                  0.019,
+                  0.018,
+                  0.019
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.017,
+                "seconds_min": 0.017,
+                "seconds_max": 0.019,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.017,
+                  0.019,
+                  0.017,
+                  0.017,
+                  0.019
+                ]
+              },
+              "next": {
+                "seconds": 0.017,
+                "seconds_min": 0.017,
+                "seconds_max": 0.019,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.017,
+                  0.017,
+                  0.017,
+                  0.019,
+                  0.019
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.023,
+                "seconds_min": 0.022,
+                "seconds_max": 0.029,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.023,
+                  0.023,
+                  0.022,
+                  0.026,
+                  0.029
+                ]
+              },
+              "next": {
+                "seconds": 0.023,
+                "seconds_min": 0.022,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.026,
+                  0.023,
+                  0.022,
+                  0.022,
+                  0.025
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.084,
+                "seconds_min": 0.08,
+                "seconds_max": 0.088,
+                "seconds_mad": 0.0030000000000000027,
+                "measurements": [
+                  0.088,
+                  0.081,
+                  0.086,
+                  0.084,
+                  0.08
+                ]
+              },
+              "next": {
+                "seconds": 0.088,
+                "seconds_min": 0.083,
+                "seconds_max": 0.091,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.091,
+                  0.087,
+                  0.088,
+                  0.083,
+                  0.088
+                ]
+              },
+              "ratio": 1.0476190476190474,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.058,
+                "seconds_min": 0.056,
+                "seconds_max": 0.059,
+                "seconds_mad": 0.000999999999999994,
+                "measurements": [
+                  0.058,
+                  0.057,
+                  0.058,
+                  0.056,
+                  0.059
+                ]
+              },
+              "next": {
+                "seconds": 0.0570000000000001,
+                "seconds_min": 0.057,
+                "seconds_max": 0.061,
+                "seconds_mad": 9.71445146547012e-17,
+                "measurements": [
+                  0.057,
+                  0.057,
+                  0.061,
+                  0.058,
+                  0.0570000000000001
+                ]
+              },
+              "ratio": 0.9827586206896568,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.046,
+                "seconds_min": 0.044,
+                "seconds_max": 0.047,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.046,
+                  0.046,
+                  0.044,
+                  0.047,
+                  0.046
+                ]
+              },
+              "next": {
+                "seconds": 0.047,
+                "seconds_min": 0.045,
+                "seconds_max": 0.047,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.046,
+                  0.045,
+                  0.047,
+                  0.047,
+                  0.047
+                ]
+              },
+              "ratio": 1.0217391304347827,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.042,
+                "seconds_min": 0.041,
+                "seconds_max": 0.044,
+                "seconds_mad": 0.000999999999999994,
+                "measurements": [
+                  0.043,
+                  0.042,
+                  0.042,
+                  0.041,
+                  0.044
+                ]
+              },
+              "next": {
+                "seconds": 0.043,
+                "seconds_min": 0.041,
+                "seconds_max": 0.046,
+                "seconds_mad": 0.000999999999999994,
+                "measurements": [
+                  0.042,
+                  0.043,
+                  0.043,
+                  0.041,
+                  0.046
+                ]
+              },
+              "ratio": 1.0238095238095237,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.048,
+                "seconds_min": 0.046,
+                "seconds_max": 0.054,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.046,
+                  0.046,
+                  0.053,
+                  0.054,
+                  0.048
+                ]
+              },
+              "next": {
+                "seconds": 0.048,
+                "seconds_min": 0.047,
+                "seconds_max": 0.057,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.047,
+                  0.057,
+                  0.047,
+                  0.048,
+                  0.054
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.055,
+                "seconds_min": 0.054,
+                "seconds_max": 0.056,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.056,
+                  0.054,
+                  0.055,
+                  0.056,
+                  0.055
+                ]
+              },
+              "next": {
+                "seconds": 0.056,
+                "seconds_min": 0.055,
+                "seconds_max": 0.056,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.055,
+                  0.056,
+                  0.056,
+                  0.055
+                ]
+              },
+              "ratio": 1.0181818181818183,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.047,
+                "seconds_min": 0.046,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.046,
+                  0.047,
+                  0.048,
+                  0.047,
+                  0.047
+                ]
+              },
+              "next": {
+                "seconds": 0.047,
+                "seconds_min": 0.047,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.047,
+                  0.047,
+                  0.048,
+                  0.047,
+                  0.048
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.043,
+                "seconds_min": 0.042,
+                "seconds_max": 0.044,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.044,
+                  0.043,
+                  0.043,
+                  0.042,
+                  0.043
+                ]
+              },
+              "next": {
+                "seconds": 0.042,
+                "seconds_min": 0.042,
+                "seconds_max": 0.045,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.043,
+                  0.042,
+                  0.042,
+                  0.042,
+                  0.045
+                ]
+              },
+              "ratio": 0.9767441860465118,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.048,
+                "seconds_min": 0.046,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.048,
+                  0.046,
+                  0.048,
+                  0.047,
+                  0.048
+                ]
+              },
+              "next": {
+                "seconds": 0.046,
+                "seconds_min": 0.045,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.048,
+                  0.045,
+                  0.047,
+                  0.046,
+                  0.046
+                ]
+              },
+              "ratio": 0.9583333333333333,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.058,
+                "seconds_min": 0.054,
+                "seconds_max": 0.062,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.054,
+                  0.059,
+                  0.062,
+                  0.056,
+                  0.058
+                ]
+              },
+              "next": {
+                "seconds": 0.058,
+                "seconds_min": 0.056,
+                "seconds_max": 0.07,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.056,
+                  0.07,
+                  0.058,
+                  0.063,
+                  0.056
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.056,
+                "seconds_min": 0.055,
+                "seconds_max": 0.056,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.056,
+                  0.056,
+                  0.055,
+                  0.056
+                ]
+              },
+              "next": {
+                "seconds": 0.056,
+                "seconds_min": 0.056,
+                "seconds_max": 0.057,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.056,
+                  0.056,
+                  0.057,
+                  0.056
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.047,
+                "seconds_min": 0.046,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.048,
+                  0.046,
+                  0.047,
+                  0.047,
+                  0.047
+                ]
+              },
+              "next": {
+                "seconds": 0.047,
+                "seconds_min": 0.047,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.048,
+                  0.047,
+                  0.047,
+                  0.047,
+                  0.047
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.042,
+                "seconds_min": 0.042,
+                "seconds_max": 0.044,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.042,
+                  0.042,
+                  0.044,
+                  0.042,
+                  0.042
+                ]
+              },
+              "next": {
+                "seconds": 0.043,
+                "seconds_min": 0.042,
+                "seconds_max": 0.043,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.043,
+                  0.042,
+                  0.043,
+                  0.042,
+                  0.043
+                ]
+              },
+              "ratio": 1.0238095238095237,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.048,
+                "seconds_min": 0.046,
+                "seconds_max": 0.049,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.046,
+                  0.049,
+                  0.048,
+                  0.048,
+                  0.047
+                ]
+              },
+              "next": {
+                "seconds": 0.047,
+                "seconds_min": 0.046,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.047,
+                  0.048,
+                  0.046,
+                  0.046,
+                  0.048
+                ]
+              },
+              "ratio": 0.9791666666666666,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.056,
+                "seconds_min": 0.054,
+                "seconds_max": 0.057,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.055,
+                  0.056,
+                  0.056,
+                  0.057,
+                  0.054
+                ]
+              },
+              "next": {
+                "seconds": 0.056,
+                "seconds_min": 0.055,
+                "seconds_max": 0.058,
+                "seconds_mad": 0.0,
+                "measurements": [
+                  0.056,
+                  0.058,
+                  0.056,
+                  0.055,
+                  0.056
+                ]
+              },
+              "ratio": 1.0,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.351,
+                "seconds_min": 0.349,
+                "seconds_max": 0.354,
+                "seconds_mad": 0.0020000000000000018,
+                "measurements": [
+                  0.351,
+                  0.351,
+                  0.354,
+                  0.353,
+                  0.349
+                ]
+              },
+              "next": {
+                "seconds": 0.352,
+                "seconds_min": 0.351,
+                "seconds_max": 0.354,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.354,
+                  0.351,
+                  0.353,
+                  0.351,
+                  0.352
+                ]
+              },
+              "ratio": 1.002849002849003,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.249,
+                "seconds_min": 0.248,
+                "seconds_max": 0.253,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.249,
+                  0.249,
+                  0.253,
+                  0.25,
+                  0.248
+                ]
+              },
+              "next": {
+                "seconds": 0.252,
+                "seconds_min": 0.246,
+                "seconds_max": 0.253,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.252,
+                  0.248,
+                  0.253,
+                  0.252,
+                  0.246
+                ]
+              },
+              "ratio": 1.0120481927710843,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.197,
+                "seconds_min": 0.195,
+                "seconds_max": 0.198,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.197,
+                  0.197,
+                  0.195,
+                  0.198,
+                  0.196
+                ]
+              },
+              "next": {
+                "seconds": 0.194,
+                "seconds_min": 0.192,
+                "seconds_max": 0.196,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.194,
+                  0.192,
+                  0.194,
+                  0.195,
+                  0.196
+                ]
+              },
+              "ratio": 0.9847715736040609,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.18,
+                "seconds_min": 0.177,
+                "seconds_max": 0.187,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.181,
+                  0.179,
+                  0.187,
+                  0.18,
+                  0.177
+                ]
+              },
+              "next": {
+                "seconds": 0.179,
+                "seconds_min": 0.178,
+                "seconds_max": 0.18,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.178,
+                  0.18,
+                  0.18,
+                  0.178,
+                  0.179
+                ]
+              },
+              "ratio": 0.9944444444444445,
+              "ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.192,
+                "seconds_min": 0.187,
+                "seconds_max": 0.194,
+                "seconds_mad": 0.0010000000000000009,
+                "measurements": [
+                  0.191,
+                  0.194,
+                  0.192,
+                  0.193,
+                  0.187
+                ]
+              },
+              "next": {
+                "seconds": 0.194,
+                "seconds_min": 0.188,
+                "seconds_max": 0.201,
+                "seconds_mad": 0.006000000000000005,
+                "measurements": [
+                  0.1919999999999999,
+                  0.201,
+                  0.188,
+                  0.201,
+                  0.194
+                ]
+              },
+              "ratio": 1.0104166666666667,
+              "ranges_overlap": true
+            }
+          ]
+        }
+      }
+    },
+    "interpretation": "Fresh smoke/scaling ranges all overlap; source-encoding comparison bound to 4 absorbed cells. No consistent acceleration claimed."
   },
-  "scope": "Only repeated categorical factorization is retired. No equality-of-count shortcut, cache, numerical/solver/admission change or replay exception."
+  "scope": "Only repeated categorical factorization is retired. No equality-of-count shortcut, cache, numerical/solver/admission change or replay exception.",
+  "exploratory_no_fe_reference": {
+    "qualification": "failed, not counted as passing",
+    "default_measurements": "parent and next succeed",
+    "strict_reference_tolerance": 1e-12,
+    "constant_mean_reference": "both return r(430) strict-profile stagnation; movement 1.3413595544542730e-9, score 8.395e-14",
+    "original_dense_reference": "parent and next strict-profile stagnation; movement 9.075817730527453e-12, score 4.329e-15",
+    "harness_correction": "IID pilot replaced a cluster column absent from its generator; no production change.",
+    "follow_up": "Localize strict no-FE reconstruction versus independent constant-mean coefficients before considering any numerical repair. This nonnumerical milestone preserves existing refusal and tolerances.",
+    "default_tolerance_exact_pairs": 36
+  }
 }

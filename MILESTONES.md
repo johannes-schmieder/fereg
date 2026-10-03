@@ -2,7 +2,7 @@
 
 Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M14 clean/tranche qualification; M16 clean Mac/native Linux passes, full CI pending.
+Current task: M17 clean/tranche qualification; local full/30, exact73 Mac/ABI and 7 Stata pass.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -48,10 +48,10 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 - [x] M12 Availability owner; disposable topology retired; full/30, Mac exact73/9 Stata/ABI, clean timings and Linux CI pass.
 - [x] M13 Source-role encodings; full/30, mixed-role witness, exact73 Mac/9 Stata/ABI, clean timings and Linux CI pass.
-- [ ] M14 Encoding transfer implemented; pointer/changed-axis witness, full/30, exact73 Mac/ABI and 6 Stata pass; clean/tranche/CI pending.
+- [x] M14 Encoding transfer; full/30, pointer witness, exact73/five-thread Mac/ABI, 46 Stata, clean timings and Linux CI pass.
 - [x] M15 Three certified VCE owners; core -166; full/30, exact73 Mac/4 Stata/ABI, 18 timing pairs and Linux CI pass.
-- [ ] M16 Four host preparations implemented; host -21/one long function retired; full/exact73 Mac/ABI and 6 Stata pass; clean/CI pending.
-- [ ] M17 One active OLS FE storage owner, exact existing transitions.
+- [x] M16 Four host preparations; host -21/one long function retired; full/exact73 Mac/ABI, 6 Stata, clean18 timings and Linux CI pass.
+- [ ] M17 One active FE owner implemented; core -53/long98 to97; full/30, exact73 Mac/ABI and 7 Stata pass; clean/tranche/CI pending.
 - [ ] M18 Ordered PPML admission/installation owner, exact inventory and policy.
 - [ ] M19 One active PPML direction owner, separate canonical checkpoint/curve.
 - [ ] M20 One ordinary canonical retry transition, unchanged eligibility/accounting.
@@ -75,7 +75,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No active blocker. M12–M21 scope approved; predecessor runtime a5cd94ba qualified on Mac/Linux.
+No active blocker. Numerical follow-up: strict no-FE PPML timing references return r(430) on both parent and next; not qualified evidence. See M14 summary.
+Extra near-within saved-FE CG oracle returns r(459) on qualified parent and M17; numerical follow-up, not a passing check. See M17 summary.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -150,3 +151,6 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M16.1 this commit — four preparations, one selected VCE config and completion discipline; host -21/long16 to15; full, exact73 Mac/ABI and 6 Stata pass.
 - 2026-10-03 M13.2 d1cd130a — clean exact73, CI 37147220974 and two preparation timing campaigns pass; 76 exact pairs each; no regression; [evidence](bench/history/2026-10-03-m13-source-roles.json).
 - 2026-10-03 M14.1 this commit — candidate encoding moved only on unchanged mask; core +11 declared; pointer witness/full/30, exact73 Mac/ABI and 6 Stata pass.
+- 2026-10-03 M16.2 32223129 — clean exact73/18 overlapping VCE timing pairs (114 exact commands), Linux CI 37148222890 pass.
+- 2026-10-03 M14.2 e47f1e10 — clean exact73/five-thread/46 Stata and CI 37149147552 pass; smoke/scaling follow-up ranges overlap; no-FE strict references unqualified.
+- 2026-10-03 M17.1 this commit — one active FE owner, core -53/one long function retired; full/30, exact73 Mac/ABI and 7 Stata pass; extra near-within failure matches parent.

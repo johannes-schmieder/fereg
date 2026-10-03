@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "milestone": "M17",
+  "implementation": "One ActiveFeAbsorber enum owns canonical/pending-Schur, borrowed one-FE, multipartition slopes, single-slope cache, retained LSMR or CMG storage. Six competing options and incompatible None-fill constructors are deleted. Probe/rejected-work diagnostics remain separate. Final CMG consumption, low LSMR retirement before QR, original-input slope fallback and remaining-iteration budgets preserve existing order.",
+  "complexity": {
+    "core_before": 104577,
+    "core_after": 104524,
+    "delta": -53,
+    "long_functions_before_after": [
+      98,
+      97
+    ],
+    "large_files": 19,
+    "growth_reason": "Exhaustive inline dispatch adds five absorb lines; no extra heap owner or boxing. Existing active solver predicates remain."
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "84a708284bac6a392171c2e55b5ce04a5eff8f8cfd9601b0c9810f75d3f62ad6",
+      "baseline_sha256": "7cb442748741cfee305941f1cd11a22e5838effd55bbcc21e96eacfac76c3b70",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "licensed_stata": {
+      "required_and_additional_results": [
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/development/ols_cluster_low_memory.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/development/ols_near_within_cmg_oracle.do",
+          "status": "failure"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_auto_cmg_route.do",
+          "status": "success"
+        }
+      ],
+      "passing_count": 7
+    },
+    "extra_development_witness": {
+      "fixture": "tests/stata/development/ols_near_within_cmg_oracle.do",
+      "status": "fails on qualified M14 parent and M17",
+      "stata_rc": 459,
+      "message": "borrowed CG Hestenes improvement potential became negative",
+      "qualification": "not counted as passing",
+      "follow_up": "Localize near-within retaining/recovery CG against explicit-dummy/Hadamard oracle before choosing a numerical repair; no tolerance weakened."
+    }
+  },
+  "qualification": {
+    "clean_mac": "pending",
+    "linux_ci": "pending",
+    "tranche_five_thread_science": "pending",
+    "tranche_46_stata": "pending",
+    "timings": "pending"
+  },
+  "scope": "No numerical or solver/admission policy change. Required raw-CMG public oracle passes fast/low \u00d7 auto/LSMR/CMG; extra near-within development fixture remains unqualified."
+}
