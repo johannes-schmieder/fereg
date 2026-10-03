@@ -57,6 +57,9 @@ use super::{
     PpmlWorkspaceCapacityReport, PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
 
+mod direction;
+use direction::OrdinaryDirection;
+
 mod admission;
 use admission::LinearAdmission;
 
@@ -1132,14 +1135,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         purpose,
         effective_threads,
     )?;
-    let mut joint_lsmr = None;
-    let mut joint_lsmr_engine = None;
-    let mut profiled_one_fe: Option<ProfiledOneFe> = None;
+    let mut direction = OrdinaryDirection::Canonical;
     let mut profiled_curve: Option<ProfiledInterceptCurve> = None;
     let mut canonical_final = canonical_final_enabled()
         && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
         && session.fe_design().effects().len() >= 2;
-    let mut fused_cmg = None;
     let mut solver_report = None;
     let retained_limit = MAX_RETAINED_ITERATION_REPORTS
         .min(config.memory.diagnostic_capacity)
@@ -1207,7 +1207,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         session.set_config(ppml_linear_config(config, inner_tolerance)?)?;
         if iteration > 1 {
             frame_generation = next_frame_generation(frame_generation)?;
-            if joint_lsmr.is_none() && fused_cmg.is_none() && profiled_one_fe.is_none() {
+            if direction.is_canonical() {
                 refresh_linear_frame(&mut session, &workspace, frame_generation)?;
             }
         }
@@ -1219,9 +1219,10 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         );
         let mut profiled_step = None;
         if iteration > 1 {
-            if let Some(profile) = profiled_one_fe.as_mut() {
+            if let Some(profile) = direction.profile_mut() {
                 let started = Instant::now();
-                let direction = if config.linear.execution.mode == PreparedOlsExecutionMode::Low
+                let profile_direction = if config.linear.execution.mode
+                    == PreparedOlsExecutionMode::Low
                     || session.has_implicit_one_fe()
                 {
                     let columns = session.one_fe_original_columns(profile.active_columns())?;
@@ -1248,7 +1249,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         config.ppml,
                     )
                 };
-                match direction {
+                match profile_direction {
                     Ok(error) => {
                         profiled_step = Some((
                             profile.active_rank(),
@@ -1276,7 +1277,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                             let observation = allocation_audit.complete_equivalence(false)?;
                             memory.observe_steady_state_allocation(observation)?;
                         }
-                        profiled_one_fe = None;
+                        direction.retire_profile();
                         memory.record_fallback(PpmlFallbackKind::Route);
                         refresh_linear_frame(&mut session, &workspace, frame_generation)?;
                     }
@@ -1338,80 +1339,18 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 output.reuse_report(),
                 output.fit().absorption_report().used_solver,
             );
-            if profiles.one_fe {
-                match ProfiledOneFe::new(
-                    prepared,
-                    specialized_columns.as_deref().expect("profile basis"),
-                    session.fe_design(),
-                    outcome,
-                    prior_weights,
-                    config.linear.execution.threads,
-                ) {
-                    Ok(profile) => profiled_one_fe = Some(profile),
-                    Err(error)
-                        if matches!(
-                            error.code,
-                            ErrorCode::Allocation | ErrorCode::NonConvergence
-                        ) => {}
-                    Err(error) => return Err(error),
-                }
-            }
-            if profiles.curve {
-                match ProfiledInterceptCurve::new(
-                    prepared,
-                    specialized_columns.as_deref().expect("curve basis"),
-                    session.fe_design(),
-                    outcome,
-                    prior_weights,
-                    config.linear.execution.threads,
-                ) {
-                    Ok(curve) => profiled_curve = Some(curve),
-                    Err(error)
-                        if matches!(
-                            error.code,
-                            ErrorCode::Allocation | ErrorCode::NonConvergence
-                        ) => {}
-                    Err(error) => return Err(error),
-                }
-            }
-            match selected_engine {
-                PpmlSolverEngine::Map => {}
-                PpmlSolverEngine::LsmrJoint | PpmlSolverEngine::LsmrFused => {
-                    let active_columns = specialized_columns.as_ref().ok_or_else(|| {
-                        FeregError::new(
-                            ErrorCode::Internal,
-                            "joint PPML LSMR requires the frozen active basis",
-                        )
-                    })?;
-                    joint_lsmr = Some(ReusableCategoricalJointLsmr::new_with_threads(
-                        prepared,
-                        active_columns,
-                        session.fe_design(),
-                        config.linear.execution.threads,
-                        joint_lsmr_policy(session.fe_design().effects().len()),
-                    )?);
-                    joint_lsmr_engine = Some(selected_engine);
-                }
-                PpmlSolverEngine::CmgPrepared => {
-                    let active_columns = specialized_columns.as_ref().ok_or_else(|| {
-                        FeregError::new(
-                            ErrorCode::Internal,
-                            "fused PPML CMG requires the frozen active basis",
-                        )
-                    })?;
-                    fused_cmg = Some(ReusableCategoricalFwlCmg::new(
-                        prepared,
-                        active_columns,
-                        session.fe_design(),
-                        FusedFwlCmgConfig {
-                            map: config.ppml.absorb.map,
-                            threads: config.linear.execution.threads,
-                            batch_size: solver_admission.cmg_batch_capacity,
-                            solver_memory_budget,
-                        },
-                    )?);
-                }
-            }
+            profiled_curve = direction.initialize(
+                prepared,
+                session.fe_design(),
+                specialized_columns.as_deref(),
+                &profiles,
+                outcome,
+                prior_weights,
+                config,
+                selected_engine,
+                solver_admission,
+                solver_memory_budget,
+            )?;
             if selected_engine != PpmlSolverEngine::Map
                 && !initial_checkpoint_lsmr
                 && use_checkpoint_lsmr_accelerator(
@@ -1423,7 +1362,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 initial_solver_report.enable_lsmr_checkpoint();
             }
             solver_report = Some(initial_solver_report);
-            if let Some(cmg) = fused_cmg.as_ref() {
+            if let Some(cmg) = direction.cmg() {
                 record_cmg_heap_forecast(&mut memory, cmg, solver_admission)?;
             }
             result
@@ -1451,11 +1390,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 })?;
             rank_frozen = true;
             let mut reuse = LinearSessionReuseReport::ppml_specialized(0., seconds);
-            reuse.steady_state_allocation_free = profiled_one_fe
-                .as_ref()
+            reuse.steady_state_allocation_free = direction
+                .profile()
                 .is_some_and(ProfiledOneFe::capacities_unchanged);
             (rank, reuse, FeSolverKind::Map)
-        } else if let Some(joint) = joint_lsmr.as_mut() {
+        } else if let Some((joint, engine)) = direction.lsmr_mut() {
             let report = joint.solve(
                 session.fe_design(),
                 outcome,
@@ -1478,12 +1417,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             solver_report
                 .as_mut()
                 .ok_or_else(|| internal("PPML LSMR solve lacks solver diagnostics"))?
-                .observe(joint_solver_observation(
-                    report,
-                    joint_lsmr_engine.ok_or_else(|| {
-                        internal("PPML joint LSMR state lacks its public engine identity")
-                    })?,
-                ))?;
+                .observe(joint_solver_observation(report, engine))?;
             rank_frozen = true;
             (
                 joint.active_rank(),
@@ -1493,9 +1427,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 ),
                 FeSolverKind::Lsmr,
             )
-        } else if fused_cmg.is_some() {
-            let attempt = fused_cmg
-                .as_mut()
+        } else if direction.cmg().is_some() {
+            let attempt = direction
+                .cmg_mut()
                 .expect("fused CMG presence checked")
                 .solve(
                     prepared,
@@ -1506,14 +1440,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 )?;
             record_cmg_heap_forecast(
                 &mut memory,
-                fused_cmg.as_ref().expect("CMG attempt retained"),
+                direction.cmg().expect("CMG attempt retained"),
                 solver_admission,
             )?;
             match attempt {
                 FusedFwlCmgSolveOutcome::Certified(report) => {
-                    let cmg = fused_cmg
-                        .as_ref()
-                        .expect("successful fused CMG is retained");
+                    let cmg = direction.cmg().expect("successful fused CMG is retained");
                     cmg.fill_candidate(&mut workspace, offset)?;
                     certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
                     total_inner_iterations = total_inner_iterations
@@ -1543,7 +1475,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         .as_mut()
                         .ok_or_else(|| internal("PPML CMG fallback lacks solver diagnostics"))?
                         .record_cmg_numerical_fallback(cmg_failure_observation(report))?;
-                    fused_cmg = None;
+                    direction.retire();
                     memory.record_fallback(PpmlFallbackKind::Route);
                     // The specialized route deliberately leaves the canonical
                     // MAP session stale between checkpoints. Rebind it to this
@@ -1761,7 +1693,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         let accepted = {
             let mut poll_line_search = || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
             let attempt = if profiled_step.is_some() {
-                let profile = profiled_one_fe.as_mut().expect("prepared profile step");
+                let profile = direction.profile_mut().expect("prepared profile step");
                 if config.linear.execution.mode == PreparedOlsExecutionMode::Low
                     || session.has_implicit_one_fe()
                 {
@@ -1828,7 +1760,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 Err(error) => return Err(error),
             }
         };
-        if let Some(joint) = joint_lsmr.as_mut() {
+        if let Some((joint, _)) = direction.lsmr_mut() {
             // The analytic FE shift changes the accepted increment. Discard
             // the LSMR history witness before solving under the new weights.
             if profiled_curve.is_some() {
@@ -1927,7 +1859,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 && profiled_curve.is_none()
                 && !profile_rebuild_pending
                 && !checkpoint_refinement_pending
-                && (session.supports_joint_ppml_direction() || joint_lsmr.is_some())
+                && (session.supports_joint_ppml_direction() || direction.lsmr().is_some())
                 && try_joint_strict_final_frame(
                     &mut session,
                     &mut workspace,
@@ -1942,7 +1874,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     solver_report
                         .as_mut()
                         .ok_or_else(|| internal("joint strict solve lacks diagnostics"))?,
-                    joint_lsmr.as_mut().zip(joint_lsmr_engine),
+                    direction.lsmr_mut(),
                 )?
             {
                 two_consecutive_convergence = true;
@@ -1963,13 +1895,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             let strict_tolerance = checkpoint_tolerance;
             previous_inner_tolerance = previous_inner_tolerance.min(strict_tolerance);
             session.set_config(ppml_linear_config(config, strict_tolerance)?)?;
-            let specialized_engine = if joint_lsmr.is_some() {
-                joint_lsmr_engine
-            } else if fused_cmg.is_some() {
-                Some(PpmlSolverEngine::CmgPrepared)
-            } else {
-                None
-            };
+            let specialized_engine = direction.specialized_engine();
             if profile_rebuild_pending {
                 let mut poll = || interrupt(PpmlInterruptPoint::StrictFinalSolve);
                 session.rebuild_retained_inputs_interruptible(&mut poll)?;
@@ -2029,20 +1955,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 Err(error) if error.code == ErrorCode::NonConvergence => None,
                 Err(error) => return Err(error),
             };
-            let active_coefficient_slots = joint_lsmr
-                .as_ref()
-                .map(ReusableCategoricalJointLsmr::active_slots)
-                .or_else(|| {
-                    fused_cmg
-                        .as_ref()
-                        .map(ReusableCategoricalFwlCmg::active_slots)
-                })
-                .or_else(|| profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots))
-                .or_else(|| {
-                    profiled_curve
-                        .as_ref()
-                        .map(ProfiledInterceptCurve::active_slots)
-                });
+            let active_coefficient_slots = direction.active_slots().or_else(|| {
+                profiled_curve
+                    .as_ref()
+                    .map(ProfiledInterceptCurve::active_slots)
+            });
             let strict_consistent = strict_candidate_decision_with_coefficient_slots(
                 strict_certified,
                 strict_basis_unchanged,
@@ -2134,7 +2051,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 // outer conditions. If strict WLS confirms that same point,
                 // retaining it keeps the strict canonical products on the exact
                 // accepted Hessian frame for independently checked final reuse.
-                if !canonical_final && profiled_one_fe.is_none() && profiled_curve.is_none() {
+                if !canonical_final && direction.profile().is_none() && profiled_curve.is_none() {
                     workspace.fill_prepared_line_search_trial_with(
                         1.0,
                         config.ppml.bounds,
@@ -2193,54 +2110,23 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             if strict_committed {
                 if !strict_basis_unchanged {
                     profiled_curve = None;
-                    profiled_one_fe = None;
                 }
-                if let Some(joint) = joint_lsmr.as_mut() {
-                    joint.reset_warm_start();
-                }
-                if let Some(cmg) = fused_cmg.as_mut() {
-                    cmg.reset_warm_start();
-                }
+                direction.after_commit(strict_basis_unchanged);
             }
             if accepted_strict_basis_change {
                 let active_columns = strict_active_columns.as_deref().ok_or_else(|| {
                     internal("accepted PPML strict basis change lacks active-column identity")
                 })?;
-                // The committed MAP basis is now canonical. Drop the stale
-                // specialized workspace before its fallible replacement so a
-                // checkpoint pivot does not double the route's memory peak.
-                match specialized_engine {
-                    Some(PpmlSolverEngine::LsmrJoint | PpmlSolverEngine::LsmrFused) => {
-                        drop(joint_lsmr.take());
-                        joint_lsmr = Some(ReusableCategoricalJointLsmr::new_with_threads(
-                            prepared,
-                            active_columns,
-                            session.fe_design(),
-                            config.linear.execution.threads,
-                            joint_lsmr_policy(session.fe_design().effects().len()),
-                        )?);
-                    }
-                    Some(PpmlSolverEngine::CmgPrepared) => {
-                        drop(fused_cmg.take());
-                        fused_cmg = Some(ReusableCategoricalFwlCmg::new(
-                            prepared,
-                            active_columns,
-                            session.fe_design(),
-                            FusedFwlCmgConfig {
-                                map: config.ppml.absorb.map,
-                                threads: config.linear.execution.threads,
-                                batch_size: solver_admission.cmg_batch_capacity,
-                                solver_memory_budget,
-                            },
-                        )?);
-                    }
-                    Some(PpmlSolverEngine::Map) | None => {
-                        return Err(internal(
-                            "accepted PPML strict basis change lacks a specialized engine",
-                        ));
-                    }
-                }
-                if let Some(cmg) = fused_cmg.as_ref() {
+                direction.replace_basis(
+                    specialized_engine,
+                    prepared,
+                    active_columns,
+                    session.fe_design(),
+                    config,
+                    solver_admission,
+                    solver_memory_budget,
+                )?;
+                if let Some(cmg) = direction.cmg() {
                     record_cmg_heap_forecast(&mut memory, cmg, solver_admission)?;
                 }
             }
@@ -2256,7 +2142,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             if strict_consistent && final_score.passed {
                 interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
                 let synchronized = if (canonical_final
-                    || profiled_one_fe.is_some()
+                    || direction.profile().is_some()
                     || profiled_curve.is_some())
                     && strict_basis_unchanged
                     && reuse_canonical_final_products(
@@ -2281,7 +2167,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                         &mut total_inner_iterations,
                         finite_rank,
                         objective,
-                        profiled_one_fe.as_ref().map(ProfiledOneFe::active_slots),
+                        direction.profile().map(ProfiledOneFe::active_slots),
                     )?
                 };
                 if synchronized == FinalHessianSynchronization::Certified {
@@ -2439,14 +2325,14 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 reuse,
                 linear_route,
                 elapsed.elapsed(),
-                profiled_one_fe.as_ref(),
+                direction.profile(),
                 profiled_curve.as_ref(),
             )?;
         } else if audit_can_start {
             allocation_audit.start_after(
                 &session,
                 &workspace,
-                profiled_one_fe.as_ref(),
+                direction.profile(),
                 profiled_curve.as_ref(),
             )?;
         }

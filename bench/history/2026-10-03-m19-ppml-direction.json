@@ -1,0 +1,93 @@
+{
+  "schema": 1,
+  "milestone": "M19",
+  "implementation": "One inline OrdinaryDirection enum owns canonical MAP, one-FE profile, joint LSMR, fused LSMR or CMG. Engine identity derives from the LSMR variant. Independent workspace/engine/profile/CMG options and their impossible combinations are removed. First-basis optional profile/curve construction and mandatory specialized construction retain order. One replacement constructor releases stale specialized storage before allocating the committed basis. Canonical checkpoint and coexisting curve remain independent.",
+  "preserved": [
+    "Mu uses canonical MAP",
+    "profile allocation/nonconvergence declines; other errors remain fatal",
+    "LSMR warm acceptance and curve reset; CMG permanent numerical retirement",
+    "same-rank pivot replacement, active-slot precedence, heap forecasting and budget",
+    "canonical refresh only when canonical ordinary direction is active"
+  ],
+  "complexity": {
+    "before": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1473,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 104749
+    },
+    "after": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1473,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 104864
+    },
+    "net_core_delta": 115,
+    "driver_before": 1556,
+    "driver_after": 1439,
+    "new_module_lines": 227,
+    "largest_new_function": 72,
+    "growth_reason": "Enum dispatch views and bounded constructors add signatures and lines; fewer owning states, no extra heap allocation or numerical route."
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "4b16dfe9d54694b5bc3ae3fd843e84427411a5528939d05c016ffada39c370e0",
+      "baseline_sha256": "efdc1ef7dfc090c91a0aabed60a9f092e659b15cd37e1b8579093b6292ce3376",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "licensed_stata": [
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "status": "success"
+      }
+    ]
+  },
+  "qualification": {
+    "clean_native": "pending",
+    "timings": "pending",
+    "linux_ci": "pending"
+  }
+}

@@ -2,7 +2,7 @@
 
 Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M18 clean/CI qualification; ordered admission implemented; full/30, inventory, exact73 Mac/ABI and 7 Stata pass.
+Current task: M19 clean/CI qualification; one direction owner implemented; full/30, exact73 Mac/ABI and 7 Stata pass.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -52,8 +52,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M15 Three certified VCE owners; core -166; full/30, exact73 Mac/4 Stata/ABI, 18 timing pairs and Linux CI pass.
 - [x] M16 Four host preparations; host -21/one long function retired; full/exact73 Mac/ABI, 6 Stata, clean18 timings and Linux CI pass.
 - [x] M17 One active FE owner; core -53/long98 to97; full/30, exact73/five-thread Mac/ABI, 46 Stata, clean timings and Linux CI pass.
-- [ ] M18 Consumed PPML admission/installation owner; full/30, exact inventory, exact73 Mac/ABI and 7 Stata pass; clean/CI pending.
-- [ ] M19 One active PPML direction owner, separate canonical checkpoint/curve.
+- [x] M18 Consumed PPML admission/installation owner; full/30, exact inventory, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
+- [ ] M19 One active PPML direction owner; core +115 declared; full/30, exact73 Mac/ABI and 7 Stata pass; clean/CI pending.
 - [ ] M20 One ordinary canonical retry transition, unchanged eligibility/accounting.
 - [ ] M21 Strict recovery/publication controller, combined qualification and separate Astra review.
 
@@ -156,3 +156,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M17.1 this commit — one active FE owner, core -53/one long function retired; full/30, exact73 Mac/ABI and 7 Stata pass; extra near-within failure matches parent.
 - 2026-10-03 M17.2 aa9103d3 — clean73/five-thread/46 Stata and CI 37152210255 pass; 366 exact timing pairs, all58 ranges overlap; [evidence](bench/history/2026-10-03-m17-active-fe-owner.json).
 - 2026-10-03 M18.1 this commit — admission/install owner; core +225 declared, new methods <=124; full/30, 312 shapes/2,808 admissions exact, 73 native/Mac ABI and stable7 Stata pass.
+- 2026-10-03 M18.2 656e0fe1 — clean73 and CI 37153983908 pass; 76 exact pairs/all12 timing ranges overlap, GM1.011; [evidence](bench/history/2026-10-03-m18-ppml-admission.json).
+- 2026-10-03 M19.1 this commit — one inline direction, variant-derived LSMR identity and one basis replacement; full/30, exact73 Mac/ABI and 7 Stata pass; core +115 declared.
