@@ -2,7 +2,7 @@
 
 Plan: [M0–M8](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M8.1 Schur preparation boundary and parent baseline; M9–M11 discussion follows qualification.
+Current task: M8.3 clean native qualification, timings and M9–M11 discussion; M8.2 local checks pass.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -33,8 +33,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M6 Shared deferred categorical DoF and checked totals; full/long checks, 73 exact/scientific replay and 3 Stata fixtures pass.
 - [x] M7 Scaling diagnosis and combined qualification; shared Schur preparation proposed for discussion, not implemented.
 
-- [ ] M8.1 Preparation-order audit and qualified parent timing baseline.
-- [ ] M8.2 Shared Schur RHS/projection kernels; scientific, transaction and complexity qualification.
+- [x] M8.1 Preparation-order audit; 34 parent timing groups plus existing-phase profile recorded.
+- [x] M8.2 Shared Schur preparation; full/long checks, 73 exact/scientific replay, native ABI and 6 Stata pass; core -39 lines.
 - [ ] M8.3 Paired timings, phase comparison, final CI and detailed M9–M11 proposals.
 
 ## Gates
@@ -43,6 +43,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
 - [x] G-M2: shared classification, exact parent-next checks, independent science and performance/complexity evidence; CI 37118979350 passes.
 - [x] G-M3–M7: local/long checks, exact parent replay, five-thread science, 46 Stata and Linux CI 37121923471 pass; timings investigated.
+- [ ] G-M8: clean final replay/thread/fixture checks, paired timings, final Linux CI and proposals.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -105,3 +106,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 G-M3–M7 this commit — timings/phase diagnosis and [evidence](bench/history/2026-10-03-m3-m7-refactoring.json); PPML follow-up ranges overlap; M8 discussion only.
 
 - 2026-10-03 M8.0 this commit — scope authorized; share Schur level sums/projection and probe preparation; preserve validation order and routes.
+- 2026-10-03 M8.2 this commit — one Schur level kernel/probe stage; core -39 lines; analytic/full/30 oracle checks, 73 replay, Mac ABI and 6 Stata pass.

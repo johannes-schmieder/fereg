@@ -2736,37 +2736,30 @@ fn absorb_two_fe_pcg_reusing(
         residual_square.copy_from_slice(&state.square[..rhs_count]);
     } else {
         let left_codes = left.codes();
-        let data = values.as_slice();
         graph
             .solution
             .par_chunks_mut(32768)
             .for_each(|part| part.fill(0.0));
-        fill_two_fe_left_rhs(
+        fill_two_fe_group_rhs(
             left,
             weights,
             &values,
             stride,
-            &mut graph.left_rhs,
-            &mut graph.left_weights,
+            (&mut graph.left_rhs, &mut graph.left_weights),
+            0..rhs_count,
+            stride,
+            |_, _, _| {},
         )?;
-        graph
-            .residual
-            .par_chunks_mut(stride)
-            .zip(graph.right_weights.par_iter_mut())
-            .enumerate()
-            .try_for_each(|(level, (sum, total))| -> Result<()> {
-                sum.fill(0.0);
-                *total = 0.0;
-                for &row in right.level_index().checked_members(level)? {
-                    let weight = weights.normalized(row);
-                    *total += weight;
-                    let source = &data[row * rhs_count..(row + 1) * rhs_count];
-                    for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
-                        *out += weight * value;
-                    }
-                }
-                Ok(())
-            })?;
+        fill_two_fe_group_rhs(
+            right,
+            weights,
+            &values,
+            stride,
+            (&mut graph.residual, &mut graph.right_weights),
+            0..rhs_count,
+            stride,
+            |_, _, _| {},
+        )?;
         if graph
             .left_weights
             .iter()
@@ -2797,14 +2790,14 @@ fn absorb_two_fe_pcg_reusing(
             .par_chunks_mut(stride)
             .enumerate()
             .try_for_each(|(level, sum)| -> Result<()> {
-                for &row in right.level_index().checked_members(level)? {
-                    let weight = weights.normalized(row);
-                    let left_level = left_codes[row] as usize;
-                    let source = &left_rhs[left_level * stride..left_level * stride + rhs_count];
-                    for (out, &value) in sum[..rhs_count].iter_mut().zip(source) {
-                        *out -= weight * value;
-                    }
-                }
+                subtract_two_fe_left_projection(
+                    right.level_index().checked_members(level)?,
+                    left_codes,
+                    weights,
+                    stride,
+                    left_rhs,
+                    &mut sum[..rhs_count],
+                );
                 Ok(())
             })?;
         if scale_components {
@@ -3314,32 +3307,97 @@ fn absorb_two_fe_pcg_reusing(
     Err(invalid_data(reason))
 }
 
-fn fill_two_fe_left_rhs(
-    left: &crate::fe::BorrowedInterceptEffect<'_>,
+// The finish operation runs in the same level task as accumulation. Probes
+// normalize/project immediately; full solves validate raw group products first.
+// clear_width preserves each caller's ownership of unused workspace lanes.
+#[allow(clippy::too_many_arguments)]
+fn fill_two_fe_group_rhs<C: ExactSizeIterator<Item = usize> + Clone + Sync>(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
     stride: usize,
-    rhs: &mut [f64],
-    totals: &mut [f64],
+    bank: (&mut [f64], &mut [f64]),
+    columns: C,
+    clear_width: usize,
+    finish: impl Fn(&[usize], &mut [f64], f64) + Sync,
 ) -> Result<()> {
-    let width = values.ncols();
-    let data = values.as_slice();
-    rhs.par_chunks_mut(stride)
-        .zip(totals.par_iter_mut())
+    let width = columns.len();
+    bank.0
+        .par_chunks_mut(stride)
+        .zip(bank.1.par_iter_mut())
         .enumerate()
         .try_for_each(|(level, (sum, total))| -> Result<()> {
-            sum.fill(0.0);
+            sum[..clear_width].fill(0.0);
             *total = 0.0;
-            for &row in left.level_index().checked_members(level)? {
+            let members = effect.level_index().checked_members(level)?;
+            for &row in members {
                 let weight = weights.normalized(row);
                 *total += weight;
-                let source = &data[row * width..(row + 1) * width];
-                for (out, &value) in sum[..width].iter_mut().zip(source) {
-                    *out += weight * value;
+                for (out, column) in sum[..width].iter_mut().zip(columns.clone()) {
+                    *out += weight * values[(row, column)];
                 }
             }
+            finish(members, &mut sum[..width], *total);
             Ok(())
         })
+}
+
+fn subtract_two_fe_left_projection(
+    members: &[usize],
+    left_codes: &[u32],
+    weights: ValidatedWeights<'_>,
+    stride: usize,
+    left_rhs: &[f64],
+    sum: &mut [f64],
+) {
+    for &row in members {
+        let weight = weights.normalized(row);
+        let a = left_codes[row] as usize;
+        let source = &left_rhs[a * stride..a * stride + sum.len()];
+        for (out, &value) in sum.iter_mut().zip(source) {
+            *out -= weight * value;
+        }
+    }
+}
+
+fn prepare_schur_probe_rhs(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    graph: &mut TwoFePcgWorkspace,
+    stride: usize,
+    columns: &[usize],
+) -> Result<()> {
+    let width = columns.len();
+    let left = &design.effects()[graph.left_effect];
+    let right = &design.effects()[graph.right_effect];
+    fill_two_fe_group_rhs(
+        left,
+        weights,
+        values,
+        stride,
+        (&mut graph.left_rhs, &mut graph.left_weights),
+        columns.iter().copied(),
+        width,
+        |_, sum, total| {
+            for value in sum {
+                *value /= total;
+            }
+        },
+    )?;
+    let left_rhs = &graph.left_rhs;
+    fill_two_fe_group_rhs(
+        right,
+        weights,
+        values,
+        stride,
+        (&mut graph.residual, &mut graph.right_weights),
+        columns.iter().copied(),
+        width,
+        |members, sum, _| {
+            subtract_two_fe_left_projection(members, left.codes(), weights, stride, left_rhs, sum);
+        },
+    )
 }
 
 fn cache_weighted_schur_right_edges(
@@ -10207,54 +10265,8 @@ fn schur_probe_reusing(
     // A previous failed full-width attempt may leave nonfinite inactive lanes.
     // Serial application validates the whole operator bank, including its tail.
     graph.operator.fill(0.0);
-    let left = &design.effects()[graph.left_effect];
+    prepare_schur_probe_rhs(design, weights, values, graph, stride, columns)?;
     let right = &design.effects()[graph.right_effect];
-    graph
-        .left_rhs
-        .par_chunks_mut(stride)
-        .zip(graph.left_weights.par_iter_mut())
-        .enumerate()
-        .try_for_each(|(level, (sum, total))| -> Result<()> {
-            sum[..probe_rhs].fill(0.0);
-            *total = 0.0;
-            for &row in left.level_index().checked_members(level)? {
-                let weight = weights.normalized(row);
-                *total += weight;
-                for (rhs, &column) in columns.iter().enumerate() {
-                    sum[rhs] += weight * values[(row, column)];
-                }
-            }
-            for value in &mut sum[..probe_rhs] {
-                *value /= *total;
-            }
-            Ok(())
-        })?;
-    let left_rhs = &graph.left_rhs;
-    graph
-        .residual
-        .par_chunks_mut(stride)
-        .zip(graph.right_weights.par_iter_mut())
-        .enumerate()
-        .try_for_each(|(level, (sum, total))| -> Result<()> {
-            let members = right.level_index().checked_members(level)?;
-            sum[..probe_rhs].fill(0.0);
-            *total = 0.0;
-            for &row in members {
-                let weight = weights.normalized(row);
-                *total += weight;
-                for (rhs, &column) in columns.iter().enumerate() {
-                    sum[rhs] += weight * values[(row, column)];
-                }
-            }
-            for &row in members {
-                let weight = weights.normalized(row);
-                let a = left.codes()[row] as usize;
-                for rhs in 0..probe_rhs {
-                    sum[rhs] -= weight * left_rhs[a * stride + rhs];
-                }
-            }
-            Ok(())
-        })?;
     let mut square = [0.0; 3];
     for level in 0..right.n_levels() {
         // Keep the legacy matrix indices and numerical traversal order explicit.
@@ -10357,56 +10369,10 @@ fn schur_probe_narrow_continuation(
     // A previous failed full-width attempt may leave nonfinite inactive lanes.
     // Serial application validates the whole operator bank, including its tail.
     graph.operator.fill(0.0);
-    let left = &design.effects()[graph.left_effect];
-    let right = &design.effects()[graph.right_effect];
     let all_columns = [0, 1, 2, 3, 4, 5, 6, 7];
     let columns = &all_columns[..rhs_count];
-    graph
-        .left_rhs
-        .par_chunks_mut(stride)
-        .zip(graph.left_weights.par_iter_mut())
-        .enumerate()
-        .try_for_each(|(level, (sum, total))| -> Result<()> {
-            sum[..rhs_count].fill(0.0);
-            *total = 0.0;
-            for &row in left.level_index().checked_members(level)? {
-                let weight = weights.normalized(row);
-                *total += weight;
-                for (rhs, &column) in columns.iter().enumerate() {
-                    sum[rhs] += weight * values[(row, column)];
-                }
-            }
-            for value in &mut sum[..rhs_count] {
-                *value /= *total;
-            }
-            Ok(())
-        })?;
-    let left_rhs = &graph.left_rhs;
-    graph
-        .residual
-        .par_chunks_mut(stride)
-        .zip(graph.right_weights.par_iter_mut())
-        .enumerate()
-        .try_for_each(|(level, (sum, total))| -> Result<()> {
-            let members = right.level_index().checked_members(level)?;
-            sum[..rhs_count].fill(0.0);
-            *total = 0.0;
-            for &row in members {
-                let weight = weights.normalized(row);
-                *total += weight;
-                for (rhs, &column) in columns.iter().enumerate() {
-                    sum[rhs] += weight * values[(row, column)];
-                }
-            }
-            for &row in members {
-                let weight = weights.normalized(row);
-                let a = left.codes()[row] as usize;
-                for rhs in 0..rhs_count {
-                    sum[rhs] -= weight * left_rhs[a * stride + rhs];
-                }
-            }
-            Ok(())
-        })?;
+    prepare_schur_probe_rhs(design, weights, values, graph, stride, columns)?;
+    let right = &design.effects()[graph.right_effect];
     let mut square = [0.0; 8];
     for level in 0..right.n_levels() {
         // Keep the legacy matrix indices and numerical traversal order explicit.
@@ -11424,6 +11390,89 @@ mod tests {
             assert!(result.is_none());
             assert_eq!(cost.iterations, 0);
             assert!(!cost.rejected);
+        }
+    }
+
+    #[test]
+    fn schur_rhs_preparation_preserves_selected_order_and_inactive_lanes() {
+        let left_codes = [0, 0, 1, 1];
+        let right_codes = [0, 1, 0, 1];
+        let left_index = LevelIndex::from_codes(&left_codes, 2).unwrap();
+        let right_index = LevelIndex::from_codes(&right_codes, 2).unwrap();
+        let left = ValidatedBorrowedInterceptSource::new(&left_codes, 2, &left_index).unwrap();
+        let right = ValidatedBorrowedInterceptSource::new(&right_codes, 2, &right_index).unwrap();
+        let design =
+            BorrowedInterceptFeDesign::new(4, vec![left.effect(), right.effect()]).unwrap();
+        let values = DenseMatrix::from_row_major(
+            4,
+            3,
+            vec![2.0, 1.0, 4.0, 6.0, 3.0, 8.0, 4.0, 5.0, 2.0, 8.0, 7.0, 6.0],
+        )
+        .unwrap();
+        let supplied = [1.0, 2.0, 4.0, 3.0];
+        let weights = validate_weights(BorrowedMapWeights::Provided(&supplied), 4).unwrap();
+        let mut serial = None;
+        for threads in [1, 4, 16] {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .unwrap()
+                .install(|| {
+                    let mut graph =
+                        TwoFePcgWorkspace::new(&design, 5, &mut SystemWorkspaceReservation)
+                            .unwrap();
+                    graph.left_rhs.fill(17.0);
+                    graph.residual.fill(19.0);
+                    prepare_schur_probe_rhs(&design, weights, &values, &mut graph, 5, &[2, 0, 2])
+                        .unwrap();
+                    // Normalized weights are [1/4, 1/2, 1, 3/4]. The selected
+                    // columns include a repeat; unused lanes are caller-owned.
+                    let expected_left = [[20.0 / 3.0, 14.0 / 3.0], [26.0 / 7.0, 40.0 / 7.0]];
+                    for (level, row) in graph.left_rhs.chunks(5).enumerate() {
+                        for (value, expected) in row[..3].iter().zip([
+                            expected_left[level][0],
+                            expected_left[level][1],
+                            expected_left[level][0],
+                        ]) {
+                            assert!((value - expected).abs() < 1e-14);
+                        }
+                        assert_eq!(&row[3..], &[17.0, 17.0]);
+                    }
+                    for (level, row) in graph.residual.chunks(5).enumerate() {
+                        let expected = if level == 0 {
+                            -50.0 / 21.0
+                        } else {
+                            50.0 / 21.0
+                        };
+                        assert!(row[..3]
+                            .iter()
+                            .all(|value| (value - expected).abs() < 1e-14));
+                        assert_eq!(&row[3..], &[19.0, 19.0]);
+                    }
+                    assert_eq!(graph.left_weights, [0.75, 1.75]);
+                    assert_eq!(graph.right_weights, [1.25, 1.25]);
+                    let observed = (graph.left_rhs.clone(), graph.residual.clone());
+                    if let Some(expected) = &serial {
+                        assert_eq!(&observed, expected);
+                    } else {
+                        serial = Some(observed);
+                    }
+                    fill_two_fe_group_rhs(
+                        &left.effect(),
+                        weights,
+                        &values,
+                        5,
+                        (&mut graph.left_rhs, &mut graph.left_weights),
+                        0..values.ncols(),
+                        5,
+                        |_, _, _| {},
+                    )
+                    .unwrap();
+                    assert_eq!(
+                        graph.left_rhs,
+                        [3.5, 1.75, 5.0, 0.0, 0.0, 10.0, 10.25, 6.5, 0.0, 0.0]
+                    );
+                });
         }
     }
 
@@ -13727,13 +13776,15 @@ mod tests {
                                 *v = ((i * 17 % 101) as f64 - 50.0) / 37.0;
                             }
                             actual.solution.copy_from_slice(&expected.solution);
-                            fill_two_fe_left_rhs(
+                            fill_two_fe_group_rhs(
                                 &design.effects()[expected.left_effect],
                                 weights,
                                 &expected_values,
                                 stride,
-                                &mut expected.left_rhs,
-                                &mut expected.left_weights,
+                                (&mut expected.left_rhs, &mut expected.left_weights),
+                                0..expected_values.ncols(),
+                                stride,
+                                |_, _, _| {},
                             )
                             .unwrap();
                             actual.left_weights.copy_from_slice(&expected.left_weights);
