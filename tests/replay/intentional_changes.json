@@ -2,7 +2,8 @@
   "schema": 1,
   "active": [
     "full-matrix-covariance",
-    "slope-dof"
+    "slope-dof",
+    "frequency-singleton"
   ],
   "repairs": {
     "full-matrix-covariance": {
@@ -57,6 +58,34 @@
         "/columns/15",
         "/columns/16",
         "/columns/17"
+      ]
+    },
+    "frequency-singleton": {
+      "case": "known-66",
+      "reason": "A retained frequency-weighted singleton factor column lies entirely in its group slope span. Excluding that zero within column from finite-score candidates permits the independently identified fit. Only success/error status, result matrices, output columns and published solver signature may change; sample, effective N, residual DoF, identified coefficients, covariance and residuals must match the dense oracle.",
+      "allowed_paths": [
+        "/return_code",
+        "/error",
+        "/runtime_signature",
+        "/matrices/RB/bits",
+        "/matrices/RV/bits",
+        "/matrices/RSTATUS/bits",
+        "/matrices/RFE/bits",
+        "/matrices/RCLUSTER/bits",
+        "/matrices/RSUBSET/bits",
+        "/matrices/RMARKB/bits",
+        "/matrices/RMARKV/bits",
+        "/matrices/RFIT/bits",
+        "/matrices/RDOF/bits",
+        "/matrices/RSOLVER/bits",
+        "/matrices/RCERT/bits",
+        "/matrices/RREC/bits",
+        "/columns/10",
+        "/columns/11",
+        "/columns/12",
+        "/columns/13",
+        "/columns/14",
+        "/columns/15"
       ]
     }
   }

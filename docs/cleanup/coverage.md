@@ -118,3 +118,20 @@ and rejects seven malformed report variants after repair. Independent replay
 requires dense fit/VCE, sample, effective N and residual DoF; a licensed explicit
 dummy regression checks the public fast and low paths. All other cases and
 fixed-thread repeats remain exact, including the preceding covariance fix.
+
+### M1.2d declared change boundary
+
+The seed-66 frequency-singleton witness currently fails with r(459) during
+finite-score validation. The intended change is a successful fit matching the
+already recorded independent dense design, including effective N=514 and
+residual DoF=501. The replay policy permits success/results only for known-66;
+all other cases and input fields remain exact against the preceding next.
+A public Stata regression additionally compares explicit dummy/slope fits and
+checks frequency multiplicity, pruning and keepsingletons in fast/low modes.
+
+The seed-66 replay initially allocated an extra constant slot despite its
+slope-only design. The earlier r(459) masked that fixture error. M1.2d corrects
+its constant request flag and output dimensions to match the public ado, then
+replays those same
+corrected inputs against both binaries: the parent must still reproduce r(459).
+Data, term metadata and independent scientific targets are unchanged.

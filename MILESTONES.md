@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M1.2d frequency-singleton validation repair; M1.2c local acceptance passed.
+Current task: M1.3 bounded feature/scientific/transaction qualification; all four M1.2 repairs pass locally.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -18,7 +18,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M1.2a Next-only factor precedence correction; excluded-row, TS and independent dummy checks pass.
 - [x] M1.2b Full-matrix covariance repair; independent PSD and exact unaffected replay pass.
 - [x] M1.2c Slope-DoF validation repaired; independent rank, malformed-report rejection and exact unaffected replay pass.
-- [ ] M1.2d Reproduce/repair frequency-singleton validation. Depends on M1.2c acceptance.
+- [x] M1.2d Frequency-retained singleton fix; dense fit and public fast/low pruning/retention checks pass.
 - [ ] M1.3 Bounded mapped feature/scientific/transaction qualification. Depends on M1.2.
 - [ ] M1.4 Bundled installation and platform qualification. Selection/packaging work depends on M1.1; final qualification on M1.3.
 - [ ] M1.5 Performance/coverage/complexity summaries. Depends on M1.3 and qualified platform artifacts.
@@ -65,3 +65,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.2b this commit — 71 science/2 defect replays; 72 unaffected cases exact; 13 cluster oracles, 3 Stata, full/long harness pass; core -231 lines, -1 long fn.
 - 2026-10-02 M1.2b dbc8505a — CI 37089724723 passes all jobs, including real Linux replay.
 - 2026-10-02 M1.2c this commit — 72 science/1 defect; 72 unaffected cases exact; 3 Stata, full/long harness pass; core +5 lines; precommit ratchet base corrected.
+- 2026-10-02 M1.2d this commit — 73 science; 72 unaffected cases exact; 3 Stata, full/long checks pass; +6 core lines; replay constant allocation corrected/retested.

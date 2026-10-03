@@ -396,7 +396,12 @@ fn metadata(request: &mut Request, wire: &ModelWireV2) {
 }
 
 fn result_layout(request: &mut Request, design: &Design, poisson: bool) {
-    let k = design.regressors.len() + 1;
+    // OLS slope-only designs do not report a constant. Match the public ado's
+    // physical output capacity; an extra slot fails native publication checks.
+    let report_constant = poisson
+        || design.effects.is_empty()
+        || design.effects.iter().any(|effect| effect.has_intercept());
+    let k = (design.regressors.len() + usize::from(report_constant)).max(1);
     request.result("b", "RB", 1, k);
     request.result("v", "RV", k, k);
     request.result("status", "RSTATUS", k, 4);

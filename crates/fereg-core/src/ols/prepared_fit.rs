@@ -4498,7 +4498,12 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 "prepared OLS fixed-effect squared collinearity ratio is not finite",
             ));
         }
-        if has_absorbed_intercept && squared_ratio <= config.fixed_effect_collinearity_tolerance {
+        // Slope-only effects can annihilate a regressor exactly, including a
+        // factor indicator supported on a retained physical singleton.
+        if within_norm == 0.0
+            || (has_absorbed_intercept
+                && squared_ratio <= config.fixed_effect_collinearity_tolerance)
+        {
             generated_statuses[column] = PreparedOlsFitStatus::CollinearWithFixedEffects;
         } else {
             push_reserved(
@@ -4987,7 +4992,12 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                 "prepared OLS low-memory collinearity ratio is invalid",
             ));
         }
-        if has_absorbed_intercept && squared_ratio <= config.fixed_effect_collinearity_tolerance {
+        // Slope-only effects can annihilate a regressor exactly, including a
+        // factor indicator supported on a retained physical singleton.
+        if within_norm == 0.0
+            || (has_absorbed_intercept
+                && squared_ratio <= config.fixed_effect_collinearity_tolerance)
+        {
             generated_statuses[column] = PreparedOlsFitStatus::CollinearWithFixedEffects;
         } else {
             push_reserved(

@@ -43,7 +43,16 @@ pub fn generate(directory: &Path) {
             ),
             (
                 "include_intercept",
-                usize::from(case.request.include_intercept).to_string(),
+                usize::from(
+                    case.request.include_intercept
+                        && (case.request.absorbed_terms.is_empty()
+                            || case
+                                .request
+                                .absorbed_terms
+                                .iter()
+                                .any(|effect| effect.intercept)),
+                )
+                .to_string(),
             ),
             (
                 "keep_singletons",
