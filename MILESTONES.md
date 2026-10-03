@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M1.2c slope-DoF validation repair; M1.2b local acceptance passed.
+Current task: M1.2d frequency-singleton validation repair; M1.2c local acceptance passed.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -17,7 +17,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M1.1 Two-plugin selection/default, diagnostics and exact public baseline pass.
 - [x] M1.2a Next-only factor precedence correction; excluded-row, TS and independent dummy checks pass.
 - [x] M1.2b Full-matrix covariance repair; independent PSD and exact unaffected replay pass.
-- [ ] M1.2c Reproduce/repair slope-DoF validation. Depends on M1.2b acceptance.
+- [x] M1.2c Slope-DoF validation repaired; independent rank, malformed-report rejection and exact unaffected replay pass.
 - [ ] M1.2d Reproduce/repair frequency-singleton validation. Depends on M1.2c acceptance.
 - [ ] M1.3 Bounded mapped feature/scientific/transaction qualification. Depends on M1.2.
 - [ ] M1.4 Bundled installation and platform qualification. Selection/packaging work depends on M1.1; final qualification on M1.3.
@@ -63,3 +63,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.2a this commit — 9 licensed fixtures, 73 exact parent replays, 29 long oracles and full harness pass; core -3 lines; legacy failures unchanged.
 - 2026-10-02 M1.2a 744ef7f4 — CI 37088854188 all jobs pass; earlier selector CI had one 56-byte global-allocation audit discrepancy; audit unchanged and passes now.
 - 2026-10-02 M1.2b this commit — 71 science/2 defect replays; 72 unaffected cases exact; 13 cluster oracles, 3 Stata, full/long harness pass; core -231 lines, -1 long fn.
+- 2026-10-02 M1.2b dbc8505a — CI 37089724723 passes all jobs, including real Linux replay.
+- 2026-10-02 M1.2c this commit — 72 science/1 defect; 72 unaffected cases exact; 3 Stata, full/long harness pass; core +5 lines; precommit ratchet base corrected.

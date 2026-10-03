@@ -115,6 +115,10 @@ def scientific_errors(result: dict, expected: dict) -> list[str]:
                 errors.append('repaired full covariance is indefinite')
         close([x for row in actual for x in row], [x for row in intended for x in row],
               'independent repaired covariance', 1e-6, 1e-10)
+        if expected['repaired_defect'] in {'slope-dof', 'frequency-singleton'}:
+            dof = matrix(result, 'RDOF')
+            if dof[1] != expected['independent_effective_n'] or dof[19] != expected['independent_residual_dof']:
+                errors.append('independent effective N / residual degrees of freedom mismatch')
     outputs = expected['outputs']
     sample = [number(x) for x in result['columns'][outputs['sample']]]
     if sample != expected['sample']:

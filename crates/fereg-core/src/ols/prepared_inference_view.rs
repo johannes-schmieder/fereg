@@ -415,8 +415,10 @@ fn validate_categorical_report(
             if !slope_identity_matches
                 || slope_row.label != slope.label
                 || slope_row.categories != source.n_levels()
-                || slope_row.redundant != 0
-                || slope_row.coefficients != slope_row.categories
+                || slope_row.redundant > slope_row.categories
+                || (expected_policy != PreparedOlsAbsorbedDofPolicy::Continuous
+                    && slope_row.redundant != 0)
+                || slope_row.coefficients != slope_row.categories - slope_row.redundant
                 || slope_row.redundancy_exact
                 || slope_row.nested
                 || slope_row.slope_source != Some(slope.source)
@@ -428,6 +430,9 @@ fn validate_categorical_report(
             initial = initial
                 .checked_add(slope_row.categories)
                 .ok_or_else(|| allocation("categorical absorbed-slope category total overflows"))?;
+            redundant = redundant.checked_add(slope_row.redundant).ok_or_else(|| {
+                allocation("categorical absorbed-slope redundancy total overflows")
+            })?;
             rank = rank
                 .checked_add(slope_row.coefficients)
                 .ok_or_else(|| allocation("categorical absorbed-slope rank total overflows"))?;
@@ -534,4 +539,108 @@ fn invalid(message: impl Into<String>) -> FeregError {
 
 fn allocation(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Allocation, message)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::{
+        AbsorbTermId, AbsorbedTerm, CompiledTermGraph, LoadedNumericColumn, LoadedOlsInput,
+        OlsInputBinding, OlsInputRole, OlsRequestV1, SourceEntry, SourceId,
+    };
+
+    #[test]
+    fn continuous_slope_report_accepts_redundancy_but_rejects_malformed_reports() {
+        let g = SourceId::new(1).unwrap();
+        let z = SourceId::new(2).unwrap();
+        let request = OlsRequestV1 {
+            model: CompiledTermGraph {
+                sources: vec![
+                    SourceEntry {
+                        id: g,
+                        canonical_name: "g".into(),
+                    },
+                    SourceEntry {
+                        id: z,
+                        canonical_name: "z".into(),
+                    },
+                ],
+                terms: vec![],
+            },
+            absorbed_terms: vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![g],
+                slope_sources: vec![z],
+                label: "g##c.z".into(),
+                saved_name: String::new(),
+            }],
+            bindings: [
+                OlsInputRole::Candidate,
+                OlsInputRole::Outcome,
+                OlsInputRole::NumericSource(g),
+                OlsInputRole::NumericSource(z),
+            ]
+            .into_iter()
+            .enumerate()
+            .map(|(i, role)| OlsInputBinding {
+                stata_var_position: i as u32 + 1,
+                role,
+            })
+            .collect(),
+            include_intercept: true,
+            keep_singletons: true,
+        };
+        let column = |values: &[f64]| LoadedNumericColumn {
+            values: values.to_vec(),
+            missing: vec![false; values.len()],
+        };
+        let loaded = LoadedOlsInput {
+            candidate: vec![true; 6],
+            outcome: column(&[1., 2., 3., 4., 5., 6.]),
+            numeric_sources: vec![
+                (g, column(&[0., 0., 0., 1., 1., 1.])),
+                (z, column(&[1., 1., 1., 1., 2., 3.])),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        let prepared = crate::prepare_categorical_ols_data(&request, &loaded).unwrap();
+        let policy = PreparedOlsAbsorbedDofPolicy::Continuous;
+        let report = prepared.inference_compute_absorbed_dof(policy).unwrap();
+        // Group zero's constant slope duplicates its intercept: four declared
+        // dummy/slope columns span exactly three independent directions.
+        assert_eq!(report.effects[1].redundant, 1);
+        let summary = prepared
+            .inference_absorbed_dof_summary(&report, policy)
+            .unwrap();
+        assert_eq!(
+            (
+                summary.initial_categories,
+                summary.redundant_categories,
+                summary.absorbed_rank
+            ),
+            (4, 1, 3)
+        );
+        for corruption in 0..7 {
+            let mut bad = report.clone();
+            let mut expected_policy = policy;
+            match corruption {
+                0 => bad.effects[1].redundant = 3,
+                1 => bad.effects[1].coefficients = 2,
+                2 => bad.redundant_categories = 0,
+                3 => {
+                    bad.policy = CategoricalTopologyDofPolicy::Pairwise;
+                    expected_policy = PreparedOlsAbsorbedDofPolicy::Pairwise;
+                }
+                4 => bad.effects[1].slope_source = Some(g),
+                5 => bad.effects[1].nested = true,
+                _ => bad.effects[1].redundancy_exact = true,
+            }
+            assert!(prepared
+                .inference_absorbed_dof_summary(&bad, expected_policy)
+                .is_err());
+        }
+    }
 }

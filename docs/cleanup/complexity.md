@@ -38,8 +38,9 @@ For growth, `growth` must list each increased metric's exact `metric`, `before`,
 `after` and nonempty `reason`, naming the bounded change and why it is needed.
 New size violations cannot be grandfathered this way. Entries describe this
 transition only; replace them on the next inventory change, never accumulate
-permanent allowances. Before committing, check with `--base HEAD`; CI compares
-with `HEAD^` (checkout depth >=2). Growth is never approved by inventory output.
+permanent allowances. An uncommitted inventory is compared with `HEAD`; clean
+CI compares with `HEAD^` (checkout depth >=2). `--base` explicitly overrides this
+choice. Growth is never approved by inventory output.
 Changing definitions requires a reviewed policy decision and a new version.
 
 Coverage uses a separate LLVM-instrumented build through

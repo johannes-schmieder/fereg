@@ -106,3 +106,15 @@ The old two-/three-way Stata hex-literal receipt also fails on the unchanged
 canonical legacy binary. Its scientific reference caps remain; exactness now
 uses a fresh fixed-thread canonical repeat with the binary hash recorded,
 then requires next coefficients to match. No numerical tolerance was relaxed.
+
+## M1.2c declared change boundary
+
+Parent-next `dbc8505a` reproduces known-294's r(498) slope-row validation error.
+Only that case may change from an empty failed transaction to complete outputs;
+input columns and wire metadata remain exact. Continuous-DoF slope rows may have
+bounded redundancy, with coefficients and aggregate totals still checked.
+A six-row intercept/constant-slope witness reproduces the validator failure
+and rejects seven malformed report variants after repair. Independent replay
+requires dense fit/VCE, sample, effective N and residual DoF; a licensed explicit
+dummy regression checks the public fast and low paths. All other cases and
+fixed-thread repeats remain exact, including the preceding covariance fix.

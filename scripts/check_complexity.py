@@ -141,7 +141,7 @@ def growth_errors(old, new, exceptions):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--write-inventory', type=Path, help='write measured data for review; never approves growth')
-    parser.add_argument('--base', default='HEAD^', help='Git revision used to audit baseline changes')
+    parser.add_argument('--base', help='Git revision to audit; defaults to HEAD for an uncommitted inventory, otherwise HEAD^')
     args = parser.parse_args()
     current = inventory()
     if args.write_inventory:
@@ -149,6 +149,11 @@ def main():
         print(json.dumps(current['metrics'], indent=2))
         return
     baseline = json.loads((ROOT/BASELINE).read_text())
+    if args.base is None:
+        head = subprocess.run(['git','show',f'HEAD:{BASELINE}'],cwd=ROOT,text=True,capture_output=True)
+        # Pre-commit checks audit this working transition, not the previous
+        # commit's transition. Clean CI checkouts still compare HEAD with HEAD^.
+        args.base = 'HEAD' if head.returncode == 0 and json.loads(head.stdout) != baseline else 'HEAD^'
     errors = []
     if current != baseline['inventory']:
         errors.append('inventory differs; review measurements, lower reductions, and declare scoped growth')

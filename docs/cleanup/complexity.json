@@ -1,6 +1,19 @@
 {
   "definition": "docs/cleanup/complexity.md#version-1",
-  "growth": [],
+  "growth": [
+    {
+      "metric": "fereg-core/production_lines",
+      "before": 104902,
+      "after": 104907,
+      "reason": "M1.2c permits bounded continuous-slope redundancy and includes it in the checked aggregate; other policies and malformed counts remain rejected."
+    },
+    {
+      "metric": "function/crates/fereg-core/src/ols/prepared_inference_view.rs/validate_categorical_report#1",
+      "before": 174,
+      "after": 179,
+      "reason": "M1.2c permits bounded continuous-slope redundancy and includes it in the checked aggregate; other policies and malformed counts remain rejected."
+    }
+  ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -12102,25 +12115,25 @@
             "line": 371
           },
           {
-            "condition": "! slope_identity_matches || slope_row . label != slope . label || slope_row . categories != source . n_levels ( ) || slope_row . redundant != 0 || slope_row . coefficients != slope_row . categories || slope_row . redundancy_exact || slope_row . nested || slope_row . slope_source != Some ( slope . source )",
+            "condition": "! slope_identity_matches || slope_row . label != slope . label || slope_row . categories != source . n_levels ( ) || slope_row . redundant > slope_row . categories || ( expected_policy != PreparedOlsAbsorbedDofPolicy :: Continuous && slope_row . redundant != 0 ) || slope_row . coefficients != slope_row . categories - slope_row . redundant || slope_row . redundancy_exact || slope_row . nested || slope_row . slope_source != Some ( slope . source )",
             "line": 415
           },
           {
             "condition": "row_index != rows . len ( )",
-            "line": 437
+            "line": 442
           }
         ],
         "functions": {
           "allocation#1": {
-            "line": 535,
+            "line": 540,
             "lines": 3
           },
           "categorical_nesting_row_is_valid#1": {
-            "line": 466,
+            "line": 471,
             "lines": 14
           },
           "categorical_policy#1": {
-            "line": 520,
+            "line": 525,
             "lines": 10
           },
           "inference_absorbed_dof_summary#1": {
@@ -12164,7 +12177,7 @@
             "lines": 3
           },
           "invalid#1": {
-            "line": 531,
+            "line": 536,
             "lines": 3
           },
           "legacy_nesting_row_is_valid#1": {
@@ -12172,23 +12185,23 @@
             "lines": 12
           },
           "summary#1": {
-            "line": 504,
+            "line": 509,
             "lines": 15
           },
           "validate_categorical_report#1": {
             "line": 291,
-            "lines": 174
+            "lines": 179
           },
           "validate_legacy_report#1": {
             "line": 162,
             "lines": 115
           },
           "validate_totals#1": {
-            "line": 482,
+            "line": 487,
             "lines": 21
           }
         },
-        "production_lines": 493
+        "production_lines": 498
       },
       "crates/fereg-core/src/ols/prepared_rhs.rs": {
         "chunk_candidates": [],
@@ -22274,7 +22287,7 @@
         "dispatch_candidates": 1476,
         "files_over_1500": 20,
         "functions_over_150": 98,
-        "production_lines": 104902
+        "production_lines": 104907
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

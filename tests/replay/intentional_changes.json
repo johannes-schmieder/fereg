@@ -1,7 +1,8 @@
 {
   "schema": 1,
   "active": [
-    "full-matrix-covariance"
+    "full-matrix-covariance",
+    "slope-dof"
   ],
   "repairs": {
     "full-matrix-covariance": {
@@ -28,6 +29,34 @@
         "/matrices/RCERT/bits/59",
         "/matrices/RCERT/bits/61",
         "/matrices/RCERT/bits/63"
+      ]
+    },
+    "slope-dof": {
+      "case": "known-294",
+      "reason": "A previously rejected valid continuous-slope DoF report now produces a complete fit. Only result matrices, output columns, success/error status and published solver signature may change; input data/metadata remain exact. Dense coefficients/covariance, sample, residual DoF and effective N are independently required.",
+      "allowed_paths": [
+        "/return_code",
+        "/error",
+        "/runtime_signature",
+        "/matrices/RB/bits",
+        "/matrices/RV/bits",
+        "/matrices/RSTATUS/bits",
+        "/matrices/RFE/bits",
+        "/matrices/RCLUSTER/bits",
+        "/matrices/RSUBSET/bits",
+        "/matrices/RMARKB/bits",
+        "/matrices/RMARKV/bits",
+        "/matrices/RFIT/bits",
+        "/matrices/RDOF/bits",
+        "/matrices/RSOLVER/bits",
+        "/matrices/RCERT/bits",
+        "/matrices/RREC/bits",
+        "/columns/12",
+        "/columns/13",
+        "/columns/14",
+        "/columns/15",
+        "/columns/16",
+        "/columns/17"
       ]
     }
   }
