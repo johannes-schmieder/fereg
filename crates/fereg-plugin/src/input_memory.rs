@@ -241,13 +241,15 @@ mod tests {
 
     #[test]
     #[cfg(feature = "ffi")]
-    #[ignore = "process-global allocator audit; run with --test-threads=1"]
+    #[ignore = "allocator audit; run individually with --test-threads=1"]
     fn simultaneous_dictionaries_bound_independent_allocator_peak() {
         let _guard = crate::instrumentation::lock_action_observation();
         let mut values: [Vec<f64>; 3] = std::array::from_fn(|_| vec![0.0; 257]);
         let missing = vec![false; 257];
         for _ in 0..3 {
-            let (start, _) = crate::ffi::begin_ols_allocation_observation();
+            // Dictionary construction is serial. Libtest's separate main thread
+            // can lazily allocate its result-channel context during this window.
+            let start = crate::ffi::thread_allocations::begin();
             let mut dictionaries: [StringDictionary; 3] =
                 std::array::from_fn(|_| StringDictionary::new());
             let mut memory = InputMemory::new(None, 0).unwrap();
@@ -259,7 +261,7 @@ mod tests {
                             .unwrap(),
                     );
                 }
-                let actual = crate::ffi::allocation_usage();
+                let actual = crate::ffi::thread_allocations::usage();
                 assert_eq!(
                     actual.current_bytes - start.current_bytes,
                     memory.resident as u64
@@ -269,7 +271,7 @@ mod tests {
             for (dictionary, values) in dictionaries.into_iter().zip(&mut values) {
                 dictionary.recode(values, &missing, &mut memory).unwrap();
             }
-            let actual = crate::ffi::allocation_usage();
+            let actual = crate::ffi::thread_allocations::usage();
             assert_eq!(actual.current_bytes, start.current_bytes);
             assert!(actual.peak_bytes - start.current_bytes <= memory.peak() as u64);
         }

@@ -175,6 +175,8 @@ pub(crate) fn ppml_failure_injection_linear_phase_probe(
 
 fn record_allocation(bytes: usize, mut phases: u16) {
     let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
+    #[cfg(test)]
+    thread_allocations::allocated(bytes);
     record_allocation_on(&ALLOCATION_CURRENT_BYTES, &ALLOCATION_PEAK_BYTES, bytes);
     phases &= PPML_PHASE_MASK;
     while phases != 0 {
@@ -197,6 +199,8 @@ fn record_allocation_on(current_bytes: &AtomicU64, peak_bytes: &AtomicU64, bytes
 
 fn record_deallocation(bytes: usize, mut phases: u16) {
     let bytes = u64::try_from(bytes).unwrap_or(u64::MAX);
+    #[cfg(test)]
+    thread_allocations::deallocated(bytes);
     record_deallocation_on(&ALLOCATION_CURRENT_BYTES, bytes);
     phases &= PPML_PHASE_MASK;
     while phases != 0 {
@@ -1772,5 +1776,93 @@ mod tests {
             PPML_PHASE_ACTIVE_MASK.load(Ordering::Relaxed),
             PPML_ACTION_ACTIVE_BIT,
         );
+    }
+}
+
+#[cfg(test)]
+pub(crate) mod thread_allocations {
+    use std::cell::Cell;
+
+    #[derive(Clone, Copy, Default)]
+    pub(crate) struct Usage {
+        pub(crate) current_bytes: u64,
+        pub(crate) peak_bytes: u64,
+    }
+
+    thread_local! {
+        static USAGE: Cell<Usage> = const { Cell::new(Usage { current_bytes: 0, peak_bytes: 0 }) };
+    }
+
+    // Only for serial audits whose measured allocations are created and freed
+    // on this thread. Estimator/worker audits must retain the global observer.
+    pub(crate) fn begin() -> Usage {
+        USAGE.with(|cell| {
+            let mut value = cell.get();
+            value.peak_bytes = value.current_bytes;
+            cell.set(value);
+            value
+        })
+    }
+
+    pub(crate) fn usage() -> Usage {
+        USAGE.with(Cell::get)
+    }
+
+    pub(super) fn allocated(bytes: u64) {
+        let _ = USAGE.try_with(|cell| {
+            let mut value = cell.get();
+            value.current_bytes = value.current_bytes.saturating_add(bytes);
+            value.peak_bytes = value.peak_bytes.max(value.current_bytes);
+            cell.set(value);
+        });
+    }
+
+    pub(super) fn deallocated(bytes: u64) {
+        let _ = USAGE.try_with(|cell| {
+            let mut value = cell.get();
+            value.current_bytes = value.current_bytes.saturating_sub(bytes);
+            cell.set(value);
+        });
+    }
+
+    #[test]
+    fn excludes_foreign_allocations_and_tracks_local_growth() {
+        use std::sync::atomic::{AtomicU8, Ordering};
+        let state = AtomicU8::new(0);
+        std::thread::scope(|scope| {
+            scope.spawn(|| {
+                while state.load(Ordering::Acquire) != 1 {
+                    std::thread::yield_now();
+                }
+                let foreign = vec![0_u8; 56];
+                std::hint::black_box(&foreign);
+                state.store(2, Ordering::Release);
+                while state.load(Ordering::Acquire) != 3 {
+                    std::thread::yield_now();
+                }
+                drop(foreign);
+                state.store(4, Ordering::Release);
+            });
+            let start = begin();
+            let mut local = vec![0_u8; 4];
+            local.reserve_exact(896);
+            std::hint::black_box(&local);
+            let capacity = local.capacity() as u64;
+            state.store(1, Ordering::Release);
+            while state.load(Ordering::Acquire) != 2 {
+                std::thread::yield_now();
+            }
+            let live = usage();
+            drop(local);
+            state.store(3, Ordering::Release);
+            while state.load(Ordering::Acquire) != 4 {
+                std::thread::yield_now();
+            }
+            let freed = usage();
+            assert_eq!(live.current_bytes - start.current_bytes, capacity);
+            assert_eq!(live.peak_bytes - start.current_bytes, capacity);
+            assert_eq!(freed.current_bytes, start.current_bytes);
+            assert_eq!(freed.peak_bytes, live.peak_bytes);
+        });
     }
 }

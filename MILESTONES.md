@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M1.4 hosted checks pending; independent M1.5 Mac timings use its qualified artifact.
+Current task: M1.4 isolate the intermittent allocator-audit race; M1.5 timing/coverage runs are complete.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -37,6 +37,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
+CI 37091662891 failed the dictionary audit by 56 bytes; native builds passed. Rust libtest's receiver allocates a 56-byte context on its main thread while the test runs.
+Repair 1 passes full local checks: serial dictionary observer excludes foreign-thread allocation; exact resident/peak assertions and global estimator audits remain. Linux CI pending.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -70,3 +72,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.4 this commit — paired plugin packaging/help and canonical hash guard; 4 isolated Stata fixtures and 19 package tests pass; hosted platforms pending.
 - 2026-10-02 M1.5 this commit — existing runner binds engine/binary/build/frontend identity; bounded Mac ladder and noise summaries; 14 benchmark guards pass.
 - 2026-10-02 M1.5 this commit — smoke pilot passes; generated native manifest now ignored so clean-source timing identity is accurate; formal runs follow.
+- 2026-10-02 M1.4 this commit — allocator audit isolation repair; concurrent 56-byte allocation regression and full harness pass; production tokens/counts unchanged.

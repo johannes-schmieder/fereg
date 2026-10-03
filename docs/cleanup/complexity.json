@@ -1,31 +1,6 @@
 {
   "definition": "docs/cleanup/complexity.md#version-1",
-  "growth": [
-    {
-      "metric": "fereg-core/production_lines",
-      "before": 104907,
-      "after": 104913,
-      "reason": "M1.2d: exclude exactly annihilated slope-only columns from finite-score candidates in both existing memory paths; no tolerance or routing-policy change."
-    },
-    {
-      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
-      "before": 7392,
-      "after": 7398,
-      "reason": "M1.2d: exclude exactly annihilated slope-only columns from finite-score candidates in both existing memory paths; no tolerance or routing-policy change."
-    },
-    {
-      "metric": "function/crates/fereg-core/src/ols/prepared_fit.rs/fit_scaled_pivoted_qr#1",
-      "before": 492,
-      "after": 497,
-      "reason": "M1.2d: exclude exactly annihilated slope-only columns from finite-score candidates in both existing memory paths; no tolerance or routing-policy change."
-    },
-    {
-      "metric": "function/crates/fereg-core/src/ols/prepared_fit.rs/fit_scaled_pivoted_qr_low#1",
-      "before": 481,
-      "after": 486,
-      "reason": "M1.2d: exclude exactly annihilated slope-only columns from finite-score candidates in both existing memory paths; no tolerance or routing-policy change."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -20078,44 +20053,44 @@
           },
           {
             "condition": "let Some ( available ) = apple_vm_available_memory_bytes ( page_size )",
-            "line": 402
+            "line": 406
           },
           {
             "condition": "page_size == 0",
-            "line": 459
+            "line": 463
           },
           {
             "condition": "u32 :: try_from ( std :: mem :: size_of :: < PROCESS_MEMORY_COUNTERS > ( ) )",
-            "line": 532
+            "line": 536
           },
           {
             "condition": "variables . is_empty ( ) || variables . len ( ) > 64 || values . is_empty ( ) || values . len ( ) % variables . len ( ) != 0 || values . len ( ) / variables . len ( ) > 4096",
-            "line": 929
+            "line": 933
           },
           {
             "condition": "variables . len ( ) != columns . len ( ) || missing . len ( ) != columns . len ( ) || columns . is_empty ( ) || columns [ 0 ] . is_empty ( ) || columns . iter ( ) . any ( | column | column . len ( ) != columns [ 0 ] . len ( ) )",
-            "line": 985
+            "line": 989
           },
           {
             "condition": "columns . iter ( ) . zip ( missing . iter ( ) ) . any ( | ( column , flags ) | column . len ( ) != flags . len ( ) )",
-            "line": 1037
+            "line": 1041
           },
           {
             "condition": "! cfg ! ( target_os = <string> ) || columns . is_empty ( ) || columns . len ( ) > MAX",
-            "line": 1187
+            "line": 1191
           },
           {
             "condition": "rows == 0 || rows > c_int :: MAX as usize || columns . iter ( ) . any ( | ( position , values ) |",
-            "line": 1191
+            "line": 1195
           }
         ],
         "functions": {
           "abi_memory_baseline#1": {
-            "line": 1296,
+            "line": 1300,
             "lines": 4
           },
           "action_memory_audit_estimator#1": {
-            "line": 1412,
+            "line": 1416,
             "lines": 8
           },
           "alloc#1": {
@@ -20127,39 +20102,39 @@
             "lines": 13
           },
           "allocation_usage#1": {
-            "line": 366,
+            "line": 370,
             "lines": 7
           },
           "apple_available_memory_from_statistics#1": {
-            "line": 455,
+            "line": 459,
             "lines": 13
           },
           "apple_sysctl_u64#1": {
-            "line": 470,
+            "line": 474,
             "lines": 15
           },
           "apple_vm_available_memory_bytes#1": {
-            "line": 413,
+            "line": 417,
             "lines": 40
           },
           "begin_abi_memory_observation#1": {
-            "line": 1301,
+            "line": 1305,
             "lines": 6
           },
           "begin_allocation_observation#1": {
-            "line": 281,
+            "line": 285,
             "lines": 3
           },
           "begin_allocation_observation_inner#1": {
-            "line": 238,
+            "line": 242,
             "lines": 35
           },
           "begin_ols_allocation_observation#1": {
-            "line": 277,
+            "line": 281,
             "lines": 3
           },
           "check_interrupted#1": {
-            "line": 1249,
+            "line": 1253,
             "lines": 14
           },
           "dealloc#1": {
@@ -20167,119 +20142,119 @@
             "lines": 6
           },
           "display#1": {
-            "line": 1242,
+            "line": 1246,
             "lines": 6
           },
           "display#2": {
-            "line": 1266,
+            "line": 1270,
             "lines": 11
           },
           "error#1": {
-            "line": 1278,
+            "line": 1282,
             "lines": 9
           },
           "fereg_dispatch#1": {
-            "line": 1326,
+            "line": 1330,
             "lines": 83
           },
           "finish_abi_memory_observation#1": {
-            "line": 1308,
+            "line": 1312,
             "lines": 8
           },
           "matrix_dimensions#1": {
-            "line": 1140,
+            "line": 1144,
             "lines": 14
           },
           "matrix_element#1": {
-            "line": 1155,
+            "line": 1159,
             "lines": 12
           },
           "matrix_name#1": {
-            "line": 802,
+            "line": 806,
             "lines": 3
           },
           "new#1": {
-            "line": 758,
+            "line": 762,
             "lines": 14
           },
           "nobs#1": {
-            "line": 845,
+            "line": 849,
             "lines": 10
           },
           "nvars#1": {
-            "line": 856,
+            "line": 860,
             "lines": 10
           },
           "observation#1": {
-            "line": 782,
+            "line": 786,
             "lines": 8
           },
           "panic_message#1": {
-            "line": 1550,
+            "line": 1554,
             "lines": 9
           },
           "parse_linux_memory_field#1": {
-            "line": 387,
+            "line": 391,
             "lines": 11
           },
           "position#1": {
-            "line": 773,
+            "line": 777,
             "lines": 8
           },
           "ppml_linear_phase_allocation_probe#1": {
-            "line": 338,
+            "line": 342,
             "lines": 22
           },
           "ppml_phase_allocation_probe#1": {
-            "line": 288,
+            "line": 292,
             "lines": 49
           },
           "prepared_store_error_report#1": {
-            "line": 1529,
+            "line": 1533,
             "lines": 11
           },
           "process_rss_bytes#1": {
-            "line": 380,
+            "line": 384,
             "lines": 5
           },
           "process_rss_bytes#2": {
-            "line": 487,
+            "line": 491,
             "lines": 24
           },
           "process_rss_bytes#3": {
-            "line": 525,
+            "line": 529,
             "lines": 23
           },
           "process_rss_bytes#4": {
-            "line": 555,
+            "line": 559,
             "lines": 3
           },
           "read_arguments#1": {
-            "line": 1421,
+            "line": 1425,
             "lines": 91
           },
           "read_estimate_bundle#1": {
-            "line": 818,
+            "line": 822,
             "lines": 26
           },
           "read_numeric#1": {
-            "line": 893,
+            "line": 897,
             "lines": 25
           },
           "read_numeric_columns#1": {
-            "line": 978,
+            "line": 982,
             "lines": 103
           },
           "read_numeric_rows#1": {
-            "line": 923,
+            "line": 927,
             "lines": 54
           },
           "read_string#1": {
-            "line": 1082,
+            "line": 1086,
             "lines": 3
           },
           "read_string_with_limit#1": {
-            "line": 1086,
+            "line": 1090,
             "lines": 53
           },
           "realloc#1": {
@@ -20288,34 +20263,34 @@
           },
           "record_allocation#1": {
             "line": 176,
-            "lines": 14
+            "lines": 16
           },
           "record_allocation_event#1": {
-            "line": 215,
+            "line": 219,
             "lines": 11
           },
           "record_allocation_event_on#1": {
-            "line": 227,
+            "line": 231,
             "lines": 3
           },
           "record_allocation_on#1": {
-            "line": 191,
+            "line": 193,
             "lines": 6
           },
           "record_deallocation#1": {
-            "line": 198,
-            "lines": 10
+            "line": 200,
+            "lines": 12
           },
           "record_deallocation_on#1": {
-            "line": 209,
+            "line": 213,
             "lines": 5
           },
           "report_error#1": {
-            "line": 1513,
+            "line": 1517,
             "lines": 15
           },
           "sanitize_c_string#1": {
-            "line": 1541,
+            "line": 1545,
             "lines": 8
           },
           "should_inject_ppml_allocation_failure#1": {
@@ -20323,55 +20298,55 @@
             "lines": 26
           },
           "spi_rc#1": {
-            "line": 791,
+            "line": 795,
             "lines": 10
           },
           "stata_output_chunks#1": {
-            "line": 1291,
+            "line": 1295,
             "lines": 3
           },
           "store_matrix#1": {
-            "line": 1222,
+            "line": 1226,
             "lines": 19
           },
           "store_numeric#1": {
-            "line": 1168,
+            "line": 1172,
             "lines": 16
           },
           "store_rc#1": {
-            "line": 806,
+            "line": 810,
             "lines": 9
           },
           "supports_numeric_rows#1": {
-            "line": 919,
+            "line": 923,
             "lines": 3
           },
           "system_available_memory_bytes#1": {
-            "line": 375,
+            "line": 379,
             "lines": 3
           },
           "system_available_memory_bytes#2": {
-            "line": 400,
+            "line": 404,
             "lines": 11
           },
           "system_available_memory_bytes#3": {
-            "line": 513,
+            "line": 517,
             "lines": 10
           },
           "system_available_memory_bytes#4": {
-            "line": 550,
+            "line": 554,
             "lines": 3
           },
           "try_store_numeric_columns#1": {
-            "line": 1185,
+            "line": 1189,
             "lines": 36
           },
           "variable_is_string#1": {
-            "line": 867,
+            "line": 871,
             "lines": 12
           },
           "variable_is_strl#1": {
-            "line": 880,
+            "line": 884,
             "lines": 12
           }
         },
