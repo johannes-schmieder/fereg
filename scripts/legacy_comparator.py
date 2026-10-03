@@ -66,7 +66,8 @@ def materialize(source: Path, manifest: dict) -> None:
     source.mkdir(parents=True)
     archive = source.parent / "source.tar"
     subprocess.run(
-        ["git", "archive", "--format=tar", "-o", str(archive), revision, *SOURCE_PATHS],
+        ["git", "-c", "core.autocrlf=false", "-c", "core.eol=lf", "archive",
+         "--format=tar", "-o", str(archive), revision, *SOURCE_PATHS],
         cwd=ROOT, check=True,
     )
     with tarfile.open(archive) as stream:
