@@ -1,0 +1,1509 @@
+{
+  "schema": 1,
+  "task": "M2: shared OLS candidate classification",
+  "comparison": "M2 next versus qualified M1 next; no numerical change intended",
+  "tiers": {
+    "smoke": {
+      "identities": {
+        "parent": {
+          "source_commit": "35d1720e2f3476c86944ce53cf61e6abe4964e23",
+          "source_dirty": false,
+          "binary": {
+            "plugin_filename": "fereg_macos.plugin",
+            "plugin_sha256": "49a597c4b36e81361db2ee08c347eb38f88b488f6cde4257d3d0f5e81163570f",
+            "build_source_commit": "9c5393af28f7922f714e1b3bb8546ce32a32c18e",
+            "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+          }
+        },
+        "next": {
+          "source_commit": "7b1bae2b87d4ef53d78c1a373a22f90f0c10a954",
+          "source_dirty": false,
+          "binary": {
+            "plugin_filename": "fereg_macos.plugin",
+            "plugin_sha256": "9ee4c9c10b100c2abc09f8ff3e4a6e362143bc72bb87756756291e45db783dff",
+            "build_source_commit": "7b1bae2b87d4ef53d78c1a373a22f90f0c10a954",
+            "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+          }
+        }
+      },
+      "protocol": {
+        "warmups": 1,
+        "repetitions": 5,
+        "coefficient_rtol": 1e-07,
+        "coefficient_atol": 1e-10,
+        "reference_tolerance": 1e-12,
+        "fresh_process_per_command": true
+      },
+      "coefficient_and_sample_pairs": 28,
+      "maximum_scaled_coefficient_difference": 0.0,
+      "pairs": [
+        {
+          "cell": "ols-1fe",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.029,
+            "seconds_min": 0.028,
+            "seconds_max": 0.032,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.012297082999999999,
+            "total_seconds": 0.018288458,
+            "measurements_seconds": [
+              0.032,
+              0.029,
+              0.029,
+              0.028,
+              0.029
+            ]
+          },
+          "next": {
+            "seconds": 0.029,
+            "seconds_min": 0.029,
+            "seconds_max": 0.031,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.012550916,
+            "total_seconds": 0.01858075,
+            "measurements_seconds": [
+              0.03,
+              0.029,
+              0.031,
+              0.029,
+              0.029
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "ols-2fe-dense",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.082,
+            "seconds_min": 0.081,
+            "seconds_max": 0.085,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": 0.062781458,
+            "total_seconds": 0.069248375,
+            "measurements_seconds": [
+              0.085,
+              0.081,
+              0.082,
+              0.081,
+              0.082
+            ]
+          },
+          "next": {
+            "seconds": 0.082,
+            "seconds_min": 0.08,
+            "seconds_max": 0.085,
+            "seconds_mad": 0.0020000000000000018,
+            "native_seconds": 0.06334541699999999,
+            "total_seconds": 0.069955625,
+            "measurements_seconds": [
+              0.085,
+              0.081,
+              0.08,
+              0.085,
+              0.082
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "ppml-1fe",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.128,
+            "seconds_min": 0.125,
+            "seconds_max": 0.131,
+            "seconds_mad": 0.0020000000000000018,
+            "native_seconds": "",
+            "total_seconds": 0.100161375,
+            "measurements_seconds": [
+              0.126,
+              0.128,
+              0.125,
+              0.131,
+              0.129
+            ]
+          },
+          "next": {
+            "seconds": 0.126,
+            "seconds_min": 0.124,
+            "seconds_max": 0.131,
+            "seconds_mad": 0.0020000000000000018,
+            "native_seconds": "",
+            "total_seconds": 0.0986885,
+            "measurements_seconds": [
+              0.129,
+              0.126,
+              0.126,
+              0.124,
+              0.131
+            ]
+          },
+          "next_over_parent": 0.984375,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "ppml-2fe-gravity",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.164,
+            "seconds_min": 0.163,
+            "seconds_max": 0.169,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.135657459,
+            "measurements_seconds": [
+              0.163,
+              0.164,
+              0.169,
+              0.164,
+              0.165
+            ]
+          },
+          "next": {
+            "seconds": 0.166,
+            "seconds_min": 0.162,
+            "seconds_max": 0.171,
+            "seconds_mad": 0.0040000000000000036,
+            "native_seconds": "",
+            "total_seconds": 0.137085792,
+            "measurements_seconds": [
+              0.162,
+              0.168,
+              0.171,
+              0.166,
+              0.162
+            ]
+          },
+          "next_over_parent": 1.0121951219512195,
+          "observed_ranges_overlap": true
+        }
+      ],
+      "geometric_mean_next_over_parent": 0.9990936618637989,
+      "all_ranges_overlap": true,
+      "csv_summaries": {
+        "parent": "2026-10-03-m2-parent-smoke.csv",
+        "next": "2026-10-03-m2-next-smoke.csv"
+      }
+    },
+    "scaling": {
+      "identities": {
+        "parent": {
+          "source_commit": "35d1720e2f3476c86944ce53cf61e6abe4964e23",
+          "source_dirty": false,
+          "binary": {
+            "plugin_filename": "fereg_macos.plugin",
+            "plugin_sha256": "49a597c4b36e81361db2ee08c347eb38f88b488f6cde4257d3d0f5e81163570f",
+            "build_source_commit": "9c5393af28f7922f714e1b3bb8546ce32a32c18e",
+            "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+          }
+        },
+        "next": {
+          "source_commit": "7b1bae2b87d4ef53d78c1a373a22f90f0c10a954",
+          "source_dirty": false,
+          "binary": {
+            "plugin_filename": "fereg_macos.plugin",
+            "plugin_sha256": "9ee4c9c10b100c2abc09f8ff3e4a6e362143bc72bb87756756291e45db783dff",
+            "build_source_commit": "7b1bae2b87d4ef53d78c1a373a22f90f0c10a954",
+            "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+          }
+        }
+      },
+      "protocol": {
+        "warmups": 1,
+        "repetitions": 5,
+        "coefficient_rtol": 1e-07,
+        "coefficient_atol": 1e-10,
+        "reference_tolerance": 1e-12,
+        "fresh_process_per_command": true
+      },
+      "coefficient_and_sample_pairs": 186,
+      "maximum_scaled_coefficient_difference": 0.0,
+      "pairs": [
+        {
+          "cell": "m1-ols-n16383-k8",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.026,
+            "seconds_min": 0.025,
+            "seconds_max": 0.027,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.014017625,
+            "total_seconds": 0.016347916,
+            "measurements_seconds": [
+              0.026,
+              0.025,
+              0.026,
+              0.027,
+              0.026
+            ]
+          },
+          "next": {
+            "seconds": 0.026,
+            "seconds_min": 0.026,
+            "seconds_max": 0.026,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.014016207999999999,
+            "total_seconds": 0.016284667,
+            "measurements_seconds": [
+              0.026,
+              0.026,
+              0.026,
+              0.026,
+              0.026
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16383-k8",
+          "threads": 2,
+          "parent": {
+            "seconds": 0.022,
+            "seconds_min": 0.021,
+            "seconds_max": 0.024,
+            "seconds_mad": 0.0009999999999999974,
+            "native_seconds": 0.010425792000000001,
+            "total_seconds": 0.012777625,
+            "measurements_seconds": [
+              0.021,
+              0.022,
+              0.023,
+              0.022,
+              0.024
+            ]
+          },
+          "next": {
+            "seconds": 0.022,
+            "seconds_min": 0.022,
+            "seconds_max": 0.023,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.010286375,
+            "total_seconds": 0.012632625,
+            "measurements_seconds": [
+              0.022,
+              0.022,
+              0.023,
+              0.023,
+              0.022
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16383-k8",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.021,
+            "seconds_min": 0.021,
+            "seconds_max": 0.023,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.008863875,
+            "total_seconds": 0.011062041,
+            "measurements_seconds": [
+              0.022,
+              0.023,
+              0.021,
+              0.021,
+              0.021
+            ]
+          },
+          "next": {
+            "seconds": 0.02,
+            "seconds_min": 0.02,
+            "seconds_max": 0.021,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.008911833000000001,
+            "total_seconds": 0.011182166,
+            "measurements_seconds": [
+              0.021,
+              0.021,
+              0.02,
+              0.02,
+              0.02
+            ]
+          },
+          "next_over_parent": 0.9523809523809523,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16383-k8",
+          "threads": 8,
+          "parent": {
+            "seconds": 0.022,
+            "seconds_min": 0.021,
+            "seconds_max": 0.022,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.009552125,
+            "total_seconds": 0.011778791,
+            "measurements_seconds": [
+              0.022,
+              0.021,
+              0.022,
+              0.021,
+              0.022
+            ]
+          },
+          "next": {
+            "seconds": 0.021,
+            "seconds_min": 0.021,
+            "seconds_max": 0.023,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.009321333,
+            "total_seconds": 0.011507292,
+            "measurements_seconds": [
+              0.023,
+              0.021,
+              0.021,
+              0.023,
+              0.021
+            ]
+          },
+          "next_over_parent": 0.9545454545454547,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16383-k8",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.024,
+            "seconds_min": 0.023,
+            "seconds_max": 0.031,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": 0.012372375,
+            "total_seconds": 0.014556959,
+            "measurements_seconds": [
+              0.024,
+              0.027,
+              0.024,
+              0.031,
+              0.023
+            ]
+          },
+          "next": {
+            "seconds": 0.026,
+            "seconds_min": 0.022,
+            "seconds_max": 0.03,
+            "seconds_mad": 0.0019999999999999983,
+            "native_seconds": 0.014160624999999998,
+            "total_seconds": 0.016388,
+            "measurements_seconds": [
+              0.024,
+              0.026,
+              0.027,
+              0.022,
+              0.03
+            ]
+          },
+          "next_over_parent": 1.0833333333333333,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.024,
+            "seconds_min": 0.024,
+            "seconds_max": 0.024,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.012202041,
+            "total_seconds": 0.014612208,
+            "measurements_seconds": [
+              0.024,
+              0.024,
+              0.024,
+              0.024,
+              0.024
+            ]
+          },
+          "next": {
+            "seconds": 0.025,
+            "seconds_min": 0.024,
+            "seconds_max": 0.027,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": 0.012089417,
+            "total_seconds": 0.01447625,
+            "measurements_seconds": [
+              0.025,
+              0.025,
+              0.024,
+              0.027,
+              0.024
+            ]
+          },
+          "next_over_parent": 1.0416666666666667,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "threads": 2,
+          "parent": {
+            "seconds": 0.02,
+            "seconds_min": 0.019,
+            "seconds_max": 0.02,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.008143125,
+            "total_seconds": 0.010665667,
+            "measurements_seconds": [
+              0.02,
+              0.019,
+              0.02,
+              0.02,
+              0.02
+            ]
+          },
+          "next": {
+            "seconds": 0.02,
+            "seconds_min": 0.02,
+            "seconds_max": 0.02,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.008105625000000002,
+            "total_seconds": 0.010457708,
+            "measurements_seconds": [
+              0.02,
+              0.02,
+              0.02,
+              0.02,
+              0.02
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.019,
+            "seconds_min": 0.019,
+            "seconds_max": 0.019,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.006792542000000001,
+            "total_seconds": 0.009298458,
+            "measurements_seconds": [
+              0.019,
+              0.019,
+              0.019,
+              0.019,
+              0.019
+            ]
+          },
+          "next": {
+            "seconds": 0.019,
+            "seconds_min": 0.019,
+            "seconds_max": 0.019,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.0070552919999999995,
+            "total_seconds": 0.009440125,
+            "measurements_seconds": [
+              0.019,
+              0.019,
+              0.019,
+              0.019,
+              0.019
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "threads": 8,
+          "parent": {
+            "seconds": 0.018,
+            "seconds_min": 0.017,
+            "seconds_max": 0.019,
+            "seconds_mad": 0.0009999999999999974,
+            "native_seconds": 0.005481459000000001,
+            "total_seconds": 0.007958542,
+            "measurements_seconds": [
+              0.017,
+              0.018,
+              0.019,
+              0.019,
+              0.018
+            ]
+          },
+          "next": {
+            "seconds": 0.018,
+            "seconds_min": 0.018,
+            "seconds_max": 0.019,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.005824458000000001,
+            "total_seconds": 0.008254667,
+            "measurements_seconds": [
+              0.019,
+              0.019,
+              0.018,
+              0.018,
+              0.018
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.025,
+            "seconds_min": 0.021,
+            "seconds_max": 0.028,
+            "seconds_mad": 0.0019999999999999983,
+            "native_seconds": 0.011853332999999999,
+            "total_seconds": 0.014421083,
+            "measurements_seconds": [
+              0.028,
+              0.025,
+              0.027,
+              0.021,
+              0.024
+            ]
+          },
+          "next": {
+            "seconds": 0.023,
+            "seconds_min": 0.021,
+            "seconds_max": 0.029,
+            "seconds_mad": 0.0019999999999999983,
+            "native_seconds": 0.010602541,
+            "total_seconds": 0.013152833,
+            "measurements_seconds": [
+              0.029,
+              0.028,
+              0.021,
+              0.023,
+              0.023
+            ]
+          },
+          "next_over_parent": 0.9199999999999999,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.085,
+            "seconds_min": 0.082,
+            "seconds_max": 0.086,
+            "seconds_mad": 0.000999999999999987,
+            "native_seconds": 0.060721333999999995,
+            "total_seconds": 0.0714515,
+            "measurements_seconds": [
+              0.086,
+              0.083,
+              0.082,
+              0.085,
+              0.085
+            ]
+          },
+          "next": {
+            "seconds": 0.084,
+            "seconds_min": 0.08,
+            "seconds_max": 0.091,
+            "seconds_mad": 0.00399999999999999,
+            "native_seconds": 0.06058912500000001,
+            "total_seconds": 0.071227334,
+            "measurements_seconds": [
+              0.084,
+              0.091,
+              0.08,
+              0.081,
+              0.088
+            ]
+          },
+          "next_over_parent": 0.9882352941176471,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "threads": 2,
+          "parent": {
+            "seconds": 0.059,
+            "seconds_min": 0.058,
+            "seconds_max": 0.06,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.036138375,
+            "total_seconds": 0.045688417,
+            "measurements_seconds": [
+              0.059,
+              0.059,
+              0.059,
+              0.058,
+              0.06
+            ]
+          },
+          "next": {
+            "seconds": 0.058,
+            "seconds_min": 0.058,
+            "seconds_max": 0.061,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.035827166,
+            "total_seconds": 0.045223791,
+            "measurements_seconds": [
+              0.061,
+              0.058,
+              0.0590000000000001,
+              0.058,
+              0.058
+            ]
+          },
+          "next_over_parent": 0.9830508474576273,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.048,
+            "seconds_min": 0.046,
+            "seconds_max": 0.048,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.024932917000000002,
+            "total_seconds": 0.034292209,
+            "measurements_seconds": [
+              0.048,
+              0.046,
+              0.048,
+              0.046,
+              0.048
+            ]
+          },
+          "next": {
+            "seconds": 0.046,
+            "seconds_min": 0.045,
+            "seconds_max": 0.047,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": 0.023269833000000004,
+            "total_seconds": 0.032760125,
+            "measurements_seconds": [
+              0.046,
+              0.047,
+              0.045,
+              0.047,
+              0.046
+            ]
+          },
+          "next_over_parent": 0.9583333333333333,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "threads": 8,
+          "parent": {
+            "seconds": 0.042,
+            "seconds_min": 0.041,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": 0.019064208000000003,
+            "total_seconds": 0.028308584,
+            "measurements_seconds": [
+              0.044,
+              0.042,
+              0.041,
+              0.044,
+              0.041
+            ]
+          },
+          "next": {
+            "seconds": 0.042,
+            "seconds_min": 0.042,
+            "seconds_max": 0.045,
+            "seconds_mad": 0.0,
+            "native_seconds": 0.019775541,
+            "total_seconds": 0.02882325,
+            "measurements_seconds": [
+              0.042,
+              0.042,
+              0.042,
+              0.045,
+              0.042
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.048,
+            "seconds_min": 0.047,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": 0.024735291,
+            "total_seconds": 0.033862708,
+            "measurements_seconds": [
+              0.057,
+              0.047,
+              0.048,
+              0.047,
+              0.054
+            ]
+          },
+          "next": {
+            "seconds": 0.047,
+            "seconds_min": 0.044,
+            "seconds_max": 0.058,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": 0.024736666999999997,
+            "total_seconds": 0.033722375,
+            "measurements_seconds": [
+              0.044,
+              0.058,
+              0.047,
+              0.046,
+              0.048
+            ]
+          },
+          "next_over_parent": 0.9791666666666666,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.056,
+            "seconds_min": 0.054,
+            "seconds_max": 0.056,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.036548041,
+            "measurements_seconds": [
+              0.056,
+              0.055,
+              0.056,
+              0.056,
+              0.054
+            ]
+          },
+          "next": {
+            "seconds": 0.056,
+            "seconds_min": 0.055,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.036705042,
+            "measurements_seconds": [
+              0.057,
+              0.056,
+              0.057,
+              0.056,
+              0.055
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "threads": 2,
+          "parent": {
+            "seconds": 0.048,
+            "seconds_min": 0.046,
+            "seconds_max": 0.049,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.028221416,
+            "measurements_seconds": [
+              0.049,
+              0.048,
+              0.048,
+              0.048,
+              0.046
+            ]
+          },
+          "next": {
+            "seconds": 0.048,
+            "seconds_min": 0.047,
+            "seconds_max": 0.048,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.02844725,
+            "measurements_seconds": [
+              0.048,
+              0.048,
+              0.048,
+              0.048,
+              0.047
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.043,
+            "seconds_min": 0.043,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.023574375,
+            "measurements_seconds": [
+              0.043,
+              0.043,
+              0.043,
+              0.044,
+              0.043
+            ]
+          },
+          "next": {
+            "seconds": 0.043,
+            "seconds_min": 0.042,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.023918708,
+            "measurements_seconds": [
+              0.044,
+              0.043,
+              0.043,
+              0.043,
+              0.042
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "threads": 8,
+          "parent": {
+            "seconds": 0.05,
+            "seconds_min": 0.046,
+            "seconds_max": 0.051,
+            "seconds_mad": 0.000999999999999994,
+            "native_seconds": "",
+            "total_seconds": 0.029604291,
+            "measurements_seconds": [
+              0.051,
+              0.05,
+              0.049,
+              0.05,
+              0.046
+            ]
+          },
+          "next": {
+            "seconds": 0.05,
+            "seconds_min": 0.045,
+            "seconds_max": 0.053,
+            "seconds_mad": 0.0029999999999999957,
+            "native_seconds": "",
+            "total_seconds": 0.029754208,
+            "measurements_seconds": [
+              0.045,
+              0.053,
+              0.053,
+              0.05,
+              0.046
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.056,
+            "seconds_min": 0.053,
+            "seconds_max": 0.056,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.036389625,
+            "measurements_seconds": [
+              0.053,
+              0.054,
+              0.056,
+              0.056,
+              0.056
+            ]
+          },
+          "next": {
+            "seconds": 0.055,
+            "seconds_min": 0.054,
+            "seconds_max": 0.073,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.035655917,
+            "measurements_seconds": [
+              0.059,
+              0.054,
+              0.055,
+              0.073,
+              0.055
+            ]
+          },
+          "next_over_parent": 0.9821428571428571,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.056,
+            "seconds_min": 0.055,
+            "seconds_max": 0.056,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.036677458,
+            "measurements_seconds": [
+              0.056,
+              0.056,
+              0.056,
+              0.055,
+              0.055
+            ]
+          },
+          "next": {
+            "seconds": 0.056,
+            "seconds_min": 0.055,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.036671167,
+            "measurements_seconds": [
+              0.056,
+              0.056,
+              0.055,
+              0.057,
+              0.056
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "threads": 2,
+          "parent": {
+            "seconds": 0.047,
+            "seconds_min": 0.046,
+            "seconds_max": 0.048,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.027817666,
+            "measurements_seconds": [
+              0.048,
+              0.046,
+              0.047,
+              0.047,
+              0.047
+            ]
+          },
+          "next": {
+            "seconds": 0.047,
+            "seconds_min": 0.046,
+            "seconds_max": 0.048,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.028227292,
+            "measurements_seconds": [
+              0.046,
+              0.048,
+              0.047,
+              0.048,
+              0.047
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.042,
+            "seconds_min": 0.041,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.022546708,
+            "measurements_seconds": [
+              0.044,
+              0.042,
+              0.042,
+              0.042,
+              0.041
+            ]
+          },
+          "next": {
+            "seconds": 0.043,
+            "seconds_min": 0.041,
+            "seconds_max": 0.043,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.023180083,
+            "measurements_seconds": [
+              0.041,
+              0.042,
+              0.043,
+              0.043,
+              0.043
+            ]
+          },
+          "next_over_parent": 1.0238095238095237,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "threads": 8,
+          "parent": {
+            "seconds": 0.046,
+            "seconds_min": 0.046,
+            "seconds_max": 0.047,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.027105292,
+            "measurements_seconds": [
+              0.047,
+              0.046,
+              0.047,
+              0.046,
+              0.046
+            ]
+          },
+          "next": {
+            "seconds": 0.046,
+            "seconds_min": 0.045,
+            "seconds_max": 0.048,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.026720667,
+            "measurements_seconds": [
+              0.046,
+              0.048,
+              0.046,
+              0.047,
+              0.045
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.055,
+            "seconds_min": 0.054,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.036350959,
+            "measurements_seconds": [
+              0.057,
+              0.055,
+              0.055,
+              0.057,
+              0.054
+            ]
+          },
+          "next": {
+            "seconds": 0.055,
+            "seconds_min": 0.054,
+            "seconds_max": 0.061,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.036066167,
+            "measurements_seconds": [
+              0.055,
+              0.061,
+              0.054,
+              0.056,
+              0.055
+            ]
+          },
+          "next_over_parent": 1.0,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.35,
+            "seconds_min": 0.349,
+            "seconds_max": 0.354,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.320365083,
+            "measurements_seconds": [
+              0.349,
+              0.35,
+              0.35,
+              0.354,
+              0.353
+            ]
+          },
+          "next": {
+            "seconds": 0.353,
+            "seconds_min": 0.349,
+            "seconds_max": 0.364,
+            "seconds_mad": 0.0020000000000000018,
+            "native_seconds": "",
+            "total_seconds": 0.32146225,
+            "measurements_seconds": [
+              0.364,
+              0.353,
+              0.353,
+              0.351,
+              0.349
+            ]
+          },
+          "next_over_parent": 1.0085714285714287,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "threads": 2,
+          "parent": {
+            "seconds": 0.248,
+            "seconds_min": 0.244,
+            "seconds_max": 0.252,
+            "seconds_mad": 0.0030000000000000027,
+            "native_seconds": "",
+            "total_seconds": 0.217083041,
+            "measurements_seconds": [
+              0.244,
+              0.248,
+              0.252,
+              0.246,
+              0.251
+            ]
+          },
+          "next": {
+            "seconds": 0.249,
+            "seconds_min": 0.249,
+            "seconds_max": 0.251,
+            "seconds_mad": 0.0,
+            "native_seconds": "",
+            "total_seconds": 0.218046666,
+            "measurements_seconds": [
+              0.249,
+              0.251,
+              0.249,
+              0.249,
+              0.249
+            ]
+          },
+          "next_over_parent": 1.0040322580645162,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.197,
+            "seconds_min": 0.191,
+            "seconds_max": 0.198,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.163549792,
+            "measurements_seconds": [
+              0.191,
+              0.197,
+              0.1929999999999999,
+              0.197,
+              0.198
+            ]
+          },
+          "next": {
+            "seconds": 0.196,
+            "seconds_min": 0.192,
+            "seconds_max": 0.199,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.161750709,
+            "measurements_seconds": [
+              0.196,
+              0.197,
+              0.196,
+              0.192,
+              0.199
+            ]
+          },
+          "next_over_parent": 0.9949238578680203,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "threads": 8,
+          "parent": {
+            "seconds": 0.183,
+            "seconds_min": 0.178,
+            "seconds_max": 0.215,
+            "seconds_mad": 0.0050000000000000044,
+            "native_seconds": "",
+            "total_seconds": 0.1505755,
+            "measurements_seconds": [
+              0.215,
+              0.189,
+              0.18,
+              0.178,
+              0.183
+            ]
+          },
+          "next": {
+            "seconds": 0.181,
+            "seconds_min": 0.18,
+            "seconds_max": 0.202,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.149419333,
+            "measurements_seconds": [
+              0.18,
+              0.181,
+              0.181,
+              0.202,
+              0.18
+            ]
+          },
+          "next_over_parent": 0.9890710382513661,
+          "observed_ranges_overlap": true
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.192,
+            "seconds_min": 0.191,
+            "seconds_max": 0.2,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.159958125,
+            "measurements_seconds": [
+              0.191,
+              0.191,
+              0.192,
+              0.2,
+              0.194
+            ]
+          },
+          "next": {
+            "seconds": 0.193,
+            "seconds_min": 0.192,
+            "seconds_max": 0.199,
+            "seconds_mad": 0.0010000000000000009,
+            "native_seconds": "",
+            "total_seconds": 0.162129166,
+            "measurements_seconds": [
+              0.192,
+              0.193,
+              0.196,
+              0.192,
+              0.199
+            ]
+          },
+          "next_over_parent": 1.0052083333333333,
+          "observed_ranges_overlap": true
+        }
+      ],
+      "geometric_mean_next_over_parent": 0.9952386602633971,
+      "all_ranges_overlap": true,
+      "csv_summaries": {
+        "parent": "2026-10-03-m2-parent-scaling.csv",
+        "next": "2026-10-03-m2-next-scaling.csv"
+      }
+    }
+  },
+  "datasets": {
+    "ppml-1fe": {
+      "sha256": "192d50266e722cdca54ab6d1444271b08c91d37bef386e8599624478c401e2b6",
+      "seed": 739391,
+      "rows": 100000,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "ols-2fe-dense": {
+      "sha256": "69d56e314043c8c39c6cc93eddeb8d15c023390cb0a8a9b2655c87534445f2bd",
+      "seed": 739391,
+      "rows": 100000,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "ppml-2fe-gravity": {
+      "sha256": "075f611a2f88038fd11a3ee00c3a1a127c47d196ed64b57775151d5e82a55568",
+      "seed": 739391,
+      "rows": 100000,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "ols-1fe": {
+      "sha256": "7e5783d99bc4ece24a727c7ae789fb2272987cb3db2e68a844152cb7d9a1a529",
+      "seed": 739391,
+      "rows": 100000,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "m1-ols-n16383-k8": {
+      "sha256": "e3be92f8dfb3e0d5f3e555236ad451c1b794effeb033a9de521d0db509534e78",
+      "seed": 739391,
+      "rows": 16383,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "m1-ppml-n16384-k8": {
+      "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+      "seed": 739391,
+      "rows": 16384,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "m1-ols-n100000-k16": {
+      "sha256": "64bef8add11e327349a2b63139c8d7012b995c520418e87f46dacf849a300485",
+      "seed": 739391,
+      "rows": 100000,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "m1-ols-n16384-k8": {
+      "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+      "seed": 739391,
+      "rows": 16384,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "m1-ppml-n100000-k16": {
+      "sha256": "4c63eb34d47b561374b5a2a31685d233291517987195eeb4629db8e805b0c834",
+      "seed": 739391,
+      "rows": 100000,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    },
+    "m1-ppml-n16383-k8": {
+      "sha256": "794f8c6d35c0010bbb9d456baaacf2cf81cffe5fb3e93ee023be06ecd13a6722",
+      "seed": 739391,
+      "rows": 16383,
+      "numpy": "2.3.5",
+      "pandas": "2.2.3"
+    }
+  },
+  "runtime_source_commit": "7b1bae2b87d4ef53d78c1a373a22f90f0c10a954",
+  "comparison_parent": "M1 completed at bc6ae231c367fcc440611ceefcee0310ed3bce47; native parent built at 9c5393af28f7922f714e1b3bb8546ce32a32c18e, subsequent runtime-file changes test-only.",
+  "machine": {
+    "platform": "Mac Studio, Apple Silicon",
+    "physical_cores": 24,
+    "performance_cores": 16,
+    "stata_version": 19,
+    "stata_licensed_processors": 8,
+    "native_threads": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ]
+  },
+  "dataset_verification": "Generator manifests and actual DTA bytes identical between both campaigns for all ten cells.",
+  "correctness": {
+    "full_local_harness": "PASS: fmt, Clippy -D warnings, workspace tests, FFI/transaction/allocation tests, ratchet and mock SPI",
+    "full_harness_rust_test_invocations_passed": 1639,
+    "long_oracle_tests_passed": 30,
+    "characterization": "Norm-error precedence, zero-reference and deferred-intercept regression passed on parent before extraction and candidate after extraction.",
+    "worktree_qualification": {
+      "binary_sha256": "d4e9f9e62db74371a7a69a35866d8d97316b4648ee2b93d24903ff7f8aab543b",
+      "parent_sha256": "49a597c4b36e81361db2ee08c347eb38f88b488f6cde4257d3d0f5e81163570f",
+      "exact_parent_cases_at_one_thread": 73,
+      "scientific_cases_at_each_thread_count": 73,
+      "thread_counts": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "fixed_thread_repeatability": "PASS",
+      "cross_thread_scientific_and_discrete_agreement": "PASS",
+      "intentional_differences": 0,
+      "native_estimation_processes": 803,
+      "replay_policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "summary_sha256": "c02961e74f917fddb1f3550d14a4f5b396d4ccd201bc62842a14bb91f1f03c3c"
+    },
+    "clean_build_confirmation": {
+      "source_commit": "7b1bae2b87d4ef53d78c1a373a22f90f0c10a954",
+      "binary_sha256": "9ee4c9c10b100c2abc09f8ff3e4a6e362143bc72bb87756756291e45db783dff",
+      "qualified_worktree_sha256": "d4e9f9e62db74371a7a69a35866d8d97316b4648ee2b93d24903ff7f8aab543b",
+      "exact_scientific_and_route_cases_at_one_thread": 73,
+      "scientific_acceptance": "PASS",
+      "summary_sha256": "8034521a107223dfe59a7d4d788b6e1e1872613f25e05f9b21ed203439f7a190"
+    },
+    "licensed_stata": {
+      "passed": 3,
+      "fixtures": [
+        "frequency_singleton_validation",
+        "slope_dof_validation",
+        "engine_selection"
+      ],
+      "binary_sha256": "d4e9f9e62db74371a7a69a35866d8d97316b4648ee2b93d24903ff7f8aab543b"
+    },
+    "native_mac": "Universal arm64/x86-64 build and binary audit; actual arm64 ABI/self-test including panic containment passed on both worktree and clean builds.",
+    "linux_native_replay": {
+      "ci_run": 37118979350,
+      "source_commit": "7b1bae2b87d4ef53d78c1a373a22f90f0c10a954",
+      "next_sha256": "2ac2fb40d71c44a9a2f0a5add0eb16033bee973765570e489542dc855eb8fd89",
+      "frozen_legacy_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc",
+      "scientific_cases_passed": 73,
+      "summary_sha256": "de531997e8cbf8c5a178340a5713e2018fce0780b06ae8e0c07fb435715a5908",
+      "policy": "Existing M1 correction allowances only; no new M2 difference allowance. Mac replay separately checks exact equality to parent-next."
+    },
+    "required_ci": {
+      "run": 37118979350,
+      "url": "https://github.com/johannes-schmieder/fereg/actions/runs/37118979350",
+      "source_commit": "7b1bae2b87d4ef53d78c1a373a22f90f0c10a954",
+      "conclusion": "success",
+      "jobs": {
+        "check": "success",
+        "comparator": "success",
+        "replay": "success"
+      }
+    }
+  },
+  "complexity": {
+    "core_production_lines": {
+      "before": 104913,
+      "after": 104910
+    },
+    "host_production_lines": 15248,
+    "core_functions_over_150": 98,
+    "host_functions_over_150": 16,
+    "core_files_over_1500": 20,
+    "host_files_over_1500": 3,
+    "dispatch_candidates_core": 1476,
+    "dispatch_candidates_host": 165,
+    "chunk_candidates_core": 13,
+    "new_routing_conditions": 0,
+    "growth_exceptions": [],
+    "functions": {
+      "fit_scaled_pivoted_qr": {
+        "before": 497,
+        "after": 455
+      },
+      "fit_scaled_pivoted_qr_low": {
+        "before": 486,
+        "after": 448
+      },
+      "classify_qr_candidates": 31,
+      "fast_qr_norms": 26,
+      "low_qr_norms": 18
+    }
+  },
+  "conclusions": [
+    "One classification loop replaces two copies; callers retain validation precedence, allocation order and capacity checks.",
+    "All 34 observed timing ranges overlap. Smoke geometric ratio 0.9991; scaling 0.9952. No speedup claim; no detected regression beyond observed noise.",
+    "All 214 cross-version command pairs have identical emitted coefficients and samples.",
+    "Net production reduction is three lines; long-function counts and routing inventory are unchanged. This is a maintenance correction, not a broad pipeline simplification."
+  ],
+  "limitations": [
+    "Bounded local matrix; no new large-data SCC campaign or external-reference timing campaign.",
+    "M1 coverage remains historical evidence. Both changed QR entry points are exercised directly by the new regression and retained scientific suites; no new percentage-based coverage gate.",
+    "Current Mac M2 artifact is a local development build; Linux CI is checked separately. Windows was not rebuilt for this internal safe-Rust extraction. M1 package/ABI contract is unchanged.",
+    "Exact parent comparison is at one thread; other thread counts check scientific acceptance, discrete decisions and fixed-thread repeatability.",
+    "Five observations per timing group provide a bounded noise check, not proof of universal performance equivalence."
+  ]
+}

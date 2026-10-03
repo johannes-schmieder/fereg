@@ -2,7 +2,7 @@
 
 Plan: [M0–M2](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M2.3 clean-build performance qualification and refreshed evidence.
+Current task: none; M0–M2 complete. Proposed M3 is for discussion, not authorized implementation.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -25,13 +25,13 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 - [x] M2.1 Boundary regression passes on parent; 34 fresh timing groups recorded with qualified parent Mac binary.
 - [x] M2.2 Shared classification; full/long tests, exact parent replay, five-thread science/repeats, native ABI and 3 Stata fixtures pass.
-- [ ] M2.3 Performance/complexity evidence and next-milestone discussion.
+- [x] M2.3 All 34 timing ranges overlap; 214 coefficient/sample pairs exact; complexity lowered; M3 proposal documented for discussion.
 
 ## Gates
 
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
 - [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
-- [ ] G-M2: shared classification, exact parent-next checks, independent science and performance/complexity evidence.
+- [x] G-M2: shared classification, exact parent-next checks, independent science and performance/complexity evidence; CI 37118979350 passes.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -42,7 +42,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No remaining M0–M1 blockers. The intermittent dictionary audit was isolated and verified in CI 37093239587.
+No remaining M0–M2 blockers. The intermittent dictionary audit was isolated and verified in CI 37093239587.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -83,3 +83,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M2.1 this commit — approved scope recorded; parent Mac 49a597c4 preserved; fast/low validation differences identified before extraction.
 - 2026-10-03 M2.1 35d1720e — fresh parent smoke/scaling: 34 groups, 214 commands; norm/error/deferred-intercept regression passes before extraction.
 - 2026-10-03 M2.2 this commit — one classifier; core -3 lines, QR functions 497/486 to 455/448; full/30 long oracles, 73 exact/five-thread science, 3 Stata pass.
+- 2026-10-03 M2.3 7b1bae2b — clean Mac ABI/73 replay pass; 34 timing ranges overlap, 214 pairs exact; CI 37118979350 full/Linux replay pass.
+- 2026-10-03 G-M2 this commit — checks and compact [evidence](bench/history/2026-10-03-m2-classification.json) complete; M3 completion-path proposal remains unimplemented.

@@ -1,7 +1,7 @@
 # Incremental refactoring architecture
 
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
-M0–M1. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
+M0–M2. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -40,7 +40,7 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The [versioned inventory](cleanup/complexity.md) measures 104,913 production
+The [versioned inventory](cleanup/complexity.md) measures 104,910 production
 lines in core and 15,248 in the host. Core has 98 functions over 150 lines and
 20 files over 1,500; the host has 16 and 3. Its conservative dispatch inventory
 contains 1,476 core and 165 host candidates, including validation conditions;
@@ -48,11 +48,11 @@ contains 1,476 core and 165 host candidates, including validation conditions;
 complexity; some conditions validate inputs rather than select algorithms.
 
 Largest inherited files are `fe/borrowed_map.rs` (10,198 production lines),
-`ols/prepared_fit.rs` (7,398) and `ols/linear_session.rs` (6,213). The largest
+`ols/prepared_fit.rs` (7,395) and `ols/linear_session.rs` (6,213). The largest
 functions are PPML IRLS orchestration (2,014 physical lines), PPML route-memory
 estimation (1,208), and retained-rank solving (925). Six OLS host branches
 (representation × VCE), fast/low twins and repeated FE entry points remain
-candidate simplifications, to be chosen with coverage evidence after M1.
+candidate simplifications, to be chosen with exercised-path evidence.
 
 The [M1 Mac coverage summary](../bench/history/2026-10-02-m1-runtime-coverage-macos.json)
 maps the bounded oracle/replay campaign to 2,813 reached source functions,
@@ -72,13 +72,33 @@ coefficients/samples in 214 paired command runs. Both engines retain higher-thre
 slowdowns in some cells. These local measurements do not establish large-data
 scaling or promise that simplification alone will improve speed.
 
-A concrete next candidate is the duplicated FE-collinearity/candidate
-classification inside `fit_scaled_pivoted_qr` (497 lines) and
-`fit_scaled_pivoted_qr_low` (486 lines) in `ols/prepared_fit.rs`. Both functions
-are exercised on Mac and Linux, and M1's frequency-singleton repair had to change
-both copies. Scope the follow-up to one shared classification helper, preserving
-mode-specific validation/error order, allocation admission, storage, solvers and
-routing. Require fewer duplicated production lines, exact parent-next results
-and route signatures, the fast/low singleton regressions, and no timing
-regression beyond observed noise. This is a proposal; M0–M1 does not authorize
-its implementation or merging the two entire QR pipelines.
+M2 replaces the duplicated FE-collinearity/candidate classification with one
+31-line helper. The fast and low QR functions shrink from 497/486 to 455/448
+lines; their norm-validation precedence and storage/allocation behavior remain
+separate. The net reduction is three production lines. Long-function counts
+and dispatch inventory are unchanged: this removes a duplicated scientific
+rule, not either QR pipeline. The new characterization reaches both real QR
+entry points and preserves their error-order/deferred-intercept boundaries.
+
+The [M2 qualification and timing summary](../bench/history/2026-10-03-m2-classification.json)
+records exact parent-next replay at one thread, scientific acceptance and
+fixed-thread repeats at 1/2/4/8/16, and identical coefficients/samples in 214
+paired benchmark commands. All 34 timing ranges overlap. Higher-thread
+slowdowns remain; M2 makes no speedup claim.
+
+A proposed M3 is to consolidate the repeated OLS post-fit completion sequence
+in the six representation-by-VCE branches of the plugin's `estimate.rs`.
+Existing result views and `CertifiedOlsInference` already expose the relevant
+common boundary. Keep estimator preparation/inference differences explicit;
+share derived-output construction, validated result construction and handoff to
+the existing transaction. Preserve categorical normalization, cluster metadata,
+allocation admission, lifetimes, error order and rollback. Require a useful
+net reduction without a new representation/framework, matched scientific and
+transaction checks, and no timing regression. This is a discussion candidate,
+not authorization to implement M3.
+
+An alternative next priority is a timeboxed diagnosis of one measured OLS
+thread-scaling slowdown using the existing phase timers. Its cause has not
+been established. Any resulting route simplification needs its own bounded
+scope and comparative evidence; neither a new thread-count fence nor a
+wholesale solver-policy rewrite follows from these timings.
