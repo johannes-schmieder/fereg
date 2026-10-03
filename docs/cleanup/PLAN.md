@@ -287,7 +287,9 @@ row/column arithmetic order, inactive-lane clearing, allocations, normalized
 weights, probe policy, convergence, certificates, fallbacks and solver routes.
 Do not retain the probe workspace across the full solve or add a size/thread
 route. No new generic engine or representation is needed. Require a net
-production reduction and no complexity growth exception.
+production reduction. The measured column-access repair may add three lines
+relative to the first M8 commit, with a narrow ratchet reason; M8 remains
+smaller than the qualified M7 parent.
 
 Run the full harness, long oracle tests, mapped Schur/weak-graph regressions,
 Mac native build/ABI, 73-case exact parent-next replay with the five-thread

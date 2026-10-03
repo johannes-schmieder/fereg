@@ -3322,6 +3322,8 @@ fn fill_two_fe_group_rhs<C: ExactSizeIterator<Item = usize> + Clone + Sync>(
     finish: impl Fn(&[usize], &mut [f64], f64) + Sync,
 ) -> Result<()> {
     let width = columns.len();
+    let source_width = values.ncols();
+    let data = values.as_slice();
     bank.0
         .par_chunks_mut(stride)
         .zip(bank.1.par_iter_mut())
@@ -3333,8 +3335,9 @@ fn fill_two_fe_group_rhs<C: ExactSizeIterator<Item = usize> + Clone + Sync>(
             for &row in members {
                 let weight = weights.normalized(row);
                 *total += weight;
+                let source = &data[row * source_width..(row + 1) * source_width];
                 for (out, column) in sum[..width].iter_mut().zip(columns.clone()) {
-                    *out += weight * values[(row, column)];
+                    *out += weight * source[column];
                 }
             }
             finish(members, &mut sum[..width], *total);

@@ -2,7 +2,7 @@
 
 Plan: [M0–M8](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M8.3 clean native qualification, timings and M9–M11 discussion; M8.2 local checks pass.
+Current task: M8.3 local row-access qualification; commit/push to main awaits approval after automatic review rejection.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -34,7 +34,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M7 Scaling diagnosis and combined qualification; shared Schur preparation proposed for discussion, not implemented.
 
 - [x] M8.1 Preparation-order audit; 34 parent timing groups plus existing-phase profile recorded.
-- [x] M8.2 Shared Schur preparation; full/long checks, 73 exact/scientific replay, native ABI and 6 Stata pass; core -39 lines.
+- [x] M8.2 Shared Schur preparation; full/long checks, 73 exact/scientific replay, native ABI and 6 Stata pass; core -36 lines overall.
 - [ ] M8.3 Paired timings, phase comparison, final CI and detailed M9–M11 proposals.
 
 ## Gates
@@ -54,7 +54,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No remaining M0–M7 blockers. The intermittent dictionary audit was isolated and verified in CI 37093239587.
+No remaining M0–M7 blockers. M8 commit/push was rejected by automatic approval review; explicit user approval requested.
+Clean final artifact/CI remain pending. Local runtime/scientific work continues.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -107,3 +108,6 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 
 - 2026-10-03 M8.0 this commit — scope authorized; share Schur level sums/projection and probe preparation; preserve validation order and routes.
 - 2026-10-03 M8.2 this commit — one Schur level kernel/probe stage; core -39 lines; analytic/full/30 oracle checks, 73 replay, Mac ABI and 6 Stata pass.
+- 2026-10-03 M8.3 bd9e1aa8 — science/46 Stata pass; full-Schur init rises beyond phase noise; restore contiguous row access before final qualification.
+- 2026-10-03 M8.2b this commit — contiguous row view restored; full/30 oracle checks, exact 73 replay, Mac ABI and 6 Stata pass; narrow +3-line ratchet reason.
+- 2026-10-03 M8.3 local — row repair passes 73/five-thread replay, 46 Stata and 34 overlapping timing pairs; final clean/CI gate awaits main commit approval.
