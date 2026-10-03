@@ -1,4 +1,4 @@
-# M0–M1: working copy, frozen comparator and incremental refactoring
+# Incremental refactoring: M0–M2
 
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
 Historical plan and evidence remain at 15a57ba285a3afede2e3337fe8598e72529a4090.
@@ -169,3 +169,44 @@ refresh coverage/complexity. Defer large SCC work until routing/parallel changes
 qualification, bundled installation and identity-bound summaries pass. Then
 choose one simplification from measured complexity AND exercised code paths.
 Stop at M1; no unapproved broad rewrite or automatic deferred-ADR work.
+
+
+## M2: shared OLS regressor classification
+
+Authorized by Johannes on 2026-10-03 after reviewing M0–M1 results. This extends
+the plan; the earlier stop at M1 governed the initial implementation only.
+
+### M2.1 Boundary and parent baseline
+
+Pin the qualified M1 next binary as the immediate comparator and record fresh
+Mac smoke/scaling measurements with the existing runner. Audit fast/low QR
+classification and validation order. Both paths defer absorbed intercepts and
+classify zero reference columns, FE-collinear columns and finite candidates.
+Fast checks the reference norm before skipping a zero reference; low checks
+both norms first. Preserve these checks and their errors at the caller boundary.
+
+### M2.2 Share classification and qualify correctness
+
+Extract one shared classification implementation; delete the duplicated rule
+from both QR paths. Preserve allocation order/capacity checks, column order,
+error precedence, arithmetic, solver selection and the two storage strategies.
+Use small static validation functions or closures if needed; no runtime mode
+switch or generic engine framework. Add only focused checks for an uncovered
+classification/validation boundary. No ADR is needed for this internal extraction.
+
+Run the normal harness, long independent oracle tests, focused fast/low Stata
+regressions and actual-plugin replay against parent-next with all three M1
+fixes enabled for both. Require exact scientific outputs and route signatures,
+independent scientific acceptance and fixed-thread repeats. Reuse the five-thread
+matrix. No intentional-difference allowance is added for this extraction.
+
+### M2.3 Measure, document and stop
+
+Require a net reduction in duplicated production code, no new routing condition,
+and a lowered complexity baseline. Compare the stable candidate with the parent
+using existing Mac smoke and 1/2/4/8/16-thread scaling cells, one warm-up and five
+measurements. Investigate differences outside observed noise with bounded paired
+follow-up. Bind evidence to actual binary, source and frontend identities.
+Retain current package/ABI contracts; reuse installation/platform evidence where
+unchanged. Record compact evidence and discuss the next milestone with Johannes.
+Do not implement M3. The existing blocker timebox applies.

@@ -1,8 +1,8 @@
 # Incremental refactoring — milestones
 
-Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Plan: [M0–M2](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: none; M0–M1 complete. The next scoped simplification is proposed in ARCHITECTURE, not implemented.
+Current task: M2.1 boundary audit and fresh parent-next timings; M0–M1 remain complete.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -23,10 +23,15 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M1.4 Six-plugin review bundle; licensed Mac installation, Linux/Windows builds/audits/ABI and final Linux source/replay CI pass.
 - [x] M1.5 Identity-bound smoke/scaling, Mac/Linux coverage and refreshed complexity; proposed next cleanup remains unimplemented.
 
+- [ ] M2.1 Audit classification/validation boundaries and record parent-next baseline.
+- [ ] M2.2 Shared classification, deleted duplicate logic and correctness qualification.
+- [ ] M2.3 Performance/complexity evidence and next-milestone discussion.
+
 ## Gates
 
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
 - [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
+- [ ] G-M2: shared classification, exact parent-next checks, independent science and performance/complexity evidence.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -75,3 +80,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.5 this commit — 34 timing pairs overlap; 214 coefficient/sample pairs exact; Mac/Linux 2813/2808 reached functions; core -223 lines versus M0.
 - 2026-10-02 M1.4 5ba506b1 — CI 37093239587: full checks and 73 science pass; all platform builds, 4 staged fixtures and 38-file install/get verification pass.
 - 2026-10-02 G-M1 this commit — all gates verified; see [platforms](bench/history/2026-10-02-m1-platform-qualification.json) and [timings](bench/history/2026-10-02-m1-performance.json).
+- 2026-10-03 M2.1 this commit — approved scope recorded; parent Mac 49a597c4 preserved; fast/low validation differences identified before extraction.

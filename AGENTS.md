@@ -10,7 +10,7 @@ fixed-effect absorption, estimation and inference.
 2. `docs/SPEC.md`: scientific results and failure behavior.
 3. Active decisions listed in `docs/adr/README.md` only.
 4. `docs/ARCHITECTURE.md`: current module map and measured hotspots.
-5. `docs/cleanup/PLAN.md`: approved M0–M1 tasks; `MILESTONES.md`: status.
+5. `docs/cleanup/PLAN.md`: approved M0–M2 tasks; `MILESTONES.md`: status.
 6. Tests and code.
 
 Historical ADRs are non-binding. Their requirements bind only where retained
