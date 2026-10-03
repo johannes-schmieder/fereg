@@ -1872,7 +1872,7 @@ mod tests {
         invalid.data.insert((3, 2), (-1.0, false));
         let error = prepare_ols_test(&args, &BufferSink::default(), &mut invalid)
             .expect_err("candidate interaction source must be valid");
-        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(error.code, ErrorCode::InvalidFactor);
         assert!(invalid.writes.is_empty());
     }
 
@@ -2035,7 +2035,7 @@ mod tests {
             spi.data.insert((3, 2), (invalid, false));
             let error = prepare_ols_test(&args, &BufferSink::default(), &mut spi)
                 .expect_err("invalid factor source");
-            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert_eq!(error.code, ErrorCode::InvalidFactor);
             assert!(spi.writes.is_empty());
         }
 

@@ -763,7 +763,6 @@ pub(crate) fn prepare_ols_numeric_sample_owned(
 )> {
     let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
     validate_loaded(request, &loaded)?;
-    validate_candidate_categorical_domain(request, &loaded, cluster_sources)?;
     validate_candidate_weight_domain(&loaded)?;
     let early_source = if loaded.candidate.len() >= 16_384
         && (8..=16).contains(&loaded.numeric_sources.len())
@@ -812,6 +811,7 @@ pub(crate) fn prepare_ols_numeric_sample_owned(
         drop(early_factor.take());
         take_classified_sample(request, loaded, cluster_sources)?
     };
+    validate_available_categorical_domain(request, &sample)?;
     Ok((model, sample, early_factor))
 }
 
@@ -833,7 +833,6 @@ pub(crate) fn prepare_ols_numeric_sample(
 ) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
     let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
     validate_loaded(request, loaded)?;
-    validate_candidate_categorical_domain(request, loaded, cluster_sources)?;
 
     let regressor_views = loaded
         .numeric_sources
@@ -879,6 +878,7 @@ pub(crate) fn prepare_ols_numeric_sample(
             prepare_numeric_sample_with_source_uses(&input, &source_uses, &OlsPreparationPolicy)?
         }
     };
+    validate_available_categorical_domain(request, &sample)?;
     Ok((model, sample))
 }
 
@@ -1440,32 +1440,25 @@ fn categorical_source_index(
         .ok_or_else(|| invalid("categorical source plan disappeared"))
 }
 
-fn validate_candidate_categorical_domain(
+fn validate_available_categorical_domain(
     request: &OlsRequestV1,
-    loaded: &LoadedOlsInput,
-    _cluster_sources: &[SourceId],
+    sample: &PreparedNumericSample,
 ) -> Result<()> {
-    // Ordinary factor-variable metadata requires canonical nonnegative integer
-    // levels. FE and cluster factorization, like the pinned Factor behavior,
-    // accepts every finite numeric category (including negative/fractional
-    // values) and therefore must not inherit this ordinary-factor restriction.
-    let categorical = ordinary_categorical_sources(&request.model);
-    for (source, column) in &loaded.numeric_sources {
-        if !categorical.contains(source) {
-            continue;
-        }
-        for (row, candidate) in loaded.candidate.iter().copied().enumerate() {
-            if !candidate || column.missing[row] || !column.values[row].is_finite() {
-                continue;
+    // Ordinary factors alone require nonnegative integers. Validate after all
+    // availability exclusions but before singleton/rank decisions; omitted
+    // terms remain in the source registry. FE/cluster domains are unchanged.
+    for source in ordinary_categorical_sources(&request.model) {
+        let column = &sample.regressors[source_index(source)?];
+        for (row, &value) in column.iter().enumerate() {
+            if value < 0.0 || value.fract() != 0.0 || !value.is_finite() {
+                return Err(FeregError::new(
+                    ErrorCode::InvalidFactor,
+                    format!(
+                        "ordinary factor source {} at observation {} must be a finite nonnegative integer",
+                        source.get(), sample.original_row_by_active[row] + 1,
+                    ),
+                ));
             }
-            validate_categorical_value(
-                column.values[row],
-                &format!(
-                    "numeric categorical source {} at observation {}",
-                    source.get(),
-                    row + 1
-                ),
-            )?;
         }
     }
     Ok(())
@@ -3009,7 +3002,7 @@ mod tests {
     }
 
     #[test]
-    fn categorical_domain_is_candidate_scoped_and_fails_before_sample_construction() {
+    fn categorical_domain_follows_availability_before_singletons() {
         for invalid_value in [-1.0, 1.5] {
             let request = mixed_numeric_factor_request();
             let loaded = LoadedOlsInput {
@@ -3029,7 +3022,17 @@ mod tests {
             candidate_invalid.candidate[0] = true;
             let error = prepare_ols_data(&request, &candidate_invalid)
                 .expect_err("candidate invalid factor value");
-            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert_eq!(error.code, ErrorCode::InvalidFactor);
+            candidate_invalid.outcome.missing[0] = true;
+            for owned in [false, true] {
+                let prepared = if owned {
+                    prepare_ols_data_owned(&request, candidate_invalid.clone())
+                } else {
+                    prepare_ols_data(&request, &candidate_invalid)
+                }
+                .expect("unavailable invalid factor is excluded");
+                assert_eq!(prepared.sample.retained_rows(), &[1]);
+            }
         }
     }
 

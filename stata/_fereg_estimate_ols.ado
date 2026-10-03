@@ -118,6 +118,19 @@ program define _fereg_estimate_ols, eclass
     if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
     if strtrim(`"`cluster'"') != "" local cluster_option `"cluster(`cluster')"'
 
+    local factor_sample "`touse'"
+    if "`native_engine'" == "next" & strtrim(`"`indepvars'"') != "" {
+        tempvar factor_available
+        local availability_options
+        foreach option in aweight fweight pweight {
+            if "``option''" != "" local availability_options ///
+                `"`availability_options' `option'(``option'')"'
+        }
+        quietly _fereg_factor_sample `varlist', touse(`touse') generate(`factor_available') ///
+            `absorb_option' `cluster_option' `availability_options'
+        local factor_sample "`r(touse)'"
+    }
+
     tempname model_sources model_terms model_components absorb_terms
     tempname absorb_components cluster_terms cluster_components input_bindings
     if strtrim(`"`indepvars'"') == "" {
@@ -128,7 +141,7 @@ program define _fereg_estimate_ols, eclass
             `absorb_option' `cluster_option'
     }
     else {
-        fereg_parse `indepvars', touse(`touse') `absorb_option' `cluster_option'
+        fereg_parse `indepvars', touse(`factor_sample') `absorb_option' `cluster_option'
     }
 
     local source_vars `"`r(source_vars)'"'

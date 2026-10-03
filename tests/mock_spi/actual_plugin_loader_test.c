@@ -679,7 +679,7 @@ static int check_prepare_ols_categorical_interaction(stata_call_function call)
     }
     plugin_data[2][1] = -1.0;
     clear_output();
-    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 459) return 5;
+    if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 452) return 5;
     for (row = 0; row < 5; ++row) {
         if (!isnan(plugin_data[4][row]) || !isnan(plugin_data[5][row]) ||
             !isnan(plugin_data[6][row])) {

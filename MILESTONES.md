@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M1.2a next-only factor availability precedence; M1.1 passed.
+Current task: M1.2b full-matrix covariance repair; M1.2a passed.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -15,7 +15,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M0.4 Mac/Linux replay passes 73 exact/repeat cases: 70 scientific passes, 3 explicit defects; bounded matrix fixed.
 - [x] M0.5 Ratchet, Mac/Linux coverage and full Linux checks pass; corrected artifact verifies 221 native profiles and both estimator entry points.
 - [x] M1.1 Two-plugin selection/default, diagnostics and exact public baseline pass.
-- [ ] M1.2a Next-only factor precedence correction. Depends on M1.1.
+- [x] M1.2a Next-only factor precedence correction; excluded-row, TS and independent dummy checks pass.
 - [ ] M1.2b Full-matrix OLS multiway covariance correction. Depends on M1.2a acceptance.
 - [ ] M1.2c Reproduce/repair slope-DoF validation. Depends on M1.2b acceptance.
 - [ ] M1.2d Reproduce/repair frequency-singleton validation. Depends on M1.2c acceptance.
@@ -60,3 +60,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M0.5 this commit — reopened gate: Linux artifact had 0 reached host functions despite passing replay; ELF runtime anchor/per-process emission check added.
 - 2026-10-02 M0.5 this commit — corrected CI 37086868628: 221 native profiles, both entry points, 2808/811/22 reached/unreached/unmapped; G-M0 verified.
 - 2026-10-02 M1.1 this commit — selection/interleaving/restore and 2 contract fixtures pass; 73 exact replays, full local harness and 24 frontend checks pass.
+- 2026-10-02 M1.2a this commit — 9 licensed fixtures, 73 exact parent replays, 29 long oracles and full harness pass; core -3 lines; legacy failures unchanged.

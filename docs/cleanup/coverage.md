@@ -76,3 +76,16 @@ Rust/allocation/transaction suite remains a required uninstrumented check.
 Coverage gaps remain explicit; no percentage is a gate. Canonical comparator
 and timing binaries remain uninstrumented.
 Only gaps revealed by this matrix or concrete failures add work to M1.3.
+
+## M1.2a declared change boundary
+
+Only next's ordinary-factor validation/expansion may change: rows excluded by
+availability no longer cause factor errors or contribute expansion levels.
+Eligible invalid values, including base/omitted terms, return r(452); native
+callers now receive that same code. Samples, drop reasons and numerical results
+on unaffected native cases remain exact versus parent-next M1.1 (`50de7189`).
+The frozen binary and its candidate-wide frontend expansion remain unchanged.
+`installation/factor_availability.do` first reproduced both engines' failure,
+then checks missing outcome/regressor/FE/cluster/slope/weight/adjustment, analytic
+zero weights, time-series gaps and outside-if sources, and independent explicit
+dummy regress/poisson coefficients. Domain failures remain errors.
