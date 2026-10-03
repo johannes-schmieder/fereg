@@ -155,3 +155,10 @@ and acceptance checks are in [the plan](cleanup/PLAN.md#m9m11-authorized-follow-
 Progress remains in MILESTONES. M9 consolidates QR rank progression; M10 tests
 Schur scheduling and may retain current execution on a negative result; M11
 clarifies PPML memory ownership, storage contributions and phase lifetimes.
+
+M9 now shares pivot selection, rank progression and Householder stopping in
+`ols/prepared_fit/qr_factorization.rs`. Dense and scratch adapters retain their
+norm refresh and storage behavior. This removes one duplicated policy, with a
+net reduction of one production line; inherited large fit functions remain.
+[Clean paired evidence](../bench/history/2026-10-03-m9-qr-factorization.json)
+shows exact parent science and no repeatable local timing change.

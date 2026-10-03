@@ -2,7 +2,7 @@
 
 Plan: [M0–M11](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M9.3 clean changed-path timing and combined comparison.
+Current task: M10.1 bounded Schur scheduling experiment.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -39,7 +39,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 - [x] M9.1 QR norm/reflector/Cholesky fallback boundaries audited; retain storage-specific validation and arithmetic.
 - [x] M9.2 Shared QR driver; full/30 oracles, 73 exact parent replay, Mac ABI and 3 Stata pass; core -1 line.
-- [ ] M9.3 Clean parent comparison, changed-path timings and complexity evidence.
+- [x] M9.3 Clean parent comparison, forced QR timings and CI 37134379100 pass; fresh ranges overlap.
 - [ ] M10.1 Balanced/skewed/weighted/weak-cut scheduling diagnosis and bounded experiment.
 - [ ] M10.2 Ship only a broad measured gain, or record a negative result with current scheduling retained.
 - [ ] M11.1 PPML memory ownership/lifetime audit and exact inventory characterization.
@@ -127,3 +127,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 G-M8 d36c3f79 — clean 73/five-thread replay, 46 Stata and CI 37131877394 pass; fresh GM 0.980/0.949, no regression; frozen assets unchanged.
 - 2026-10-03 M9.2 worktree — one rank/Householder driver, three static storage operations; first +41-line design rejected; final core -1 line, no new numerical route.
 - 2026-10-03 M9.2 this commit — shared QR rank policy; preserved norm refresh, storage, arithmetic and validation; full/30 oracles, 73 replay, native ABI and 3 Stata pass.
+- 2026-10-03 M9.3 bee54ffe — clean paired QR/smoke/scaling exact; initial timing flags do not repeat; fresh GM 1.000/0.992/1.009; Linux CI passes.
