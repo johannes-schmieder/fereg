@@ -52,3 +52,10 @@ functions are PPML IRLS orchestration (2,014 physical lines), PPML route-memory
 estimation (1,208), and retained-rank solving (925). Six OLS host branches
 (representation × VCE), fast/low twins and repeated FE entry points remain
 candidate simplifications, to be chosen with coverage evidence after M1.
+
+The [M0 Mac coverage summary](../bench/history/2026-10-02-runtime-coverage-macos.json)
+maps the bounded oracle/replay campaign to 2,814 reached source functions,
+807 unreached functions and 20 without an exported instance. PPML IRLS,
+route-memory estimation and retained-rank solving are reached hotspots; the
+666-line reusable two-FE PCG path is not reached by this matrix. This is entry
+coverage, not a branch-coverage or full scientific qualification claim.

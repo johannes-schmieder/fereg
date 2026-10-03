@@ -70,6 +70,9 @@ Record those named differences rather than changing tolerances or parity silentl
 - `./scripts/run_plugin_replay.sh NEXT_PLUGIN BASELINE_PLUGIN`: actual binary corpus, fixed-thread repeatability, exact and independent checks.
 - Run the quick licensed profile and the 20 inventory fixtures using the existing Stata runner, plus only M1 selector/fix-specific additions.
 
-Coverage instrumentation uses the same mapped tests and a separate instrumented
-next plugin. Canonical comparator and timing binaries remain uninstrumented.
+Coverage instruments the mapped long oracle suite and 73-case binary replay,
+including the actual ABI assertions, in a separate next build. The complete
+Rust/allocation/transaction suite remains a required uninstrumented check.
+Coverage gaps remain explicit; no percentage is a gate. Canonical comparator
+and timing binaries remain uninstrumented.
 Only gaps revealed by this matrix or concrete failures add work to M1.3.

@@ -1,0 +1,28 @@
+name: Runtime coverage baseline
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  coverage:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+        with:
+          fetch-depth: 2
+      - name: Install the pinned LLVM coverage tools
+        run: rustup component add llvm-tools-preview
+      - name: Instrument the mapped checks and actual-plugin replay
+        run: |
+          python3 scripts/coverage_baseline.py
+          python3 scripts/summarize_coverage.py --output target/coverage-baseline/summary.json
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: runtime-coverage
+          path: |
+            target/coverage-baseline/*.json
+            target/coverage-baseline/*.log
+            target/coverage-baseline/html/
+          if-no-files-found: error
