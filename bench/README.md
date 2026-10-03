@@ -1,6 +1,6 @@
 # Benchmark suite
 
-`suite.toml` declares the 22 cells, immutable seed, comparator policy and tiers.
+`suite.toml` declares 22 general cells and six bounded M1 cells, immutable seed, comparator policy and tiers.
 `generate.py` ports the preserved synthetic generators and writes a single
 numeric DTA for every estimator. The first controls are invariant to K. Seeds,
 data hashes and generator versions are stored beside the temporary datasets.
@@ -15,7 +15,7 @@ package, the pinned Rust toolchain, and licensed Stata/MP. Use a private run roo
 ```sh
 python3 bench/setup.py --root /tmp/fereg-bench-env
 ./scripts/build_macos.sh
-python3 bench/run.py --tier smoke --engine legacy \
+python3 bench/run.py --tier smoke --engine next \
   --environment /tmp/fereg-bench-env --root /tmp/fereg-bench-smoke
 ```
 
@@ -40,9 +40,26 @@ and native-time fields, so those columns stay empty. The wall timer covers the
 whole estimation command. Neither unavailable telemetry nor a failed fit is
 represented as zero.
 
-The current legacy ado has no `engine()` selector. `--engine legacy` selects its
-only implementation. `--engine next` fails before running until M5 enables the
-manifest's explicit engine switch, after which both choices are passed through.
+Both estimators accept `engine(next|legacy)`; the runner defaults to next.
+Campaigns and each measurement record the selected binary SHA-256 and shared
+frontend identity. Legacy timing requires its canonical registered hash. The
+runner verifies the selected plugin path and returned engine in Stata, and
+rejects a binary/frontend change during the campaign. CSV summaries retain
+these identities plus median, range and median absolute deviation.
+
+For M1 comparison, run `--fereg-only --engine next` and `--fereg-only --engine legacy`
+in separate fresh roots on the same machine. Use both `--tier smoke` and
+`--tier m1`. The latter covers OLS/PPML at N=16,383/16,384 with eight regressors
+and N=100,000 with sixteen regressors, at 1/2/4/8/16 native threads. These six
+cells are excluded from the existing standard/full inventories. Compare input
+hashes, coefficients and samples between engines before interpreting timings;
+report dispersion and investigate differences beyond noise. The focused engine
+comparison holds Stata processors fixed at the licensed cap while varying
+native threads. Keep builds and
+coverage instrumentation out of timing windows. This focused comparison does
+not rerun the external-package timing arms; `--fereg-only` labels its summaries
+as engine comparisons.
+
 `--solver lsmr|cmg` is for the separately declared supported-case comparisons;
 use it together with `--solver-comparison` for the manifest's strong/weak AKM
 and three-FE PPML subset at 100,000 rows and 1/8 threads. Run each of auto,
@@ -62,8 +79,8 @@ prints pairwise ratios, geometric means, worst cells and timeouts. Missing
 commands/repetitions, reference failures, sample disagreements and nonfinite
 coefficients remain visible. Only complete accurate pairs enter aggregates;
 the passing/expected count is always printed. Partial or dirty-source smoke
-results are diagnostic, not committed-source baseline evidence. M1.6 establishes
-the committed Mac/SCC baselines. Raw logs and datasets stay in the run root.
+results are diagnostic, not committed-source baseline evidence. The current M1 plan establishes
+Mac comparisons and defers large SCC campaigns. Raw logs and datasets stay in the run root.
 
 Harness checks (no licensed command needed):
 

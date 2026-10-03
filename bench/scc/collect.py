@@ -40,7 +40,8 @@ def expected_groups(suite, tier, cell_name="all", thread_name="all"):
     spec=suite['tiers'][tier]
     cells=[{**suite['defaults'],**cell} for cell in suite['cells']]
     cells=[cell for cell in cells if (not spec.get('cells') or cell['id'] in spec['cells'])
-           and (not spec.get('non_scc') or not cell['scc'])]
+           and (not spec.get('non_scc') or not cell['scc'])
+           and (not cell.get('m1_only') or tier == 'm1')]
     result=set()
     for cell in cells:
         if cell_name!='all' and cell['id']!=cell_name:

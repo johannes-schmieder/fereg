@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M1.4 bundled installation and platform qualification; M1.3 local bounded checks pass.
+Current task: M1.4 hosted checks pending; independent M1.5 Mac timings use its qualified artifact.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -68,3 +68,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.2d this commit — 73 science; 72 unaffected cases exact; 3 Stata, full/long checks pass; +6 core lines; replay constant allocation corrected/retested.
 - 2026-10-02 M1.3 this commit — 803 native processes; 73 science cases at five thread counts, discrete/repeat checks, frozen comparison and 46 Stata pass.
 - 2026-10-02 M1.4 this commit — paired plugin packaging/help and canonical hash guard; 4 isolated Stata fixtures and 19 package tests pass; hosted platforms pending.
+- 2026-10-02 M1.5 this commit — existing runner binds engine/binary/build/frontend identity; bounded Mac ladder and noise summaries; 14 benchmark guards pass.

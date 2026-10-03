@@ -6,6 +6,7 @@ set linesize 255
 args config
 include `"`config'"'
 local processors = min(`threads', `processor_cap', c(processors_lic), c(processors_mach))
+if `fixed_host_processors' local processors = min(`processor_cap', c(processors_lic), c(processors_mach))
 set processors `processors'
 sysdir set PLUS `"`refs'"'
 sysdir set PERSONAL `"`output'"'
@@ -14,6 +15,10 @@ capture adopath - "."
 adopath ++ `"`refs'"'
 adopath ++ `"`source'/stata"'
 adopath ++ `"`source'/dist"'
+if "`arm'" == "fereg" {
+    quietly findfile `plugin_name'
+    assert `"`r(fn)'"' == `"`source'/dist/`plugin_name'"'
+}
 quietly use `"`dataset'"', clear
 local xvars
 forvalues j = 1/`k' {
@@ -56,6 +61,11 @@ file write `metadata' "rc" _tab "`rc'" _n "seconds" _tab %24.17g (`seconds') _n
 file write `metadata' "processors" _tab "`processors'" _n
 file write `metadata' "engine" _tab "`engine'" _n
 if !`rc' {
+    if "`arm'" == "fereg" {
+        local actual_engine "`e(fereg_engine)'"
+        if "`model'" == "ppml" local actual_engine "`e(feppml_engine)'"
+        file write `metadata' "actual_engine" _tab "`actual_engine'" _n
+    }
     file write `metadata' "N" _tab %24.17g (e(N)) _n
     tempname coeff
     file open `coeff' using `"`output'/coefficients.csv"', write text replace

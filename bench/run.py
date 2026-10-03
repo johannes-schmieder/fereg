@@ -3,6 +3,7 @@
 from __future__ import annotations
 import argparse
 import copy
+import hashlib
 import json
 import os
 from pathlib import Path
@@ -34,6 +35,7 @@ def solver_comparison_suite(suite, tier):
 def selected_cells(suite, tier):
     spec = suite["tiers"][tier]
     cells = [{**suite["defaults"], **cell} for cell in suite["cells"]]
+    cells = [cell for cell in cells if not cell.get("m1_only") or tier == "m1"]
     if spec.get("cells"):
         cells = [cell for cell in cells if cell["id"] in spec["cells"]]
     if spec.get("non_scc"):
@@ -58,6 +60,30 @@ def source_identity(root):
     sha = subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     dirty = bool(subprocess.check_output(["git", "status", "--porcelain"], cwd=root, text=True).strip())
     return sha, dirty
+
+
+def native_identity(engine):
+    platform_name = {"Darwin": "macos", "Linux": "linux", "Windows": "windows"}[platform.system()]
+    name = f"fereg_{'legacy_' if engine == 'legacy' else ''}{platform_name}.plugin"
+    plugin = ROOT / 'dist' / name
+    binary_hash = sha256(plugin)
+    if engine == 'legacy':
+        baseline = json.loads((ROOT / 'legacy/baseline.json').read_text())
+        if binary_hash != baseline['assets'][platform_name]['sha256']:
+            raise ValueError('timings require the canonical frozen comparator')
+    build_source = None
+    manifest = ROOT / 'dist/RELEASE_MANIFEST.json'
+    if manifest.exists():
+        metadata = json.loads(manifest.read_text())
+        selected = next((p for p in metadata['plugins'] if p['path'] == name), None)
+        if selected is None or selected['sha256'] != binary_hash or selected['engine'] != engine:
+            raise ValueError('native binary differs from the qualified package manifest')
+        build_source = selected['source_sha']
+    files = {str(p.relative_to(ROOT)): sha256(p) for p in sorted((ROOT / 'stata').iterdir())
+             if p.suffix in {'.ado', '.mo'}}
+    frontend_hash = hashlib.sha256(json.dumps(files, sort_keys=True).encode()).hexdigest()
+    return {'plugin_filename': name, 'plugin_sha256': binary_hash, 'build_source_commit': build_source,
+            'frontend_sha256': frontend_hash, 'frontend_files': files}
 
 
 def selected_threads(suite, tier, cell, only):
@@ -106,9 +132,10 @@ def measure(args, suite, cell, arm, threads, repetition, dataset, environment, r
     settings = {"source": str(ROOT), "refs": environment["references"], "r_library": environment["r_library"],
                 "dataset": str(dataset), "output": str(directory), "arm": arm, "model": cell["model"],
                 "k": cell["regressors"], "effects": cell["effects"], "threads": threads,
-                "processor_cap": args.stata_processors, "slopes": int(cell.get("slopes", False)),
+                "processor_cap": args.stata_processors, "fixed_host_processors": int(args.fereg_only), "slopes": int(cell.get("slopes", False)),
                 "outputs": int(cell["outputs"]), "weights": cell["weights"], "vce": cell["vce"],
                 "engine": args.engine, "engine_option": int(suite["engine_option"]),
+                "plugin_name": args.native_identity["plugin_filename"],
                 "solver": "auto" if reference else args.solver, "tolerance": suite["protocol"]["reference_tolerance"] if reference else ""}
     write_configuration(directory, settings)
     if arm.startswith("fixest"):
@@ -119,9 +146,14 @@ def measure(args, suite, cell, arm, threads, repetition, dataset, environment, r
     result = launch(command, directory, suite["tiers"][args.tier]["timeout_seconds"])
     metadata = read_metadata(directory / "metadata.tsv")
     result.update({"cell": cell["id"], "arm": arm, "threads": threads, "repetition": repetition,
-                   "reference": reference, "directory": str(directory), "metadata": metadata})
+                   "reference": reference, "directory": str(directory), "metadata": metadata,
+                   "engine": args.engine, "plugin_sha256": args.native_identity["plugin_sha256"],
+                   "native_build_source": args.native_identity["build_source_commit"],
+                   "frontend_sha256": args.native_identity["frontend_sha256"]})
     result["status"] = result["process_status"]
     if result["status"] == "ok" and (metadata.get("complete") != "1" or metadata.get("rc") != "0"):
+        result["status"] = "error"
+    if arm == "fereg" and result["status"] == "ok" and metadata.get("actual_engine") != args.engine:
         result["status"] = "error"
     if result["status"] == "ok" and (not (directory / "coefficients.csv").exists() or not (directory / "sample.csv").exists()):
         result["status"] = "error"
@@ -147,7 +179,9 @@ def run(args):
     if args.solver_comparison:
         suite = solver_comparison_suite(suite, args.tier)
     if args.engine == "next" and not suite["engine_option"]:
-        raise ValueError("engine(next) is unavailable before the M5 seam; it cannot run as legacy")
+        raise ValueError("the benchmark suite must enable the engine selector")
+    if args.fereg_only:
+        suite["comparators"] = {"ols": ["fereg"], "ppml": ["fereg"]}
     cells = selected_cells(suite, args.tier)
     if args.cells:
         names = set(args.cells.split(","))
@@ -160,6 +194,7 @@ def run(args):
     if args.plan_only:
         print(json.dumps(plan, indent=2))
         return
+    args.native_identity = native_identity(args.engine)
     environment = json.loads((args.environment / "environment.json").read_text())
     validate_environment(environment)
     if args.root.exists():
@@ -169,9 +204,10 @@ def run(args):
     records = []
     source_sha, source_dirty = source_identity(ROOT)
     campaign = {"source_sha": source_sha, "source_dirty": source_dirty, "platform": platform.system().lower(),
-                "tier": args.tier, "comparison": "solver" if args.solver_comparison else "default", "partial": bool(args.cells or args.threads_only is not None), "engine": args.engine, "solver": args.solver,
+                "tier": args.tier, "comparison": "solver" if args.solver_comparison else ("engine" if args.fereg_only else "default"), "partial": bool(args.cells or args.threads_only is not None), "engine": args.engine, "solver": args.solver,
                 "protocol": suite["protocol"], "suite_sha256": sha256(ROOT / "bench/suite.toml"),
-                "environment": environment["source_hashes"], "records": records,
+                "environment": environment["source_hashes"], "native_identity": args.native_identity,
+                "fereg_only": args.fereg_only, "records": records,
                 "expected_groups": [[cell["id"], threads, arm] for cell, threads in plan
                     for arm in suite["comparators"][cell["model"]]]}
     for cell in cells:
@@ -192,6 +228,8 @@ def run(args):
                     (args.root / "results.json").write_text(json.dumps(campaign, indent=2) + "\n")
                     if record["status"] != "ok":
                         break
+    if native_identity(args.engine) != args.native_identity:
+        raise ValueError("native binary or frontend changed during timing")
     campaign["wall_seconds"] = time.monotonic()-started
     campaign["wall_budget_seconds"] = suite["tiers"][args.tier].get("wall_budget_seconds")
     (args.root / "results.json").write_text(json.dumps(campaign, indent=2) + "\n")
@@ -201,11 +239,12 @@ def run(args):
 
 def arguments():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tier", choices=["smoke","standard","full"], default="smoke")
+    parser.add_argument("--tier", choices=["smoke","standard","full","m1"], default="smoke")
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--environment", type=Path, required=True)
     parser.add_argument("--summary", type=Path)
-    parser.add_argument("--engine", choices=["legacy","next"], default="legacy")
+    parser.add_argument("--engine", choices=["legacy","next"], default="next")
+    parser.add_argument("--fereg-only", action="store_true", help="time only the selected engine; keep external comparator campaigns separate")
     parser.add_argument("--solver-comparison", action="store_true")
     parser.add_argument("--solver", choices=["auto","lsmr","cmg"], default="auto")
     parser.add_argument("--stata", default=os.environ.get("STATA_BIN", "/Applications/Stata/StataMP.app/Contents/MacOS/stata-mp" if platform.system()=="Darwin" else "stata-mp"))

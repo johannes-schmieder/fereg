@@ -8,23 +8,48 @@ import sys
 import tempfile
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compare import accuracy, summarize
 from generate import generate, prepare_external, sha256
+import run as runner
 from run import launch, load_suite, selected_cells, thread_counts, solver_comparison_suite, run
 
 
 class SuiteTests(unittest.TestCase):
     def test_manifest_has_required_cells_and_thread_ladder(self):
         suite = load_suite()
-        self.assertEqual(len(suite["cells"]), 22)
+        self.assertEqual(len(suite["cells"]), 28)
         self.assertEqual(len(selected_cells(suite, "smoke")), 4)
         self.assertEqual(len(selected_cells(suite, "standard")), 19)
         cells = selected_cells(suite, "full")
         for cell in cells:
             expected = [1,2,4,8,14,28] if cell["id"] in suite["tiers"]["full"]["ladder_cells"] else [1,8]
             self.assertEqual(thread_counts(suite,"full",cell), expected)
+
+    def test_m1_ladder_is_bounded_and_identity_rejects_rebuilt_legacy(self):
+        suite = load_suite()
+        self.assertTrue(suite['engine_option'])
+        cells = selected_cells(suite, 'm1')
+        self.assertEqual(len(cells), 6)
+        self.assertEqual({c['rows'] for c in cells}, {16383, 16384, 100000})
+        self.assertTrue(all(thread_counts(suite, 'm1', c) == [1, 2, 4, 8, 16] for c in cells))
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            for folder in ['dist', 'stata', 'legacy']: (root / folder).mkdir()
+            plugin = root / 'dist/fereg_legacy_macos.plugin'
+            plugin.write_bytes(b'canonical')
+            helper = root / 'stata/helper.ado'
+            helper.write_text('version 18.0')
+            (root / 'legacy/baseline.json').write_text(json.dumps({'assets': {'macos': {'sha256': sha256(plugin)}}}))
+            with patch.object(runner, 'ROOT', root), patch.object(runner.platform, 'system', return_value='Darwin'):
+                before = runner.native_identity('legacy')
+                helper.write_text('version 18.0\nchanged')
+                self.assertNotEqual(before['frontend_sha256'], runner.native_identity('legacy')['frontend_sha256'])
+                plugin.write_bytes(b'a different build')
+                with self.assertRaisesRegex(ValueError, 'canonical frozen'):
+                    runner.native_identity('legacy')
 
     def test_generator_is_byte_reproducible_and_keeps_first_controls(self):
         import pandas as pd

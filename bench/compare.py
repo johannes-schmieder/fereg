@@ -74,11 +74,18 @@ def summarize(path, destination=None):
         if any(check=="disagreement" for check,_ in checks):
             verdict = "disagreement"
         seconds = median_metadata(measured,"seconds") if complete else ""
+        timings = [float(r["metadata"]["seconds"]) for r in measured] if isinstance(seconds, (int, float)) else []
         rows.append({"date": date.today().isoformat(), "source_sha": campaign["source_sha"],
                      "dirty": campaign["source_dirty"], "platform": campaign["platform"], "tier": campaign["tier"],
                      "partial": campaign["partial"], "comparison": campaign.get("comparison", "default"), "engine": campaign["engine"], "solver": campaign["solver"],
+                     "native_build_source": campaign.get("native_identity", {}).get("build_source_commit", ""),
+                     "plugin_sha256": campaign.get("native_identity", {}).get("plugin_sha256", ""),
+                     "frontend_sha256": campaign.get("native_identity", {}).get("frontend_sha256", ""),
                      "cell": cell, "threads": threads, "arm": arm, "status": status, "accuracy": verdict,
                      "repetitions": len(measured), "seconds": seconds,
+                     "seconds_min": min(timings) if timings else "",
+                     "seconds_max": max(timings) if timings else "",
+                     "seconds_mad": statistics.median(abs(v-seconds) for v in timings) if timings else "",
                      "input_seconds": median_metadata(measured,"input_seconds") if complete else "",
                      "native_seconds": median_metadata(measured,"native_seconds") if complete else "",
                      "total_seconds": median_metadata(measured,"total_seconds") if complete else "",
@@ -101,6 +108,8 @@ def summarize(path, destination=None):
         partial = "-partial" if campaign["partial"] else ""
         if campaign.get("comparison") == "solver":
             partial += "-solvers-" + campaign["solver"]
+        if campaign.get("comparison") == "engine":
+            partial += "-engine-" + campaign["engine"]
         destination = ROOT / "bench/history" / f"{date.today()}-{campaign['source_sha'][:8]}{suffix}-{campaign['platform']}-{campaign['tier']}{partial}.csv"
     destination = Path(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)

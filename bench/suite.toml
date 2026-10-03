@@ -1,7 +1,7 @@
 schema = 1
 seed = 739391
-# Set true at M5 when the public estimation seam accepts engine().
-engine_option = false
+# Both public estimators accept the explicit native engine selector.
+engine_option = true
 
 [protocol]
 warmups = 1
@@ -185,3 +185,66 @@ cells = ["ols-2fe-akm-strong", "ols-2fe-akm-weak", "ppml-3fe-gravity"]
 rows = 100000
 threads = [1, 8]
 solvers = ["auto", "lsmr", "cmg"]
+
+# Bounded Mac qualification around inherited N/width/thread routing boundaries.
+[tiers.m1]
+cells = ["m1-ols-n16383-k8", "m1-ols-n16384-k8", "m1-ols-n100000-k16", "m1-ppml-n16383-k8", "m1-ppml-n16384-k8", "m1-ppml-n100000-k16"]
+threads = [1, 2, 4, 8, 16]
+timeout_seconds = 300
+
+[[cells]]
+id = "m1-ols-n16383-k8"
+model = "ols"
+design = "dense"
+effects = 2
+rows = 16383
+regressors = 8
+m1_only = true
+
+[[cells]]
+id = "m1-ols-n16384-k8"
+model = "ols"
+design = "dense"
+effects = 2
+rows = 16384
+regressors = 8
+m1_only = true
+
+[[cells]]
+id = "m1-ols-n100000-k16"
+model = "ols"
+design = "dense"
+effects = 2
+rows = 100000
+regressors = 16
+m1_only = true
+
+[[cells]]
+id = "m1-ppml-n16383-k8"
+model = "ppml"
+design = "gravity"
+vce = "robust"
+effects = 2
+rows = 16383
+regressors = 8
+m1_only = true
+
+[[cells]]
+id = "m1-ppml-n16384-k8"
+model = "ppml"
+design = "gravity"
+vce = "robust"
+effects = 2
+rows = 16384
+regressors = 8
+m1_only = true
+
+[[cells]]
+id = "m1-ppml-n100000-k16"
+model = "ppml"
+design = "gravity"
+vce = "robust"
+effects = 2
+rows = 100000
+regressors = 16
+m1_only = true
