@@ -224,6 +224,8 @@ rebuild's similarly numbered tasks; frozen legacy remains available.
 - **M4 — QR completion:** share the fast/low triangular solve, coefficient/status
   finalization and matching rank decisions. Keep storage access and allocations
   at their existing boundaries; preserve arithmetic and error precedence.
+  Shared QR invariant failures use common wording, retaining error codes;
+  path-specific norm validation remains intact.
 - **M5 — Wald calculation:** consolidate robust/clustered finite-coefficient
   Wald work where the algebra and rank policy agree. Keep estimator-specific
   covariance construction, PSD policy and independently checked certificates.

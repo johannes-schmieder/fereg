@@ -4498,6 +4498,104 @@ fn classify_qr_candidates<P: PreparedOlsFitView + ?Sized>(
     Ok(())
 }
 
+fn select_qr_pivot(candidates: &[usize], norms: &[f64], rank: usize) -> (usize, f64) {
+    let mut position = rank;
+    let mut norm = norms[rank];
+    for (candidate, candidate_norm) in norms.iter().copied().enumerate().skip(rank + 1) {
+        let scale = candidate_norm.abs().max(norm.abs());
+        let tied = (candidate_norm - norm).abs() <= 64.0 * f64::EPSILON * scale;
+        if candidate_norm > norm && !tied || tied && candidates[candidate] < candidates[position] {
+            position = candidate;
+            norm = candidate_norm;
+        }
+    }
+    (position, norm)
+}
+
+fn solve_qr_triangle(
+    qr: &DenseMatrix,
+    candidates: &[usize],
+    coefficients: &mut [f64],
+    threshold: f64,
+) -> Result<()> {
+    for position in (0..coefficients.len()).rev() {
+        let diagonal = qr[(position, candidates[position] + 1)];
+        if !diagonal.is_finite() || diagonal.abs() <= threshold {
+            return Err(invalid_data(
+                "prepared OLS QR triangular diagonal is invalid",
+            ));
+        }
+        let mut value = qr[(position, 0)];
+        for later in (position + 1)..coefficients.len() {
+            value = (-qr[(position, candidates[later] + 1)]).mul_add(coefficients[later], value);
+        }
+        let scaled = value / diagonal;
+        if !scaled.is_finite() {
+            return Err(invalid_data("prepared OLS QR coefficient is not finite"));
+        }
+        coefficients[position] = scaled;
+    }
+    Ok(())
+}
+
+struct QrColumnOutput<'a> {
+    coefficients: &'a mut [Option<f64>],
+    statuses: &'a mut [PreparedOlsFitStatus],
+    kept: &'a mut Vec<usize>,
+    dropped: &'a mut Vec<usize>,
+}
+
+impl QrColumnOutput<'_> {
+    fn finish(
+        self,
+        candidates: &[usize],
+        scaled: &[f64],
+        reference_norms: &[f64],
+        perturb_first: bool,
+    ) -> Result<()> {
+        for (position, value) in scaled.iter().copied().enumerate() {
+            let column = candidates[position];
+            let coefficient = value / reference_norms[column];
+            if !coefficient.is_finite() {
+                return Err(invalid_data(
+                    "prepared OLS QR coefficient rescaling is not finite",
+                ));
+            }
+            self.coefficients[column] = Some(coefficient);
+            self.statuses[column] = PreparedOlsFitStatus::Kept;
+            push_reserved(
+                self.kept,
+                column,
+                "prepared OLS QR kept-column capacity exhausted",
+            )?;
+        }
+        for &column in &candidates[scaled.len()..] {
+            self.statuses[column] = PreparedOlsFitStatus::NumericallyRankDeficient;
+        }
+        if perturb_first {
+            let coefficient = self
+                .coefficients
+                .iter_mut()
+                .flatten()
+                .next()
+                .ok_or_else(|| {
+                    invalid_argument("injected perturbation requires a kept coefficient")
+                })?;
+            *coefficient += 0.25;
+        }
+        for (column, status) in self.statuses.iter().copied().enumerate() {
+            if status != PreparedOlsFitStatus::Kept {
+                push_reserved(
+                    self.dropped,
+                    column,
+                    "prepared OLS QR dropped-column capacity exhausted",
+                )?;
+            }
+        }
+        Ok(())
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
@@ -4732,19 +4830,8 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         if rank > 0 {
             fill_trailing_norms(within, &candidate_columns, rank, &mut trailing_norms)?;
         }
-        let mut pivot_position = rank;
-        let mut pivot_norm = trailing_norms[rank];
-        for (position, candidate_norm) in trailing_norms.iter().copied().enumerate().skip(rank + 1)
-        {
-            let tie_scale = candidate_norm.abs().max(pivot_norm.abs());
-            let tied = (candidate_norm - pivot_norm).abs() <= 64.0 * f64::EPSILON * tie_scale;
-            if candidate_norm > pivot_norm && !tied
-                || tied && candidate_columns[position] < candidate_columns[pivot_position]
-            {
-                pivot_position = position;
-                pivot_norm = candidate_norm;
-            }
-        }
+        let (pivot_position, pivot_norm) =
+            select_qr_pivot(&candidate_columns, &trailing_norms, rank);
         if pivot_norm <= absolute_threshold {
             break;
         }
@@ -4830,62 +4917,24 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         ));
     }
 
-    for position in (0..rank).rev() {
-        let column = candidate_columns[position] + 1;
-        let diagonal = within[(position, column)];
-        if !diagonal.is_finite() || diagonal.abs() <= absolute_threshold {
-            return Err(invalid_data(
-                "prepared OLS QR triangular diagonal is invalid",
-            ));
-        }
-        let mut value = within[(position, 0)];
-        for later in (position + 1)..rank {
-            let later_column = candidate_columns[later] + 1;
-            value = (-within[(position, later_column)]).mul_add(pivot_coefficients[later], value);
-        }
-        let scaled = value / diagonal;
-        if !scaled.is_finite() {
-            return Err(invalid_data("prepared OLS QR coefficient is not finite"));
-        }
-        pivot_coefficients[position] = scaled;
+    solve_qr_triangle(
+        within,
+        &candidate_columns,
+        &mut pivot_coefficients[..rank],
+        absolute_threshold,
+    )?;
+    QrColumnOutput {
+        coefficients: &mut generated_coefficients,
+        statuses: &mut generated_statuses,
+        kept: &mut kept,
+        dropped: &mut dropped,
     }
-
-    for position in 0..rank {
-        let column = candidate_columns[position];
-        let coefficient = pivot_coefficients[position] / reference_norms[column];
-        if !coefficient.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS coefficient rescaling is not finite",
-            ));
-        }
-        generated_coefficients[column] = Some(coefficient);
-        generated_statuses[column] = PreparedOlsFitStatus::Kept;
-        push_reserved(
-            &mut kept,
-            column,
-            "prepared OLS kept-column capacity exhausted",
-        )?;
-    }
-    for &column in &candidate_columns[rank..] {
-        generated_statuses[column] = PreparedOlsFitStatus::NumericallyRankDeficient;
-    }
-    if perturb_first_coefficient {
-        let coefficient = generated_coefficients
-            .iter_mut()
-            .flatten()
-            .next()
-            .ok_or_else(|| invalid_argument("injected perturbation requires a kept coefficient"))?;
-        *coefficient += 0.25;
-    }
-    for (column, status) in generated_statuses.iter().copied().enumerate() {
-        if status != PreparedOlsFitStatus::Kept {
-            push_reserved(
-                &mut dropped,
-                column,
-                "prepared OLS dropped-column capacity exhausted",
-            )?;
-        }
-    }
+    .finish(
+        &candidate_columns,
+        &pivot_coefficients[..rank],
+        reference_norms,
+        perturb_first_coefficient,
+    )?;
 
     let condition_proxy = if rank == 0 || smallest_diagonal == 0.0 {
         if rank == 0 {
@@ -5177,19 +5226,8 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let mut largest_diagonal = 0.0_f64;
     let mut smallest_diagonal = f64::INFINITY;
     while rank < nrows.min(candidate_count) {
-        let mut pivot_position = rank;
-        let mut pivot_norm = trailing_norms[rank];
-        for (position, candidate_norm) in trailing_norms.iter().copied().enumerate().skip(rank + 1)
-        {
-            let tie_scale = candidate_norm.abs().max(pivot_norm.abs());
-            let tied = (candidate_norm - pivot_norm).abs() <= 64.0 * f64::EPSILON * tie_scale;
-            if candidate_norm > pivot_norm && !tied
-                || tied && candidate_columns[position] < candidate_columns[pivot_position]
-            {
-                pivot_position = position;
-                pivot_norm = candidate_norm;
-            }
-        }
+        let (pivot_position, pivot_norm) =
+            select_qr_pivot(&candidate_columns, &trailing_norms, rank);
         if pivot_norm <= absolute_threshold {
             break;
         }
@@ -5291,62 +5329,24 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     }
     let compact_qr = DenseMatrix::from_row_major(rank, compact_columns, compact_values)?;
 
-    for position in (0..rank).rev() {
-        let column = candidate_columns[position] + 1;
-        let diagonal = compact_qr[(position, column)];
-        if !diagonal.is_finite() || diagonal.abs() <= absolute_threshold {
-            return Err(invalid_data(
-                "prepared OLS low-memory triangular diagonal is invalid",
-            ));
-        }
-        let mut value = within_outcome[position];
-        for later in (position + 1)..rank {
-            value = (-compact_qr[(position, candidate_columns[later] + 1)])
-                .mul_add(pivot_coefficients[later], value);
-        }
-        pivot_coefficients[position] = value / diagonal;
-        if !pivot_coefficients[position].is_finite() {
-            return Err(invalid_data(
-                "prepared OLS low-memory coefficient is not finite",
-            ));
-        }
+    solve_qr_triangle(
+        &compact_qr,
+        &candidate_columns,
+        &mut pivot_coefficients[..rank],
+        absolute_threshold,
+    )?;
+    QrColumnOutput {
+        coefficients: &mut generated_coefficients,
+        statuses: &mut generated_statuses,
+        kept: &mut kept,
+        dropped: &mut dropped,
     }
-    for position in 0..rank {
-        let generated = candidate_columns[position];
-        let coefficient = pivot_coefficients[position] / reference_norms[generated];
-        if !coefficient.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS low-memory coefficient rescaling is not finite",
-            ));
-        }
-        generated_coefficients[generated] = Some(coefficient);
-        generated_statuses[generated] = PreparedOlsFitStatus::Kept;
-        push_reserved(
-            &mut kept,
-            generated,
-            "prepared OLS low-memory kept-column capacity exhausted",
-        )?;
-    }
-    for generated in candidate_columns.iter().copied().skip(rank) {
-        generated_statuses[generated] = PreparedOlsFitStatus::NumericallyRankDeficient;
-    }
-    if perturb_first_coefficient {
-        let coefficient = generated_coefficients
-            .iter_mut()
-            .flatten()
-            .next()
-            .ok_or_else(|| invalid_argument("injected perturbation requires a kept coefficient"))?;
-        *coefficient += 0.25;
-    }
-    for (generated, status) in generated_statuses.iter().copied().enumerate() {
-        if status != PreparedOlsFitStatus::Kept {
-            push_reserved(
-                &mut dropped,
-                generated,
-                "prepared OLS low-memory dropped-column capacity exhausted",
-            )?;
-        }
-    }
+    .finish(
+        &candidate_columns,
+        &pivot_coefficients[..rank],
+        reference_norms,
+        perturb_first_coefficient,
+    )?;
 
     let condition_proxy = if rank == 0 || smallest_diagonal == 0.0 {
         if rank == 0 {
@@ -8057,6 +8057,27 @@ mod tests {
     };
     use crate::sandwich::SandwichDesign;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn qr_triangle_keeps_pivot_order_and_rejects_invalid_values() {
+        let qr = DenseMatrix::from_row_major(2, 3, vec![7.0, 1.0, 2.0, 3.0, 3.0, 0.0]).unwrap();
+        let mut coefficients = [0.0; 2];
+        solve_qr_triangle(&qr, &[1, 0], &mut coefficients, 1e-12).unwrap();
+        assert_eq!(coefficients, [3.0, 1.0]);
+        for diagonal in [0.0, f64::NAN, f64::INFINITY] {
+            let qr = DenseMatrix::from_row_major(1, 2, vec![1.0, diagonal]).unwrap();
+            let error = solve_qr_triangle(&qr, &[0], &mut [0.0], 1e-12).unwrap_err();
+            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert_eq!(
+                error.message,
+                "prepared OLS QR triangular diagonal is invalid"
+            );
+        }
+        let qr = DenseMatrix::from_row_major(1, 2, vec![f64::MAX, 0.5]).unwrap();
+        let error = solve_qr_triangle(&qr, &[0], &mut [0.0], 0.0).unwrap_err();
+        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(error.message, "prepared OLS QR coefficient is not finite");
+    }
 
     #[test]
     fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
