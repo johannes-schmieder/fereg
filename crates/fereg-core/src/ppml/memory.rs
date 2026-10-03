@@ -771,19 +771,28 @@ impl PpmlMemoryPlan {
             })
     }
 
-    /// Optional storage must never make an otherwise affordable fit fail.
-    pub(crate) fn admit_reusable_projection(&mut self, bytes: u128) -> bool {
-        let Some(peak) = self
+    // Charges contain the other two optional buffers and the proposed replacement.
+    fn reusable_workspaces_fit(&self, charges: [u128; 3]) -> bool {
+        let Some(base) = self
             .selected_inventory()
             .peak_bytes
             .checked_add(self.solver_workspace_bytes)
-            .and_then(|n| n.checked_add(self.reusable_certificate_bytes))
-            .and_then(|n| n.checked_add(self.reusable_slope_bytes))
-            .and_then(|n| n.checked_add(bytes))
         else {
             return false;
         };
-        if self.usable_bytes.is_some_and(|usable| peak > usable) {
+        charges
+            .into_iter()
+            .try_fold(base, u128::checked_add)
+            .is_some_and(|peak| self.usable_bytes.is_none_or(|usable| peak <= usable))
+    }
+
+    /// Optional storage must never make an otherwise affordable fit fail.
+    pub(crate) fn admit_reusable_projection(&mut self, bytes: u128) -> bool {
+        if !self.reusable_workspaces_fit([
+            self.reusable_certificate_bytes,
+            self.reusable_slope_bytes,
+            bytes,
+        ]) {
             return false;
         }
         self.reusable_projection_bytes = bytes;
@@ -791,17 +800,11 @@ impl PpmlMemoryPlan {
     }
 
     pub(crate) fn admit_reusable_certificate(&mut self, bytes: u128) -> bool {
-        let Some(peak) = self
-            .selected_inventory()
-            .peak_bytes
-            .checked_add(self.solver_workspace_bytes)
-            .and_then(|n| n.checked_add(self.reusable_projection_bytes))
-            .and_then(|n| n.checked_add(self.reusable_slope_bytes))
-            .and_then(|n| n.checked_add(bytes))
-        else {
-            return false;
-        };
-        if self.usable_bytes.is_some_and(|usable| peak > usable) {
+        if !self.reusable_workspaces_fit([
+            self.reusable_projection_bytes,
+            self.reusable_slope_bytes,
+            bytes,
+        ]) {
             return false;
         }
         self.reusable_certificate_bytes = bytes;
@@ -809,17 +812,11 @@ impl PpmlMemoryPlan {
     }
 
     pub(crate) fn admit_reusable_slope(&mut self, bytes: u128) -> bool {
-        let Some(peak) = self
-            .selected_inventory()
-            .peak_bytes
-            .checked_add(self.solver_workspace_bytes)
-            .and_then(|n| n.checked_add(self.reusable_projection_bytes))
-            .and_then(|n| n.checked_add(self.reusable_certificate_bytes))
-            .and_then(|n| n.checked_add(bytes))
-        else {
-            return false;
-        };
-        if self.usable_bytes.is_some_and(|usable| peak > usable) {
+        if !self.reusable_workspaces_fit([
+            self.reusable_projection_bytes,
+            self.reusable_certificate_bytes,
+            bytes,
+        ]) {
             return false;
         }
         self.reusable_slope_bytes = bytes;
@@ -1009,6 +1006,54 @@ pub(crate) fn plan_ppml_memory_with_probe(
         reusable_certificate_bytes: 0,
         reusable_slope_bytes: 0,
     })
+}
+
+// Resident buffers and scratch-file capacity have distinct owners.
+struct PpmlStorageContribution {
+    resident_bytes: u128,
+    io_buffer_bytes: u128,
+    scratch_file_bytes: u128,
+    projection_rhs: u128,
+}
+
+fn storage_contribution(
+    n: u128,
+    k: u128,
+    pool: u128,
+    route: PpmlMemoryRoute,
+) -> Result<PpmlStorageContribution> {
+    match route {
+        PpmlMemoryRoute::Fast => {
+            // Compaction changes length, not the original N-by-(K+1) capacity.
+            let projection_rhs = k
+                .checked_add(1)
+                .ok_or_else(|| allocation("PPML fast retained stride overflows"))?;
+            Ok(PpmlStorageContribution {
+                resident_bytes: bytes_f64(checked_mul(
+                    n,
+                    projection_rhs,
+                    "PPML fast retained within design capacity",
+                )?)?,
+                io_buffer_bytes: 0,
+                scratch_file_bytes: 0,
+                projection_rhs,
+            })
+        }
+        PpmlMemoryRoute::Low => {
+            let resident_bytes = bytes_f64(checked_mul(n, pool, "PPML low within-design pool")?)?;
+            let scratch_file_bytes = bytes_f64(checked_mul(n, k, "PPML low scratch cells")?)?;
+            let io_buffer_bytes = scratch_file_bytes
+                .min(LOW_SCRATCH_IO_BUFFER_CEILING_BYTES)
+                .max(bytes_f64(k)?)
+                .max(size_of::<f64>() as u128);
+            Ok(PpmlStorageContribution {
+                resident_bytes,
+                io_buffer_bytes,
+                scratch_file_bytes,
+                projection_rhs: pool.max(1),
+            })
+        }
+    }
 }
 
 fn estimate_route(
@@ -1328,14 +1373,17 @@ fn estimate_route(
             "PPML generation reserved coefficient axis",
         )?,
     ])?;
-    let legacy_generation_bytes = checked_sum(&[
+    let generation_row_allowance = checked_mul(n, word, "PPML generation row allowance")?;
+    // Both current and replacement generations own this payload; row ledgers
+    // and staging remain separate charges at their actual overlap boundaries.
+    let prepared_model_payload = checked_sum(&[
         canonical_numeric_bytes,
         topology_bytes,
         cluster_topology_bytes,
         prepared_model_metadata_bytes,
-        checked_mul(n, word, "PPML generation row allowance")?,
-        original_n,
     ])?;
+    let legacy_generation_bytes =
+        checked_sum(&[prepared_model_payload, generation_row_allowance, original_n])?;
     let prepared_generation_supplement_bytes =
         prepared_generation_bytes.saturating_sub(legacy_generation_bytes);
     // Atomic rebase is a true old-plus-new transaction.  The ordinary
@@ -1350,10 +1398,7 @@ fn estimate_route(
     let replacement_row_map_bytes = checked_mul(n, word, "PPML replacement generation row map")?;
     let separation_replacement_generation_bytes = if dimensions.separation_rebase_enabled {
         checked_sum(&[
-            canonical_numeric_bytes,
-            topology_bytes,
-            cluster_topology_bytes,
-            prepared_model_metadata_bytes,
+            prepared_model_payload,
             prepared_generation_supplement_bytes,
             dimensions.metadata.preparation_transient_bytes,
             replacement_drop_reason_bytes,
@@ -1467,46 +1512,10 @@ fn estimate_route(
         COEFFICIENT_VECTOR_COUNT,
         "PPML reusable coefficient vectors",
     )?)?;
-    let retained_within_cells = match route {
-        // Fast storage is a strided N-by-(K+1) matrix before in-place
-        // structural-constant compaction. Truncation changes logical length,
-        // not Vec capacity, so the fit-lifetime resident charge must retain
-        // the complete allocation.
-        PpmlMemoryRoute::Fast => checked_mul(
-            n,
-            k.checked_add(1)
-                .ok_or_else(|| allocation("PPML fast retained stride overflows"))?,
-            "PPML fast retained within design capacity",
-        )?,
-        PpmlMemoryRoute::Low => checked_mul(n, pool, "PPML low within-design pool")?,
-    };
-    let retained_within_resident_bytes = bytes_f64(retained_within_cells)?;
-    let retained_within_io_buffer_bytes = match route {
-        PpmlMemoryRoute::Fast => 0,
-        PpmlMemoryRoute::Low => {
-            let scratch_bytes = bytes_f64(checked_mul(n, k, "PPML low scratch cells")?)?;
-            let complete_row_bytes = bytes_f64(k)?;
-            scratch_bytes
-                .min(LOW_SCRATCH_IO_BUFFER_CEILING_BYTES)
-                .max(complete_row_bytes)
-                .max(size_of::<f64>() as u128)
-        }
-    };
-    let retained_within_scratch_bytes = match route {
-        PpmlMemoryRoute::Fast => 0,
-        PpmlMemoryRoute::Low => bytes_f64(checked_mul(n, k, "PPML low retained within scratch")?)?,
-    };
+    let storage = storage_contribution(n, k, pool, route)?;
 
     let square = checked_mul(k, k, "PPML finite square workspace")?;
-    let projection_rhs = match route {
-        // Initial Fast absorption owns response plus every generated column
-        // in one N-by-(K+1) matrix. The reusable MAP projector must accept
-        // that complete simultaneous RHS width.
-        PpmlMemoryRoute::Fast => k
-            .checked_add(1)
-            .ok_or_else(|| allocation("PPML fast projection RHS width overflows"))?,
-        PpmlMemoryRoute::Low => pool.max(1),
-    };
+    let projection_rhs = storage.projection_rhs;
     let effective_maximum_channels = maximum_fe_channels.max(1);
     let effective_maximum_level_members = maximum_level_members.max(1);
     let low_projection_block_cells = match route {
@@ -1712,8 +1721,8 @@ fn estimate_route(
     let separation_linear_projection_bytes = if has_numerical_detector {
         checked_sum(&[
             coefficient_buffer_bytes,
-            retained_within_resident_bytes,
-            retained_within_io_buffer_bytes,
+            storage.resident_bytes,
+            storage.io_buffer_bytes,
             fe_solver_topology_bytes,
             linear_vector_bytes,
             fe_workspace_bytes,
@@ -1732,13 +1741,14 @@ fn estimate_route(
     // ceiling already includes its own certificate/result vectors. A detector
     // may return one N-sized row proposal plus its activity mask outside that
     // method maximum.
+    let numerical_detector_workspace = checked_sum(&[
+        separation_linear_projection_bytes,
+        detector_vector_bytes,
+        detector_certificate_bytes,
+    ])?;
     let separation_workspace_bytes = checked_sum(&[
         simplex_combined_bytes
-            .max(checked_sum(&[
-                separation_linear_projection_bytes,
-                detector_vector_bytes,
-                detector_certificate_bytes,
-            ])?)
+            .max(numerical_detector_workspace)
             .max(separation_exact_level_transient_bytes),
         detector_proposal_bytes,
     ])?;
@@ -1899,14 +1909,11 @@ fn estimate_route(
         dimensions.metadata.bias_workspace_bytes,
         config.embedding_resident_bytes,
         input_owner_supplement_bytes,
-        canonical_numeric_bytes,
+        prepared_model_payload,
         retained_base_adjustment_bytes,
         retained_raw_preseparation_probability_weight_bytes,
-        topology_bytes,
-        cluster_topology_bytes,
         row_ledger_bytes,
         row_axis_arc_header_bytes,
-        prepared_model_metadata_bytes,
         prepared_generation_supplement_bytes,
         separation_method_report_row_bytes,
         separation_method_report_level_bytes,
@@ -1932,8 +1939,8 @@ fn estimate_route(
         result_metadata_bytes,
         iteration_buffer_bytes,
         coefficient_buffer_bytes,
-        retained_within_resident_bytes,
-        retained_within_io_buffer_bytes,
+        storage.resident_bytes,
+        storage.io_buffer_bytes,
         linear_result_metadata_bytes,
     ])?;
     let iteration_peak_bytes = checked_sum(&[
@@ -2001,23 +2008,16 @@ fn estimate_route(
     let separation_mu_peak_bytes = if dimensions.separation_mu_enabled {
         let mu_detection_peak = checked_sum(&[
             common,
-            separation_linear_projection_bytes,
-            detector_vector_bytes,
+            numerical_detector_workspace,
             detector_proposal_bytes,
-            detector_certificate_bytes,
             mu_exploration_retained_bytes,
         ])?;
         let mu_transaction_peak = checked_sum(&[
-            common,
-            separation_rebase_bytes,
-            separation_rebase_arc_header_bytes,
+            separation_transaction_peak_bytes,
             mu_exploration_retained_bytes,
         ])?;
-        let mu_cascade_peak = checked_sum(&[
-            common,
-            separation_cascade_workspace_bytes,
-            mu_exploration_retained_bytes,
-        ])?;
+        let mu_cascade_peak =
+            checked_sum(&[separation_cascade_peak_bytes, mu_exploration_retained_bytes])?;
         iteration_peak_bytes
             .max(separation_peak_bytes)
             .max(mu_detection_peak)
@@ -2106,32 +2106,23 @@ fn estimate_route(
         strict_final_transient_bytes,
         audit_equivalence_refresh_transient_bytes,
     ])?;
-    let inference_peak_bytes = checked_sum(&[
+    // Inference results survive recovery and publication; each phase adds
+    // only its own transient work or requested publication products.
+    let final_result_owners = checked_sum(&[
         fitted_common,
         final_drop_reason_bytes,
         separation_report_row_bytes,
         separation_report_reason_bytes,
-        inference_workspace_bytes,
         inference_result_bytes,
     ])?;
-    let fe_recovery_peak_bytes = checked_sum(&[
-        fitted_common,
-        final_drop_reason_bytes,
-        separation_report_row_bytes,
-        separation_report_reason_bytes,
-        fe_recovery_workspace_bytes,
-        inference_result_bytes,
-    ])?;
+    let inference_peak_bytes = checked_sum(&[final_result_owners, inference_workspace_bytes])?;
+    let fe_recovery_peak_bytes = checked_sum(&[final_result_owners, fe_recovery_workspace_bytes])?;
     let publication_peak_bytes = checked_sum(&[
-        fitted_common,
-        final_drop_reason_bytes,
-        separation_report_row_bytes,
-        separation_report_reason_bytes,
+        final_result_owners,
         saved_output_bytes,
         publication_bytes,
         publication_result_bytes,
         publication_validator_workspace_bytes,
-        inference_result_bytes,
     ])?;
     let peak_bytes = preparation_peak_bytes
         .max(separation_peak_bytes)
@@ -2183,9 +2174,9 @@ fn estimate_route(
         separation_cascade_workspace_bytes,
         iteration_buffer_bytes,
         coefficient_buffer_bytes,
-        retained_within_resident_bytes,
-        retained_within_io_buffer_bytes,
-        retained_within_scratch_bytes,
+        retained_within_resident_bytes: storage.resident_bytes,
+        retained_within_io_buffer_bytes: storage.io_buffer_bytes,
+        retained_within_scratch_bytes: storage.scratch_file_bytes,
         linear_vector_bytes,
         fe_workspace_bytes,
         linear_workspace_bytes,

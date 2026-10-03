@@ -1,0 +1,76 @@
+{
+  "schema": 1,
+  "milestone": "M11",
+  "scope": "Repeated PPML storage capacities, actual owner/lifetime totals and optional reuse admission; no memory policy, IRLS or solver change.",
+  "owners": {
+    "storage": "One four-field contribution: resident, I/O and disk bytes plus projection RHS count. Fast original allocation capacity survives compaction; Low pool resident storage and file capacity stay separate.",
+    "prepared_model": "Canonical numeric, FE topology, cluster topology and prepared metadata payload reused by current generation, replacement generation and common phases. Row ledgers, row allowance, staging and retained probability/offset capacity remain separate.",
+    "numerical_detector": "Linear projection, detector vectors and certificate form one shared total. Proposal, exact-level transient and simplex maxima remain separate. Mu adds retained mean to its numerical detector/cascade/transaction only.",
+    "final_results": "Fitted state, final drop reasons, separation reports and inference result survive into inference, recovery and publication. Each phase adds its own transient work.",
+    "optional_reuse": "One checked peak predicate with caller-supplied other two buffers and proposed replacement; addition order and mutation after success unchanged."
+  },
+  "evaluation_boundary": "Common owner totals computed once per route and reused across its generation/phase sums. Fast then Low evaluation remains separate to preserve failure precedence. No large cached common record, default-zero inventory or duplicate memory model.",
+  "complexity": {
+    "core_before": 104720,
+    "core_after": 104708,
+    "net_production_lines_removed": 12,
+    "estimate_route_physical_before": 1208,
+    "estimate_route_physical_after": 1154,
+    "long_functions_before_after": [
+      98,
+      98
+    ],
+    "large_files_before_after": [
+      19,
+      19
+    ],
+    "dispatch_before_after": [
+      1477,
+      1477
+    ],
+    "new_helper_functions_under150": true,
+    "interpretation": "Real accounting duplication removed, modest net reduction after counting helpers; the inherited calculation remains large."
+  },
+  "scalar_characterization": {
+    "executable": "crates/fereg-oracle/examples/memory_inventory.rs",
+    "command": "cargo run -p fereg-oracle --example memory_inventory --profile ci",
+    "parent_runtime": "bee54ffedf02145cb006a76550c2e6787cd08cb2",
+    "parent_memory_source_unchanged_through": "707efa38",
+    "shapes": 312,
+    "regular_shapes": 300,
+    "overflow_invalid_shapes": 12,
+    "admission_cases": 2808,
+    "inventory_fields": 71,
+    "both_routes": true,
+    "output_lines": 3120,
+    "exact_all_fields_and_errors": true,
+    "matching_output_sha256": "49d77fd123c300b72410c19a795a401753bb0fa99eeaddaa0d8a2d943c9a6d89",
+    "axes": "N1/17/16383/65536/100000; K0/1/5/16/65; FE0/1/2/3; threads1/4/16; slopes, retained capacities, separation/Mu/rebase/exact/singletons, outputs, audit and bias metadata varied. Fast/Low/Auto \u00d7 unknown/tiny/768MiB budget; invalid and u128 overflow edges."
+  },
+  "local_checks": {
+    "full_harness": true,
+    "isolated_allocator_audits": 9,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "parent_native_replay": {
+      "cases": 73,
+      "scientific_pass": 73,
+      "exact_parent_fields_routes": true,
+      "sha256": "bc53229cfd2f9c275ee5aff4c5487a5b2eb7e0aaac62e4000dd68eb7b9545c6a",
+      "parent_sha256": "227c9652cd135bb272c9225b31e5c692090163456b3d125d39a48bdfbdd8392d",
+      "artifact_label": "m11-memory-worktree; explicitly dirty development artifact"
+    },
+    "licensed_stata_fixtures": {
+      "passed": 7,
+      "paths": [
+        "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do"
+      ]
+    }
+  }
+}

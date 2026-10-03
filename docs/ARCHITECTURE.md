@@ -1,7 +1,7 @@
 # Incremental refactoring architecture
 
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
-M0–M8. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
+M0–M11. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -40,17 +40,17 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The [versioned inventory](cleanup/complexity.md) measures 104,721 production
+The [versioned inventory](cleanup/complexity.md) measures 104,708 production
 lines in core and 15,243 in the host. Core has 98 functions over 150 lines and
 19 files over 1,500; the host has 16 and 3. Its conservative dispatch inventory
-contains 1,474 core and 165 host candidates, including validation conditions;
+contains 1,477 core and 165 host candidates, including validation conditions;
 13 core chunk conditions are counted separately. These counts measure
 complexity; some conditions validate inputs rather than select algorithms.
 
 Largest inherited files are `fe/borrowed_map.rs` (10,162 production lines),
-`ols/prepared_fit.rs` (7,392) and `ols/linear_session.rs` (6,213). The largest
+`ols/prepared_fit.rs` (7,123) and `ols/linear_session.rs` (6,213). The largest
 functions are PPML IRLS orchestration (2,014 physical lines), PPML route-memory
-estimation (1,208), and retained-rank solving (925). Six OLS host branches
+estimation (1,154), and retained-rank solving (925). Six OLS host branches
 (representation × VCE) now share completion, but preparation/inference branches,
 fast/low twins and repeated FE entry points remain candidate simplifications.
 
@@ -139,14 +139,11 @@ three-line ratchet increase relative to the first M8 commit preserves the net
 reduction relative to M7. Both the failed timing candidate and repair evidence
 are retained in the [M8 summary](../bench/history/2026-10-03-m8-schur-preparation.json).
 
-The repaired local worktree passes the full harness, 30 long oracle tests,
-73 exact/scientific native cases at five thread counts, exact fixed-thread
-repeats and 46 licensed Stata fixtures. All 34 local timing ranges overlap;
-smoke/scaling geometric means are 1.008/0.998. Full Schur init ranges also overlap
-at every tested thread count. This establishes no speedup or hardware root cause.
-The commit/push was rejected by automatic approval review; explicit approval was
-requested. Clean final artifact qualification and repaired-runtime Linux CI are
-pending. These local results are explicitly identified as worktree diagnostics.
+The clean repaired M8 source passes 73 scientific cases at five thread counts,
+46 licensed fixtures and Linux CI 37131877394. Fresh smoke/scaling ratios are
+0.980/0.949, with no repeated regression. The evidence is local and bounded;
+it does not establish consistent acceleration or explain higher-core cliffs.
+Historical dirty diagnostics remain identified in the summary.
 
 ## Approved M9–M11
 
@@ -162,3 +159,19 @@ norm refresh and storage behavior. This removes one duplicated policy, with a
 net reduction of one production line; inherited large fit functions remain.
 [Clean paired evidence](../bench/history/2026-10-03-m9-qr-factorization.json)
 shows exact parent science and no repeatable local timing change.
+
+M10 retains the current Rayon scheduler. A fixed minimum grain of eight levels
+showed campaign gains that also appeared in inactive controls; fresh results
+did not establish an attributable broad benefit. Routes and iteration/certificate
+signatures matched. [The bounded experiment](../bench/history/2026-10-03-m10-scheduling.json)
+changes no runtime policy and does not resolve the scaling cause.
+
+M11 groups PPML resident/I/O/file storage, prepared-generation payload,
+numerical-detector work and final result owners at their existing lifetime
+boundaries. One checked predicate handles optional reuse admission. The
+71-field public inventory stays exhaustive. Owner totals are reused within
+each route; Fast then Low remain separately evaluated to preserve errors.
+The calculation falls from 1,208 to 1,154 physical lines, with a net reduction
+of twelve production lines after the new helpers. [Scalar and runtime evidence](../bench/history/2026-10-03-m11-memory.json)
+checks exact budgets and conservative allocation bounds. The broad OLS
+preparation/inference forks, FE routing and PPML IRLS orchestration remain.

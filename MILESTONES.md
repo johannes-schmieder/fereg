@@ -2,7 +2,7 @@
 
 Plan: [M0–M11](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M11.1 PPML memory owner audit and exact characterization.
+Current task: M11.3 clean combined native/thread/Stata/timing and Linux qualification.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -42,8 +42,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M9.3 Clean parent comparison, forced QR timings and CI 37134379100 pass; fresh ranges overlap.
 - [x] M10.1 Six graph/width shapes, 30 groups, grain-eight trial; 22 checks and exact 186 pairs per campaign pass.
 - [x] M10.2 No attributable broad gain established in fresh follow-up; original scheduling retained; no SCC launch.
-- [ ] M11.1 PPML memory ownership/lifetime audit and exact inventory characterization.
-- [ ] M11.2 Common inventory/storage/phase assembly; mapped allocation and scientific qualification.
+- [x] M11.1 Owners/lifetimes audited; 312 shapes, 71 fields per route, 2,808 admissions and errors exactly match parent.
+- [x] M11.2 Shared storage/owner totals/admission; core -12 lines; full/30 oracles, 73 native and 7 Stata pass.
 - [ ] M11.3 Combined native/thread/Stata/CI evidence and independent Astra max assessment.
 
 ## Gates
@@ -129,3 +129,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M9.2 this commit — shared QR rank policy; preserved norm refresh, storage, arithmetic and validation; full/30 oracles, 73 replay, native ABI and 3 Stata pass.
 - 2026-10-03 M9.3 bee54ffe — clean paired QR/smoke/scaling exact; initial timing flags do not repeat; fresh GM 1.000/0.992/1.009; Linux CI passes.
 - 2026-10-03 M10 this commit — grain8 GM 0.921 then 0.966; inactive controls also improve, 16-thread gains collapse; trial reverted; [evidence](bench/history/2026-10-03-m10-scheduling.json).
+- 2026-10-03 M11.2 this commit — inventory/admissions exact; route estimate 1208 to1154 lines, core -12; full/30 oracles, Mac ABI, exact73 replay and 7 Stata pass.
