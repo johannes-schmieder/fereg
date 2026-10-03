@@ -40,19 +40,19 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The [versioned inventory](cleanup/complexity.md) measures 104,708 production
-lines in core and 15,243 in the host. Core has 98 functions over 150 lines and
-19 files over 1,500; the host has 16 and 3. Its conservative dispatch inventory
-contains 1,477 core and 165 host candidates, including validation conditions;
-13 core chunk conditions are counted separately. These counts measure
+The [versioned inventory](cleanup/complexity.md) measures 105,187 production
+lines in core and 15,222 in the host. Core has 97 functions over 150 lines and
+19 files over 1,500; the host has 15 and 3. Its conservative dispatch inventory
+contains 1,474 core and 165 host candidates, including validation conditions;
+14 core chunk conditions are counted separately. These counts measure
 complexity; some conditions validate inputs rather than select algorithms.
 
 Largest inherited files are `fe/borrowed_map.rs` (10,162 production lines),
-`ols/prepared_fit.rs` (7,123) and `ols/linear_session.rs` (6,213). The largest
-functions are PPML IRLS orchestration (2,014 physical lines), PPML route-memory
-estimation (1,154), and retained-rank solving (925). Six OLS host branches
-(representation × VCE) now share completion, but preparation/inference branches,
-fast/low twins and repeated FE entry points remain candidate simplifications.
+`ols/prepared_fit.rs` (7,070) and `ols/linear_session.rs` (6,213). The largest
+functions are PPML route-memory estimation (1,154 physical lines), PPML IRLS
+orchestration (962), and retained-rank solving (925). Fast/Low storage remains
+distinct; the preparation, inference and exclusive FE owners described below
+replace several earlier forks without changing solver policy.
 
 The [M1 Mac coverage summary](../bench/history/2026-10-02-m1-runtime-coverage-macos.json)
 maps the bounded oracle/replay campaign to 2,813 reached source functions,
@@ -180,6 +180,54 @@ The final combined source `a5cd94ba` passes clean Mac five-thread replay and
 46 licensed fixtures plus Linux CI/native replay. The 34 local timing ranges
 all overlap (smoke/scaling ratios 1.014/0.999). M9–M11 establish maintenance
 consolidation, not consistent acceleration. The evidence summary includes the
-requested independent Astra max assessment. A candidate for the next audit is
-ordinary topology construction used temporarily for categorical source
-availability before replacement; no follow-up implementation is approved here.
+requested independent Astra max assessment. The following authorized tranche addresses temporary categorical topology and
+encoding work, duplicated inference owners, and competing FE/PPML state.
+
+
+## M12–M21: preparation and numerical-state owners
+
+Categorical preparation now consumes source availability directly, without a
+full ordinary prepared-data/topology stage that would be discarded (M12).
+Authoritative source roles eliminate slope-only categorical encodings and two
+restricted shape/size branches (M13). When the final singleton mask proves an
+unchanged row axis, non-FE ordinary/cluster encodings move into their final
+owner; changed axes still factorize final rows (M14).
+
+IID, robust and clustered OLS each have one certified owner parameterized by
+the original concrete DoF report (M15). The host prepares four dispositions,
+ordinary/categorical with/without clusters, then selects typed inference (M16).
+One `ActiveFeAbsorber` enum owns exclusive OLS FE storage; genuine route and
+probe history remain separate (M17). Fast/Low, explicit solvers, Schur policy,
+raw certification and fallback behavior remain supported and unchanged.
+
+PPML installation consumes one ordered admission owner containing the plan,
+execution overlap and accepted setup choices (M18). `OrdinaryDirection` couples
+LSMR variant identity with its workspace and excludes competing CMG/profile
+owners (M19). The canonical checkpoint session and profiled curve remain
+independent because they coexist with that direction. One typed ordinary
+canonical retry shares certification/accounting/extraction while retaining
+classified failure reasons and their mutation order (M20).
+
+`StrictCheckpointControl` owns pending work, tolerance, recovery counters,
+accepted passes and final readiness (M21). Borrowed phase methods preserve the
+candidate transaction and distinct final-Hessian synchronization; they allocate
+no new numerical representation. Its new controller file is 694 production
+lines and every method is at most 77 lines. Admission and direction modules
+also use bounded methods. The IRLS driver falls from 2,014 lines at M11 to 962.
+
+This series increases core production source by 479 lines and reduces host
+source by 21 relative to M11. Core long functions fall from 98 to 97 and host
+from 16 to 15; large-file counts stay 19/3. It removes work, duplicate layouts
+and invalid owner combinations, but does not substantially shrink the whole
+codebase. Source growth includes counted types and phase signatures. Clean
+tranche qualification and the separate review are recorded in the
+[M21 evidence](../bench/history/2026-10-03-m21-strict-recovery.json), with progress
+only in MILESTONES. Maintenance consolidation is not a speed claim.
+
+Two additional numerical witnesses remain unresolved: strict no-FE PPML
+references fail with r(430), including a full-rank constant-outcome design
+with condition number 7.885 and an independent closed-form solution; and an
+extra near-within saved-FE CG oracle fails with r(459). Both reproduce on
+qualified predecessors. The [M14](../bench/history/2026-10-03-m14-encoding-transfer.json)
+and [M17](../bench/history/2026-10-03-m17-active-fe-owner.json) summaries retain
+those failures. Passing required matrices do not certify these extra cases.

@@ -3203,5 +3203,18 @@
     "harness_correction": "IID pilot replaced a cluster column absent from its generator; no production change.",
     "follow_up": "Localize strict no-FE reconstruction versus independent constant-mean coefficients before considering any numerical repair. This nonnumerical milestone preserves existing refusal and tolerances.",
     "default_tolerance_exact_pairs": 36
+  },
+  "strict_no_fe_condition_diagnostic": {
+    "diagnostic": {
+      "rows": 16384,
+      "columns": 11,
+      "rank": 11,
+      "two_norm_condition": 7.885221451609008,
+      "minimum_singular_value": 17.237689437336325,
+      "data_sha256": "31b927bc09abf5d54775460a9018e28b770e7be9fdb257958880a6f3b4a9c7d8",
+      "design": "constant plus four seeded normal controls and six independent q dummies; q=mod(original_row,7), base0; unit weights",
+      "closed_form": "y=2 gives beta(constant)=ln(2), all other beta=0, mu=2; no FE/offset"
+    },
+    "qualification": "Unqualified strict reference still returns r(430) on both qualified parent and M14. Full-rank, well-conditioned constant-mean design has an independent closed-form solution; localize before repair. No tolerance or algorithm change."
   }
 }

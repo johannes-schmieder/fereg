@@ -57,6 +57,8 @@ use super::{
     PpmlWorkspaceCapacityReport, PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
 
+mod controller;
+
 mod retry;
 
 mod direction;
@@ -1139,9 +1141,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     )?;
     let mut direction = OrdinaryDirection::Canonical;
     let mut profiled_curve: Option<ProfiledInterceptCurve> = None;
-    let mut canonical_final = canonical_final_enabled()
-        && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-        && session.fe_design().effects().len() >= 2;
+    let mut strict_control = controller::StrictCheckpointControl::new(
+        strict_inner_tolerance(config.ppml),
+        canonical_final_enabled()
+            && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+            && session.fe_design().effects().len() >= 2,
+    );
     let mut solver_report = None;
     let retained_limit = MAX_RETAINED_ITERATION_REPORTS
         .min(config.memory.diagnostic_capacity)
@@ -1151,12 +1156,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .try_reserve_exact(retained_limit)
         .map_err(|_| allocation("unable to reserve prepared PPML diagnostics"))?;
     let mut total_step_halvings = 0_usize;
-    let mut strict_profile_rejections = 0_usize;
-    let mut profile_recovery = ProfileRecovery::default();
-    let mut profile_rebuild_pending = false;
-    let mut checkpoint_tolerance = strict_inner_tolerance(config.ppml);
-    let mut checkpoint_refinement_pending = false;
-    let mut consecutive_converged = 0_usize;
     let mut final_score = prepared_score_certificate(
         prepared,
         session.fe_design(),
@@ -1168,9 +1167,6 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     )?;
     let mut previous_inner_tolerance = initial_tolerance;
     let mut previous_outer_progress = None;
-    let mut converged = false;
-    let mut final_checkpoint_recorded = false;
-    let mut two_consecutive_convergence = false;
     let mut rank_frozen = false;
     let mut completed_iterations = 0_usize;
     let mut total_inner_iterations = 0_usize;
@@ -1769,11 +1765,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 final_score.relative_infinity_norm, u8::from(iteration_converged), accepted.step,
             ));
         }
-        consecutive_converged = if iteration_converged {
-            consecutive_converged.saturating_add(1)
-        } else {
-            0
-        };
+        strict_control.observe_accepted_iteration(iteration_converged);
         if retained_iterations.len() < retained_limit {
             retained_iterations.push(PreparedPpmlIterationReport {
                 iteration,
@@ -1796,455 +1788,45 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             linear_route,
         );
         let audit_defers_strict = allocation_audit.qualification_pending();
-        if consecutive_converged >= 2 && !audit_defers_strict {
-            interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
-            begin_phase_allocation(config.phase_allocation_probe, PpmlPhase::StrictFinalSolve);
-            let strict_clock = PpmlPhaseClock::start();
-            // Certified ordinary directions preserve the model space. One
-            // canonical Newton checkpoint can confirm the accepted point and supply its
-            // exact-weight design/bread; the independent final checks below
-            // still decide whether those products can be reused.
-            if !canonical_final
-                && profiled_curve.is_none()
-                && !profile_rebuild_pending
-                && !checkpoint_refinement_pending
-                && (session.supports_joint_ppml_direction() || direction.lsmr().is_some())
-                && try_joint_strict_final_frame(
-                    &mut session,
-                    &mut workspace,
-                    &objective_inputs,
-                    offset,
-                    config,
-                    checkpoint_tolerance,
-                    &mut frame_generation,
-                    &mut total_inner_iterations,
-                    finite_rank,
-                    objective,
-                    solver_report
-                        .as_mut()
-                        .ok_or_else(|| internal("joint strict solve lacks diagnostics"))?,
-                    direction.lsmr_mut(),
-                )?
-            {
-                two_consecutive_convergence = true;
-                converged = true;
-                memory.record_phase(PpmlPhase::StrictFinalSolve, strict_clock.elapsed());
-                record_phase_allocation(
-                    &mut memory,
-                    config.phase_allocation_probe,
-                    PpmlPhase::StrictFinalSolve,
-                );
-                break;
-            }
-            // The strict solve must be constructed from the newly accepted
-            // eta, never from the pre-step working frame still in the session.
-            workspace.refresh_prepared_working_state(&objective_inputs, config.ppml.bounds)?;
-            frame_generation = next_frame_generation(frame_generation)?;
-            refresh_linear_frame(&mut session, &workspace, frame_generation)?;
-            let strict_tolerance = checkpoint_tolerance;
-            previous_inner_tolerance = previous_inner_tolerance.min(strict_tolerance);
-            session.set_config(ppml_linear_config(config, strict_tolerance)?)?;
-            let specialized_engine = direction.specialized_engine();
-            if profile_rebuild_pending {
-                let mut poll = || interrupt(PpmlInterruptPoint::StrictFinalSolve);
-                session.rebuild_retained_inputs_interruptible(&mut poll)?;
-                memory.record_fallback(PpmlFallbackKind::WarmProjection);
-                checkpoint_refinement_pending = true;
-                profile_rebuild_pending = false;
-            }
-            let strict_transaction = session.strict_candidate()?;
-            let strict_basis_unchanged = strict_transaction.basis_unchanged();
-            #[cfg(test)]
-            let strict_basis_unchanged = strict_basis_unchanged && !take_strict_basis_change(1);
-            let (strict_certified, strict_rank, strict_active_columns) = {
-                let strict = strict_transaction.candidate();
-                let strict_certified = strict.certified();
-                let strict_rank = strict.fit().finite_rank();
-                let strict_active_columns =
-                    if !strict_basis_unchanged && specialized_engine.is_some() {
-                        Some(fallible_copy(
-                            strict.fit().kept_generated_columns(),
-                            "unable to reserve PPML strict active-column identity",
-                        )?)
-                    } else {
-                        None
-                    };
-                accumulate_inner_iterations(
-                    &mut total_inner_iterations,
-                    strict.fit().absorption_report(),
-                )?;
-                record_checkpoint_solver_observation(
-                    solver_report
-                        .as_mut()
-                        .ok_or_else(|| internal("PPML strict solve lacks solver diagnostics"))?,
-                    strict.fit().absorption_report(),
-                    checkpoint_refinement_pending,
-                )?;
-                fill_candidate_eta_from_linear_output(
-                    &strict,
-                    offset,
-                    workspace.candidate_eta_mut(),
-                )?;
-                fill_candidate_coefficients_from_linear_output(
-                    &strict,
-                    workspace.candidate_coefficients_mut(),
-                )?;
-                (strict_certified, strict_rank, strict_active_columns)
-            };
-            #[cfg(test)]
-            let injected_strict_movement = take_strict_resume(1);
-            #[cfg(test)]
-            if injected_strict_movement {
-                inject_candidate_profile_movement(&mut workspace);
-            }
-            let strict_objective = match workspace
-                .evaluate_candidate_objective(&objective_inputs, config.ppml.bounds)
-            {
-                Ok(objective) => Some(objective),
-                Err(error) if error.code == ErrorCode::NonConvergence => None,
-                Err(error) => return Err(error),
-            };
-            let active_coefficient_slots = direction.active_slots().or_else(|| {
-                profiled_curve
-                    .as_ref()
-                    .map(ProfiledInterceptCurve::active_slots)
-            });
-            let strict_consistent = strict_candidate_decision_with_coefficient_slots(
-                strict_certified,
-                strict_basis_unchanged,
-                finite_rank,
-                strict_rank,
-                workspace.eta(),
-                workspace.coefficients(),
-                objective,
-                workspace.candidate_eta(),
-                workspace.candidate_coefficients(),
-                strict_objective,
-                config.ppml,
-                active_coefficient_slots,
-            ) == FinalHessianSynchronization::Certified;
-
-            if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-                let mut worst_row = 0_usize;
-                let mut worst_difference = 0.0_f64;
-                let mut failing_rows = 0_usize;
-                let tolerance = config
-                    .ppml
-                    .tolerance
-                    .min(config.ppml.score_tolerance)
-                    .min(1e-8);
-                for (row, (&accepted, &candidate)) in workspace
-                    .eta()
-                    .iter()
-                    .zip(workspace.candidate_eta())
-                    .enumerate()
-                {
-                    let difference = relative_scalar_difference(accepted, candidate);
-                    failing_rows += usize::from(difference > tolerance);
-                    if difference > worst_difference {
-                        worst_row = row;
-                        worst_difference = difference;
-                    }
-                }
-                let strict = strict_transaction.candidate();
-                let row = worst_row;
-                super::categorical_lsmr::emit_solver_trace_line(&format!(
-                    "FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration={iteration}|seconds={:.6}|original_row={}|failing_rows={failing_rows}|tolerance={tolerance:.17e}|accepted_eta={:.17e}|candidate_eta={:.17e}|working_response={:.17e}|residual={:.17e}|finite_predictor={:.17e}|absorbed_predictor={:.17e}|outcome={:.17e}|mean={:.17e}|hessian_weight={:.17e}|deviance_change={:.17e}|ll_change={:.17e}",
-                    strict_clock.elapsed().as_secs_f64(), prepared.fit_sample().retained_rows()[row] + 1,
-                    workspace.eta()[row], workspace.candidate_eta()[row], strict.response()[row],
-                    strict.fit().residuals()[row], strict.finite_predictor()[row], strict.absorbed_predictor()[row],
-                    outcome[row], workspace.mean()[row], workspace.hessian_weights()[row],
-                    strict_objective.map_or(f64::INFINITY, |candidate| relative_scalar_difference(objective.deviance, candidate.deviance)),
-                    strict_objective.map_or(f64::INFINITY, |candidate| relative_scalar_difference(objective.log_likelihood, candidate.log_likelihood)),
-                ));
-                super::categorical_lsmr::emit_solver_trace_line(&format!(
-                    "FEREG_SOLVER_TRACE|phase=strict_decision|iteration={iteration}|certified={}|basis_unchanged={}|rank={strict_rank}|eta_change={:.17e}|beta_change={:.17e}|consistent={}",
-                    u8::from(strict_certified), u8::from(strict_basis_unchanged),
-                    relative_infinity_difference(workspace.eta(), workspace.candidate_eta()),
-                    relative_infinity_difference(workspace.coefficients(), workspace.candidate_coefficients()),
-                    u8::from(strict_consistent),
-                ));
-            }
-
-            // A moved canonical Newton point must resume under ADR 0016.
-            // Retire this shortcut for the remainder of that fit; the joint
-            // strict witness may reconstruct a better-conditioned direction.
-            if canonical_final && !strict_consistent {
-                canonical_final = false;
-            }
-
-            let mut profile_difference = if strict_consistent {
-                0.0
-            } else {
-                strict_objective.map_or(f64::INFINITY, |candidate| {
-                    strict_profile_difference(
-                        workspace.eta(),
-                        workspace.coefficients(),
-                        objective,
-                        workspace.candidate_eta(),
-                        workspace.candidate_coefficients(),
-                        candidate,
-                        active_coefficient_slots,
-                    )
-                })
-            };
-            let mut accepted_strict_basis_change = false;
-            let mut profile_rejected = strict_certified
-                && strict_basis_unchanged
-                && strict_rank == finite_rank
-                && !strict_consistent;
-            checkpoint_refinement_pending = false;
-            let mut strict_committed = false;
-            if strict_consistent {
-                // The accepted point already satisfies the independently checked
-                // outer conditions. If strict WLS confirms that same point,
-                // retaining it keeps the strict canonical products on the exact
-                // accepted Hessian frame for independently checked final reuse.
-                if !canonical_final && direction.profile().is_none() && profiled_curve.is_none() {
-                    workspace.fill_prepared_line_search_trial_with(
-                        1.0,
-                        config.ppml.bounds,
-                        &objective_inputs,
-                        |_| Ok(()),
-                    )?;
-                    workspace.accept_trial()?;
-                    objective = strict_objective.expect("consistent strict objective is present");
-                }
-                strict_transaction.commit();
-                strict_committed = true;
-            } else {
-                // ADR 0016 requires a changed strict solution to become the
-                // next IRLS state. Preserve the stable-objective invariant by
-                // backtracking beta and eta together when necessary.
-                let strict_step = if strict_certified && strict_objective.is_some() {
-                    let mut poll_line_search =
-                        || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
-                    workspace.accept_candidate_interruptible(
-                        &objective_inputs,
-                        objective,
-                        config.ppml,
-                        &mut poll_line_search,
-                    )
-                } else {
-                    Err(numerical_nonconvergence(
-                        "prepared PPML strict final weighted-linear solve did not certify",
-                    ))
-                };
-                match strict_step {
-                    Ok(strict_step) => {
-                        let updated_step_halvings = total_step_halvings
-                            .checked_add(strict_step.step_halvings)
-                            .ok_or_else(|| {
-                                FeregError::new(
-                                    ErrorCode::Internal,
-                                    "prepared PPML strict step-halving count overflowed",
-                                )
-                            })?;
-                        objective = strict_step.objective;
-                        total_step_halvings = updated_step_halvings;
-                        strict_transaction.commit();
-                        strict_committed = true;
-                        accepted_strict_basis_change = strict_active_columns.is_some();
-                    }
-                    Err(error) if error.code == ErrorCode::NonConvergence => {
-                        strict_transaction.rollback();
-                        // The last accepted PPML state remains authoritative.
-                        // A strict profile that cannot improve it invalidates
-                        // convergence, not the fit transaction; the bounded
-                        // outer loop resumes from that accepted state.
-                    }
-                    Err(error) => return Err(error),
-                }
-            }
-            if strict_committed {
-                if !strict_basis_unchanged {
-                    profiled_curve = None;
-                }
-                direction.after_commit(strict_basis_unchanged);
-            }
-            if accepted_strict_basis_change {
-                let active_columns = strict_active_columns.as_deref().ok_or_else(|| {
-                    internal("accepted PPML strict basis change lacks active-column identity")
-                })?;
-                direction.replace_basis(
-                    specialized_engine,
+        if strict_control.may_enter(audit_defers_strict) {
+            let outcome = controller::StrictCycle {
+                candidate: controller::CandidatePhase {
                     prepared,
-                    active_columns,
-                    session.fe_design(),
+                    workspace: &mut workspace,
+                    inputs: &objective_inputs,
+                    outcome,
+                    prior_weights,
+                    offset,
                     config,
-                    solver_admission,
-                    solver_memory_budget,
-                )?;
-                if let Some(cmg) = direction.cmg() {
-                    record_cmg_heap_forecast(&mut memory, cmg, solver_admission)?;
+                    finite_rank,
+                    objective: &mut objective,
+                    total_inner_iterations: &mut total_inner_iterations,
+                    total_step_halvings: &mut total_step_halvings,
+                    score_workspace: &mut score_workspace,
+                    final_score: &mut final_score,
+                },
+                session: &mut session,
+                direction: &mut direction,
+                curve: &mut profiled_curve,
+                control: &mut strict_control,
+                memory: &mut memory,
+                solver: &mut solver_report,
+                frame_generation: &mut frame_generation,
+                previous_inner_tolerance: &mut previous_inner_tolerance,
+                interrupt: &mut *interrupt,
+                iteration,
+                solver_admission,
+                solver_memory_budget,
+            }
+            .run()?;
+            match outcome {
+                controller::StrictCycleOutcome::JointAccepted => break,
+                controller::StrictCycleOutcome::CheckpointAccepted => {
+                    exploration_terminal = PreparedPpmlMuTerminal::Converged;
+                    break;
                 }
+                controller::StrictCycleOutcome::Resume => {}
             }
-            final_score = prepared_score_certificate(
-                prepared,
-                session.fe_design(),
-                outcome,
-                workspace.mean(),
-                prior_weights,
-                config.ppml.score_tolerance,
-                &mut score_workspace,
-            )?;
-            if strict_consistent && final_score.passed {
-                interrupt(PpmlInterruptPoint::StrictFinalSolve)?;
-                let synchronized = if (canonical_final
-                    || direction.profile().is_some()
-                    || profiled_curve.is_some())
-                    && strict_basis_unchanged
-                    && reuse_canonical_final_products(
-                        &session,
-                        &workspace,
-                        prior_weights,
-                        offset,
-                        config,
-                        frame_generation,
-                    )? {
-                    final_checkpoint_recorded = true;
-                    FinalHessianSynchronization::Certified
-                } else {
-                    synchronize_final_hessian_frame(
-                        &mut session,
-                        &mut workspace,
-                        &objective_inputs,
-                        offset,
-                        config,
-                        checkpoint_tolerance,
-                        &mut frame_generation,
-                        &mut total_inner_iterations,
-                        finite_rank,
-                        objective,
-                        direction.profile().map(ProfiledOneFe::active_slots),
-                    )?
-                };
-                if synchronized == FinalHessianSynchronization::Certified {
-                    two_consecutive_convergence = consecutive_converged >= 2;
-                    converged = true;
-                } else if synchronized == FinalHessianSynchronization::ResumeWithCandidate {
-                    profile_rejected = true;
-                    let candidate_objective = workspace
-                        .evaluate_candidate_objective(&objective_inputs, config.ppml.bounds)?;
-                    profile_difference = strict_profile_difference(
-                        workspace.eta(),
-                        workspace.coefficients(),
-                        objective,
-                        workspace.candidate_eta(),
-                        workspace.candidate_coefficients(),
-                        candidate_objective,
-                        None,
-                    );
-                    let mut poll_line_search =
-                        || interrupt(PpmlInterruptPoint::IrlsLineSearchTrial);
-                    match workspace.accept_candidate_interruptible(
-                        &objective_inputs,
-                        objective,
-                        config.ppml,
-                        &mut poll_line_search,
-                    ) {
-                        Ok(strict_step) => {
-                            objective = strict_step.objective;
-                            total_step_halvings = total_step_halvings
-                                .checked_add(strict_step.step_halvings)
-                                .ok_or_else(|| {
-                                    FeregError::new(
-                                        ErrorCode::Internal,
-                                        "prepared PPML Hessian-resume step-halving count overflowed",
-                                    )
-                                })?;
-                        }
-                        Err(error) if error.code == ErrorCode::NonConvergence => {}
-                        Err(error) => return Err(error),
-                    }
-                    final_score = prepared_score_certificate(
-                        prepared,
-                        session.fe_design(),
-                        outcome,
-                        workspace.mean(),
-                        prior_weights,
-                        config.ppml.score_tolerance,
-                        &mut score_workspace,
-                    )?;
-                }
-            }
-            if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-                super::categorical_lsmr::emit_solver_trace_line(&format!(
-                    "FEREG_SOLVER_TRACE|phase=strict_result|iteration={iteration}|committed={}|score={:.17e}|score_passed={}|converged={}",
-                    u8::from(strict_committed), final_score.relative_infinity_norm,
-                    u8::from(final_score.passed), u8::from(converged),
-                ));
-            }
-            memory.record_phase(PpmlPhase::StrictFinalSolve, strict_clock.elapsed());
-            record_phase_allocation(
-                &mut memory,
-                config.phase_allocation_probe,
-                PpmlPhase::StrictFinalSolve,
-            );
-            if converged {
-                exploration_terminal = PreparedPpmlMuTerminal::Converged;
-                break;
-            }
-            if profile_rejected {
-                // A slope correction is an optional nonlinear trial, not
-                // authority to contest a rejected canonical checkpoint.
-                if session
-                    .fe_design()
-                    .effects()
-                    .iter()
-                    .any(|e| !e.slopes().is_empty())
-                {
-                    profiled_curve = None;
-                }
-                let refined = refined_checkpoint_tolerance(checkpoint_tolerance);
-                checkpoint_refinement_pending = refined < checkpoint_tolerance;
-                if checkpoint_refinement_pending && std::env::var_os("FEREG_SOLVER_TRACE").is_some()
-                {
-                    super::categorical_lsmr::emit_solver_trace_line(&format!(
-                        "FEREG_SOLVER_TRACE|phase=checkpoint_profile_refinement|previous={checkpoint_tolerance:.17e}|next={refined:.17e}",
-                    ));
-                }
-                checkpoint_tolerance = refined;
-                previous_inner_tolerance = previous_inner_tolerance.min(refined);
-            }
-            // Entry already required two accepted objective/score passes.
-            // A rejected candidate may move its own score away from the root;
-            // that must not erase evidence of this repeated checkpoint cycle.
-            let recovery_action = profile_recovery.observe(
-                profile_rejected
-                    && strict_basis_unchanged
-                    && strict_rank == finite_rank
-                    && refined_checkpoint_tolerance(strict_tolerance) == strict_tolerance,
-                strict_basis_unchanged && strict_rank == finite_rank,
-                profile_difference,
-            );
-            if std::env::var_os("FEREG_SOLVER_TRACE").is_some()
-                && recovery_action != ProfileRecoveryAction::Continue
-            {
-                super::categorical_lsmr::emit_solver_trace_line(&format!(
-                    "FEREG_SOLVER_TRACE|phase=profile_recovery|iteration={iteration}|action={recovery_action:?}|difference={profile_difference:.17e}|tolerance={checkpoint_tolerance:.17e}",
-                ));
-            }
-            match recovery_action {
-                ProfileRecoveryAction::Continue => {}
-                ProfileRecoveryAction::Rebuild => {
-                    profile_rebuild_pending = true;
-                }
-                ProfileRecoveryAction::Exhausted => {
-                    return Err(FeregError::new(ErrorCode::NonConvergence, format!(
-                        "prepared PPML strict profile stagnated after canonical rebuild and two further strict attempts; iteration={iteration}, difference={profile_difference:.16e}, inner_tolerance={checkpoint_tolerance:.3e}, score={:.3e}",
-                        final_score.relative_infinity_norm,
-                    )));
-                }
-            }
-            strict_profile_rejections =
-                strict_profile_rejections.checked_add(1).ok_or_else(|| {
-                    FeregError::new(
-                        ErrorCode::Internal,
-                        "prepared PPML strict-profile rejection count overflowed",
-                    )
-                })?;
-            consecutive_converged = 0;
         }
         begin_phase_allocation(
             config.phase_allocation_probe,
@@ -2324,19 +1906,15 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         )));
     }
 
-    if !converged {
-        return Err(FeregError::new(
-            ErrorCode::NonConvergence,
-            format!(
-                "prepared PPML failed to converge after {} iterations; deviance={:.16e}, score={:.3e}, strict_profile_rejections={strict_profile_rejections}",
-                config.ppml.max_iterations,
-                objective.deviance,
-                final_score.relative_infinity_norm,
-            ),
-        ));
-    }
+    let accepted_checkpoint = strict_control.accepted_checkpoint().ok_or_else(|| {
+        let strict_profile_rejections = strict_control.rejected_cycles();
+        FeregError::new(ErrorCode::NonConvergence, format!(
+            "prepared PPML failed to converge after {} iterations; deviance={:.16e}, score={:.3e}, strict_profile_rejections={strict_profile_rejections}",
+            config.ppml.max_iterations, objective.deviance, final_score.relative_infinity_norm,
+        ))
+    })?;
     let final_output = session.output()?;
-    if !final_checkpoint_recorded {
+    if accepted_checkpoint.needs_observation() {
         record_checkpoint_solver_observation(
             solver_report
                 .as_mut()
@@ -2393,14 +1971,14 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             score_residuals,
             objective,
             diagnostics: PreparedPpmlIrlsDiagnostics {
-                converged,
-                two_consecutive_convergence,
+                converged: true,
+                two_consecutive_convergence: true,
                 rank_frozen,
                 iterations: completed_iterations,
                 total_inner_iterations,
                 retained_iterations,
                 total_step_halvings,
-                strict_profile_rejections,
+                strict_profile_rejections: strict_control.rejected_cycles(),
                 final_score,
                 solver: solver_report.ok_or_else(|| {
                     internal("prepared PPML publication lacks solver diagnostics")

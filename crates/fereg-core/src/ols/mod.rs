@@ -42,7 +42,7 @@ pub(crate) use linear_session::{
     LinearReconstructionCertificate, LinearSessionGenerations,
     LinearSessionPhaseAllocationObservation, LinearSessionReuseReport, LinearSessionSolveKind,
     LinearSessionWorkspaceCapacities, LinearWithinDesignCertificate, LinearWithinMemoryReport,
-    PpmlOrdinaryLinearOutput,
+    PpmlOrdinaryLinearOutput, StrictLinearCandidateTransaction,
 };
 #[doc(hidden)]
 pub use linear_session::{

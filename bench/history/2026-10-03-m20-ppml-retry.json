@@ -92,8 +92,490 @@
     ]
   },
   "qualification": {
-    "clean_native": "pending",
-    "timings": "pending",
-    "linux_ci": "pending"
+    "runtime": "35adaed64aa4f7150d373822e20762eae0409d1e",
+    "clean_native": {
+      "schema": 1,
+      "next_sha256": "604921cb84f74891f9b25bd1fae2e721a1b4500aed1fe2f10149d1f9b5c1dafa",
+      "baseline_sha256": "fa4549333e85a7918f851fa348be1e18943f97badef06ff97bfed8810ff6fb70",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "timings": {
+      "identities": {
+        "parent": {
+          "checkout": "35adaed64aa4f7150d373822e20762eae0409d1e",
+          "binary_source": "9cc2b303f961108f42200a6e0550dc588ca19b50",
+          "binary_sha256": "fa4549333e85a7918f851fa348be1e18943f97badef06ff97bfed8810ff6fb70",
+          "dirty": false
+        },
+        "next": {
+          "checkout": "35adaed64aa4f7150d373822e20762eae0409d1e",
+          "binary_source": "35adaed64aa4f7150d373822e20762eae0409d1e",
+          "binary_sha256": "604921cb84f74891f9b25bd1fae2e721a1b4500aed1fe2f10149d1f9b5c1dafa",
+          "dirty": false
+        }
+      },
+      "protocol": {
+        "warmups": 1,
+        "repetitions": 5,
+        "coefficient_rtol": 1e-07,
+        "coefficient_atol": 1e-10,
+        "reference_tolerance": 1e-12,
+        "fresh_process_per_command": true
+      },
+      "datasets": {
+        "ppml-two-fe-auto-fast-owner": {
+          "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ppml-two-fe-auto-low-owner": {
+          "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ppml-two-fe-cmg-fast-owner": {
+          "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ppml-two-fe-lsmr-fast-owner": {
+          "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        }
+      },
+      "exact_pairs": 76,
+      "geometric_mean_ratio": 1.0015322731167131,
+      "pairs": [
+        {
+          "cell": "ppml-two-fe-auto-fast-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.056,
+            "seconds_min": 0.055,
+            "seconds_max": 0.058,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.058,
+              0.055,
+              0.056,
+              0.056,
+              0.056
+            ]
+          },
+          "next": {
+            "seconds": 0.056,
+            "seconds_min": 0.055,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.056,
+              0.057,
+              0.056,
+              0.055,
+              0.055
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-auto-fast-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.043,
+            "seconds_min": 0.042,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.000999999999999994,
+            "measurements": [
+              0.042,
+              0.042,
+              0.044,
+              0.043,
+              0.043
+            ]
+          },
+          "next": {
+            "seconds": 0.043,
+            "seconds_min": 0.042,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.000999999999999994,
+            "measurements": [
+              0.043,
+              0.042,
+              0.042,
+              0.044,
+              0.043
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-auto-fast-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.057,
+            "seconds_min": 0.054,
+            "seconds_max": 0.059,
+            "seconds_mad": 0.001999999999999995,
+            "measurements": [
+              0.059,
+              0.055,
+              0.054,
+              0.057,
+              0.057
+            ]
+          },
+          "next": {
+            "seconds": 0.055,
+            "seconds_min": 0.053,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0020000000000000018,
+            "measurements": [
+              0.055,
+              0.053,
+              0.057,
+              0.057,
+              0.055
+            ]
+          },
+          "ratio": 0.9649122807017544,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-auto-low-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.059,
+            "seconds_min": 0.058,
+            "seconds_max": 0.06,
+            "seconds_mad": 0.000999999999999994,
+            "measurements": [
+              0.059,
+              0.06,
+              0.058,
+              0.058,
+              0.06
+            ]
+          },
+          "next": {
+            "seconds": 0.059,
+            "seconds_min": 0.058,
+            "seconds_max": 0.0590000000000001,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.059,
+              0.059,
+              0.059,
+              0.058,
+              0.0590000000000001
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-auto-low-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.044,
+            "seconds_min": 0.043,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.043,
+              0.043,
+              0.044,
+              0.044,
+              0.044
+            ]
+          },
+          "next": {
+            "seconds": 0.044,
+            "seconds_min": 0.043,
+            "seconds_max": 0.045,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.044,
+              0.045,
+              0.043,
+              0.044,
+              0.044
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-auto-low-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.053,
+            "seconds_min": 0.052,
+            "seconds_max": 0.055,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.052,
+              0.052,
+              0.053,
+              0.054,
+              0.055
+            ]
+          },
+          "next": {
+            "seconds": 0.054,
+            "seconds_min": 0.051,
+            "seconds_max": 0.055,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.055,
+              0.054,
+              0.051,
+              0.054,
+              0.052
+            ]
+          },
+          "ratio": 1.0188679245283019,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-lsmr-fast-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.056,
+            "seconds_min": 0.055,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.057,
+              0.056,
+              0.056,
+              0.055,
+              0.055
+            ]
+          },
+          "next": {
+            "seconds": 0.057,
+            "seconds_min": 0.056,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.057,
+              0.056,
+              0.056,
+              0.057,
+              0.057
+            ]
+          },
+          "ratio": 1.0178571428571428,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-lsmr-fast-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.043,
+            "seconds_min": 0.041,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.044,
+              0.044,
+              0.041,
+              0.043,
+              0.042
+            ]
+          },
+          "next": {
+            "seconds": 0.043,
+            "seconds_min": 0.042,
+            "seconds_max": 0.045,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.043,
+              0.043,
+              0.042,
+              0.045,
+              0.043
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-lsmr-fast-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.056,
+            "seconds_min": 0.055,
+            "seconds_max": 0.06,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.055,
+              0.056,
+              0.06,
+              0.057,
+              0.055
+            ]
+          },
+          "next": {
+            "seconds": 0.057,
+            "seconds_min": 0.057,
+            "seconds_max": 0.059,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.059,
+              0.057,
+              0.057,
+              0.057,
+              0.057
+            ]
+          },
+          "ratio": 1.0178571428571428,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-cmg-fast-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.0590000000000001,
+            "seconds_min": 0.058,
+            "seconds_max": 0.065,
+            "seconds_mad": 0.0009999999999998968,
+            "measurements": [
+              0.065,
+              0.058,
+              0.06,
+              0.0590000000000001,
+              0.059
+            ]
+          },
+          "next": {
+            "seconds": 0.059,
+            "seconds_min": 0.058,
+            "seconds_max": 0.06,
+            "seconds_mad": 0.000999999999999994,
+            "measurements": [
+              0.06,
+              0.058,
+              0.06,
+              0.059,
+              0.059
+            ]
+          },
+          "ratio": 0.9999999999999982,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-cmg-fast-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.046,
+            "seconds_min": 0.044,
+            "seconds_max": 0.046,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.046,
+              0.044,
+              0.046,
+              0.046,
+              0.046
+            ]
+          },
+          "next": {
+            "seconds": 0.046,
+            "seconds_min": 0.045,
+            "seconds_max": 0.047,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.047,
+              0.045,
+              0.046,
+              0.046,
+              0.045
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ppml-two-fe-cmg-fast-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.0590000000000001,
+            "seconds_min": 0.058,
+            "seconds_max": 0.063,
+            "seconds_mad": 0.0009999999999998968,
+            "measurements": [
+              0.059,
+              0.063,
+              0.06,
+              0.058,
+              0.0590000000000001
+            ]
+          },
+          "next": {
+            "seconds": 0.059,
+            "seconds_min": 0.057,
+            "seconds_max": 0.06,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.06,
+              0.057,
+              0.058,
+              0.059,
+              0.06
+            ]
+          },
+          "ratio": 0.9999999999999982,
+          "ranges_overlap": true
+        }
+      ]
+    },
+    "linux_ci": {
+      "run": 37156909660,
+      "all_jobs": "success",
+      "replay": {
+        "schema": 1,
+        "next_sha256": "641ec12c64a64d1e58c9dba503bfd5dc53701544416578926fc1daf53878fe33",
+        "baseline_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc",
+        "known_defect_cases": 0,
+        "scientific_pass_cases": 73,
+        "candidate_fixes": [
+          "frequency-singleton",
+          "full-matrix-covariance",
+          "slope-dof"
+        ],
+        "baseline_fixes": [],
+        "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+        "passed": true
+      }
+    }
   }
 }

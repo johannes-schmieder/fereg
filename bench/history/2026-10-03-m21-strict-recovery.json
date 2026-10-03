@@ -1,0 +1,117 @@
+{
+  "schema": 1,
+  "milestone": "M21",
+  "implementation": "StrictCheckpointControl owns pending refinement/rebuild, monotone tolerance, bounded recovery, consecutive accepted passes, rejected cycles and final readiness. Short-lived borrowed CandidatePhase/StrictCycle methods share transaction inspection, assessment, rollback/commit, basis replacement, score and final-Hessian synchronization. Typed CandidateResolution replaces overlapping commit/basis booleans; private AcceptedCheckpoint records whether final publication still owes a checkpoint observation.",
+  "preserved": [
+    "strict transaction lifetime through inspection, objective, consistency and trace; rollback and error precedence",
+    "attempt tolerance captured before refinement; distinct recovery reset behavior on changed versus unchanged basis",
+    "two accepted passes, pending audit gate, rejection counting, bounded rebuild and exact final-Hessian witness",
+    "direction and coexisting curve retirement/replacement order; same allocation and forecasts",
+    "different objective/count ordering at ordinary strict commit and final-Hessian resume",
+    "existing joint shortcut Mu terminal diagnostic and distinct final report observation boundaries",
+    "all supported solver/memory combinations, fallback eligibility, tolerances and publication validation"
+  ],
+  "complexity": {
+    "before_core": 104880,
+    "after_core": 105187,
+    "net_core_delta": 307,
+    "m11_to_m21_core_delta": 479,
+    "m11_to_m21_host_delta": -21,
+    "current_metrics": {
+      "fereg-core": {
+        "chunk_candidates": 14,
+        "dispatch_candidates": 1474,
+        "files_over_1500": 19,
+        "functions_over_150": 97,
+        "production_lines": 105187
+      },
+      "fereg-plugin": {
+        "chunk_candidates": 0,
+        "dispatch_candidates": 165,
+        "files_over_1500": 3,
+        "functions_over_150": 15,
+        "production_lines": 15222
+      }
+    },
+    "driver_m11_lines": 2014,
+    "driver_m20_lines": 1386,
+    "driver_m21_lines": 962,
+    "new_controller_production_lines": 694,
+    "largest_new_method": 77,
+    "growth_reason": "Bounded borrowed phase signatures, typed transitions and private readiness add source while retiring a driver block and overlapping state. The +1 lexical dispatch candidate types an existing active_columns.is_some basis replacement; no new numerical route or heap buffer."
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "mapped_runtime_regressions": [
+      "same_rank_basis_pivot_resumes_first_checkpoint_and_fails_final_hessian_closed",
+      "strict_projection_refinement_is_bounded_and_never_loosens_a_target",
+      "persistent_strict_profile_failure_rebuilds_then_returns_bounded_nonconvergence",
+      "strict_checkpoint_movement_resumes_bounded_irls_at_both_checkpoints",
+      "three_effect_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+      "zero_active_control_lsmr_rebuilds_joint_state_after_a_strict_basis_refresh",
+      "partial_saved_fe_publication_retains_full_final_hessian_certificate",
+      "nonconstant_mu_requires_final_hessian_not_preparation_weights",
+      "rejected_uncertified_strict_candidate_restores_exact_basis_transaction"
+    ],
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "11cdf7c94bfdfb5a32c9101b48dcef09b594e3376e092b714804ad22f57a3bd1",
+      "baseline_sha256": "604921cb84f74891f9b25bd1fae2e721a1b4500aed1fe2f10149d1f9b5c1dafa",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "licensed_stata": [
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "status": "success"
+      }
+    ]
+  },
+  "qualification": {
+    "status": "clean tranche, Linux and separate Astra review pending"
+  },
+  "limitations": [
+    "This nonnumerical tranche does not establish consistent acceleration or repair higher-thread slowdowns.",
+    "Strict no-FE PPML references return r(430) on qualified parents as well as candidates; extra timing cells remain unqualified. Independent constant-outcome design is full rank with condition number 7.885 and known solution. See M14 summary.",
+    "Extra near-within saved-FE CG oracle returns r(459) on qualified parent and M17. The failing fixture remains an independent numerical follow-up, not passing evidence. See M17 summary.",
+    "No new Windows or SCC campaign; frozen comparator identities remain unchanged."
+  ]
+}
