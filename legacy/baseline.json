@@ -9,6 +9,11 @@
       "filename": "fereg_legacy_macos.plugin",
       "metadata_sha256": "4e68a12b6ca9f9f91032d17d9382aa930dcca067f0f4b7a7b48c6c9912f7f0ff",
       "sha256": "80329f51159990740425171c3457304f303272cfe55943c0afb412b54454c105"
+    },
+    "windows": {
+      "filename": "fereg_legacy_windows.plugin",
+      "metadata_sha256": "8c09d1337cec2bda8a04fd4c3f6dd2fd9e82bd7bf2bd667f9460f57b3ae432ba",
+      "sha256": "1c8ac3042f0eae8bcf58f1e71f5ffab8abcf55a982a17fcb9bc30f7e58f7558f"
     }
   },
   "build_date": "2026-10-01",

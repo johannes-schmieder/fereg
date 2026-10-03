@@ -1,16 +1,16 @@
 # Incremental refactoring — milestones
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
-Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux canonical assets qualified; Windows finalization pending.
-Current task: M0.2b Windows asset finalization; M0.4 replay development can use the qualified Mac comparator.
+Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
+Current task: M0.4 actual binary replay and bounded scientific matrix.
 Current runtime: working legacy implementation; next selection/default lands in M1.1.
 
 ## Tasks and prerequisites
 
 - [x] M0.1 Governance, ADR dispositions, resolved covariance decision and new ledger.
-- [~] M0.2 Freeze/tag complete baseline; Mac build and 34 Stata fixtures pass; Linux/Windows pending.
+- [x] M0.2 Frozen/tagged baseline; all three canonical platforms built/stored; Mac 34 Stata fixtures pass.
 - [x] M0.2a Immutable tag, build/fetch/registration tooling and platform factory.
-- [ ] M0.2b Hosted Linux/Windows assets, canonical registration and verified storage.
+- [x] M0.2b Hosted Linux/Windows assets, canonical registration and verified storage.
 - [x] M0.3 Working core/testkit moved; host retained; abandoned rewrite removed; full local harness/native ABI and long oracles pass.
 - [ ] M0.4 Real OLS/PPML replay, exact-copy/scientific checks, bounded feature matrix and Linux CI. Depends on M0.3 and comparator assets.
 - [ ] M0.5 Complexity ratchet and instrumented coverage baseline. Inventory can proceed after M0.3; replay coverage needs M0.4.
@@ -47,3 +47,4 @@ The old source-string assertion for fit_absorb_matrix also fails against unchang
 - 2026-10-02 M0.2b this commit — build setup repair 1: scoped Linux checkout trust and LF archive override; frozen source hash check retained.
 - 2026-10-02 M0.3 599793c3 — 176 retained source files byte-checked; 1635 test invocations, long oracle suite, Mac ABI and 13 bench tests pass.
 - 2026-10-02 M0.2b this commit — Linux ABI/audit pass; Windows ABI/audit pass, final checksum failed under old PowerShell; factory uses pwsh.
+- 2026-10-02 M0.2b this commit — canonical Windows 1c8ac304 verified; hosted build/ABI/audit and draft storage pass; all platforms registered.
