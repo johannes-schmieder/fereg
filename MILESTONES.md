@@ -67,3 +67,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.2c this commit — 72 science/1 defect; 72 unaffected cases exact; 3 Stata, full/long harness pass; core +5 lines; precommit ratchet base corrected.
 - 2026-10-02 M1.2d this commit — 73 science; 72 unaffected cases exact; 3 Stata, full/long checks pass; +6 core lines; replay constant allocation corrected/retested.
 - 2026-10-02 M1.3 this commit — 803 native processes; 73 science cases at five thread counts, discrete/repeat checks, frozen comparison and 46 Stata pass.
+- 2026-10-02 M1.4 this commit — paired plugin packaging/help and canonical hash guard; 4 isolated Stata fixtures and 19 package tests pass; hosted platforms pending.

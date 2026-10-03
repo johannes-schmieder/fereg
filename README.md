@@ -7,13 +7,14 @@ removal, robust and multiway-clustered inference, and saved fixed-effect
 outputs. Estimation runs in one native call and publishes results only after
 the numerical and covariance checks pass.
 
-The repository is implementing the [issue-28 clean-core rebuild](https://github.com/johannes-schmieder/fereg/issues/28).
-Follow [MILESTONES.md](MILESTONES.md) for progress and the
-[approved plan](docs/cleanup/PLAN.md) for scope. The current public OLS and
-`feppml` commands still use the unreleased 0.5.0 legacy engine; the new core
-has not passed its cutover gates. LSMR, CMG and PPML mean bias correction remain
-in scope. Windows licensed-Stata testing remains deferred. The
-`legacy-v0.5.0-beta` tag is a preservation snapshot, not a qualified release.
+The repository follows an incremental simplification plan for
+[issue 28](https://github.com/johannes-schmieder/fereg/issues/28). Both `fereg`
+and `feppml` default to `engine(next)`, copied from the complete working core.
+A separate `engine(legacy)` plugin is frozen at `legacy-comparator-v1` for
+comparison. Legacy is evidence, not the authority on scientific correctness;
+next includes focused corrections while retaining the supported functionality.
+Follow [MILESTONES.md](MILESTONES.md) and the [approved M0–M1 plan](docs/cleanup/PLAN.md).
+Public native release remains subject to the existing licensing gate.
 
 ## Quick start
 
@@ -76,8 +77,9 @@ Common options are:
   `dof(pairwise|firstpair|continuous|none)` for inference;
 - `residuals(newvar)` and names inside `absorb()`, such as
   `absorb(fe_worker=worker fe_firm=firm)`, for saved outputs;
-- `solver(auto|map|cg|it|squarem|lsmr|cmg)` and
+- `solver(auto|map|it|squarem|lsmr|cmg)` and
   `preconditioner(auto|off|diagonal|schwarz)` for the fixed-effect solver; and
+- `engine(next|legacy)` to select the maintained or frozen native plugin; and
 - `memory(auto|fast|low)`, `poolsize(#)`, `threads(#)`, `deterministic`, and
   `timeit` for execution control and diagnostics.
 
@@ -107,11 +109,20 @@ exact postestimation contract.
 
 ## Installation and diagnostics
 
-The beta requires Stata 18 or newer and one self-contained plugin matching the
-host platform: `fereg_macos.plugin`, `fereg_linux.plugin`, or
-`fereg_windows.plugin`. Release artifacts are not yet published. Install from a
-qualified staged package rather than copying an arbitrary build into the
-adopath.
+The beta requires Stata 18 or newer. Development packages bundle separate
+next and frozen legacy plugins, with checksums, for each included platform.
+Next retains `fereg_macos.plugin`, `fereg_linux.plugin` and
+`fereg_windows.plugin`; comparator names insert `legacy_` after `fereg_`.
+The package manifest identifies both engines and the shared frontend.
+
+Selection precedence is explicit `engine()`, then the `FEREG_ENGINE` global,
+then `next`. Invalid selections fail with `r(198)` and a missing selected
+binary fails with `r(601)`; there is no automatic engine fallback. Results
+record `e(fereg_engine)` or `e(feppml_engine)`. Legacy prints a note per call.
+
+Release artifacts are not published. Use an internally qualified development
+package. Licensed Windows Stata testing remains deferred; hosted native builds,
+audits and mock SPI checks have a narrower scope.
 
 After installation, run:
 
@@ -119,6 +130,7 @@ After installation, run:
 fereg, version
 fereg, doctor verbose
 fereg, selftest
+fereg, version engine(legacy)
 ```
 
 The source tree uses the pinned Rust toolchain and these main development
@@ -144,8 +156,7 @@ acceptance and runner requirements are documented in
 - [`docs/README.md`](docs/README.md) — documentation map.
 - [`docs/compatibility_matrix.md`](docs/compatibility_matrix.md) — implemented,
   deferred, and platform-specific behavior.
-- [`MILESTONES.md`](MILESTONES.md) — rebuild progress, checks and resume point.
-- [`STATUS.md`](STATUS.md) — frozen legacy findings and source-bound evidence.
+- [`MILESTONES.md`](MILESTONES.md) — incremental refactoring progress and checks.
 - [`AGENTS.md`](AGENTS.md) — concise operating rules for repository work.
 - [`docs/adr/`](docs/adr/) — accepted architectural and scientific decisions.
 

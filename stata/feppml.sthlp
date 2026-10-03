@@ -32,6 +32,28 @@ the certified separation sequence {cmd:fe simplex ir}. Estimation, inference,
 requested observation-level output, and the completion receipt are one guarded
 transaction. An error or Break posts no partial result.
 
+{marker engines}
+{title:Engine selection}
+
+{pstd}
+{cmd:engine(next)} selects the maintained engine and is the default for OLS
+and PPML. {cmd:engine(legacy)} selects a separate frozen plugin and prints a
+short note on every call. An explicit option takes precedence over the
+{cmd:FEREG_ENGINE} global; an unset global defaults to {cmd:next}. Invalid
+selections return {cmd:r(198)}. A missing selected binary returns {cmd:r(601)};
+the command never switches engines automatically.
+
+{pstd}
+The legacy comparator is the frozen native artifact from
+{cmd:legacy-comparator-v1} with the current shared ado files. It is useful for
+comparison but can contain bugs; it does not define correct results. Next
+corrects factor availability, full-matrix OLS multiway covariance, continuous
+slope DoF validation and an exactly absorbed frequency-singleton factor.
+Numerical agreement does not require identical bits across engines or thread
+counts. Engine identity is stored in {cmd:e(feppml_engine)}; stored estimates retain it.
+Use {cmd:fereg, version engine(legacy)}, {cmd:doctor}, or {cmd:selftest} to inspect
+the selected plugin.
+
 {marker syntax}
 {title:Syntax}
 
@@ -72,6 +94,7 @@ transaction. An error or Break posts no partial result.
     {cmd:biasstream(}{it:#}{cmd:)}{col 42}independent stream; default 0
 
   {ul:Execution}
+    {cmd:engine(next|legacy)}{col 42}native engine; default next
     {cmd:solver(auto|map|lsmr|cmg)}{col 42}fixed-effect solver; default {cmd:auto}
     {cmd:memory(auto|fast|low)}{col 42}memory plan; default {cmd:auto}
     {cmd:poolsize(}{it:#}{cmd:)}{col 42}low-memory block width; default 10

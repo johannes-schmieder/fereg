@@ -6,6 +6,7 @@ f _fereg_estimate_public.ado
 f _fereg_ols.ado
 f _fereg_estimate_ols.ado
 f _fereg_load.ado
+f _fereg_factor_sample.ado
 f _fereg_memory_baseline.ado
 f _fereg_memory_validate.ado
 f feppml.ado
@@ -25,5 +26,15 @@ f feppml.sthlp
 f fereg_parse.sthlp
 f fereg_postestimation.sthlp
 f fereg_windows.plugin
+f fereg_windows.plugin.sha256
+f fereg_legacy_windows.plugin
+f fereg_legacy_windows.plugin.sha256
 f fereg_linux.plugin
+f fereg_linux.plugin.sha256
+f fereg_legacy_linux.plugin
+f fereg_legacy_linux.plugin.sha256
 f fereg_macos.plugin
+f fereg_macos.plugin.sha256
+f fereg_legacy_macos.plugin
+f fereg_legacy_macos.plugin.sha256
+f LEGACY_COMPARATOR.json

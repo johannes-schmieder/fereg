@@ -5,6 +5,7 @@ import json
 import tempfile
 import unittest
 import zipfile
+from unittest.mock import patch
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -14,7 +15,7 @@ from scripts import package_release, stage_release  # noqa: E402
 class ReleaseStagingTests(unittest.TestCase):
     PRODUCTION_STATA_FILES = (
         "fereg.ado", "fereg_run.ado", "_fereg_estimate_public.ado",
-        "_fereg_ols.ado", "_fereg_estimate_ols.ado", "_fereg_load.ado", "_fereg_memory_baseline.ado", "_fereg_memory_validate.ado",
+        "_fereg_ols.ado", "_fereg_estimate_ols.ado", "_fereg_load.ado", "_fereg_factor_sample.ado", "_fereg_memory_baseline.ado", "_fereg_memory_validate.ado",
         "feppml.ado", "_fereg_ppml.ado", "_fereg_estimate_ppml.ado", "_fereg_ppml_result_mata.ado",
         "_fereg_ppml_result_mata.json", "_fereg_ppml_validation_error.mo",
         "_fereg_ppml_validate_result.mo", "_fereg_ppml_post_scalars.mo",
@@ -51,11 +52,20 @@ class ReleaseStagingTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 stage_release.validate_ppml_mata_objects(target)
 
+    def setUp(self):
+        self.baseline = stage_release.legacy_baseline(ROOT)
+        self.baseline_patch = patch.object(stage_release, 'legacy_baseline', return_value=self.baseline)
+        self.baseline_patch.start()
+        self.addCleanup(self.baseline_patch.stop)
+
     def make_plugins(self, directory: Path) -> None:
         for index, name in enumerate(stage_release.EXPECTED_PLUGINS, start=1):
             plugin = directory / name
             plugin.write_bytes((f"mock-native-{index}\n").encode())
             digest = hashlib.sha256(plugin.read_bytes()).hexdigest()
+            for asset in self.baseline["assets"].values():
+                if asset["filename"] == name:
+                    asset["sha256"] = digest
             (directory / f"{name}.sha256").write_text(
                 f"{digest}  {name}\n", encoding="ascii"
             )
@@ -121,6 +131,10 @@ class ReleaseStagingTests(unittest.TestCase):
             )
             for private_ppml in private_ppml_files:
                 self.assertIn(prefix + private_ppml, names)
+            self.assertEqual(manifest['default_engine'], 'next')
+            self.assertEqual({p['engine'] for p in manifest['plugins']}, {'next', 'legacy'})
+            self.assertIn(prefix + '_fereg_factor_sample.ado', names)
+            self.assertIn(prefix + 'LEGACY_COMPARATOR.json', names)
             self.assertEqual(manifest["version"], "0.5.0")
             self.assertEqual(manifest["phase"], "beta")
             self.assertEqual(manifest["action_protocol"], "1.6")
@@ -183,6 +197,16 @@ class ReleaseStagingTests(unittest.TestCase):
             with self.assertRaises(RuntimeError):
                 stage_release.verify_plugins(plugins)
 
+    def test_matching_checksum_cannot_replace_the_frozen_comparator(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            self.make_plugins(directory)
+            name = stage_release.LEGACY_PLUGINS['macos']
+            (directory / name).write_bytes(b'another correctly checksummed build')
+            (directory / (name + '.sha256')).write_text(stage_release.digest(directory / name) + '  ' + name)
+            with self.assertRaisesRegex(RuntimeError, 'frozen comparator identity'):
+                stage_release.verify_plugins(directory)
+
     def test_review_subset_is_reproducible_and_cannot_replace_full_release(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
@@ -205,6 +229,7 @@ class ReleaseStagingTests(unittest.TestCase):
                 package = archive.read(prefix + "fereg.pkg").decode()
                 self.assertNotIn(prefix + "fereg_windows.plugin", archive.namelist())
                 self.assertNotIn("f fereg_windows.plugin", package)
+                self.assertNotIn("f fereg_legacy_windows.plugin", package)
                 for platform in ("macos", "linux"):
                     self.assertIn(f"f fereg_{platform}.plugin", package)
                 self.assertEqual(manifest['schema'], 3)
