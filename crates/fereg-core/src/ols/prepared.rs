@@ -1973,14 +1973,24 @@ fn resolve_categorical_level_codes(
     model: &mut PreparedOlsModel,
     categorical_sources: &[PreparedCategoricalSource],
 ) -> Result<()> {
+    // Removing availability-only slope markers can move factor source slots.
+    // Source identity survives that narrowing; positional recipes must follow it.
+    let position = |id| {
+        categorical_sources
+            .iter()
+            .position(|source| source.source == id)
+            .ok_or_else(|| invalid("prepared categorical source identity is absent"))
+    };
     for column in &mut model.columns {
         match &mut column.kind {
             PreparedOlsColumnKind::Categorical {
+                source,
                 categorical_source_index,
                 level_bits,
                 level_code,
                 ..
             } => {
+                *categorical_source_index = position(*source)?;
                 *level_code = resolve_categorical_level_code(
                     categorical_sources,
                     *categorical_source_index,
@@ -1989,6 +1999,7 @@ fn resolve_categorical_level_codes(
             }
             PreparedOlsColumnKind::CategoricalInteraction { components } => {
                 for component in components {
+                    component.categorical_source_index = position(component.source)?;
                     component.level_code = resolve_categorical_level_code(
                         categorical_sources,
                         component.categorical_source_index,
@@ -4117,6 +4128,168 @@ mod tests {
                     expected,
                     run(16).expect("sixteen-worker prepared fixture"),
                     "N={n}, case={case}"
+                );
+            }
+        }
+    }
+
+    fn classified_slope_role_fixture() -> (OlsRequestV1, LoadedOlsInput) {
+        let first = SourceId::new(1).unwrap();
+        let factor = SourceId::new(2).unwrap();
+        let partition = SourceId::new(3).unwrap();
+        let mut request = mixed_numeric_factor_request();
+        let full = self::request(3, true);
+        request.model.sources = full.model.sources;
+        request.bindings = full.bindings;
+        for term in &mut request.model.terms {
+            for component in &mut term.components {
+                component.source = factor;
+            }
+        }
+        request.absorbed_terms = vec![AbsorbedTerm {
+            id: AbsorbTermId::new(1).unwrap(),
+            intercept: true,
+            categorical_sources: vec![partition],
+            slope_sources: vec![first, factor],
+            label: "g##c.(z f)".into(),
+            saved_name: String::new(),
+        }];
+        let mut interaction = request.model.terms[2].clone();
+        interaction.id = TermId::new(6).unwrap();
+        interaction.order = TermOrder::new(6).unwrap();
+        interaction.coefficient_slot = CoefficientSlot::new(6).unwrap();
+        interaction.raw_kind = RawTermKind::Interaction;
+        interaction.canonical_token = "1.f#0b.g".into();
+        interaction.whole_column_omitted = true;
+        let mut base = categorical_component(2, partition, 0.0);
+        base.base = MetadataFlag::True;
+        base.omitted = MetadataFlag::True;
+        base.raw_operator = "0b".into();
+        interaction.components = vec![categorical_component(1, factor, 1.0), base];
+        let mut kept = interaction.clone();
+        kept.id = TermId::new(7).unwrap();
+        kept.order = TermOrder::new(7).unwrap();
+        kept.coefficient_slot = CoefficientSlot::new(7).unwrap();
+        kept.canonical_token = "1.f#1.g".into();
+        kept.whole_column_omitted = false;
+        kept.components[1] = categorical_component(2, partition, 1.0);
+        request.model.terms.extend([interaction, kept]);
+        let n = 97;
+        let mut input = LoadedOlsInput {
+            candidate: vec![true; n],
+            outcome: column(&vec![1.0; n], &vec![false; n]),
+            numeric_sources: vec![
+                (
+                    first,
+                    column(
+                        &(0..n).map(|r| (r as f64).sin()).collect::<Vec<_>>(),
+                        &vec![false; n],
+                    ),
+                ),
+                (
+                    factor,
+                    column(
+                        &(0..n).map(|r| (r % 3) as f64).collect::<Vec<_>>(),
+                        &vec![false; n],
+                    ),
+                ),
+                (
+                    partition,
+                    column(
+                        &(0..n).map(|r| (r / 5) as f64).collect::<Vec<_>>(),
+                        &vec![false; n],
+                    ),
+                ),
+            ],
+            analytic_weight: None,
+            frequency_weight: None,
+            probability_weight: None,
+        };
+        input.candidate[0] = false;
+        input.numeric_sources[1].1.values[0] = -1.5;
+        input.numeric_sources[0].1.missing[3] = true;
+        (request, input)
+    }
+
+    #[test]
+    fn classified_slope_roles_preserve_factors_clusters_and_missing_reasons() {
+        let first = SourceId::new(1).unwrap();
+        let factor = SourceId::new(2).unwrap();
+        let partition = SourceId::new(3).unwrap();
+        let (request, input) = classified_slope_role_fixture();
+        for cluster_first in [false, true] {
+            let clusters = if cluster_first {
+                vec![first, factor]
+            } else {
+                vec![factor]
+            };
+            let mut plan = crate::fe::plan_categorical_absorbed_request(&request).unwrap();
+            let (model, sample) =
+                prepare_ols_numeric_sample(plan.availability_request(), &input, &clusters).unwrap();
+            assert_eq!(sample.drop_reasons[0], crate::DropReason::ExcludedByIfIn);
+            assert_eq!(
+                sample.drop_reasons[3],
+                crate::DropReason::MissingFixedEffect
+            );
+            plan.discard_classified_slope_categories().unwrap();
+            let available = finish_categorical_availability(
+                plan.availability_request(),
+                &clusters,
+                model,
+                sample,
+                true,
+                None,
+            )
+            .unwrap();
+            let expected = if cluster_first {
+                vec![first, factor, partition]
+            } else {
+                vec![factor, partition]
+            };
+            assert_eq!(
+                available
+                    .categorical_sources
+                    .iter()
+                    .map(|s| s.source)
+                    .collect::<Vec<_>>(),
+                expected
+            );
+            for column in &available.model.columns {
+                if let PreparedOlsColumnKind::Categorical {
+                    source,
+                    categorical_source_index,
+                    ..
+                } = column.kind
+                {
+                    assert_eq!(
+                        available.categorical_sources[categorical_source_index].source,
+                        source
+                    );
+                }
+            }
+            let prepared = crate::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
+                &request, &input, &clusters).unwrap();
+            assert_eq!(prepared.sample(), &available.sample);
+            let interaction = prepared
+                .model()
+                .columns
+                .iter()
+                .position(|column| {
+                    matches!(
+                        column.kind,
+                        PreparedOlsColumnKind::CategoricalInteraction { .. }
+                    )
+                })
+                .unwrap();
+            for row in 0..prepared.sample().n_active() {
+                let original = prepared.sample().retained_rows()[row];
+                assert_eq!(
+                    prepared.column_value(0, row).unwrap(),
+                    (original % 3) as f64
+                );
+                assert_eq!(
+                    prepared.column_value(interaction, row).unwrap(),
+                    f64::from(original % 3 == 1 && original / 5 == 1)
                 );
             }
         }

@@ -51,8 +51,681 @@
     }
   },
   "qualification": {
-    "clean_binary_timings": "pending",
-    "linux_ci": "pending"
+    "clean_mac": {
+      "source": "a1e15f45b7d9f4e255534293a49964e2897889a8",
+      "sha256": "bae3e8fa79aecca22f0f385a7ac3133ebfddf8222ee7cbd59e652f791893b1eb",
+      "exact_parent_cases": 73,
+      "science": 73,
+      "universal_abi": true
+    },
+    "linux_ci": {
+      "run": 37145562648,
+      "source": "a1e15f45b7d9f4e255534293a49964e2897889a8",
+      "conclusion": "success",
+      "native_scientific_cases": 73,
+      "next_sha256": "c4e94d7c0ccc24c377cd683fbb30b984f1cd5a54967de70ce143ccd4cc737816",
+      "frozen_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc"
+    },
+    "timings": {
+      "identities": {
+        "parent": {
+          "checkout": "a1e15f45b7d9f4e255534293a49964e2897889a8",
+          "binary_source": "b2ae8daf39dbce8151f17f9bc6fcaf7949a47578",
+          "binary_sha256": "cbad80c7a89ae30053d4d2bfd127b63c42121fb28cc003c8b9e16173af0d0fa0",
+          "dirty": false
+        },
+        "next": {
+          "checkout": "a1e15f45b7d9f4e255534293a49964e2897889a8",
+          "binary_source": "a1e15f45b7d9f4e255534293a49964e2897889a8",
+          "binary_sha256": "bae3e8fa79aecca22f0f385a7ac3133ebfddf8222ee7cbd59e652f791893b1eb",
+          "dirty": false
+        }
+      },
+      "protocol": {
+        "warmups": 1,
+        "repetitions": 5,
+        "coefficient_rtol": 1e-07,
+        "coefficient_atol": 1e-10,
+        "reference_tolerance": 1e-12,
+        "fresh_process_per_command": true
+      },
+      "datasets": {
+        "ols-ordinary-cluster": {
+          "sha256": "f2280c5187703fd9b961b52e444dcc259268b3e7f21ff3b9371a7b48c1c5c377",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-categorical-robust": {
+          "sha256": "318a92a57c1d283905210ca7ff6c7b12ee8fb9b26af2d2b9572e4033089b5d2e",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-categorical-cluster": {
+          "sha256": "20a603f25aa69337ed7a7bdc49803ec5e5e18ee9c02921f2a772bc8bad6fd34c",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-ordinary-iid": {
+          "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-categorical-iid": {
+          "sha256": "318a92a57c1d283905210ca7ff6c7b12ee8fb9b26af2d2b9572e4033089b5d2e",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-ordinary-robust": {
+          "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        }
+      },
+      "exact_pairs": 114,
+      "geometric_mean_ratio": 0.9871472368916205,
+      "pairs": [
+        {
+          "cell": "ols-ordinary-iid",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.024,
+            "seconds_min": 0.024,
+            "seconds_max": 0.025,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.024,
+              0.024,
+              0.024,
+              0.024,
+              0.025
+            ]
+          },
+          "next": {
+            "seconds": 0.025,
+            "seconds_min": 0.024,
+            "seconds_max": 0.026,
+            "seconds_mad": 0.0009999999999999974,
+            "measurements": [
+              0.024,
+              0.026,
+              0.025,
+              0.024,
+              0.026
+            ]
+          },
+          "ratio": 1.0416666666666667,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-ordinary-iid",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.019,
+            "seconds_min": 0.019,
+            "seconds_max": 0.02,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.019,
+              0.019,
+              0.019,
+              0.019,
+              0.02
+            ]
+          },
+          "next": {
+            "seconds": 0.019,
+            "seconds_min": 0.019,
+            "seconds_max": 0.02,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.019,
+              0.019,
+              0.019,
+              0.02,
+              0.02
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-ordinary-iid",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.027,
+            "seconds_min": 0.022,
+            "seconds_max": 0.031,
+            "seconds_mad": 0.004,
+            "measurements": [
+              0.027,
+              0.029,
+              0.031,
+              0.022,
+              0.023
+            ]
+          },
+          "next": {
+            "seconds": 0.023,
+            "seconds_min": 0.019,
+            "seconds_max": 0.026,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.023,
+              0.019,
+              0.022,
+              0.023,
+              0.026
+            ]
+          },
+          "ratio": 0.8518518518518519,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-ordinary-robust",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.027,
+            "seconds_min": 0.025,
+            "seconds_max": 0.027,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.027,
+              0.027,
+              0.026,
+              0.025,
+              0.027
+            ]
+          },
+          "next": {
+            "seconds": 0.027,
+            "seconds_min": 0.026,
+            "seconds_max": 0.027,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.026,
+              0.026,
+              0.027,
+              0.027,
+              0.027
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-ordinary-robust",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.021,
+            "seconds_min": 0.02,
+            "seconds_max": 0.021,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.02,
+              0.02,
+              0.021,
+              0.021,
+              0.021
+            ]
+          },
+          "next": {
+            "seconds": 0.021,
+            "seconds_min": 0.021,
+            "seconds_max": 0.036,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.023,
+              0.036,
+              0.021,
+              0.021,
+              0.021
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-ordinary-robust",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.028,
+            "seconds_min": 0.024,
+            "seconds_max": 0.042,
+            "seconds_mad": 0.002999999999999999,
+            "measurements": [
+              0.025,
+              0.024,
+              0.028,
+              0.03,
+              0.042
+            ]
+          },
+          "next": {
+            "seconds": 0.025,
+            "seconds_min": 0.023,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.0020000000000000018,
+            "measurements": [
+              0.023,
+              0.037,
+              0.025,
+              0.044,
+              0.025
+            ]
+          },
+          "ratio": 0.8928571428571429,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-ordinary-cluster",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.026,
+            "seconds_min": 0.026,
+            "seconds_max": 0.028,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.026,
+              0.027,
+              0.028,
+              0.026,
+              0.026
+            ]
+          },
+          "next": {
+            "seconds": 0.026,
+            "seconds_min": 0.025,
+            "seconds_max": 0.027,
+            "seconds_mad": 0.0009999999999999974,
+            "measurements": [
+              0.027,
+              0.025,
+              0.026,
+              0.027,
+              0.026
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-ordinary-cluster",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.021,
+            "seconds_min": 0.021,
+            "seconds_max": 0.022,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.021,
+              0.022,
+              0.021,
+              0.021,
+              0.021
+            ]
+          },
+          "next": {
+            "seconds": 0.021,
+            "seconds_min": 0.02,
+            "seconds_max": 0.021,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.021,
+              0.021,
+              0.021,
+              0.021,
+              0.02
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-ordinary-cluster",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.026,
+            "seconds_min": 0.024,
+            "seconds_max": 0.033,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.026,
+              0.033,
+              0.026,
+              0.024,
+              0.026
+            ]
+          },
+          "next": {
+            "seconds": 0.028,
+            "seconds_min": 0.025,
+            "seconds_max": 0.032,
+            "seconds_mad": 0.002999999999999999,
+            "measurements": [
+              0.032,
+              0.025,
+              0.031,
+              0.028,
+              0.025
+            ]
+          },
+          "ratio": 1.076923076923077,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-iid",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.024,
+            "seconds_min": 0.024,
+            "seconds_max": 0.025,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.024,
+              0.024,
+              0.024,
+              0.025,
+              0.024
+            ]
+          },
+          "next": {
+            "seconds": 0.024,
+            "seconds_min": 0.023,
+            "seconds_max": 0.025,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.024,
+              0.024,
+              0.025,
+              0.023,
+              0.025
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-iid",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.02,
+            "seconds_min": 0.02,
+            "seconds_max": 0.021,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.02,
+              0.02,
+              0.021,
+              0.02,
+              0.02
+            ]
+          },
+          "next": {
+            "seconds": 0.02,
+            "seconds_min": 0.019,
+            "seconds_max": 0.021,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.021,
+              0.02,
+              0.02,
+              0.019,
+              0.02
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-iid",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.026,
+            "seconds_min": 0.024,
+            "seconds_max": 0.034,
+            "seconds_mad": 0.0019999999999999983,
+            "measurements": [
+              0.026,
+              0.024,
+              0.034,
+              0.025,
+              0.03
+            ]
+          },
+          "next": {
+            "seconds": 0.026,
+            "seconds_min": 0.024,
+            "seconds_max": 0.037,
+            "seconds_mad": 0.0019999999999999983,
+            "measurements": [
+              0.026,
+              0.024,
+              0.037,
+              0.025,
+              0.028
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-robust",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.027,
+            "seconds_min": 0.026,
+            "seconds_max": 0.028,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.027,
+              0.027,
+              0.028,
+              0.026,
+              0.026
+            ]
+          },
+          "next": {
+            "seconds": 0.027,
+            "seconds_min": 0.026,
+            "seconds_max": 0.028,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.026,
+              0.028,
+              0.026,
+              0.027,
+              0.028
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-robust",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.022,
+            "seconds_min": 0.021,
+            "seconds_max": 0.024,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.021,
+              0.022,
+              0.024,
+              0.022,
+              0.022
+            ]
+          },
+          "next": {
+            "seconds": 0.022,
+            "seconds_min": 0.021,
+            "seconds_max": 0.023,
+            "seconds_mad": 0.0009999999999999974,
+            "measurements": [
+              0.023,
+              0.021,
+              0.022,
+              0.022,
+              0.023
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-robust",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.028,
+            "seconds_min": 0.026,
+            "seconds_max": 0.033,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.026,
+              0.033,
+              0.029,
+              0.027,
+              0.028
+            ]
+          },
+          "next": {
+            "seconds": 0.026,
+            "seconds_min": 0.026,
+            "seconds_max": 0.038,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.026,
+              0.026,
+              0.038,
+              0.032,
+              0.026
+            ]
+          },
+          "ratio": 0.9285714285714285,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-cluster",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.027,
+            "seconds_min": 0.027,
+            "seconds_max": 0.027,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.027,
+              0.027,
+              0.027,
+              0.027,
+              0.027
+            ]
+          },
+          "next": {
+            "seconds": 0.027,
+            "seconds_min": 0.026,
+            "seconds_max": 0.028,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.028,
+              0.027,
+              0.027,
+              0.027,
+              0.026
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-cluster",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.023,
+            "seconds_min": 0.022,
+            "seconds_max": 0.023,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.022,
+              0.023,
+              0.023,
+              0.022,
+              0.023
+            ]
+          },
+          "next": {
+            "seconds": 0.023,
+            "seconds_min": 0.022,
+            "seconds_max": 0.023,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.022,
+              0.022,
+              0.023,
+              0.023,
+              0.023
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-categorical-cluster",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.029,
+            "seconds_min": 0.026,
+            "seconds_max": 0.03,
+            "seconds_mad": 0.0009999999999999974,
+            "measurements": [
+              0.026,
+              0.029,
+              0.03,
+              0.028,
+              0.03
+            ]
+          },
+          "next": {
+            "seconds": 0.029,
+            "seconds_min": 0.028,
+            "seconds_max": 0.033,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.028,
+              0.03,
+              0.033,
+              0.028,
+              0.029
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        }
+      ]
+    },
+    "recipe": {
+      "script": "import copy,sys\nfrom pathlib import Path\nsys.path.insert(0,str(Path.cwd()/'bench'))\nimport run as runner\nsuite=runner.load_suite()\nsuite['cells']=[dict(id=f'ols-{representation}-{vce}',model='ols',design='dense',effects=2,regressors=8,rows=16384,weights='unit',vce=vce,outputs=False,scc=False,slopes=representation=='categorical') for representation in ['ordinary','categorical'] for vce in ['iid','robust','cluster']]\nsuite['tiers']['m1']=dict(cells=[c['id'] for c in suite['cells']],threads=[1,4,16],timeout_seconds=300)\nrunner.load_suite=lambda:copy.deepcopy(suite)\nrunner.run(runner.arguments())\n",
+      "sha256": "e2658b46dcb35943d64074de619abd98cec64f982a21c536344ff930a75e7083",
+      "scope": "Six 16384-row/8-regressor ordinary and categorical OLS VCE cells, native 1/4/16, standard warmup/five measurements."
+    },
+    "conclusion": "18 ranges overlap, 114 coefficient/sample pairs exact, GM0.9871. No repeatable speedup or regression established."
   },
   "limits": "This removes duplicate owner policy and field transfers; it does not remove an observation-scale numerical pass or establish a speedup."
 }

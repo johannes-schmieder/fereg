@@ -2,7 +2,7 @@
 
 Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M15 certified OLS owners; M12 clean Mac/Linux qualification complete.
+Current task: M13 clean Mac/Linux qualification; M12 and M15 fully qualified.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -47,9 +47,9 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M11.3 Clean 73/five-thread replay, 46 Stata, 34 timing pairs, Linux CI 37137263330 and Astra max assessment complete.
 
 - [x] M12 Availability owner; disposable topology retired; full/30, Mac exact73/9 Stata/ABI, clean timings and Linux CI pass.
-- [ ] M13 Source-role encoding after classification; retire slope-only categorical codes.
+- [ ] M13 Source-role encoding implemented; full/30, exact73 Mac/ABI and 9 Stata pass; clean/CI pending.
 - [ ] M14 Transfer unchanged non-FE encodings; retain changed-axis recoding.
-- [ ] M15 Three report-parameterized certified OLS VCE owners.
+- [x] M15 Three certified VCE owners; core -166; full/30, exact73 Mac/4 Stata/ABI, 18 timing pairs and Linux CI pass.
 - [ ] M16 Four VCE-independent OLS preparations and common completion discipline.
 - [ ] M17 One active OLS FE storage owner, exact existing transitions.
 - [ ] M18 Ordered PPML admission/installation owner, exact inventory and policy.
@@ -145,3 +145,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M12.1 this commit — discarded ordinary topology retired; core +42 declared; full/30 oracles, exact73 native, Mac ABI and 9 Stata pass; clean/CI pending.
 - 2026-10-03 M12.2 b2ae8daf — clean exact73 and CI 37144472911 pass; 76 pairs exact per timing run; fresh12 ranges overlap; [evidence](bench/history/2026-10-03-m12-availability.json).
 - 2026-10-03 M15.1 this commit — six certified owners become three; core -166; full/30 oracles, exact73 native, Mac ABI and 4 Stata pass; clean/CI pending.
+- 2026-10-03 M15.2 a1e15f45 — clean exact73 and CI 37145562648 pass; all18 VCE timing ranges overlap, 114 pairs exact; [evidence](bench/history/2026-10-03-m15-inference-owners.json).
+- 2026-10-03 M13.1 this commit — slope-only codes/gates retired; shifted mixed factor/cluster witness, full/30, exact73 Mac/ABI and 9 Stata pass; core -18; clean/CI pending.

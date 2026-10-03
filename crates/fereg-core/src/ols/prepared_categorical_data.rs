@@ -1,10 +1,10 @@
 //! Integrated prepared-data path for numeric categorical absorbed interactions.
 //!
-//! The existing `prepare_ols_data` boundary remains the authority for request
+//! The numeric sample-preparation boundary remains the authority for request
 //! validation, candidate-sample construction, missing-value accounting, weight
 //! semantics, and ordinary model recipes. This module uses the categorical
-//! absorbed-request planner to run that boundary with singleton deletion
-//! deliberately disabled, then applies the true single-source/interaction
+//! absorbed-request planner to classify complete source uses, then applies the
+//! true single-source/interaction
 //! singleton fixed point exactly once and constructs the final deduplicated FE
 //! topology. This boundary is shared by public estimation and developer gates.
 
@@ -1173,23 +1173,12 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
     cluster_sources: &[SourceId],
 ) -> Result<PreparedCategoricalOlsData> {
     let mut plan = plan_categorical_absorbed_request(request)?;
-    let compact_slope_availability = loaded.candidate.len() >= 16_384
-        && request.absorbed_terms.len() == 1
-        && !request.absorbed_terms[0].slope_sources.is_empty()
-        && request.model.terms.iter().all(|term| {
-            term.components
-                .iter()
-                .all(|c| c.kind == crate::metadata::ComponentKind::Continuous)
-        });
-    let (model, sample, mut early_factor) = crate::ols::prepare_ols_numeric_sample_owned(
+    let (model, sample, early_factor) = crate::ols::prepare_ols_numeric_sample_owned(
         plan.availability_request(),
         loaded,
         cluster_sources,
     )?;
-    if compact_slope_availability {
-        drop(early_factor.take());
-        plan.discard_classified_slope_categories()?;
-    }
+    plan.discard_classified_slope_categories()?;
     let availability = finish_categorical_availability(
         plan.availability_request(),
         cluster_sources,
@@ -1290,24 +1279,12 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
     ppml_structural_constant: bool,
 ) -> Result<PreparedCategoricalOlsData> {
     let mut plan = plan_categorical_absorbed_request(request)?;
-    let compact_slope_availability = ppml_structural_constant
-        && request
-            .absorbed_terms
-            .iter()
-            .any(|term| !term.slope_sources.is_empty())
-        && request.model.terms.iter().all(|term| {
-            term.components
-                .iter()
-                .all(|component| component.kind == crate::metadata::ComponentKind::Continuous)
-        });
     let (model, sample) = crate::ols::prepare_ols_numeric_sample(
         plan.availability_request(),
         loaded,
         cluster_sources,
     )?;
-    if compact_slope_availability {
-        plan.discard_classified_slope_categories()?;
-    }
+    plan.discard_classified_slope_categories()?;
     let availability = finish_categorical_availability(
         plan.availability_request(),
         cluster_sources,

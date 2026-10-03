@@ -1,7 +1,7 @@
 # Incremental refactoring architecture
 
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
-M0–M11. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
+M0–M21. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map

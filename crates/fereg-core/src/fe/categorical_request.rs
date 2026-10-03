@@ -66,14 +66,10 @@ impl CategoricalAbsorbRequestPlan {
         &self.availability_request
     }
 
-    /// After complete numeric-sample classification, a continuous-only model
-    /// needs categorical storage only for actual partition sources. Slopes keep
-    /// their fixed-effect missing-value classification from the original plan.
+    /// Classification retains the complete source-use request. Afterward only
+    /// true partitions need synthetic markers; ordinary factors and clusters
+    /// retain their independent encoding roles even when also used as slopes.
     pub(crate) fn discard_classified_slope_categories(&mut self) -> Result<()> {
-        if self.availability_request.model.terms.iter().any(|term|
-            term.components.iter().any(|c| c.kind != crate::metadata::ComponentKind::Continuous)) {
-            return Err(invalid("slope availability compaction requires continuous finite terms"));
-        }
         let requested = &self.requested_effects;
         let needed = |source: SourceId| requested.iter().any(|effect| effect.sources.contains(&source));
         self.required_sources.retain(|source| needed(*source));

@@ -1,0 +1,85 @@
+{
+  "schema": 1,
+  "milestone": "M13",
+  "implementation": "Complete source-use classification precedes unconditional synthetic role narrowing. True partitions, ordinary factors and clusters retain categorical encoding; continuous-only slopes do not. Factor recipes rebind by stable SourceId after categorical slots shift. The two restricted compact_slope_availability branches and their shape/N gates are deleted.",
+  "complexity": {
+    "core_before": 104584,
+    "core_after": 104566,
+    "delta": -18,
+    "long_functions": 98,
+    "large_files": 19,
+    "growth_reason": "Nine prepared.rs production lines rebind categorical recipes by stable source identity."
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "mixed_slope_factor_cluster_witness": true,
+    "mac_universal_abi": true,
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "8ee2ed33c467b54c22d99afc18ed9f18091d5fea8ae06c667368dbf04786100b",
+      "baseline_sha256": "bae3e8fa79aecca22f0f385a7ac3133ebfddf8222ee7cbd59e652f791893b1eb",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "licensed_stata": {
+      "status": "success",
+      "fixtures": [
+        {
+          "fixture": "tests/stata/installation/factor_availability.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+          "status": "success"
+        }
+      ]
+    }
+  },
+  "qualification": {
+    "clean_mac": "pending",
+    "linux_ci": "pending",
+    "timings": "pending"
+  },
+  "scope": "No numerical/solver/admission-policy change or new replay exception. Missing slope rows remain excluded by the complete original classifier; omitted/base factor validation remains."
+}
