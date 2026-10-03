@@ -1,4 +1,4 @@
-name: Rebuild checks
+name: Incremental refactoring checks
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: rebuild-${{ github.workflow }}-${{ github.ref }}
+  group: incremental-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -33,3 +33,32 @@ jobs:
           restore-keys: rust-${{ runner.os }}-
       - name: Rust and mock-SPI checks
         run: ./scripts/run_tests.sh
+
+  replay:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Activate the repository toolchain
+        run: rustup show active-toolchain
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+          key: replay-${{ runner.os }}-${{ hashFiles('rust-toolchain.toml', 'Cargo.lock', '**/Cargo.toml') }}
+      - name: Fetch and verify the canonical comparator (never rebuild)
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/legacy_comparator.py fetch --platform linux --directory native-artifacts/comparator
+      - name: Build next and replay complete OLS and PPML transactions
+        run: |
+          ./scripts/build_linux.sh
+          ./scripts/run_plugin_replay.sh dist/fereg_linux.plugin native-artifacts/comparator/fereg_legacy_linux.plugin
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        if: always()
+        with:
+          name: actual-plugin-replay
+          path: target/replay/results/
+          if-no-files-found: error

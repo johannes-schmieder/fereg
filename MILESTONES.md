@@ -12,7 +12,7 @@ Current runtime: working legacy implementation; next selection/default lands in 
 - [x] M0.2a Immutable tag, build/fetch/registration tooling and platform factory.
 - [x] M0.2b Hosted Linux/Windows assets, canonical registration and verified storage.
 - [x] M0.3 Working core/testkit moved; host retained; abandoned rewrite removed; full local harness/native ABI and long oracles pass.
-- [ ] M0.4 Real OLS/PPML replay, exact-copy/scientific checks, bounded feature matrix and Linux CI. Depends on M0.3 and comparator assets.
+- [~] M0.4 Mac replay passes 73 exact/repeat cases: 70 scientific passes, 3 explicit defects; matrix fixed; Linux CI qualification pending.
 - [ ] M0.5 Complexity ratchet and instrumented coverage baseline. Inventory can proceed after M0.3; replay coverage needs M0.4.
 - [ ] M1.1 Two-plugin Stata selection, next default and exact public baseline. Depends on G-M0.
 - [ ] M1.2a Next-only factor precedence correction. Depends on M1.1.
@@ -48,3 +48,4 @@ The old source-string assertion for fit_absorb_matrix also fails against unchang
 - 2026-10-02 M0.3 599793c3 — 176 retained source files byte-checked; 1635 test invocations, long oracle suite, Mac ABI and 13 bench tests pass.
 - 2026-10-02 M0.2b this commit — Linux ABI/audit pass; Windows ABI/audit pass, final checksum failed under old PowerShell; factory uses pwsh.
 - 2026-10-02 M0.2b this commit — canonical Windows 1c8ac304 verified; hosted build/ABI/audit and draft storage pass; all platforms registered.
+- 2026-10-02 M0.4 this commit — Mac 73 exact/repeat cases, 70 dense passes, 3 known defects; full local harness/ABI and 4 replay acceptance tests pass.

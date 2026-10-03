@@ -1137,6 +1137,8 @@ static int check_estimate_ols_numeric_columns(stata_call_function call)
     return result_receipt[0][15] == 1.0 && last_store_was_complete ? 0 : 6;
 }
 
+#include "replay.h"
+
 int main(int argc, char *argv[])
 {
     void *library;
@@ -1145,8 +1147,8 @@ int main(int argc, char *argv[])
     ST_plugin plugin;
     int result;
 
-    if (argc != 2) {
-        fprintf(stderr, "usage: actual_plugin_loader_test PATH\n");
+    if (argc != 2 && !(argc == 5 && strcmp(argv[2], "--replay") == 0)) {
+        fprintf(stderr, "usage: actual_plugin_loader_test PATH [--replay INPUT OUTPUT]\n");
         return 2;
     }
     library = dlopen(argv[1], RTLD_NOW | RTLD_LOCAL);
@@ -1164,6 +1166,12 @@ int main(int argc, char *argv[])
         fprintf(stderr, "internal Rust dispatch leaked from exports\n");
         dlclose(library);
         return 5;
+    }
+
+    if (argc == 5) {
+        result = replay_run(initialize, call, argv[3], argv[4]);
+        dlclose(library);
+        return result;
     }
 
     memset(&plugin, 0, sizeof(plugin));
