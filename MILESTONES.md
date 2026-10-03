@@ -2,7 +2,7 @@
 
 Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M19 clean/CI qualification; one direction owner implemented; full/30, exact73 Mac/ABI and 7 Stata pass.
+Current task: M20 clean/CI qualification; canonical retry shared; full/30, exact73 Mac/ABI and 7 Stata pass.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -53,8 +53,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M16 Four host preparations; host -21/one long function retired; full/exact73 Mac/ABI, 6 Stata, clean18 timings and Linux CI pass.
 - [x] M17 One active FE owner; core -53/long98 to97; full/30, exact73/five-thread Mac/ABI, 46 Stata, clean timings and Linux CI pass.
 - [x] M18 Consumed PPML admission/installation owner; full/30, exact inventory, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
-- [ ] M19 One active PPML direction owner; core +115 declared; full/30, exact73 Mac/ABI and 7 Stata pass; clean/CI pending.
-- [ ] M20 One ordinary canonical retry transition, unchanged eligibility/accounting.
+- [x] M19 One active PPML direction owner; full/30, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
+- [ ] M20 One ordinary canonical retry transition; full/30, exact73 Mac/ABI and 7 Stata pass; clean/CI pending.
 - [ ] M21 Strict recovery/publication controller, combined qualification and separate Astra review.
 
 ## Gates
@@ -158,3 +158,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M18.1 this commit — admission/install owner; core +225 declared, new methods <=124; full/30, 312 shapes/2,808 admissions exact, 73 native/Mac ABI and stable7 Stata pass.
 - 2026-10-03 M18.2 656e0fe1 — clean73 and CI 37153983908 pass; 76 exact pairs/all12 timing ranges overlap, GM1.011; [evidence](bench/history/2026-10-03-m18-ppml-admission.json).
 - 2026-10-03 M19.1 this commit — one inline direction, variant-derived LSMR identity and one basis replacement; full/30, exact73 Mac/ABI and 7 Stata pass; core +115 declared.
+- 2026-10-03 M19.2 9cc2b303 — clean73 and CI 37155459670 pass; all12 timing ranges overlap/76 exact pairs, GM0.993; [evidence](bench/history/2026-10-03-m19-ppml-direction.json).
+- 2026-10-03 M20.1 this commit — one typed canonical retry, accounting/extraction shared; full/30, fatal/atomicity regressions, exact73 Mac/ABI and 7 Stata pass; core +16 declared.

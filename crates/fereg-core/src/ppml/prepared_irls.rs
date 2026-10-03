@@ -57,6 +57,8 @@ use super::{
     PpmlWorkspaceCapacityReport, PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
 
+mod retry;
+
 mod direction;
 use direction::OrdinaryDirection;
 
@@ -1471,49 +1473,21 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     )
                 }
                 FusedFwlCmgSolveOutcome::NumericalFailure(report) => {
-                    solver_report
-                        .as_mut()
-                        .ok_or_else(|| internal("PPML CMG fallback lacks solver diagnostics"))?
-                        .record_cmg_numerical_fallback(cmg_failure_observation(report))?;
-                    direction.retire();
-                    memory.record_fallback(PpmlFallbackKind::Route);
-                    // The specialized route deliberately leaves the canonical
-                    // MAP session stale between checkpoints. Rebind it to this
-                    // exact frame before the one permitted numerical fallback.
-                    refresh_linear_frame(&mut session, &workspace, frame_generation)?;
-                    let canonical = session.solve_fresh()?;
-                    if !canonical.certified() {
-                        return Err(numerical_nonconvergence(
-                            "prepared PPML MAP fallback after fused CMG did not certify",
-                        ));
-                    }
-                    certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
-                    accumulate_inner_iterations(
-                        &mut total_inner_iterations,
-                        canonical.fit().absorption_report(),
-                    )?;
-                    solver_report
-                        .as_mut()
-                        .ok_or_else(|| internal("PPML MAP fallback lacks solver diagnostics"))?
-                        .observe(map_solver_observation(
-                            canonical.fit().absorption_report(),
-                            PpmlSolverFrameKind::Ordinary,
-                        ))?;
-                    fill_candidate_eta_from_linear_output(
-                        &canonical,
+                    let result = retry::canonical_retry(
+                        retry::CanonicalRetryReason::Cmg(report),
+                        &mut direction,
+                        &mut session,
+                        &mut workspace,
                         offset,
-                        workspace.candidate_eta_mut(),
-                    )?;
-                    fill_candidate_coefficients_from_linear_output(
-                        &canonical,
-                        workspace.candidate_coefficients_mut(),
+                        frame_generation,
+                        &mut memory,
+                        &mut solver_report,
+                        &mut certified_linear_subproblems,
+                        &mut total_inner_iterations,
+                        &mut allocation_audit,
                     )?;
                     rank_frozen = true;
-                    (
-                        canonical.fit().finite_rank(),
-                        canonical.reuse_report(),
-                        canonical.fit().absorption_report().used_solver,
-                    )
+                    result
                 }
             }
         } else {
@@ -1641,44 +1615,19 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     (canonical_rank, canonical_reuse, canonical_route)
                 }
             } else if let FrozenAttempt::Fallback(kind) = frozen_attempt {
-                session.discard_invalid_frozen_state();
-                memory.record_fallback(ppml_fallback_kind(kind));
-                let canonical = session.solve_fresh()?;
-                if !canonical.certified() {
-                    return Err(numerical_nonconvergence(
-                        "prepared PPML canonical fallback did not certify",
-                    ));
-                }
-                certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
-                accumulate_inner_iterations(
-                    &mut total_inner_iterations,
-                    canonical.fit().absorption_report(),
-                )?;
-                solver_report
-                    .as_mut()
-                    .ok_or_else(|| internal("PPML MAP fallback lacks solver diagnostics"))?
-                    .observe(map_solver_observation(
-                        canonical.fit().absorption_report(),
-                        PpmlSolverFrameKind::Ordinary,
-                    ))?;
-                fill_candidate_eta_from_linear_output(
-                    &canonical,
+                retry::canonical_retry(
+                    retry::CanonicalRetryReason::Frozen(kind),
+                    &mut direction,
+                    &mut session,
+                    &mut workspace,
                     offset,
-                    workspace.candidate_eta_mut(),
-                )?;
-                fill_candidate_coefficients_from_linear_output(
-                    &canonical,
-                    workspace.candidate_coefficients_mut(),
-                )?;
-                if allocation_audit.needs_equivalence() {
-                    let observation = allocation_audit.complete_equivalence(false)?;
-                    memory.observe_steady_state_allocation(observation)?;
-                }
-                (
-                    canonical.fit().finite_rank(),
-                    canonical.reuse_report(),
-                    canonical.fit().absorption_report().used_solver,
-                )
+                    frame_generation,
+                    &mut memory,
+                    &mut solver_report,
+                    &mut certified_linear_subproblems,
+                    &mut total_inner_iterations,
+                    &mut allocation_audit,
+                )?
             } else {
                 unreachable!("frozen attempt is exhaustively classified")
             }

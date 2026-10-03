@@ -1,0 +1,99 @@
+{
+  "schema": 1,
+  "milestone": "M20",
+  "implementation": "One typed canonical_retry transition handles the existing classified CMG numerical and frozen-linear failure reasons. CMG records failure evidence, retires its ordinary owner and refreshes the stale accepted frame; frozen failure invalidates its retained state. One fresh solve/certificate, count/inner accounting, MAP observation and candidate extraction sequence replaces the duplicates. Only frozen retry completes a pending allocation-equivalence audit as false, after extraction.",
+  "preserved": [
+    "one retry per classified failed frame; permanent CMG numerical route retirement",
+    "fatal domain, interruption, allocation, unsupported/internal failures never broaden eligibility",
+    "distinct certification messages and mutation/accounting order",
+    "initial solve and fresh/warm audit-equivalence witness remain separate"
+  ],
+  "complexity": {
+    "before": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1473,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 104864
+    },
+    "after": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1473,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 104880
+    },
+    "net_core_delta": 16,
+    "driver_before": 1439,
+    "driver_after": 1386,
+    "new_module_lines": 65,
+    "largest_new_function": 60,
+    "growth_reason": "Typed transition and parameter signatures add sixteen production lines while removing the two repeated sequences."
+  },
+  "checks": {
+    "full_local": true,
+    "mapped_runtime_regressions": [
+      "public_cmg_numerical_failure_falls_back_to_map_permanently",
+      "public_cmg_non_numerical_failures_remain_fatal",
+      "invalid_warm_projection_falls_back_to_independently_certified_canonical_solve",
+      "failed_canonical_retry_after_warm_invalidation_is_atomic",
+      "domain_and_interrupt_failures_never_enter_the_canonical_fallback"
+    ],
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "94b5c8334b7f078e5ca6fe783bc58090a292e8b1c99ad1df306a0336878ae861",
+      "baseline_sha256": "fa4549333e85a7918f851fa348be1e18943f97badef06ff97bfed8810ff6fb70",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "licensed_stata": [
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "status": "success"
+      }
+    ]
+  },
+  "qualification": {
+    "clean_native": "pending",
+    "timings": "pending",
+    "linux_ci": "pending"
+  }
+}
