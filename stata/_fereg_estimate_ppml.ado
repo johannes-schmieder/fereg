@@ -22,7 +22,7 @@ program define _fereg_estimate_ppml, eclass
          SIMPLEXITERate(integer 100000) SIMPLEXCELLS(integer 1000000) ///
          ALLOCATIONAUDIT INJECT(string) PUBLICMode ///
          PUBLICCMDLINE(string) PUBLICTIMEIT PUBLICDISPlay ///
-         PUBLICWEXP(string)]
+         PUBLICWEXP(string) ENGINE(string)]
 
     local bias_method = lower(strtrim(`"`biascorrection'"'))
     local has_bias = (`"`bias_method'"' != "")
@@ -254,6 +254,9 @@ program define _fereg_estimate_ppml, eclass
             exit 198
         }
     }
+
+    _fereg_load, action(resolve) engine(`"`engine'"')
+    local native_engine "`r(engine)'"
 
     marksample touse, novarlist
     local candidate_all = (strtrim(`"`if'"') == "" & strtrim(`"`in'"') == "")
@@ -691,14 +694,14 @@ program define _fereg_estimate_ppml, eclass
     * transport hint, not sample authority. No ado copy/markout pass is needed.
     local input_complete 0
 
-    capture quietly program list __fereg_estimate_plugin
-    if _rc {
-        _fereg_load, action(loadonly)
-        local plugin_file `"`r(plugin_file)'"'
-        capture program __fereg_estimate_plugin, plugin using(`"`plugin_file'"')
-        local load_rc = _rc
-        if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
-    }
+    _fereg_load, action(loadonly) engine(`native_engine')
+    local plugin_handle "`r(handle)'"
+    local plugin_file `"`r(plugin_file)'"'
+    // Stata plugin registrations are scoped to the calling ado program.
+    capture program `plugin_handle', plugin using(`"`plugin_file'"')
+    local load_rc = _rc
+    if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
+
     local keep_singletons = (`"`keepsingletons'"' != "")
     local deterministic_wire = (`"`deterministic'"' != "")
     local allocation_audit_wire = (`"`allocationaudit'"' != "")
@@ -751,7 +754,7 @@ program define _fereg_estimate_ppml, eclass
         local request_bundle "bundle_local=`request_bytes'"
     }
     else local request_bundle `"bundle=`request_bundle'"'
-    plugin call __fereg_estimate_plugin `touse' `depvar' `source_vars' ///
+    plugin call `plugin_handle' `touse' `depvar' `source_vars' ///
         `weight_variable' `adjustment_variable' `biasunit' `output_variables', ///
         `"estimate-ppml"' `"`request_bundle'"'
 
@@ -1364,6 +1367,7 @@ program define _fereg_estimate_ppml, eclass
     ereturn local feppml_request_wire "1.8"
     ereturn local feppml_result_wire "1.5"
     ereturn local feppml_plugin "0.5.0"
+    ereturn local feppml_engine "`native_engine'"
     if `"`inject'"' == "breakpostpublic" {
         di as result "FEPPML_BREAK_ARMED"
         sleep 30000

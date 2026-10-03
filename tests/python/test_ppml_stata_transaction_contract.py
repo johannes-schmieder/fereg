@@ -26,7 +26,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
         text = (TRANSACTION.read_text(encoding="utf-8")
                 + RESULT_MATA.read_text(encoding="utf-8"))
         self.assertEqual(text.count('`"estimate-ppml"\''), 1)
-        self.assertEqual(text.count("plugin call __fereg_estimate_plugin"), 1)
+        self.assertEqual(text.count("plugin call `plugin_handle'"), 1)
         for field in (
             "request_major=1",
             "request_minor=8",
@@ -107,7 +107,7 @@ class PpmlStataTransactionContractTests(unittest.TestCase):
     def test_outputs_are_private_until_final_commit(self) -> None:
         text = (TRANSACTION.read_text(encoding="utf-8")
                 + RESULT_MATA.read_text(encoding="utf-8"))
-        plugin_call = text.index("plugin call __fereg_estimate_plugin")
+        plugin_call = text.index("plugin call `plugin_handle'")
         receipt_check = text.index("_fereg_eppml_validate", plugin_call)
         commit = text.index("nobreak {", receipt_check)
         self.assertLess(plugin_call, receipt_check)

@@ -3,7 +3,7 @@ program define fereg, rclass
     version 18.0
 
     if substr(strtrim(`"`0'"'), 1, 1) == "," {
-        syntax , [VERSION DOCTOR SELFTEST THREADS(integer 0) VERBOSE]
+        syntax , [VERSION DOCTOR SELFTEST THREADS(integer 0) VERBOSE ENGINE(string)]
 
         local actions = (`"`version'"' != "") + (`"`doctor'"' != "") + (`"`selftest'"' != "")
         if `actions' != 1 {
@@ -25,7 +25,8 @@ program define fereg, rclass
             local action "selftest"
         }
 
-        _fereg_load, action(`action') threads(`threads')
+        _fereg_load, action(`action') threads(`threads') engine(`"`engine'"')
+        local selected_engine "`r(engine)'"
         local handle "`r(handle)'"
         local plugin_name "`r(plugin_name)'"
         local plugin_file `"`r(plugin_file)'"'
@@ -39,6 +40,7 @@ program define fereg, rclass
         }
 
         return local ado_version "0.5.0"
+        return local fereg_engine "`selected_engine'"
         return local action_protocol "1.5"
         return local model_wire "2.1"
         return local plugin_name "`plugin_name'"

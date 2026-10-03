@@ -2,8 +2,8 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M1.1 selectable plugins and exact public baseline; G-M0 verified.
-Current runtime: working legacy implementation; next selection/default lands in M1.1.
+Current task: M1.2a next-only factor availability precedence; M1.1 passed.
+Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
 
@@ -14,7 +14,7 @@ Current runtime: working legacy implementation; next selection/default lands in 
 - [x] M0.3 Working core/testkit moved; host retained; abandoned rewrite removed; full local harness/native ABI and long oracles pass.
 - [x] M0.4 Mac/Linux replay passes 73 exact/repeat cases: 70 scientific passes, 3 explicit defects; bounded matrix fixed.
 - [x] M0.5 Ratchet, Mac/Linux coverage and full Linux checks pass; corrected artifact verifies 221 native profiles and both estimator entry points.
-- [ ] M1.1 Two-plugin Stata selection, next default and exact public baseline. Depends on G-M0.
+- [x] M1.1 Two-plugin selection/default, diagnostics and exact public baseline pass.
 - [ ] M1.2a Next-only factor precedence correction. Depends on M1.1.
 - [ ] M1.2b Full-matrix OLS multiway covariance correction. Depends on M1.2a acceptance.
 - [ ] M1.2c Reproduce/repair slope-DoF validation. Depends on M1.2b acceptance.
@@ -39,7 +39,7 @@ Current runtime: working legacy implementation; next selection/default lands in 
 
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
-The old source-string assertion for fit_absorb_matrix also fails against unchanged frozen code; retained runtime checks remain required.
+Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
 
@@ -59,3 +59,4 @@ The old source-string assertion for fit_absorb_matrix also fails against unchang
 - 2026-10-02 M0.5 this commit — CI coverage 37086231092 succeeds and retains export/HTML; G-M0 passed; no numerical changes yet.
 - 2026-10-02 M0.5 this commit — reopened gate: Linux artifact had 0 reached host functions despite passing replay; ELF runtime anchor/per-process emission check added.
 - 2026-10-02 M0.5 this commit — corrected CI 37086868628: 221 native profiles, both entry points, 2808/811/22 reached/unreached/unmapped; G-M0 verified.
+- 2026-10-02 M1.1 this commit — selection/interleaving/restore and 2 contract fixtures pass; 73 exact replays, full local harness and 24 frontend checks pass.

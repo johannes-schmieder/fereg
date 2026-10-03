@@ -131,7 +131,7 @@ class PpmlStataSurfaceCompletionTests(unittest.TestCase):
 
         transaction = TRANSACTION.read_text(encoding="utf-8")
         materialize = transaction.index("Stata, not Rust, owns time-series indexing")
-        plugin_call = transaction.index("plugin call __fereg_estimate_plugin")
+        plugin_call = transaction.index("plugin call `plugin_handle'")
         self.assertLess(materialize, plugin_call)
         for token in (
             "matrix `original_model_components' = `model_components'",

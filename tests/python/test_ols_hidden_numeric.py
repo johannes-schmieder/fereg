@@ -521,7 +521,7 @@ class HiddenNumericProjectionTests(unittest.TestCase):
             encoding="utf-8"
         )
         post_plugin = source.split(
-            'plugin call __fereg_estimate_plugin', 1
+            "plugin call `plugin_handle'", 1
         )[1].split("program define _fereg_eols_validate", 1)[0]
         for forbidden in ("count if", "capture assert", "summarize", "egen "):
             self.assertNotIn(forbidden, post_plugin.lower())

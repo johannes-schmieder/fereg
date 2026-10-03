@@ -17,7 +17,7 @@ program define _fereg_estimate_ols, eclass
          SOLVer(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
-         INJECT(string)]
+         INJECT(string) ENGINE(string)]
 
     local memory_mode = lower(strtrim(`"`memory'"'))
     if `"`memory_mode'"' == "" local memory_mode "fast"
@@ -106,6 +106,9 @@ program define _fereg_estimate_ols, eclass
         di as error "hidden prepared OLS supports dof(none), dof(firstpair), dof(pairwise), or dof(continuous)"
         exit 198
     }
+
+    _fereg_load, action(resolve) engine(`"`engine'"')
+    local native_engine "`r(engine)'"
 
     marksample touse, novarlist
     local candidate_all = (strtrim(`"`if'"') == "" & strtrim(`"`in'"') == "")
@@ -483,17 +486,15 @@ program define _fereg_estimate_ols, eclass
     local vce_code = cond(`"`vce_wire'"' == "iid", 1, ///
         cond(`"`vce_wire'"' == "robust", 2, 3))
 
-    // The plugin program persists for the Stata process. Warm estimates avoid
-    // repeating ado-path discovery and a knowingly failing duplicate program
-    // definition; the first estimate retains the exact guarded loader path.
-    capture quietly program list __fereg_estimate_plugin
-    if _rc {
-        _fereg_load, action(loadonly)
-        local plugin_file `"`r(plugin_file)'"'
-        capture program __fereg_estimate_plugin, plugin using(`"`plugin_file'"')
-        local load_rc = _rc
-        if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
-    }
+    // Keep diagnostics and the complete transaction on the selected binary.
+    _fereg_load, action(loadonly) engine(`native_engine')
+    local plugin_handle "`r(handle)'"
+    local plugin_file `"`r(plugin_file)'"'
+    // Stata plugin registrations are scoped to the calling ado program.
+    capture program `plugin_handle', plugin using(`"`plugin_file'"')
+    local load_rc = _rc
+    if `load_rc' != 0 & `load_rc' != 110 exit `load_rc'
+
     local deterministic_wire = (`"`deterministic'"' != "")
     quietly _fereg_memory_baseline
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
@@ -525,7 +526,7 @@ program define _fereg_estimate_ols, eclass
         local request_bundle "bundle_local=`request_bytes'"
     }
     else local request_bundle `"bundle=`request_bundle'"'
-    plugin call __fereg_estimate_plugin `candidate_variable' `depvar' `source_vars' ///
+    plugin call `plugin_handle' `candidate_variable' `depvar' `source_vars' ///
         `weight_variable' `output_variables', ///
         `"estimate-ols"' `"`request_bundle'"'
 
@@ -758,6 +759,7 @@ program define _fereg_estimate_ols, eclass
     ereturn local fereg_model_wire "2.1"
     ereturn local fereg_result_wire "1.5"
     ereturn local fereg_plugin "0.5.0"
+    ereturn local fereg_engine "`native_engine'"
     if `"`inject'"' == "postdiagnostics" exit 3498
     if `"`inject'"' == "precommit" exit 3498
 

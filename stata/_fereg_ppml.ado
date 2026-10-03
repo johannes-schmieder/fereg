@@ -15,7 +15,7 @@ program define _fereg_ppml, eclass
          DETERMINISTIC ///
          SOLVer(string) ///
          TOLerance(real 1e-8) ITERate(integer 10000) ///
-         TIMEIT]
+         TIMEIT ENGINE(string)]
 
     local solver_mode = lower(strtrim(`"`solver'"'))
     if `"`solver_mode'"' == "" local solver_mode "auto"
@@ -98,6 +98,7 @@ program define _fereg_ppml, eclass
         `residual_option' `residual_type_option' `xb_option' `d_option' ///
         `eta_option' `xbd_option' `mu_option' `drop_option' ///
         `memory_option' solver(`solver_mode') poolsize(`poolsize') threads(`threads') ///
+        engine(`"`engine'"') ///
         tolerance(`tolerance') iterate(`iterate') ///
         septolerance(1e-8) sepiterate(10000) ///
         simplexiterate(100000) simplexcells(1000000) ///
