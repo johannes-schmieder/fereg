@@ -2,7 +2,7 @@
 
 Plan: [M0–M11](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M11.3 clean combined native/thread/Stata/timing and Linux qualification.
+Current task: M9–M11 complete; next stage-removal candidate awaits discussion.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -44,7 +44,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M10.2 No attributable broad gain established in fresh follow-up; original scheduling retained; no SCC launch.
 - [x] M11.1 Owners/lifetimes audited; 312 shapes, 71 fields per route, 2,808 admissions and errors exactly match parent.
 - [x] M11.2 Shared storage/owner totals/admission; core -12 lines; full/30 oracles, 73 native and 7 Stata pass.
-- [ ] M11.3 Combined native/thread/Stata/CI evidence and independent Astra max assessment.
+- [x] M11.3 Clean 73/five-thread replay, 46 Stata, 34 timing pairs, Linux CI 37137263330 and Astra max assessment complete.
 
 ## Gates
 
@@ -53,7 +53,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] G-M2: shared classification, exact parent-next checks, independent science and performance/complexity evidence; CI 37118979350 passes.
 - [x] G-M3–M7: local/long checks, exact parent replay, five-thread science, 46 Stata and Linux CI 37121923471 pass; timings investigated.
 - [x] G-M8: clean scientific/transaction checks, bounded paired timings, Linux CI and approved follow-up scopes.
-- [ ] G-M9–M11: substantive consolidation or conclusive scheduling evidence, combined qualification and strategic review.
+- [x] G-M9–M11: shared QR/PPML accounting, scheduling trial rejected, combined qualification and strategic review pass.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -64,8 +64,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No active authorization blocker: current request authorized follow-through and M8 correction d36c3f79 was committed/pushed.
-M8 clean final artifact/CI passed. No active blocker.
+No active blocker. M8–M11 final runtime qualifications passed; no work beyond the approved milestones has begun.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -130,3 +129,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M9.3 bee54ffe — clean paired QR/smoke/scaling exact; initial timing flags do not repeat; fresh GM 1.000/0.992/1.009; Linux CI passes.
 - 2026-10-03 M10 this commit — grain8 GM 0.921 then 0.966; inactive controls also improve, 16-thread gains collapse; trial reverted; [evidence](bench/history/2026-10-03-m10-scheduling.json).
 - 2026-10-03 M11.2 this commit — inventory/admissions exact; route estimate 1208 to1154 lines, core -12; full/30 oracles, Mac ABI, exact73 replay and 7 Stata pass.
+- 2026-10-03 G-M9–M11 a5cd94ba — clean 73/five-thread replay, 46 Stata, 34 ranges overlap and CI 37137263330 pass; [evidence/review](bench/history/2026-10-03-m11-memory.json).

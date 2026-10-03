@@ -175,3 +175,11 @@ The calculation falls from 1,208 to 1,154 physical lines, with a net reduction
 of twelve production lines after the new helpers. [Scalar and runtime evidence](../bench/history/2026-10-03-m11-memory.json)
 checks exact budgets and conservative allocation bounds. The broad OLS
 preparation/inference forks, FE routing and PPML IRLS orchestration remain.
+
+The final combined source `a5cd94ba` passes clean Mac five-thread replay and
+46 licensed fixtures plus Linux CI/native replay. The 34 local timing ranges
+all overlap (smoke/scaling ratios 1.014/0.999). M9–M11 establish maintenance
+consolidation, not consistent acceleration. The evidence summary includes the
+requested independent Astra max assessment. A candidate for the next audit is
+ordinary topology construction used temporarily for categorical source
+availability before replacement; no follow-up implementation is approved here.
