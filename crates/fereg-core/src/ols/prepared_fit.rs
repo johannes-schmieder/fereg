@@ -1,3 +1,6 @@
+mod qr_factorization;
+use qr_factorization::{factor_pivoted_qr, DenseQr, ScratchQr};
+
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
@@ -4498,20 +4501,6 @@ fn classify_qr_candidates<P: PreparedOlsFitView + ?Sized>(
     Ok(())
 }
 
-fn select_qr_pivot(candidates: &[usize], norms: &[f64], rank: usize) -> (usize, f64) {
-    let mut position = rank;
-    let mut norm = norms[rank];
-    for (candidate, candidate_norm) in norms.iter().copied().enumerate().skip(rank + 1) {
-        let scale = candidate_norm.abs().max(norm.abs());
-        let tied = (candidate_norm - norm).abs() <= 64.0 * f64::EPSILON * scale;
-        if candidate_norm > norm && !tied || tied && candidates[candidate] < candidates[position] {
-            position = candidate;
-            norm = candidate_norm;
-        }
-    }
-    (position, norm)
-}
-
 fn solve_qr_triangle(
     qr: &DenseMatrix,
     candidates: &[usize],
@@ -4814,114 +4803,20 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     )? {
         return Ok(fit);
     }
-    fill_trailing_norms(within, &candidate_columns, 0, &mut trailing_norms)?;
-    let initial_norm = trailing_norms.iter().copied().fold(0.0_f64, f64::max);
-    let absolute_threshold = initial_norm * relative_threshold;
-    if !absolute_threshold.is_finite() {
-        return Err(invalid_data("prepared OLS QR rank threshold is not finite"));
-    }
-
-    let mut rank = 0_usize;
-    let mut largest_diagonal = 0.0_f64;
-    let mut smallest_diagonal = f64::INFINITY;
-    while rank < nrows.min(candidate_count) {
-        // Rank zero already has the initial trailing norms above. Later ranks
-        // require a refresh after applying the previous reflector.
-        if rank > 0 {
-            fill_trailing_norms(within, &candidate_columns, rank, &mut trailing_norms)?;
-        }
-        let (pivot_position, pivot_norm) =
-            select_qr_pivot(&candidate_columns, &trailing_norms, rank);
-        if pivot_norm <= absolute_threshold {
-            break;
-        }
-        candidate_columns.swap(rank, pivot_position);
-        trailing_norms.swap(rank, pivot_position);
-        let column = candidate_columns[rank] + 1;
-        // `pivot_norm` is the stable segment norm just selected from the
-        // current trailing-norm table; do not scan the pivot column again.
-        let norm = pivot_norm;
-        if norm <= absolute_threshold {
-            break;
-        }
-        let first = within[(rank, column)];
-        let beta = if first >= 0.0 { -norm } else { norm };
-        let denominator = first - beta;
-        if !beta.is_finite() || beta == 0.0 || !denominator.is_finite() || denominator == 0.0 {
-            return Err(invalid_data(
-                "prepared OLS QR Householder construction failed",
-            ));
-        }
-        let tau = (beta - first) / beta;
-        if !tau.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS QR Householder coefficient is not finite",
-            ));
-        }
-        within[(rank, column)] = beta;
-        if nrows >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
-            within
-                .as_mut_slice()
-                .par_chunks_mut(expected_columns)
-                .skip(rank + 1)
-                .try_for_each(|row| -> Result<()> {
-                    row[column] /= denominator;
-                    if row[column].is_finite() {
-                        Ok(())
-                    } else {
-                        Err(invalid_data(
-                            "prepared OLS QR Householder vector is not finite",
-                        ))
-                    }
-                })?;
-        } else {
-            for row in (rank + 1)..nrows {
-                within[(row, column)] /= denominator;
-                if !within[(row, column)].is_finite() {
-                    return Err(invalid_data(
-                        "prepared OLS QR Householder vector is not finite",
-                    ));
-                }
-            }
-        }
-        for &other_generated in &candidate_columns[(rank + 1)..] {
-            apply_householder(within, rank, column, other_generated + 1, tau)?;
-        }
-        apply_householder(within, rank, column, 0, tau)?;
-
-        let diagonal = beta.abs();
-        largest_diagonal = largest_diagonal.max(diagonal);
-        smallest_diagonal = smallest_diagonal.min(diagonal);
-        rank = rank
-            .checked_add(1)
-            .ok_or_else(|| allocation("prepared OLS QR rank overflows usize"))?;
-    }
-
-    if rank < candidate_count {
-        fill_trailing_norms(within, &candidate_columns, rank, &mut trailing_norms)?;
-    }
-    let maximum_dropped_trailing_norm = if rank == candidate_count || initial_norm == 0.0 {
-        0.0
-    } else {
-        trailing_norms[rank..]
-            .iter()
-            .copied()
-            .fold(0.0_f64, f64::max)
-            / initial_norm
-    };
-    let rank_passed =
-        maximum_dropped_trailing_norm <= relative_threshold * (1.0 + 64.0 * f64::EPSILON);
-    if !maximum_dropped_trailing_norm.is_finite() || !rank_passed {
-        return Err(invalid_data(
-            "prepared OLS QR dropped-column rank certificate did not pass",
-        ));
-    }
+    let factor = factor_pivoted_qr(
+        DenseQr(within),
+        nrows,
+        &mut candidate_columns,
+        &mut trailing_norms,
+        relative_threshold,
+    )?;
+    let rank = factor.rank;
 
     solve_qr_triangle(
         within,
         &candidate_columns,
         &mut pivot_coefficients[..rank],
-        absolute_threshold,
+        factor.absolute_threshold,
     )?;
     QrColumnOutput {
         coefficients: &mut generated_coefficients,
@@ -4936,20 +4831,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         perturb_first_coefficient,
     )?;
 
-    let condition_proxy = if rank == 0 || smallest_diagonal == 0.0 {
-        if rank == 0 {
-            1.0
-        } else {
-            f64::INFINITY
-        }
-    } else {
-        largest_diagonal / smallest_diagonal
-    };
-    if !condition_proxy.is_finite() {
-        return Err(invalid_data(
-            "prepared OLS QR condition proxy is not finite",
-        ));
-    }
+    let certificate = factor.certificate()?;
     let finite_score = build_finite_score_draft(
         &canonical_candidates,
         &standardized_gram,
@@ -4991,12 +4873,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         kept,
         dropped,
         rank,
-        certificate: PreparedOlsRankCertificate {
-            relative_threshold,
-            maximum_dropped_trailing_norm,
-            condition_proxy,
-            passed: true,
-        },
+        certificate,
         finite_score,
         bread,
         within_residuals,
@@ -5207,104 +5084,19 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         return Ok(fit);
     }
 
-    fill_scratch_trailing_norms(
-        scratch,
-        &candidate_columns,
-        0,
+    let factor = factor_pivoted_qr(
+        ScratchQr {
+            scratch,
+            reflector: &mut reflector,
+            target: &mut target,
+            outcome: within_outcome,
+        },
+        nrows,
+        &mut candidate_columns,
         &mut trailing_norms,
-        &mut target,
+        relative_threshold,
     )?;
-    let initial_norm = trailing_norms.iter().copied().fold(0.0_f64, f64::max);
-    let absolute_threshold = initial_norm * relative_threshold;
-    if !absolute_threshold.is_finite() {
-        return Err(invalid_data(
-            "prepared OLS low-memory QR rank threshold is not finite",
-        ));
-    }
-
-    let mut rank = 0_usize;
-    let mut largest_diagonal = 0.0_f64;
-    let mut smallest_diagonal = f64::INFINITY;
-    while rank < nrows.min(candidate_count) {
-        let (pivot_position, pivot_norm) =
-            select_qr_pivot(&candidate_columns, &trailing_norms, rank);
-        if pivot_norm <= absolute_threshold {
-            break;
-        }
-        candidate_columns.swap(rank, pivot_position);
-        trailing_norms.swap(rank, pivot_position);
-        let pivot_generated = candidate_columns[rank];
-        scratch.read_column(pivot_generated, &mut reflector)?;
-        let norm = stable_slice_segment_norm(&reflector, rank)?;
-        if norm <= absolute_threshold {
-            break;
-        }
-        let first = reflector[rank];
-        let beta = if first >= 0.0 { -norm } else { norm };
-        let denominator = first - beta;
-        if !beta.is_finite() || beta == 0.0 || !denominator.is_finite() || denominator == 0.0 {
-            return Err(invalid_data(
-                "prepared OLS low-memory Householder construction failed",
-            ));
-        }
-        let tau = (beta - first) / beta;
-        if !tau.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS low-memory Householder coefficient is not finite",
-            ));
-        }
-        reflector[rank] = beta;
-        for value in reflector.iter_mut().skip(rank + 1) {
-            *value /= denominator;
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS low-memory Householder vector is not finite",
-                ));
-            }
-        }
-        scratch.write_column(pivot_generated, &reflector)?;
-        for (position, other) in candidate_columns.iter().copied().enumerate().skip(rank + 1) {
-            scratch.read_column(other, &mut target)?;
-            apply_householder_slices(&reflector, &mut target, rank, tau)?;
-            scratch.write_column(other, &target)?;
-            // This is the exact next pivot norm, not a downdate. The target
-            // still owns the bytes just written; no other column update can
-            // change them. Keep the final independent scratch rank scan below.
-            trailing_norms[position] = stable_slice_segment_norm(&target, rank + 1)?;
-        }
-        apply_householder_slices(&reflector, within_outcome, rank, tau)?;
-
-        let diagonal = beta.abs();
-        largest_diagonal = largest_diagonal.max(diagonal);
-        smallest_diagonal = smallest_diagonal.min(diagonal);
-        rank = rank
-            .checked_add(1)
-            .ok_or_else(|| allocation("prepared OLS low-memory rank overflows"))?;
-    }
-
-    fill_scratch_trailing_norms(
-        scratch,
-        &candidate_columns,
-        rank,
-        &mut trailing_norms,
-        &mut target,
-    )?;
-    let maximum_dropped_trailing_norm = if rank == candidate_count || initial_norm == 0.0 {
-        0.0
-    } else {
-        trailing_norms[rank..]
-            .iter()
-            .copied()
-            .fold(0.0_f64, f64::max)
-            / initial_norm
-    };
-    let rank_passed =
-        maximum_dropped_trailing_norm <= relative_threshold * (1.0 + 64.0 * f64::EPSILON);
-    if !maximum_dropped_trailing_norm.is_finite() || !rank_passed {
-        return Err(invalid_data(
-            "prepared OLS low-memory dropped-column rank certificate did not pass",
-        ));
-    }
+    let rank = factor.rank;
 
     let compact_columns = generated_columns
         .checked_add(1)
@@ -5333,7 +5125,7 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         &compact_qr,
         &candidate_columns,
         &mut pivot_coefficients[..rank],
-        absolute_threshold,
+        factor.absolute_threshold,
     )?;
     QrColumnOutput {
         coefficients: &mut generated_coefficients,
@@ -5348,20 +5140,7 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         perturb_first_coefficient,
     )?;
 
-    let condition_proxy = if rank == 0 || smallest_diagonal == 0.0 {
-        if rank == 0 {
-            1.0
-        } else {
-            f64::INFINITY
-        }
-    } else {
-        largest_diagonal / smallest_diagonal
-    };
-    if !condition_proxy.is_finite() {
-        return Err(invalid_data(
-            "prepared OLS low-memory condition proxy is not finite",
-        ));
-    }
+    let certificate = factor.certificate()?;
     let finite_score = build_finite_score_draft(
         &canonical_candidates,
         &standardized_gram,
@@ -5392,12 +5171,7 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         kept,
         dropped,
         rank,
-        certificate: PreparedOlsRankCertificate {
-            relative_threshold,
-            maximum_dropped_trailing_norm,
-            condition_proxy,
-            passed: true,
-        },
+        certificate,
         finite_score,
         bread: Some(bread),
         within_residuals: None,
@@ -5498,30 +5272,6 @@ fn reconstruct_within_residuals<R: FitReservation>(
             }
         })?;
     Ok(residuals)
-}
-
-fn fill_scratch_trailing_norms(
-    scratch: &mut PreparedOlsScratch,
-    columns: &[usize],
-    start_row: usize,
-    output: &mut [f64],
-    buffer: &mut [f64],
-) -> Result<()> {
-    if output.len() != columns.len() || start_row > scratch.rows() || buffer.len() != scratch.rows()
-    {
-        return Err(invalid_argument(
-            "prepared OLS low-memory trailing-norm dimensions are inconsistent",
-        ));
-    }
-    for (position, generated) in columns.iter().copied().enumerate() {
-        output[position] = if position < start_row {
-            0.0
-        } else {
-            scratch.read_column(generated, buffer)?;
-            stable_slice_segment_norm(buffer, start_row)?
-        };
-    }
-    Ok(())
 }
 
 fn stable_slice_segment_norm(values: &[f64], start: usize) -> Result<f64> {
@@ -7204,40 +6954,6 @@ fn symmetry_relative_infinity_norm(values: &[f64], dimension: usize) -> Result<f
         maximum = maximum.max(error / scale);
     }
     Ok(maximum)
-}
-
-fn fill_trailing_norms(
-    matrix: &DenseMatrix,
-    columns: &[usize],
-    start_row: usize,
-    output: &mut [f64],
-) -> Result<()> {
-    if output.len() != columns.len() || start_row > matrix.nrows() {
-        return Err(invalid_argument(
-            "prepared OLS QR trailing-norm dimensions are inconsistent",
-        ));
-    }
-    if matrix.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
-        output.par_iter_mut().enumerate().try_for_each(
-            |(position, destination)| -> Result<()> {
-                *destination = if position < start_row {
-                    0.0
-                } else {
-                    stable_matrix_segment_norm(matrix, columns[position] + 1, start_row)?
-                };
-                Ok(())
-            },
-        )?;
-    } else {
-        for (position, generated_column) in columns.iter().copied().enumerate() {
-            output[position] = if position < start_row {
-                0.0
-            } else {
-                stable_matrix_segment_norm(matrix, generated_column + 1, start_row)?
-            };
-        }
-    }
-    Ok(())
 }
 
 fn stable_matrix_segment_norm(

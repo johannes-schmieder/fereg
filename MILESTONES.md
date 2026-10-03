@@ -2,7 +2,7 @@
 
 Plan: [M0–M11](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M9.2 shared QR factorization driver; M8 gates complete.
+Current task: M9.3 clean changed-path timing and combined comparison.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -38,7 +38,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M8.3 Clean Mac 73/five-thread replay, 46 Stata, paired/follow-up timings and Linux CI 37131877394 pass.
 
 - [x] M9.1 QR norm/reflector/Cholesky fallback boundaries audited; retain storage-specific validation and arithmetic.
-- [ ] M9.2 One factorization driver; delete duplicated rank progression and qualify.
+- [x] M9.2 Shared QR driver; full/30 oracles, 73 exact parent replay, Mac ABI and 3 Stata pass; core -1 line.
 - [ ] M9.3 Clean parent comparison, changed-path timings and complexity evidence.
 - [ ] M10.1 Balanced/skewed/weighted/weak-cut scheduling diagnosis and bounded experiment.
 - [ ] M10.2 Ship only a broad measured gain, or record a negative result with current scheduling retained.
@@ -125,3 +125,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M8.3 d36c3f79 — corrected source committed/pushed; clean universal Mac/ABI pass; final timings, replay and CI qualification underway.
 - 2026-10-03 M9–M11 scope this commit — current request authorizes QR driver, bounded scheduling experiment and PPML memory simplification; Astra max review requested.
 - 2026-10-03 G-M8 d36c3f79 — clean 73/five-thread replay, 46 Stata and CI 37131877394 pass; fresh GM 0.980/0.949, no regression; frozen assets unchanged.
+- 2026-10-03 M9.2 worktree — one rank/Householder driver, three static storage operations; first +41-line design rejected; final core -1 line, no new numerical route.
+- 2026-10-03 M9.2 this commit — shared QR rank policy; preserved norm refresh, storage, arithmetic and validation; full/30 oracles, 73 replay, native ABI and 3 Stata pass.
