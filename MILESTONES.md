@@ -2,7 +2,7 @@
 
 Plan: [M0–M11](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M10.1 bounded Schur scheduling experiment.
+Current task: M11.1 PPML memory owner audit and exact characterization.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -40,8 +40,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M9.1 QR norm/reflector/Cholesky fallback boundaries audited; retain storage-specific validation and arithmetic.
 - [x] M9.2 Shared QR driver; full/30 oracles, 73 exact parent replay, Mac ABI and 3 Stata pass; core -1 line.
 - [x] M9.3 Clean parent comparison, forced QR timings and CI 37134379100 pass; fresh ranges overlap.
-- [ ] M10.1 Balanced/skewed/weighted/weak-cut scheduling diagnosis and bounded experiment.
-- [ ] M10.2 Ship only a broad measured gain, or record a negative result with current scheduling retained.
+- [x] M10.1 Six graph/width shapes, 30 groups, grain-eight trial; 22 checks and exact 186 pairs per campaign pass.
+- [x] M10.2 No attributable broad gain established in fresh follow-up; original scheduling retained; no SCC launch.
 - [ ] M11.1 PPML memory ownership/lifetime audit and exact inventory characterization.
 - [ ] M11.2 Common inventory/storage/phase assembly; mapped allocation and scientific qualification.
 - [ ] M11.3 Combined native/thread/Stata/CI evidence and independent Astra max assessment.
@@ -128,3 +128,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M9.2 worktree — one rank/Householder driver, three static storage operations; first +41-line design rejected; final core -1 line, no new numerical route.
 - 2026-10-03 M9.2 this commit — shared QR rank policy; preserved norm refresh, storage, arithmetic and validation; full/30 oracles, 73 replay, native ABI and 3 Stata pass.
 - 2026-10-03 M9.3 bee54ffe — clean paired QR/smoke/scaling exact; initial timing flags do not repeat; fresh GM 1.000/0.992/1.009; Linux CI passes.
+- 2026-10-03 M10 this commit — grain8 GM 0.921 then 0.966; inactive controls also improve, 16-thread gains collapse; trial reverted; [evidence](bench/history/2026-10-03-m10-scheduling.json).
