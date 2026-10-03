@@ -1232,7 +1232,8 @@ pub(crate) fn prepare_ppml_categorical_ols_data(
         ..
     } = availability;
     let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
-    let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
+    let model_source_plans =
+        plan_model_sources(candidate_sources, &final_sources, &fe_topology, true)?;
     let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
     let report_intercept = request.include_intercept;
     let rebased = rebase_categorical_model(
@@ -1422,7 +1423,14 @@ fn finish_prepare_categorical_ols_data(
     };
     drop(recipe_views);
     let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
-    let model_source_plans = plan_model_sources(candidate_sources, &final_sources, &fe_topology)?;
+    // Only this complete mask proves that candidate codes still use the final row axis.
+    let unchanged_axis = singleton.active.iter().all(|&active| active);
+    let model_source_plans = plan_model_sources(
+        candidate_sources,
+        &final_sources,
+        &fe_topology,
+        unchanged_axis,
+    )?;
     let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
     drop(singleton.active);
     if fe_topology.retained_rows().len() != sample.n_active() {
@@ -1477,13 +1485,14 @@ enum CategoricalModelSourcePlanStorage {
         candidate_source_index: usize,
         candidate_levels: Vec<f64>,
     },
-    Owned,
+    Owned(Option<EncodedFactor<f64>>),
 }
 
 fn plan_model_sources(
     candidate_sources: Vec<PreparedCategoricalSource>,
     ordinary_sources: &[SourceId],
     topology: &FinalizedCategoricalTopology,
+    unchanged_axis: bool,
 ) -> Result<Vec<CategoricalModelSourcePlan>> {
     if topology.candidate_to_compacted_source().len() != candidate_sources.len() {
         return Err(invalid(
@@ -1505,7 +1514,7 @@ fn plan_model_sources(
                 candidate_levels: candidate.encoded.levels,
             }
         } else {
-            CategoricalModelSourcePlanStorage::Owned
+            CategoricalModelSourcePlanStorage::Owned(unchanged_axis.then_some(candidate.encoded))
         };
         push_reserved(
             &mut output,
@@ -1550,13 +1559,16 @@ fn build_final_model_sources(
                     candidate_levels,
                 }
             }
-            CategoricalModelSourcePlanStorage::Owned => {
+            CategoricalModelSourcePlanStorage::Owned(encoded) => {
                 let values = sample
                     .regressors
                     .get(plan.prepared_source_index)
                     .ok_or_else(|| invalid("ordinary categorical raw source is out of range"))?;
                 PreparedCategoricalModelSourceStorage::Owned {
-                    encoded: factorize_f64(values)?,
+                    encoded: match encoded {
+                        Some(encoded) => encoded,
+                        None => factorize_f64(values)?,
+                    },
                 }
             }
         };
@@ -2086,6 +2098,46 @@ mod tests {
             weights: PreparedWeights::None,
             adjustment: crate::data::PreparedAdjustment::None,
             drop_reasons: vec![DropReason::Retained; 4],
+        }
+    }
+
+    #[test]
+    fn final_model_sources_transfer_only_on_an_unchanged_axis() {
+        for keep in [[true; 4], [true, false, true, false]] {
+            let mut sample = numeric_sample();
+            sample.regressors[0] = vec![2.0, 1.0, 2.0, 3.0];
+            let encoded = factorize_f64(&sample.regressors[0]).unwrap();
+            let pointers = (encoded.codes.as_ptr(), encoded.levels.as_ptr());
+            let candidate = PreparedCategoricalSource {
+                source: SourceId::new(1).unwrap(),
+                prepared_source_index: 0,
+                encoded,
+            };
+            let views = categorical_views(std::slice::from_ref(&candidate)).unwrap();
+            let topology = finalize_categorical_topology(&views, &[], &keep).unwrap();
+            let unchanged = keep.iter().all(|&value| value);
+            let plans = plan_model_sources(
+                vec![candidate],
+                &[SourceId::new(1).unwrap()],
+                &topology,
+                unchanged,
+            )
+            .unwrap();
+            let sample = sample
+                .compact_active_rows(&keep, DropReason::Singleton)
+                .unwrap();
+            let sources = build_final_model_sources(plans, &sample, &topology).unwrap();
+            let PreparedCategoricalModelSourceStorage::Owned { encoded } = &sources[0].storage
+            else {
+                panic!("non-FE source must retain an independent owner");
+            };
+            assert_eq!(*encoded, factorize_f64(&sample.regressors[0]).unwrap());
+            if unchanged {
+                assert_eq!(pointers, (encoded.codes.as_ptr(), encoded.levels.as_ptr()));
+            } else {
+                assert_eq!(encoded.levels, vec![2.0]);
+                assert_eq!(encoded.codes, vec![0, 0]);
+            }
         }
     }
 

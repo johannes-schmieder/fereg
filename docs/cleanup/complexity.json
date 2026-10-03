@@ -1,6 +1,25 @@
 {
   "definition": "docs/cleanup/complexity.md#version-1",
-  "growth": [],
+  "growth": [
+    {
+      "after": 104577,
+      "before": 104566,
+      "metric": "fereg-core/production_lines",
+      "reason": "M14 transfers validated candidate code/level owners only with a complete unchanged singleton mask; changed axes retain final factorization."
+    },
+    {
+      "after": 1890,
+      "before": 1879,
+      "metric": "file/crates/fereg-core/src/ols/prepared_categorical_data.rs",
+      "reason": "M14 transfers validated candidate code/level owners only with a complete unchanged singleton mask; changed axes retain final factorization."
+    },
+    {
+      "after": 165,
+      "before": 158,
+      "metric": "function/crates/fereg-core/src/ols/prepared_categorical_data.rs/finish_prepare_categorical_ols_data#1",
+      "reason": "M14 transfers validated candidate code/level owners only with a complete unchanged singleton mask; changed axes retain final factorization."
+    }
+  ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -9202,79 +9221,79 @@
           },
           {
             "condition": "& availability . sample . weights",
-            "line": 1319
+            "line": 1320
           },
           {
             "condition": "availability . sample . n_active ( ) >= 16_384 && matches ! ( availability . sample . weights , PreparedWeights :: None ) && ! recipe_views . is_empty ( ) && recipe_views . iter ( ) . all ( | recipe | recipe . len ( ) == 1 )",
-            "line": 1329
+            "line": 1330
           },
           {
             "condition": "fe_topology . retained_rows ( ) . len ( ) != sample . n_active ( )",
-            "line": 1428
+            "line": 1436
           },
           {
             "condition": "topology . candidate_to_compacted_source ( ) . len ( ) != candidate_sources . len ( )",
-            "line": 1488
+            "line": 1497
           },
           {
             "condition": "output . len ( ) != ordinary_sources . len ( ) || ordinary_sources . iter ( ) . any ( | source | ! output . iter ( ) . any ( | plan | plan . source == * source ) )",
-            "line": 1520
+            "line": 1529
           },
           {
             "condition": "sources . len ( ) == sources . capacity ( )",
-            "line": 1629
+            "line": 1641
           },
           {
             "condition": "codes . len ( ) != sample . n_active ( ) || raw . len ( ) != sample . n_active ( )",
-            "line": 1809
+            "line": 1821
           },
           {
             "condition": "! codes . is_empty ( ) && n_levels == 0",
-            "line": 1814
+            "line": 1826
           },
           {
             "condition": "code as usize >= n_levels",
-            "line": 1820
+            "line": 1832
           },
           {
             "condition": "coefficient . generated_column_index != Some ( generated ) || model . columns . get ( generated ) . is_none_or ( | column |",
-            "line": 1845
+            "line": 1857
           },
           {
             "condition": "generated != model . columns . len ( )",
-            "line": 1867
+            "line": 1879
           },
           {
             "condition": "components . len ( ) < 2",
-            "line": 1906
+            "line": 1918
           },
           {
             "condition": "report_plan . public_coefficient_count ( ) != model . coefficients . len ( ) || report_plan . original_slots ( ) . windows ( 2 ) . any ( | pair | pair [ 0 ] . get ( ) >= pair [ 1 ] . get ( ) ) || report_plan . original_slots ( ) . last ( ) . is_some_and ( | slot | slot . get ( ) as usize > report_plan . original_coefficient_count ( ) )",
-            "line": 1935
+            "line": 1947
           },
           {
             "condition": "sample . n_candidate > sample . n_original || sample . drop_reasons . len ( ) != sample . n_original || sample . outcome . len ( ) != nrows || sample . regressors . iter ( ) . any ( | source | source . len ( ) != nrows )",
-            "line": 1961
+            "line": 1973
           },
           {
             "condition": "values . len ( ) != nrows || * kind == WeightKind :: Importance",
-            "line": 1978
+            "line": 1990
           },
           {
             "condition": "retained != nrows || sample . original_row_by_active . windows ( 2 ) . any ( | rows | rows [ 0 ] >= rows [ 1 ] ) || sample . original_row_by_active . iter ( ) . any ( | row |",
-            "line": 2003
+            "line": 2015
           },
           {
             "condition": "output . capacity ( ) < len",
-            "line": 2024
+            "line": 2036
           },
           {
             "condition": "output . capacity ( ) < input . len ( )",
-            "line": 2038
+            "line": 2050
           },
           {
             "condition": "target . len ( ) == target . capacity ( )",
-            "line": 2048
+            "line": 2060
           }
         ],
         "functions": {
@@ -9283,7 +9302,7 @@
             "lines": 25
           },
           "absorbed_categorical_label#1": {
-            "line": 1686,
+            "line": 1698,
             "lines": 37
           },
           "absorbed_dof#1": {
@@ -9291,16 +9310,16 @@
             "lines": 16
           },
           "absorbed_slope_label#1": {
-            "line": 1724,
+            "line": 1736,
             "lines": 15
           },
           "allocation#1": {
-            "line": 2071,
+            "line": 2083,
             "lines": 3
           },
           "build_final_model_sources#1": {
-            "line": 1532,
-            "lines": 43
+            "line": 1541,
+            "lines": 46
           },
           "build_rhs#1": {
             "line": 292,
@@ -9311,7 +9330,7 @@
             "lines": 49
           },
           "canonical_factor_value#1": {
-            "line": 2055,
+            "line": 2067,
             "lines": 7
           },
           "categorical_indicator#1": {
@@ -9327,7 +9346,7 @@
             "lines": 3
           },
           "categorical_views#1": {
-            "line": 1740,
+            "line": 1752,
             "lines": 16
           },
           "codes#1": {
@@ -9347,7 +9366,7 @@
             "lines": 3
           },
           "effect_recipe_views#1": {
-            "line": 1757,
+            "line": 1769,
             "lines": 19
           },
           "effect_specs#1": {
@@ -9355,7 +9374,7 @@
             "lines": 3
           },
           "effect_specs#2": {
-            "line": 1638,
+            "line": 1650,
             "lines": 47
           },
           "effect_views#1": {
@@ -9363,11 +9382,11 @@
             "lines": 31
           },
           "fallible_copy_slice#1": {
-            "line": 2033,
+            "line": 2045,
             "lines": 13
           },
           "fallible_filled_bool#1": {
-            "line": 2019,
+            "line": 2031,
             "lines": 13
           },
           "fe_topology#1": {
@@ -9375,12 +9394,12 @@
             "lines": 3
           },
           "final_categorical_sources#1": {
-            "line": 1607,
+            "line": 1619,
             "lines": 17
           },
           "finish_prepare_categorical_ols_data#1": {
-            "line": 1308,
-            "lines": 158
+            "line": 1309,
+            "lines": 165
           },
           "get#1": {
             "line": 66,
@@ -9399,11 +9418,11 @@
             "lines": 3
           },
           "invalid#1": {
-            "line": 2063,
+            "line": 2075,
             "lines": 3
           },
           "invalid_data#1": {
-            "line": 2067,
+            "line": 2079,
             "lines": 3
           },
           "is_topology_backed#1": {
@@ -9435,7 +9454,7 @@
             "lines": 13
           },
           "ordinary_categorical_sources#1": {
-            "line": 1576,
+            "line": 1588,
             "lines": 30
           },
           "owned_buffer_bytes#1": {
@@ -9443,8 +9462,8 @@
             "lines": 22
           },
           "plan_model_sources#1": {
-            "line": 1483,
-            "lines": 48
+            "line": 1491,
+            "lines": 49
           },
           "prepare_categorical_ols_data#1": {
             "line": 1154,
@@ -9459,27 +9478,27 @@
             "lines": 25
           },
           "prepare_categorical_ols_data_with_cluster_sources#1": {
-            "line": 1262,
+            "line": 1263,
             "lines": 12
           },
           "prepare_categorical_ols_data_with_cluster_sources_policy#1": {
-            "line": 1275,
+            "line": 1276,
             "lines": 32
           },
           "prepare_ppml_categorical_ols_data#1": {
             "line": 1203,
-            "lines": 58
+            "lines": 59
           },
           "prepared_source_index#1": {
             "line": 1011,
             "lines": 3
           },
           "push_reserved#1": {
-            "line": 2047,
+            "line": 2059,
             "lines": 7
           },
           "push_unique_source#1": {
-            "line": 1625,
+            "line": 1637,
             "lines": 12
           },
           "record_attempt#1": {
@@ -9551,7 +9570,7 @@
             "lines": 26
           },
           "validate_categorical_model_sources#1": {
-            "line": 1777,
+            "line": 1789,
             "lines": 58
           },
           "validate_dof_inputs_for_overlap#1": {
@@ -9559,15 +9578,15 @@
             "lines": 19
           },
           "validate_model_recipes#1": {
-            "line": 1836,
+            "line": 1848,
             "lines": 94
           },
           "validate_numeric_sample#1": {
-            "line": 1959,
+            "line": 1971,
             "lines": 59
           },
           "validate_report_plan#1": {
-            "line": 1931,
+            "line": 1943,
             "lines": 27
           },
           "validate_with_reusable_topology#1": {
@@ -9587,7 +9606,7 @@
             "lines": 3
           }
         },
-        "production_lines": 1879
+        "production_lines": 1890
       },
       "crates/fereg-core/src/ols/prepared_categorical_effect.rs": {
         "chunk_candidates": [],
@@ -22325,7 +22344,7 @@
         "dispatch_candidates": 1477,
         "files_over_1500": 19,
         "functions_over_150": 98,
-        "production_lines": 104566
+        "production_lines": 104577
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

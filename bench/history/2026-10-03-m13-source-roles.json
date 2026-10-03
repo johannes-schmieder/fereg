@@ -84,7 +84,14 @@
       "science": 73,
       "universal_abi": true
     },
-    "linux_ci": "pending",
+    "linux_ci": {
+      "run": 37147220974,
+      "source": "d1cd130a79659a7474e21de1f25626760ec37f7e",
+      "conclusion": "success",
+      "native_scientific_cases": 73,
+      "next_sha256": "1d16de4f192ccbfa9b763c257754119e869cb3983b2405274717433c05c31d72",
+      "frozen_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc"
+    },
     "timings": {
       "primary": {
         "identities": {
@@ -978,7 +985,8 @@
           }
         ]
       }
-    }
+    },
+    "interpretation": "All exact scientific comparisons pass; neither primary nor reverse follow-up establishes a regression. Faster isolated cells vary, so no consistent acceleration claimed."
   },
   "scope": "No numerical/solver/admission-policy change or new replay exception. Missing slope rows remain excluded by the complete original classifier; omitted/base factor validation remains."
 }

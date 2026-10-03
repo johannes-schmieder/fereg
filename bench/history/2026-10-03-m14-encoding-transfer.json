@@ -1,0 +1,75 @@
+{
+  "schema": 1,
+  "milestone": "M14",
+  "implementation": "Non-FE ordinary/cluster source plans consume candidate EncodedFactor owners when the complete authoritative singleton mask retains every row. No-FE PPML has an explicit all-retained axis. Topology-backed sources still use their single topology code owner. Changed masks drop candidate encodings and retain exact final recoding.",
+  "complexity": {
+    "core_before": 104566,
+    "core_after": 104577,
+    "delta": 11,
+    "long_functions": 98,
+    "large_files": 19,
+    "growth_reason": "Moving the candidate owner and proving the unchanged mask removes a factorization per eligible source; this requires one retained optional encoding and a mask check."
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "buffer_identity_and_changed_axis_witness": true,
+    "mac_universal_abi": true,
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "8f0e000e4c2bef5e3e228a2744a8b0896d3577327566288e859acf163eefb898",
+      "baseline_sha256": "038e1b843c4438f694cd1e69d6398f320344edb106c6051ccd7445d6896fa131",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "licensed_stata": {
+      "status": "success",
+      "fixtures": [
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/factor_availability.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+          "status": "success"
+        }
+      ]
+    }
+  },
+  "qualification": {
+    "clean_mac": "pending",
+    "linux_ci": "pending",
+    "tranche_five_thread_science": "pending",
+    "tranche_46_stata": "pending",
+    "timings": "pending"
+  },
+  "scope": "Only repeated categorical factorization is retired. No equality-of-count shortcut, cache, numerical/solver/admission change or replay exception."
+}
