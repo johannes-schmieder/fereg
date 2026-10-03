@@ -1,0 +1,1686 @@
+{
+  "datasets": {
+    "m1-ols-n100000-k16": {
+      "cell": {
+        "design": "dense",
+        "effects": 2,
+        "id": "m1-ols-n100000-k16",
+        "m1_only": true,
+        "model": "ols",
+        "outputs": false,
+        "regressors": 16,
+        "rows": 100000,
+        "scc": false,
+        "vce": "iid",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 100000,
+      "seed": 739391,
+      "sha256": "64bef8add11e327349a2b63139c8d7012b995c520418e87f46dacf849a300485",
+      "zero_outcomes": 0
+    },
+    "m1-ols-n16383-k8": {
+      "cell": {
+        "design": "dense",
+        "effects": 2,
+        "id": "m1-ols-n16383-k8",
+        "m1_only": true,
+        "model": "ols",
+        "outputs": false,
+        "regressors": 8,
+        "rows": 16383,
+        "scc": false,
+        "vce": "iid",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 16383,
+      "seed": 739391,
+      "sha256": "e3be92f8dfb3e0d5f3e555236ad451c1b794effeb033a9de521d0db509534e78",
+      "zero_outcomes": 0
+    },
+    "m1-ols-n16384-k8": {
+      "cell": {
+        "design": "dense",
+        "effects": 2,
+        "id": "m1-ols-n16384-k8",
+        "m1_only": true,
+        "model": "ols",
+        "outputs": false,
+        "regressors": 8,
+        "rows": 16384,
+        "scc": false,
+        "vce": "iid",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 16384,
+      "seed": 739391,
+      "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+      "zero_outcomes": 0
+    },
+    "m1-ppml-n100000-k16": {
+      "cell": {
+        "design": "gravity",
+        "effects": 2,
+        "id": "m1-ppml-n100000-k16",
+        "m1_only": true,
+        "model": "ppml",
+        "outputs": false,
+        "regressors": 16,
+        "rows": 100000,
+        "scc": false,
+        "vce": "robust",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 100000,
+      "seed": 739391,
+      "sha256": "4c63eb34d47b561374b5a2a31685d233291517987195eeb4629db8e805b0c834",
+      "zero_outcomes": 0
+    },
+    "m1-ppml-n16383-k8": {
+      "cell": {
+        "design": "gravity",
+        "effects": 2,
+        "id": "m1-ppml-n16383-k8",
+        "m1_only": true,
+        "model": "ppml",
+        "outputs": false,
+        "regressors": 8,
+        "rows": 16383,
+        "scc": false,
+        "vce": "robust",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 16383,
+      "seed": 739391,
+      "sha256": "794f8c6d35c0010bbb9d456baaacf2cf81cffe5fb3e93ee023be06ecd13a6722",
+      "zero_outcomes": 0
+    },
+    "m1-ppml-n16384-k8": {
+      "cell": {
+        "design": "gravity",
+        "effects": 2,
+        "id": "m1-ppml-n16384-k8",
+        "m1_only": true,
+        "model": "ppml",
+        "outputs": false,
+        "regressors": 8,
+        "rows": 16384,
+        "scc": false,
+        "vce": "robust",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 16384,
+      "seed": 739391,
+      "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+      "zero_outcomes": 0
+    },
+    "ols-1fe": {
+      "cell": {
+        "design": "dense",
+        "effects": 1,
+        "id": "ols-1fe",
+        "model": "ols",
+        "outputs": false,
+        "regressors": 10,
+        "rows": 100000,
+        "scc": false,
+        "vce": "iid",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 100000,
+      "seed": 739391,
+      "sha256": "7e5783d99bc4ece24a727c7ae789fb2272987cb3db2e68a844152cb7d9a1a529",
+      "zero_outcomes": 0
+    },
+    "ols-2fe-dense": {
+      "cell": {
+        "design": "dense",
+        "effects": 2,
+        "id": "ols-2fe-dense",
+        "model": "ols",
+        "outputs": false,
+        "regressors": 10,
+        "rows": 100000,
+        "scc": false,
+        "vce": "iid",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 100000,
+      "seed": 739391,
+      "sha256": "69d56e314043c8c39c6cc93eddeb8d15c023390cb0a8a9b2655c87534445f2bd",
+      "zero_outcomes": 0
+    },
+    "ppml-1fe": {
+      "cell": {
+        "design": "gravity",
+        "effects": 1,
+        "id": "ppml-1fe",
+        "model": "ppml",
+        "outputs": false,
+        "regressors": 10,
+        "rows": 100000,
+        "scc": false,
+        "vce": "robust",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 100000,
+      "seed": 739391,
+      "sha256": "192d50266e722cdca54ab6d1444271b08c91d37bef386e8599624478c401e2b6",
+      "zero_outcomes": 0
+    },
+    "ppml-2fe-gravity": {
+      "cell": {
+        "design": "gravity",
+        "effects": 2,
+        "id": "ppml-2fe-gravity",
+        "model": "ppml",
+        "outputs": false,
+        "regressors": 10,
+        "rows": 100000,
+        "scc": false,
+        "vce": "robust",
+        "weights": "unit"
+      },
+      "numpy": "2.3.5",
+      "pandas": "2.2.3",
+      "rows": 100000,
+      "seed": 739391,
+      "sha256": "075f611a2f88038fd11a3ee00c3a1a127c47d196ed64b57775151d5e82a55568",
+      "zero_outcomes": 0
+    }
+  },
+  "inherited_scaling_examples": [
+    {
+      "cell": "m1-ols-n100000-k16",
+      "legacy_seconds": [
+        0.087,
+        0.059,
+        0.045,
+        0.042,
+        0.054
+      ],
+      "next_seconds": [
+        0.086,
+        0.059,
+        0.047,
+        0.043,
+        0.051
+      ],
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ]
+    },
+    {
+      "cell": "m1-ppml-n100000-k16",
+      "legacy_seconds": [
+        0.351,
+        0.25,
+        0.193,
+        0.179,
+        0.193
+      ],
+      "next_seconds": [
+        0.352,
+        0.25,
+        0.196,
+        0.18,
+        0.194
+      ],
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ]
+    }
+  ],
+  "interpretation": "No detectable general integration cost in this bounded matrix: next/legacy geometric mean is 0.9985 for smoke and 0.9983 for scaling, with overlapping ranges in all 34 pairs. All 214 paired command outputs, including references and warmups, agree exactly on emitted coefficients and samples.",
+  "limitations": [
+    "Small and medium local cases; no claim about large SCC workloads or all possible high-core-count configurations.",
+    "Within-engine scaling still worsens above the useful parallelism of some cells; that behavior occurs in both engines.",
+    "The typical-model timing matrix does not isolate the cost of each corrected defect. No beyond-noise integration regression was observed in these cells.",
+    "The earlier smoke pilot had a dirty generated manifest and is excluded. All four qualified campaigns were clean.",
+    "No heavy local build or coverage work overlapped formal timings. Read-only CI status/log queries overlapped part of the final legacy campaign."
+  ],
+  "native_identities": {
+    "legacy": {
+      "build_source_commit": "15a57ba285a3afede2e3337fe8598e72529a4090",
+      "frontend_files": {
+        "stata/_fereg_estimate_ols.ado": "261234ee19b433150cef230c1821399ac4ef8aef650c1423889d5f2de4066633",
+        "stata/_fereg_estimate_ols_test.ado": "c4eb2709b775d9dbd7994860f08824310c58f4dd896716df93e2cc1392807fe0",
+        "stata/_fereg_estimate_ppml.ado": "9b618228a056fb7a43b584053d45cb0f396ccbedb80c6ff8a3313a9d111e42bc",
+        "stata/_fereg_estimate_public.ado": "f0448ff5beeeea39c10a22232e56ba9f0c21f14324eb3a0379b4921073c38756",
+        "stata/_fereg_factor_sample.ado": "2ec3d383036481a738ce20cff1951df081d12bf105fd026c7caba9d7db408ef6",
+        "stata/_fereg_load.ado": "328000e98a0f1da730760e53ff664151b083d3270958e2b0b686e021ae178eee",
+        "stata/_fereg_memory_baseline.ado": "0863a60e61e9ebe7520f7afcb421cee1aee4ed494755c27aaa6386e39dc70831",
+        "stata/_fereg_memory_validate.ado": "a8392d87cd9db901666bbf5e3b1c029bfbdcbfc6455a4381a8da42f07fb14614",
+        "stata/_fereg_ols.ado": "68e35e05f23aace9999621de355be66f7ad1288ca8d5871da67678db11d1df6a",
+        "stata/_fereg_ols_hidden_numeric_v1.ado": "3693d55d42c5ce289e4ade499e55c6e14640197057b9ebb13cc8e3925d1dad9b",
+        "stata/_fereg_ppml.ado": "ea93d95dd7770286aa1dfac05ec3e5cbe77f3d7eaee8f3154a434e1239c0b8e7",
+        "stata/_fereg_ppml_post_scalars.mo": "6e5a5bafbbfb445f6dd1bcc90e01bc0c84d41e2d0863d0c11ec9b38310ee6d6a",
+        "stata/_fereg_ppml_result_mata.ado": "9c610ef8c6f18a5c4e288fdd08e2f07ac91af17a11af886db9df0d306118fc08",
+        "stata/_fereg_ppml_validate_result.mo": "54a1e9d67776b0730371b91b87aeef0c750d0fcc0eed0141df48ad1be3131588",
+        "stata/_fereg_ppml_validation_error.mo": "e36fd7b93bc94dc599d6b276add6fdf0eb611d1fc6d8369da41e63d953cf9106",
+        "stata/_fereg_prepare_ols_test.ado": "1c03a48f83795a561e729ca9f0b2c553a3375101d615d2c525d227737666e372",
+        "stata/feppml.ado": "e18af10af6406808a631069a8f9862445158122142a7142419b455d23ce0093a",
+        "stata/feppml_p.ado": "128fa09dba2207c7bf5bd65a907f3d041b5c084011b4bac3f26eefb7762e6df2",
+        "stata/fereg.ado": "adcf48ae690475f441b48ab8932bb70078c6293236108a04dcb742278705557c",
+        "stata/fereg_estat.ado": "99442eccaf96485949da297e8f4b8d0d12c320dc84a2347c52047130d4516ebb",
+        "stata/fereg_p.ado": "2a6c823749a150794b36488c4e8b5d56fc2b7600ecb44b94175729c51e612659",
+        "stata/fereg_parse.ado": "5eb6f18cd85217dad4dca216f00c1033fce0e30a16700d3a22445823fb993554",
+        "stata/fereg_run.ado": "ba7cd1c2c863a195e55c1beb6e6b2d64b392e6032859073d5b3ecde9936ec7ca"
+      },
+      "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d",
+      "plugin_filename": "fereg_legacy_macos.plugin",
+      "plugin_sha256": "80329f51159990740425171c3457304f303272cfe55943c0afb412b54454c105"
+    },
+    "next": {
+      "build_source_commit": "9c5393af28f7922f714e1b3bb8546ce32a32c18e",
+      "frontend_files": {
+        "stata/_fereg_estimate_ols.ado": "261234ee19b433150cef230c1821399ac4ef8aef650c1423889d5f2de4066633",
+        "stata/_fereg_estimate_ols_test.ado": "c4eb2709b775d9dbd7994860f08824310c58f4dd896716df93e2cc1392807fe0",
+        "stata/_fereg_estimate_ppml.ado": "9b618228a056fb7a43b584053d45cb0f396ccbedb80c6ff8a3313a9d111e42bc",
+        "stata/_fereg_estimate_public.ado": "f0448ff5beeeea39c10a22232e56ba9f0c21f14324eb3a0379b4921073c38756",
+        "stata/_fereg_factor_sample.ado": "2ec3d383036481a738ce20cff1951df081d12bf105fd026c7caba9d7db408ef6",
+        "stata/_fereg_load.ado": "328000e98a0f1da730760e53ff664151b083d3270958e2b0b686e021ae178eee",
+        "stata/_fereg_memory_baseline.ado": "0863a60e61e9ebe7520f7afcb421cee1aee4ed494755c27aaa6386e39dc70831",
+        "stata/_fereg_memory_validate.ado": "a8392d87cd9db901666bbf5e3b1c029bfbdcbfc6455a4381a8da42f07fb14614",
+        "stata/_fereg_ols.ado": "68e35e05f23aace9999621de355be66f7ad1288ca8d5871da67678db11d1df6a",
+        "stata/_fereg_ols_hidden_numeric_v1.ado": "3693d55d42c5ce289e4ade499e55c6e14640197057b9ebb13cc8e3925d1dad9b",
+        "stata/_fereg_ppml.ado": "ea93d95dd7770286aa1dfac05ec3e5cbe77f3d7eaee8f3154a434e1239c0b8e7",
+        "stata/_fereg_ppml_post_scalars.mo": "6e5a5bafbbfb445f6dd1bcc90e01bc0c84d41e2d0863d0c11ec9b38310ee6d6a",
+        "stata/_fereg_ppml_result_mata.ado": "9c610ef8c6f18a5c4e288fdd08e2f07ac91af17a11af886db9df0d306118fc08",
+        "stata/_fereg_ppml_validate_result.mo": "54a1e9d67776b0730371b91b87aeef0c750d0fcc0eed0141df48ad1be3131588",
+        "stata/_fereg_ppml_validation_error.mo": "e36fd7b93bc94dc599d6b276add6fdf0eb611d1fc6d8369da41e63d953cf9106",
+        "stata/_fereg_prepare_ols_test.ado": "1c03a48f83795a561e729ca9f0b2c553a3375101d615d2c525d227737666e372",
+        "stata/feppml.ado": "e18af10af6406808a631069a8f9862445158122142a7142419b455d23ce0093a",
+        "stata/feppml_p.ado": "128fa09dba2207c7bf5bd65a907f3d041b5c084011b4bac3f26eefb7762e6df2",
+        "stata/fereg.ado": "adcf48ae690475f441b48ab8932bb70078c6293236108a04dcb742278705557c",
+        "stata/fereg_estat.ado": "99442eccaf96485949da297e8f4b8d0d12c320dc84a2347c52047130d4516ebb",
+        "stata/fereg_p.ado": "2a6c823749a150794b36488c4e8b5d56fc2b7600ecb44b94175729c51e612659",
+        "stata/fereg_parse.ado": "5eb6f18cd85217dad4dca216f00c1033fce0e30a16700d3a22445823fb993554",
+        "stata/fereg_run.ado": "ba7cd1c2c863a195e55c1beb6e6b2d64b392e6032859073d5b3ecde9936ec7ca"
+      },
+      "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d",
+      "plugin_filename": "fereg_macos.plugin",
+      "plugin_sha256": "49a597c4b36e81361db2ee08c347eb38f88b488f6cde4257d3d0f5e81163570f"
+    }
+  },
+  "pinned_references": {
+    "fixest": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9",
+    "ftools": "d112fc4b662945c1f76c8462a0d6c904ddc336813f24fb8c83c3aad3a0f49680",
+    "ppmlhdfe": "366ddb71ebbe53bb4d7e0d4066e0a419ec6f0b689d0004be2da23e0c295d953e",
+    "reghdfe": "b8c2c5dcfa23fe59ff1ca72d2f7fedf507763757ea2ad52fe301a5fe686a01bd",
+    "require": "d190c105f703b12d696b9aa426cd70c6c05dbd7102e62a1fcf59f0ae30616cf1"
+  },
+  "platform": "macOS arm64, Mac Studio 24 cores (16 performance), Stata/MP 8-processor license",
+  "protocol": {
+    "campaign_order": [
+      "legacy smoke",
+      "next smoke",
+      "next m1",
+      "legacy m1"
+    ],
+    "coefficient_atol": 1e-10,
+    "coefficient_rtol": 1e-07,
+    "fresh_process_per_command": true,
+    "measurements": 5,
+    "native_threads": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "noise_rule": "Compare five-run observed ranges and median absolute deviations. A disjoint range triggers investigation; overlap is not statistical proof of equality.",
+    "solver": "auto",
+    "stata_processors": 8,
+    "timing_resolution_seconds": 0.001,
+    "warmups": 1,
+    "within_engine_reference_tolerance": 1e-12
+  },
+  "scope": "M1 Mac smoke and bounded OLS/PPML scaling; correctness integration, no routing or parallel implementation changes.",
+  "suite_sha256": "25123dcdd3c76b4b4e77290856804117b9d9cc5a4e800a27351b0e7f2308b9e4",
+  "tiers": {
+    "m1": {
+      "all_ranges_overlap": true,
+      "cross_engine_coefficient_and_sample_checks": 186,
+      "csv_summaries": {
+        "legacy": "2026-10-02-m1-legacy-scaling.csv",
+        "next": "2026-10-02-m1-next-scaling.csv"
+      },
+      "geometric_mean_next_over_legacy": 0.9982549202749024,
+      "maximum_scaled_coefficient_difference": 0.0,
+      "pairs": [
+        {
+          "cell": "m1-ols-n16383-k8",
+          "legacy": {
+            "input_seconds": 0.002096917,
+            "measurements_seconds": [
+              0.025,
+              0.026,
+              0.027,
+              0.025,
+              0.026
+            ],
+            "native_seconds": 0.013938292,
+            "seconds": 0.026,
+            "seconds_mad": 0.0009999999999999974,
+            "seconds_max": 0.027,
+            "seconds_min": 0.025,
+            "total_seconds": 0.016286042
+          },
+          "next": {
+            "input_seconds": 0.002136875,
+            "measurements_seconds": [
+              0.026,
+              0.025,
+              0.026,
+              0.026,
+              0.027
+            ],
+            "native_seconds": 0.014137625000000001,
+            "seconds": 0.026,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.027,
+            "seconds_min": 0.025,
+            "total_seconds": 0.016524625
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 1
+        },
+        {
+          "cell": "m1-ols-n16383-k8",
+          "legacy": {
+            "input_seconds": 0.00210325,
+            "measurements_seconds": [
+              0.022,
+              0.043,
+              0.022,
+              0.022,
+              0.022
+            ],
+            "native_seconds": 0.010294542,
+            "seconds": 0.022,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.043,
+            "seconds_min": 0.022,
+            "total_seconds": 0.012597958
+          },
+          "next": {
+            "input_seconds": 0.0021593750000000003,
+            "measurements_seconds": [
+              0.022,
+              0.022,
+              0.023,
+              0.021,
+              0.022
+            ],
+            "native_seconds": 0.01022625,
+            "seconds": 0.022,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.023,
+            "seconds_min": 0.021,
+            "total_seconds": 0.012536584
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 2
+        },
+        {
+          "cell": "m1-ols-n16383-k8",
+          "legacy": {
+            "input_seconds": 0.002082375,
+            "measurements_seconds": [
+              0.021,
+              0.02,
+              0.021,
+              0.021,
+              0.022
+            ],
+            "native_seconds": 0.009158125,
+            "seconds": 0.021,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.022,
+            "seconds_min": 0.02,
+            "total_seconds": 0.01142875
+          },
+          "next": {
+            "input_seconds": 0.0021637500000000003,
+            "measurements_seconds": [
+              0.022,
+              0.021,
+              0.021,
+              0.021,
+              0.021
+            ],
+            "native_seconds": 0.008982208,
+            "seconds": 0.021,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.022,
+            "seconds_min": 0.021,
+            "total_seconds": 0.011359208
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "m1-ols-n16383-k8",
+          "legacy": {
+            "input_seconds": 0.00214425,
+            "measurements_seconds": [
+              0.022,
+              0.021,
+              0.022,
+              0.021,
+              0.021
+            ],
+            "native_seconds": 0.009831959,
+            "seconds": 0.021,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.022,
+            "seconds_min": 0.021,
+            "total_seconds": 0.012171875
+          },
+          "next": {
+            "input_seconds": 0.002009167,
+            "measurements_seconds": [
+              0.023,
+              0.023,
+              0.021,
+              0.023,
+              0.023
+            ],
+            "native_seconds": 0.010866625000000001,
+            "seconds": 0.023,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.023,
+            "seconds_min": 0.021,
+            "total_seconds": 0.013047875
+          },
+          "next_over_legacy": 1.0952380952380951,
+          "observed_ranges_overlap": true,
+          "threads": 8
+        },
+        {
+          "cell": "m1-ols-n16383-k8",
+          "legacy": {
+            "input_seconds": 0.002077083,
+            "measurements_seconds": [
+              0.027,
+              0.025,
+              0.024,
+              0.027,
+              0.024
+            ],
+            "native_seconds": 0.0130325,
+            "seconds": 0.025,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.027,
+            "seconds_min": 0.024,
+            "total_seconds": 0.01527
+          },
+          "next": {
+            "input_seconds": 0.0021778749999999997,
+            "measurements_seconds": [
+              0.025,
+              0.023,
+              0.031,
+              0.023,
+              0.023
+            ],
+            "native_seconds": 0.011358167,
+            "seconds": 0.023,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.031,
+            "seconds_min": 0.023,
+            "total_seconds": 0.013743875
+          },
+          "next_over_legacy": 0.9199999999999999,
+          "observed_ranges_overlap": true,
+          "threads": 16
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "legacy": {
+            "input_seconds": 0.001999167,
+            "measurements_seconds": [
+              0.024,
+              0.024,
+              0.024,
+              0.024,
+              0.024
+            ],
+            "native_seconds": 0.012161957999999999,
+            "seconds": 0.024,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.024,
+            "seconds_min": 0.024,
+            "total_seconds": 0.014471167
+          },
+          "next": {
+            "input_seconds": 0.002168291,
+            "measurements_seconds": [
+              0.024,
+              0.024,
+              0.024,
+              0.025,
+              0.024
+            ],
+            "native_seconds": 0.012249583,
+            "seconds": 0.024,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.025,
+            "seconds_min": 0.024,
+            "total_seconds": 0.014529792
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 1
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "legacy": {
+            "input_seconds": 0.00227675,
+            "measurements_seconds": [
+              0.02,
+              0.019,
+              0.019,
+              0.021,
+              0.02
+            ],
+            "native_seconds": 0.008169042,
+            "seconds": 0.02,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.021,
+            "seconds_min": 0.019,
+            "total_seconds": 0.010594709
+          },
+          "next": {
+            "input_seconds": 0.002298667,
+            "measurements_seconds": [
+              0.02,
+              0.02,
+              0.02,
+              0.02,
+              0.02
+            ],
+            "native_seconds": 0.008171041,
+            "seconds": 0.02,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.02,
+            "seconds_min": 0.02,
+            "total_seconds": 0.010675041
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 2
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "legacy": {
+            "input_seconds": 0.002243584,
+            "measurements_seconds": [
+              0.019,
+              0.019,
+              0.018,
+              0.019,
+              0.019
+            ],
+            "native_seconds": 0.006775208000000001,
+            "seconds": 0.019,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.019,
+            "seconds_min": 0.018,
+            "total_seconds": 0.009271875
+          },
+          "next": {
+            "input_seconds": 0.0022916670000000003,
+            "measurements_seconds": [
+              0.018,
+              0.019,
+              0.019,
+              0.019,
+              0.02
+            ],
+            "native_seconds": 0.007027291,
+            "seconds": 0.019,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.02,
+            "seconds_min": 0.018,
+            "total_seconds": 0.009584542
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "legacy": {
+            "input_seconds": 0.002337959,
+            "measurements_seconds": [
+              0.018,
+              0.019,
+              0.019,
+              0.02,
+              0.018
+            ],
+            "native_seconds": 0.006162875000000001,
+            "seconds": 0.019,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.02,
+            "seconds_min": 0.018,
+            "total_seconds": 0.008701208
+          },
+          "next": {
+            "input_seconds": 0.0023140829999999998,
+            "measurements_seconds": [
+              0.018,
+              0.018,
+              0.018,
+              0.022,
+              0.019
+            ],
+            "native_seconds": 0.0067015830000000005,
+            "seconds": 0.018,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.022,
+            "seconds_min": 0.018,
+            "total_seconds": 0.009167208
+          },
+          "next_over_legacy": 0.9473684210526315,
+          "observed_ranges_overlap": true,
+          "threads": 8
+        },
+        {
+          "cell": "m1-ols-n16384-k8",
+          "legacy": {
+            "input_seconds": 0.002328583,
+            "measurements_seconds": [
+              0.02,
+              0.02,
+              0.022,
+              0.02,
+              0.02
+            ],
+            "native_seconds": 0.008345958,
+            "seconds": 0.02,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.022,
+            "seconds_min": 0.02,
+            "total_seconds": 0.0109355
+          },
+          "next": {
+            "input_seconds": 0.002415,
+            "measurements_seconds": [
+              0.02,
+              0.023,
+              0.021,
+              0.025,
+              0.02
+            ],
+            "native_seconds": 0.00895975,
+            "seconds": 0.021,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.025,
+            "seconds_min": 0.02,
+            "total_seconds": 0.01155275
+          },
+          "next_over_legacy": 1.05,
+          "observed_ranges_overlap": true,
+          "threads": 16
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "legacy": {
+            "input_seconds": 0.010443,
+            "measurements_seconds": [
+              0.087,
+              0.08,
+              0.089,
+              0.089,
+              0.084
+            ],
+            "native_seconds": 0.062618042,
+            "seconds": 0.087,
+            "seconds_mad": 0.0020000000000000018,
+            "seconds_max": 0.089,
+            "seconds_min": 0.08,
+            "total_seconds": 0.073382375
+          },
+          "next": {
+            "input_seconds": 0.010434042000000001,
+            "measurements_seconds": [
+              0.086,
+              0.088,
+              0.087,
+              0.084,
+              0.08
+            ],
+            "native_seconds": 0.061739583,
+            "seconds": 0.086,
+            "seconds_mad": 0.001999999999999988,
+            "seconds_max": 0.088,
+            "seconds_min": 0.08,
+            "total_seconds": 0.072334708
+          },
+          "next_over_legacy": 0.9885057471264368,
+          "observed_ranges_overlap": true,
+          "threads": 1
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "legacy": {
+            "input_seconds": 0.009137708999999999,
+            "measurements_seconds": [
+              0.06,
+              0.06,
+              0.059,
+              0.0580000000000001,
+              0.055
+            ],
+            "native_seconds": 0.036743500000000005,
+            "seconds": 0.059,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.06,
+            "seconds_min": 0.055,
+            "total_seconds": 0.0461425
+          },
+          "next": {
+            "input_seconds": 0.009149541,
+            "measurements_seconds": [
+              0.059,
+              0.056,
+              0.059,
+              0.058,
+              0.059
+            ],
+            "native_seconds": 0.03600375,
+            "seconds": 0.059,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.059,
+            "seconds_min": 0.056,
+            "total_seconds": 0.045425166
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 2
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "legacy": {
+            "input_seconds": 0.009243417,
+            "measurements_seconds": [
+              0.044,
+              0.045,
+              0.045,
+              0.046,
+              0.049
+            ],
+            "native_seconds": 0.023540833,
+            "seconds": 0.045,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.049,
+            "seconds_min": 0.044,
+            "total_seconds": 0.03304775
+          },
+          "next": {
+            "input_seconds": 0.009239666,
+            "measurements_seconds": [
+              0.046,
+              0.047,
+              0.047,
+              0.047,
+              0.046
+            ],
+            "native_seconds": 0.023773000000000002,
+            "seconds": 0.047,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.047,
+            "seconds_min": 0.046,
+            "total_seconds": 0.03327575
+          },
+          "next_over_legacy": 1.0444444444444445,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "legacy": {
+            "input_seconds": 0.009093292,
+            "measurements_seconds": [
+              0.043,
+              0.04,
+              0.042,
+              0.042,
+              0.04
+            ],
+            "native_seconds": 0.020001041,
+            "seconds": 0.042,
+            "seconds_mad": 0.000999999999999994,
+            "seconds_max": 0.043,
+            "seconds_min": 0.04,
+            "total_seconds": 0.028892833
+          },
+          "next": {
+            "input_seconds": 0.008950542,
+            "measurements_seconds": [
+              0.043,
+              0.041,
+              0.043,
+              0.043,
+              0.043
+            ],
+            "native_seconds": 0.020492167,
+            "seconds": 0.043,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.043,
+            "seconds_min": 0.041,
+            "total_seconds": 0.02959475
+          },
+          "next_over_legacy": 1.0238095238095237,
+          "observed_ranges_overlap": true,
+          "threads": 8
+        },
+        {
+          "cell": "m1-ols-n100000-k16",
+          "legacy": {
+            "input_seconds": 0.0086145,
+            "measurements_seconds": [
+              0.055,
+              0.056,
+              0.05,
+              0.052,
+              0.054
+            ],
+            "native_seconds": 0.031484792,
+            "seconds": 0.054,
+            "seconds_mad": 0.0020000000000000018,
+            "seconds_max": 0.056,
+            "seconds_min": 0.05,
+            "total_seconds": 0.040875875
+          },
+          "next": {
+            "input_seconds": 0.0090295,
+            "measurements_seconds": [
+              0.058,
+              0.049,
+              0.051,
+              0.053,
+              0.048
+            ],
+            "native_seconds": 0.02682575,
+            "seconds": 0.051,
+            "seconds_mad": 0.0020000000000000018,
+            "seconds_max": 0.058,
+            "seconds_min": 0.048,
+            "total_seconds": 0.035898208
+          },
+          "next_over_legacy": 0.9444444444444444,
+          "observed_ranges_overlap": true,
+          "threads": 16
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.056,
+              0.056,
+              0.059,
+              0.055,
+              0.055
+            ],
+            "native_seconds": null,
+            "seconds": 0.056,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.059,
+            "seconds_min": 0.055,
+            "total_seconds": 0.036431167
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.056,
+              0.056,
+              0.056,
+              0.056,
+              0.057
+            ],
+            "native_seconds": null,
+            "seconds": 0.056,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.057,
+            "seconds_min": 0.056,
+            "total_seconds": 0.036367375
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 1
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.047,
+              0.047,
+              0.047,
+              0.047,
+              0.049
+            ],
+            "native_seconds": null,
+            "seconds": 0.047,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.049,
+            "seconds_min": 0.047,
+            "total_seconds": 0.027908625
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.047,
+              0.048,
+              0.046,
+              0.046,
+              0.047
+            ],
+            "native_seconds": null,
+            "seconds": 0.047,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.048,
+            "seconds_min": 0.046,
+            "total_seconds": 0.027966125
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 2
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.056,
+              0.042,
+              0.044,
+              0.042,
+              0.044
+            ],
+            "native_seconds": null,
+            "seconds": 0.044,
+            "seconds_mad": 0.001999999999999995,
+            "seconds_max": 0.056,
+            "seconds_min": 0.042,
+            "total_seconds": 0.023929041
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.041,
+              0.043,
+              0.043,
+              0.044,
+              0.044
+            ],
+            "native_seconds": null,
+            "seconds": 0.043,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.044,
+            "seconds_min": 0.041,
+            "total_seconds": 0.023788042
+          },
+          "next_over_legacy": 0.9772727272727273,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.048,
+              0.047,
+              0.048,
+              0.048,
+              0.047
+            ],
+            "native_seconds": null,
+            "seconds": 0.048,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.048,
+            "seconds_min": 0.047,
+            "total_seconds": 0.028209625
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.045,
+              0.048,
+              0.045,
+              0.045,
+              0.045
+            ],
+            "native_seconds": null,
+            "seconds": 0.045,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.048,
+            "seconds_min": 0.045,
+            "total_seconds": 0.026308583
+          },
+          "next_over_legacy": 0.9375,
+          "observed_ranges_overlap": true,
+          "threads": 8
+        },
+        {
+          "cell": "m1-ppml-n16383-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.058,
+              0.055,
+              0.053,
+              0.054,
+              0.054
+            ],
+            "native_seconds": null,
+            "seconds": 0.054,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.058,
+            "seconds_min": 0.053,
+            "total_seconds": 0.035022042
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.055,
+              0.055,
+              0.054,
+              0.054,
+              0.055
+            ],
+            "native_seconds": null,
+            "seconds": 0.055,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.055,
+            "seconds_min": 0.054,
+            "total_seconds": 0.035393833
+          },
+          "next_over_legacy": 1.0185185185185186,
+          "observed_ranges_overlap": true,
+          "threads": 16
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.056,
+              0.055,
+              0.056,
+              0.056,
+              0.056
+            ],
+            "native_seconds": null,
+            "seconds": 0.056,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.056,
+            "seconds_min": 0.055,
+            "total_seconds": 0.036635125
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.055,
+              0.055,
+              0.056,
+              0.056,
+              0.055
+            ],
+            "native_seconds": null,
+            "seconds": 0.055,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.056,
+            "seconds_min": 0.055,
+            "total_seconds": 0.036555709
+          },
+          "next_over_legacy": 0.9821428571428571,
+          "observed_ranges_overlap": true,
+          "threads": 1
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.048,
+              0.048,
+              0.047,
+              0.048,
+              0.049
+            ],
+            "native_seconds": null,
+            "seconds": 0.048,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.049,
+            "seconds_min": 0.047,
+            "total_seconds": 0.028077041
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.047,
+              0.048,
+              0.047,
+              0.048,
+              0.048
+            ],
+            "native_seconds": null,
+            "seconds": 0.048,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.048,
+            "seconds_min": 0.047,
+            "total_seconds": 0.027886542
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 2
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.044,
+              0.042,
+              0.043,
+              0.042,
+              0.042
+            ],
+            "native_seconds": null,
+            "seconds": 0.042,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.044,
+            "seconds_min": 0.042,
+            "total_seconds": 0.022855209
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.042,
+              0.044,
+              0.043,
+              0.042,
+              0.045
+            ],
+            "native_seconds": null,
+            "seconds": 0.043,
+            "seconds_mad": 0.000999999999999994,
+            "seconds_max": 0.045,
+            "seconds_min": 0.042,
+            "total_seconds": 0.023488042
+          },
+          "next_over_legacy": 1.0238095238095237,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.046,
+              0.047,
+              0.048,
+              0.048,
+              0.047
+            ],
+            "native_seconds": null,
+            "seconds": 0.047,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.048,
+            "seconds_min": 0.046,
+            "total_seconds": 0.027589625
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.047,
+              0.05,
+              0.047,
+              0.046,
+              0.047
+            ],
+            "native_seconds": null,
+            "seconds": 0.047,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.05,
+            "seconds_min": 0.046,
+            "total_seconds": 0.027945625
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 8
+        },
+        {
+          "cell": "m1-ppml-n16384-k8",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.055,
+              0.053,
+              0.055,
+              0.054,
+              0.055
+            ],
+            "native_seconds": null,
+            "seconds": 0.055,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.055,
+            "seconds_min": 0.053,
+            "total_seconds": 0.035654125
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.054,
+              0.056,
+              0.053,
+              0.054,
+              0.055
+            ],
+            "native_seconds": null,
+            "seconds": 0.054,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.056,
+            "seconds_min": 0.053,
+            "total_seconds": 0.034841583
+          },
+          "next_over_legacy": 0.9818181818181818,
+          "observed_ranges_overlap": true,
+          "threads": 16
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.351,
+              0.35,
+              0.351,
+              0.353,
+              0.352
+            ],
+            "native_seconds": null,
+            "seconds": 0.351,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.353,
+            "seconds_min": 0.35,
+            "total_seconds": 0.321684917
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.348,
+              0.352,
+              0.352,
+              0.352,
+              0.354
+            ],
+            "native_seconds": null,
+            "seconds": 0.352,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.354,
+            "seconds_min": 0.348,
+            "total_seconds": 0.321434292
+          },
+          "next_over_legacy": 1.002849002849003,
+          "observed_ranges_overlap": true,
+          "threads": 1
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.248,
+              0.251,
+              0.25,
+              0.249,
+              0.25
+            ],
+            "native_seconds": null,
+            "seconds": 0.25,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.251,
+            "seconds_min": 0.248,
+            "total_seconds": 0.217778875
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.25,
+              0.25,
+              0.25,
+              0.25,
+              0.253
+            ],
+            "native_seconds": null,
+            "seconds": 0.25,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.253,
+            "seconds_min": 0.25,
+            "total_seconds": 0.217488375
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 2
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.189,
+              0.193,
+              0.195,
+              0.194,
+              0.192
+            ],
+            "native_seconds": null,
+            "seconds": 0.193,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.195,
+            "seconds_min": 0.189,
+            "total_seconds": 0.162772875
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.197,
+              0.2,
+              0.195,
+              0.194,
+              0.196
+            ],
+            "native_seconds": null,
+            "seconds": 0.196,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.2,
+            "seconds_min": 0.194,
+            "total_seconds": 0.163722958
+          },
+          "next_over_legacy": 1.0155440414507773,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.178,
+              0.18,
+              0.179,
+              0.179,
+              0.177
+            ],
+            "native_seconds": null,
+            "seconds": 0.179,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.18,
+            "seconds_min": 0.177,
+            "total_seconds": 0.147259041
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.179,
+              0.18,
+              0.18,
+              0.184,
+              0.179
+            ],
+            "native_seconds": null,
+            "seconds": 0.18,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.184,
+            "seconds_min": 0.179,
+            "total_seconds": 0.147802833
+          },
+          "next_over_legacy": 1.005586592178771,
+          "observed_ranges_overlap": true,
+          "threads": 8
+        },
+        {
+          "cell": "m1-ppml-n100000-k16",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.193,
+              0.205,
+              0.191,
+              0.197,
+              0.185
+            ],
+            "native_seconds": null,
+            "seconds": 0.193,
+            "seconds_mad": 0.0040000000000000036,
+            "seconds_max": 0.205,
+            "seconds_min": 0.185,
+            "total_seconds": 0.161571208
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.188,
+              0.195,
+              0.194,
+              0.19,
+              0.208
+            ],
+            "native_seconds": null,
+            "seconds": 0.194,
+            "seconds_mad": 0.0040000000000000036,
+            "seconds_max": 0.208,
+            "seconds_min": 0.188,
+            "total_seconds": 0.161878041
+          },
+          "next_over_legacy": 1.005181347150259,
+          "observed_ranges_overlap": true,
+          "threads": 16
+        }
+      ]
+    },
+    "smoke": {
+      "all_ranges_overlap": true,
+      "cross_engine_coefficient_and_sample_checks": 28,
+      "csv_summaries": {
+        "legacy": "2026-10-02-m1-legacy-smoke.csv",
+        "next": "2026-10-02-m1-next-smoke.csv"
+      },
+      "geometric_mean_next_over_legacy": 0.9984670670108036,
+      "maximum_scaled_coefficient_difference": 0.0,
+      "pairs": [
+        {
+          "cell": "ols-1fe",
+          "legacy": {
+            "input_seconds": 0.0058597499999999995,
+            "measurements_seconds": [
+              0.03,
+              0.031,
+              0.03,
+              0.031,
+              0.031
+            ],
+            "native_seconds": 0.013681208,
+            "seconds": 0.031,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.031,
+            "seconds_min": 0.03,
+            "total_seconds": 0.019765833
+          },
+          "next": {
+            "input_seconds": 0.005810417,
+            "measurements_seconds": [
+              0.03,
+              0.03,
+              0.032,
+              0.031,
+              0.031
+            ],
+            "native_seconds": 0.012657791000000002,
+            "seconds": 0.031,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.032,
+            "seconds_min": 0.03,
+            "total_seconds": 0.01866125
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "ols-2fe-dense",
+          "legacy": {
+            "input_seconds": 0.0063962920000000005,
+            "measurements_seconds": [
+              0.085,
+              0.085,
+              0.086,
+              0.084,
+              0.082
+            ],
+            "native_seconds": 0.06546829200000001,
+            "seconds": 0.085,
+            "seconds_mad": 0.000999999999999987,
+            "seconds_max": 0.086,
+            "seconds_min": 0.082,
+            "total_seconds": 0.07218375
+          },
+          "next": {
+            "input_seconds": 0.006355958,
+            "measurements_seconds": [
+              0.085,
+              0.084,
+              0.084,
+              0.084,
+              0.085
+            ],
+            "native_seconds": 0.064976958,
+            "seconds": 0.084,
+            "seconds_mad": 0.0,
+            "seconds_max": 0.085,
+            "seconds_min": 0.084,
+            "total_seconds": 0.071483083
+          },
+          "next_over_legacy": 0.9882352941176471,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "ppml-1fe",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.134,
+              0.136,
+              0.134,
+              0.132,
+              0.135
+            ],
+            "native_seconds": null,
+            "seconds": 0.134,
+            "seconds_mad": 0.0010000000000000009,
+            "seconds_max": 0.136,
+            "seconds_min": 0.132,
+            "total_seconds": 0.103533166
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.136,
+              0.135,
+              0.132,
+              0.134,
+              0.131
+            ],
+            "native_seconds": null,
+            "seconds": 0.134,
+            "seconds_mad": 0.0020000000000000018,
+            "seconds_max": 0.136,
+            "seconds_min": 0.131,
+            "total_seconds": 0.103032458
+          },
+          "next_over_legacy": 1.0,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        },
+        {
+          "cell": "ppml-2fe-gravity",
+          "legacy": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.171,
+              0.17,
+              0.178,
+              0.178,
+              0.175
+            ],
+            "native_seconds": null,
+            "seconds": 0.175,
+            "seconds_mad": 0.0030000000000000027,
+            "seconds_max": 0.178,
+            "seconds_min": 0.17,
+            "total_seconds": 0.1436785
+          },
+          "next": {
+            "input_seconds": null,
+            "measurements_seconds": [
+              0.17,
+              0.172,
+              0.18,
+              0.183,
+              0.176
+            ],
+            "native_seconds": null,
+            "seconds": 0.176,
+            "seconds_mad": 0.0040000000000000036,
+            "seconds_max": 0.183,
+            "seconds_min": 0.17,
+            "total_seconds": 0.142191333
+          },
+          "next_over_legacy": 1.0057142857142858,
+          "observed_ranges_overlap": true,
+          "threads": 4
+        }
+      ]
+    }
+  },
+  "timing_source_commit": "f53078c65dd714b3aa844e2a0d104085b4c14612"
+}

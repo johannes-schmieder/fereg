@@ -121,7 +121,7 @@ fixed-thread repeats remain exact, including the preceding covariance fix.
 
 ### M1.2d declared change boundary
 
-The seed-66 frequency-singleton witness currently fails with r(459) during
+The parent-next seed-66 frequency-singleton witness fails with r(459) during
 finite-score validation. The intended change is a successful fit matching the
 already recorded independent dense design, including effective N=514 and
 residual DoF=501. The replay policy permits success/results only for known-66;

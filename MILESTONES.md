@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M1.4 isolate the intermittent allocator-audit race; M1.5 timing/coverage runs are complete.
+Current task: none; M0–M1 complete. The next scoped simplification is proposed in ARCHITECTURE, not implemented.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -20,13 +20,13 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M1.2c Slope-DoF validation repaired; independent rank, malformed-report rejection and exact unaffected replay pass.
 - [x] M1.2d Frequency-retained singleton fix; dense fit and public fast/low pruning/retention checks pass.
 - [x] M1.3 Bounded qualification: 73 science cases at 1/2/4/8/16 threads, exact fixed-thread repeats and 46 licensed fixtures pass.
-- [ ] M1.4 Bundled installation and platform qualification. Selection/packaging work depends on M1.1; final qualification on M1.3.
-- [ ] M1.5 Performance/coverage/complexity summaries. Depends on M1.3 and qualified platform artifacts.
+- [x] M1.4 Six-plugin review bundle; licensed Mac installation, Linux/Windows builds/audits/ABI and final Linux source/replay CI pass.
+- [x] M1.5 Identity-bound smoke/scaling, Mac/Linux coverage and refreshed complexity; proposed next cleanup remains unimplemented.
 
 ## Gates
 
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
-- [ ] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
+- [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -37,8 +37,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-CI 37091662891 failed the dictionary audit by 56 bytes; native builds passed. Rust libtest's receiver allocates a 56-byte context on its main thread while the test runs.
-Repair 1 passes full local checks: serial dictionary observer excludes foreign-thread allocation; exact resident/peak assertions and global estimator audits remain. Linux CI pending.
+No remaining M0–M1 blockers. The intermittent dictionary audit was isolated and verified in CI 37093239587.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -73,3 +72,6 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.5 this commit — existing runner binds engine/binary/build/frontend identity; bounded Mac ladder and noise summaries; 14 benchmark guards pass.
 - 2026-10-02 M1.5 this commit — smoke pilot passes; generated native manifest now ignored so clean-source timing identity is accurate; formal runs follow.
 - 2026-10-02 M1.4 this commit — allocator audit isolation repair; concurrent 56-byte allocation regression and full harness pass; production tokens/counts unchanged.
+- 2026-10-02 M1.5 this commit — 34 timing pairs overlap; 214 coefficient/sample pairs exact; Mac/Linux 2813/2808 reached functions; core -223 lines versus M0.
+- 2026-10-02 M1.4 5ba506b1 — CI 37093239587: full checks and 73 science pass; all platform builds, 4 staged fixtures and 38-file install/get verification pass.
+- 2026-10-02 G-M1 this commit — all gates verified; see [platforms](bench/history/2026-10-02-m1-platform-qualification.json) and [timings](bench/history/2026-10-02-m1-performance.json).
