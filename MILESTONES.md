@@ -1,8 +1,8 @@
 # Incremental refactoring — milestones
 
-Plan: [M0–M11](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M9–M11 complete; next stage-removal candidate awaits discussion.
+Current task: M12 categorical availability owner; M12–M21 authorized with Astra high-effort plan.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -46,6 +46,17 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M11.2 Shared storage/owner totals/admission; core -12 lines; full/30 oracles, 73 native and 7 Stata pass.
 - [x] M11.3 Clean 73/five-thread replay, 46 Stata, 34 timing pairs, Linux CI 37137263330 and Astra max assessment complete.
 
+- [ ] M12 Categorical availability owner; retire disposable ordinary topology, preserve reusable membership.
+- [ ] M13 Source-role encoding after classification; retire slope-only categorical codes.
+- [ ] M14 Transfer unchanged non-FE encodings; retain changed-axis recoding.
+- [ ] M15 Three report-parameterized certified OLS VCE owners.
+- [ ] M16 Four VCE-independent OLS preparations and common completion discipline.
+- [ ] M17 One active OLS FE storage owner, exact existing transitions.
+- [ ] M18 Ordered PPML admission/installation owner, exact inventory and policy.
+- [ ] M19 One active PPML direction owner, separate canonical checkpoint/curve.
+- [ ] M20 One ordinary canonical retry transition, unchanged eligibility/accounting.
+- [ ] M21 Strict recovery/publication controller, combined qualification and separate Astra review.
+
 ## Gates
 
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
@@ -64,7 +75,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No active blocker. M8–M11 final runtime qualifications passed; no work beyond the approved milestones has begun.
+No active blocker. M12–M21 scope approved; predecessor runtime a5cd94ba qualified on Mac/Linux.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -130,3 +141,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M10 this commit — grain8 GM 0.921 then 0.966; inactive controls also improve, 16-thread gains collapse; trial reverted; [evidence](bench/history/2026-10-03-m10-scheduling.json).
 - 2026-10-03 M11.2 this commit — inventory/admissions exact; route estimate 1208 to1154 lines, core -12; full/30 oracles, Mac ABI, exact73 replay and 7 Stata pass.
 - 2026-10-03 G-M9–M11 a5cd94ba — clean 73/five-thread replay, 46 Stata, 34 ranges overlap and CI 37137263330 pass; [evidence/review](bench/history/2026-10-03-m11-memory.json).
+- 2026-10-03 M12–M21 scope this commit — Astra high-effort plan recorded; three tranches retire stages/owners; separate Astra review after implementation.

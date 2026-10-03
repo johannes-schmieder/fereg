@@ -1,4 +1,4 @@
-# Incremental refactoring: M0–M11
+# Incremental refactoring: M0–M21
 
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
 Historical plan and evidence remain at 15a57ba285a3afede2e3337fe8598e72529a4090.
@@ -427,5 +427,182 @@ fixtures. Keep exact scientific fields and routes for these nonnumerical changes
 Compare clean binaries with the existing smoke/scaling protocol and targeted
 changed-path checks. Preserve qualified predecessors and frozen legacy hashes.
 Count all new adapters/components in the complexity ratchet; no silent baseline
-refresh or growth exclusions. Stop after M11 and discuss measured outcomes and
-next priorities with Johannes, including the requested Astra max review.
+refresh or growth exclusions. M9–M11 concludes with the requested Astra max review. Johannes subsequently
+authorized the following ten milestones, planned by an Astra high-effort agent
+on 2026-10-03, with a separate Astra review after implementation.
+
+
+## M12–M21: retire redundant stages and competing owners
+
+These are nonnumerical refactors. Preserve every public feature, memory mode,
+solver route, admission predicate, error precedence and scientific acceptance.
+No new size, weight or thread routing fence. Legacy remains frozen. A completed
+milestone must delete an unnecessary stage, encoding, owner or repeated decision;
+wrapping or relocating the same complexity does not satisfy acceptance.
+
+For each runtime task run the full local harness, long oracles for core changes,
+Mac build/ABI, 73-case actual-plugin replay against the immediate qualified parent,
+and mapped licensed fixtures. Push after local gates; Linux CI/native replay is
+a prerequisite for dependent milestones. Preserve qualified binaries. At the
+three tranche boundaries (M14, M17, M21) run all five thread counts and 46 licensed
+fixtures. Exact scientific fields and available routes must match the parent;
+independent science and fixed-thread repeats remain authoritative. An eliminated
+allocation may retire its injection site; record it and retain surviving rollback
+coverage. No new replay exception.
+
+Use clean predecessor/candidate binaries for existing warm-up/five-measurement
+protocols, changed-path cells and tranche smoke/scaling. Investigate out-of-noise
+differences with bounded reverse-order follow-up; no speed gain is presumed.
+Count every adapter in the ratchet and document narrow necessary growth. Keep
+preflight conservative while removing preparation allocations; do not spend the
+slack on different numerical routes. SCC/Windows qualification is triggered by
+actual parallel, scale, platform, scratch or ABI changes, not milestone numbers.
+
+### M12: categorical availability owner
+
+Replace the temporary full ordinary `PreparedOlsData` with an internal compiled
+model, classified sample and encoded-source owner. First separate source coding
+and recipe resolution from ordinary FE finalization, then use that boundary in
+categorical preparation. Remove disabled-singleton packaging and ordinary topology
+construction/validation where discarded. Preserve owned early factor overlap and
+large unweighted single-source membership transfer, source order, model recipes,
+classification, factor-domain checks and independent final categorical validation.
+
+Witnesses: numeric preparation/error precedence, factor-overlap/membership reuse,
+final-sample rebasing, cluster preparation, factor availability, interaction
+missing/cascade and PPML generation rollback. Acceptance: disposable ordinary FE
+topology disappears from the general categorical path; allocation observation
+identifies retired work and transferred indexes retain their existing owner.
+
+### M13: source-role categorical encoding
+
+After the complete authoritative source-use classifier, narrow encoding by actual
+role: partition, ordinary factor or cluster. Continuous slope use alone does not
+require categorical codes. Preserve mixed roles, missing-slope FE exclusion and
+validation of base/omitted factor terms. Delete both restricted continuous-only
+`compact_slope_availability` branches and their N/model-shape gates. Keep effect
+identity/order and recipes. Requires M12.
+
+Witnesses: existing OLS/PPML compact-slope comparisons, mixed slope/factor/cluster
+roles, factor availability, intercept/slope and multipartition Poisson oracles.
+Acceptance: no slope-only N-row code or membership construction on any supported
+shape; exact sample, final recipes/topology and errors with no new route fence.
+
+### M14: move unchanged categorical encodings
+
+Consume candidate non-FE ordinary/cluster encodings when the authoritative
+singleton mask proves the row axis unchanged, including no-FE PPML. If rows
+change, retain final factorization/order. Topology-backed sources continue to
+borrow one N-row code owner. No clones, persistent dual copies or generation
+cache. Equal counts or `keepsingletons` alone are insufficient proof. Requires
+M12; implement after M13.
+
+Witnesses: vanished levels/bases, reordered interactions, cluster/shared-source
+preparation, probability-weight generations and separation rebase rollback.
+Acceptance: one factorization removed per eligible source, demonstrable buffer
+ownership transfer, exact changed-axis recipes and report slots.
+
+### M15: three certified OLS VCE owners
+
+Replace ordinary/categorical result pairs in IID, robust and clustered modules
+with one report-parameterized owner per VCE. Keep concrete absorbed-DoF types,
+public names/signatures via aliases/default parameters, source-bound construction
+and original covariance/certificate validators. Delete duplicate layouts/getters
+and assembly. Specialized byte-accounting methods are acceptable; no universal
+inference framework, new public trait solely for reports, boxing or erasure.
+
+Witnesses: all six inference oracles, malformed DoF/source-bound perturbation,
+full-matrix PSD, saved output and eclass. Acceptance: six implementations become
+three owners; exact byte totals/scientific outputs; no native protocol change.
+Independent of M12–M14.
+
+### M16: VCE-independent OLS preparation
+
+Reduce six complete host estimation pipelines to four preparation dispositions
+(ordinary/categorical, with/without clusters), followed by typed inference and
+common output admission/completion. Use a small host-local owner; no cross-crate
+engine framework. Preserve moment overlap, loaded-row ownership, metadata drop
+boundaries, timing labels, main-thread SPI and error precedence. Requires M15.
+
+Witnesses: loaded moments/rows, memory admission, six results, OLS transactions,
+hidden publication failure, engine switching, parser/cluster. Acceptance: IID and
+robust share preparation/lifetime discipline; a shorter outer sequence and less
+combined host code, counting new helpers.
+
+### M17: one active OLS FE owner
+
+Map all `FitFeAbsorber` constructor/mutation states, then replace exclusive slope,
+single-slope, one-FE, CMG, retained-LSMR and pending-Schur owners with an enum.
+Keep genuine route/probe history and discarded-work diagnostics separately.
+Migrate construction/dispatch and low-memory/final-residual mutations in predicate
+order. Drop replaced storage at its existing admission boundary. Preserve raw
+CMG versus fast polish, low LSMR death before QR, single-slope rejection budget
+and original-value retry, and accepted Schur probe semantics.
+
+Witnesses: slope ownership/admission, Schur guards, residual overlap/error order,
+explicit solvers, weak decimal oracles and raw-CMG Stata. Acceptance: one active
+storage owner, explicit transitions, no option-precedence dispatch or incompatible
+None-fill constructors; exact routes, work counts and admission.
+
+### M18: ordered PPML installation admission
+
+Make one owner hold the evolving admitted memory plan, execution bytes and setup
+choices, consumed once by installation. Preserve public/explicit admission and
+auto-LSMR veto, then profile, curve, centered storage, fast canonical allowance,
+solver/projection, certificate geometry/options/slopes and low checkpoint in
+exact order. Centralize checked transactional updates; refused later options
+cannot evict accepted earlier ones. Keep existing byte estimators, Fast/Low
+policy, error order and conservative bounds. Independent of OLS changes.
+
+Witnesses: 312 shapes, 71-field route inventories, 2,808 admissions, constrained
+memory/CMG early admission, checkpoint refusal, allocation audits and hidden PPML
+failure. Acceptance: one plan/installation boundary, no drifting totals/flags,
+exact inventories/admissions and bounded methods retiring driver responsibility.
+
+### M19: one active PPML direction owner
+
+Replace competing joint-LSMR/identity, CMG and one-FE profile locals with one
+ordinary-direction enum, including canonical MAP. Couple LSMR identity to its
+workspace. Retain the canonical checkpoint session independently. Keep profiled
+curve separate because it coexists with a direction owner. Centralize first-basis
+initialization and committed-basis replacement; drop stale storage first. Retain
+Mu restrictions. Requires M18.
+
+Witnesses: explicit solvers, warm state/fallback, profile/refusal, slope rollback,
+higher-dimensional frames, basis injections and Mu separation. Acceptance: no
+impossible competing owners or workspace/identity divergence; exact routes/basis
+and live memory; one independent checkpoint session.
+
+### M20: one ordinary PPML canonical retry
+
+Share the canonical retry/certify/account/diagnose/extract sequence with typed
+existing reasons. CMG failure refreshes its stale canonical frame and retires the
+owner; frozen failure discards invalid state. Preserve profile refusal, fatal
+domain/Break/allocation classifications and exact retry eligibility/count. Audit
+equivalence stays a distinct measured-window witness. Requires M19.
+
+Witnesses: invalid warm projection, failed retry atomicity, fatal domain/interrupt,
+CMG failure, warmed allocation equivalence and hidden transaction. Acceptance:
+one retry transition and no duplicated candidate-publication sequence, no added
+fallback or numerical policy.
+
+### M21: strict PPML recovery controller
+
+Consolidate recovery flags/tolerance/counters into one controller, then strict
+candidate transaction orchestration, then explicit final publication readiness.
+Keep numerical transactions/comparisons and distinct final Hessian synchronization.
+Preserve rank/basis changes, rollback, monotone tolerance refinement, bounded
+recovery, two consecutive accepted passes, objective/score and accepted replay.
+Use bounded methods, not an oversized relocated block. Requires M19–M20.
+
+Witnesses: moving checkpoints, same-rank pivot, persistent profile failure/bounds,
+tiny tolerance, canonical reconstruction, weight-frame reuse, rollback/unwind,
+final-Hessian dense oracles and bias recovery precision. Acceptance: one pending
+recovery/publication owner, no overlapping driver flags; exact iteration/routes/
+receipts and independently authoritative final Hessian/rank/score.
+
+Implement in three tranches: M12–M14, M15–M17, M18–M21. A blocker stops dependents,
+not unrelated work. Existing timeboxes apply; scientific/domain/rank/support/
+admission-policy ambiguities require a reproducer and Johannes's decision.
+After implementation a separate Astra agent reviews concrete removals, ownership,
+coverage, complexity and measured performance. Report all limitations accurately.
