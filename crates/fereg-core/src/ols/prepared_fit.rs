@@ -4418,6 +4418,86 @@ fn normalized_weights<P: PreparedOlsFitView + ?Sized>(
     }
 }
 
+fn fast_qr_norms(reference: f64, within_norm: f64) -> Result<Option<(f64, f64)>> {
+    if !reference.is_finite() || reference < 0.0 {
+        return Err(invalid_data(
+            "prepared OLS reference regressor norm is invalid",
+        ));
+    }
+    if reference == 0.0 {
+        return Ok(None);
+    }
+    // The caller computed these norms from the untouched within matrix
+    // immediately before entering QR. Reuse that certified scale instead
+    // of rescanning every candidate column here.
+    let ratio = within_norm / reference;
+    if !ratio.is_finite() {
+        return Err(invalid_data(
+            "prepared OLS fixed-effect collinearity ratio is not finite",
+        ));
+    }
+    let squared_ratio = ratio * ratio;
+    if !squared_ratio.is_finite() {
+        return Err(invalid_data(
+            "prepared OLS fixed-effect squared collinearity ratio is not finite",
+        ));
+    }
+    Ok(Some((within_norm, squared_ratio)))
+}
+
+fn low_qr_norms(reference: f64, within_norm: f64) -> Result<Option<(f64, f64)>> {
+    if !reference.is_finite() || reference < 0.0 || !within_norm.is_finite() || within_norm < 0.0 {
+        return Err(invalid_data(
+            "prepared OLS low-memory regressor norm is invalid",
+        ));
+    }
+    if reference == 0.0 {
+        return Ok(None);
+    }
+    let ratio = within_norm / reference;
+    let squared_ratio = ratio * ratio;
+    if !squared_ratio.is_finite() {
+        return Err(invalid_data(
+            "prepared OLS low-memory collinearity ratio is invalid",
+        ));
+    }
+    Ok(Some((within_norm, squared_ratio)))
+}
+
+// The callers retain norm-validation precedence and allocation ownership.
+// Classification itself depends only on the model and the validated scales.
+fn classify_qr_candidates<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    statuses: &mut [PreparedOlsFitStatus],
+    candidates: &mut Vec<usize>,
+    tolerance: f64,
+    capacity_error: &'static str,
+    norms: impl Fn(usize) -> Result<Option<(f64, f64)>>,
+) -> Result<()> {
+    let has_absorbed_intercept = prepared.fit_has_absorbed_intercept();
+    for (column, status) in statuses.iter_mut().enumerate() {
+        let is_intercept = matches!(
+            prepared.fit_model().columns[column].kind,
+            PreparedOlsColumnKind::Intercept
+        );
+        if has_absorbed_intercept && is_intercept {
+            *status = PreparedOlsFitStatus::AbsorbedInterceptDeferred;
+            continue;
+        }
+        let Some((within_norm, squared_ratio)) = norms(column)? else {
+            continue;
+        };
+        // Slope-only effects can annihilate a regressor exactly, including a
+        // factor indicator supported on a retained physical singleton.
+        if within_norm == 0.0 || (has_absorbed_intercept && squared_ratio <= tolerance) {
+            *status = PreparedOlsFitStatus::CollinearWithFixedEffects;
+        } else {
+            push_reserved(candidates, column, capacity_error)?;
+        }
+    }
+    Ok(())
+}
+
 #[allow(clippy::too_many_arguments)]
 fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
@@ -4463,56 +4543,14 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         generated_columns,
         "unable to reserve prepared OLS QR candidate columns",
     )?;
-    let has_absorbed_intercept = prepared.fit_has_absorbed_intercept();
-    for column in 0..generated_columns {
-        let is_intercept = matches!(
-            prepared.fit_model().columns[column].kind,
-            PreparedOlsColumnKind::Intercept
-        );
-        if has_absorbed_intercept && is_intercept {
-            generated_statuses[column] = PreparedOlsFitStatus::AbsorbedInterceptDeferred;
-            continue;
-        }
-        let reference = reference_norms[column];
-        if !reference.is_finite() || reference < 0.0 {
-            return Err(invalid_data(
-                "prepared OLS reference regressor norm is invalid",
-            ));
-        }
-        if reference == 0.0 {
-            continue;
-        }
-        // The caller computed these norms from the untouched within matrix
-        // immediately before entering QR. Reuse that certified scale instead
-        // of rescanning every candidate column here.
-        let within_norm = score_norms[column];
-        let ratio = within_norm / reference;
-        if !ratio.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS fixed-effect collinearity ratio is not finite",
-            ));
-        }
-        let squared_ratio = ratio * ratio;
-        if !squared_ratio.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS fixed-effect squared collinearity ratio is not finite",
-            ));
-        }
-        // Slope-only effects can annihilate a regressor exactly, including a
-        // factor indicator supported on a retained physical singleton.
-        if within_norm == 0.0
-            || (has_absorbed_intercept
-                && squared_ratio <= config.fixed_effect_collinearity_tolerance)
-        {
-            generated_statuses[column] = PreparedOlsFitStatus::CollinearWithFixedEffects;
-        } else {
-            push_reserved(
-                &mut candidate_columns,
-                column,
-                "prepared OLS QR candidate capacity exhausted",
-            )?;
-        }
-    }
+    classify_qr_candidates(
+        prepared,
+        &mut generated_statuses,
+        &mut candidate_columns,
+        config.fixed_effect_collinearity_tolerance,
+        "prepared OLS QR candidate capacity exhausted",
+        |column| fast_qr_norms(reference_norms[column], score_norms[column]),
+    )?;
 
     let candidate_count = candidate_columns.len();
     let mut canonical_candidates = reserved_empty(
@@ -4961,52 +4999,14 @@ fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         generated_columns,
         "unable to reserve low-memory OLS QR candidates",
     )?;
-    let has_absorbed_intercept = prepared.fit_has_absorbed_intercept();
-    for column in 0..generated_columns {
-        let is_intercept = matches!(
-            prepared.fit_model().columns[column].kind,
-            PreparedOlsColumnKind::Intercept
-        );
-        if has_absorbed_intercept && is_intercept {
-            generated_statuses[column] = PreparedOlsFitStatus::AbsorbedInterceptDeferred;
-            continue;
-        }
-        let reference = reference_norms[column];
-        let within_norm = score_norms[column];
-        if !reference.is_finite()
-            || reference < 0.0
-            || !within_norm.is_finite()
-            || within_norm < 0.0
-        {
-            return Err(invalid_data(
-                "prepared OLS low-memory regressor norm is invalid",
-            ));
-        }
-        if reference == 0.0 {
-            continue;
-        }
-        let ratio = within_norm / reference;
-        let squared_ratio = ratio * ratio;
-        if !squared_ratio.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS low-memory collinearity ratio is invalid",
-            ));
-        }
-        // Slope-only effects can annihilate a regressor exactly, including a
-        // factor indicator supported on a retained physical singleton.
-        if within_norm == 0.0
-            || (has_absorbed_intercept
-                && squared_ratio <= config.fixed_effect_collinearity_tolerance)
-        {
-            generated_statuses[column] = PreparedOlsFitStatus::CollinearWithFixedEffects;
-        } else {
-            push_reserved(
-                &mut candidate_columns,
-                column,
-                "prepared OLS low-memory QR candidate capacity exhausted",
-            )?;
-        }
-    }
+    classify_qr_candidates(
+        prepared,
+        &mut generated_statuses,
+        &mut candidate_columns,
+        config.fixed_effect_collinearity_tolerance,
+        "prepared OLS low-memory QR candidate capacity exhausted",
+        |column| low_qr_norms(reference_norms[column], score_norms[column]),
+    )?;
 
     let candidate_count = candidate_columns.len();
     let mut canonical_candidates = reserved_empty(
@@ -8057,6 +8057,88 @@ mod tests {
     };
     use crate::sandwich::SandwichDesign;
     use std::sync::atomic::{AtomicUsize, Ordering};
+
+    #[test]
+    fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
+        let y = [0.0; 6];
+        let groups = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
+        let data = prepared(&y, &[y.to_vec()], &[false], None, false, TestWeights::Unit);
+        let intercept = prepared(&y, &[], &[], Some(&groups), true, TestWeights::Unit);
+        let run = |data: &PreparedOlsData, reference, score, low| {
+            let frame = LinearSolveFrame::from_prepared_ols(data).unwrap();
+            let config = PreparedOlsFitConfig::default();
+            if low {
+                fit_scaled_pivoted_qr_low(
+                    data,
+                    &mut PreparedOlsScratch::create(6, 1).unwrap(),
+                    &mut [0.0; 6],
+                    frame.weights(),
+                    frame.bread_weight_scale(),
+                    &[reference],
+                    &[score],
+                    config,
+                    &mut SystemFitReservation,
+                    false,
+                    false,
+                )
+            } else {
+                fit_scaled_pivoted_qr(
+                    data,
+                    &mut DenseMatrix::zeros(6, 2).unwrap(),
+                    frame.weights(),
+                    frame.bread_weight_scale(),
+                    &[reference],
+                    &[score],
+                    config,
+                    &mut SystemFitReservation,
+                    false,
+                    false,
+                    false,
+                )
+            }
+        };
+        let reference_error = "prepared OLS reference regressor norm is invalid";
+        let ratio_error = "prepared OLS fixed-effect collinearity ratio is not finite";
+        let square_error = "prepared OLS fixed-effect squared collinearity ratio is not finite";
+        let low_norm_error = "prepared OLS low-memory regressor norm is invalid";
+        let low_ratio_error = "prepared OLS low-memory collinearity ratio is invalid";
+        // A zero reference short-circuits fast validation, but low validates
+        // both norms first. These are caller boundaries, not memory-mode rules
+        // to introduce into the shared classification implementation.
+        for (reference, score, fast, low) in [
+            (-1.0, f64::NAN, Some(reference_error), Some(low_norm_error)),
+            (f64::NAN, 0.0, Some(reference_error), Some(low_norm_error)),
+            (0.0, f64::NAN, None, Some(low_norm_error)),
+            (1.0, f64::NAN, Some(ratio_error), Some(low_norm_error)),
+            (1e-300, 1e300, Some(ratio_error), Some(low_ratio_error)),
+            (1.0, 1e200, Some(square_error), Some(low_ratio_error)),
+            (0.0, 0.0, None, None),
+        ] {
+            for (low_mode, expected) in [(false, fast), (true, low)] {
+                let result = run(&data, reference, score, low_mode);
+                if let Some(message) = expected {
+                    let error = result.unwrap_err();
+                    assert_eq!(error.code, ErrorCode::InvalidData);
+                    assert_eq!(error.message, message);
+                } else {
+                    let qr = result.unwrap();
+                    assert_eq!(qr.rank, 0);
+                    assert_eq!(
+                        qr.generated_statuses,
+                        [PreparedOlsFitStatus::NumericallyRankDeficient]
+                    );
+                }
+            }
+        }
+        for low in [false, true] {
+            let qr = run(&intercept, f64::NAN, f64::NAN, low).unwrap();
+            assert_eq!(qr.rank, 0);
+            assert_eq!(
+                qr.generated_statuses,
+                [PreparedOlsFitStatus::AbsorbedInterceptDeferred]
+            );
+        }
+    }
 
     #[test]
     fn current_frame_means_select_canonical_coordinates_and_reject_invalid_views() {

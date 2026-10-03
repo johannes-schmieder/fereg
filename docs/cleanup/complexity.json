@@ -10819,23 +10819,23 @@
           },
           {
             "condition": "within . ncols ( ) != expected_columns || reference_norms . len ( ) != generated_columns || score_norms . len ( ) != generated_columns",
-            "line": 4440
+            "line": 4520
           },
           {
             "condition": "let Some ( fit ) = try_fit_scaled_pivoted_cholesky ( Some ( within ) , weights , bread_weight_scale , reference_norms , score_norms , & canonical_candidates , & generated_statuses , & standardized_gram , & standardized_rhs , relative_threshold , config , reservation , perturb_first_coefficient , perturb_bread , build_bread , ) ?",
-            "line": 4662
+            "line": 4700
           },
           {
             "condition": "candidate_norm > pivot_norm && ! tied || tied && candidate_columns [ position ] < candidate_columns [ pivot_position ]",
-            "line": 4703
+            "line": 4741
           },
           {
             "condition": "nrows >= PARALLEL_QR_MIN_ROWS && rayon :: current_num_threads ( ) > 1",
-            "line": 4737
+            "line": 4775
           },
           {
             "condition": "scratch . rows ( ) != nrows || scratch . columns ( ) != generated_columns || within_outcome . len ( ) != nrows || reference_norms . len ( ) != generated_columns || score_norms . len ( ) != generated_columns",
-            "line": 4936
+            "line": 4974
           },
           {
             "condition": "let Some ( fit ) = try_fit_scaled_pivoted_cholesky ( None , weights , bread_weight_scale , reference_norms , score_norms , & canonical_candidates , & generated_statuses , & standardized_gram , & standardized_rhs , relative_threshold , config , reservation , perturb_first_coefficient , perturb_bread , true , ) ?",
@@ -11191,6 +11191,10 @@
             "line": 8021,
             "lines": 3
           },
+          "classify_qr_candidates#1": {
+            "line": 4469,
+            "lines": 31
+          },
           "coefficients#1": {
             "line": 321,
             "lines": 3
@@ -11238,6 +11242,10 @@
           "execution#1": {
             "line": 594,
             "lines": 3
+          },
+          "fast_qr_norms#1": {
+            "line": 4421,
+            "lines": 26
           },
           "fast_score_cache_fits#1": {
             "line": 3060,
@@ -11344,12 +11352,12 @@
             "lines": 168
           },
           "fit_scaled_pivoted_qr#1": {
-            "line": 4422,
-            "lines": 497
+            "line": 4502,
+            "lines": 455
           },
           "fit_scaled_pivoted_qr_low#1": {
-            "line": 4921,
-            "lines": 486
+            "line": 4959,
+            "lines": 448
           },
           "fit_with_controls_internal#1": {
             "line": 2319,
@@ -11430,6 +11438,10 @@
           "lap#1": {
             "line": 672,
             "lines": 8
+          },
+          "low_qr_norms#1": {
+            "line": 4448,
+            "lines": 18
           },
           "matches#1": {
             "line": 427,
@@ -11672,7 +11684,7 @@
             "lines": 34
           }
         },
-        "production_lines": 7398
+        "production_lines": 7395
       },
       "crates/fereg-core/src/ols/prepared_fit_view.rs": {
         "chunk_candidates": [],
@@ -22274,7 +22286,7 @@
         "dispatch_candidates": 1476,
         "files_over_1500": 20,
         "functions_over_150": 98,
-        "production_lines": 104913
+        "production_lines": 104910
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

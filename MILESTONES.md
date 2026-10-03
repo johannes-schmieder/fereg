@@ -2,7 +2,7 @@
 
 Plan: [M0–M2](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M2.1 boundary audit and fresh parent-next timings; M0–M1 remain complete.
+Current task: M2.3 clean-build performance qualification and refreshed evidence.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -23,8 +23,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M1.4 Six-plugin review bundle; licensed Mac installation, Linux/Windows builds/audits/ABI and final Linux source/replay CI pass.
 - [x] M1.5 Identity-bound smoke/scaling, Mac/Linux coverage and refreshed complexity; proposed next cleanup remains unimplemented.
 
-- [ ] M2.1 Audit classification/validation boundaries and record parent-next baseline.
-- [ ] M2.2 Shared classification, deleted duplicate logic and correctness qualification.
+- [x] M2.1 Boundary regression passes on parent; 34 fresh timing groups recorded with qualified parent Mac binary.
+- [x] M2.2 Shared classification; full/long tests, exact parent replay, five-thread science/repeats, native ABI and 3 Stata fixtures pass.
 - [ ] M2.3 Performance/complexity evidence and next-milestone discussion.
 
 ## Gates
@@ -81,3 +81,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.4 5ba506b1 — CI 37093239587: full checks and 73 science pass; all platform builds, 4 staged fixtures and 38-file install/get verification pass.
 - 2026-10-02 G-M1 this commit — all gates verified; see [platforms](bench/history/2026-10-02-m1-platform-qualification.json) and [timings](bench/history/2026-10-02-m1-performance.json).
 - 2026-10-03 M2.1 this commit — approved scope recorded; parent Mac 49a597c4 preserved; fast/low validation differences identified before extraction.
+- 2026-10-03 M2.1 35d1720e — fresh parent smoke/scaling: 34 groups, 214 commands; norm/error/deferred-intercept regression passes before extraction.
+- 2026-10-03 M2.2 this commit — one classifier; core -3 lines, QR functions 497/486 to 455/448; full/30 long oracles, 73 exact/five-thread science, 3 Stata pass.
