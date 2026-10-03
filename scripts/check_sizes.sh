@@ -6,7 +6,7 @@ python3 - <<'PY'
 from pathlib import Path
 import sys
 violations = []
-for crate in ['fereg-engine', 'fereg-oracle']:
+for crate in ['fereg-oracle']:
     root = Path('crates') / crate
     for path in sorted(root.rglob('*.rs')):
         if 'target' in path.parts:
@@ -17,5 +17,5 @@ for crate in ['fereg-engine', 'fereg-oracle']:
 if violations:
     print('\n'.join(violations), file=sys.stderr)
     sys.exit(1)
-print('engine/oracle file size limits: PASS (functions checked by Clippy)')
+print('oracle file size limits: PASS (functions checked by Clippy)')
 PY

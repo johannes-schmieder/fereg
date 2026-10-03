@@ -22,7 +22,7 @@ else:
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_INVENTORY = ROOT / "benchmarks/manifests/action_allocation_inventory_v24.json"
 SOURCE_GLOBS = (
-    "legacy/fereg-core/src/**/*.rs",
+    "crates/fereg-core/src/**/*.rs",
     "crates/fereg-plugin/src/**/*.rs",
     "vendor/*/src/**/*.rs",
 )

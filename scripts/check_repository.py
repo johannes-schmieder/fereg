@@ -171,7 +171,7 @@ required_files = [
     "fuzz/fuzz_targets/interaction_tuples.rs",
     "tests/fuzz/README.md",
     "docs/adr/0007-fereg-050-beta-qualification-contract.md",
-    "legacy/fereg-core/src/lib.rs",
+    "crates/fereg-core/src/lib.rs",
     "crates/fereg-plugin/src/ffi.rs",
     "plugin/stplugin.c",
     "plugin/stplugin.h",
@@ -242,8 +242,8 @@ require(
     "cargo-fuzz manifest lacks its package marker or libFuzzer runtime",
 )
 
-core_files = list((ROOT / "legacy/fereg-core/src").glob("*.rs"))
-require("#![forbid(unsafe_code)]" in read("legacy/fereg-core/src/lib.rs"), "safe core does not forbid unsafe code")
+core_files = list((ROOT / "crates/fereg-core/src").glob("*.rs"))
+require("#![forbid(unsafe_code)]" in read("crates/fereg-core/src/lib.rs"), "safe core does not forbid unsafe code")
 for path in core_files:
     text = path.read_text(encoding="utf-8")
     require(not re.search(r"\bunsafe\b", text), f"unsafe token found in safe core: {path.relative_to(ROOT)}")

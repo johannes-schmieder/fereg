@@ -14,8 +14,8 @@ ROOT_INPUTS = ("Cargo.toml", "Cargo.lock", "references.lock.toml",
                "rust-toolchain", "rust-toolchain.toml", "scripts/build_linux.sh")
 REQUIRED_INPUTS = ("Cargo.toml", "Cargo.lock", "references.lock.toml",
                    "rust-toolchain.toml", ".cargo/config.toml", "scripts/build_linux.sh",
-                   "legacy/fereg-core/Cargo.toml", "legacy/fereg-core/build.rs",
-                   "legacy/fereg-core/src/lib.rs", "crates/fereg-plugin/Cargo.toml",
+                   "crates/fereg-core/Cargo.toml", "crates/fereg-core/build.rs",
+                   "crates/fereg-core/src/lib.rs", "crates/fereg-plugin/Cargo.toml",
                    "crates/fereg-plugin/src/lib.rs", "plugin/stata_bridge.c",
                    "plugin/stata_bridge.h", "plugin/stplugin.c", "plugin/stplugin.h",
                    "plugin/exports_linux.map", "stata/fereg.ado", "stata/feppml.ado")

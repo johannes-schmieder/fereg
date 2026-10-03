@@ -216,7 +216,7 @@ class PpmlCommandScientificMatrixTests(unittest.TestCase):
         self.assertIn("pub fn with_outer_controls", core)
         self.assertNotIn("pub enum PpmlInitialization", core)
 
-        crate_root = (ROOT / "legacy/fereg-core/src/lib.rs").read_text(encoding="utf-8")
+        crate_root = (ROOT / "crates/fereg-core/src/lib.rs").read_text(encoding="utf-8")
         for stale_export in ("means_from_eta", "PoissonBounds", "PpmlInitialization"):
             self.assertNotRegex(crate_root, rf"pub use ppml::\{{[^}}]*\b{stale_export}\b")
 
@@ -227,7 +227,7 @@ class PpmlCommandScientificMatrixTests(unittest.TestCase):
         self.assertIn("compute_ppml_inference", driver)
 
     def test_extreme_pweight_and_generation_ledger_contracts_are_source_bound(self) -> None:
-        prepared = (ROOT / "legacy/fereg-core/src/ppml/prepared.rs").read_text(
+        prepared = (ROOT / "crates/fereg-core/src/ppml/prepared.rs").read_text(
             encoding="utf-8"
         )
         for fragment in (
@@ -243,7 +243,7 @@ class PpmlCommandScientificMatrixTests(unittest.TestCase):
                 self.assertIn(fragment, prepared)
 
         separation = (
-            ROOT / "legacy/fereg-core/src/ppml/prepared_separation.rs"
+            ROOT / "crates/fereg-core/src/ppml/prepared_separation.rs"
         ).read_text(encoding="utf-8")
         self.assertIn("hash ^= u64::try_from(original_row)", separation)
         self.assertIn("candidate_ledger_hash_binds_stable_original_rows", separation)

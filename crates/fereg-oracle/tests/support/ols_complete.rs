@@ -1,6 +1,5 @@
 //! Metadata adapters for complete-estimator comparisons; no numerical kernels.
 use fereg_core as old;
-use fereg_engine::{data::*, spec::metadata as new, spec::ClusterTerm, ModelSpec};
 use fereg_oracle::designs::{generate, DesignSpec, Graph, WeightKind as OracleWeight};
 
 pub struct Case {
@@ -284,72 +283,4 @@ fn variable(
     term.canonical_token = token;
     term.components[0].source = source;
     term
-}
-
-pub fn current(case: &Case) -> (ModelSpec, Loaded) {
-    let wire = old::ModelWireV2::from_specification(&old::CompiledModelSpecification {
-        model: case.request.model.clone(),
-        absorbed_terms: case.request.absorbed_terms.clone(),
-    })
-    .unwrap();
-    let table = |table: old::NumericWireTable| new::NumericWireTable {
-        declared_count: table.declared_count,
-        rows: table.rows,
-    };
-    let mut model = ModelSpec::from_wire(&new::ModelWireV2 {
-        major: wire.major,
-        minor: wire.minor,
-        sources: table(wire.sources),
-        terms: table(wire.terms),
-        components: table(wire.components),
-        source_names: wire.source_names,
-        canonical_tokens: wire.canonical_tokens,
-        raw_component_operators: wire.raw_component_operators,
-        raw_time_series_operators: wire.raw_time_series_operators,
-        absorb_terms: table(wire.absorb_terms),
-        absorb_components: table(wire.absorb_components),
-        absorb_labels: wire.absorb_labels,
-        absorb_saved_names: wire.absorb_saved_names,
-    })
-    .unwrap();
-    model.include_intercept = case.request.include_intercept;
-    model.keep_singletons = case.request.keep_singletons;
-    model.clusters = case
-        .clusters
-        .iter()
-        .map(|cluster| ClusterTerm {
-            label: cluster.label.clone(),
-            sources: cluster
-                .sources
-                .iter()
-                .map(|source| new::SourceId::new(source.get()).unwrap())
-                .collect(),
-        })
-        .collect();
-    let column = |column: &old::LoadedNumericColumn| NumericColumn {
-        values: column.values.clone(),
-        missing: Some(column.missing.clone()),
-    };
-    let weights = [
-        (WeightKind::Analytic, &case.loaded.analytic_weight),
-        (WeightKind::Frequency, &case.loaded.frequency_weight),
-        (WeightKind::Probability, &case.loaded.probability_weight),
-    ]
-    .into_iter()
-    .find_map(|(kind, weight)| weight.as_ref().map(|weight| (kind, column(weight))));
-    (
-        model,
-        Loaded {
-            candidate: case.loaded.candidate.clone(),
-            outcome: column(&case.loaded.outcome),
-            sources: case
-                .loaded
-                .numeric_sources
-                .iter()
-                .map(|(_, values)| LoadedSource::Numeric(column(values)))
-                .collect(),
-            weights,
-            adjustment: LoadedAdjustment::None,
-        },
-    )
 }

@@ -832,13 +832,13 @@ class PpmlMemoryPerformanceContractTests(unittest.TestCase):
             self.assertEqual({cell["profile"] for cell in plan}, {"scc_governing"})
 
     def test_ppml_memory_boundary_does_not_leak_into_ols_or_legacy_driver(self) -> None:
-        ols_root = ROOT / "legacy/fereg-core/src/ols"
+        ols_root = ROOT / "crates/fereg-core/src/ols"
         forbidden = ("plan_ppml_memory", "PpmlIterationWorkspace", "PpmlMemoryPlan", "ppml::memory")
         for path in ols_root.glob("*.rs"):
             source = path.read_text(encoding="utf-8")
             for token in forbidden:
                 self.assertNotIn(token, source, f"{path.name} imports PPML policy: {token}")
-        prepared = (ROOT / "legacy/fereg-core/src/ppml/prepared_irls.rs").read_text(encoding="utf-8")
+        prepared = (ROOT / "crates/fereg-core/src/ppml/prepared_irls.rs").read_text(encoding="utf-8")
         self.assertIn("fit_prepared_ppml_irls", prepared)
         self.assertNotIn("profile_irls_step", prepared)
         plugin = (ROOT / "crates/fereg-plugin/src/ppml_estimate.rs").read_text(encoding="utf-8")

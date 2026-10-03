@@ -5,7 +5,7 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[2]
-PPML = ROOT / "legacy/fereg-core/src/ppml"
+PPML = ROOT / "crates/fereg-core/src/ppml"
 RESULT = PPML / "result.rs"
 ESTIMATOR = PPML / "prepared_estimator.rs"
 

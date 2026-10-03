@@ -23,8 +23,8 @@ In this document N is retained physical rows, N_eff is effective observations,
 D is the complete absorbed design, X the finite design, and W positive fitting
 weights. All row identities refer to the original dataset. "Tests" names
 existing executable checks to carry forward, not unexecuted replacement claims.
-Native test names below are relative to `legacy/fereg-core` or
-`legacy/fereg-testkit`; Stata names are relative to `tests/stata`.
+Native test names below are relative to `crates/fereg-core` or
+`crates/fereg-testkit`; Stata names are relative to `tests/stata`.
 
 ## 1. Public syntax and options
 

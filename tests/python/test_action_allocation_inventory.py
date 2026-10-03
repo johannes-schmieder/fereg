@@ -17,10 +17,10 @@ class ActionAllocationInventoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'Cargo.lock').write_text('version = 3\n')
-            paths = ['legacy/fereg-core/src/ols/linear_session.rs',
-                     'legacy/fereg-core/src/ppml/memory.rs',
-                     'legacy/fereg-core/src/ppml_separation/runner/accounting.rs',
-                     'legacy/fereg-core/src/memory/new_model.rs',
+            paths = ['crates/fereg-core/src/ols/linear_session.rs',
+                     'crates/fereg-core/src/ppml/memory.rs',
+                     'crates/fereg-core/src/ppml_separation/runner/accounting.rs',
+                     'crates/fereg-core/src/memory/new_model.rs',
                      'crates/fereg-plugin/src/ppml_result.rs']
             original = 'fn work(n: usize) { let x = vec![0.0; n]; let y = "limit"; }\n'
             for name in paths:
@@ -37,7 +37,7 @@ class ActionAllocationInventoryTests(unittest.TestCase):
                     self.assertEqual(inventory.audit(root, manifest), [f'action allocation source changed: {name}'])
                 path.write_text('// harmless formatting\n' + original)
                 self.assertEqual(inventory.audit(root, manifest), [])
-            helper = root / 'legacy/fereg-core/src/ppml/new.rs'
+            helper = root / 'crates/fereg-core/src/ppml/new.rs'
             helper.write_text(original)
             self.assertIn('action allocation source set changed', inventory.audit(root, manifest))
             helper.unlink()
@@ -78,7 +78,7 @@ class ActionAllocationInventoryTests(unittest.TestCase):
             root = Path(directory)
             (root / 'Cargo.lock').write_text('version = 3\n')
             names = ['Cargo.toml', '.cargo/config.toml', 'rust-toolchain.toml',
-                     'legacy/fereg-core/Cargo.toml', 'legacy/fereg-core/build.rs',
+                     'crates/fereg-core/Cargo.toml', 'crates/fereg-core/build.rs',
                      'crates/fereg-plugin/Cargo.toml', 'vendor/rayon-core/Cargo.toml',
                      'vendor/rayon-core/Cargo.lock', 'vendor/rayon-core/build.rs']
             for name in names:
@@ -118,7 +118,7 @@ class ActionAllocationInventoryTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)
             (root / 'Cargo.lock').write_text('version = 3\n')
-            source = root / 'legacy/fereg-core/src/ppml/memory.rs'
+            source = root / 'crates/fereg-core/src/ppml/memory.rs'
             source.parent.mkdir(parents=True)
             source.write_text('fn work(n: usize) { let x = vec![0.; n]; }\n')
             old = inventory.build_inventory(root)
@@ -130,7 +130,7 @@ class ActionAllocationInventoryTests(unittest.TestCase):
             source.write_text('fn work(n: usize) { let x = vec![0.; 2 * n]; }\n')
             errors = inventory.audit(root, manifest)
             self.assertIn('action inventory fields changed', errors)
-            self.assertIn('action allocation source changed: legacy/fereg-core/src/ppml/memory.rs', errors)
+            self.assertIn('action allocation source changed: crates/fereg-core/src/ppml/memory.rs', errors)
 
     def test_duplicate_build_input_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:

@@ -21,9 +21,6 @@ mod result;
 mod result_view;
 mod thread_policy;
 
-#[cfg(all(test, feature = "ffi"))]
-mod next_memory_tests;
-
 #[cfg(feature = "ffi")]
 mod ffi;
 

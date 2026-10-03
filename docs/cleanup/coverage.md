@@ -1,3 +1,8 @@
+> Historical rebuild coverage mapping. The incremental [M0–M1 plan](PLAN.md)
+> supersedes its architecture, deletion schedule and cross-thread bit policy.
+> M0.4 replaces this mapping with current executable coverage. No old pending
+> replacement below is a passing gate; scientific source fixtures remain.
+
 # Scientific requirements and replacement coverage
 
 This mapping carries legacy requirements into SPEC and executable new-engine

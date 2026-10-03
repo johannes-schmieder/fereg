@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac canonical asset qualified; Linux/Windows pending.
-Current task: M0.2b hosted canonical artifacts; M0.3 is independent after the verified source pin.
+Current task: M0.2b Windows asset finalization; M0.4 replay development can use the qualified Mac comparator.
 Current runtime: working legacy implementation; next selection/default lands in M1.1.
 
 ## Tasks and prerequisites
@@ -11,7 +11,7 @@ Current runtime: working legacy implementation; next selection/default lands in 
 - [~] M0.2 Freeze/tag complete baseline; Mac build and 34 Stata fixtures pass; Linux/Windows pending.
 - [x] M0.2a Immutable tag, build/fetch/registration tooling and platform factory.
 - [ ] M0.2b Hosted Linux/Windows assets, canonical registration and verified storage.
-- [ ] M0.3 Move working core/testkit; remove abandoned rewrite. Depends on M0.2 source pin, not pending platform builds.
+- [x] M0.3 Working core/testkit moved; host retained; abandoned rewrite removed; full local harness/native ABI and long oracles pass.
 - [ ] M0.4 Real OLS/PPML replay, exact-copy/scientific checks, bounded feature matrix and Linux CI. Depends on M0.3 and comparator assets.
 - [ ] M0.5 Complexity ratchet and instrumented coverage baseline. Inventory can proceed after M0.3; replay coverage needs M0.4.
 - [ ] M1.1 Two-plugin Stata selection, next default and exact public baseline. Depends on G-M0.
@@ -37,10 +37,12 @@ Current runtime: working legacy implementation; next selection/default lands in 
 
 ## Blockers
 
-None established. Platform artifact/hosted prerequisites remain unverified, not passed.
+Platform assets/replay gates remain pending. Historical v39/v24 allocation manifests already predate the frozen source; do not refresh them as proof.
+The old source-string assertion for fit_absorb_matrix also fails against unchanged frozen code; retained runtime checks remain required.
 
 ## Log
 
 - 2026-10-02 M0.1 6643939b — governance reset; fmt/Clippy, 1906 workspace, 173 doc/FFI, 9 isolated working audits, size/mock/static pass; rewrite-only audits retired.
 - 2026-10-02 M0.2a 9323fe00 — tag 15a57ba2; Mac 80329f51 ABI/native audit and 34/34 Stata pass; 5 identity tests pass; hosted platforms pending.
 - 2026-10-02 M0.2b this commit — build setup repair 1: scoped Linux checkout trust and LF archive override; frozen source hash check retained.
+- 2026-10-02 M0.3 this commit — 176 retained source files byte-checked; 1635 test invocations, long oracle suite, Mac ABI and 13 bench tests pass.

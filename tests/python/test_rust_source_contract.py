@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-CORE = ROOT / "legacy/fereg-core/src"
+CORE = ROOT / "crates/fereg-core/src"
 PLUGIN = ROOT / "crates/fereg-plugin/src"
 
 

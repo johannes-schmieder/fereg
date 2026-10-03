@@ -16,8 +16,6 @@ cargo fmt --all -- --check
 cargo clippy --workspace --all-targets --no-default-features --profile "$profile" -- -D warnings
 cargo clippy -p fereg-plugin --all-targets --features ffi --profile "$profile" -- -D warnings
 cargo test --workspace --all-targets --no-default-features --profile "$profile"
-# Accepted-state authority includes a compiler-enforced mutation contract.
-cargo test -p fereg-engine --doc --profile "$profile"
 # The FFI allocator observes every test's allocations, even outside an audit.
 cargo test -p fereg-plugin --features ffi --lib --profile "$profile" -- --test-threads=1
 # Serial test threads still share counters and surviving worker allocations.
@@ -26,10 +24,6 @@ audit_list="$(cargo test -p fereg-plugin --features ffi --lib --profile "$profil
 audit_count=0
 while IFS= read -r audit; do
   case "$audit" in
-    next_memory_tests::*)
-      # The approved reset abandons this rewrite; M0.3 removes its scaffolding.
-      printf 'Retired rewrite-only audit: %s\n' "${audit%: test}"
-      ;;
     *": test")
       audit_count=$((audit_count + 1))
       cargo test -p fereg-plugin --features ffi --lib --profile "$profile" "${audit%: test}" -- --ignored --exact --test-threads=1

@@ -23,7 +23,7 @@ import re
 from typing import Mapping, Sequence
 
 
-CORE = "legacy/fereg-core/src"
+CORE = "crates/fereg-core/src"
 PPML_MOD = f"{CORE}/ppml/mod.rs"
 PPML_IRLS = f"{CORE}/ppml/irls.rs"
 PPML_PREPARED_SEPARATION = f"{CORE}/ppml/prepared_separation.rs"
@@ -373,7 +373,7 @@ def audit_documents(documents: Mapping[str, str]) -> list[Violation]:
                 "PPML initialization policy is externally configurable",
             )
         )
-    crate_root_path = "legacy/fereg-core/src/lib.rs"
+    crate_root_path = "crates/fereg-core/src/lib.rs"
     crate_root = documents.get(crate_root_path, "")
     for name in FORBIDDEN_CRATE_ROOT_PPML_EXPORTS:
         match = re.search(rf"\b{name}\b", mask_comments_and_literals(crate_root))

@@ -5,8 +5,8 @@ import unittest
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
-PROTOCOL = ROOT / "legacy/fereg-core/src/protocol.rs"
-EXPORTS = ROOT / "legacy/fereg-core/src/lib.rs"
+PROTOCOL = ROOT / "crates/fereg-core/src/protocol.rs"
+EXPORTS = ROOT / "crates/fereg-core/src/lib.rs"
 OLS_RESULT = ROOT / "crates/fereg-plugin/src/result.rs"
 DISPATCH = ROOT / "crates/fereg-plugin/src/dispatch.rs"
 

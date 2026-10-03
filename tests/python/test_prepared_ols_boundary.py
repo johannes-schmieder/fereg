@@ -63,7 +63,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -83,7 +83,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -105,7 +105,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -128,7 +128,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -150,7 +150,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertNotIn("fvrevar", helper.lower())
 
     def test_all_categorical_interaction_slice_is_recipe_only_and_stays_internal(self):
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -175,7 +175,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -189,7 +189,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assertIn('"absorb_term_matrix=', helper)
         self.assertIn("PreparedOlsEffect", core)
         self.assertIn("NumericSourceUse", core)
-        sample = (ROOT / "legacy/fereg-core/src/data/sample.rs").read_text(
+        sample = (ROOT / "crates/fereg-core/src/data/sample.rs").read_text(
             encoding="utf-8"
         )
         self.assertIn("DropReason::MissingFixedEffect", sample)
@@ -209,13 +209,13 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         helper = (ROOT / "stata/_fereg_prepare_ols_test.ado").read_text(
             encoding="utf-8"
         )
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        sample = (ROOT / "legacy/fereg-core/src/data/sample.rs").read_text(
+        sample = (ROOT / "crates/fereg-core/src/data/sample.rs").read_text(
             encoding="utf-8"
         )
-        singleton = (ROOT / "legacy/fereg-core/src/fe/singleton.rs").read_text(
+        singleton = (ROOT / "crates/fereg-core/src/fe/singleton.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -242,10 +242,10 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assert_public_fereg_is_wired()
 
     def test_prepared_fe_topology_is_deduplicated_fallible_and_not_a_solver(self):
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        design = (ROOT / "legacy/fereg-core/src/fe/design.rs").read_text(
+        design = (ROOT / "crates/fereg-core/src/fe/design.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -267,10 +267,10 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assert_public_fereg_is_wired()
 
     def test_borrowed_fe_adapter_is_intercept_only_and_does_not_invoke_a_solver(self):
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
-        design = (ROOT / "legacy/fereg-core/src/fe/design.rs").read_text(
+        design = (ROOT / "crates/fereg-core/src/fe/design.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -295,7 +295,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assert_public_fereg_is_wired()
 
     def test_prepared_rhs_map_check_is_opt_in_fallible_and_not_an_estimator(self):
-        rhs = (ROOT / "legacy/fereg-core/src/ols/prepared_rhs.rs").read_text(
+        rhs = (ROOT / "crates/fereg-core/src/ols/prepared_rhs.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(
@@ -330,7 +330,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assert_public_fereg_is_wired()
 
     def test_prepared_coefficient_fit_is_certified_core_only_and_not_public(self):
-        fit = (ROOT / "legacy/fereg-core/src/ols/prepared_fit.rs").read_text(
+        fit = (ROOT / "crates/fereg-core/src/ols/prepared_fit.rs").read_text(
             encoding="utf-8"
         )
         production = fit.split("#[cfg(test)]", maxsplit=1)[0]
@@ -366,7 +366,7 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
         self.assert_public_fereg_is_wired()
 
     def test_prepared_absorbed_dof_is_structural_fallible_and_not_public(self):
-        dof = (ROOT / "legacy/fereg-core/src/ols/prepared_dof.rs").read_text(
+        dof = (ROOT / "crates/fereg-core/src/ols/prepared_dof.rs").read_text(
             encoding="utf-8"
         )
         production = dof.split("#[cfg(test)]", maxsplit=1)[0]
@@ -408,15 +408,15 @@ class PreparedOlsBoundaryContractTests(unittest.TestCase):
 
     def test_prepared_iid_inference_is_same_call_certified_and_not_public(self):
         inference = (
-            ROOT / "legacy/fereg-core/src/ols/prepared_unadjusted.rs"
+            ROOT / "crates/fereg-core/src/ols/prepared_unadjusted.rs"
         ).read_text(encoding="utf-8")
         production = inference.split(
             "\n#[cfg(test)]\nmod tests {", maxsplit=1
         )[0]
         inference_view = (
-            ROOT / "legacy/fereg-core/src/ols/prepared_inference_view.rs"
+            ROOT / "crates/fereg-core/src/ols/prepared_inference_view.rs"
         ).read_text(encoding="utf-8")
-        fit = (ROOT / "legacy/fereg-core/src/ols/prepared_fit.rs").read_text(
+        fit = (ROOT / "crates/fereg-core/src/ols/prepared_fit.rs").read_text(
             encoding="utf-8"
         )
         plugin = (ROOT / "crates/fereg-plugin/src/input.rs").read_text(

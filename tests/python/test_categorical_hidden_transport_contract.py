@@ -50,10 +50,10 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
 
     def test_signed_residual_dof_publication_path_is_absent(self):
         core = (
-            ROOT / "legacy/fereg-core/src/ols/prepared_unadjusted.rs"
+            ROOT / "crates/fereg-core/src/ols/prepared_unadjusted.rs"
         ).read_text(encoding="utf-8")
         exports = (
-            ROOT / "legacy/fereg-core/src/ols/mod.rs"
+            ROOT / "crates/fereg-core/src/ols/mod.rs"
         ).read_text(encoding="utf-8")
         result = (PLUGIN / "result.rs").read_text(encoding="utf-8")
         stata = STATA.read_text(encoding="utf-8")
@@ -141,7 +141,7 @@ class CategoricalHiddenTransportContractTests(unittest.TestCase):
     def test_time_series_materialization_is_narrow_metadata_preserving_exception(self):
         stata = STATA.read_text(encoding="utf-8")
         parser = (ROOT / "stata/fereg_parse.ado").read_text(encoding="utf-8")
-        core = (ROOT / "legacy/fereg-core/src/ols/prepared.rs").read_text(
+        core = (ROOT / "crates/fereg-core/src/ols/prepared.rs").read_text(
             encoding="utf-8"
         )
         fixture = (

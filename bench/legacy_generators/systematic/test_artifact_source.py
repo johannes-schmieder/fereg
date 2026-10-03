@@ -62,7 +62,7 @@ class ArtifactSourceTests(unittest.TestCase):
             verify_source(self.root, self.source)
 
     def test_unregistered_build_products_do_not_change_identity(self):
-        for name in ("vendor/runtime/target/debug/lib.rlib", "legacy/fereg-core/target/test.bin",
+        for name in ("vendor/runtime/target/debug/lib.rlib", "crates/fereg-core/target/test.bin",
                      "stata/__pycache__/cached.pyc", "crates/.DS_Store", "vendor/runtime/.git/HEAD",
                      "target/lib.rlib", "dist/fereg_linux.plugin"):
             path = self.root / name

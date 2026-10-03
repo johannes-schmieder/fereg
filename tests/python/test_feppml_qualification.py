@@ -686,7 +686,7 @@ class FeppmlQualificationTests(unittest.TestCase):
                 QUAL.audit_source(repo, safe, self.manifest)["forbidden_symbols_absent"]
             )
 
-            owner = repo / "legacy/fereg-core/src/ppml_separation/mod.rs"
+            owner = repo / "crates/fereg-core/src/ppml_separation/mod.rs"
             owner.write_text(
                 owner.read_text(encoding="utf-8").replace(
                     "#[cfg(test)]\nmod runner;", "mod runner;", 1
@@ -712,7 +712,7 @@ class FeppmlQualificationTests(unittest.TestCase):
                 QUAL.audit_source(repo, safe, self.manifest)["forbidden_symbols_absent"]
             )
 
-            owner = repo / "legacy/fereg-core/src/ppml/mod.rs"
+            owner = repo / "crates/fereg-core/src/ppml/mod.rs"
             owner.write_text(
                 owner.read_text(encoding="utf-8").replace(
                     "#[cfg(test)]\n#[derive(Debug, Clone, PartialEq)]\npub(crate) struct PpmlStart",
