@@ -2,7 +2,7 @@
 
 Plan: [M0–M7](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M5 shared Wald calculation; M3/M4 local qualification passes.
+Current task: M6 shared DoF bookkeeping; M3–M5 local qualification passes.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -29,7 +29,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 - [x] M3 Shared OLS completion; full local checks, 73 exact native replay and 4 licensed output/transaction fixtures pass.
 - [x] M4 Shared QR pivot/solve/status kernels; full/long checks, 73 exact/scientific native replay and 2 fast/low Stata fixtures pass.
-- [ ] M5 Shared robust/clustered Wald calculation, qualification and deletion.
+- [x] M5 Shared robust/clustered Wald solve and IID coefficient lookup; full/long checks, 73 exact/scientific replay and 2 Stata fixtures pass.
 - [ ] M6 Shared categorical DoF consumption, qualification and deletion.
 - [ ] M7 Scaling diagnosis, combined qualification and next-step discussion.
 
@@ -94,3 +94,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M3.0 this commit — next five milestones scoped; M2 remains the qualified comparison; no solver-policy or legacy changes authorized.
 - 2026-10-03 M3.1 this commit — six completion sequences to one; host -5 lines; full checks, 73 exact/scientific replay, Mac ABI and 4 Stata pass.
 - 2026-10-03 M4.1 this commit — shared QR pivot/solve/status; core -3 lines, dispatch inventory -2; analytic regression, full/long tests, 73 replay and 2 Stata pass.
+- 2026-10-03 M5.1 this commit — common Wald solve/lookup; core -118 lines, large files 20 to 19; full/long tests, 73 exact/scientific replay and 2 Stata pass.

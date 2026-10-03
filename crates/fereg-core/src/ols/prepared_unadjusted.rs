@@ -1,3 +1,4 @@
+use super::prepared_wald::fitted_coordinate_value;
 use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
@@ -1637,30 +1638,6 @@ fn build_wald_f<P: PreparedOlsInferenceView + ?Sized, R: InferenceReservation>(
         statistic: Some(statistic),
         solve_relative_infinity_norm,
     })
-}
-
-fn fitted_coordinate_value(fit: &CertifiedPreparedOlsFit, position: usize) -> Result<f64> {
-    let coordinate = fit
-        .bread()
-        .coordinates()
-        .get(position)
-        .ok_or_else(|| invalid_argument("prepared iid fitted coordinate is out of range"))?;
-    let fitted = fit
-        .coefficients()
-        .iter()
-        .find(|coefficient| {
-            coefficient.generated_column_index == Some(coordinate.generated_column_index)
-        })
-        .ok_or_else(|| invalid_argument("prepared iid fitted coordinate has no coefficient"))?;
-    if fitted.status != PreparedOlsFitStatus::Kept {
-        return Err(invalid_argument(
-            "prepared iid Wald slope coordinate is not a kept finite coefficient",
-        ));
-    }
-    fitted
-        .value
-        .filter(|value| value.is_finite())
-        .ok_or_else(|| invalid_data("prepared iid Wald coefficient is not finite"))
 }
 
 fn certify_inference<P: PreparedOlsInferenceView + ?Sized>(

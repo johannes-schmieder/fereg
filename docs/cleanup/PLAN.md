@@ -229,9 +229,13 @@ rebuild's similarly numbered tasks; frozen legacy remains available.
 - **M5 — Wald calculation:** consolidate robust/clustered finite-coefficient
   Wald work where the algebra and rank policy agree. Keep estimator-specific
   covariance construction, PSD policy and independently checked certificates.
+  Reuse finite-coordinate lookup for IID too; shared internal Wald failures
+  use common wording with unchanged error codes and precedence.
 - **M6 — categorical DoF:** consolidate repeated deferred categorical DoF input
   consumption and report construction using the existing inference view. Keep
   ordinary/categorical mathematics, cluster nesting and error timing intact.
+  Share checked report-total accumulation across validated intercept/slope
+  rows; retain their distinct identity checks and common overflow diagnostics.
 - **M7 — scaling diagnosis and combined qualification:** use existing phase
   timers on one reproducible OLS scaling slowdown; separate startup, frontend,
   absorption and finite-fit costs. Record bounded evidence and the justified
