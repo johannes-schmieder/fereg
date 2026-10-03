@@ -7,6 +7,7 @@ import copy
 import hashlib
 import json
 import math
+import os
 from pathlib import Path
 import struct
 import subprocess
@@ -109,10 +110,22 @@ def digest(path: Path) -> str:
 
 
 def run_case(harness: Path, binary: Path, case: Path, output: Path) -> dict:
+    environment = dict(os.environ)
+    profile_pattern = None
+    if environment.get('LLVM_PROFILE_FILE'):
+        # Bind coverage to this native process, so Rust test/example profiles
+        # cannot make an uninstrumented or uninitialized plugin appear covered.
+        directory = Path(environment['LLVM_PROFILE_FILE']).parent
+        profile_pattern = directory / (output.stem + '-*.profraw')
+        if list(directory.glob(profile_pattern.name)):
+            raise RuntimeError('stale native replay coverage profile')
+        environment['LLVM_PROFILE_FILE'] = str(directory / (output.stem + '-%m.profraw'))
     completed = subprocess.run([str(harness), str(binary), '--replay', str(case), str(output)],
-                               capture_output=True, text=True, timeout=120)
+                               capture_output=True, text=True, timeout=120, env=environment)
     if completed.returncode != 0:
         raise RuntimeError(f'{case.stem}: harness/process failure {completed.returncode}: {completed.stderr[-2000:]}')
+    if profile_pattern and not list(profile_pattern.parent.glob(profile_pattern.name)):
+        raise RuntimeError(f'{case.stem}: native plugin emitted no coverage profile')
     return json.loads(output.read_text())
 
 

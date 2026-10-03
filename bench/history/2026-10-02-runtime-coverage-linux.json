@@ -4461,5 +4461,6 @@
         "plan#1"
       ]
     }
-  }
+  },
+  "qualification": "invalid: native plugin emitted no profiles; retained as failed-attempt evidence, not an accepted baseline"
 }

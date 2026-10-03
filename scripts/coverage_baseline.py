@@ -46,6 +46,10 @@ def main():
         runtimes = list(libdir.glob('libprofiler_builtins-*.rlib'))
         if len(runtimes) != 1:
             raise SystemExit('expected exactly one profiler runtime in the pinned toolchain')
+        if platform.system() == 'Linux':
+            # ELF instrumentation does not itself pull this archive member;
+            # retain its constructor so native plugin processes write profiles.
+            command.append('-Wl,-u,__llvm_profile_runtime')
         command.append(str(runtimes[0]))
         if platform.system() == 'Darwin':
             command += ['-DSYSTEM=APPLEMAC','-bundle','-Wl,-exported_symbols_list,plugin/exports_macos.txt','-framework','Security','-framework','CoreFoundation','-framework','SystemConfiguration','-liconv','-lresolv']
@@ -56,12 +60,15 @@ def main():
         run([*command,'-o',str(binary)],env,stdout=log,stderr=subprocess.STDOUT)
         # Compare instrumented runs to themselves; release exact-copy qualification
         # is a separate campaign, never inferred from instrumentation.
-        run(['bash','scripts/run_plugin_replay.sh',str(binary),str(binary)],env,stdout=log,stderr=subprocess.STDOUT)
+        native_profiles = OUT/'native-profiles'
+        native_profiles.mkdir()
+        replay_env = dict(env,LLVM_PROFILE_FILE=str(native_profiles/'%m-%p.profraw'))
+        run(['bash','scripts/run_plugin_replay.sh',str(binary),str(binary)],replay_env,stdout=log,stderr=subprocess.STDOUT)
     objects.append(binary)
     sysroot = run(['rustc','--print','sysroot'],env,capture_output=True,text=True).stdout.strip()
     host = next(line.split(': ',1)[1] for line in run(['rustc','-vV'],env,capture_output=True,text=True).stdout.splitlines() if line.startswith('host: '))
     llvm = Path(sysroot)/'lib/rustlib'/host/'bin'
-    raw = sorted(profiles.glob('*.profraw'))
+    raw = sorted(profiles.glob('*.profraw')) + sorted(native_profiles.glob('*.profraw'))
     if not raw:
         raise SystemExit('instrumentation produced no profiles')
     profile = OUT/'merged.profdata'
@@ -75,7 +82,8 @@ def main():
                 'instrumentation':'Rust 1.85.1 -C instrument-coverage', 'profile':'ci',
                 'platform':platform.system(), 'machine':platform.machine(), 'test_threads':1,
                 'plugin_sha256':hashlib.sha256(binary.read_bytes()).hexdigest(),
-                'profile_files':len(raw), 'objects':len(set(objects))}
+                'profile_files':len(raw), 'native_profile_files':len(list(native_profiles.glob('*.profraw'))),
+                'objects':len(set(objects))}
     (OUT/'identity.json').write_text(json.dumps(identity,indent=2)+'\n')
     print(f'Coverage export: {OUT / "export.json"}')
 
