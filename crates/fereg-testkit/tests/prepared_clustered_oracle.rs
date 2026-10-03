@@ -72,7 +72,7 @@ fn one_way_noconstant_matches_independent_explicit_dummy_cr1() {
 }
 
 #[test]
-fn one_two_and_three_way_full_covariances_match_generic_explicit_oracle() {
+fn one_to_four_way_full_covariances_match_generic_explicit_oracle() {
     let n = 48;
     let first = (0..n).map(|row| (row % 8) as u32).collect::<Vec<_>>();
     let second = (0..n)
@@ -97,8 +97,11 @@ fn one_two_and_three_way_full_covariances_match_generic_explicit_oracle() {
                 + 0.19 * (1.7 * row as f64).sin()
         })
         .collect::<Vec<_>>();
-    let all = [first, second, third];
-    for dimensions in 1..=3 {
+    let fourth = (0..n)
+        .map(|row| ((row / 7 + row % 3) % 6) as u32)
+        .collect::<Vec<_>>();
+    let all = [first, second, third, fourth];
+    for dimensions in 1..=4 {
         let clusters = all[..dimensions]
             .iter()
             .cloned()
@@ -450,7 +453,7 @@ fn rank_zero_and_roundoff_exact_fit_are_defined_without_nan_sentinels() {
 }
 
 #[test]
-fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
+fn sealed_cluster_receipt_agrees_except_approved_full_matrix_psd_fix() {
     // Immutable receipt:
     // benchmarks/reports/captured/darwin-arm64/stata18/ols/
     // 20260821T030000Z-a5181f9
@@ -567,6 +570,7 @@ fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
             .iter()
             .map(|value| stata_hex(value))
             .collect::<Vec<_>>();
+        let mut independent_full = None;
         if let Some(oracle) = oracle {
             let oracle_correction = counts.iter().copied().min().expect("minimum groups") as f64
                 / (counts.iter().copied().min().expect("minimum groups") - 1) as f64
@@ -580,6 +584,7 @@ fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
                 .map(|value| value / oracle_correction * result.covariance().correction())
                 .collect::<Vec<_>>();
             assert_close_slice_with_tolerance(result.covariance().raw_values(), &rescaled, 2e-10);
+            independent_full = Some(rescaled);
         }
         let psd = result.covariance().psd();
         let effective = result.weights().effective_observations as f64;
@@ -591,21 +596,30 @@ fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
         let determinant = result.covariance().values()[0] * result.covariance().values()[3]
             - result.covariance().values()[1] * result.covariance().values()[2];
         if case_index == 1 || case_index == 2 {
-            assert_eq!(
-                psd.state,
-                PreparedOlsClusteredPsdState::MultiwayFullClippedSlopeRestored
-            );
+            assert_eq!(psd.state, PreparedOlsClusteredPsdState::MultiwayFullClipped);
             assert!(psd.full_adjusted);
-            assert!(psd.slope_block_restored);
-            assert!(!psd.strict_final_full_psd);
+            assert!(!psd.slope_block_restored);
+            assert!(psd.strict_final_full_psd);
             assert!(psd.minimum_pre_restore_full_eigenvalue >= -1e-16);
-            assert!(
-                psd.minimum_restored_slope_eigenvalue
-                    .expect("restored slope")
-                    >= -1e-16
-            );
-            assert!(psd.minimum_final_full_eigenvalue < 0.0);
-            assert!(determinant < 0.0);
+            assert!(psd.minimum_restored_slope_eigenvalue.is_none());
+            assert!(psd.minimum_final_full_eigenvalue >= -1e-16);
+            assert!(determinant >= -1e-16);
+            // Independent two-by-two spectral projector: one positive root
+            // survives. The input is the explicit dummy oracle, not production V.
+            let raw = independent_full.as_ref().expect("explicit covariance");
+            let gap = (raw[0] - raw[3]).hypot(2.0 * raw[1]);
+            let upper = 0.5 * (raw[0] + raw[3] + gap);
+            let lower = 0.5 * (raw[0] + raw[3] - gap);
+            assert!(upper > 0.0 && lower < 0.0);
+            let scale = upper / gap;
+            let clipped = [
+                scale * (raw[0] - lower),
+                scale * raw[1],
+                scale * raw[2],
+                scale * (raw[3] - lower),
+            ];
+            assert_close_slice_with_tolerance(result.covariance().values(), &clipped, 2e-10);
+            assert!(expected[0] * expected[3] - expected[1] * expected[2] < 0.0);
         } else {
             assert_eq!(psd.state, PreparedOlsClusteredPsdState::OneWayStrict);
             assert!(!psd.full_adjusted);
@@ -728,19 +742,12 @@ fn sealed_stata18_cluster_covariances_and_counts_match_pinned_receipt() {
             }
             _ => unreachable!("sealed case index"),
         }
-        // These absolute caps describe only the immutable receipt's DEFAULT
-        // reghdfe MAP stopping artifact. They are applied after exact sample,
-        // cluster, subset, DoF, coordinate, and PSD-state assertions. They
-        // never relax fereg's <=2e-10 internal oracle/transform/certificate
-        // checks, imitate the upstream early stop, or reclip restored CGM V.
-        let receipt_cap = match case_index {
-            0 => 1e-7,
-            1 => 2e-6,
-            2 => 4e-6,
-            3 => 1e-7,
-            _ => unreachable!("sealed receipt cap index"),
-        };
-        assert_absolute_close_slice(result.covariance().values(), &expected, receipt_cap);
+        // One-way covariance retains pinned-reference parity. Multiway
+        // departure is intentional: the receipt restores a slope block and
+        // becomes indefinite; next follows the independent full PSD target above.
+        if case_index == 0 || case_index == 3 {
+            assert_absolute_close_slice(result.covariance().values(), &expected, 1e-7);
+        }
         assert!(result.certificate().passed);
     }
 }

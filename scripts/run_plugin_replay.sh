@@ -12,4 +12,5 @@ mkdir -p "$REPLAY_ROOT/cases"
 cargo run -p fereg-oracle --example replay --profile ci -- "$REPLAY_ROOT/cases"
 ./tests/mock_spi/run_actual_unix_plugin_test.sh "$1"
 python3 scripts/replay_plugins.py --next "$1" --baseline "$2" \
-  --cases "$REPLAY_ROOT/cases" --output "$REPLAY_ROOT/results"
+  --cases "$REPLAY_ROOT/cases" --output "$REPLAY_ROOT/results" \
+  --baseline-fixes "${FEREG_REPLAY_BASELINE_FIXES:-}"

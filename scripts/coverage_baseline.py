@@ -62,7 +62,9 @@ def main():
         # is a separate campaign, never inferred from instrumentation.
         native_profiles = OUT/'native-profiles'
         native_profiles.mkdir()
-        replay_env = dict(env,LLVM_PROFILE_FILE=str(native_profiles/'%m-%p.profraw'))
+        repairs = json.loads((ROOT/'tests/replay/intentional_changes.json').read_text())['active']
+        replay_env = dict(env,LLVM_PROFILE_FILE=str(native_profiles/'%m-%p.profraw'),
+                          FEREG_REPLAY_BASELINE_FIXES=','.join(repairs))
         run(['bash','scripts/run_plugin_replay.sh',str(binary),str(binary)],replay_env,stdout=log,stderr=subprocess.STDOUT)
     objects.append(binary)
     sysroot = run(['rustc','--print','sysroot'],env,capture_output=True,text=True).stdout.strip()

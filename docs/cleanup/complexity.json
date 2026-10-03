@@ -9816,200 +9816,200 @@
         "dispatch_candidates": [
           {
             "condition": "! ( 1.. = 10 ) . contains ( & prepared . clustered_design ( ) . len ( ) )",
-            "line": 950
+            "line": 948
           },
           {
             "condition": "bread . len ( ) != square || meat . len ( ) != square",
-            "line": 2186
+            "line": 2184
           },
           {
             "condition": "raw . uncorrected . len ( ) != square || raw . independent_uncorrected . len ( ) != square || raw . subsets . len ( ) != raw . independent_subsets . len ( )",
-            "line": 2207
+            "line": 2205
           },
           {
             "condition": "raw . uncorrected . len ( ) != raw . corrected . len ( ) || ! raw . correction . is_finite ( ) || raw . correction <= 0.0",
-            "line": 2241
+            "line": 2239
           },
           {
             "condition": "raw . len ( ) != square",
-            "line": 2273
+            "line": 2271
           },
           {
             "condition": "p == 0",
-            "line": 2278
+            "line": 2276
           },
           {
             "condition": "prepared . clustered_design ( ) . len ( ) == 1",
-            "line": 2279
+            "line": 2277
           },
           {
             "condition": "prepared . clustered_design ( ) . len ( ) == 1 && minimum_raw < - tolerance * scale",
-            "line": 2322
+            "line": 2320
           },
           {
             "condition": "matrix . len ( ) != square",
-            "line": 2573
+            "line": 2434
           },
           {
             "condition": "index == p || index == q",
-            "line": 2678
+            "line": 2539
           },
           {
             "condition": "actual . len ( ) != square || eigen . values . len ( ) != dimension || eigen . vectors . len ( ) != square",
-            "line": 2793
+            "line": 2654
           },
           {
             "condition": "covariance . raw_values . len ( ) != square || covariance . values . len ( ) != square",
-            "line": 2841
+            "line": 2701
           },
           {
             "condition": "p == 0",
-            "line": 2848
+            "line": 2707
           },
           {
             "condition": "left . len ( ) != square || right . len ( ) != square",
-            "line": 3066
+            "line": 2834
           },
           {
             "condition": "covariance . len ( ) != square",
-            "line": 3100
+            "line": 2868
           },
           {
             "condition": "positions . len ( ) != slope_dimension",
-            "line": 3163
+            "line": 2931
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 3358
+            "line": 3126
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 3379
+            "line": 3147
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 3417
+            "line": 3185
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 3444
+            "line": 3212
           },
           {
             "condition": "target . len ( ) == target . capacity ( )",
-            "line": 3453
+            "line": 3221
           }
         ],
         "functions": {
           "absorbed_dof#1": {
-            "line": 229,
+            "line": 228,
             "lines": 3
           },
           "absorbed_dof#2": {
-            "line": 309,
+            "line": 308,
             "lines": 3
           },
           "allocation#1": {
-            "line": 3468,
+            "line": 3236,
             "lines": 3
           },
           "apply_psd_policy#1": {
-            "line": 2264,
-            "lines": 263
+            "line": 2262,
+            "lines": 162
           },
           "borrow_cluster_dimensions#1": {
-            "line": 966,
+            "line": 964,
             "lines": 22
           },
           "build_clustered_dof#1": {
-            "line": 989,
+            "line": 987,
             "lines": 61
           },
           "build_raw_covariance#1": {
-            "line": 1068,
+            "line": 1066,
             "lines": 78
           },
           "build_standard_errors#1": {
-            "line": 3091,
+            "line": 2859,
             "lines": 31
           },
           "build_wald#1": {
-            "line": 3123,
+            "line": 2891,
             "lines": 148
           },
           "certificate#1": {
-            "line": 269,
+            "line": 268,
             "lines": 3
           },
           "certificate#2": {
-            "line": 349,
+            "line": 348,
             "lines": 3
           },
           "certify_clipped_reconstruction#1": {
-            "line": 2784,
+            "line": 2645,
             "lines": 44
           },
           "certify_corrected_covariance#1": {
-            "line": 2240,
+            "line": 2238,
             "lines": 23
           },
           "certify_eigensystem#1": {
-            "line": 2703,
+            "line": 2564,
             "lines": 44
           },
           "certify_psd_state#1": {
-            "line": 2829,
-            "lines": 231
+            "line": 2690,
+            "lines": 138
           },
           "certify_statistics#1": {
-            "line": 3297,
+            "line": 3065,
             "lines": 49
           },
           "certify_with_group_influences#1": {
-            "line": 2201,
+            "line": 2199,
             "lines": 38
           },
           "cluster_correction#1": {
-            "line": 1051,
+            "line": 1049,
             "lines": 16
           },
           "cluster_counts#1": {
-            "line": 244,
+            "line": 243,
             "lines": 3
           },
           "cluster_counts#2": {
-            "line": 324,
+            "line": 323,
             "lines": 3
           },
           "cluster_dimensions#1": {
-            "line": 430,
+            "line": 429,
             "lines": 3
           },
           "compose_clustered_view#1": {
-            "line": 691,
-            "lines": 254
+            "line": 690,
+            "lines": 253
           },
           "correction#1": {
-            "line": 142,
+            "line": 141,
             "lines": 3
           },
           "covariance#1": {
-            "line": 259,
+            "line": 258,
             "lines": 3
           },
           "covariance#2": {
-            "line": 339,
+            "line": 338,
             "lines": 3
           },
           "covariance_coordinates#1": {
-            "line": 264,
+            "line": 263,
             "lines": 3
           },
           "covariance_coordinates#2": {
-            "line": 344,
+            "line": 343,
             "lines": 3
           },
           "covariance_scale#1": {
-            "line": 3416,
+            "line": 3184,
             "lines": 20
           },
           "default#1": {
@@ -10017,187 +10017,179 @@
             "lines": 8
           },
           "dimension#1": {
-            "line": 163,
+            "line": 162,
             "lines": 3
           },
           "dimension#2": {
-            "line": 426,
+            "line": 425,
             "lines": 3
           },
           "dof#1": {
-            "line": 239,
+            "line": 238,
             "lines": 3
           },
           "dof#2": {
-            "line": 319,
+            "line": 318,
             "lines": 3
           },
           "fit#1": {
-            "line": 224,
+            "line": 223,
             "lines": 3
           },
           "fit#2": {
-            "line": 304,
+            "line": 303,
             "lines": 3
           },
           "fit_clustered_view_with_reservation#1": {
-            "line": 630,
+            "line": 629,
             "lines": 30
           },
           "fit_prepared_categorical_ols_clustered_map#1": {
-            "line": 571,
+            "line": 570,
             "lines": 6
           },
           "fit_prepared_categorical_ols_clustered_map_with_loaded_moments#1": {
-            "line": 579,
+            "line": 578,
             "lines": 21
           },
           "fit_prepared_ols_clustered_map#1": {
-            "line": 550,
+            "line": 549,
             "lines": 6
           },
           "fit_prepared_ols_clustered_map_with_loaded_moments#1": {
-            "line": 558,
+            "line": 557,
             "lines": 10
           },
           "fit_with_loaded_reservation#1": {
-            "line": 610,
+            "line": 609,
             "lines": 19
           },
           "fitted_coordinate_value#1": {
-            "line": 3272,
+            "line": 3040,
             "lines": 24
           },
           "invalid_argument#1": {
-            "line": 3460,
+            "line": 3228,
             "lines": 3
           },
           "invalid_data#1": {
-            "line": 3464,
+            "line": 3232,
             "lines": 3
           },
           "jacobi_rotate#1": {
-            "line": 2651,
+            "line": 2512,
             "lines": 51
           },
           "matrix_relative_infinity_norm#1": {
-            "line": 3061,
+            "line": 2829,
             "lines": 29
           },
           "nrows#1": {
-            "line": 401,
+            "line": 400,
             "lines": 3
           },
           "optional_error#1": {
-            "line": 3347,
+            "line": 3115,
             "lines": 9
           },
           "owned_buffer_bytes#1": {
-            "line": 212,
+            "line": 211,
             "lines": 10
           },
           "owned_buffer_bytes#2": {
-            "line": 292,
+            "line": 291,
             "lines": 10
           },
           "psd#1": {
-            "line": 168,
+            "line": 167,
             "lines": 3
           },
           "push_reserved#1": {
-            "line": 3452,
+            "line": 3220,
             "lines": 7
           },
-          "raw_eigen_input#1": {
-            "line": 2528,
-            "lines": 10
-          },
           "raw_values#1": {
-            "line": 148,
+            "line": 147,
             "lines": 3
           },
           "reconstruct_clipped#1": {
-            "line": 2748,
+            "line": 2609,
             "lines": 35
           },
           "reduce_subset#1": {
-            "line": 434,
+            "line": 433,
             "lines": 58
           },
           "report#1": {
-            "line": 493,
+            "line": 492,
             "lines": 15
           },
-          "reported_intercept_position#1": {
-            "line": 2539,
-            "lines": 24
-          },
           "reserved_empty#1": {
-            "line": 3437,
+            "line": 3205,
             "lines": 14
           },
           "sandwich#1": {
-            "line": 2179,
+            "line": 2177,
             "lines": 21
           },
           "score_pair#1": {
-            "line": 404,
+            "line": 403,
             "lines": 15
           },
           "standard_error_error#1": {
-            "line": 3399,
+            "line": 3167,
             "lines": 16
           },
           "standard_errors#1": {
-            "line": 158,
+            "line": 157,
             "lines": 3
           },
           "statistics#1": {
-            "line": 254,
+            "line": 253,
             "lines": 3
           },
           "statistics#2": {
-            "line": 334,
+            "line": 333,
             "lines": 3
           },
           "subsets#1": {
-            "line": 249,
+            "line": 248,
             "lines": 3
           },
           "subsets#2": {
-            "line": 329,
+            "line": 328,
             "lines": 3
           },
           "symmetric_eigensystem#1": {
-            "line": 2564,
+            "line": 2425,
             "lines": 86
           },
           "symmetrize#1": {
-            "line": 3357,
+            "line": 3125,
             "lines": 20
           },
           "symmetry_error#1": {
-            "line": 3378,
+            "line": 3146,
             "lines": 20
           },
           "validate_config#1": {
-            "line": 946,
+            "line": 944,
             "lines": 19
           },
           "values#1": {
-            "line": 153,
+            "line": 152,
             "lines": 3
           },
           "weights#1": {
-            "line": 234,
+            "line": 233,
             "lines": 3
           },
           "weights#2": {
-            "line": 314,
+            "line": 313,
             "lines": 3
           }
         },
-        "production_lines": 2223
+        "production_lines": 1992
       },
       "crates/fereg-core/src/ols/prepared_clustered_view.rs": {
         "chunk_candidates": [],
@@ -22281,8 +22273,8 @@
         "chunk_candidates": 13,
         "dispatch_candidates": 1476,
         "files_over_1500": 20,
-        "functions_over_150": 99,
-        "production_lines": 105133
+        "functions_over_150": 98,
+        "production_lines": 104902
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

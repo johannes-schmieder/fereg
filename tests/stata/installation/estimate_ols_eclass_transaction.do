@@ -108,7 +108,7 @@ assert `"`e(cmd)'"' == "_fereg_estimate_ols_test"
 assert e(fereg_receipt)[1,16] == 1
 assert e(sample) == 1
 assert !missing(__frg_committed_resid)
-assert det(e(V)) < 0
+assert det(e(V)) >= -1e-16
 assert e(fereg_certificate)[31,1] == 1
 assert e(fereg_certificate)[31,2] == det(e(V))
 assert e(fereg_certificate)[32,1] == 1

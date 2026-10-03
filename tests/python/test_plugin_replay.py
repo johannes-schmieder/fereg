@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
-from replay_plugins import differences, exact_view
+from replay_plugins import allowed_difference, differences, exact_view, expected_for_fixes
 from replay_psd import eigensystem
 
 
@@ -37,6 +37,18 @@ class ReplayChecks(unittest.TestCase):
         changed['return_code'] = 498
         changed['columns'][0][0] = '0000000000000000'
         self.assertEqual(len(differences(exact_view(base, False), exact_view(changed, False))), 2)
+
+    def test_intentional_changes_are_field_scoped_and_science_is_required(self):
+        self.assertTrue(allowed_difference('/matrices/RV/bits/1', ['/matrices/RV/bits']))
+        self.assertFalse(allowed_difference('/matrices/RB/bits/1', ['/matrices/RV/bits']))
+        self.assertFalse(allowed_difference('/matrices/RV/bits/19', ['/matrices/RV/bits/1']))
+        self.assertFalse(allowed_difference('fixed-thread-repeat/matrices/RV/bits/1', ['/matrices/RV/bits']))
+        old = {'known_defect': 'slope-dof', 'return_code': 498, 'beta': [1.]}
+        repaired = expected_for_fixes(old, {'slope-dof'})
+        self.assertEqual(repaired['return_code'], 0)
+        self.assertEqual(repaired['beta'], old['beta'])
+        self.assertNotIn('known_defect', repaired)
+        self.assertEqual(old['return_code'], 498)
 
     def test_independent_psd_target_has_analytic_spectrum(self):
         values, fixed = eigensystem([[1., 2., 0.], [2., 1., 0.], [0., 0., 4.]])

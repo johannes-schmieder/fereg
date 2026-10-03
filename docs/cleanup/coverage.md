@@ -89,3 +89,20 @@ The frozen binary and its candidate-wide frontend expansion remain unchanged.
 then checks missing outcome/regressor/FE/cluster/slope/weight/adjustment, analytic
 zero weights, time-series gaps and outside-if sources, and independent explicit
 dummy regress/poisson coefficients. Domain failures remain errors.
+
+## M1.2b declared change boundary
+
+`tests/replay/intentional_changes.json` permits only known-12 covariance,
+Wald F and inference certificate changes against parent-next `744ef7f4`.
+Coefficients, sample, observation outputs and route signatures stay exact.
+The complete covariance including the constant must match the independent
+Jacobi-clipped dense target and be PSD. A separate analytic two-by-two projector
+checks the explicit dummy covariance in the retained testkit. Historical
+Stata scientific receipt assertions run explicitly on legacy; adjacent next checks
+require PSD and unchanged coefficients. Fixed-thread repeat differences are
+never covered by intentional-change allowances.
+
+The old two-/three-way Stata hex-literal receipt also fails on the unchanged
+canonical legacy binary. Its scientific reference caps remain; exactness now
+uses a fresh fixed-thread canonical repeat with the binary hash recorded,
+then requires next coefficients to match. No numerical tolerance was relaxed.

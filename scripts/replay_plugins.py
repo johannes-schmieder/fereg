@@ -54,6 +54,19 @@ def differences(a, b, path='') -> list[str]:
     return [] if a == b else [path]
 
 
+def expected_for_fixes(expected: dict, fixes: set[str]) -> dict:
+    target = copy.deepcopy(expected)
+    defect = target.get('known_defect')
+    if defect in fixes:
+        target['repaired_defect'] = target.pop('known_defect')
+        target['return_code'] = 0
+    return target
+
+
+def allowed_difference(path: str, prefixes: list[str]) -> bool:
+    return any(path == prefix or path.startswith(prefix + '/') for prefix in prefixes)
+
+
 def scientific_errors(result: dict, expected: dict) -> list[str]:
     errors = []
     if result['return_code'] != expected['return_code']:
@@ -90,6 +103,18 @@ def scientific_errors(result: dict, expected: dict) -> list[str]:
         gap = max(abs(a-b) for left, right in zip(actual, intended) for a,b in zip(left,right))
         if min(eigenvalues) >= -2e-6 or gap <= 1e-6:
             errors.append('known full-matrix covariance defect was not reproduced')
+    if expected.get('repaired_defect'):
+        indices = expected['covariance_indices']
+        actual = [[covariance[i * width + j] for j in indices] for i in indices]
+        intended = expected['independent_raw_covariance']
+        if expected['repaired_defect'] == 'full-matrix-covariance':
+            _, intended = eigensystem(intended)
+            eigenvalues, _ = eigensystem(actual)
+            scale = max(1.0, max(abs(x) for row in actual for x in row))
+            if min(eigenvalues) < -1e-10 * scale:
+                errors.append('repaired full covariance is indefinite')
+        close([x for row in actual for x in row], [x for row in intended for x in row],
+              'independent repaired covariance', 1e-6, 1e-10)
     outputs = expected['outputs']
     sample = [number(x) for x in result['columns'][outputs['sample']]]
     if sample != expected['sample']:
@@ -136,7 +161,15 @@ def main() -> int:
     parser.add_argument('--cases', type=Path, default=ROOT / 'target/replay/cases')
     parser.add_argument('--output', type=Path, default=ROOT / 'target/replay/results')
     parser.add_argument('--harness', type=Path, default=ROOT / 'target/actual-plugin-harness/actual_plugin_loader_test')
+    parser.add_argument('--baseline-fixes', default='', help='comma-separated accepted fixes in the identified parent; empty means frozen legacy')
+    parser.add_argument('--policy', type=Path, default=ROOT / 'tests/replay/intentional_changes.json')
     args = parser.parse_args()
+    policy = json.loads(args.policy.read_text())
+    candidate_fixes = set(policy['active'])
+    baseline_fixes = set(filter(None, args.baseline_fixes.split(',')))
+    if not baseline_fixes <= candidate_fixes or not candidate_fixes <= policy['repairs'].keys():
+        raise RuntimeError('unknown or unapproved replay repair policy')
+    transitions = candidate_fixes - baseline_fixes
     args.output.mkdir(parents=True, exist_ok=True)
     cases = sorted(args.cases.glob('*.case'))
     inventory = json.loads((ROOT / 'tests/replay/matrix.json').read_text())
@@ -152,17 +185,24 @@ def main() -> int:
         changed = differences(exact_view(candidate, expected['poisson']), exact_view(baseline, expected['poisson']))
         if repeat_changes:
             changed.extend('fixed-thread-repeat' + path for path in repeat_changes)
-        science = scientific_errors(candidate, expected)
+        prefixes = [path for fix in transitions
+                    if policy['repairs'][fix]['case'] == case.stem
+                    for path in policy['repairs'][fix]['allowed_paths']]
+        intentional = [path for path in changed if allowed_difference(path, prefixes)]
+        changed = [path for path in changed if not allowed_difference(path, prefixes)]
+        candidate_expected = expected_for_fixes(expected, candidate_fixes)
+        science = scientific_errors(candidate, candidate_expected)
+        baseline_science = scientific_errors(baseline, expected_for_fixes(expected, baseline_fixes))
         record = {'case': case.stem, 'input_sha256': digest(case), 'exact_differences': changed,
-                  'science_errors': science, 'known_defect': expected.get('known_defect'), 'return_code': candidate['return_code']}
+                  'science_errors': science, 'known_defect': candidate_expected.get('known_defect'), 'repaired_defect': candidate_expected.get('repaired_defect'), 'intentional_differences': intentional, 'baseline_science_errors': baseline_science, 'return_code': candidate['return_code']}
         records.append(record)
-        print(f"{case.stem}: rc={candidate['return_code']} exact={len(changed)} science={science} known_defect={expected.get('known_defect')}")
+        print(f"{case.stem}: rc={candidate['return_code']} exact={len(changed)} science={science} repair={candidate_expected.get('repaired_defect')} intentional={len(intentional)} baseline_science={baseline_science}")
         if changed:
             print('  ' + ', '.join(changed[:5]))
     summary = {'schema': 1, 'next_sha256': digest(args.next), 'baseline_sha256': digest(args.baseline),
                'known_defect_cases': sum(bool(r['known_defect']) for r in records),
                'scientific_pass_cases': sum(not r['known_defect'] and not r['science_errors'] for r in records),
-               'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] for r in records)}
+               'candidate_fixes': sorted(candidate_fixes), 'baseline_fixes': sorted(baseline_fixes), 'policy_sha256': digest(args.policy), 'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] and not r['baseline_science_errors'] for r in records)}
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     return 0 if summary['passed'] else 1
 

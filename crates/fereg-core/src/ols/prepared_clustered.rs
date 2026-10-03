@@ -99,8 +99,7 @@ pub enum PreparedOlsClusteredPsdState {
     MultiwayRawPsd,
     /// Q>1 full covariance was clipped and remains the final covariance.
     MultiwayFullClipped,
-    /// Q>1 full covariance was clipped, then the independently repaired
-    /// original raw slope block was restored around a reported constant.
+    /// Historical wire state; next never restores a slope block after clipping.
     MultiwayFullClippedSlopeRestored,
 }
 
@@ -117,7 +116,7 @@ pub struct PreparedOlsClusteredPsdReport {
     pub minimum_pre_restore_full_eigenvalue: f64,
     pub minimum_raw_slope_eigenvalue: Option<f64>,
     pub minimum_restored_slope_eigenvalue: Option<f64>,
-    /// Diagnostic-only in the exact `MultiwayFullClippedSlopeRestored` state.
+    /// The final full covariance is always checked for positive semidefiniteness.
     pub minimum_final_full_eigenvalue: f64,
     pub pre_restore_full_rank: usize,
     pub restored_slope_rank: Option<usize>,
@@ -862,7 +861,6 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     let (pre_restore_full_psd_error, restored_slope_psd_error, final_structure_error) =
         certify_psd_state(
             prepared,
-            &fit,
             &covariance,
             config.certificate_tolerance,
             reservation,
@@ -2329,12 +2327,6 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
     let mut output = symmetric;
     let mut full_adjusted = false;
     let mut full_clipped = 0_usize;
-    let mut slope_block_restored = false;
-    let mut slope_block_adjusted = false;
-    let mut slope_clipped = 0_usize;
-    let mut minimum_raw_slope = None;
-    let mut minimum_restored_slope = None;
-    let mut restored_slope_rank = None;
     let mut transform_error = 0.0_f64;
     let mut eig_error = raw_eigen.reconstruction_error;
     let mut orthogonality_error = raw_eigen.orthogonality_error;
@@ -2346,96 +2338,8 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
         full_clipped = clipped_count;
         full_adjusted = clipped_count > 0;
 
-        let intercept = reported_intercept_position(prepared.clustered_ols(), fit)?;
-        if let Some(intercept) = intercept {
-            let slope_dimension = p.checked_sub(1).ok_or_else(|| {
-                invalid_argument("prepared clustered slope dimension underflowed")
-            })?;
-            if slope_dimension > 0 {
-                let slope_square = checked_square(
-                    slope_dimension,
-                    "prepared clustered slope-block dimensions overflow usize",
-                )?;
-                let mut positions = reserved_empty(
-                    reservation,
-                    slope_dimension,
-                    "unable to reserve prepared clustered slope-block positions",
-                )?;
-                for position in 0..p {
-                    if position != intercept {
-                        push_reserved(
-                            &mut positions,
-                            position,
-                            "prepared clustered slope-position capacity exhausted",
-                        )?;
-                    }
-                }
-                let mut slope = reserved_filled(
-                    reservation,
-                    slope_square,
-                    0.0_f64,
-                    "unable to reserve prepared clustered raw slope block",
-                )?;
-                for row in 0..slope_dimension {
-                    for column in 0..slope_dimension {
-                        slope[row * slope_dimension + column] =
-                            raw_eigen_input(raw, p, positions[row], positions[column])?;
-                    }
-                }
-                symmetrize(&mut slope, slope_dimension)?;
-                let slope_eigen = symmetric_eigensystem(&slope, slope_dimension, reservation)?;
-                minimum_raw_slope = Some(
-                    slope_eigen
-                        .values
-                        .iter()
-                        .copied()
-                        .fold(f64::INFINITY, f64::min),
-                );
-                eig_error = eig_error.max(slope_eigen.reconstruction_error);
-                orthogonality_error = orthogonality_error.max(slope_eigen.orthogonality_error);
-                let (fixed_slope, clipped_count) =
-                    reconstruct_clipped(&slope_eigen, slope_dimension, reservation)?;
-                transform_error = transform_error.max(certify_clipped_reconstruction(
-                    &slope_eigen,
-                    &fixed_slope,
-                    slope_dimension,
-                )?);
-                slope_clipped = clipped_count;
-                slope_block_adjusted = clipped_count > 0;
-                let fixed_slope_eigen =
-                    symmetric_eigensystem(&fixed_slope, slope_dimension, reservation)?;
-                minimum_restored_slope = Some(
-                    fixed_slope_eigen
-                        .values
-                        .iter()
-                        .copied()
-                        .fold(f64::INFINITY, f64::min),
-                );
-                let slope_scale = covariance_scale(&fixed_slope, slope_dimension)?;
-                if minimum_restored_slope.unwrap_or(0.0) < -tolerance * slope_scale {
-                    return Err(invalid_data(
-                        "prepared clustered restored slope block is materially indefinite",
-                    ));
-                }
-                restored_slope_rank = Some(
-                    fixed_slope_eigen
-                        .values
-                        .iter()
-                        .filter(|value| **value > tolerance * slope_scale)
-                        .count(),
-                );
-                eig_error = eig_error.max(fixed_slope_eigen.reconstruction_error);
-                orthogonality_error =
-                    orthogonality_error.max(fixed_slope_eigen.orthogonality_error);
-                for row in 0..slope_dimension {
-                    for column in 0..slope_dimension {
-                        output[positions[row] * p + positions[column]] =
-                            fixed_slope[row * slope_dimension + column];
-                    }
-                }
-                slope_block_restored = true;
-            }
-        }
+        // Repair the complete reported covariance, including the constant.
+        // Restoring an independently clipped slope block can destroy PSD.
     }
     let (pre_restore_eigen, pre_restore_scale) = if full_adjusted {
         let mut pre_restore = reconstruct_clipped(&raw_eigen, p, reservation)?.0;
@@ -2482,22 +2386,15 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
         .copied()
         .fold(f64::INFINITY, f64::min);
     let final_scale = covariance_scale(&output, p)?;
-    let strict_final_full_psd = !(cluster_dimensions > 1
-        && full_adjusted
-        && reported_intercept_position(prepared.clustered_ols(), fit)?.is_some()
-        && p > 1
-        && slope_block_restored);
-    if strict_final_full_psd && minimum_final < -tolerance * final_scale {
+    if minimum_final < -tolerance * final_scale {
         return Err(invalid_data(format!(
-            "prepared clustered final covariance is materially indefinite: min={minimum_final:.17e}, scale={final_scale:.17e}, adjusted={full_adjusted}, slope_restored={slope_block_restored}",
+            "prepared clustered final covariance is materially indefinite: min={minimum_final:.17e}, scale={final_scale:.17e}, adjusted={full_adjusted}",
         )));
     }
     let state = if cluster_dimensions == 1 {
         PreparedOlsClusteredPsdState::OneWayStrict
     } else if !full_adjusted {
         PreparedOlsClusteredPsdState::MultiwayRawPsd
-    } else if slope_block_restored {
-        PreparedOlsClusteredPsdState::MultiwayFullClippedSlopeRestored
     } else {
         PreparedOlsClusteredPsdState::MultiwayFullClipped
     };
@@ -2506,59 +2403,23 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
         PreparedOlsClusteredPsdReport {
             state,
             full_adjusted,
-            slope_block_restored,
-            slope_block_adjusted,
+            slope_block_restored: false,
+            slope_block_adjusted: false,
             full_clipped_eigenvalues: full_clipped,
-            slope_clipped_eigenvalues: slope_clipped,
+            slope_clipped_eigenvalues: 0,
             minimum_raw_full_eigenvalue: minimum_raw,
             minimum_pre_restore_full_eigenvalue: minimum_pre_restore,
-            minimum_raw_slope_eigenvalue: minimum_raw_slope,
-            minimum_restored_slope_eigenvalue: minimum_restored_slope,
+            minimum_raw_slope_eigenvalue: None,
+            minimum_restored_slope_eigenvalue: None,
             minimum_final_full_eigenvalue: minimum_final,
             pre_restore_full_rank,
-            restored_slope_rank,
-            strict_final_full_psd,
+            restored_slope_rank: None,
+            strict_final_full_psd: true,
             transform_reconstruction_relative_error: transform_error,
             eigensystem_relative_error: eig_error,
             orthogonality_relative_error: orthogonality_error,
         },
     ))
-}
-
-fn raw_eigen_input(raw: &[f64], p: usize, row: usize, column: usize) -> Result<f64> {
-    let value = 0.5 * (raw[row * p + column] + raw[column * p + row]);
-    if value.is_finite() {
-        Ok(value)
-    } else {
-        Err(invalid_data(
-            "prepared clustered raw slope-block value is not finite",
-        ))
-    }
-}
-
-fn reported_intercept_position<P: PreparedOlsFitView + ?Sized>(
-    prepared: &P,
-    fit: &CertifiedPreparedOlsFit,
-) -> Result<Option<usize>> {
-    let mut intercept = None;
-    for (position, coordinate) in fit.bread().coordinates().iter().enumerate() {
-        let is_intercept = coordinate.kind
-            == PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
-            || matches!(
-                prepared
-                    .fit_model()
-                    .columns
-                    .get(coordinate.generated_column_index)
-                    .map(|column| &column.kind),
-                Some(PreparedOlsColumnKind::Intercept)
-            );
-        if is_intercept && intercept.replace(position).is_some() {
-            return Err(invalid_argument(
-                "prepared clustered covariance has multiple reported intercepts",
-            ));
-        }
-    }
-    Ok(intercept)
 }
 
 fn symmetric_eigensystem<R: PreparedInferenceReservation>(
@@ -2828,7 +2689,6 @@ fn certify_clipped_reconstruction(
 
 fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceReservation>(
     prepared: &P,
-    fit: &CertifiedPreparedOlsFit,
     covariance: &PreparedOlsClusteredCovariance,
     tolerance: f64,
     reservation: &mut R,
@@ -2844,7 +2704,6 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
         ));
     }
     let q = prepared.clustered_design().len();
-    let intercept = reported_intercept_position(prepared.clustered_ols(), fit)?;
     if p == 0 {
         let expected_state = if q == 1 {
             PreparedOlsClusteredPsdState::OneWayStrict
@@ -2894,80 +2753,6 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
         .filter(|value| **value > tolerance * pre_restore_scale)
         .count();
 
-    let expected_slope_restore = expected_full_adjustment && intercept.is_some() && p > 1;
-    let mut raw_slope_minimum = None;
-    let mut restored_slope_minimum = None;
-    let mut expected_slope_rank = None;
-    let mut expected_slope_clipped = 0_usize;
-    let mut restored_slope_error = 0.0_f64;
-    if expected_slope_restore {
-        let intercept = intercept.ok_or_else(|| {
-            invalid_argument("prepared clustered independent intercept state is inconsistent")
-        })?;
-        let slopes = p - 1;
-        let slope_square = checked_square(
-            slopes,
-            "prepared clustered independent slope dimensions overflow usize",
-        )?;
-        let mut positions = reserved_empty(
-            reservation,
-            slopes,
-            "unable to reserve prepared clustered independent slope positions",
-        )?;
-        for position in 0..p {
-            if position != intercept {
-                push_reserved(
-                    &mut positions,
-                    position,
-                    "prepared clustered independent slope-position capacity exhausted",
-                )?;
-            }
-        }
-        let mut slope = reserved_filled(
-            reservation,
-            slope_square,
-            0.0_f64,
-            "unable to reserve prepared clustered independent raw slope block",
-        )?;
-        for row in 0..slopes {
-            for column in 0..slopes {
-                slope[row * slopes + column] =
-                    raw_eigen_input(&covariance.raw_values, p, positions[row], positions[column])?;
-            }
-        }
-        symmetrize(&mut slope, slopes)?;
-        let slope_eigen = symmetric_eigensystem(&slope, slopes, reservation)?;
-        raw_slope_minimum = Some(
-            slope_eigen
-                .values
-                .iter()
-                .copied()
-                .fold(f64::INFINITY, f64::min),
-        );
-        let (restored, clipped) = reconstruct_clipped(&slope_eigen, slopes, reservation)?;
-        expected_slope_clipped = clipped;
-        let restored_eigen = symmetric_eigensystem(&restored, slopes, reservation)?;
-        let restored_minimum = restored_eigen
-            .values
-            .iter()
-            .copied()
-            .fold(f64::INFINITY, f64::min);
-        let slope_scale = covariance_scale(&restored, slopes)?;
-        restored_slope_error = (-restored_minimum).max(0.0) / slope_scale;
-        restored_slope_minimum = Some(restored_minimum);
-        expected_slope_rank = Some(
-            restored_eigen
-                .values
-                .iter()
-                .filter(|value| **value > tolerance * slope_scale)
-                .count(),
-        );
-        for row in 0..slopes {
-            for column in 0..slopes {
-                expected[positions[row] * p + positions[column]] = restored[row * slopes + column];
-            }
-        }
-    }
     symmetrize(&mut expected, p)?;
     let transform_error = matrix_relative_infinity_norm(&expected, covariance.values(), p)?;
     let final_eigen = symmetric_eigensystem(covariance.values(), p, reservation)?;
@@ -2977,13 +2762,10 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
         .copied()
         .fold(f64::INFINITY, f64::min);
     let final_scale = covariance_scale(covariance.values(), p)?;
-    let expected_strict = !expected_slope_restore;
     let expected_state = if q == 1 {
         PreparedOlsClusteredPsdState::OneWayStrict
     } else if !expected_full_adjustment {
         PreparedOlsClusteredPsdState::MultiwayRawPsd
-    } else if expected_slope_restore {
-        PreparedOlsClusteredPsdState::MultiwayFullClippedSlopeRestored
     } else {
         PreparedOlsClusteredPsdState::MultiwayFullClipped
     };
@@ -3003,14 +2785,8 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
             final_minimum,
             final_minimum.abs().max(1.0),
         )?,
-        optional_error(
-            covariance.psd.minimum_raw_slope_eigenvalue,
-            raw_slope_minimum,
-        )?,
-        optional_error(
-            covariance.psd.minimum_restored_slope_eigenvalue,
-            restored_slope_minimum,
-        )?,
+        optional_error(covariance.psd.minimum_raw_slope_eigenvalue, None)?,
+        optional_error(covariance.psd.minimum_restored_slope_eigenvalue, None)?,
     ]
     .into_iter()
     .fold(0.0_f64, f64::max);
@@ -3018,12 +2794,12 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
         covariance.psd.state != expected_state
             || covariance.psd.full_adjusted != expected_full_adjustment
             || covariance.psd.full_clipped_eigenvalues != expected_full_clipped
-            || covariance.psd.slope_block_restored != expected_slope_restore
-            || covariance.psd.slope_block_adjusted != (expected_slope_clipped > 0)
-            || covariance.psd.slope_clipped_eigenvalues != expected_slope_clipped
+            || covariance.psd.slope_block_restored
+            || covariance.psd.slope_block_adjusted
+            || covariance.psd.slope_clipped_eigenvalues != 0
             || covariance.psd.pre_restore_full_rank != expected_pre_restore_rank
-            || covariance.psd.restored_slope_rank != expected_slope_rank
-            || covariance.psd.strict_final_full_psd != expected_strict,
+            || covariance.psd.restored_slope_rank.is_some()
+            || !covariance.psd.strict_final_full_psd,
     ));
     let mut finite_diagonal_error = 0.0_f64;
     for index in 0..p {
@@ -3039,11 +2815,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
     if covariance.values().iter().any(|value| !value.is_finite()) {
         finite_diagonal_error = 1.0;
     }
-    let strict_psd_error = if expected_strict {
-        (-final_minimum).max(0.0) / final_scale
-    } else {
-        0.0
-    };
+    let strict_psd_error = (-final_minimum).max(0.0) / final_scale;
     let final_structure_error = transform_error
         .max(diagnostics_error)
         .max(state_error)
@@ -3051,11 +2823,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
         .max(symmetry_error(covariance.values(), p)?)
         .max(standard_error_error(covariance)?)
         .max(strict_psd_error);
-    Ok((
-        pre_restore_error,
-        restored_slope_error,
-        final_structure_error,
-    ))
+    Ok((pre_restore_error, 0.0, final_structure_error))
 }
 
 fn matrix_relative_infinity_norm(left: &[f64], right: &[f64], dimension: usize) -> Result<f64> {
