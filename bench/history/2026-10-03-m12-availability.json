@@ -1,0 +1,90 @@
+{
+  "schema": 1,
+  "milestone": "M12",
+  "predecessor_runtime": "a5cd94baa6e0eb842456b140a6a1aa2be7e6761a",
+  "implementation": "General categorical availability owns only model, numeric sample and encodings. Disabled-singleton packaging, ordinary FE membership/topology construction and its validation are skipped where final interaction topology replaces them. Existing large unweighted single-source membership transfer is preserved.",
+  "complexity": {
+    "core_before": 104708,
+    "core_after": 104750,
+    "long_functions_before_after": [
+      98,
+      98
+    ],
+    "large_files_before_after": [
+      19,
+      19
+    ],
+    "growth_reason": "Small availability owner and useful-membership boundary replace a whole discarded preparation stage; no numerical routes added."
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "native_parent_replay": {
+      "cases": 73,
+      "exact": true,
+      "science": 73,
+      "next_sha256": "d9b2acb720dbbdef98829781f351d1c747269213ad65cdcee21baf5a59e26b25",
+      "baseline_sha256": "c898084a2cc4b6dd6f60b1a4121c5bf70d3d64d7212fb1ee715c1ac7f4ed261d"
+    },
+    "licensed_stata": {
+      "status": "success",
+      "tests_passed": 9,
+      "tests_failed": 0,
+      "stata_version": "19",
+      "stata_edition": "MP",
+      "fixtures": [
+        {
+          "fixture": "tests/stata/installation/factor_availability.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+          "status": "success"
+        }
+      ]
+    },
+    "mac_universal_abi": true
+  },
+  "work_removed": {
+    "general_path_membership_capacity": 0,
+    "witness": "categorical_availability_retains_only_consumable_membership compares model/sample/codes and zero retained membership capacity against the ordinary prepared owner; reusable owner still matches original membership.",
+    "retired_allocation_stages": [
+      "ordinary fixed-effect recipes/labels",
+      "disabled ordinary singleton code/level tables and active masks",
+      "ordinary FE topology source/effect owners, level membership and validation scratch"
+    ],
+    "limits": "Final categorical topology, pruning, source factorization and validation remain; conservative preflight unchanged."
+  },
+  "qualification": {
+    "clean_binary_and_timings": "pending",
+    "linux_ci": "pending"
+  }
+}

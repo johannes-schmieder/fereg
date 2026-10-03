@@ -37,7 +37,7 @@ use crate::topology_dof::{
 use rayon::prelude::*;
 
 use crate::ols::{
-    prepare_ols_data_owned_with_cluster_sources, prepare_ols_data_with_cluster_sources,
+    finish_categorical_availability, prepare_ols_data_with_cluster_sources, CategoricalAvailability,
 };
 
 use super::{
@@ -1181,32 +1181,26 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
                 .iter()
                 .all(|c| c.kind == crate::metadata::ComponentKind::Continuous)
         });
-    let availability = if compact_slope_availability {
-        let (model, sample, early_factor) = crate::ols::prepare_ols_numeric_sample_owned(
-            plan.availability_request(),
-            loaded,
-            cluster_sources,
-        )?;
-        // The unchanged sample stage has already validated all sources and
-        // assigned their original drop reasons. With continuous finite terms,
-        // removing temporary categories cannot alter a finite column recipe.
-        drop(early_factor);
+    let (model, sample, mut early_factor) = crate::ols::prepare_ols_numeric_sample_owned(
+        plan.availability_request(),
+        loaded,
+        cluster_sources,
+    )?;
+    if compact_slope_availability {
+        drop(early_factor.take());
         plan.discard_classified_slope_categories()?;
-        crate::ols::finish_prepare_with_early_factor(
-            plan.availability_request(),
-            cluster_sources,
-            model,
-            sample,
-            true,
-            None,
-        )?
-    } else {
-        prepare_ols_data_owned_with_cluster_sources(
-            plan.availability_request(),
-            loaded,
-            cluster_sources,
-        )?
-    };
+    }
+    let availability = finish_categorical_availability(
+        plan.availability_request(),
+        cluster_sources,
+        model,
+        sample,
+        request
+            .absorbed_terms
+            .iter()
+            .all(|term| term.categorical_sources.len() == 1),
+        early_factor,
+    )?;
     finish_prepare_categorical_ols_data(request, cluster_sources, false, plan, availability)
 }
 
@@ -1306,28 +1300,25 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
                 .iter()
                 .all(|component| component.kind == crate::metadata::ComponentKind::Continuous)
         });
-    let availability = if compact_slope_availability {
-        let (model, sample) = crate::ols::prepare_ols_numeric_sample(
-            plan.availability_request(),
-            loaded,
-            cluster_sources,
-        )?;
-        // The complete source-use classifier already decided slope missingness.
-        // Only true categorical partitions need codes and membership from here;
-        // cluster roles remain explicit, and every new generation repeats this
-        // classification before constructing its own immutable topology.
+    let (model, sample) = crate::ols::prepare_ols_numeric_sample(
+        plan.availability_request(),
+        loaded,
+        cluster_sources,
+    )?;
+    if compact_slope_availability {
         plan.discard_classified_slope_categories()?;
-        crate::ols::finish_prepare_with_early_factor(
-            plan.availability_request(),
-            cluster_sources,
-            model,
-            sample,
-            true,
-            None,
-        )?
-    } else {
-        prepare_ols_data_with_cluster_sources(plan.availability_request(), loaded, cluster_sources)?
-    };
+    }
+    let availability = finish_categorical_availability(
+        plan.availability_request(),
+        cluster_sources,
+        model,
+        sample,
+        request
+            .absorbed_terms
+            .iter()
+            .all(|term| term.categorical_sources.len() == 1),
+        None,
+    )?;
     finish_prepare_categorical_ols_data(
         request,
         cluster_sources,
@@ -1342,17 +1333,8 @@ fn finish_prepare_categorical_ols_data(
     cluster_sources: &[SourceId],
     ppml_structural_constant: bool,
     plan: CategoricalAbsorbRequestPlan,
-    availability: PreparedOlsData,
+    availability: CategoricalAvailability,
 ) -> Result<PreparedCategoricalOlsData> {
-    if !availability.singletons.kept_by_request
-        || availability.singletons.num_singletons != 0
-        || availability.singletons.cascade_events != 0
-    {
-        return Err(invalid(
-            "categorical source-availability preparation applied singleton deletion",
-        ));
-    }
-
     let bound_effects = plan.bind_effects(&availability.categorical_sources)?;
     let candidate_views = categorical_views(&availability.categorical_sources)?;
     let recipe_views = effect_recipe_views(&bound_effects)?;
@@ -1376,8 +1358,7 @@ fn finish_prepare_categorical_ols_data(
             .iter()
             .try_fold(true, |clear, recipe| -> Result<bool> {
                 let Some(source) = availability
-                    .fe_topology
-                    .sources()
+                    .membership
                     .iter()
                     .find(|source| source.categorical_source_index() == recipe[0])
                 else {
@@ -1428,21 +1409,19 @@ fn finish_prepare_categorical_ols_data(
     };
     drop(candidate_views);
 
-    let PreparedOlsData {
+    let CategoricalAvailability {
         model: availability_model,
         sample,
         categorical_sources: mut candidate_sources,
-        fe_topology: availability_topology,
-        ..
+        membership: mut membership_sources,
     } = availability;
     // A fixed point preserves the availability row and level axes. Transfer
     // their existing owners; rebuilding would copy codes and membership only
     // to discard the originals. The new owner revalidates exact membership.
     let fe_topology = if let Some(topology) = rebuilt_topology {
-        drop(availability_topology);
+        drop(membership_sources);
         topology
     } else {
-        let mut membership_sources = availability_topology.into_sources();
         FinalizedCategoricalTopology::from_single_source_indexes(
             candidate_sources.len(),
             sample.n_active(),

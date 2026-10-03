@@ -1058,6 +1058,66 @@ pub(crate) fn finish_prepare_with_early_factor(
     })
 }
 
+/// Availability is not an ordinary fit: its synthetic FE markers classify
+/// sources, while only membership that the true topology can consume survives.
+pub(crate) struct CategoricalAvailability {
+    pub model: PreparedOlsModel,
+    pub sample: PreparedNumericSample,
+    pub categorical_sources: Vec<PreparedCategoricalSource>,
+    pub membership: Vec<PreparedOlsFeTopologySource>,
+}
+
+pub(crate) fn finish_categorical_availability(
+    request: &OlsRequestV1,
+    cluster_sources: &[SourceId],
+    mut model: PreparedOlsModel,
+    sample: PreparedNumericSample,
+    reusable_partitions: bool,
+    early_factor: Option<Result<PreparedCategoricalSource>>,
+) -> Result<CategoricalAvailability> {
+    if reusable_partitions
+        && sample.n_active() >= 16_384
+        && matches!(sample.weights, PreparedWeights::None)
+    {
+        let prepared = finish_prepare_with_early_factor(
+            request,
+            cluster_sources,
+            model,
+            sample,
+            true,
+            early_factor,
+        )?;
+        return Ok(CategoricalAvailability {
+            model: prepared.model,
+            sample: prepared.sample,
+            categorical_sources: prepared.categorical_sources,
+            membership: prepared.fe_topology.into_sources(),
+        });
+    }
+    let pruning_sources = if let Some(factor) = early_factor {
+        let mut sources = Vec::new();
+        sources
+            .try_reserve_exact(1)
+            .map_err(|_| allocation("unable to reserve prepared categorical sources"))?;
+        sources.push(factor?);
+        sources
+    } else {
+        factorize_categorical_sources(request, &sample, &[])?
+    };
+    let categorical_sources = if cluster_sources.is_empty() {
+        pruning_sources
+    } else {
+        factorize_categorical_sources_reusing(request, &sample, cluster_sources, pruning_sources)?
+    };
+    resolve_categorical_level_codes(&mut model, &categorical_sources)?;
+    Ok(CategoricalAvailability {
+        model,
+        sample,
+        categorical_sources,
+        membership: Vec::new(),
+    })
+}
+
 // A one-effect unit sample is a singleton fixed point precisely when no final
 // level has one member. Build the ordinary final index once and reuse it for
 // that check. Final topology validation still independently checks every code,
@@ -4058,6 +4118,52 @@ mod tests {
                     run(16).expect("sixteen-worker prepared fixture"),
                     "N={n}, case={case}"
                 );
+            }
+        }
+    }
+
+    #[test]
+    fn categorical_availability_retains_only_consumable_membership() {
+        for n in [97, 16384] {
+            let mut request = request(1, false);
+            request.keep_singletons = true;
+            request.absorbed_terms = vec![AbsorbedTerm {
+                id: AbsorbTermId::new(1).unwrap(),
+                intercept: true,
+                categorical_sources: vec![SourceId::new(1).unwrap()],
+                slope_sources: Vec::new(),
+                label: "group".into(),
+                saved_name: String::new(),
+            }];
+            let loaded = LoadedOlsInput {
+                candidate: vec![true; n],
+                outcome: column(&vec![1.0; n], &vec![false; n]),
+                numeric_sources: vec![(
+                    SourceId::new(1).unwrap(),
+                    column(
+                        &(0..n).map(|r| (r / 5) as f64).collect::<Vec<_>>(),
+                        &vec![false; n],
+                    ),
+                )],
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            };
+            let expected = prepare_ols_data(&request, &loaded).unwrap();
+            for reusable in [false, true] {
+                let (model, sample) = prepare_ols_numeric_sample(&request, &loaded, &[]).unwrap();
+                let available =
+                    finish_categorical_availability(&request, &[], model, sample, reusable, None)
+                        .unwrap();
+                assert_eq!(available.model, expected.model);
+                assert_eq!(available.sample, expected.sample);
+                assert_eq!(available.categorical_sources, expected.categorical_sources);
+                if reusable && n >= 16384 {
+                    assert_eq!(available.membership, expected.fe_topology.sources);
+                } else {
+                    assert_eq!(available.membership.capacity(), 0);
+                    assert!(!expected.fe_topology.sources.is_empty());
+                }
             }
         }
     }

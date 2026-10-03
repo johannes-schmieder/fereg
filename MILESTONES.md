@@ -142,3 +142,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M11.2 this commit — inventory/admissions exact; route estimate 1208 to1154 lines, core -12; full/30 oracles, Mac ABI, exact73 replay and 7 Stata pass.
 - 2026-10-03 G-M9–M11 a5cd94ba — clean 73/five-thread replay, 46 Stata, 34 ranges overlap and CI 37137263330 pass; [evidence/review](bench/history/2026-10-03-m11-memory.json).
 - 2026-10-03 M12–M21 scope this commit — Astra high-effort plan recorded; three tranches retire stages/owners; separate Astra review after implementation.
+- 2026-10-03 M12.1 this commit — discarded ordinary topology retired; core +42 declared; full/30 oracles, exact73 native, Mac ABI and 9 Stata pass; clean/CI pending.
