@@ -6752,5 +6752,4949 @@
     "No new Windows or SCC qualification",
     "No release bundle/public native distribution qualification",
     "M9-M11 are proposals only"
-  ]
+  ],
+  "clean_final_qualification": {
+    "runtime_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+    "mac_binary_sha256": "812d67b9bb5d1e28ea7ee0c3ed8b608ae8695417f4b8e9126c868938c34a4a98",
+    "mac_build": "clean universal release, native audit and actual arm64 ABI/panic containment pass",
+    "mac_replay": {
+      "cases": 73,
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "native_processes": 803,
+      "passed": true,
+      "parent_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+      "exact_parent_scientific_fields_and_routes": true,
+      "fixed_thread_repeat": "exact",
+      "cross_thread": "science and discrete decisions"
+    },
+    "licensed_stata": {
+      "passed": 46,
+      "failed": 0,
+      "fixtures": [
+        "ci/feppml_smoke.do",
+        "ci/fereg_smoke.do",
+        "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+        "tests/stata/development/reference_factor_precedence.do",
+        "tests/stata/documentation/help_examples.do",
+        "tests/stata/installation/engine_selection.do",
+        "tests/stata/installation/estimate_ols_categorical_interaction.do",
+        "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "tests/stata/installation/factor_availability.do",
+        "tests/stata/installation/frequency_singleton_validation.do",
+        "tests/stata/installation/installation_smoke.do",
+        "tests/stata/installation/reload_loop.do",
+        "tests/stata/installation/slope_dof_validation.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
+        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_iweight_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+        "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_string_fe_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_time_series_parity.do",
+        "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "tests/stata/parser/candidate_sample.do",
+        "tests/stata/parser/model_wire_v2_capture.do",
+        "tests/stata/parser/ordinary_factor_terms.do",
+        "tests/stata/parser/reject_ambiguous_absorb.do",
+        "tests/stata/parser/string_sources.do",
+        "tests/stata/parser/time_series_marker.do",
+        "tests/stata/postestimation/fail_closed.do"
+      ]
+    },
+    "ci": {
+      "url": "https://github.com/johannes-schmieder/fereg/actions/runs/37131877394",
+      "source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+      "conclusion": "success",
+      "jobs": [
+        {
+          "name": "comparator",
+          "conclusion": "success"
+        },
+        {
+          "name": "check",
+          "conclusion": "success"
+        },
+        {
+          "name": "replay",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "linux_replay": {
+      "passed": true,
+      "cases": 73,
+      "scientific_pass_cases": 73,
+      "next_sha256": "194bddb3b958ae7282ebbc35658796e87e4c0a76f067a13e4b7f2e8d0f2956e2",
+      "note": "Comparison against frozen legacy includes only the three declared M1 numerical repairs."
+    },
+    "primary_performance": {
+      "schema": 1,
+      "task": "M8 shared Schur preparation",
+      "tiers": {
+        "smoke": {
+          "identities": {
+            "parent": {
+              "source_commit": "c7daaf6053c96ac987656aadc402adaacbe7ec45",
+              "source_dirty": false,
+              "binary": {
+                "plugin_filename": "fereg_macos.plugin",
+                "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+                "build_source_commit": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+                "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+              }
+            },
+            "next": {
+              "source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+              "source_dirty": false,
+              "binary": {
+                "plugin_filename": "fereg_macos.plugin",
+                "plugin_sha256": "812d67b9bb5d1e28ea7ee0c3ed8b608ae8695417f4b8e9126c868938c34a4a98",
+                "build_source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+                "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+              }
+            }
+          },
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 5,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true
+          },
+          "pairs": [
+            {
+              "cell": "ols-1fe",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.032,
+                "seconds_min": 0.032,
+                "seconds_max": 0.042,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.005842958,
+                "native_seconds": 0.013590958,
+                "total_seconds": 0.019661375,
+                "measurements_seconds": [
+                  0.042,
+                  0.032,
+                  0.032,
+                  0.035,
+                  0.032
+                ]
+              },
+              "next": {
+                "seconds": 0.031,
+                "seconds_min": 0.029,
+                "seconds_max": 0.041,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.005929625,
+                "native_seconds": 0.013853249999999998,
+                "total_seconds": 0.019914583,
+                "measurements_seconds": [
+                  0.041,
+                  0.032,
+                  0.03,
+                  0.031,
+                  0.029
+                ]
+              },
+              "next_over_parent": 0.96875,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "ols-2fe-dense",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.09,
+                "seconds_min": 0.086,
+                "seconds_max": 0.095,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.006334375,
+                "native_seconds": 0.06985899999999999,
+                "total_seconds": 0.076418792,
+                "measurements_seconds": [
+                  0.086,
+                  0.095,
+                  0.09,
+                  0.09,
+                  0.089
+                ]
+              },
+              "next": {
+                "seconds": 0.087,
+                "seconds_min": 0.084,
+                "seconds_max": 0.087,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.00637775,
+                "native_seconds": 0.06583083299999999,
+                "total_seconds": 0.073484292,
+                "measurements_seconds": [
+                  0.087,
+                  0.087,
+                  0.084,
+                  0.084,
+                  0.087
+                ]
+              },
+              "next_over_parent": 0.9666666666666667,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "ppml-1fe",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.137,
+                "seconds_min": 0.13,
+                "seconds_max": 0.14,
+                "seconds_mad": 0.0030000000000000027,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.104447209,
+                "measurements_seconds": [
+                  0.133,
+                  0.13,
+                  0.137,
+                  0.137,
+                  0.14
+                ]
+              },
+              "next": {
+                "seconds": 0.13,
+                "seconds_min": 0.128,
+                "seconds_max": 0.134,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.101031333,
+                "measurements_seconds": [
+                  0.13,
+                  0.13,
+                  0.134,
+                  0.128,
+                  0.132
+                ]
+              },
+              "next_over_parent": 0.948905109489051,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "ppml-2fe-gravity",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.176,
+                "seconds_min": 0.175,
+                "seconds_max": 0.1929999999999999,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.143207958,
+                "measurements_seconds": [
+                  0.176,
+                  0.191,
+                  0.1929999999999999,
+                  0.175,
+                  0.175
+                ]
+              },
+              "next": {
+                "seconds": 0.167,
+                "seconds_min": 0.167,
+                "seconds_max": 0.169,
+                "seconds_mad": 0.0,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.138342542,
+                "measurements_seconds": [
+                  0.167,
+                  0.169,
+                  0.167,
+                  0.167,
+                  0.169
+                ]
+              },
+              "next_over_parent": 0.9488636363636365,
+              "observed_ranges_overlap": false
+            }
+          ],
+          "exact_coefficient_sample_pairs": 28,
+          "geometric_mean_next_over_parent": 0.9582498540828971,
+          "all_ranges_overlap": false
+        },
+        "scaling": {
+          "identities": {
+            "parent": {
+              "source_commit": "c7daaf6053c96ac987656aadc402adaacbe7ec45",
+              "source_dirty": false,
+              "binary": {
+                "plugin_filename": "fereg_macos.plugin",
+                "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+                "build_source_commit": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+                "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+              }
+            },
+            "next": {
+              "source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+              "source_dirty": false,
+              "binary": {
+                "plugin_filename": "fereg_macos.plugin",
+                "plugin_sha256": "812d67b9bb5d1e28ea7ee0c3ed8b608ae8695417f4b8e9126c868938c34a4a98",
+                "build_source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+                "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+              }
+            }
+          },
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 5,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true
+          },
+          "pairs": [
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.028,
+                "seconds_min": 0.026,
+                "seconds_max": 0.028,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002796458,
+                "native_seconds": 0.014172875,
+                "total_seconds": 0.017177875,
+                "measurements_seconds": [
+                  0.028,
+                  0.028,
+                  0.026,
+                  0.028,
+                  0.027
+                ]
+              },
+              "next": {
+                "seconds": 0.027,
+                "seconds_min": 0.027,
+                "seconds_max": 0.031,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002403959,
+                "native_seconds": 0.014128375,
+                "total_seconds": 0.016632166,
+                "measurements_seconds": [
+                  0.027,
+                  0.027,
+                  0.031,
+                  0.027,
+                  0.027
+                ]
+              },
+              "next_over_parent": 0.9642857142857143,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.024,
+                "seconds_min": 0.023,
+                "seconds_max": 0.025,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002720292,
+                "native_seconds": 0.010437000000000002,
+                "total_seconds": 0.013475042,
+                "measurements_seconds": [
+                  0.024,
+                  0.025,
+                  0.024,
+                  0.024,
+                  0.023
+                ]
+              },
+              "next": {
+                "seconds": 0.024,
+                "seconds_min": 0.023,
+                "seconds_max": 0.027,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.0023601250000000002,
+                "native_seconds": 0.010533583,
+                "total_seconds": 0.013052666,
+                "measurements_seconds": [
+                  0.027,
+                  0.024,
+                  0.023,
+                  0.023,
+                  0.025
+                ]
+              },
+              "next_over_parent": 1.0,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.022,
+                "seconds_min": 0.021,
+                "seconds_max": 0.022,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002342459,
+                "native_seconds": 0.009050667,
+                "total_seconds": 0.011923209,
+                "measurements_seconds": [
+                  0.022,
+                  0.021,
+                  0.021,
+                  0.022,
+                  0.022
+                ]
+              },
+              "next": {
+                "seconds": 0.022,
+                "seconds_min": 0.022,
+                "seconds_max": 0.028,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002134083,
+                "native_seconds": 0.009738875000000001,
+                "total_seconds": 0.012204458,
+                "measurements_seconds": [
+                  0.023,
+                  0.022,
+                  0.022,
+                  0.028,
+                  0.022
+                ]
+              },
+              "next_over_parent": 1.0,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.024,
+                "seconds_min": 0.024,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002578167,
+                "native_seconds": 0.011867292,
+                "total_seconds": 0.014825291,
+                "measurements_seconds": [
+                  0.024,
+                  0.024,
+                  0.026,
+                  0.025,
+                  0.024
+                ]
+              },
+              "next": {
+                "seconds": 0.022,
+                "seconds_min": 0.022,
+                "seconds_max": 0.025,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002307875,
+                "native_seconds": 0.010073917000000002,
+                "total_seconds": 0.0125255,
+                "measurements_seconds": [
+                  0.025,
+                  0.024,
+                  0.022,
+                  0.022,
+                  0.022
+                ]
+              },
+              "next_over_parent": 0.9166666666666666,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.028,
+                "seconds_min": 0.027,
+                "seconds_max": 0.036,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.0027491250000000003,
+                "native_seconds": 0.013848709,
+                "total_seconds": 0.016537791,
+                "measurements_seconds": [
+                  0.027,
+                  0.028,
+                  0.036,
+                  0.029,
+                  0.028
+                ]
+              },
+              "next": {
+                "seconds": 0.029,
+                "seconds_min": 0.024,
+                "seconds_max": 0.033,
+                "seconds_mad": 0.004,
+                "input_seconds": 0.00216475,
+                "native_seconds": 0.015926583,
+                "total_seconds": 0.018528875,
+                "measurements_seconds": [
+                  0.029,
+                  0.033,
+                  0.024,
+                  0.024,
+                  0.029
+                ]
+              },
+              "next_over_parent": 1.0357142857142858,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.026,
+                "seconds_min": 0.025,
+                "seconds_max": 0.027,
+                "seconds_mad": 0.0009999999999999974,
+                "input_seconds": 0.0026275829999999997,
+                "native_seconds": 0.012215041,
+                "total_seconds": 0.015041958,
+                "measurements_seconds": [
+                  0.026,
+                  0.025,
+                  0.026,
+                  0.027,
+                  0.025
+                ]
+              },
+              "next": {
+                "seconds": 0.026,
+                "seconds_min": 0.025,
+                "seconds_max": 0.027,
+                "seconds_mad": 0.0009999999999999974,
+                "input_seconds": 0.002493375,
+                "native_seconds": 0.012393250000000001,
+                "total_seconds": 0.015113625,
+                "measurements_seconds": [
+                  0.026,
+                  0.025,
+                  0.025,
+                  0.027,
+                  0.026
+                ]
+              },
+              "next_over_parent": 1.0,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.022,
+                "seconds_min": 0.021,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0009999999999999974,
+                "input_seconds": 0.002915417,
+                "native_seconds": 0.0084685,
+                "total_seconds": 0.011635,
+                "measurements_seconds": [
+                  0.021,
+                  0.023,
+                  0.022,
+                  0.022,
+                  0.023
+                ]
+              },
+              "next": {
+                "seconds": 0.021,
+                "seconds_min": 0.021,
+                "seconds_max": 0.024,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002608583,
+                "native_seconds": 0.008331166999999999,
+                "total_seconds": 0.01106475,
+                "measurements_seconds": [
+                  0.022,
+                  0.024,
+                  0.021,
+                  0.021,
+                  0.021
+                ]
+              },
+              "next_over_parent": 0.9545454545454547,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.022,
+                "seconds_min": 0.021,
+                "seconds_max": 0.024,
+                "seconds_mad": 0.0009999999999999974,
+                "input_seconds": 0.0028457919999999998,
+                "native_seconds": 0.008177042,
+                "total_seconds": 0.011227167,
+                "measurements_seconds": [
+                  0.024,
+                  0.022,
+                  0.022,
+                  0.021,
+                  0.023
+                ]
+              },
+              "next": {
+                "seconds": 0.02,
+                "seconds_min": 0.019,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.002780166,
+                "native_seconds": 0.007260292000000001,
+                "total_seconds": 0.010071,
+                "measurements_seconds": [
+                  0.023,
+                  0.02,
+                  0.019,
+                  0.019,
+                  0.021
+                ]
+              },
+              "next_over_parent": 0.9090909090909092,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.021,
+                "seconds_min": 0.021,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002806542,
+                "native_seconds": 0.007431583,
+                "total_seconds": 0.010447875,
+                "measurements_seconds": [
+                  0.023,
+                  0.021,
+                  0.021,
+                  0.021,
+                  0.021
+                ]
+              },
+              "next": {
+                "seconds": 0.019,
+                "seconds_min": 0.018,
+                "seconds_max": 0.019,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002524292,
+                "native_seconds": 0.005975791999999999,
+                "total_seconds": 0.008672375,
+                "measurements_seconds": [
+                  0.019,
+                  0.018,
+                  0.018,
+                  0.019,
+                  0.019
+                ]
+              },
+              "next_over_parent": 0.9047619047619047,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.028,
+                "seconds_min": 0.025,
+                "seconds_max": 0.041,
+                "seconds_mad": 0.002999999999999999,
+                "input_seconds": 0.003082333,
+                "native_seconds": 0.01371075,
+                "total_seconds": 0.017238334,
+                "measurements_seconds": [
+                  0.028,
+                  0.031,
+                  0.041,
+                  0.025,
+                  0.027
+                ]
+              },
+              "next": {
+                "seconds": 0.025,
+                "seconds_min": 0.021,
+                "seconds_max": 0.03,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.002735625,
+                "native_seconds": 0.011781334000000001,
+                "total_seconds": 0.014701959,
+                "measurements_seconds": [
+                  0.024,
+                  0.025,
+                  0.025,
+                  0.021,
+                  0.03
+                ]
+              },
+              "next_over_parent": 0.8928571428571429,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.086,
+                "seconds_min": 0.082,
+                "seconds_max": 0.091,
+                "seconds_mad": 0.0030000000000000027,
+                "input_seconds": 0.010811625,
+                "native_seconds": 0.058541334,
+                "total_seconds": 0.069691375,
+                "measurements_seconds": [
+                  0.082,
+                  0.084,
+                  0.086,
+                  0.089,
+                  0.091
+                ]
+              },
+              "next": {
+                "seconds": 0.087,
+                "seconds_min": 0.082,
+                "seconds_max": 0.091,
+                "seconds_mad": 0.00399999999999999,
+                "input_seconds": 0.010784875000000001,
+                "native_seconds": 0.061520084,
+                "total_seconds": 0.072559459,
+                "measurements_seconds": [
+                  0.089,
+                  0.083,
+                  0.087,
+                  0.082,
+                  0.091
+                ]
+              },
+              "next_over_parent": 1.0116279069767442,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.062,
+                "seconds_min": 0.059,
+                "seconds_max": 0.064,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.009466125,
+                "native_seconds": 0.03751475,
+                "total_seconds": 0.047299875,
+                "measurements_seconds": [
+                  0.0629999999999999,
+                  0.061,
+                  0.059,
+                  0.064,
+                  0.062
+                ]
+              },
+              "next": {
+                "seconds": 0.059,
+                "seconds_min": 0.059,
+                "seconds_max": 0.062,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.009250292,
+                "native_seconds": 0.036047667,
+                "total_seconds": 0.045485,
+                "measurements_seconds": [
+                  0.059,
+                  0.06,
+                  0.059,
+                  0.062,
+                  0.059
+                ]
+              },
+              "next_over_parent": 0.9516129032258064,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.051,
+                "seconds_min": 0.049,
+                "seconds_max": 0.058,
+                "seconds_mad": 0.001999999999999995,
+                "input_seconds": 0.009378667,
+                "native_seconds": 0.026742083,
+                "total_seconds": 0.03638875,
+                "measurements_seconds": [
+                  0.051,
+                  0.05,
+                  0.053,
+                  0.049,
+                  0.058
+                ]
+              },
+              "next": {
+                "seconds": 0.049,
+                "seconds_min": 0.048,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.009377125,
+                "native_seconds": 0.025492333,
+                "total_seconds": 0.034781708,
+                "measurements_seconds": [
+                  0.049,
+                  0.049,
+                  0.048,
+                  0.052,
+                  0.049
+                ]
+              },
+              "next_over_parent": 0.9607843137254903,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.051,
+                "seconds_min": 0.049,
+                "seconds_max": 0.062,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": 0.009045833,
+                "native_seconds": 0.026723583,
+                "total_seconds": 0.036015958,
+                "measurements_seconds": [
+                  0.049,
+                  0.051,
+                  0.051,
+                  0.05,
+                  0.062
+                ]
+              },
+              "next": {
+                "seconds": 0.05,
+                "seconds_min": 0.044,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.009107541,
+                "native_seconds": 0.024290292,
+                "total_seconds": 0.033651083,
+                "measurements_seconds": [
+                  0.052,
+                  0.044,
+                  0.05,
+                  0.051,
+                  0.049
+                ]
+              },
+              "next_over_parent": 0.9803921568627452,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.0600000000000001,
+                "seconds_min": 0.057,
+                "seconds_max": 0.065,
+                "seconds_mad": 0.0030000000000001,
+                "input_seconds": 0.009118875,
+                "native_seconds": 0.036346333999999994,
+                "total_seconds": 0.04518675,
+                "measurements_seconds": [
+                  0.057,
+                  0.061,
+                  0.065,
+                  0.057,
+                  0.0600000000000001
+                ]
+              },
+              "next": {
+                "seconds": 0.053,
+                "seconds_min": 0.049,
+                "seconds_max": 0.066,
+                "seconds_mad": 0.003999999999999997,
+                "input_seconds": 0.00875325,
+                "native_seconds": 0.029980374999999997,
+                "total_seconds": 0.039131833,
+                "measurements_seconds": [
+                  0.049,
+                  0.062,
+                  0.066,
+                  0.05,
+                  0.053
+                ]
+              },
+              "next_over_parent": 0.8833333333333319,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.06,
+                "seconds_min": 0.059,
+                "seconds_max": 0.061,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.038378042,
+                "measurements_seconds": [
+                  0.06,
+                  0.061,
+                  0.061,
+                  0.059,
+                  0.06
+                ]
+              },
+              "next": {
+                "seconds": 0.058,
+                "seconds_min": 0.057,
+                "seconds_max": 0.06,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.037002708,
+                "measurements_seconds": [
+                  0.058,
+                  0.059,
+                  0.057,
+                  0.06,
+                  0.058
+                ]
+              },
+              "next_over_parent": 0.9666666666666668,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.052,
+                "seconds_min": 0.05,
+                "seconds_max": 0.053,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029896542,
+                "measurements_seconds": [
+                  0.052,
+                  0.053,
+                  0.052,
+                  0.05,
+                  0.051
+                ]
+              },
+              "next": {
+                "seconds": 0.049,
+                "seconds_min": 0.048,
+                "seconds_max": 0.058,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029480167,
+                "measurements_seconds": [
+                  0.049,
+                  0.049,
+                  0.048,
+                  0.058,
+                  0.052
+                ]
+              },
+              "next_over_parent": 0.9423076923076924,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.047,
+                "seconds_min": 0.045,
+                "seconds_max": 0.048,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.025059833,
+                "measurements_seconds": [
+                  0.046,
+                  0.045,
+                  0.047,
+                  0.048,
+                  0.047
+                ]
+              },
+              "next": {
+                "seconds": 0.044,
+                "seconds_min": 0.043,
+                "seconds_max": 0.045,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.0243185,
+                "measurements_seconds": [
+                  0.045,
+                  0.043,
+                  0.044,
+                  0.045,
+                  0.044
+                ]
+              },
+              "next_over_parent": 0.9361702127659574,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.055,
+                "seconds_min": 0.052,
+                "seconds_max": 0.066,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.032633292,
+                "measurements_seconds": [
+                  0.052,
+                  0.055,
+                  0.066,
+                  0.057,
+                  0.054
+                ]
+              },
+              "next": {
+                "seconds": 0.051,
+                "seconds_min": 0.047,
+                "seconds_max": 0.053,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.028598625,
+                "measurements_seconds": [
+                  0.053,
+                  0.048,
+                  0.047,
+                  0.051,
+                  0.053
+                ]
+              },
+              "next_over_parent": 0.9272727272727272,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.062,
+                "seconds_min": 0.06,
+                "seconds_max": 0.067,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.041268334,
+                "measurements_seconds": [
+                  0.067,
+                  0.06,
+                  0.062,
+                  0.062,
+                  0.064
+                ]
+              },
+              "next": {
+                "seconds": 0.058,
+                "seconds_min": 0.056,
+                "seconds_max": 0.065,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.037505542,
+                "measurements_seconds": [
+                  0.058,
+                  0.058,
+                  0.056,
+                  0.059,
+                  0.065
+                ]
+              },
+              "next_over_parent": 0.935483870967742,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.059,
+                "seconds_min": 0.057,
+                "seconds_max": 0.063,
+                "seconds_mad": 0.001999999999999995,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.037885792,
+                "measurements_seconds": [
+                  0.059,
+                  0.059,
+                  0.057,
+                  0.061,
+                  0.063
+                ]
+              },
+              "next": {
+                "seconds": 0.058,
+                "seconds_min": 0.056,
+                "seconds_max": 0.061,
+                "seconds_mad": 0.001999999999999995,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.037365084,
+                "measurements_seconds": [
+                  0.06,
+                  0.058,
+                  0.057,
+                  0.061,
+                  0.056
+                ]
+              },
+              "next_over_parent": 0.9830508474576273,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.051,
+                "seconds_min": 0.049,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.0,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029365791,
+                "measurements_seconds": [
+                  0.051,
+                  0.051,
+                  0.049,
+                  0.051,
+                  0.052
+                ]
+              },
+              "next": {
+                "seconds": 0.05,
+                "seconds_min": 0.047,
+                "seconds_max": 0.051,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.028145542,
+                "measurements_seconds": [
+                  0.049,
+                  0.051,
+                  0.047,
+                  0.05,
+                  0.05
+                ]
+              },
+              "next_over_parent": 0.9803921568627452,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.045,
+                "seconds_min": 0.044,
+                "seconds_max": 0.049,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.024300958,
+                "measurements_seconds": [
+                  0.046,
+                  0.044,
+                  0.045,
+                  0.049,
+                  0.045
+                ]
+              },
+              "next": {
+                "seconds": 0.044,
+                "seconds_min": 0.043,
+                "seconds_max": 0.049,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.023608875,
+                "measurements_seconds": [
+                  0.049,
+                  0.044,
+                  0.044,
+                  0.043,
+                  0.043
+                ]
+              },
+              "next_over_parent": 0.9777777777777777,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.053,
+                "seconds_min": 0.05,
+                "seconds_max": 0.055,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.030624292,
+                "measurements_seconds": [
+                  0.053,
+                  0.052,
+                  0.053,
+                  0.055,
+                  0.05
+                ]
+              },
+              "next": {
+                "seconds": 0.049,
+                "seconds_min": 0.047,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.001999999999999995,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029179541,
+                "measurements_seconds": [
+                  0.047,
+                  0.049,
+                  0.052,
+                  0.049,
+                  0.051
+                ]
+              },
+              "next_over_parent": 0.9245283018867925,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.075,
+                "seconds_min": 0.059,
+                "seconds_max": 0.085,
+                "seconds_mad": 0.007999999999999993,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.052054292,
+                "measurements_seconds": [
+                  0.085,
+                  0.076,
+                  0.075,
+                  0.059,
+                  0.067
+                ]
+              },
+              "next": {
+                "seconds": 0.056,
+                "seconds_min": 0.055,
+                "seconds_max": 0.058,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.036434292,
+                "measurements_seconds": [
+                  0.056,
+                  0.057,
+                  0.058,
+                  0.055,
+                  0.055
+                ]
+              },
+              "next_over_parent": 0.7466666666666667,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.381,
+                "seconds_min": 0.378,
+                "seconds_max": 0.384,
+                "seconds_mad": 0.0030000000000000027,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.341937333,
+                "measurements_seconds": [
+                  0.382,
+                  0.378,
+                  0.378,
+                  0.384,
+                  0.381
+                ]
+              },
+              "next": {
+                "seconds": 0.372,
+                "seconds_min": 0.37,
+                "seconds_max": 0.375,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.335978125,
+                "measurements_seconds": [
+                  0.37,
+                  0.375,
+                  0.371,
+                  0.372,
+                  0.373
+                ]
+              },
+              "next_over_parent": 0.9763779527559054,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.273,
+                "seconds_min": 0.27,
+                "seconds_max": 0.282,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.232224,
+                "measurements_seconds": [
+                  0.273,
+                  0.282,
+                  0.27,
+                  0.272,
+                  0.275
+                ]
+              },
+              "next": {
+                "seconds": 0.257,
+                "seconds_min": 0.253,
+                "seconds_max": 0.259,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.219625208,
+                "measurements_seconds": [
+                  0.253,
+                  0.257,
+                  0.258,
+                  0.256,
+                  0.259
+                ]
+              },
+              "next_over_parent": 0.9413919413919414,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.215,
+                "seconds_min": 0.211,
+                "seconds_max": 0.22,
+                "seconds_mad": 0.0030000000000000027,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.175069792,
+                "measurements_seconds": [
+                  0.212,
+                  0.218,
+                  0.215,
+                  0.211,
+                  0.22
+                ]
+              },
+              "next": {
+                "seconds": 0.207,
+                "seconds_min": 0.196,
+                "seconds_max": 0.212,
+                "seconds_mad": 0.0050000000000000044,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.169535917,
+                "measurements_seconds": [
+                  0.212,
+                  0.199,
+                  0.196,
+                  0.21,
+                  0.207
+                ]
+              },
+              "next_over_parent": 0.9627906976744186,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.214,
+                "seconds_min": 0.209,
+                "seconds_max": 0.223,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.173164292,
+                "measurements_seconds": [
+                  0.209,
+                  0.223,
+                  0.214,
+                  0.216,
+                  0.213
+                ]
+              },
+              "next": {
+                "seconds": 0.19,
+                "seconds_min": 0.187,
+                "seconds_max": 0.194,
+                "seconds_mad": 0.0030000000000000027,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.156629209,
+                "measurements_seconds": [
+                  0.193,
+                  0.187,
+                  0.194,
+                  0.19,
+                  0.187
+                ]
+              },
+              "next_over_parent": 0.8878504672897196,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.238,
+                "seconds_min": 0.228,
+                "seconds_max": 0.301,
+                "seconds_mad": 0.009999999999999981,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.196255666,
+                "measurements_seconds": [
+                  0.235,
+                  0.301,
+                  0.228,
+                  0.238,
+                  0.276
+                ]
+              },
+              "next": {
+                "seconds": 0.211,
+                "seconds_min": 0.204,
+                "seconds_max": 0.226,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.175821542,
+                "measurements_seconds": [
+                  0.211,
+                  0.209,
+                  0.211,
+                  0.226,
+                  0.204
+                ]
+              },
+              "next_over_parent": 0.8865546218487395,
+              "observed_ranges_overlap": false
+            }
+          ],
+          "exact_coefficient_sample_pairs": 186,
+          "geometric_mean_next_over_parent": 0.9430691039917951,
+          "all_ranges_overlap": false
+        }
+      },
+      "datasets": {
+        "ppml-1fe": {
+          "sha256": "192d50266e722cdca54ab6d1444271b08c91d37bef386e8599624478c401e2b6",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "ols-2fe-dense": {
+          "sha256": "69d56e314043c8c39c6cc93eddeb8d15c023390cb0a8a9b2655c87534445f2bd",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "ppml-2fe-gravity": {
+          "sha256": "075f611a2f88038fd11a3ee00c3a1a127c47d196ed64b57775151d5e82a55568",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "ols-1fe": {
+          "sha256": "7e5783d99bc4ece24a727c7ae789fb2272987cb3db2e68a844152cb7d9a1a529",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ols-n16383-k8": {
+          "sha256": "e3be92f8dfb3e0d5f3e555236ad451c1b794effeb033a9de521d0db509534e78",
+          "seed": 739391,
+          "rows": 16383,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ppml-n16384-k8": {
+          "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ols-n100000-k16": {
+          "sha256": "64bef8add11e327349a2b63139c8d7012b995c520418e87f46dacf849a300485",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ols-n16384-k8": {
+          "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ppml-n100000-k16": {
+          "sha256": "4c63eb34d47b561374b5a2a31685d233291517987195eeb4629db8e805b0c834",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ppml-n16383-k8": {
+          "sha256": "794f8c6d35c0010bbb9d456baaacf2cf81cffe5fb3e93ee023be06ecd13a6722",
+          "seed": 739391,
+          "rows": 16383,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        }
+      }
+    },
+    "fresh_followup": {
+      "schema": 1,
+      "task": "M8 shared Schur preparation",
+      "tiers": {
+        "smoke": {
+          "identities": {
+            "parent": {
+              "source_commit": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+              "source_dirty": false,
+              "binary": {
+                "plugin_filename": "fereg_macos.plugin",
+                "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+                "build_source_commit": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+                "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+              }
+            },
+            "next": {
+              "source_commit": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+              "source_dirty": false,
+              "binary": {
+                "plugin_filename": "fereg_macos.plugin",
+                "plugin_sha256": "812d67b9bb5d1e28ea7ee0c3ed8b608ae8695417f4b8e9126c868938c34a4a98",
+                "build_source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+                "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+              }
+            }
+          },
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 5,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true
+          },
+          "pairs": [
+            {
+              "cell": "ols-1fe",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.033,
+                "seconds_min": 0.032,
+                "seconds_max": 0.035,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.006178625,
+                "native_seconds": 0.014201333,
+                "total_seconds": 0.020643833,
+                "measurements_seconds": [
+                  0.035,
+                  0.032,
+                  0.033,
+                  0.032,
+                  0.034
+                ]
+              },
+              "next": {
+                "seconds": 0.031,
+                "seconds_min": 0.028,
+                "seconds_max": 0.033,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.005939041,
+                "native_seconds": 0.011711958999999997,
+                "total_seconds": 0.018037209,
+                "measurements_seconds": [
+                  0.03,
+                  0.028,
+                  0.031,
+                  0.031,
+                  0.033
+                ]
+              },
+              "next_over_parent": 0.9393939393939393,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "ols-2fe-dense",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.087,
+                "seconds_min": 0.084,
+                "seconds_max": 0.09,
+                "seconds_mad": 0.001999999999999988,
+                "input_seconds": 0.0065476250000000005,
+                "native_seconds": 0.066186208,
+                "total_seconds": 0.073074458,
+                "measurements_seconds": [
+                  0.084,
+                  0.085,
+                  0.087,
+                  0.087,
+                  0.09
+                ]
+              },
+              "next": {
+                "seconds": 0.086,
+                "seconds_min": 0.085,
+                "seconds_max": 0.089,
+                "seconds_mad": 0.000999999999999987,
+                "input_seconds": 0.006534083,
+                "native_seconds": 0.06627145899999999,
+                "total_seconds": 0.073179833,
+                "measurements_seconds": [
+                  0.086,
+                  0.089,
+                  0.085,
+                  0.086,
+                  0.085
+                ]
+              },
+              "next_over_parent": 0.9885057471264368,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "ppml-1fe",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.136,
+                "seconds_min": 0.135,
+                "seconds_max": 0.147,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.104575041,
+                "measurements_seconds": [
+                  0.136,
+                  0.147,
+                  0.139,
+                  0.136,
+                  0.135
+                ]
+              },
+              "next": {
+                "seconds": 0.135,
+                "seconds_min": 0.132,
+                "seconds_max": 0.14,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.104099542,
+                "measurements_seconds": [
+                  0.137,
+                  0.14,
+                  0.135,
+                  0.135,
+                  0.132
+                ]
+              },
+              "next_over_parent": 0.9926470588235294,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "ppml-2fe-gravity",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.172,
+                "seconds_min": 0.17,
+                "seconds_max": 0.175,
+                "seconds_mad": 0.0009999999999999731,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.138962917,
+                "measurements_seconds": [
+                  0.172,
+                  0.172,
+                  0.17,
+                  0.171,
+                  0.175
+                ]
+              },
+              "next": {
+                "seconds": 0.172,
+                "seconds_min": 0.17,
+                "seconds_max": 0.177,
+                "seconds_mad": 0.001999999999999974,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.140165167,
+                "measurements_seconds": [
+                  0.172,
+                  0.171,
+                  0.17,
+                  0.177,
+                  0.176
+                ]
+              },
+              "next_over_parent": 1.0,
+              "observed_ranges_overlap": true
+            }
+          ],
+          "exact_coefficient_sample_pairs": 28,
+          "geometric_mean_next_over_parent": 0.9798406508911383,
+          "all_ranges_overlap": true
+        },
+        "scaling": {
+          "identities": {
+            "parent": {
+              "source_commit": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+              "source_dirty": false,
+              "binary": {
+                "plugin_filename": "fereg_macos.plugin",
+                "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+                "build_source_commit": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+                "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+              }
+            },
+            "next": {
+              "source_commit": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+              "source_dirty": false,
+              "binary": {
+                "plugin_filename": "fereg_macos.plugin",
+                "plugin_sha256": "812d67b9bb5d1e28ea7ee0c3ed8b608ae8695417f4b8e9126c868938c34a4a98",
+                "build_source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+                "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+              }
+            }
+          },
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 5,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true
+          },
+          "pairs": [
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.028,
+                "seconds_min": 0.027,
+                "seconds_max": 0.032,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.002920958,
+                "native_seconds": 0.014186042000000001,
+                "total_seconds": 0.017349834,
+                "measurements_seconds": [
+                  0.029,
+                  0.032,
+                  0.028,
+                  0.028,
+                  0.027
+                ]
+              },
+              "next": {
+                "seconds": 0.027,
+                "seconds_min": 0.026,
+                "seconds_max": 0.027,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002349875,
+                "native_seconds": 0.014051833000000001,
+                "total_seconds": 0.016829541,
+                "measurements_seconds": [
+                  0.026,
+                  0.026,
+                  0.027,
+                  0.027,
+                  0.027
+                ]
+              },
+              "next_over_parent": 0.9642857142857143,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.024,
+                "seconds_min": 0.023,
+                "seconds_max": 0.025,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.002693334,
+                "native_seconds": 0.010510666,
+                "total_seconds": 0.013452709,
+                "measurements_seconds": [
+                  0.025,
+                  0.024,
+                  0.023,
+                  0.024,
+                  0.023
+                ]
+              },
+              "next": {
+                "seconds": 0.023,
+                "seconds_min": 0.023,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002230584,
+                "native_seconds": 0.010285,
+                "total_seconds": 0.012835125,
+                "measurements_seconds": [
+                  0.023,
+                  0.023,
+                  0.023,
+                  0.023,
+                  0.023
+                ]
+              },
+              "next_over_parent": 0.9583333333333333,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.021,
+                "seconds_min": 0.021,
+                "seconds_max": 0.022,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002123167,
+                "native_seconds": 0.008866042,
+                "total_seconds": 0.01148575,
+                "measurements_seconds": [
+                  0.021,
+                  0.021,
+                  0.022,
+                  0.022,
+                  0.021
+                ]
+              },
+              "next": {
+                "seconds": 0.021,
+                "seconds_min": 0.021,
+                "seconds_max": 0.023,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002386375,
+                "native_seconds": 0.008974708,
+                "total_seconds": 0.011479542,
+                "measurements_seconds": [
+                  0.022,
+                  0.021,
+                  0.021,
+                  0.023,
+                  0.021
+                ]
+              },
+              "next_over_parent": 1.0,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.024,
+                "seconds_min": 0.024,
+                "seconds_max": 0.027,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002962417,
+                "native_seconds": 0.010316208,
+                "total_seconds": 0.013498208,
+                "measurements_seconds": [
+                  0.024,
+                  0.024,
+                  0.024,
+                  0.027,
+                  0.025
+                ]
+              },
+              "next": {
+                "seconds": 0.022,
+                "seconds_min": 0.022,
+                "seconds_max": 0.024,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002432417,
+                "native_seconds": 0.009758040999999999,
+                "total_seconds": 0.01240525,
+                "measurements_seconds": [
+                  0.023,
+                  0.022,
+                  0.024,
+                  0.022,
+                  0.022
+                ]
+              },
+              "next_over_parent": 0.9166666666666666,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16383-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.028,
+                "seconds_min": 0.025,
+                "seconds_max": 0.03,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.002176208,
+                "native_seconds": 0.015764583,
+                "total_seconds": 0.017830333,
+                "measurements_seconds": [
+                  0.028,
+                  0.025,
+                  0.027,
+                  0.03,
+                  0.028
+                ]
+              },
+              "next": {
+                "seconds": 0.026,
+                "seconds_min": 0.025,
+                "seconds_max": 0.029,
+                "seconds_mad": 0.0009999999999999974,
+                "input_seconds": 0.002237916,
+                "native_seconds": 0.014048583,
+                "total_seconds": 0.016668458,
+                "measurements_seconds": [
+                  0.029,
+                  0.026,
+                  0.025,
+                  0.025,
+                  0.029
+                ]
+              },
+              "next_over_parent": 0.9285714285714285,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.025,
+                "seconds_min": 0.023,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0009999999999999974,
+                "input_seconds": 0.002580375,
+                "native_seconds": 0.012401165999999998,
+                "total_seconds": 0.01519275,
+                "measurements_seconds": [
+                  0.025,
+                  0.023,
+                  0.026,
+                  0.025,
+                  0.026
+                ]
+              },
+              "next": {
+                "seconds": 0.025,
+                "seconds_min": 0.025,
+                "seconds_max": 0.026,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.00232475,
+                "native_seconds": 0.012246333,
+                "total_seconds": 0.014831167,
+                "measurements_seconds": [
+                  0.025,
+                  0.026,
+                  0.025,
+                  0.026,
+                  0.025
+                ]
+              },
+              "next_over_parent": 1.0,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.022,
+                "seconds_min": 0.021,
+                "seconds_max": 0.025,
+                "seconds_mad": 0.0009999999999999974,
+                "input_seconds": 0.002900667,
+                "native_seconds": 0.008429875,
+                "total_seconds": 0.011422333,
+                "measurements_seconds": [
+                  0.022,
+                  0.022,
+                  0.025,
+                  0.024,
+                  0.021
+                ]
+              },
+              "next": {
+                "seconds": 0.021,
+                "seconds_min": 0.021,
+                "seconds_max": 0.022,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002585833,
+                "native_seconds": 0.008420500000000001,
+                "total_seconds": 0.010941125,
+                "measurements_seconds": [
+                  0.021,
+                  0.021,
+                  0.021,
+                  0.021,
+                  0.022
+                ]
+              },
+              "next_over_parent": 0.9545454545454547,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.02,
+                "seconds_min": 0.019,
+                "seconds_max": 0.024,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.002815334,
+                "native_seconds": 0.006958458,
+                "total_seconds": 0.010115,
+                "measurements_seconds": [
+                  0.024,
+                  0.019,
+                  0.02,
+                  0.022,
+                  0.02
+                ]
+              },
+              "next": {
+                "seconds": 0.02,
+                "seconds_min": 0.019,
+                "seconds_max": 0.02,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002859334,
+                "native_seconds": 0.006845625000000001,
+                "total_seconds": 0.009901959,
+                "measurements_seconds": [
+                  0.02,
+                  0.02,
+                  0.02,
+                  0.019,
+                  0.019
+                ]
+              },
+              "next_over_parent": 1.0,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.021,
+                "seconds_min": 0.02,
+                "seconds_max": 0.024,
+                "seconds_mad": 0.0009999999999999974,
+                "input_seconds": 0.0029121250000000002,
+                "native_seconds": 0.007306416999999999,
+                "total_seconds": 0.010122708,
+                "measurements_seconds": [
+                  0.021,
+                  0.021,
+                  0.02,
+                  0.022,
+                  0.024
+                ]
+              },
+              "next": {
+                "seconds": 0.019,
+                "seconds_min": 0.018,
+                "seconds_max": 0.02,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.002647416,
+                "native_seconds": 0.005751166000000002,
+                "total_seconds": 0.008989583,
+                "measurements_seconds": [
+                  0.019,
+                  0.019,
+                  0.02,
+                  0.019,
+                  0.018
+                ]
+              },
+              "next_over_parent": 0.9047619047619047,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n16384-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.032,
+                "seconds_min": 0.026,
+                "seconds_max": 0.035,
+                "seconds_mad": 0.0030000000000000027,
+                "input_seconds": 0.003388833,
+                "native_seconds": 0.015283125,
+                "total_seconds": 0.018993875,
+                "measurements_seconds": [
+                  0.026,
+                  0.035,
+                  0.032,
+                  0.035,
+                  0.027
+                ]
+              },
+              "next": {
+                "seconds": 0.023,
+                "seconds_min": 0.022,
+                "seconds_max": 0.025,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.002694708,
+                "native_seconds": 0.009923833,
+                "total_seconds": 0.013086791,
+                "measurements_seconds": [
+                  0.023,
+                  0.023,
+                  0.022,
+                  0.025,
+                  0.022
+                ]
+              },
+              "next_over_parent": 0.71875,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.086,
+                "seconds_min": 0.084,
+                "seconds_max": 0.087,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.010616,
+                "native_seconds": 0.059892625,
+                "total_seconds": 0.070821958,
+                "measurements_seconds": [
+                  0.087,
+                  0.084,
+                  0.084,
+                  0.087,
+                  0.086
+                ]
+              },
+              "next": {
+                "seconds": 0.089,
+                "seconds_min": 0.081,
+                "seconds_max": 0.095,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": 0.010519209000000002,
+                "native_seconds": 0.0647745,
+                "total_seconds": 0.075502541,
+                "measurements_seconds": [
+                  0.081,
+                  0.087,
+                  0.089,
+                  0.09,
+                  0.095
+                ]
+              },
+              "next_over_parent": 1.0348837209302326,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.061,
+                "seconds_min": 0.06,
+                "seconds_max": 0.062,
+                "seconds_mad": 0.0,
+                "input_seconds": 0.009382375,
+                "native_seconds": 0.036982333000000006,
+                "total_seconds": 0.046572042,
+                "measurements_seconds": [
+                  0.062,
+                  0.061,
+                  0.061,
+                  0.06,
+                  0.061
+                ]
+              },
+              "next": {
+                "seconds": 0.059,
+                "seconds_min": 0.057,
+                "seconds_max": 0.062,
+                "seconds_mad": 0.001999999999999995,
+                "input_seconds": 0.009203667,
+                "native_seconds": 0.035900417000000004,
+                "total_seconds": 0.045720459,
+                "measurements_seconds": [
+                  0.062,
+                  0.059,
+                  0.062,
+                  0.059,
+                  0.057
+                ]
+              },
+              "next_over_parent": 0.9672131147540983,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.05,
+                "seconds_min": 0.048,
+                "seconds_max": 0.051,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": 0.009322,
+                "native_seconds": 0.025365292,
+                "total_seconds": 0.034927042,
+                "measurements_seconds": [
+                  0.049,
+                  0.051,
+                  0.048,
+                  0.05,
+                  0.05
+                ]
+              },
+              "next": {
+                "seconds": 0.049,
+                "seconds_min": 0.047,
+                "seconds_max": 0.05,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.009123708,
+                "native_seconds": 0.025249833,
+                "total_seconds": 0.034894708,
+                "measurements_seconds": [
+                  0.047,
+                  0.049,
+                  0.049,
+                  0.048,
+                  0.05
+                ]
+              },
+              "next_over_parent": 0.98,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.048,
+                "seconds_min": 0.047,
+                "seconds_max": 0.05,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.0089035,
+                "native_seconds": 0.025145208999999995,
+                "total_seconds": 0.034248834,
+                "measurements_seconds": [
+                  0.05,
+                  0.048,
+                  0.047,
+                  0.048,
+                  0.05
+                ]
+              },
+              "next": {
+                "seconds": 0.044,
+                "seconds_min": 0.042,
+                "seconds_max": 0.054,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.009029334,
+                "native_seconds": 0.01955525,
+                "total_seconds": 0.028580458,
+                "measurements_seconds": [
+                  0.043,
+                  0.042,
+                  0.045,
+                  0.044,
+                  0.054
+                ]
+              },
+              "next_over_parent": 0.9166666666666666,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ols-n100000-k16",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.059,
+                "seconds_min": 0.051,
+                "seconds_max": 0.06,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": 0.008858290999999999,
+                "native_seconds": 0.033442458,
+                "total_seconds": 0.042764625,
+                "measurements_seconds": [
+                  0.059,
+                  0.051,
+                  0.051,
+                  0.06,
+                  0.06
+                ]
+              },
+              "next": {
+                "seconds": 0.052,
+                "seconds_min": 0.048,
+                "seconds_max": 0.055,
+                "seconds_mad": 0.0029999999999999957,
+                "input_seconds": 0.008992542000000001,
+                "native_seconds": 0.027061916999999994,
+                "total_seconds": 0.036350375,
+                "measurements_seconds": [
+                  0.052,
+                  0.053,
+                  0.055,
+                  0.049,
+                  0.048
+                ]
+              },
+              "next_over_parent": 0.8813559322033898,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.059,
+                "seconds_min": 0.058,
+                "seconds_max": 0.061,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.037750334,
+                "measurements_seconds": [
+                  0.061,
+                  0.059,
+                  0.058,
+                  0.058,
+                  0.061
+                ]
+              },
+              "next": {
+                "seconds": 0.058,
+                "seconds_min": 0.057,
+                "seconds_max": 0.059,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.037480458,
+                "measurements_seconds": [
+                  0.059,
+                  0.059,
+                  0.058,
+                  0.058,
+                  0.057
+                ]
+              },
+              "next_over_parent": 0.9830508474576273,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.053,
+                "seconds_min": 0.05,
+                "seconds_max": 0.057,
+                "seconds_mad": 0.0029999999999999957,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.03015425,
+                "measurements_seconds": [
+                  0.053,
+                  0.052,
+                  0.05,
+                  0.056,
+                  0.057
+                ]
+              },
+              "next": {
+                "seconds": 0.051,
+                "seconds_min": 0.05,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029195042,
+                "measurements_seconds": [
+                  0.052,
+                  0.05,
+                  0.05,
+                  0.051,
+                  0.052
+                ]
+              },
+              "next_over_parent": 0.9622641509433962,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.048,
+                "seconds_min": 0.048,
+                "seconds_max": 0.05,
+                "seconds_mad": 0.0,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.025452667,
+                "measurements_seconds": [
+                  0.05,
+                  0.048,
+                  0.048,
+                  0.048,
+                  0.05
+                ]
+              },
+              "next": {
+                "seconds": 0.046,
+                "seconds_min": 0.045,
+                "seconds_max": 0.047,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.02451875,
+                "measurements_seconds": [
+                  0.046,
+                  0.047,
+                  0.046,
+                  0.045,
+                  0.045
+                ]
+              },
+              "next_over_parent": 0.9583333333333333,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.053,
+                "seconds_min": 0.049,
+                "seconds_max": 0.058,
+                "seconds_mad": 0.003999999999999997,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.030906542,
+                "measurements_seconds": [
+                  0.049,
+                  0.052,
+                  0.058,
+                  0.057,
+                  0.053
+                ]
+              },
+              "next": {
+                "seconds": 0.05,
+                "seconds_min": 0.05,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.0,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029532459,
+                "measurements_seconds": [
+                  0.05,
+                  0.05,
+                  0.052,
+                  0.05,
+                  0.051
+                ]
+              },
+              "next_over_parent": 0.9433962264150945,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16383-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.065,
+                "seconds_min": 0.059,
+                "seconds_max": 0.07,
+                "seconds_mad": 0.0050000000000000044,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.041783208,
+                "measurements_seconds": [
+                  0.07,
+                  0.065,
+                  0.059,
+                  0.059,
+                  0.066
+                ]
+              },
+              "next": {
+                "seconds": 0.057,
+                "seconds_min": 0.056,
+                "seconds_max": 0.06,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.03622675,
+                "measurements_seconds": [
+                  0.058,
+                  0.057,
+                  0.06,
+                  0.056,
+                  0.057
+                ]
+              },
+              "next_over_parent": 0.8769230769230769,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.0580000000000001,
+                "seconds_min": 0.056,
+                "seconds_max": 0.06,
+                "seconds_mad": 0.0019999999999998977,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.037513833,
+                "measurements_seconds": [
+                  0.0580000000000001,
+                  0.06,
+                  0.058,
+                  0.056,
+                  0.06
+                ]
+              },
+              "next": {
+                "seconds": 0.061,
+                "seconds_min": 0.056,
+                "seconds_max": 0.062,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.037771042,
+                "measurements_seconds": [
+                  0.056,
+                  0.058,
+                  0.062,
+                  0.061,
+                  0.061
+                ]
+              },
+              "next_over_parent": 1.0517241379310327,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.05,
+                "seconds_min": 0.048,
+                "seconds_max": 0.051,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029034292,
+                "measurements_seconds": [
+                  0.048,
+                  0.051,
+                  0.05,
+                  0.051,
+                  0.05
+                ]
+              },
+              "next": {
+                "seconds": 0.051,
+                "seconds_min": 0.05,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.000999999999999994,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029543958,
+                "measurements_seconds": [
+                  0.052,
+                  0.052,
+                  0.051,
+                  0.051,
+                  0.05
+                ]
+              },
+              "next_over_parent": 1.0199999999999998,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.046,
+                "seconds_min": 0.046,
+                "seconds_max": 0.049,
+                "seconds_mad": 0.0,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.024767584,
+                "measurements_seconds": [
+                  0.046,
+                  0.046,
+                  0.048,
+                  0.046,
+                  0.049
+                ]
+              },
+              "next": {
+                "seconds": 0.046,
+                "seconds_min": 0.044,
+                "seconds_max": 0.047,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.024103208,
+                "measurements_seconds": [
+                  0.047,
+                  0.045,
+                  0.046,
+                  0.046,
+                  0.044
+                ]
+              },
+              "next_over_parent": 1.0,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.052,
+                "seconds_min": 0.05,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.0,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.029659959,
+                "measurements_seconds": [
+                  0.05,
+                  0.051,
+                  0.052,
+                  0.052,
+                  0.052
+                ]
+              },
+              "next": {
+                "seconds": 0.05,
+                "seconds_min": 0.048,
+                "seconds_max": 0.052,
+                "seconds_mad": 0.001999999999999995,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.02863175,
+                "measurements_seconds": [
+                  0.049,
+                  0.05,
+                  0.052,
+                  0.048,
+                  0.052
+                ]
+              },
+              "next_over_parent": 0.9615384615384617,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n16384-k8",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.0649999999999999,
+                "seconds_min": 0.06,
+                "seconds_max": 0.068,
+                "seconds_mad": 0.0029999999999999055,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.042129667,
+                "measurements_seconds": [
+                  0.06,
+                  0.062,
+                  0.0649999999999999,
+                  0.068,
+                  0.065
+                ]
+              },
+              "next": {
+                "seconds": 0.057,
+                "seconds_min": 0.056,
+                "seconds_max": 0.086,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.035665708,
+                "measurements_seconds": [
+                  0.056,
+                  0.086,
+                  0.056,
+                  0.057,
+                  0.059
+                ]
+              },
+              "next_over_parent": 0.8769230769230782,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 1,
+              "parent": {
+                "seconds": 0.383,
+                "seconds_min": 0.378,
+                "seconds_max": 0.387,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.343029375,
+                "measurements_seconds": [
+                  0.378,
+                  0.387,
+                  0.383,
+                  0.385,
+                  0.381
+                ]
+              },
+              "next": {
+                "seconds": 0.367,
+                "seconds_min": 0.365,
+                "seconds_max": 0.369,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.331521292,
+                "measurements_seconds": [
+                  0.366,
+                  0.367,
+                  0.367,
+                  0.369,
+                  0.365
+                ]
+              },
+              "next_over_parent": 0.95822454308094,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 2,
+              "parent": {
+                "seconds": 0.265,
+                "seconds_min": 0.263,
+                "seconds_max": 0.275,
+                "seconds_mad": 0.0020000000000000018,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.227622208,
+                "measurements_seconds": [
+                  0.275,
+                  0.265,
+                  0.263,
+                  0.264,
+                  0.272
+                ]
+              },
+              "next": {
+                "seconds": 0.262,
+                "seconds_min": 0.256,
+                "seconds_max": 0.265,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.224945166,
+                "measurements_seconds": [
+                  0.262,
+                  0.262,
+                  0.265,
+                  0.261,
+                  0.256
+                ]
+              },
+              "next_over_parent": 0.9886792452830189,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 4,
+              "parent": {
+                "seconds": 0.217,
+                "seconds_min": 0.204,
+                "seconds_max": 0.236,
+                "seconds_mad": 0.010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.174706792,
+                "measurements_seconds": [
+                  0.204,
+                  0.207,
+                  0.236,
+                  0.217,
+                  0.221
+                ]
+              },
+              "next": {
+                "seconds": 0.204,
+                "seconds_min": 0.202,
+                "seconds_max": 0.207,
+                "seconds_mad": 0.0,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.167672542,
+                "measurements_seconds": [
+                  0.204,
+                  0.204,
+                  0.207,
+                  0.204,
+                  0.202
+                ]
+              },
+              "next_over_parent": 0.9400921658986174,
+              "observed_ranges_overlap": true
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 8,
+              "parent": {
+                "seconds": 0.202,
+                "seconds_min": 0.194,
+                "seconds_max": 0.209,
+                "seconds_mad": 0.0069999999999999785,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.161809417,
+                "measurements_seconds": [
+                  0.195,
+                  0.194,
+                  0.209,
+                  0.202,
+                  0.209
+                ]
+              },
+              "next": {
+                "seconds": 0.1909999999999999,
+                "seconds_min": 0.187,
+                "seconds_max": 0.192,
+                "seconds_mad": 0.001000000000000112,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.15389525,
+                "measurements_seconds": [
+                  0.192,
+                  0.187,
+                  0.1909999999999999,
+                  0.187,
+                  0.191
+                ]
+              },
+              "next_over_parent": 0.9455445544554449,
+              "observed_ranges_overlap": false
+            },
+            {
+              "cell": "m1-ppml-n100000-k16",
+              "threads": 16,
+              "parent": {
+                "seconds": 0.219,
+                "seconds_min": 0.214,
+                "seconds_max": 0.227,
+                "seconds_mad": 0.0050000000000000044,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.181882,
+                "measurements_seconds": [
+                  0.214,
+                  0.219,
+                  0.227,
+                  0.218,
+                  0.224
+                ]
+              },
+              "next": {
+                "seconds": 0.203,
+                "seconds_min": 0.2,
+                "seconds_max": 0.206,
+                "seconds_mad": 0.0010000000000000009,
+                "input_seconds": null,
+                "native_seconds": null,
+                "total_seconds": 0.166165833,
+                "measurements_seconds": [
+                  0.203,
+                  0.2,
+                  0.202,
+                  0.206,
+                  0.204
+                ]
+              },
+              "next_over_parent": 0.9269406392694065,
+              "observed_ranges_overlap": false
+            }
+          ],
+          "exact_coefficient_sample_pairs": 186,
+          "geometric_mean_next_over_parent": 0.9485320423488911,
+          "all_ranges_overlap": false
+        }
+      },
+      "datasets": {
+        "ppml-1fe": {
+          "sha256": "192d50266e722cdca54ab6d1444271b08c91d37bef386e8599624478c401e2b6",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "ols-2fe-dense": {
+          "sha256": "69d56e314043c8c39c6cc93eddeb8d15c023390cb0a8a9b2655c87534445f2bd",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "ppml-2fe-gravity": {
+          "sha256": "075f611a2f88038fd11a3ee00c3a1a127c47d196ed64b57775151d5e82a55568",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "ols-1fe": {
+          "sha256": "7e5783d99bc4ece24a727c7ae789fb2272987cb3db2e68a844152cb7d9a1a529",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ols-n16383-k8": {
+          "sha256": "e3be92f8dfb3e0d5f3e555236ad451c1b794effeb033a9de521d0db509534e78",
+          "seed": 739391,
+          "rows": 16383,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ppml-n16384-k8": {
+          "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ols-n100000-k16": {
+          "sha256": "64bef8add11e327349a2b63139c8d7012b995c520418e87f46dacf849a300485",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ols-n16384-k8": {
+          "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ppml-n100000-k16": {
+          "sha256": "4c63eb34d47b561374b5a2a31685d233291517987195eeb4629db8e805b0c834",
+          "seed": 739391,
+          "rows": 100000,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        },
+        "m1-ppml-n16383-k8": {
+          "sha256": "794f8c6d35c0010bbb9d456baaacf2cf81cffe5fb3e93ee023be06ecd13a6722",
+          "seed": 739391,
+          "rows": 16383,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3"
+        }
+      }
+    },
+    "phase_profile": {
+      "parent": {
+        "identity": {
+          "plugin_filename": "fereg_macos.plugin",
+          "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+          "build_source_commit": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+          "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+        },
+        "protocol": {
+          "warmups": 1,
+          "repetitions": 5,
+          "coefficient_rtol": 1e-07,
+          "coefficient_atol": 1e-10,
+          "reference_tolerance": 1e-12,
+          "fresh_process_per_command": true
+        },
+        "source_commit": "c7daaf6053c96ac987656aadc402adaacbe7ec45",
+        "metrics": {
+          "1": {
+            "ols_prepare.seconds": {
+              "median": 0.003654,
+              "min": 0.003579709,
+              "max": 0.003739125
+            },
+            "ols_prepare_moments.seconds": {
+              "median": 0.003833041,
+              "min": 0.003730375,
+              "max": 0.003914666
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.006685458,
+              "min": 0.006665917,
+              "max": 0.007031458
+            },
+            "schur0.init": {
+              "median": 0.001993292,
+              "min": 0.0018145,
+              "max": 0.002116583
+            },
+            "schur0.operator": {
+              "median": 0.003162292,
+              "min": 0.003158958,
+              "max": 0.003176375
+            },
+            "schur0.recurrence": {
+              "median": 3.2291e-05,
+              "min": 3.2e-05,
+              "max": 3.5125e-05
+            },
+            "schur0.reconstruct": {
+              "median": 0.003934667,
+              "min": 0.001839792,
+              "max": 0.0063315
+            },
+            "schur0.certificate": {
+              "median": 0.009316875,
+              "min": 0.009204584,
+              "max": 0.016064542
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "fit.rhs": {
+              "median": 0.004615,
+              "min": 0.004374208,
+              "max": 0.004714292
+            },
+            "fit.raw_moments": {
+              "median": 0.008144042,
+              "min": 0.008122833,
+              "max": 0.008347458
+            },
+            "fit.initial_absorb": {
+              "median": 0.029601459,
+              "min": 0.028035667,
+              "max": 0.033244333
+            },
+            "fit.within_norms": {
+              "median": 3.33e-07,
+              "min": 2.5e-07,
+              "max": 3.75e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.009242458,
+              "min": 0.009096708,
+              "max": 0.011608125
+            },
+            "fit.score_cache": {
+              "median": 4.2e-08,
+              "min": 0.0,
+              "max": 4.2e-08
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.001119792,
+              "min": 0.001094333,
+              "max": 0.002499583
+            },
+            "fit.residual_absorb": {
+              "median": 0.001801208,
+              "min": 0.00179225,
+              "max": 0.002079917
+            },
+            "fit.residual_overlap": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.score": {
+              "median": 0.000753291,
+              "min": 0.00075275,
+              "max": 0.000754042
+            },
+            "fit.finalize": {
+              "median": 1.125e-06,
+              "min": 1e-06,
+              "max": 1.291e-06
+            },
+            "fit.total": {
+              "median": 0.056449167,
+              "min": 0.054436625,
+              "max": 0.060617459
+            },
+            "iid.setup_statistics": {
+              "median": 0.001174292,
+              "min": 0.001173167,
+              "max": 0.001176
+            },
+            "iid.covariance": {
+              "median": 3.459e-06,
+              "min": 3.042e-06,
+              "max": 4.334e-06
+            },
+            "iid.wald": {
+              "median": 4.625e-06,
+              "min": 4.375e-06,
+              "max": 5.166e-06
+            },
+            "iid.certificate": {
+              "median": 2.75e-06,
+              "min": 2.5e-06,
+              "max": 3.125e-06
+            },
+            "iid.total": {
+              "median": 0.001185125,
+              "min": 0.00118375,
+              "max": 0.001187542
+            },
+            "iid_plugin.prepare": {
+              "median": 0.003941417,
+              "min": 0.003835292,
+              "max": 0.004038625
+            },
+            "iid_plugin.inference": {
+              "median": 0.060131875,
+              "min": 0.058129417,
+              "max": 0.064236041
+            },
+            "iid_plugin.outputs": {
+              "median": 2.0958e-05,
+              "min": 1.7042e-05,
+              "max": 4.4833e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 1.8458e-05,
+              "min": 1.7375e-05,
+              "max": 2.9542e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.0640945,
+              "min": 0.062156916,
+              "max": 0.0683215
+            }
+          },
+          "2": {
+            "ols_prepare.seconds": {
+              "median": 0.00296,
+              "min": 0.002655708,
+              "max": 0.003411709
+            },
+            "ols_prepare_moments.seconds": {
+              "median": 0.003149416,
+              "min": 0.002813542,
+              "max": 0.003601083
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.004932208,
+              "min": 0.004633417,
+              "max": 0.005646625
+            },
+            "schur0.init": {
+              "median": 0.001279167,
+              "min": 0.001001792,
+              "max": 0.002458
+            },
+            "schur0.operator": {
+              "median": 0.001188125,
+              "min": 0.00108925,
+              "max": 0.002395459
+            },
+            "schur0.recurrence": {
+              "median": 4.375e-05,
+              "min": 4.2792e-05,
+              "max": 7.2084e-05
+            },
+            "schur0.reconstruct": {
+              "median": 0.002415541,
+              "min": 0.001411833,
+              "max": 0.003658458
+            },
+            "schur0.certificate": {
+              "median": 0.004490583,
+              "min": 0.004257292,
+              "max": 0.005983708
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "fit.rhs": {
+              "median": 0.00194125,
+              "min": 0.001747125,
+              "max": 0.002340333
+            },
+            "fit.raw_moments": {
+              "median": 0.004876041,
+              "min": 0.004688458,
+              "max": 0.006127875
+            },
+            "fit.initial_absorb": {
+              "median": 0.018230875,
+              "min": 0.016199375,
+              "max": 0.01861125
+            },
+            "fit.within_norms": {
+              "median": 4.16e-07,
+              "min": 2.91e-07,
+              "max": 5e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.006105667,
+              "min": 0.005374792,
+              "max": 0.007467292
+            },
+            "fit.score_cache": {
+              "median": 4.1e-08,
+              "min": 0.0,
+              "max": 4.2e-08
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.00111325,
+              "min": 0.000988667,
+              "max": 0.001544666
+            },
+            "fit.residual_absorb": {
+              "median": 0.0011295,
+              "min": 0.00108175,
+              "max": 0.00130575
+            },
+            "fit.residual_overlap": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.score": {
+              "median": 0.0006735,
+              "min": 0.000601167,
+              "max": 0.000941958
+            },
+            "fit.finalize": {
+              "median": 1.167e-06,
+              "min": 6.66e-07,
+              "max": 6e-06
+            },
+            "fit.total": {
+              "median": 0.034496833,
+              "min": 0.031237791,
+              "max": 0.036127792
+            },
+            "iid.setup_statistics": {
+              "median": 0.00080625,
+              "min": 0.000803708,
+              "max": 0.000808833
+            },
+            "iid.covariance": {
+              "median": 3.75e-06,
+              "min": 3.209e-06,
+              "max": 5.584e-06
+            },
+            "iid.wald": {
+              "median": 4.75e-06,
+              "min": 4.083e-06,
+              "max": 4.916e-06
+            },
+            "iid.certificate": {
+              "median": 2.75e-06,
+              "min": 2.625e-06,
+              "max": 2.959e-06
+            },
+            "iid.total": {
+              "median": 0.000817625,
+              "min": 0.000814709,
+              "max": 0.000820292
+            },
+            "iid_plugin.prepare": {
+              "median": 0.0032615,
+              "min": 0.002925,
+              "max": 0.003716042
+            },
+            "iid_plugin.inference": {
+              "median": 0.037753541,
+              "min": 0.034625334,
+              "max": 0.039360167
+            },
+            "iid_plugin.outputs": {
+              "median": 2.5583e-05,
+              "min": 1.6709e-05,
+              "max": 4.2875e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 1.7959e-05,
+              "min": 1.6833e-05,
+              "max": 2.8292e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.041084208,
+              "min": 0.038384,
+              "max": 0.0425945
+            }
+          },
+          "4": {
+            "ols_prepare.seconds": {
+              "median": 0.002866334,
+              "min": 0.002375209,
+              "max": 0.003895791
+            },
+            "ols_prepare_moments.seconds": {
+              "median": 0.003032167,
+              "min": 0.0025505,
+              "max": 0.004076375
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.003423167,
+              "min": 0.00281675,
+              "max": 0.004621625
+            },
+            "schur0.init": {
+              "median": 0.000859083,
+              "min": 0.000800958,
+              "max": 0.001508209
+            },
+            "schur0.operator": {
+              "median": 0.000936708,
+              "min": 0.000643416,
+              "max": 0.000984249
+            },
+            "schur0.recurrence": {
+              "median": 7.0501e-05,
+              "min": 5.3625e-05,
+              "max": 0.000217709
+            },
+            "schur0.reconstruct": {
+              "median": 0.000873084,
+              "min": 0.000651792,
+              "max": 0.001356958
+            },
+            "schur0.certificate": {
+              "median": 0.0034725,
+              "min": 0.002861042,
+              "max": 0.003662375
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "fit.rhs": {
+              "median": 0.001526166,
+              "min": 0.0011945,
+              "max": 0.001760916
+            },
+            "fit.raw_moments": {
+              "median": 0.003950166,
+              "min": 0.003859958,
+              "max": 0.00504425
+            },
+            "fit.initial_absorb": {
+              "median": 0.012158292,
+              "min": 0.011423041,
+              "max": 0.0144685
+            },
+            "fit.within_norms": {
+              "median": 2.92e-07,
+              "min": 2.08e-07,
+              "max": 4.58e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.003605958,
+              "min": 0.002786166,
+              "max": 0.004023458
+            },
+            "fit.score_cache": {
+              "median": 4.1e-08,
+              "min": 0.0,
+              "max": 4.2e-08
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.001138833,
+              "min": 0.001005125,
+              "max": 0.001448292
+            },
+            "fit.residual_absorb": {
+              "median": 0.000873125,
+              "min": 0.000754333,
+              "max": 0.000927917
+            },
+            "fit.residual_overlap": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.score": {
+              "median": 0.000773708,
+              "min": 0.000556875,
+              "max": 0.000972792
+            },
+            "fit.finalize": {
+              "median": 9.58e-07,
+              "min": 7.5e-07,
+              "max": 1.209e-06
+            },
+            "fit.total": {
+              "median": 0.023948375,
+              "min": 0.022943583,
+              "max": 0.026316416
+            },
+            "iid.setup_statistics": {
+              "median": 0.00081275,
+              "min": 0.000804708,
+              "max": 0.001156125
+            },
+            "iid.covariance": {
+              "median": 4.083e-06,
+              "min": 2.792e-06,
+              "max": 7.334e-06
+            },
+            "iid.wald": {
+              "median": 4.333e-06,
+              "min": 4.041e-06,
+              "max": 8e-06
+            },
+            "iid.certificate": {
+              "median": 3.083e-06,
+              "min": 2.667e-06,
+              "max": 5.708e-06
+            },
+            "iid.total": {
+              "median": 0.000826167,
+              "min": 0.000815208,
+              "max": 0.001177458
+            },
+            "iid_plugin.prepare": {
+              "median": 0.003154,
+              "min": 0.00266625,
+              "max": 0.004187167
+            },
+            "iid_plugin.inference": {
+              "median": 0.027225875,
+              "min": 0.026818,
+              "max": 0.029689084
+            },
+            "iid_plugin.outputs": {
+              "median": 3.2625e-05,
+              "min": 1.8958e-05,
+              "max": 0.0001215
+            },
+            "iid_plugin.shadow": {
+              "median": 2.4584e-05,
+              "min": 1.825e-05,
+              "max": 4.3708e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.031056292,
+              "min": 0.03042725,
+              "max": 0.03261025
+            }
+          },
+          "8": {
+            "ols_prepare_moments.seconds": {
+              "median": 0.00464025,
+              "min": 0.003867625,
+              "max": 0.006131708
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.003764083,
+              "min": 0.002744584,
+              "max": 0.0053775
+            },
+            "schur0.init": {
+              "median": 0.001100417,
+              "min": 0.00089725,
+              "max": 0.001208292
+            },
+            "schur0.operator": {
+              "median": 0.000990876,
+              "min": 0.000755209,
+              "max": 0.001174833
+            },
+            "schur0.recurrence": {
+              "median": 0.000118459,
+              "min": 6.9417e-05,
+              "max": 0.000195041
+            },
+            "schur0.reconstruct": {
+              "median": 0.000706584,
+              "min": 0.000498417,
+              "max": 0.000739917
+            },
+            "schur0.certificate": {
+              "median": 0.002953125,
+              "min": 0.002127458,
+              "max": 0.003184834
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "schur1.init": {
+              "median": 0.000723958,
+              "min": 0.000602917,
+              "max": 0.001067542
+            },
+            "schur1.operator": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur1.recurrence": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur1.reconstruct": {
+              "median": 0.000490958,
+              "min": 0.000312166,
+              "max": 0.000989708
+            },
+            "schur1.certificate": {
+              "median": 0.000671583,
+              "min": 0.000469667,
+              "max": 0.001022083
+            },
+            "schur1.iterations": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.rhs": {
+              "median": 0.001259042,
+              "min": 0.001193083,
+              "max": 0.0022895
+            },
+            "fit.raw_moments": {
+              "median": 9.16e-07,
+              "min": 5.83e-07,
+              "max": 1.959e-06
+            },
+            "fit.initial_absorb": {
+              "median": 0.011810583,
+              "min": 0.010634917,
+              "max": 0.013581667
+            },
+            "fit.within_norms": {
+              "median": 4.58e-07,
+              "min": 4.16e-07,
+              "max": 7.09e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.003712375,
+              "min": 0.002826292,
+              "max": 0.00469775
+            },
+            "fit.score_cache": {
+              "median": 4.2e-08,
+              "min": 0.0,
+              "max": 4.2e-08
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.00457575,
+              "min": 0.00318375,
+              "max": 0.005257625
+            },
+            "fit.residual_absorb": {
+              "median": 5.41e-07,
+              "min": 4.59e-07,
+              "max": 9.58e-07
+            },
+            "fit.residual_overlap": {
+              "median": 1.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "fit.score": {
+              "median": 2.08e-07,
+              "min": 1.66e-07,
+              "max": 3.75e-07
+            },
+            "fit.finalize": {
+              "median": 1.125e-06,
+              "min": 9.59e-07,
+              "max": 1.458e-06
+            },
+            "fit.total": {
+              "median": 0.021790583,
+              "min": 0.019915958,
+              "max": 0.02310175
+            },
+            "iid.setup_statistics": {
+              "median": 2.833e-06,
+              "min": 2.5e-06,
+              "max": 2.917e-06
+            },
+            "iid.covariance": {
+              "median": 2.667e-06,
+              "min": 2.542e-06,
+              "max": 3.333e-06
+            },
+            "iid.wald": {
+              "median": 4.417e-06,
+              "min": 3.708e-06,
+              "max": 4.75e-06
+            },
+            "iid.certificate": {
+              "median": 3.25e-06,
+              "min": 2.875e-06,
+              "max": 3.375e-06
+            },
+            "iid.total": {
+              "median": 1.325e-05,
+              "min": 1.2333e-05,
+              "max": 1.4333e-05
+            },
+            "iid_plugin.prepare": {
+              "median": 0.004826417,
+              "min": 0.004033875,
+              "max": 0.006313292
+            },
+            "iid_plugin.inference": {
+              "median": 0.024178625,
+              "min": 0.022701875,
+              "max": 0.025421459
+            },
+            "iid_plugin.outputs": {
+              "median": 2.6625e-05,
+              "min": 2.4625e-05,
+              "max": 4.6625e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 2.4833e-05,
+              "min": 1.3208e-05,
+              "max": 4.9084e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.028690292,
+              "min": 0.027580208,
+              "max": 0.031773292
+            }
+          },
+          "16": {
+            "ols_prepare_moments.seconds": {
+              "median": 0.005452833,
+              "min": 0.004558916,
+              "max": 0.0077445
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.006178875,
+              "min": 0.00430175,
+              "max": 0.007844166
+            },
+            "schur0.init": {
+              "median": 0.001848125,
+              "min": 0.00110925,
+              "max": 0.004551125
+            },
+            "schur0.operator": {
+              "median": 0.001119,
+              "min": 0.000716708,
+              "max": 0.001441874
+            },
+            "schur0.recurrence": {
+              "median": 0.000224792,
+              "min": 0.000167417,
+              "max": 0.000428166
+            },
+            "schur0.reconstruct": {
+              "median": 0.001056291,
+              "min": 0.000941791,
+              "max": 0.001608
+            },
+            "schur0.certificate": {
+              "median": 0.002538375,
+              "min": 0.002229417,
+              "max": 0.002672875
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "schur1.init": {
+              "median": 0.001062833,
+              "min": 0.000793417,
+              "max": 0.001607459
+            },
+            "schur1.operator": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur1.recurrence": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur1.reconstruct": {
+              "median": 0.000713417,
+              "min": 0.000400042,
+              "max": 0.00079875
+            },
+            "schur1.certificate": {
+              "median": 0.000664042,
+              "min": 0.000626292,
+              "max": 0.001007417
+            },
+            "schur1.iterations": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.rhs": {
+              "median": 0.002187417,
+              "min": 0.001544,
+              "max": 0.003337459
+            },
+            "fit.raw_moments": {
+              "median": 1.083e-06,
+              "min": 7.5e-07,
+              "max": 2.791e-06
+            },
+            "fit.initial_absorb": {
+              "median": 0.014629875,
+              "min": 0.013351584,
+              "max": 0.019977125
+            },
+            "fit.within_norms": {
+              "median": 4.17e-07,
+              "min": 2.09e-07,
+              "max": 2.333e-06
+            },
+            "fit.finite_solve": {
+              "median": 0.004516709,
+              "min": 0.003856875,
+              "max": 0.005901458
+            },
+            "fit.score_cache": {
+              "median": 4.2e-08,
+              "min": 0.0,
+              "max": 1.67e-07
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.004579958,
+              "min": 0.00422375,
+              "max": 0.005090417
+            },
+            "fit.residual_absorb": {
+              "median": 5e-07,
+              "min": 2.5e-07,
+              "max": 6.66e-07
+            },
+            "fit.residual_overlap": {
+              "median": 1.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "fit.score": {
+              "median": 2.5e-07,
+              "min": 1.25e-07,
+              "max": 4.17e-07
+            },
+            "fit.finalize": {
+              "median": 1.125e-06,
+              "min": 8.34e-07,
+              "max": 1.208e-06
+            },
+            "fit.total": {
+              "median": 0.026012,
+              "min": 0.02418125,
+              "max": 0.033836709
+            },
+            "iid.setup_statistics": {
+              "median": 2.625e-06,
+              "min": 2.416e-06,
+              "max": 3e-06
+            },
+            "iid.covariance": {
+              "median": 2.791e-06,
+              "min": 2.417e-06,
+              "max": 3.583e-06
+            },
+            "iid.wald": {
+              "median": 4.791e-06,
+              "min": 3.709e-06,
+              "max": 4.959e-06
+            },
+            "iid.certificate": {
+              "median": 3.25e-06,
+              "min": 2.958e-06,
+              "max": 3.292e-06
+            },
+            "iid.total": {
+              "median": 1.325e-05,
+              "min": 1.2e-05,
+              "max": 1.5042e-05
+            },
+            "iid_plugin.prepare": {
+              "median": 0.005621583,
+              "min": 0.00472075,
+              "max": 0.007893958
+            },
+            "iid_plugin.inference": {
+              "median": 0.0285515,
+              "min": 0.026522125,
+              "max": 0.036044333
+            },
+            "iid_plugin.outputs": {
+              "median": 2.3167e-05,
+              "min": 1.9125e-05,
+              "max": 6.0375e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 1.7791e-05,
+              "min": 1.4958e-05,
+              "max": 2.35e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.0351465,
+              "min": 0.032894792,
+              "max": 0.041440958
+            }
+          }
+        }
+      },
+      "next": {
+        "identity": {
+          "plugin_filename": "fereg_macos.plugin",
+          "plugin_sha256": "812d67b9bb5d1e28ea7ee0c3ed8b608ae8695417f4b8e9126c868938c34a4a98",
+          "build_source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+          "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+        },
+        "protocol": {
+          "warmups": 1,
+          "repetitions": 5,
+          "coefficient_rtol": 1e-07,
+          "coefficient_atol": 1e-10,
+          "reference_tolerance": 1e-12,
+          "fresh_process_per_command": true
+        },
+        "source_commit": "d36c3f791abb2dbd91f56fcdab5a72af890f5799",
+        "metrics": {
+          "1": {
+            "ols_prepare.seconds": {
+              "median": 0.003753208,
+              "min": 0.003638917,
+              "max": 0.003865208
+            },
+            "ols_prepare_moments.seconds": {
+              "median": 0.003907875,
+              "min": 0.003789333,
+              "max": 0.004001917
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.006618917,
+              "min": 0.006571833,
+              "max": 0.00728825
+            },
+            "schur0.init": {
+              "median": 0.001822958,
+              "min": 0.001797041,
+              "max": 0.003179125
+            },
+            "schur0.operator": {
+              "median": 0.003161625,
+              "min": 0.003151583,
+              "max": 0.003192125
+            },
+            "schur0.recurrence": {
+              "median": 3.25e-05,
+              "min": 3.1874e-05,
+              "max": 3.3001e-05
+            },
+            "schur0.reconstruct": {
+              "median": 0.001848667,
+              "min": 0.001846042,
+              "max": 0.009537584
+            },
+            "schur0.certificate": {
+              "median": 0.009320542,
+              "min": 0.009170459,
+              "max": 0.009695167
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "fit.rhs": {
+              "median": 0.00452825,
+              "min": 0.004367625,
+              "max": 0.004889375
+            },
+            "fit.raw_moments": {
+              "median": 0.008132833,
+              "min": 0.008124958,
+              "max": 0.008266583
+            },
+            "fit.initial_absorb": {
+              "median": 0.026766541,
+              "min": 0.026251959,
+              "max": 0.035041083
+            },
+            "fit.within_norms": {
+              "median": 5e-07,
+              "min": 4.58e-07,
+              "max": 5e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.009088875,
+              "min": 0.009065209,
+              "max": 0.012584167
+            },
+            "fit.score_cache": {
+              "median": 4.2e-08,
+              "min": 0.0,
+              "max": 4.2e-08
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.001082917,
+              "min": 0.001036625,
+              "max": 0.001457375
+            },
+            "fit.residual_absorb": {
+              "median": 0.001798416,
+              "min": 0.001786334,
+              "max": 0.001868208
+            },
+            "fit.residual_overlap": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.score": {
+              "median": 0.000753125,
+              "min": 0.000752625,
+              "max": 0.000754625
+            },
+            "fit.finalize": {
+              "median": 1.125e-06,
+              "min": 7.5e-07,
+              "max": 3.458e-06
+            },
+            "fit.total": {
+              "median": 0.055243542,
+              "min": 0.051437375,
+              "max": 0.06100275
+            },
+            "iid.setup_statistics": {
+              "median": 0.001174,
+              "min": 0.001172,
+              "max": 0.001177209
+            },
+            "iid.covariance": {
+              "median": 3.334e-06,
+              "min": 2.875e-06,
+              "max": 3.959e-06
+            },
+            "iid.wald": {
+              "median": 4.583e-06,
+              "min": 4.083e-06,
+              "max": 4.834e-06
+            },
+            "iid.certificate": {
+              "median": 2.833e-06,
+              "min": 2.708e-06,
+              "max": 2.917e-06
+            },
+            "iid.total": {
+              "median": 0.001184291,
+              "min": 0.001182166,
+              "max": 0.001188833
+            },
+            "iid_plugin.prepare": {
+              "median": 0.004020125,
+              "min": 0.003898958,
+              "max": 0.00410675
+            },
+            "iid_plugin.inference": {
+              "median": 0.059843416,
+              "min": 0.055018875,
+              "max": 0.069976709
+            },
+            "iid_plugin.outputs": {
+              "median": 4.0708e-05,
+              "min": 1.6542e-05,
+              "max": 5.1625e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 1.875e-05,
+              "min": 1.5584e-05,
+              "max": 2.3e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.063915833,
+              "min": 0.058974292,
+              "max": 0.07411575
+            }
+          },
+          "2": {
+            "ols_prepare.seconds": {
+              "median": 0.002814042,
+              "min": 0.002613708,
+              "max": 0.006409291
+            },
+            "ols_prepare_moments.seconds": {
+              "median": 0.002965584,
+              "min": 0.002754,
+              "max": 0.006540792
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.004307083,
+              "min": 0.004186333,
+              "max": 0.005004125
+            },
+            "schur0.init": {
+              "median": 0.001081542,
+              "min": 0.000989625,
+              "max": 0.001377375
+            },
+            "schur0.operator": {
+              "median": 0.001114501,
+              "min": 0.001095876,
+              "max": 0.001330209
+            },
+            "schur0.recurrence": {
+              "median": 5.4043e-05,
+              "min": 4.9041e-05,
+              "max": 5.7e-05
+            },
+            "schur0.reconstruct": {
+              "median": 0.002266875,
+              "min": 0.001885375,
+              "max": 0.003557667
+            },
+            "schur0.certificate": {
+              "median": 0.004364334,
+              "min": 0.004240083,
+              "max": 0.00457025
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "fit.rhs": {
+              "median": 0.001787125,
+              "min": 0.001648333,
+              "max": 0.001957917
+            },
+            "fit.raw_moments": {
+              "median": 0.00468875,
+              "min": 0.004661083,
+              "max": 0.0055395
+            },
+            "fit.initial_absorb": {
+              "median": 0.016263,
+              "min": 0.015833958,
+              "max": 0.0173815
+            },
+            "fit.within_norms": {
+              "median": 4.16e-07,
+              "min": 2.08e-07,
+              "max": 4.59e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.0053185,
+              "min": 0.005201334,
+              "max": 0.00659375
+            },
+            "fit.score_cache": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.000953875,
+              "min": 0.000895875,
+              "max": 0.00129675
+            },
+            "fit.residual_absorb": {
+              "median": 0.00108875,
+              "min": 0.00107325,
+              "max": 0.001127875
+            },
+            "fit.residual_overlap": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.score": {
+              "median": 0.000620959,
+              "min": 0.000596875,
+              "max": 0.000869375
+            },
+            "fit.finalize": {
+              "median": 1.084e-06,
+              "min": 5e-07,
+              "max": 4.208e-06
+            },
+            "fit.total": {
+              "median": 0.031415833,
+              "min": 0.030595333,
+              "max": 0.032250458
+            },
+            "iid.setup_statistics": {
+              "median": 0.000804125,
+              "min": 0.000803208,
+              "max": 0.00082025
+            },
+            "iid.covariance": {
+              "median": 2.959e-06,
+              "min": 2.458e-06,
+              "max": 3.875e-06
+            },
+            "iid.wald": {
+              "median": 4.208e-06,
+              "min": 4.125e-06,
+              "max": 4.833e-06
+            },
+            "iid.certificate": {
+              "median": 3e-06,
+              "min": 2.583e-06,
+              "max": 3.125e-06
+            },
+            "iid.total": {
+              "median": 0.000815042,
+              "min": 0.000812625,
+              "max": 0.000830417
+            },
+            "iid_plugin.prepare": {
+              "median": 0.003079166,
+              "min": 0.002853792,
+              "max": 0.006649375
+            },
+            "iid_plugin.inference": {
+              "median": 0.034693417,
+              "min": 0.034479167,
+              "max": 0.039798792
+            },
+            "iid_plugin.outputs": {
+              "median": 2.6167e-05,
+              "min": 1.8792e-05,
+              "max": 3.6292e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 1.9291e-05,
+              "min": 1.6167e-05,
+              "max": 2.8458e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.037971542,
+              "min": 0.037535875,
+              "max": 0.046504875
+            }
+          },
+          "4": {
+            "ols_prepare.seconds": {
+              "median": 0.002586209,
+              "min": 0.00249,
+              "max": 0.003263625
+            },
+            "ols_prepare_moments.seconds": {
+              "median": 0.002730583,
+              "min": 0.002662125,
+              "max": 0.003406083
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.003418834,
+              "min": 0.002768833,
+              "max": 0.004739875
+            },
+            "schur0.init": {
+              "median": 0.000795667,
+              "min": 0.000565333,
+              "max": 0.000904584
+            },
+            "schur0.operator": {
+              "median": 0.000634,
+              "min": 0.000591542,
+              "max": 0.000849
+            },
+            "schur0.recurrence": {
+              "median": 6.2875e-05,
+              "min": 5.3457e-05,
+              "max": 6.7458e-05
+            },
+            "schur0.reconstruct": {
+              "median": 0.000803167,
+              "min": 0.000700625,
+              "max": 0.001062792
+            },
+            "schur0.certificate": {
+              "median": 0.002860541,
+              "min": 0.002190667,
+              "max": 0.003515709
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "fit.rhs": {
+              "median": 0.001221792,
+              "min": 0.001122875,
+              "max": 0.001509083
+            },
+            "fit.raw_moments": {
+              "median": 0.003860666,
+              "min": 0.003355959,
+              "max": 0.00467325
+            },
+            "fit.initial_absorb": {
+              "median": 0.010513959,
+              "min": 0.010305459,
+              "max": 0.013072375
+            },
+            "fit.within_norms": {
+              "median": 3.75e-07,
+              "min": 2.08e-07,
+              "max": 6.25e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.002946542,
+              "min": 0.002781417,
+              "max": 0.003248958
+            },
+            "fit.score_cache": {
+              "median": 4.2e-08,
+              "min": 0.0,
+              "max": 1.25e-07
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.000916041,
+              "min": 0.000850875,
+              "max": 0.001011875
+            },
+            "fit.residual_absorb": {
+              "median": 0.000833333,
+              "min": 0.000728667,
+              "max": 0.000872292
+            },
+            "fit.residual_overlap": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.score": {
+              "median": 0.000710292,
+              "min": 0.00064075,
+              "max": 0.000944
+            },
+            "fit.finalize": {
+              "median": 7.08e-07,
+              "min": 5.83e-07,
+              "max": 2.666e-06
+            },
+            "fit.total": {
+              "median": 0.021623375,
+              "min": 0.020575625,
+              "max": 0.024617958
+            },
+            "iid.setup_statistics": {
+              "median": 0.000804,
+              "min": 0.0008035,
+              "max": 0.000806083
+            },
+            "iid.covariance": {
+              "median": 3.042e-06,
+              "min": 2.375e-06,
+              "max": 3.375e-06
+            },
+            "iid.wald": {
+              "median": 4.375e-06,
+              "min": 4.167e-06,
+              "max": 4.875e-06
+            },
+            "iid.certificate": {
+              "median": 2.75e-06,
+              "min": 2.584e-06,
+              "max": 3.083e-06
+            },
+            "iid.total": {
+              "median": 0.000814834,
+              "min": 0.000813458,
+              "max": 0.000815667
+            },
+            "iid_plugin.prepare": {
+              "median": 0.002850667,
+              "min": 0.0027815,
+              "max": 0.003508542
+            },
+            "iid_plugin.inference": {
+              "median": 0.024918917,
+              "min": 0.023771667,
+              "max": 0.027866042
+            },
+            "iid_plugin.outputs": {
+              "median": 4.4958e-05,
+              "min": 1.7792e-05,
+              "max": 7.5708e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 1.5542e-05,
+              "min": 1.1792e-05,
+              "max": 1.6208e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.027830042,
+              "min": 0.026611459,
+              "max": 0.030798834
+            }
+          },
+          "8": {
+            "ols_prepare_moments.seconds": {
+              "median": 0.004296083,
+              "min": 0.003772125,
+              "max": 0.004762292
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.003198542,
+              "min": 0.00289075,
+              "max": 0.004410708
+            },
+            "schur0.init": {
+              "median": 0.000759834,
+              "min": 0.000711042,
+              "max": 0.0009605
+            },
+            "schur0.operator": {
+              "median": 0.000628001,
+              "min": 0.000599459,
+              "max": 0.000957667
+            },
+            "schur0.recurrence": {
+              "median": 0.000126042,
+              "min": 7.7792e-05,
+              "max": 0.000146708
+            },
+            "schur0.reconstruct": {
+              "median": 0.000865209,
+              "min": 0.000533375,
+              "max": 0.0010045
+            },
+            "schur0.certificate": {
+              "median": 0.002487209,
+              "min": 0.002089458,
+              "max": 0.002641292
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "schur1.init": {
+              "median": 0.0008185,
+              "min": 0.000486875,
+              "max": 0.000874708
+            },
+            "schur1.operator": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur1.recurrence": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur1.reconstruct": {
+              "median": 0.00038175,
+              "min": 0.000276625,
+              "max": 0.001294291
+            },
+            "schur1.certificate": {
+              "median": 0.000682417,
+              "min": 0.000469208,
+              "max": 0.000887166
+            },
+            "schur1.iterations": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.rhs": {
+              "median": 0.001081791,
+              "min": 0.001072833,
+              "max": 0.001229667
+            },
+            "fit.raw_moments": {
+              "median": 6.67e-07,
+              "min": 4.16e-07,
+              "max": 8.75e-07
+            },
+            "fit.initial_absorb": {
+              "median": 0.01028725,
+              "min": 0.010178958,
+              "max": 0.011834542
+            },
+            "fit.within_norms": {
+              "median": 3.33e-07,
+              "min": 1.67e-07,
+              "max": 4.16e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.003006417,
+              "min": 0.002773792,
+              "max": 0.003780791
+            },
+            "fit.score_cache": {
+              "median": 4.1e-08,
+              "min": 0.0,
+              "max": 4.2e-08
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.004200917,
+              "min": 0.003372875,
+              "max": 0.00538725
+            },
+            "fit.residual_absorb": {
+              "median": 3.34e-07,
+              "min": 3.33e-07,
+              "max": 5.83e-07
+            },
+            "fit.residual_overlap": {
+              "median": 1.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "fit.score": {
+              "median": 1.66e-07,
+              "min": 8.3e-08,
+              "max": 3.75e-07
+            },
+            "fit.finalize": {
+              "median": 8.75e-07,
+              "min": 5.84e-07,
+              "max": 1.083e-06
+            },
+            "fit.total": {
+              "median": 0.01932775,
+              "min": 0.017487625,
+              "max": 0.021385834
+            },
+            "iid.setup_statistics": {
+              "median": 2.25e-06,
+              "min": 1.583e-06,
+              "max": 2.666e-06
+            },
+            "iid.covariance": {
+              "median": 2.667e-06,
+              "min": 2.167e-06,
+              "max": 3e-06
+            },
+            "iid.wald": {
+              "median": 4.125e-06,
+              "min": 3.666e-06,
+              "max": 4.667e-06
+            },
+            "iid.certificate": {
+              "median": 3.291e-06,
+              "min": 2.75e-06,
+              "max": 3.667e-06
+            },
+            "iid.total": {
+              "median": 1.225e-05,
+              "min": 1.1167e-05,
+              "max": 1.3917e-05
+            },
+            "iid_plugin.prepare": {
+              "median": 0.004439583,
+              "min": 0.003913666,
+              "max": 0.004923209
+            },
+            "iid_plugin.inference": {
+              "median": 0.021547791,
+              "min": 0.019657417,
+              "max": 0.023706834
+            },
+            "iid_plugin.outputs": {
+              "median": 2.6917e-05,
+              "min": 2.2042e-05,
+              "max": 4.8875e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 1.8667e-05,
+              "min": 1.3541e-05,
+              "max": 1.8875e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.0258975,
+              "min": 0.023611833,
+              "max": 0.028201917
+            }
+          },
+          "16": {
+            "ols_prepare_moments.seconds": {
+              "median": 0.005995167,
+              "min": 0.004553084,
+              "max": 0.011475291
+            },
+            "schur_route.contraction": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur_route.probe": {
+              "median": 0.006947458,
+              "min": 0.003844833,
+              "max": 0.013254792
+            },
+            "schur0.init": {
+              "median": 0.001404292,
+              "min": 0.000812083,
+              "max": 0.001578167
+            },
+            "schur0.operator": {
+              "median": 0.000876751,
+              "min": 0.000676042,
+              "max": 0.002401917
+            },
+            "schur0.recurrence": {
+              "median": 0.000289291,
+              "min": 0.000137375,
+              "max": 0.001652958
+            },
+            "schur0.reconstruct": {
+              "median": 0.001125875,
+              "min": 0.000919875,
+              "max": 0.001818083
+            },
+            "schur0.certificate": {
+              "median": 0.002394166,
+              "min": 0.002145041,
+              "max": 0.003656417
+            },
+            "schur0.iterations": {
+              "median": 2.0,
+              "min": 2.0,
+              "max": 2.0
+            },
+            "schur1.init": {
+              "median": 0.000920958,
+              "min": 0.000852542,
+              "max": 0.00483175
+            },
+            "schur1.operator": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur1.recurrence": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "schur1.reconstruct": {
+              "median": 0.000689417,
+              "min": 0.000574625,
+              "max": 0.001928292
+            },
+            "schur1.certificate": {
+              "median": 0.000709042,
+              "min": 0.000519334,
+              "max": 0.000919959
+            },
+            "schur1.iterations": {
+              "median": 0.0,
+              "min": 0.0,
+              "max": 0.0
+            },
+            "fit.rhs": {
+              "median": 0.002523041,
+              "min": 0.00137575,
+              "max": 0.003678334
+            },
+            "fit.raw_moments": {
+              "median": 9.17e-07,
+              "min": 7.5e-07,
+              "max": 3.083e-06
+            },
+            "fit.initial_absorb": {
+              "median": 0.018329,
+              "min": 0.011404375,
+              "max": 0.021474291
+            },
+            "fit.within_norms": {
+              "median": 4.58e-07,
+              "min": 2.5e-07,
+              "max": 5.41e-07
+            },
+            "fit.finite_solve": {
+              "median": 0.004699959,
+              "min": 0.003575375,
+              "max": 0.007363959
+            },
+            "fit.score_cache": {
+              "median": 4.1e-08,
+              "min": 0.0,
+              "max": 8.3e-08
+            },
+            "fit.bread_raw_residual": {
+              "median": 0.004711458,
+              "min": 0.004143167,
+              "max": 0.010074625
+            },
+            "fit.residual_absorb": {
+              "median": 4.17e-07,
+              "min": 3.75e-07,
+              "max": 5e-07
+            },
+            "fit.residual_overlap": {
+              "median": 1.0,
+              "min": 1.0,
+              "max": 1.0
+            },
+            "fit.score": {
+              "median": 2.5e-07,
+              "min": 2.5e-07,
+              "max": 3.34e-07
+            },
+            "fit.finalize": {
+              "median": 8.34e-07,
+              "min": 6.67e-07,
+              "max": 1e-06
+            },
+            "fit.total": {
+              "median": 0.03387225,
+              "min": 0.022805084,
+              "max": 0.037766666
+            },
+            "iid.setup_statistics": {
+              "median": 2.584e-06,
+              "min": 1.875e-06,
+              "max": 2.75e-06
+            },
+            "iid.covariance": {
+              "median": 2.125e-06,
+              "min": 1.833e-06,
+              "max": 2.667e-06
+            },
+            "iid.wald": {
+              "median": 4.75e-06,
+              "min": 4.084e-06,
+              "max": 4.917e-06
+            },
+            "iid.certificate": {
+              "median": 2.709e-06,
+              "min": 2.667e-06,
+              "max": 3e-06
+            },
+            "iid.total": {
+              "median": 1.225e-05,
+              "min": 1.0833e-05,
+              "max": 1.3125e-05
+            },
+            "iid_plugin.prepare": {
+              "median": 0.006142875,
+              "min": 0.004714208,
+              "max": 0.0116235
+            },
+            "iid_plugin.inference": {
+              "median": 0.03600175,
+              "min": 0.024883292,
+              "max": 0.039958
+            },
+            "iid_plugin.outputs": {
+              "median": 4.5583e-05,
+              "min": 1.4125e-05,
+              "max": 4.8084e-05
+            },
+            "iid_plugin.shadow": {
+              "median": 1.4375e-05,
+              "min": 1.2208e-05,
+              "max": 2.7417e-05
+            },
+            "iid_plugin.prestore_total": {
+              "median": 0.041675625,
+              "min": 0.031052709,
+              "max": 0.051629208
+            }
+          }
+        }
+      }
+    },
+    "interpretation": "No repeated timing regression observed. Fresh follow-up GM next/parent is 0.980 smoke and 0.949 scaling; several PPML gains persist with reversed parent order. Bounded Mac evidence does not establish broad consistent acceleration or fix high-core scaling.",
+    "tables": [
+      {
+        "path": "bench/history/2026-10-03-m8-clean-next-smoke.csv",
+        "sha256": "01b42372f7dfb9a2efa78d3f7e1bdc307cf3393b4215dba1fd521a689e4c12c9"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-next-scaling.csv",
+        "sha256": "bc64a7190a46ca1f6965b641a1924a2e203a4dbead3f6018892d06c434fdd9a9"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-next-phases.csv",
+        "sha256": "b092c61c8ea4cf962eddeac3be5b35da1f5fc180cba7cf64e6711339dc1aa9ff"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-followup-parent-smoke.csv",
+        "sha256": "08bf420e4dbc1d6455602c4f24aa9c306a1f6c25a5c86e5a180f224825d32549"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-followup-parent-scaling.csv",
+        "sha256": "ae3a7585c35d0f51dc1fef7167f02d07a7b8b9576d59d73aec9ff5a3fa98f6d6"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-followup-parent-phases.csv",
+        "sha256": "08a76c8cb9589a5d139a6a6d3bb3dd74d785eafce87fb410b709d0226c60c4a9"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-followup-next-smoke.csv",
+        "sha256": "233c59eab13e63e91536b87bb3ed74f2bf360a155fdc098447d84e0dc34593df"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-followup-next-scaling.csv",
+        "sha256": "985055f114a93c483f5859ee0f9bb322bc2130eea9fa79740458b5b59cbf9724"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-followup-next-phases.csv",
+        "sha256": "854f6d93e1e4fdd68ce4f5335d859996faa06f934ecacea46f0577b462af582e"
+      },
+      {
+        "path": "bench/history/2026-10-03-m8-clean-reversed-parent.csv",
+        "sha256": "9b9a8aa7506dfbfb28ae1e52c70cc154ce8fa2ba971e78d04e51b86259c7af98"
+      }
+    ],
+    "reversed_parent_pairs": [
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ols-n16384-k8",
+        "threads": "1",
+        "seconds": "0.026",
+        "seconds_min": "0.025",
+        "seconds_max": "0.027"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ols-n16384-k8",
+        "threads": "2",
+        "seconds": "0.023",
+        "seconds_min": "0.021",
+        "seconds_max": "0.036"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ols-n16384-k8",
+        "threads": "4",
+        "seconds": "0.022",
+        "seconds_min": "0.021",
+        "seconds_max": "0.024"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ols-n16384-k8",
+        "threads": "8",
+        "seconds": "0.021",
+        "seconds_min": "0.019",
+        "seconds_max": "0.023"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ols-n16384-k8",
+        "threads": "16",
+        "seconds": "0.03",
+        "seconds_min": "0.023",
+        "seconds_max": "0.033"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n16383-k8",
+        "threads": "1",
+        "seconds": "0.063",
+        "seconds_min": "0.059",
+        "seconds_max": "0.068"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n16383-k8",
+        "threads": "2",
+        "seconds": "0.052",
+        "seconds_min": "0.05",
+        "seconds_max": "0.058"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n16383-k8",
+        "threads": "4",
+        "seconds": "0.05",
+        "seconds_min": "0.049",
+        "seconds_max": "0.051"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n16383-k8",
+        "threads": "8",
+        "seconds": "0.052",
+        "seconds_min": "0.051",
+        "seconds_max": "0.054"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n16383-k8",
+        "threads": "16",
+        "seconds": "0.067",
+        "seconds_min": "0.062",
+        "seconds_max": "0.075"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n100000-k16",
+        "threads": "1",
+        "seconds": "0.386",
+        "seconds_min": "0.378",
+        "seconds_max": "0.387"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n100000-k16",
+        "threads": "2",
+        "seconds": "0.27",
+        "seconds_min": "0.266",
+        "seconds_max": "0.274"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n100000-k16",
+        "threads": "4",
+        "seconds": "0.209",
+        "seconds_min": "0.205",
+        "seconds_max": "0.213"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n100000-k16",
+        "threads": "8",
+        "seconds": "0.205",
+        "seconds_min": "0.202",
+        "seconds_max": "0.213"
+      },
+      {
+        "source_sha": "7fbb4939041242e79d96e47e4879763a4318f7ff",
+        "native_build_source": "b3fa58a7ae632fe8efc299f634bf4c1c9c7febd3",
+        "plugin_sha256": "c85805091f16c0e1608cfdd067e995c839de49ea9bc8e5143fb2ee83850a85e9",
+        "cell": "m1-ppml-n100000-k16",
+        "threads": "16",
+        "seconds": "0.232",
+        "seconds_min": "0.225",
+        "seconds_max": "0.247"
+      }
+    ]
+  },
+  "pending_gates": [],
+  "limits": []
 }
