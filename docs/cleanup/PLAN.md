@@ -1,4 +1,4 @@
-# Incremental refactoring: M0–M8
+# Incremental refactoring: M0–M11
 
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
 Historical plan and evidence remain at 15a57ba285a3afede2e3337fe8598e72529a4090.
@@ -306,3 +306,126 @@ checks, complexity and timing evidence. A maintenance gain does not imply a
 speedup or a repair of the 8-to-16-thread slowdown. Preserve frozen legacy.
 Discuss three substantive follow-up milestones, M9–M11, with explicit boundaries,
 risks and acceptance checks. Do not implement those proposals in M8.
+
+
+## M9–M11: authorized follow-through
+
+Johannes authorized implementation of the next three milestones on 2026-10-03.
+This supersedes M8's discussion-only boundary. Complete the pending M8 gates;
+independent OLS/PPML work may proceed while hosted Schur qualification runs.
+Each milestone removes a named repeated decision or produces a bounded,
+conclusive performance experiment; do not ship an unearned scheduling change.
+
+### M9: one QR factorization driver, two storage adapters
+
+M2/M4 share classification, pivot choice, triangular solution and coefficient
+finalization, but `fit_scaled_pivoted_qr` and its low-memory counterpart still
+own two rank/Householder loops. The corresponding functions are 406/399 lines.
+One driver should own pivot order, stopping rules, reflector scalar decisions,
+rank/condition bookkeeping and dropped-span certification. Dense storage and
+scratch storage should supply only the column access, norm and reflector-update
+operations they actually need. Keep the storage strategies and public memory
+options; use static calls and existing borrowed buffers, not a general engine
+framework or virtual dispatch per observation.
+
+Start by characterizing the real differences. Dense QR refreshes trailing norms
+before the next pivot and can reuse its selected pivot norm. Scratch QR updates
+norms while writing each target and rereads its pivot. Dense updates can run in
+parallel; scratch needs admitted reflector/target buffers and I/O. Rank-zero
+behavior, weighting/standardization and validation precedence also differ.
+Preserve these boundaries first. Do not obtain one loop by materializing the
+low-memory matrix or by adding mode branches throughout a new driver.
+
+Implement in small tasks: characterize norm/reflector boundaries with existing
+fast/low witnesses; introduce the limited storage operations; move the common
+rank progression and delete the old loops. Reuse the shared M2/M4 operations.
+Count the adapters as production code: reject a design whose scaffolding
+cancels its maintenance gain. This is a larger risk than M8 because a pivot
+change can affect rank, reported coefficients and covariance.
+
+Acceptance: one source of rank progression; smaller combined production code
+and no new size violation/route; exact applicable parent outputs; independent
+full/weak/rank-deficient tests with weights, omitted and absorbed columns;
+fast/low memory and allocation failures; fixed-thread repeats and scientific
+thread agreement; saved outputs and Stata transactions; paired smoke/scaling
+and representative wide QR timings. Shared internal QR invariant errors may use common wording with unchanged
+codes and precedence; storage-specific validation errors remain distinct.
+Arithmetic changes require an explicitly
+scoped numerical change and independent evidence, not an unexplained parity
+exception. A useful memory path remains even if its timing is slower.
+
+### M10: scheduling in the shared Schur level kernels
+
+M8 gives the probe and full solve one level-accumulation kernel. M7's timers
+showed an 8-to-16-thread rise inside absorption, with unchanged route/iterations;
+its cause was not established. Diagnose task granularity, imbalance and memory
+traffic at that shared boundary before changing execution. Use balanced,
+skewed-degree, weighted and weak-cut designs at 1/2/4/8/16 threads and widths
+that exercise selected-column probes, narrow continuation and full solves.
+
+Test a bounded scheduling change: fixed groups of independent FE levels or a
+fixed grain within the existing iterator. Keep each level's member/RHS order
+and its scalar accumulation; the scheduling change must not alter the operator,
+certificate, stopping rules or numerical route. Choose the grain from comparative
+evidence across the suite, without N/thread/width selection fences. A workload
+with uneven level sizes is a required check: fewer tasks can worsen imbalance.
+Keep the existing residual-overlap path during this milestone; a second scheduling
+experiment should not obscure attribution of the first.
+
+Acceptance: a repeatable gain outside noise in the geometric mean of the declared
+representative suite, with no repeatable regression outside noise; exact parent
+scientific outputs and routes for arithmetic-preserving scheduling; independent
+weak-graph tests, thread repeatability and allocation/Break checks. Compare
+uninstrumented binaries and retain phase diagnostics separately. Only launch a
+whole-node SCC scaling campaign when the candidate merits larger-data/28-thread
+qualification. If the scheduling hypothesis is disproved, record M10 as a completed negative
+experiment with unchanged scheduling, and discuss a new bounded target; do not manufacture a speed milestone by adding
+a cell-specific route. M10 can proceed independently if M9 is blocked.
+
+### M11: common PPML memory inventory and storage contributions
+
+`ppml/memory.rs::estimate_route` is a 1,208-line calculation, evaluated for fast
+and low modes. It mixes immutable input/topology/row-ledger costs, storage-specific
+workspaces and phase-overlap peaks. Solver admission in `prepared_irls.rs` adds
+further owner/overlap accounting. Separate these responsibilities into a compact
+common component inventory, storage contributions and explicit phase lifetimes.
+The current estimator already has one source of formulas evaluated twice;
+sharing execution alone is insufficient. Compute genuinely common components
+once and clarify their owners/lifetimes; route-dependent capacities remain
+explicit. Consolidate a repeated formula only after identifying its owner and
+simultaneously live buffers. Reuse existing capacity estimators rather than
+introducing a second memory model.
+
+Preserve public memory options, telemetry fields, conservative bounds, preflight
+failure timing, solver admission and separation/rebase semantics. The largest
+risk is an omitted lifetime or double count, especially old/new prepared
+generations during separation and buffers that overlap strict certification,
+inference or saved-effect recovery. Optional reuse mechanisms must keep their
+existing admission order in this milestone. Changing memory policy or removing
+an optimization is a separate decision; do not use this refactor to introduce
+one memory mode or rewrite IRLS.
+
+Acceptance: explicit owners/lifetimes for every moved component; identical
+scalar inventory/peak/admission results on the existing dimension and overflow
+matrix; conservative bounds against isolated allocation audits; tight-budget
+failure before allocation; separation/rebase, explicit solvers, both bias modes,
+fast/low and final-publication fixtures; native scientific/repeat qualification.
+Require fewer repeated formulas and a materially simpler calculation after
+counting new component code. This is groundwork for later PPML orchestration
+cleanup, not a claim of faster IRLS. It can proceed independently of M9/M10.
+
+After these three, ordinary/categorical preparation, FE routing and PPML's
+large orchestration still require their own scoped work. Progress should be
+judged by the repeated decisions and stages removed, alongside measured
+correctness/performance, rather than by the milestone number alone.
+
+
+Each runtime task uses the existing full harness, long oracles, mapped witnesses,
+actual parent-next replay and native build/ABI checks. Final combined runtime
+must pass Linux CI/native replay, five-thread science/repeats and mapped licensed
+fixtures. Keep exact scientific fields and routes for these nonnumerical changes.
+Compare clean binaries with the existing smoke/scaling protocol and targeted
+changed-path checks. Preserve qualified predecessors and frozen legacy hashes.
+Count all new adapters/components in the complexity ratchet; no silent baseline
+refresh or growth exclusions. Stop after M11 and discuss measured outcomes and
+next priorities with Johannes, including the requested Astra max review.

@@ -1,8 +1,8 @@
 # Incremental refactoring — milestones
 
-Plan: [M0–M8](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Plan: [M0–M11](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M8.3 local row-access qualification; commit/push to main awaits approval after automatic review rejection.
+Current task: M9.1 QR boundary audit; M8 clean replay/timings and CI qualification run independently.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -35,7 +35,16 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 - [x] M8.1 Preparation-order audit; 34 parent timing groups plus existing-phase profile recorded.
 - [x] M8.2 Shared Schur preparation; full/long checks, 73 exact/scientific replay, native ABI and 6 Stata pass; core -36 lines overall.
-- [ ] M8.3 Paired timings, phase comparison, final CI and detailed M9–M11 proposals.
+- [ ] M8.3 Clean paired timings/phase comparison and final CI; M9–M11 scopes now authorized.
+
+- [ ] M9.1 Audit QR fallback, dense/scratch norm timing and rank/error boundaries.
+- [ ] M9.2 One factorization driver; delete duplicated rank progression and qualify.
+- [ ] M9.3 Clean parent comparison, changed-path timings and complexity evidence.
+- [ ] M10.1 Balanced/skewed/weighted/weak-cut scheduling diagnosis and bounded experiment.
+- [ ] M10.2 Ship only a broad measured gain, or record a negative result with current scheduling retained.
+- [ ] M11.1 PPML memory ownership/lifetime audit and exact inventory characterization.
+- [ ] M11.2 Common inventory/storage/phase assembly; mapped allocation and scientific qualification.
+- [ ] M11.3 Combined native/thread/Stata/CI evidence and independent Astra max assessment.
 
 ## Gates
 
@@ -44,6 +53,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] G-M2: shared classification, exact parent-next checks, independent science and performance/complexity evidence; CI 37118979350 passes.
 - [x] G-M3–M7: local/long checks, exact parent replay, five-thread science, 46 Stata and Linux CI 37121923471 pass; timings investigated.
 - [ ] G-M8: clean final replay/thread/fixture checks, paired timings, final Linux CI and proposals.
+- [ ] G-M9–M11: substantive consolidation or conclusive scheduling evidence, combined qualification and strategic review.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -54,8 +64,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No remaining M0–M7 blockers. M8 commit/push was rejected by automatic approval review; explicit user approval requested.
-Clean final artifact/CI remain pending. Local runtime/scientific work continues.
+No active authorization blocker: current request authorized follow-through and M8 correction d36c3f79 was committed/pushed.
+M8 clean final artifact/CI qualification remains pending; independent M9 work continues.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -111,3 +121,6 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M8.3 bd9e1aa8 — science/46 Stata pass; full-Schur init rises beyond phase noise; restore contiguous row access before final qualification.
 - 2026-10-03 M8.2b this commit — contiguous row view restored; full/30 oracle checks, exact 73 replay, Mac ABI and 6 Stata pass; narrow +3-line ratchet reason.
 - 2026-10-03 M8.3 local — row repair passes 73/five-thread replay, 46 Stata and 34 overlapping timing pairs; final clean/CI gate awaits main commit approval.
+
+- 2026-10-03 M8.3 d36c3f79 — corrected source committed/pushed; clean universal Mac/ABI pass; final timings, replay and CI qualification underway.
+- 2026-10-03 M9–M11 scope this commit — current request authorizes QR driver, bounded scheduling experiment and PPML memory simplification; Astra max review requested.
