@@ -1,0 +1,104 @@
+{
+  "schema": 1,
+  "milestone": "M18",
+  "implementation": "One LinearAdmission owner holds evolving plan, execution overlap, public admission and RHS width. It is consumed once to admit a LinearInstallation with mutually exclusive generic/coefficient projections. Initial budget publication still precedes owned FE topology allocation. Shared transactional solver increments and optional slope estimator handling replace repeated updates; installation preserves enable order and shared prepared-owner lifetime on refusal.",
+  "policy_preserved": [
+    "public/explicit admission and Auto-LSMR budget veto",
+    "profile, curve, centered storage, fast products, projection, geometry, certificate/coupling/joint, low checkpoint order",
+    "byte estimators, execution-overlap versus plan-peak distinction, allocation refusal and fatal-error order",
+    "parallel projection bytes failure remains fatal; low checkpoint plan mutation order preserved",
+    "canonical checkpoint and independent nonlinear curve remain supported"
+  ],
+  "complexity": {
+    "before": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1477,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 104524
+    },
+    "after": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1473,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 104749
+    },
+    "driver_lines_before": 2014,
+    "driver_lines_after": 1556,
+    "new_module_production_lines": 646,
+    "largest_new_function": 124,
+    "net_core_delta": 225,
+    "growth_reason": "Private state, generic method signatures and bounded installation helpers add lines. The ~500-line driver responsibility and repeated checked/error updates are retired; no additional numerical route or allocation."
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "exact_parent_replay": {
+      "schema": 1,
+      "next_sha256": "289b68ff5fbaed9c9f2c06dd538af4e98c50e9aab7dc1426ed01b989d3fd62c4",
+      "baseline_sha256": "cd9b9e7f054fb3ac1a6f724312343457cd6d54c62f0fb3e0077e52d85ca59b80",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "licensed_stata": [
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "status": "success"
+      }
+    ],
+    "inventory": {
+      "shapes": 312,
+      "route_fields": 71,
+      "admission_cases": 2808,
+      "exact": true,
+      "sha256": "49d77fd123c300b72410c19a795a401753bb0fa99eeaddaa0d8a2d943c9a6d89"
+    },
+    "test_ordering_failure": {
+      "attempt": "initial mapped set: contract process SIGBUS while selected plugin was copied concurrently; six other fixtures passed",
+      "attribution": "artifact replacement race inferred; no runtime repair",
+      "resolution": "same stable binary: isolated contract and all seven fixtures pass; no concurrent plugin replacement"
+    }
+  },
+  "qualification": {
+    "clean_native_timings": "pending",
+    "linux_ci": "pending"
+  }
+}

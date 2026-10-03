@@ -57,6 +57,9 @@ use super::{
     PpmlWorkspaceCapacityReport, PPML_STEADY_STATE_AUDIT_ITERATIONS,
 };
 
+mod admission;
+use admission::LinearAdmission;
+
 const MAX_RETAINED_ITERATION_REPORTS: usize = 256;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -1018,12 +1021,12 @@ pub(crate) fn explore_prepared_ppml_mu_interruptible<P: PreparedOlsFitView + Syn
 #[allow(clippy::too_many_arguments)]
 fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &P,
-    shared_prepared: Option<crate::prepared_fit_view::SharedPreparedOlsData>,
+    mut shared_prepared: Option<crate::prepared_fit_view::SharedPreparedOlsData>,
     outcome: &[f64],
     prior_weights: &[f64],
     offset: &[f64],
     mut config: PreparedPpmlIrlsConfig,
-    mut memory_plan: PpmlMemoryPlan,
+    memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
     purpose: PreparedPpmlIrlsPurpose,
     bias: Option<(super::PpmlBiasRequest, &[f64])>,
@@ -1054,42 +1057,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     // Route selection happened exactly once on generation zero, before any
     // separation detector workspace. The composite owner rebases only the
     // exact final dimensions into that conservative fit-lifetime plan.
-    config.linear.execution.mode = match memory_plan.selected {
-        PpmlMemoryRoute::Fast => PreparedOlsExecutionMode::Fast,
-        PpmlMemoryRoute::Low => PreparedOlsExecutionMode::Low,
-    };
-    config.linear.execution.poolsize = config.memory.poolsize;
-    let solver_rhs = memory_plan
-        .dimensions
-        .finite_columns
-        .checked_add(1)
-        .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
-    let mut solver_admission =
-        public_solver_memory_admission(prepared, memory_plan, &config, solver_rhs, purpose)?;
-    // A modeled budget veto precedes any specialized solver construction.
-    // It is selection, not recovery from allocation or numerical failure.
-    if config.solver_plan.requested == super::PpmlSolverFamily::Auto
-        && config.solver_plan.selected == super::PpmlSolverFamily::Lsmr
-        && memory_plan.usable_bytes.is_some_and(|usable| {
-            solver_admission.incremental_bytes
-                > usable.saturating_sub(memory_plan.selected_inventory().peak_bytes)
-        })
-    {
-        config.solver_plan.selected = super::PpmlSolverFamily::Map;
-        solver_admission = PublicSolverMemoryAdmission::default();
-    }
-    memory_plan = memory_plan.with_solver_workspace(solver_admission.incremental_bytes)?;
-    let mut solver_execution_bytes = memory_plan
-        .selected_inventory()
-        .peak_bytes
-        .checked_add(solver_admission.owned_fe_design_shortfall_bytes)
-        .ok_or_else(|| allocation("PPML FE solver execution memory overflows"))?;
-    let solver_memory_budget = FeSolverMemoryBudget {
-        execution_bytes: solver_execution_bytes,
-        usable_bytes: memory_plan.usable_bytes.unwrap_or(u128::MAX),
-    };
-    config.ppml.absorb.solver_memory_budget = Some(solver_memory_budget);
-    config.linear.absorb.solver_memory_budget = Some(solver_memory_budget);
+    let admission = LinearAdmission::new_public(prepared, memory_plan, &mut config, purpose)?;
     // The route and its complete fit-lifetime budget are admitted before this
     // observation-scale owned copy of the already-finalized FE topology.
     let fe_design = prepared.fit_owned_fe_design()?;
@@ -1101,386 +1069,15 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .map(std::num::NonZeroUsize::get)
         .unwrap_or(0);
     let effective_threads = config.linear.execution.threads.resolved();
-    // An allocation audit additionally admits a cold equivalence engine whose
-    // lifetime is outside the measured iteration window.
-    let one_fe_profile_admitted = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-        && config.solver_plan.selected == super::PpmlSolverFamily::Map
-        && prepared.fit_has_one_ordinary_intercept_effect()
-        && fe_design.effects().len() == 1
-        && fe_design.effects()[0].has_intercept()
-        && fe_design.effects()[0].slopes().is_empty()
-    {
-        let profile_bytes = ProfiledOneFe::bytes(
-            fe_design.nobs(),
-            prepared.fit_model().columns.len(),
-            fe_design.effects()[0].n_levels(),
-        )
-        .ok()
-        .and_then(|bytes| {
-            if config.allocation_snapshot_probe.is_some() {
-                ProfiledOneFe::audit_bytes(
-                    fe_design.nobs(),
-                    prepared.fit_model().columns.len(),
-                    fe_design.effects()[0].n_levels(),
-                )
-                .ok()
-                .and_then(|audit| bytes.checked_add(audit))
-            } else {
-                Some(bytes)
-            }
-        })
-        .and_then(|bytes| {
-            memory_plan
-                .solver_workspace_bytes
-                .checked_add(bytes)
-                .map(|total| (bytes, total))
-        });
-        match profile_bytes {
-            Some((bytes, total)) => match memory_plan.with_solver_workspace(total) {
-                Ok(plan) => {
-                    solver_execution_bytes = solver_execution_bytes
-                        .checked_add(bytes)
-                        .ok_or_else(|| allocation("one-FE profile workspace size overflows"))?;
-                    memory_plan = plan;
-                    true
-                }
-                Err(error) if error.code == ErrorCode::Allocation => false,
-                Err(error) => return Err(error),
-            },
-            None => false,
-        }
-    } else {
-        false
-    };
-    // Prior-weight group totals belong to this immutable prepared sample.
-    // Charge their complete lifetime beside the existing solver and checkpoints.
-    let profiled_curve_admitted = if profile_curve_enabled()
-        && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-        && ProfiledInterceptCurve::selected_effect(&fe_design).is_some()
-    {
-        let effect =
-            &fe_design.effects()[ProfiledInterceptCurve::selected_effect(&fe_design).unwrap()];
-        let bytes = ProfiledInterceptCurve::bytes(
-            fe_design.nobs(),
-            prepared.fit_model().columns.len(),
-            effect.n_levels(),
-            effect.slopes().len(),
-        );
-        match memory_plan
-            .solver_workspace_bytes
-            .checked_add(bytes)
-            .map(|total| memory_plan.with_solver_workspace(total))
-        {
-            Some(Ok(plan)) => {
-                solver_execution_bytes = solver_execution_bytes
-                    .checked_add(bytes)
-                    .ok_or_else(|| allocation("profile curve size overflows"))?;
-                memory_plan = plan;
-                true
-            }
-            Some(Err(error)) if error.code != ErrorCode::Allocation => return Err(error),
-            _ => false,
-        }
-    } else {
-        false
-    };
-    // Low mode retains group centers; fast mode uses the same certified
-    // construction, then writes the result once into its retained dense bank.
-    // Admit the extra geometry without crediting the replaced projector.
-    let group_centered_one_fe_admitted = if one_fe_profile_admitted && shared_prepared.is_some() {
-        let bytes = crate::ols::ImplicitCenteredDesign::bytes(
-            fe_design.effects()[0].n_levels(),
-            prepared.fit_model().columns.len(),
-            effective_threads,
-        )
-        .ok()
-        .and_then(|bytes| {
-            memory_plan
-                .solver_workspace_bytes
-                .checked_add(bytes)
-                .map(|total| (bytes, total))
-        });
-        match bytes {
-            Some((bytes, total)) => match memory_plan.with_solver_workspace(total) {
-                Ok(plan) => {
-                    solver_execution_bytes = solver_execution_bytes
-                        .checked_add(bytes)
-                        .ok_or_else(|| allocation("implicit one-FE workspace size overflows"))?;
-                    memory_plan = plan;
-                    true
-                }
-                Err(error) if error.code == ErrorCode::Allocation => false,
-                Err(error) => return Err(error),
-            },
-            None => false,
-        }
-    } else {
-        false
-    };
-    // Fast canonical construction reuses the same direct-product engine as
-    // low execution, but its transient banks are additional to the dense
-    // retained design. Do not borrow slack from the existing projector.
-    let fast_canonical_products_allowance =
-        if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-            && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
-            && config.linear.absorb.solver == FeSolverKind::Map
-            && matches!(fe_design.effects().len(), 2 | 3)
-            && fe_design
-                .effects()
-                .iter()
-                .all(|e| e.has_intercept() && e.slopes().is_empty())
-        {
-            let pool = config
-                .linear
-                .execution
-                .poolsize
-                .max(1)
-                .min(memory_plan.dimensions.finite_columns.max(1));
-            let bytes = (fe_design.nobs() as u128)
-                .checked_mul(pool as u128)
-                .and_then(|n| n.checked_mul(16))
-                .filter(|&allowance| {
-                    fe_design.effects().len() == 2
-                        || crate::ols::canonical_three_workspace_bytes(
-                            fe_design.nobs(),
-                            memory_plan.dimensions.finite_columns.saturating_add(1),
-                            std::array::from_fn(|e| fe_design.effects()[e].n_levels()),
-                            effective_threads,
-                        )
-                        .is_some_and(|bytes| bytes <= allowance)
-                });
-            match bytes.and_then(|bytes| {
-                memory_plan
-                    .solver_workspace_bytes
-                    .checked_add(bytes)
-                    .map(|total| (bytes, memory_plan.with_solver_workspace(total)))
-            }) {
-                Some((bytes, Ok(plan))) => {
-                    solver_execution_bytes = solver_execution_bytes
-                        .checked_add(bytes)
-                        .ok_or_else(|| allocation("fast canonical product workspace overflows"))?;
-                    memory_plan = plan;
-                    bytes
-                }
-                Some((_, Err(error))) if error.code != ErrorCode::Allocation => return Err(error),
-                _ => 0,
-            }
-        } else {
-            0
-        };
-    let projection_rhs = match config.linear.execution.mode {
-        PreparedOlsExecutionMode::Fast => solver_rhs,
-        PreparedOlsExecutionMode::Low => config
-            .memory
-            .poolsize
-            .max(1)
-            .min(memory_plan.dimensions.finite_columns.max(1)),
-    };
-    let categorical_checkpoints = config.linear.execution.mode == PreparedOlsExecutionMode::Low
-        && matches!(fe_design.effects().len(), 2 | 3)
-        && fe_design
-            .effects()
-            .iter()
-            .all(|e| e.has_intercept() && e.slopes().is_empty());
-    let coefficient_solver = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-        && config.solver_plan.selected == super::PpmlSolverFamily::Map
-        && fe_design.effects().len() > 1
-        && (fe_design
-            .effects()
-            .iter()
-            .any(|effect| !effect.slopes().is_empty())
-            || ((config.linear.execution.mode == PreparedOlsExecutionMode::Low
-                    // The categorical checkpoint/LSMR engines cover at most
-                    // three partitions. Higher-dimensional fast fits otherwise
-                    // repeat generic observation-space projection for every RHS.
-                    || fe_design.effects().len() > 3)
-                && solver_rhs > 1
-                && fe_design
-                    .effects()
-                    .iter()
-                    .all(|effect| effect.has_intercept())))
-    {
-        let mut candidate = memory_plan;
-        match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(&fe_design).and_then(
-            |geometry| {
-                crate::fe::ReusableMapAbsorber::coefficient_solver_bytes(
-                    &fe_design,
-                    projection_rhs,
-                    effective_threads,
-                )
-                .and_then(|workspace| {
-                    let checkpoint = if categorical_checkpoints {
-                        crate::fe::ReusableCategoricalMapAbsorber::coexisting_owner_bytes(
-                            fe_design.effects().len(),
-                            projection_rhs,
-                        )?
-                    } else {
-                        0
-                    };
-                    Ok((
-                        geometry,
-                        workspace + 8 * fe_design.nobs() as u128 + checkpoint,
-                    ))
-                })
-            },
-        ) {
-            Ok((geometry, workspace))
-                if candidate.admit_reusable_certificate(geometry)
-                    && candidate.admit_reusable_slope(workspace) =>
-            {
-                memory_plan = candidate;
-                true
-            }
-            Ok(_) => false,
-            Err(error) if error.code == ErrorCode::Allocation => false,
-            Err(error) => return Err(error),
-        }
-    } else {
-        false
-    };
-    // Mu exploration has a separate parent separation-phase envelope.
-    let projection_plan = if !coefficient_solver
-        && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-        && config.solver_plan.selected == super::PpmlSolverFamily::Map
-    {
-        match crate::fe::ParallelProjectionPlan::for_design_and_threads(
+    let (memory_plan, solver_admission, solver_memory_budget, installation) = admission
+        .admit_installation(
+            prepared,
             &fe_design,
-            projection_rhs,
+            &mut config,
+            purpose,
             effective_threads,
-        ) {
-            Ok(Some(plan)) if memory_plan.admit_reusable_projection(plan.bytes()?) => Some(plan),
-            Ok(_) => None,
-            Err(error) if error.code == ErrorCode::Allocation => None,
-            Err(error) => return Err(error),
-        }
-    } else {
-        None
-    };
-    let certificate_geometry = if coefficient_solver {
-        true
-    } else if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-        && config.solver_plan.selected == super::PpmlSolverFamily::Map
-        && fe_design.effects().len() > 1
-        && fe_design
-            .effects()
-            .iter()
-            .any(|effect| !effect.slopes().is_empty())
-    {
-        match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(&fe_design) {
-            Ok(bytes) => memory_plan.admit_reusable_certificate(bytes),
-            Err(error) if error.code == ErrorCode::Allocation => false,
-            Err(error) => return Err(error),
-        }
-    } else {
-        false
-    };
-    // Certificate scheduling is optional even after the slope solver fits.
-    // A tight budget must retain that solver with its serial fresh check.
-    let slope_certificate = if coefficient_solver {
-        match crate::fe::ReusableMapAbsorber::coefficient_certificate_bytes(
-            &fe_design,
-            projection_rhs,
-        ) {
-            Ok(bytes) => memory_plan
-                .reusable_slope_bytes
-                .checked_add(bytes)
-                .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
-            Err(error) if error.code == ErrorCode::Allocation => false,
-            Err(error) => return Err(error),
-        }
-    } else {
-        false
-    };
-    // Prepared operators are independently optional after the numerical solver
-    // and its certificate bank. Refusal cannot evict either admitted mechanism.
-    let slope_coupling = if coefficient_solver {
-        match crate::fe::ReusableMapAbsorber::coefficient_coupling_bytes(&fe_design, projection_rhs)
-        {
-            Ok(Some(bytes)) => memory_plan
-                .reusable_slope_bytes
-                .checked_add(bytes)
-                .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
-            Ok(None) => false,
-            Err(error) if error.code == ErrorCode::Allocation => false,
-            Err(error) => return Err(error),
-        }
-    } else {
-        false
-    };
-    let joint_slopes = if coefficient_solver && solver_rhs > 1 {
-        match crate::fe::ReusableMapAbsorber::joint_slope_bytes(&fe_design, solver_rhs - 1) {
-            Ok(bytes) => memory_plan
-                .reusable_slope_bytes
-                .checked_add(bytes)
-                .is_some_and(|total| memory_plan.admit_reusable_slope(total)),
-            Err(error) if error.code == ErrorCode::Allocation => false,
-            Err(error) => return Err(error),
-        }
-    } else {
-        false
-    };
-    // Canonical low-memory projections operate on one response or pool-bounded
-    // control tile. Admit the existing independent checkpoint solver at that
-    // width while retaining the ordinary joint owner and its full budget.
-    // Two effects already use level-space Schur/PCG; the measured avoidable
-    // observation-space CG cost belongs to three-effect canonical construction.
-    let low_checkpoint_lsmr =
-        if coefficient_solver && categorical_checkpoints && fe_design.effects().len() == 3 {
-            let mut level_storage = [0; 3];
-            for (slot, effect) in level_storage.iter_mut().zip(fe_design.effects()) {
-                *slot = effect.n_levels();
-            }
-            let levels = &level_storage[..fe_design.effects().len()];
-            match estimate_checkpoint_lsmr_workspace_bytes(
-                fe_design.nobs(),
-                projection_rhs,
-                levels,
-                effective_threads,
-            )
-            .and_then(|bytes| {
-                // Scaling overlaps the LSMR frame: N weights, component labels
-                // and maxima. Topology construction uses <32 bytes/level plus
-                // <512 bytes of descriptors for these three effects.
-                let component_bytes = 8 * fe_design.nobs() as u128
-                    + 32 * levels.iter().map(|&n| n as u128).sum::<u128>()
-                    + 512;
-                let bytes = bytes
-                    .checked_add(component_bytes)
-                    .ok_or_else(|| allocation("component checkpoint workspace overflows"))?;
-                memory_plan
-                    .solver_workspace_bytes
-                    .checked_add(bytes)
-                    .ok_or_else(|| allocation("low PPML checkpoint workspace overflows"))
-                    .and_then(|total| {
-                        memory_plan
-                            .with_solver_workspace(total)
-                            .map(|plan| (plan, bytes))
-                    })
-            }) {
-                Ok((plan, bytes)) => {
-                    memory_plan = plan;
-                    solver_execution_bytes = solver_execution_bytes
-                        .checked_add(bytes)
-                        .ok_or_else(|| allocation("low PPML checkpoint overlap overflows"))?;
-                    true
-                }
-                Err(error) if error.code == ErrorCode::Allocation => false,
-                Err(error) => return Err(error),
-            }
-        } else {
-            false
-        };
-    // The retained bank cannot consume slack promised to another solver call.
-    let solver_memory_budget = FeSolverMemoryBudget {
-        execution_bytes: solver_execution_bytes
-            .checked_add(memory_plan.reusable_projection_bytes)
-            .and_then(|n| n.checked_add(memory_plan.reusable_certificate_bytes))
-            .and_then(|n| n.checked_add(memory_plan.reusable_slope_bytes))
-            .ok_or_else(|| allocation("PPML projection execution memory overflows"))?,
-        ..solver_memory_budget
-    };
-    config.ppml.absorb.solver_memory_budget = Some(solver_memory_budget);
-    config.linear.absorb.solver_memory_budget = Some(solver_memory_budget);
+            shared_prepared.is_some(),
+        )?;
     let mut memory = PpmlMemoryTelemetry::new(memory_plan, requested_threads, effective_threads)?;
     if config.solver_plan.selected == super::PpmlSolverFamily::Cmg {
         memory.expected_solver_workspace_peak =
@@ -1525,67 +1122,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         BorrowedMapWeights::Provided(workspace.hessian_weights()),
         ppml_bread_weight_scale(workspace.hessian_weights())?,
     )?;
-    // The joint engine owns the FE design once. Admitted categorical sessions
-    // also retain their borrowed canonical checkpoint projector; ordinary
-    // directions and canonical rank/bread construction have distinct duties.
-    let mut session = if coefficient_solver {
-        CertifiedLinearSession::new_with_fe_design(
-            prepared,
-            frame,
-            initial_config,
-            LinearSessionGenerations::new(1, 1, 1, 1, 1),
-            fe_design,
-        )?
-    } else {
-        CertifiedLinearSession::new_with_ppml_fe_design(
-            prepared,
-            frame,
-            initial_config,
-            LinearSessionGenerations::new(1, 1, 1, 1, 1),
-            fe_design,
-        )?
-    };
-    if group_centered_one_fe_admitted {
-        session.enable_group_centered_one_fe(
-            shared_prepared.ok_or_else(|| invalid_argument("implicit prepared owner is absent"))?,
-        )?;
-    }
-    if fast_canonical_products_allowance > 0 {
-        session.enable_fast_canonical_products(fast_canonical_products_allowance)?;
-    }
-    if let Some(plan) = projection_plan {
-        session.enable_ppml_parallel_projection(plan)?;
-    }
-    if certificate_geometry {
-        session.enable_ppml_certificate_geometry()?;
-    }
-    if coefficient_solver {
-        session.enable_ppml_coefficient_solver(
-            effective_threads,
-            slope_certificate,
-            slope_coupling,
-        )?;
-    }
-    if joint_slopes {
-        session.enable_ppml_joint_slopes()?;
-    }
-    session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
-    let initial_checkpoint_lsmr = low_checkpoint_lsmr
-        || use_initial_checkpoint_lsmr_accelerator(
-            &config,
-            purpose,
-            session.fe_design().nobs(),
-            session.fe_design().effects().len(),
-        );
-    if initial_checkpoint_lsmr {
-        // This changes only how the untouched full-width frame is projected.
-        // The canonical session still makes the first rank/status decision
-        // and independently certifies every downstream linear product.
-        session.enable_checkpoint_lsmr();
-        if low_checkpoint_lsmr {
-            session.enable_component_checkpoint_scaling();
-        }
-    }
+    let (mut session, profiles, initial_checkpoint_lsmr) = installation.install(
+        prepared,
+        frame,
+        initial_config,
+        fe_design,
+        &mut shared_prepared,
+        &config,
+        purpose,
+        effective_threads,
+    )?;
     let mut joint_lsmr = None;
     let mut joint_lsmr_engine = None;
     let mut profiled_one_fe: Option<ProfiledOneFe> = None;
@@ -1778,22 +1324,21 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 &output,
                 workspace.candidate_coefficients_mut(),
             )?;
-            let specialized_columns = (selected_engine != PpmlSolverEngine::Map
-                || one_fe_profile_admitted
-                || profiled_curve_admitted)
-                .then(|| {
-                    fallible_copy(
-                        output.fit().kept_generated_columns(),
-                        "unable to reserve PPML specialized active-column identity",
-                    )
-                })
-                .transpose()?;
+            let specialized_columns =
+                (selected_engine != PpmlSolverEngine::Map || profiles.one_fe || profiles.curve)
+                    .then(|| {
+                        fallible_copy(
+                            output.fit().kept_generated_columns(),
+                            "unable to reserve PPML specialized active-column identity",
+                        )
+                    })
+                    .transpose()?;
             let result = (
                 output.fit().finite_rank(),
                 output.reuse_report(),
                 output.fit().absorption_report().used_solver,
             );
-            if one_fe_profile_admitted {
+            if profiles.one_fe {
                 match ProfiledOneFe::new(
                     prepared,
                     specialized_columns.as_deref().expect("profile basis"),
@@ -1811,7 +1356,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     Err(error) => return Err(error),
                 }
             }
-            if profiled_curve_admitted {
+            if profiles.curve {
                 match ProfiledInterceptCurve::new(
                     prepared,
                     specialized_columns.as_deref().expect("curve basis"),
