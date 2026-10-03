@@ -1,0 +1,72 @@
+name: Freeze legacy comparator
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: legacy-comparator-v1
+  cancel-in-progress: false
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    container: quay.io/pypa/manylinux_2_28_x86_64
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Fetch the immutable source tag
+        run: git fetch --depth=1 origin tag legacy-comparator-v1
+      - name: Build pinned Linux comparator and exercise its ABI
+        shell: bash
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --profile minimal --default-toolchain 1.85.1
+          export PATH="$HOME/.cargo/bin:$PATH"
+          python3 scripts/legacy_comparator.py build --platform linux --directory native-artifacts/legacy-linux
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: comparator-linux
+          path: native-artifacts/legacy-linux/
+          if-no-files-found: error
+
+  windows:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - name: Fetch the immutable source tag
+        run: git fetch --depth=1 origin tag legacy-comparator-v1
+      - uses: dtolnay/rust-toolchain@85c23e28f7ccc75a9a153d45d385d94a85464876
+        with:
+          targets: x86_64-pc-windows-msvc
+      - uses: ilammy/msvc-dev-cmd@0b201ec74fa43914dc39ae48a89fd1d8cb592756
+        with:
+          arch: x64
+      - name: Build pinned Windows comparator and exercise its ABI
+        run: python scripts/legacy_comparator.py build --platform windows --directory native-artifacts/legacy-windows
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: comparator-windows
+          path: native-artifacts/legacy-windows/
+          if-no-files-found: error
+
+  store:
+    needs: [linux, windows]
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803
+      - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131
+        with:
+          pattern: comparator-*
+          path: native-artifacts/collected
+          merge-multiple: true
+      - name: Store canonical candidates without replacing assets or publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          python3 scripts/legacy_comparator.py register --platform linux --directory native-artifacts/collected
+          python3 scripts/legacy_comparator.py register --platform windows --directory native-artifacts/collected
+          gh release view legacy-comparator-v1 --json isDraft --jq '.isDraft' | grep -qx true
+          gh release upload legacy-comparator-v1 native-artifacts/collected/*

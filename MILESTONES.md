@@ -1,14 +1,16 @@
 # Incremental refactoring — milestones
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
-Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag/assets pending M0.2.
-Current task: M0.2 comparator source pin and canonical builds.
+Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac canonical asset qualified; Linux/Windows pending.
+Current task: M0.2b hosted canonical artifacts; M0.3 is independent after the verified source pin.
 Current runtime: working legacy implementation; next selection/default lands in M1.1.
 
 ## Tasks and prerequisites
 
 - [x] M0.1 Governance, ADR dispositions, resolved covariance decision and new ledger.
-- [ ] M0.2 Freeze/tag complete baseline; qualify/store canonical platform assets. Depends on M0.1.
+- [~] M0.2 Freeze/tag complete baseline; Mac build and 34 Stata fixtures pass; Linux/Windows pending.
+- [x] M0.2a Immutable tag, build/fetch/registration tooling and platform factory.
+- [ ] M0.2b Hosted Linux/Windows assets, canonical registration and verified storage.
 - [ ] M0.3 Move working core/testkit; remove abandoned rewrite. Depends on M0.2 source pin, not pending platform builds.
 - [ ] M0.4 Real OLS/PPML replay, exact-copy/scientific checks, bounded feature matrix and Linux CI. Depends on M0.3 and comparator assets.
 - [ ] M0.5 Complexity ratchet and instrumented coverage baseline. Inventory can proceed after M0.3; replay coverage needs M0.4.
@@ -39,4 +41,5 @@ None established. Platform artifact/hosted prerequisites remain unverified, not 
 
 ## Log
 
-- 2026-10-02 M0.1 this commit — governance reset; fmt/Clippy, 1906 workspace, 173 doc/FFI, 9 isolated working audits, size/mock/static pass; rewrite-only audits retired.
+- 2026-10-02 M0.1 6643939b — governance reset; fmt/Clippy, 1906 workspace, 173 doc/FFI, 9 isolated working audits, size/mock/static pass; rewrite-only audits retired.
+- 2026-10-02 M0.2a this commit — tag 15a57ba2; Mac 80329f51 ABI/native audit and 34/34 Stata pass; 5 identity tests pass; hosted platforms pending.
