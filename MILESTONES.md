@@ -1,8 +1,8 @@
 # Incremental refactoring — milestones
 
-Plan: [M0–M2](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Plan: [M0–M7](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: none; M0–M2 complete. Proposed M3 is for discussion, not authorized implementation.
+Current task: M3 shared OLS completion; M3–M7 authorized on 2026-10-03.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -26,6 +26,12 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M2.1 Boundary regression passes on parent; 34 fresh timing groups recorded with qualified parent Mac binary.
 - [x] M2.2 Shared classification; full/long tests, exact parent replay, five-thread science/repeats, native ABI and 3 Stata fixtures pass.
 - [x] M2.3 All 34 timing ranges overlap; 214 coefficient/sample pairs exact; complexity lowered; M3 proposal documented for discussion.
+
+- [ ] M3 Shared OLS completion across six host branches, qualification and deletion.
+- [ ] M4 Shared fast/low QR solve and finalization, qualification and deletion.
+- [ ] M5 Shared robust/clustered Wald calculation, qualification and deletion.
+- [ ] M6 Shared categorical DoF consumption, qualification and deletion.
+- [ ] M7 Scaling diagnosis, combined qualification and next-step discussion.
 
 ## Gates
 
@@ -85,3 +91,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M2.2 this commit — one classifier; core -3 lines, QR functions 497/486 to 455/448; full/30 long oracles, 73 exact/five-thread science, 3 Stata pass.
 - 2026-10-03 M2.3 7b1bae2b — clean Mac ABI/73 replay pass; 34 timing ranges overlap, 214 pairs exact; CI 37118979350 full/Linux replay pass.
 - 2026-10-03 G-M2 this commit — checks and compact [evidence](bench/history/2026-10-03-m2-classification.json) complete; M3 completion-path proposal remains unimplemented.
+- 2026-10-03 M3.0 this commit — next five milestones scoped; M2 remains the qualified comparison; no solver-policy or legacy changes authorized.

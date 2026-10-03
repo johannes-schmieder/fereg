@@ -210,3 +210,44 @@ follow-up. Bind evidence to actual binary, source and frontend identities.
 Retain current package/ABI contracts; reuse installation/platform evidence where
 unchanged. Record compact evidence and discuss the next milestone with Johannes.
 Do not implement M3. The existing blocker timebox applies.
+
+
+## M3–M7: authorized incremental follow-through
+
+Johannes authorized the next five milestones on 2026-10-03. This supersedes
+M2's stop instruction. These are incremental milestones, not the abandoned
+rebuild's similarly numbered tasks; frozen legacy remains available.
+
+- **M3 — OLS completion:** replace six repeated post-fit sequences with one
+  completion boundary using existing borrowed result views. Preserve output
+  normalization, allocation admission, diagnostics and failure transactions.
+- **M4 — QR completion:** share the fast/low triangular solve, coefficient/status
+  finalization and matching rank decisions. Keep storage access and allocations
+  at their existing boundaries; preserve arithmetic and error precedence.
+- **M5 — Wald calculation:** consolidate robust/clustered finite-coefficient
+  Wald work where the algebra and rank policy agree. Keep estimator-specific
+  covariance construction, PSD policy and independently checked certificates.
+- **M6 — categorical DoF:** consolidate repeated deferred categorical DoF input
+  consumption and report construction using the existing inference view. Keep
+  ordinary/categorical mathematics, cluster nesting and error timing intact.
+- **M7 — scaling diagnosis and combined qualification:** use existing phase
+  timers on one reproducible OLS scaling slowdown; separate startup, frontend,
+  absorption and finite-fit costs. Record bounded evidence and the justified
+  next change. Do not invent a repair where attribution is inconclusive or
+  change solver policy without a scoped decision. Complete combined scientific,
+  transaction, thread and performance checks and refresh the architecture map.
+
+Each code milestone must delete its superseded implementation, reduce net
+production complexity, and pass the full local harness plus mapped witnesses.
+Use actual-plugin parent-next replay at one thread for nonnumerical changes;
+keep exact scientific fields and available routes, without new exceptions.
+Run long oracles for core changes. Preserve each qualified native predecessor.
+Independent milestones may proceed while hosted CI runs; a failed gate blocks
+its dependents. The final runtime must pass full Linux CI/native replay.
+
+Reuse existing tests/benchmarks; add only demonstrated coverage gaps. Run the
+five-thread matrix and licensed output/transaction fixtures on the combined
+candidate. Compare clean final and M2 binaries with the existing smoke/scaling
+protocol; investigate differences outside observed noise. No new framework,
+platform/package contract, scientific tolerance or legacy mutation is in scope.
+The existing blocker timebox applies. Stop after M7 and discuss next steps.
