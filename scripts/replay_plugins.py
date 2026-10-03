@@ -158,6 +158,41 @@ def run_case(harness: Path, binary: Path, case: Path, output: Path) -> dict:
     return json.loads(output.read_text())
 
 
+def discrete_view(result: dict, expected: dict) -> dict:
+    dof = result['matrices']['RDOF']['bits']
+    # PPML's DoF table consists entirely of counts/flags. OLS interleaves
+    # presence flags and values; raw weight sums and correction factors float.
+    rows = [i for i in range(20) if i not in {4, 11}]
+    dof = dof if expected['poisson'] else [dof[2*i+1] for i in rows]
+    return {'status': result['matrices']['RSTATUS'], 'dof': dof,
+            **{key: result['columns'][expected['outputs'][key]]
+               for key in ['sample', 'drop_reason']}}
+
+
+def check_threads(args, case: Path, expected: dict, one_thread: dict) -> list[dict]:
+    records = []
+    contents = case.read_text()
+    needle = '9\nthreads=1\n'
+    if contents.count(needle) != 1:
+        raise RuntimeError('thread comparison requires one length-framed threads=1 argument')
+    for threads in args.thread_counts:
+        argument = f'threads={threads}'
+        modified = args.output / f'{case.stem}-threads-{threads}.case'
+        modified.write_text(contents.replace(needle, f'{len(argument)}\n{argument}\n'))
+        output = args.output / f'{case.stem}-threads-{threads}.json'
+        candidate = run_case(args.harness, args.next.resolve(), modified, output)
+        repeated = run_case(args.harness, args.next.resolve(), modified,
+                            args.output / f'{case.stem}-threads-{threads}-repeat.json')
+        science = scientific_errors(candidate, expected)
+        repeat = differences(exact_view(candidate, expected['poisson']),
+                             exact_view(repeated, expected['poisson']))
+        discrete = differences(discrete_view(candidate, expected), discrete_view(one_thread, expected))
+        records.append({'threads': threads, 'input_sha256': digest(modified),
+                        'science_errors': science, 'repeat_differences': repeat,
+                        'discrete_differences': discrete})
+    return records
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--next', type=Path, required=True)
@@ -167,7 +202,11 @@ def main() -> int:
     parser.add_argument('--harness', type=Path, default=ROOT / 'target/actual-plugin-harness/actual_plugin_loader_test')
     parser.add_argument('--baseline-fixes', default='', help='comma-separated accepted fixes in the identified parent; empty means frozen legacy')
     parser.add_argument('--policy', type=Path, default=ROOT / 'tests/replay/intentional_changes.json')
+    parser.add_argument('--thread-counts', type=int, nargs='*', default=[],
+                        help='additional native thread counts: dense science, discrete stability and fixed-thread repeats')
     args = parser.parse_args()
+    if len(set(args.thread_counts)) != len(args.thread_counts) or any(t < 2 or t > 1024 for t in args.thread_counts):
+        parser.error('thread counts must be unique integers from 2 through 1024')
     policy = json.loads(args.policy.read_text())
     candidate_fixes = set(policy['active'])
     baseline_fixes = set(filter(None, args.baseline_fixes.split(',')))
@@ -199,6 +238,7 @@ def main() -> int:
         baseline_science = scientific_errors(baseline, expected_for_fixes(expected, baseline_fixes))
         record = {'case': case.stem, 'input_sha256': digest(case), 'exact_differences': changed,
                   'science_errors': science, 'known_defect': candidate_expected.get('known_defect'), 'repaired_defect': candidate_expected.get('repaired_defect'), 'intentional_differences': intentional, 'baseline_science_errors': baseline_science, 'return_code': candidate['return_code']}
+        record['thread_checks'] = check_threads(args, case, candidate_expected, candidate) if args.thread_counts else []
         records.append(record)
         print(f"{case.stem}: rc={candidate['return_code']} exact={len(changed)} science={science} repair={candidate_expected.get('repaired_defect')} intentional={len(intentional)} baseline_science={baseline_science}")
         if changed:
@@ -206,7 +246,7 @@ def main() -> int:
     summary = {'schema': 1, 'next_sha256': digest(args.next), 'baseline_sha256': digest(args.baseline),
                'known_defect_cases': sum(bool(r['known_defect']) for r in records),
                'scientific_pass_cases': sum(not r['known_defect'] and not r['science_errors'] for r in records),
-               'candidate_fixes': sorted(candidate_fixes), 'baseline_fixes': sorted(baseline_fixes), 'policy_sha256': digest(args.policy), 'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] and not r['baseline_science_errors'] for r in records)}
+               'candidate_fixes': sorted(candidate_fixes), 'baseline_fixes': sorted(baseline_fixes), 'policy_sha256': digest(args.policy), 'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] and not r['baseline_science_errors'] and all(not t['science_errors'] and not t['repeat_differences'] and not t['discrete_differences'] for t in r['thread_checks']) for r in records)}
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     return 0 if summary['passed'] else 1
 

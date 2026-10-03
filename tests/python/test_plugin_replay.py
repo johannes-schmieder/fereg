@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import unittest
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
-from replay_plugins import allowed_difference, differences, exact_view, expected_for_fixes
+from replay_plugins import allowed_difference, differences, discrete_view, exact_view, expected_for_fixes
 from replay_psd import eigensystem
 
 
@@ -49,6 +49,23 @@ class ReplayChecks(unittest.TestCase):
         self.assertEqual(repaired['beta'], old['beta'])
         self.assertNotIn('known_defect', repaired)
         self.assertEqual(old['return_code'], 498)
+
+    def test_thread_checks_keep_discrete_decisions_without_requiring_float_bits(self):
+        base = self.fixture()
+        base['matrices']['RDOF'] = {'bits': ['0000000000000000'] * 40}
+        base['matrices']['RSTATUS'] = {'bits': ['0000000000000000'] * 4}
+        base['columns'].append(['0000000000000000'])
+        expected = {'poisson': False, 'outputs': {'sample': 0, 'drop_reason': 1}}
+        changed = copy.deepcopy(base)
+        changed['matrices']['RB']['bits'][0] = '3ff0000000000001'
+        changed['matrices']['RDOF']['bits'][9] = '3ff0000000000001'
+        self.assertEqual(discrete_view(base, expected), discrete_view(changed, expected))
+        for table, index in [('RDOF', 19), ('RSTATUS', 1)]:
+            bad = copy.deepcopy(changed)
+            bad['matrices'][table]['bits'][index] = '3ff0000000000000'
+            self.assertNotEqual(discrete_view(base, expected), discrete_view(bad, expected))
+        changed['columns'][1][0] = '3ff0000000000000'
+        self.assertNotEqual(discrete_view(base, expected), discrete_view(changed, expected))
 
     def test_independent_psd_target_has_analytic_spectrum(self):
         values, fixed = eigensystem([[1., 2., 0.], [2., 1., 0.], [0., 0., 4.]])

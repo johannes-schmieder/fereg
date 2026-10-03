@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M1.3 bounded feature/scientific/transaction qualification; all four M1.2 repairs pass locally.
+Current task: M1.4 bundled installation and platform qualification; M1.3 local bounded checks pass.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -19,7 +19,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M1.2b Full-matrix covariance repair; independent PSD and exact unaffected replay pass.
 - [x] M1.2c Slope-DoF validation repaired; independent rank, malformed-report rejection and exact unaffected replay pass.
 - [x] M1.2d Frequency-retained singleton fix; dense fit and public fast/low pruning/retention checks pass.
-- [ ] M1.3 Bounded mapped feature/scientific/transaction qualification. Depends on M1.2.
+- [x] M1.3 Bounded qualification: 73 science cases at 1/2/4/8/16 threads, exact fixed-thread repeats and 46 licensed fixtures pass.
 - [ ] M1.4 Bundled installation and platform qualification. Selection/packaging work depends on M1.1; final qualification on M1.3.
 - [ ] M1.5 Performance/coverage/complexity summaries. Depends on M1.3 and qualified platform artifacts.
 
@@ -66,3 +66,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-02 M1.2b dbc8505a — CI 37089724723 passes all jobs, including real Linux replay.
 - 2026-10-02 M1.2c this commit — 72 science/1 defect; 72 unaffected cases exact; 3 Stata, full/long harness pass; core +5 lines; precommit ratchet base corrected.
 - 2026-10-02 M1.2d this commit — 73 science; 72 unaffected cases exact; 3 Stata, full/long checks pass; +6 core lines; replay constant allocation corrected/retested.
+- 2026-10-02 M1.3 this commit — 803 native processes; 73 science cases at five thread counts, discrete/repeat checks, frozen comparison and 46 Stata pass.

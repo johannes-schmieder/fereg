@@ -135,3 +135,13 @@ its constant request flag and output dimensions to match the public ado, then
 replays those same
 corrected inputs against both binaries: the parent must still reproduce r(459).
 Data, term metadata and independent scientific targets are unchanged.
+
+### M1 bounded qualification
+
+`scripts/replay_plugins.py --thread-counts 2 4 8 16` reuses all 73 inputs and
+dense targets. Each count has an exact repeat; cross-thread checks require
+identical samples, drop reasons, coefficient statuses and discrete DoF. Floating
+results use the original scientific tolerances. The 20 licensed fixtures and
+32-fixture quick profile overlap; together with selector and correction tests
+they comprise 46 distinct fixtures. Compact source/binary/frontend-bound
+evidence is in `bench/history/2026-10-02-m1-scientific-qualification.json`.
