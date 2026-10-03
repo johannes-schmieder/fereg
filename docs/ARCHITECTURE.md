@@ -59,3 +59,8 @@ maps the bounded oracle/replay campaign to 2,814 reached source functions,
 route-memory estimation and retained-rank solving are reached hotspots; the
 666-line reusable two-FE PCG path is not reached by this matrix. This is entry
 coverage, not a branch-coverage or full scientific qualification claim.
+
+The [Linux coverage artifact](../bench/history/2026-10-02-runtime-coverage-linux.json)
+independently reaches both native entry points and 2,808 source functions;
+811 remain unreached and 22 have no exported instance. Native profile emission
+is required separately for every replay process.

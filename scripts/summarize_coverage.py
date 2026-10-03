@@ -5,6 +5,7 @@ import argparse
 from collections import Counter
 import json
 from pathlib import Path
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -18,11 +19,13 @@ def summarize(export, inventory):
             if not function.get('regions'):
                 continue
             region = function['regions'][0]
-            filename = Path(function['filenames'][region[5]])
-            try:
-                key = filename.relative_to(ROOT).as_posix()
-            except ValueError:
+            filename = function['filenames'][region[5]]
+            # Exported source paths are absolute on the build host; match the
+            # repository suffix so retained CI artifacts can be read locally.
+            match = re.search(r'(crates/(?:fereg-core|fereg-plugin)/src/.*)$', filename)
+            if not match:
                 continue
+            key = match[1]
             entries.setdefault(key, []).append((region[0], function['count']))
     modules, totals, hotspots = {}, Counter(), []
     for path, item in inventory['files'].items():
@@ -49,6 +52,10 @@ def main():
     args = parser.parse_args()
     inv = json.loads((ROOT/'docs/cleanup/complexity.json').read_text())['inventory']
     result = summarize(json.loads((args.directory/'export.json').read_text()), inv)
+    for module, entry in [('estimate','estimate_ols_test#1'), ('ppml_estimate','estimate_ppml_test#1')]:
+        path = f'crates/fereg-plugin/src/{module}.rs'
+        if entry not in result['modules'][path].get('reached',[]):
+            raise SystemExit(f'native coverage is missing its required entry point: {entry}')
     result['identity'] = json.loads((args.directory/'identity.json').read_text())
     result['campaign'] = 'Long independent oracle suite, existing actual-plugin ABI assertions and 73 complete OLS/PPML replays, separate instrumented next build. Full Rust/allocation/transaction suite qualified separately without instrumentation.'
     args.output.write_text(json.dumps(result,indent=2,sort_keys=True)+'\n')

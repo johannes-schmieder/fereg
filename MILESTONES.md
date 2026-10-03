@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M0.5 repair Linux native coverage emission; gate reopened before any M1 changes.
+Current task: M1.1 selectable plugins and exact public baseline; G-M0 verified.
 Current runtime: working legacy implementation; next selection/default lands in M1.1.
 
 ## Tasks and prerequisites
@@ -13,7 +13,7 @@ Current runtime: working legacy implementation; next selection/default lands in 
 - [x] M0.2b Hosted Linux/Windows assets, canonical registration and verified storage.
 - [x] M0.3 Working core/testkit moved; host retained; abandoned rewrite removed; full local harness/native ABI and long oracles pass.
 - [x] M0.4 Mac/Linux replay passes 73 exact/repeat cases: 70 scientific passes, 3 explicit defects; bounded matrix fixed.
-- [~] M0.5 Mac coverage and ratchet pass; Linux replay/full tests pass, but coverage omitted native profiles. Repair in progress.
+- [x] M0.5 Ratchet, Mac/Linux coverage and full Linux checks pass; corrected artifact verifies 221 native profiles and both estimator entry points.
 - [ ] M1.1 Two-plugin Stata selection, next default and exact public baseline. Depends on G-M0.
 - [ ] M1.2a Next-only factor precedence correction. Depends on M1.1.
 - [ ] M1.2b Full-matrix OLS multiway covariance correction. Depends on M1.2a acceptance.
@@ -25,7 +25,7 @@ Current runtime: working legacy implementation; next selection/default lands in 
 
 ## Gates
 
-- [ ] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
+- [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
 - [ ] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
@@ -37,7 +37,6 @@ Current runtime: working legacy implementation; next selection/default lands in 
 
 ## Blockers
 
-Linux coverage omitted native profiles; retain the ELF profiler constructor and require a profile from every native replay before accepting the artifact.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 The old source-string assertion for fit_absorb_matrix also fails against unchanged frozen code; retained runtime checks remain required.
@@ -59,3 +58,4 @@ The old source-string assertion for fit_absorb_matrix also fails against unchang
 - 2026-10-02 M0.5 this commit — CI 37085394220 succeeds: full Rust/FFI/allocation/ratchet/mock checks and real Linux replay; profiling bundle links pinned Rust runtime.
 - 2026-10-02 M0.5 this commit — CI coverage 37086231092 succeeds and retains export/HTML; G-M0 passed; no numerical changes yet.
 - 2026-10-02 M0.5 this commit — reopened gate: Linux artifact had 0 reached host functions despite passing replay; ELF runtime anchor/per-process emission check added.
+- 2026-10-02 M0.5 this commit — corrected CI 37086868628: 221 native profiles, both entry points, 2808/811/22 reached/unreached/unmapped; G-M0 verified.
