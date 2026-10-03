@@ -1,8 +1,8 @@
 # Incremental refactoring — milestones
 
-Plan: [M0–M7](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Plan: [M0–M8](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: none; M0–M7 complete. Discuss proposed shared Schur preparation before implementing M8.
+Current task: M8.1 Schur preparation boundary and parent baseline; M9–M11 discussion follows qualification.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -32,6 +32,10 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M5 Shared robust/clustered Wald solve and IID coefficient lookup; full/long checks, 73 exact/scientific replay and 2 Stata fixtures pass.
 - [x] M6 Shared deferred categorical DoF and checked totals; full/long checks, 73 exact/scientific replay and 3 Stata fixtures pass.
 - [x] M7 Scaling diagnosis and combined qualification; shared Schur preparation proposed for discussion, not implemented.
+
+- [ ] M8.1 Preparation-order audit and qualified parent timing baseline.
+- [ ] M8.2 Shared Schur RHS/projection kernels; scientific, transaction and complexity qualification.
+- [ ] M8.3 Paired timings, phase comparison, final CI and detailed M9–M11 proposals.
 
 ## Gates
 
@@ -99,3 +103,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M6.1 this commit — common deferred DoF/totals; core -32 lines; identity, slope and nesting checks retained; full/long tests, 73 replay and 3 Stata pass.
 - 2026-10-03 M7.1 b3fa58a7 — clean Mac 73/five-thread replay, 46 Stata and CI 37121923471 pass; 158 production lines removed; legacy unchanged.
 - 2026-10-03 G-M3–M7 this commit — timings/phase diagnosis and [evidence](bench/history/2026-10-03-m3-m7-refactoring.json); PPML follow-up ranges overlap; M8 discussion only.
+
+- 2026-10-03 M8.0 this commit — scope authorized; share Schur level sums/projection and probe preparation; preserve validation order and routes.

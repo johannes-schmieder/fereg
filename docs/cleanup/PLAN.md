@@ -1,4 +1,4 @@
-# Incremental refactoring: M0–M7
+# Incremental refactoring: M0–M8
 
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
 Historical plan and evidence remain at 15a57ba285a3afede2e3337fe8598e72529a4090.
@@ -257,3 +257,50 @@ candidate. Compare clean final and M2 binaries with the existing smoke/scaling
 protocol; investigate differences outside observed noise. No new framework,
 platform/package contract, scientific tolerance or legacy mutation is in scope.
 The existing blocker timebox applies. Stop after M7 and discuss next steps.
+
+
+## M8: shared Schur RHS preparation
+
+Authorized by Johannes on 2026-10-03. This supersedes the M7 stop instruction.
+The M7 proposal is narrowed by the preparation-order audit: wide/narrow probes
+share their entire level-total/RHS/left-projection setup; full Schur solves use
+the same level-sum and projection kernels, with their original validation and
+normalization boundaries. Full solves validate group totals and unnormalized
+products before dividing. Probes divide immediately and retain their existing
+nonfinite admission policy. These differences must remain explicit.
+
+### M8.1 Boundary and baseline
+
+Preserve the qualified M7 next Mac binary (runtime source b3fa58a7) and record
+fresh smoke and OLS/PPML scaling with the existing runner, one warm-up and five
+measurements. Audit active/tail clearing, level-member traversal, selected RHS
+order (including repeated columns), weighted multiplication and projection
+subtraction. Map accepted/rejected probes, narrow continuation, weak weighted
+cuts, saved effects, full/low modes and allocation failures to existing checks.
+
+### M8.2 Consolidate and qualify
+
+Use one allocation-free level-sum kernel and one left-projection kernel.
+Both probes call one preparation stage; the full solve uses those kernels at
+its existing validation boundaries. Delete the duplicate loops. Keep fixed
+row/column arithmetic order, inactive-lane clearing, allocations, normalized
+weights, probe policy, convergence, certificates, fallbacks and solver routes.
+Do not retain the probe workspace across the full solve or add a size/thread
+route. No new generic engine or representation is needed. Require a net
+production reduction and no complexity growth exception.
+
+Run the full harness, long oracle tests, mapped Schur/weak-graph regressions,
+Mac native build/ABI, 73-case exact parent-next replay with the five-thread
+scientific/repeat matrix, and mapped licensed Stata fixtures. The clean final
+runtime must pass Linux CI/native replay. No new intentional scientific
+allowance is authorized for this arithmetic-preserving consolidation.
+
+### M8.3 Measure, document and discuss
+
+Compare clean final and parent binaries using the same smoke/scaling protocol;
+investigate differences outside observed noise with bounded paired follow-up.
+Use the existing phase timer on the M7 OLS cell. Record compact identities,
+checks, complexity and timing evidence. A maintenance gain does not imply a
+speedup or a repair of the 8-to-16-thread slowdown. Preserve frozen legacy.
+Discuss three substantive follow-up milestones, M9–M11, with explicit boundaries,
+risks and acceptance checks. Do not implement those proposals in M8.
