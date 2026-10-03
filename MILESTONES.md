@@ -2,7 +2,7 @@
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M0.4 actual binary replay and bounded scientific matrix.
+Current task: M0.5 complexity/coverage baseline; M0.4 Linux replay gate is still pending.
 Current runtime: working legacy implementation; next selection/default lands in M1.1.
 
 ## Tasks and prerequisites
@@ -13,7 +13,7 @@ Current runtime: working legacy implementation; next selection/default lands in 
 - [x] M0.2b Hosted Linux/Windows assets, canonical registration and verified storage.
 - [x] M0.3 Working core/testkit moved; host retained; abandoned rewrite removed; full local harness/native ABI and long oracles pass.
 - [~] M0.4 Mac replay passes 73 exact/repeat cases: 70 scientific passes, 3 explicit defects; matrix fixed; Linux CI qualification pending.
-- [ ] M0.5 Complexity ratchet and instrumented coverage baseline. Inventory can proceed after M0.3; replay coverage needs M0.4.
+- [~] M0.5 Complexity ratchet measured/tested; instrumented coverage campaign running. Linux replay gate still blocks M1.
 - [ ] M1.1 Two-plugin Stata selection, next default and exact public baseline. Depends on G-M0.
 - [ ] M1.2a Next-only factor precedence correction. Depends on M1.1.
 - [ ] M1.2b Full-matrix OLS multiway covariance correction. Depends on M1.2a acceptance.
@@ -51,3 +51,4 @@ The old source-string assertion for fit_absorb_matrix also fails against unchang
 - 2026-10-02 M0.4 this commit — Mac 73 exact/repeat cases, 70 dense passes, 3 known defects; full local harness/ABI and 4 replay acceptance tests pass.
 - 2026-10-02 M0.4 this commit — CI download repair: isolate draft-read permission in a job without repository code; replay keeps read-only access.
 - 2026-10-02 M0.4 this commit — use qualified glibc-2.28 build image; remove obsolete diagnostics-only fake estimator; real ABI/bridge checks pass locally.
+- 2026-10-02 M0.5 this commit — ratchet: core/host 105136/15248 lines, 99/16 long functions, 20/3 large files; four guard tests and size/governance checks pass.

@@ -2,6 +2,8 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+python3 -m unittest discover -s tests/python -p test_complexity.py
+python3 scripts/check_complexity.py
 python3 - <<'PY'
 from pathlib import Path
 import sys
