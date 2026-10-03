@@ -2,7 +2,7 @@
 
 Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M21 strict recovery and publication controller; M12–M20 qualified locally and on Linux.
+Current task: M12–M21 complete; separate Astra review recorded. Next scientific priorities: the two numerical follow-ups below.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -55,7 +55,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M18 Consumed PPML admission/installation owner; full/30, exact inventory, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
 - [x] M19 One active PPML direction owner; full/30, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
 - [x] M20 One ordinary canonical retry transition; full/30, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
-- [ ] M21 Strict recovery/publication controller, combined qualification and separate Astra review.
+- [x] M21 Strict recovery/readiness; full/30, clean exact73/five-thread Mac/ABI, 46 Stata, clean timings, Linux CI and separate Astra review complete.
 
 ## Gates
 
@@ -65,6 +65,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] G-M3–M7: local/long checks, exact parent replay, five-thread science, 46 Stata and Linux CI 37121923471 pass; timings investigated.
 - [x] G-M8: clean scientific/transaction checks, bounded paired timings, Linux CI and approved follow-up scopes.
 - [x] G-M9–M11: shared QR/PPML accounting, scheduling trial rejected, combined qualification and strategic review pass.
+- [x] G-M12–M21: ten scoped refactors, parent science, clean tranches/timings, Linux CI and separate Astra review complete.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -75,7 +76,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No active blocker. Numerical follow-up: strict no-FE PPML timing references return r(430) on both parent and next; not qualified evidence. See M14 summary.
+No tranche blocker. Numerical follow-up: strict no-FE PPML timing references return r(430) on both parent and next; not qualified evidence. See M14 summary.
 Extra near-within saved-FE CG oracle returns r(459) on qualified parent and M17; numerical follow-up, not a passing check. See M17 summary.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
@@ -162,3 +163,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M20.1 this commit — one typed canonical retry, accounting/extraction shared; full/30, fatal/atomicity regressions, exact73 Mac/ABI and 7 Stata pass; core +16 declared.
 - 2026-10-03 M20.2 35adaed6 — clean73 and CI 37156909660 pass; all12 timing ranges overlap/76 exact pairs, GM1.002; [evidence](bench/history/2026-10-03-m20-ppml-retry.json).
 - 2026-10-03 M21.1 this commit — one strict recovery/readiness controller; driver2014 to962, core +307 declared; full/30, exact73 Mac/ABI and 7 Stata pass; clean/CI/review pending.
+- 2026-10-03 G-M12–M21 9c08141b — clean73/five-thread/46 Stata and CI 37158517146 pass; all46 timing ranges overlap/290 pairs exact; [Astra review](bench/history/2026-10-03-m21-strict-recovery.json).
+- 2026-10-03 M21.2 this commit — M17 stale qualification fields corrected; Astra finds no new runtime defect; two inherited numerical witnesses prioritized; governance/links/ratchet pass.

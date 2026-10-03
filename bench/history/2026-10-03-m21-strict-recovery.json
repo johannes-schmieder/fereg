@@ -106,12 +106,1952 @@
     ]
   },
   "qualification": {
-    "status": "clean tranche, Linux and separate Astra review pending"
+    "status": "complete",
+    "runtime": "9c08141b17314563f3100b3cbe8e62dd65508837",
+    "clean_native": {
+      "schema": 1,
+      "next_sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1",
+      "baseline_sha256": "604921cb84f74891f9b25bd1fae2e721a1b4500aed1fe2f10149d1f9b5c1dafa",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "five_thread": {
+      "passed": true,
+      "cases": 73,
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "science_discrete_and_fixed_thread_repeats": true,
+      "plugin_sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1"
+    },
+    "licensed_stata": [
+      {
+        "fixture": "ci/feppml_smoke.do",
+        "status": "success"
+      },
+      {
+        "fixture": "ci/fereg_smoke.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/development/reference_factor_precedence.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/documentation/help_examples.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/installation/engine_selection.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/installation/estimate_ols_categorical_interaction.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/installation/factor_availability.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/installation/frequency_singleton_validation.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/installation/installation_smoke.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/installation/reload_loop.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/installation/slope_dof_validation.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_iweight_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_string_fe_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_time_series_parity.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parser/candidate_sample.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parser/model_wire_v2_capture.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parser/ordinary_factor_terms.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parser/reject_ambiguous_absorb.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parser/string_sources.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/parser/time_series_marker.do",
+        "status": "success"
+      },
+      {
+        "fixture": "tests/stata/postestimation/fail_closed.do",
+        "status": "success"
+      }
+    ],
+    "timings": {
+      "smoke": {
+        "identities": {
+          "parent": {
+            "checkout": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_source": "a5cd94baa6e0eb842456b140a6a1aa2be7e6761a",
+            "binary_sha256": "c898084a2cc4b6dd6f60b1a4121c5bf70d3d64d7212fb1ee715c1ac7f4ed261d",
+            "dirty": false
+          },
+          "next": {
+            "checkout": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_source": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1",
+            "dirty": false
+          }
+        },
+        "protocol": {
+          "warmups": 1,
+          "repetitions": 5,
+          "coefficient_rtol": 1e-07,
+          "coefficient_atol": 1e-10,
+          "reference_tolerance": 1e-12,
+          "fresh_process_per_command": true
+        },
+        "datasets": {
+          "ppml-1fe": {
+            "sha256": "192d50266e722cdca54ab6d1444271b08c91d37bef386e8599624478c401e2b6",
+            "seed": 739391,
+            "rows": 100000,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ols-2fe-dense": {
+            "sha256": "69d56e314043c8c39c6cc93eddeb8d15c023390cb0a8a9b2655c87534445f2bd",
+            "seed": 739391,
+            "rows": 100000,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ppml-2fe-gravity": {
+            "sha256": "075f611a2f88038fd11a3ee00c3a1a127c47d196ed64b57775151d5e82a55568",
+            "seed": 739391,
+            "rows": 100000,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ols-1fe": {
+            "sha256": "7e5783d99bc4ece24a727c7ae789fb2272987cb3db2e68a844152cb7d9a1a529",
+            "seed": 739391,
+            "rows": 100000,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          }
+        },
+        "exact_pairs": 28,
+        "geometric_mean_ratio": 1.0073805025178348,
+        "pairs": [
+          {
+            "cell": "ols-1fe",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.029,
+              "seconds_min": 0.029,
+              "seconds_max": 0.03,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.029,
+                0.03,
+                0.03,
+                0.029,
+                0.029
+              ]
+            },
+            "next": {
+              "seconds": 0.03,
+              "seconds_min": 0.028,
+              "seconds_max": 0.031,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.03,
+                0.03,
+                0.031,
+                0.03,
+                0.028
+              ]
+            },
+            "ratio": 1.0344827586206895,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ols-2fe-dense",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.082,
+              "seconds_min": 0.08,
+              "seconds_max": 0.083,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.083,
+                0.082,
+                0.081,
+                0.082,
+                0.08
+              ]
+            },
+            "next": {
+              "seconds": 0.081,
+              "seconds_min": 0.08,
+              "seconds_max": 0.084,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.083,
+                0.081,
+                0.08,
+                0.084,
+                0.081
+              ]
+            },
+            "ratio": 0.9878048780487805,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-1fe",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.128,
+              "seconds_min": 0.124,
+              "seconds_max": 0.131,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.128,
+                0.128,
+                0.127,
+                0.124,
+                0.131
+              ]
+            },
+            "next": {
+              "seconds": 0.129,
+              "seconds_min": 0.128,
+              "seconds_max": 0.133,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.132,
+                0.129,
+                0.128,
+                0.128,
+                0.133
+              ]
+            },
+            "ratio": 1.0078125,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-2fe-gravity",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.165,
+              "seconds_min": 0.163,
+              "seconds_max": 0.166,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.165,
+                0.166,
+                0.164,
+                0.163,
+                0.166
+              ]
+            },
+            "next": {
+              "seconds": 0.165,
+              "seconds_min": 0.164,
+              "seconds_max": 0.165,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.165,
+                0.165,
+                0.164,
+                0.164,
+                0.165
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          }
+        ]
+      },
+      "scaling": {
+        "identities": {
+          "parent": {
+            "checkout": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_source": "a5cd94baa6e0eb842456b140a6a1aa2be7e6761a",
+            "binary_sha256": "c898084a2cc4b6dd6f60b1a4121c5bf70d3d64d7212fb1ee715c1ac7f4ed261d",
+            "dirty": false
+          },
+          "next": {
+            "checkout": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_source": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1",
+            "dirty": false
+          }
+        },
+        "protocol": {
+          "warmups": 1,
+          "repetitions": 5,
+          "coefficient_rtol": 1e-07,
+          "coefficient_atol": 1e-10,
+          "reference_tolerance": 1e-12,
+          "fresh_process_per_command": true
+        },
+        "datasets": {
+          "m1-ols-n16383-k8": {
+            "sha256": "e3be92f8dfb3e0d5f3e555236ad451c1b794effeb033a9de521d0db509534e78",
+            "seed": 739391,
+            "rows": 16383,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "m1-ppml-n16384-k8": {
+            "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "m1-ols-n100000-k16": {
+            "sha256": "64bef8add11e327349a2b63139c8d7012b995c520418e87f46dacf849a300485",
+            "seed": 739391,
+            "rows": 100000,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "m1-ols-n16384-k8": {
+            "sha256": "acdeb26cc33ab4dfb9c3e8207322abb15c1d83a7228aa828af305690a64c608f",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "m1-ppml-n100000-k16": {
+            "sha256": "4c63eb34d47b561374b5a2a31685d233291517987195eeb4629db8e805b0c834",
+            "seed": 739391,
+            "rows": 100000,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "m1-ppml-n16383-k8": {
+            "sha256": "794f8c6d35c0010bbb9d456baaacf2cf81cffe5fb3e93ee023be06ecd13a6722",
+            "seed": 739391,
+            "rows": 16383,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          }
+        },
+        "exact_pairs": 186,
+        "geometric_mean_ratio": 1.0055201267663862,
+        "pairs": [
+          {
+            "cell": "m1-ols-n16383-k8",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.026,
+              "seconds_min": 0.025,
+              "seconds_max": 0.027,
+              "seconds_mad": 0.0009999999999999974,
+              "measurements": [
+                0.027,
+                0.027,
+                0.026,
+                0.025,
+                0.026
+              ]
+            },
+            "next": {
+              "seconds": 0.026,
+              "seconds_min": 0.025,
+              "seconds_max": 0.027,
+              "seconds_mad": 0.0009999999999999974,
+              "measurements": [
+                0.026,
+                0.027,
+                0.026,
+                0.025,
+                0.025
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16383-k8",
+            "threads": 2,
+            "parent": {
+              "seconds": 0.022,
+              "seconds_min": 0.022,
+              "seconds_max": 0.023,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.023,
+                0.022,
+                0.022,
+                0.022,
+                0.023
+              ]
+            },
+            "next": {
+              "seconds": 0.022,
+              "seconds_min": 0.022,
+              "seconds_max": 0.023,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.023,
+                0.022,
+                0.022,
+                0.023,
+                0.022
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16383-k8",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.021,
+              "seconds_min": 0.02,
+              "seconds_max": 0.021,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.021,
+                0.02,
+                0.021,
+                0.021,
+                0.021
+              ]
+            },
+            "next": {
+              "seconds": 0.021,
+              "seconds_min": 0.02,
+              "seconds_max": 0.021,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.021,
+                0.021,
+                0.021,
+                0.02,
+                0.021
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16383-k8",
+            "threads": 8,
+            "parent": {
+              "seconds": 0.021,
+              "seconds_min": 0.02,
+              "seconds_max": 0.025,
+              "seconds_mad": 0.0009999999999999974,
+              "measurements": [
+                0.021,
+                0.022,
+                0.025,
+                0.021,
+                0.02
+              ]
+            },
+            "next": {
+              "seconds": 0.021,
+              "seconds_min": 0.021,
+              "seconds_max": 0.022,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.021,
+                0.021,
+                0.022,
+                0.021,
+                0.022
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16383-k8",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.024,
+              "seconds_min": 0.023,
+              "seconds_max": 0.027,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.027,
+                0.023,
+                0.024,
+                0.024,
+                0.024
+              ]
+            },
+            "next": {
+              "seconds": 0.026,
+              "seconds_min": 0.023,
+              "seconds_max": 0.027,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.024,
+                0.026,
+                0.027,
+                0.026,
+                0.023
+              ]
+            },
+            "ratio": 1.0833333333333333,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16384-k8",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.024,
+              "seconds_min": 0.024,
+              "seconds_max": 0.025,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.025,
+                0.024,
+                0.024,
+                0.024,
+                0.024
+              ]
+            },
+            "next": {
+              "seconds": 0.024,
+              "seconds_min": 0.024,
+              "seconds_max": 0.024,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.024,
+                0.024,
+                0.024,
+                0.024,
+                0.024
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16384-k8",
+            "threads": 2,
+            "parent": {
+              "seconds": 0.02,
+              "seconds_min": 0.02,
+              "seconds_max": 0.021,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.021,
+                0.021,
+                0.02,
+                0.02,
+                0.02
+              ]
+            },
+            "next": {
+              "seconds": 0.02,
+              "seconds_min": 0.02,
+              "seconds_max": 0.021,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.021,
+                0.02,
+                0.021,
+                0.02,
+                0.02
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16384-k8",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.019,
+              "seconds_min": 0.018,
+              "seconds_max": 0.02,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.019,
+                0.019,
+                0.02,
+                0.018,
+                0.019
+              ]
+            },
+            "next": {
+              "seconds": 0.02,
+              "seconds_min": 0.018,
+              "seconds_max": 0.021,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.02,
+                0.018,
+                0.02,
+                0.018,
+                0.021
+              ]
+            },
+            "ratio": 1.0526315789473684,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16384-k8",
+            "threads": 8,
+            "parent": {
+              "seconds": 0.018,
+              "seconds_min": 0.017,
+              "seconds_max": 0.02,
+              "seconds_mad": 0.0009999999999999974,
+              "measurements": [
+                0.017,
+                0.02,
+                0.018,
+                0.019,
+                0.018
+              ]
+            },
+            "next": {
+              "seconds": 0.018,
+              "seconds_min": 0.017,
+              "seconds_max": 0.018,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.018,
+                0.018,
+                0.017,
+                0.017,
+                0.018
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n16384-k8",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.023,
+              "seconds_min": 0.022,
+              "seconds_max": 0.032,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.032,
+                0.03,
+                0.022,
+                0.022,
+                0.023
+              ]
+            },
+            "next": {
+              "seconds": 0.023,
+              "seconds_min": 0.022,
+              "seconds_max": 0.034,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.034,
+                0.023,
+                0.022,
+                0.023,
+                0.026
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n100000-k16",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.084,
+              "seconds_min": 0.081,
+              "seconds_max": 0.09,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.084,
+                0.081,
+                0.085,
+                0.083,
+                0.09
+              ]
+            },
+            "next": {
+              "seconds": 0.085,
+              "seconds_min": 0.08,
+              "seconds_max": 0.091,
+              "seconds_mad": 0.0040000000000000036,
+              "measurements": [
+                0.085,
+                0.086,
+                0.081,
+                0.091,
+                0.08
+              ]
+            },
+            "ratio": 1.0119047619047619,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n100000-k16",
+            "threads": 2,
+            "parent": {
+              "seconds": 0.06,
+              "seconds_min": 0.059,
+              "seconds_max": 0.066,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.06,
+                0.066,
+                0.059,
+                0.061,
+                0.059
+              ]
+            },
+            "next": {
+              "seconds": 0.058,
+              "seconds_min": 0.057,
+              "seconds_max": 0.06,
+              "seconds_mad": 0.000999999999999994,
+              "measurements": [
+                0.059,
+                0.06,
+                0.057,
+                0.058,
+                0.0570000000000001
+              ]
+            },
+            "ratio": 0.9666666666666668,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n100000-k16",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.046,
+              "seconds_min": 0.044,
+              "seconds_max": 0.048,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.048,
+                0.045,
+                0.044,
+                0.046,
+                0.046
+              ]
+            },
+            "next": {
+              "seconds": 0.046,
+              "seconds_min": 0.046,
+              "seconds_max": 0.047,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.046,
+                0.046,
+                0.047,
+                0.047,
+                0.046
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n100000-k16",
+            "threads": 8,
+            "parent": {
+              "seconds": 0.041,
+              "seconds_min": 0.04,
+              "seconds_max": 0.043,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.043,
+                0.042,
+                0.04,
+                0.04,
+                0.041
+              ]
+            },
+            "next": {
+              "seconds": 0.042,
+              "seconds_min": 0.041,
+              "seconds_max": 0.043,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.042,
+                0.042,
+                0.041,
+                0.043,
+                0.042
+              ]
+            },
+            "ratio": 1.024390243902439,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ols-n100000-k16",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.048,
+              "seconds_min": 0.044,
+              "seconds_max": 0.052,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.047,
+                0.049,
+                0.052,
+                0.044,
+                0.048
+              ]
+            },
+            "next": {
+              "seconds": 0.049,
+              "seconds_min": 0.045,
+              "seconds_max": 0.049,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.045,
+                0.049,
+                0.049,
+                0.047,
+                0.049
+              ]
+            },
+            "ratio": 1.0208333333333333,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16383-k8",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.056,
+              "seconds_min": 0.056,
+              "seconds_max": 0.056,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.056,
+                0.056,
+                0.056,
+                0.056,
+                0.056
+              ]
+            },
+            "next": {
+              "seconds": 0.056,
+              "seconds_min": 0.054,
+              "seconds_max": 0.057,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.056,
+                0.057,
+                0.056,
+                0.055,
+                0.054
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16383-k8",
+            "threads": 2,
+            "parent": {
+              "seconds": 0.047,
+              "seconds_min": 0.047,
+              "seconds_max": 0.047,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.047,
+                0.047,
+                0.047,
+                0.047,
+                0.047
+              ]
+            },
+            "next": {
+              "seconds": 0.047,
+              "seconds_min": 0.046,
+              "seconds_max": 0.047,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.046,
+                0.047,
+                0.047,
+                0.047,
+                0.047
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16383-k8",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.042,
+              "seconds_min": 0.041,
+              "seconds_max": 0.044,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.043,
+                0.044,
+                0.042,
+                0.041,
+                0.041
+              ]
+            },
+            "next": {
+              "seconds": 0.043,
+              "seconds_min": 0.042,
+              "seconds_max": 0.044,
+              "seconds_mad": 0.000999999999999994,
+              "measurements": [
+                0.042,
+                0.042,
+                0.043,
+                0.044,
+                0.043
+              ]
+            },
+            "ratio": 1.0238095238095237,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16383-k8",
+            "threads": 8,
+            "parent": {
+              "seconds": 0.047,
+              "seconds_min": 0.046,
+              "seconds_max": 0.047,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.047,
+                0.046,
+                0.046,
+                0.047,
+                0.047
+              ]
+            },
+            "next": {
+              "seconds": 0.047,
+              "seconds_min": 0.046,
+              "seconds_max": 0.048,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.047,
+                0.047,
+                0.046,
+                0.047,
+                0.048
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16383-k8",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.055,
+              "seconds_min": 0.055,
+              "seconds_max": 0.056,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.056,
+                0.056,
+                0.055,
+                0.055,
+                0.055
+              ]
+            },
+            "next": {
+              "seconds": 0.055,
+              "seconds_min": 0.054,
+              "seconds_max": 0.059,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.054,
+                0.054,
+                0.055,
+                0.059,
+                0.055
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16384-k8",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.057,
+              "seconds_min": 0.055,
+              "seconds_max": 0.059,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.055,
+                0.056,
+                0.057,
+                0.057,
+                0.059
+              ]
+            },
+            "next": {
+              "seconds": 0.056,
+              "seconds_min": 0.054,
+              "seconds_max": 0.057,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.056,
+                0.055,
+                0.057,
+                0.056,
+                0.054
+              ]
+            },
+            "ratio": 0.9824561403508771,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16384-k8",
+            "threads": 2,
+            "parent": {
+              "seconds": 0.048,
+              "seconds_min": 0.046,
+              "seconds_max": 0.057,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.057,
+                0.046,
+                0.047,
+                0.048,
+                0.048
+              ]
+            },
+            "next": {
+              "seconds": 0.047,
+              "seconds_min": 0.047,
+              "seconds_max": 0.048,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.047,
+                0.048,
+                0.047,
+                0.047,
+                0.047
+              ]
+            },
+            "ratio": 0.9791666666666666,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16384-k8",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.042,
+              "seconds_min": 0.041,
+              "seconds_max": 0.043,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.042,
+                0.041,
+                0.042,
+                0.042,
+                0.043
+              ]
+            },
+            "next": {
+              "seconds": 0.043,
+              "seconds_min": 0.041,
+              "seconds_max": 0.044,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.044,
+                0.043,
+                0.043,
+                0.041,
+                0.043
+              ]
+            },
+            "ratio": 1.0238095238095237,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16384-k8",
+            "threads": 8,
+            "parent": {
+              "seconds": 0.046,
+              "seconds_min": 0.045,
+              "seconds_max": 0.047,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.047,
+                0.046,
+                0.046,
+                0.046,
+                0.045
+              ]
+            },
+            "next": {
+              "seconds": 0.046,
+              "seconds_min": 0.046,
+              "seconds_max": 0.048,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.046,
+                0.047,
+                0.046,
+                0.046,
+                0.048
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n16384-k8",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.056,
+              "seconds_min": 0.053,
+              "seconds_max": 0.06,
+              "seconds_mad": 0.0029999999999999957,
+              "measurements": [
+                0.06,
+                0.059,
+                0.054,
+                0.053,
+                0.056
+              ]
+            },
+            "next": {
+              "seconds": 0.056,
+              "seconds_min": 0.055,
+              "seconds_max": 0.06,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.056,
+                0.056,
+                0.055,
+                0.06,
+                0.057
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n100000-k16",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.35,
+              "seconds_min": 0.348,
+              "seconds_max": 0.353,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.351,
+                0.35,
+                0.353,
+                0.348,
+                0.35
+              ]
+            },
+            "next": {
+              "seconds": 0.351,
+              "seconds_min": 0.35,
+              "seconds_max": 0.353,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.351,
+                0.35,
+                0.353,
+                0.351,
+                0.35
+              ]
+            },
+            "ratio": 1.002857142857143,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n100000-k16",
+            "threads": 2,
+            "parent": {
+              "seconds": 0.257,
+              "seconds_min": 0.248,
+              "seconds_max": 0.279,
+              "seconds_mad": 0.008000000000000007,
+              "measurements": [
+                0.279,
+                0.26,
+                0.249,
+                0.257,
+                0.248
+              ]
+            },
+            "next": {
+              "seconds": 0.249,
+              "seconds_min": 0.248,
+              "seconds_max": 0.253,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.253,
+                0.249,
+                0.251,
+                0.248,
+                0.249
+              ]
+            },
+            "ratio": 0.9688715953307393,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n100000-k16",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.196,
+              "seconds_min": 0.19,
+              "seconds_max": 0.201,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.196,
+                0.19,
+                0.201,
+                0.196,
+                0.196
+              ]
+            },
+            "next": {
+              "seconds": 0.197,
+              "seconds_min": 0.191,
+              "seconds_max": 0.227,
+              "seconds_mad": 0.0050000000000000044,
+              "measurements": [
+                0.191,
+                0.227,
+                0.198,
+                0.192,
+                0.197
+              ]
+            },
+            "ratio": 1.0051020408163265,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n100000-k16",
+            "threads": 8,
+            "parent": {
+              "seconds": 0.179,
+              "seconds_min": 0.179,
+              "seconds_max": 0.181,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.18,
+                0.181,
+                0.179,
+                0.179,
+                0.179
+              ]
+            },
+            "next": {
+              "seconds": 0.181,
+              "seconds_min": 0.179,
+              "seconds_max": 0.182,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.179,
+                0.182,
+                0.181,
+                0.181,
+                0.182
+              ]
+            },
+            "ratio": 1.011173184357542,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "m1-ppml-n100000-k16",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.193,
+              "seconds_min": 0.1899999999999999,
+              "seconds_max": 0.196,
+              "seconds_mad": 0.002000000000000113,
+              "measurements": [
+                0.1909999999999999,
+                0.193,
+                0.194,
+                0.1899999999999999,
+                0.196
+              ]
+            },
+            "next": {
+              "seconds": 0.196,
+              "seconds_min": 0.192,
+              "seconds_max": 0.198,
+              "seconds_mad": 0.0020000000000000018,
+              "measurements": [
+                0.1929999999999999,
+                0.192,
+                0.198,
+                0.196,
+                0.196
+              ]
+            },
+            "ratio": 1.0155440414507773,
+            "ranges_overlap": true
+          }
+        ]
+      },
+      "ppml": {
+        "identities": {
+          "parent": {
+            "checkout": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_source": "35adaed64aa4f7150d373822e20762eae0409d1e",
+            "binary_sha256": "604921cb84f74891f9b25bd1fae2e721a1b4500aed1fe2f10149d1f9b5c1dafa",
+            "dirty": false
+          },
+          "next": {
+            "checkout": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_source": "9c08141b17314563f3100b3cbe8e62dd65508837",
+            "binary_sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1",
+            "dirty": false
+          }
+        },
+        "protocol": {
+          "warmups": 1,
+          "repetitions": 5,
+          "coefficient_rtol": 1e-07,
+          "coefficient_atol": 1e-10,
+          "reference_tolerance": 1e-12,
+          "fresh_process_per_command": true
+        },
+        "datasets": {
+          "ppml-two-fe-auto-fast-owner": {
+            "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ppml-two-fe-auto-low-owner": {
+            "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ppml-two-fe-cmg-fast-owner": {
+            "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          },
+          "ppml-two-fe-lsmr-fast-owner": {
+            "sha256": "a91f630db53dd113b4d72a61ba3917607ca802d45a25726297f2d2cd5525a10d",
+            "seed": 739391,
+            "rows": 16384,
+            "numpy": "2.3.5",
+            "pandas": "2.2.3",
+            "recipe": "bench/generate.py"
+          }
+        },
+        "exact_pairs": 76,
+        "geometric_mean_ratio": 1.0013144855191258,
+        "pairs": [
+          {
+            "cell": "ppml-two-fe-auto-fast-owner",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.056,
+              "seconds_min": 0.056,
+              "seconds_max": 0.057,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.056,
+                0.057,
+                0.056,
+                0.056,
+                0.056
+              ]
+            },
+            "next": {
+              "seconds": 0.056,
+              "seconds_min": 0.055,
+              "seconds_max": 0.056,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.056,
+                0.056,
+                0.056,
+                0.055,
+                0.056
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-auto-fast-owner",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.042,
+              "seconds_min": 0.042,
+              "seconds_max": 0.044,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.044,
+                0.042,
+                0.042,
+                0.042,
+                0.042
+              ]
+            },
+            "next": {
+              "seconds": 0.043,
+              "seconds_min": 0.041,
+              "seconds_max": 0.044,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.041,
+                0.044,
+                0.042,
+                0.044,
+                0.043
+              ]
+            },
+            "ratio": 1.0238095238095237,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-auto-fast-owner",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.055,
+              "seconds_min": 0.054,
+              "seconds_max": 0.0610000000000001,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.055,
+                0.054,
+                0.055,
+                0.054,
+                0.0610000000000001
+              ]
+            },
+            "next": {
+              "seconds": 0.056,
+              "seconds_min": 0.054,
+              "seconds_max": 0.056,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.056,
+                0.056,
+                0.054,
+                0.055,
+                0.056
+              ]
+            },
+            "ratio": 1.0181818181818183,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-auto-low-owner",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.059,
+              "seconds_min": 0.059,
+              "seconds_max": 0.06,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.059,
+                0.059,
+                0.06,
+                0.059,
+                0.059
+              ]
+            },
+            "next": {
+              "seconds": 0.059,
+              "seconds_min": 0.059,
+              "seconds_max": 0.06,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.059,
+                0.059,
+                0.06,
+                0.059,
+                0.059
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-auto-low-owner",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.044,
+              "seconds_min": 0.044,
+              "seconds_max": 0.045,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.045,
+                0.044,
+                0.044,
+                0.044,
+                0.044
+              ]
+            },
+            "next": {
+              "seconds": 0.044,
+              "seconds_min": 0.043,
+              "seconds_max": 0.045,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.044,
+                0.043,
+                0.044,
+                0.045,
+                0.045
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-auto-low-owner",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.056,
+              "seconds_min": 0.053,
+              "seconds_max": 0.06,
+              "seconds_mad": 0.0020000000000000018,
+              "measurements": [
+                0.058,
+                0.056,
+                0.053,
+                0.056,
+                0.06
+              ]
+            },
+            "next": {
+              "seconds": 0.055,
+              "seconds_min": 0.054,
+              "seconds_max": 0.056,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.055,
+                0.056,
+                0.055,
+                0.054,
+                0.056
+              ]
+            },
+            "ratio": 0.9821428571428571,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-lsmr-fast-owner",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.056,
+              "seconds_min": 0.056,
+              "seconds_max": 0.057,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.057,
+                0.056,
+                0.056,
+                0.056,
+                0.056
+              ]
+            },
+            "next": {
+              "seconds": 0.056,
+              "seconds_min": 0.055,
+              "seconds_max": 0.056,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.056,
+                0.055,
+                0.056,
+                0.056,
+                0.056
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-lsmr-fast-owner",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.043,
+              "seconds_min": 0.042,
+              "seconds_max": 0.043,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.043,
+                0.043,
+                0.042,
+                0.043,
+                0.042
+              ]
+            },
+            "next": {
+              "seconds": 0.043,
+              "seconds_min": 0.042,
+              "seconds_max": 0.044,
+              "seconds_mad": 0.000999999999999994,
+              "measurements": [
+                0.042,
+                0.042,
+                0.043,
+                0.043,
+                0.044
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-lsmr-fast-owner",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.055,
+              "seconds_min": 0.054,
+              "seconds_max": 0.063,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.063,
+                0.055,
+                0.054,
+                0.059,
+                0.055
+              ]
+            },
+            "next": {
+              "seconds": 0.057,
+              "seconds_min": 0.056,
+              "seconds_max": 0.059,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.057,
+                0.056,
+                0.057,
+                0.057,
+                0.059
+              ]
+            },
+            "ratio": 1.0363636363636364,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-cmg-fast-owner",
+            "threads": 1,
+            "parent": {
+              "seconds": 0.059,
+              "seconds_min": 0.058,
+              "seconds_max": 0.059,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.058,
+                0.059,
+                0.058,
+                0.059,
+                0.059
+              ]
+            },
+            "next": {
+              "seconds": 0.059,
+              "seconds_min": 0.058,
+              "seconds_max": 0.06,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.058,
+                0.059,
+                0.06,
+                0.059,
+                0.059
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-cmg-fast-owner",
+            "threads": 4,
+            "parent": {
+              "seconds": 0.047,
+              "seconds_min": 0.045,
+              "seconds_max": 0.048,
+              "seconds_mad": 0.0010000000000000009,
+              "measurements": [
+                0.047,
+                0.045,
+                0.046,
+                0.047,
+                0.048
+              ]
+            },
+            "next": {
+              "seconds": 0.045,
+              "seconds_min": 0.045,
+              "seconds_max": 0.047,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.047,
+                0.045,
+                0.045,
+                0.045,
+                0.046
+              ]
+            },
+            "ratio": 0.9574468085106382,
+            "ranges_overlap": true
+          },
+          {
+            "cell": "ppml-two-fe-cmg-fast-owner",
+            "threads": 16,
+            "parent": {
+              "seconds": 0.059,
+              "seconds_min": 0.057,
+              "seconds_max": 0.059,
+              "seconds_mad": 0.0,
+              "measurements": [
+                0.059,
+                0.059,
+                0.059,
+                0.059,
+                0.057
+              ]
+            },
+            "next": {
+              "seconds": 0.059,
+              "seconds_min": 0.058,
+              "seconds_max": 0.071,
+              "seconds_mad": 0.000999999999999994,
+              "measurements": [
+                0.058,
+                0.071,
+                0.059,
+                0.059,
+                0.063
+              ]
+            },
+            "ratio": 1.0,
+            "ranges_overlap": true
+          }
+        ]
+      }
+    },
+    "frozen_comparator_sha256": {
+      "macos": "80329f51159990740425171c3457304f303272cfe55943c0afb412b54454c105",
+      "linux": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc",
+      "windows": "1c8ac3042f0eae8bcf58f1e71f5ffab8abcf55a982a17fcb9bc30f7e58f7558f"
+    },
+    "timing_conclusion": "All 46 paired ranges overlap and 290 coefficient/sample command pairs are exact. Smoke/scaling compare the entire M12\u2013M21 series to qualified M11; changed PPML paths compare M21 to qualified M20. Ratios near one do not establish consistent acceleration, equivalence or resolution of higher-thread slowdowns.",
+    "linux_ci": {
+      "run": 37158517146,
+      "all_jobs": "success",
+      "replay": {
+        "schema": 1,
+        "next_sha256": "21e28020fe1b0366c7e02187d53c483bee191d894945ddd901c6bb12eeb183cb",
+        "baseline_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc",
+        "known_defect_cases": 0,
+        "scientific_pass_cases": 73,
+        "candidate_fixes": [
+          "frequency-singleton",
+          "full-matrix-covariance",
+          "slope-dof"
+        ],
+        "baseline_fixes": [],
+        "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+        "passed": true
+      },
+      "runtime": "9c08141b17314563f3100b3cbe8e62dd65508837"
+    }
   },
   "limitations": [
     "This nonnumerical tranche does not establish consistent acceleration or repair higher-thread slowdowns.",
     "Strict no-FE PPML references return r(430) on qualified parents as well as candidates; extra timing cells remain unqualified. Independent constant-outcome design is full rank with condition number 7.885 and known solution. See M14 summary.",
     "Extra near-within saved-FE CG oracle returns r(459) on qualified parent and M17. The failing fixture remains an independent numerical follow-up, not passing evidence. See M17 summary.",
     "No new Windows or SCC campaign; frozen comparator identities remain unchanged."
-  ]
+  ],
+  "independent_astra_review": {
+    "model": "gpt-6-astra",
+    "separate_agent": "m12_m21_review",
+    "read_only": true,
+    "runtime_range": [
+      "a5cd94baa6e0eb842456b140a6a1aa2be7e6761a",
+      "9c08141b17314563f3100b3cbe8e62dd65508837"
+    ],
+    "report_storage": "Completed report, with repository root paths normalized to relative paths; Linux full check pending at review time. Terminal qualification is recorded separately.",
+    "report_markdown": "The ten planned implementation scopes are substantially fulfilled. I found no demonstrable new runtime, numerical-policy, transaction, or ownership regression in the reviewed M11\u2192M21 changes. The result is a useful consolidation of ownership and several duplicated operations, but it does not establish consistent acceleration or a broad reduction in overall complexity.\n\nThis is a read-only source and evidence review of runtime `a5cd94baa6e0eb842456b140a6a1aa2be7e6761a` through `9c08141b17314563f3100b3cbe8e62dd65508837`. I did not run tests, builds, benchmarks, or modify files. I read the governing instructions, SPEC, active ADR dispositions, approved scopes, architecture, ledger, changed runtime code, and compact milestone evidence. M21\u2019s full Linux gate remains pending at this review\u2019s completion; its native replay has passed.\n\n**Actionable findings**\n\n1. **P2 \u2014 Existing scientific failure: strict no-FE PPML refuses a well-conditioned model with a known optimum.** The evidence records r(430) at tolerance `1e-12` for a constant-outcome design with rank 11 and condition number approximately 7.885. Its independent solution is intercept `ln(2)`, other coefficients zero, and mean 2. The recorded strict profile discrepancy is approximately `1.34e-9` despite a normalized score near `8.4e-14`. This is a concrete unresolved convergence/reconstruction problem, not evidence of unavoidable ill-conditioning. It predates this tranche; I cannot identify its originating numerical defect from this review. Preserve the strict failure and localize the accepted predictor, coefficient reconstruction, and strict/final-Hessian transitions against that known solution. Default-tolerance success and exact parent agreement do not qualify it. Verified evidence: [M14 strict reference](bench/history/2026-10-03-m14-encoding-transfer.json:3197) and [independent conditioning diagnostic](bench/history/2026-10-03-m14-encoding-transfer.json:3207).\n\n2. **P2 \u2014 Existing scientific failure: requested saved FE products expose an unresolved near-within CG recovery failure.** The independent fixture exercises `solver(cmg) memory(low) poolsize(1) threads(4) tolerance(1e-12)` with saved FE contributions and residuals; recorded execution fails with r(459), \u201cborrowed CG Hestenes improvement potential became negative,\u201d on a qualified parent and M17. Required raw-CMG success does not qualify this distinct retaining/recovery path. Diagnose the failing recovery computation against the fixture\u2019s independent residual and coefficient/VCE targets. Removing saved outputs, weakening tolerances, or rerouting the failing backend would not establish the requested path\u2019s correctness. Verified trigger: [saved-FE fixture](tests/stata/development/ols_near_within_cmg_oracle.do:55); recorded failure: [M17 evidence](bench/history/2026-10-03-m17-active-fe-owner.json:76).\n\n3. **P3 \u2014 Evidence hygiene, resolved during review.** M17 originally retained five `\"pending\"` qualification fields beside later passing evidence. I reported this inconsistency; the parent agent replaced them with explicit references to the terminal evidence. I reread the correction. This was ambiguous reporting, not a missing runtime qualification or runtime defect. [Corrected qualification mapping](bench/history/2026-10-03-m17-active-fe-owner.json:85).\n\nNeither P2 finding is introduced by M12\u2013M21. They should nevertheless become the next scientific priorities; their pre-existing status does not diminish the independent witnesses.\n\n**Fulfillment of the planned scopes**\n\n| Scope | Assessment |\n|---|---|\n| M12 availability owner | Fulfilled for the general categorical path. It no longer constructs disposable ordinary topology and singleton packaging. The large unweighted reusable-membership path deliberately retains the ordinary preparation boundary because its indexes are consumed. This retained specialization is consistent with the approved scope. |\n| M13 source-role encoding | Fulfilled. Complete classification precedes removal of synthetic slope categories. Factor and cluster roles survive independently; factor recipes are rebound by source identity. Both restricted compact-slope branches disappear. |\n| M14 encoding transfer | Fulfilled. Non-topology encodings move only after the complete active mask proves an unchanged axis. Changed axes retain final factorization; topology-backed sources retain their shared code owner. The no-FE PPML transfer is justified by its explicitly all-active topology. |\n| M15 inference owners | Fulfilled. Six ordinary/categorical owner layouts become three report-parameterized owners. Concrete DoF reports, aliases, validation paths, and specialized byte accounting remain. This deletes duplicate layout/getter/assembly code rather than merely hiding it. |\n| M16 host preparation | Fulfilled. Four preparation dispositions feed typed inference and a single admission/completion sequence. Cluster request metadata is dropped at the established boundary; loaded rows remain consumed by inference. |\n| M17 active FE owner | Fulfilled. One enum replaces competing workspace options and repeated incompatible `None` construction. Genuine routing/probe history remains separate. Final CMG consumption, low-memory LSMR retirement before QR, and rejected single-slope recovery preserve their distinct semantics. |\n| M18 PPML admission | Fulfilled. Ordered setup decisions share one evolving admission owner, consumed into installation. Execution overlap remains distinct from plan peak. This is primarily control and accounting consolidation, not removal of admission policy. |\n| M19 PPML direction | Fulfilled. LSMR identity is coupled to its workspace; profile, LSMR, and CMG owners cannot coexist as competing ordinary directions. The independently coexisting checkpoint session and curve correctly remain separate. |\n| M20 canonical retry | Fulfilled. A single sequence performs the fresh canonical solve, certificate, accounting, solver observation, and candidate extraction, while typed reasons preserve distinct CMG/frozen-state mutations. |\n| M21 strict controller | Implementation scope fulfilled; final qualification remains conditional on the full Linux gate. Pending work, tolerance, recovery, accepted-pass counts, rejection counts, and readiness have one owner. Candidate resolution replaces overlapping commit/basis flags, and final-Hessian synchronization remains independently authoritative. |\n\nThe most consequential ownership improvements are visible in [categorical availability](crates/fereg-core/src/ols/prepared.rs:1070), [active OLS FE storage](crates/fereg-core/src/ols/prepared_fit.rs:1713), [ordered PPML installation](crates/fereg-core/src/ppml/prepared_irls/admission.rs:492), and [ordinary PPML direction](crates/fereg-core/src/ppml/prepared_irls/direction.rs:7).\n\n**Transaction, lifetime, and scientific assessment**\n\nThe strict-controller extraction preserves the ordering that matters:\n\n- The linear candidate transaction remains alive through inspection, objective evaluation, consistency assessment, and tracing. Uncertified/nonimproving candidates roll back; fatal errors propagate.\n- Specialized basis storage is replaced only after an accepted basis change. The old workspace is explicitly retired before fallible replacement, avoiding a doubled live workspace peak. [Replacement boundary](crates/fereg-core/src/ppml/prepared_irls/direction.rs:217).\n- Recovery eligibility uses the attempt tolerance captured before refinement. Refinement remains monotone; rebuilding remains bounded; a rejected cycle resets consecutive accepted passes.\n- Two accepted objective/score passes and the pending allocation-audit gate still precede strict entry. The controller does not replace those scientific predicates with a convenient readiness flag.\n- Canonical reuse and a separate final-Hessian solve remain distinct. Readiness is minted only after their existing witnesses succeed. Publication still checks exact accepted `q\u00d7mu` weights and matching frame generations. [Synchronization](crates/fereg-core/src/ppml/prepared_irls/controller.rs:593), [publication boundary](crates/fereg-core/src/ppml/prepared_irls.rs:1909), [final weight validation](crates/fereg-core/src/ppml/prepared_irls.rs:1954).\n- CMG numerical fallback retires the direction and refreshes the stale canonical frame; frozen failure invalidates retained state. Their shared retry does not broaden eligibility to allocation, domain, or interruption errors. [Retry implementation](crates/fereg-core/src/ppml/prepared_irls/retry.rs:10).\n\nThe new PPML phase views borrow existing numerical state. They do not introduce new observation-scale buffers. M18 preserves conservative admission rather than spending preparation savings on new numerical routes. The Stata frontend, native protocol, SPI publication machinery, dependencies, and frozen comparator implementation are outside the runtime diff.\n\nThe controller is better organized, but it is not a complete type-level proof of the algorithm: the driver still supplies phase inputs, calls the entry predicate, and breaks immediately after acceptance. That is an ordinary maintainability limitation, not a demonstrated bug requiring another abstraction layer.\n\n**Maintainability and performance direction**\n\nThe tranche provides real benefits: discarded preparation work, slope-only coding, repeated factorization, duplicate certified owners, and invalid combinations of active workspaces are removed. M15\u2013M17 are especially convincing examples of reducing the number of places a future maintainer must update.\n\nM18\u2013M21 chiefly make existing policy easier to inspect. Their bounded methods and explicit state transitions improve local reasoning, but moving the driver from 2,014 to 962 lines does not mean that roughly half its complexity vanished. The new controller and admission modules retain much of that policy, plus explicit types and signatures.\n\nThe aggregate measurements are candid: core production source increases by 479 lines, host decreases by 21, long-function counts fall by one in each crate, and oversized-file counts remain unchanged. These figures do not negate the ownership improvements; they do limit any claim of broad simplification.\n\nThe final timing evidence supports **no reproduced regression in the bounded local campaign**, not consistent acceleration:\n\n- Whole-series M11\u2192M21 smoke geometric-mean ratio: `1.00738`.\n- Whole-series scaling ratio: `1.00552`.\n- M20\u2192M21 changed PPML paths: `1.00131`.\n- All 46 paired ranges overlap; 290 coefficient/sample command pairs are exact.\n\nFive measurements per cell and overlapping ranges do not establish statistical equivalence. Higher-thread slowdowns remain unresolved. The existing M7 phase diagnosis gives a more useful performance starting point than assuming further ownership refactors will make estimation faster.\n\n**Evidence limits and next priorities**\n\nThe recorded local evidence is substantial: immediate-parent exact real-plugin comparisons, independent long oracles, five-thread science/discrete/repeat checks, universal Mac ABI checks, and all 46 licensed Stata fixtures. These are complementary checks; none is a substitute for the others. I reviewed their compact records and source mappings, not every raw execution log, and independently reran none.\n\nThe 73-case matrix is bounded. Historical function-entry coverage is not current branch coverage of every admission refusal, recovery transition, or allocation site. Pointer-transfer and zero-retained-membership witnesses establish concrete ownership properties, but do not by themselves quantify whole-command memory savings. No new Windows or SCC scaling qualification is established. These limitations are compatible with the approved scope and should remain explicit.\n\nI recommend completing and recording the full M21 Linux gate, then closing this structural tranche. Prioritize the two independent numerical witnesses next, one narrowly scoped repair at a time, preserving tolerances and exact unaffected outputs. Afterward, pursue measured bottlenecks with attributable phase-level evidence and bounded experiments. Further structural changes should be justified by a concrete duplicated policy, unnecessary allocation, or demonstrated obstacle to those repairs\u2014not by another tranche-sized target for shrinking the driver.",
+    "new_runtime_findings": 0,
+    "existing_numerical_followups": [
+      "strict no-FE PPML r430 with independently known optimum",
+      "near-within saved-FE CG retaining/recovery r459"
+    ],
+    "resolved_reporting_finding": "M17 qualification placeholders replaced with references to terminal evidence.",
+    "terminal_gate_resolution": "After the completed read-only review, all Linux CI37158517146 jobs were verified success for the unchanged reviewed runtime. No runtime repair was indicated; reporting correction was verified by the reviewer.",
+    "terminal_addendum": "Terminal addendum: I reread the updated M21 evidence. Linux CI37158517146 now records all jobs successful and 73 scientific replay cases passed for the unchanged reviewed runtime9c08141b. The Linux condition in my report is satisfied; I identify no remaining blocker to completing the requested M12\u2013M21 tranche. The strict no-FE PPML r(430) and near-within saved-FE CG r(459) witnesses remain unresolved, pre-existing scientific follow-ups. Tranche completion neither qualifies those cases nor establishes consistent acceleration. My recommendation to prioritize those numerical witnesses before another broad structural tranche remains unchanged."
+  }
 }

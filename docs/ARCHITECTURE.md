@@ -219,7 +219,7 @@ This series increases core production source by 479 lines and reduces host
 source by 21 relative to M11. Core long functions fall from 98 to 97 and host
 from 16 to 15; large-file counts stay 19/3. It removes work, duplicate layouts
 and invalid owner combinations, but does not substantially shrink the whole
-codebase. Source growth includes counted types and phase signatures. Clean
+codebase. Source growth includes counted types and phase signatures. Completed
 tranche qualification and the separate review are recorded in the
 [M21 evidence](../bench/history/2026-10-03-m21-strict-recovery.json), with progress
 only in MILESTONES. Maintenance consolidation is not a speed claim.
@@ -231,3 +231,21 @@ extra near-within saved-FE CG oracle fails with r(459). Both reproduce on
 qualified predecessors. The [M14](../bench/history/2026-10-03-m14-encoding-transfer.json)
 and [M17](../bench/history/2026-10-03-m17-active-fe-owner.json) summaries retain
 those failures. Passing required matrices do not certify these extra cases.
+
+
+The clean M21 runtime `9c08141b` passes 73 exact parent cases, five-thread
+science/repeats/discrete checks, all 46 licensed fixtures, Mac ABI checks and
+full Linux CI/native replay 37158517146. All 46 final timing ranges overlap;
+290 coefficient/sample command pairs are exact. Whole-series M11 comparisons
+have smoke/scaling ratios 1.007/1.006; M20-to-M21 PPML paths have ratio 1.001.
+These results establish no reproduced regression in this bounded campaign,
+without establishing equivalence, consistent acceleration or broad scaling.
+
+The separate Astra review found all ten implementation scopes fulfilled and
+no demonstrable new runtime defect. It confirmed concrete removals in
+preparation and OLS owners, while observing that the PPML phases largely make
+existing policy easier to inspect. It recommends prioritizing the two numerical
+witnesses before another broad structural tranche, then using attributable
+phase-level evidence to choose performance changes. M17's stale qualification
+placeholders were corrected during review. The full report is preserved in
+the M21 evidence; no new implementation scope is implied by this assessment.

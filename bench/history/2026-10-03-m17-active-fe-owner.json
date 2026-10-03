@@ -83,11 +83,12 @@
     }
   },
   "qualification": {
-    "clean_mac": "pending",
-    "linux_ci": "pending",
-    "tranche_five_thread_science": "pending",
-    "tranche_46_stata": "pending",
-    "timings": "pending"
+    "status": "complete",
+    "clean_mac": "#/clean_tranche/replay",
+    "linux_ci": "#/linux_ci",
+    "tranche_five_thread_science": "#/clean_tranche/five_threads",
+    "tranche_46_stata": "#/clean_tranche/licensed_stata",
+    "timings": "#/clean_tranche/timings"
   },
   "scope": "No numerical or solver/admission policy change. Required raw-CMG public oracle passes fast/low \u00d7 auto/LSMR/CMG; extra near-within development fixture remains unqualified.",
   "clean_tranche": {
