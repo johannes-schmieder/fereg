@@ -42,3 +42,6 @@ release-artifacts/
 /feppml-platform-load-capture.json
 /feppml-windows-platform-source-manifest.json
 /feppml-windows-results.zip
+
+# Qualified package identity used alongside locally built native binaries.
+/dist/RELEASE_MANIFEST.json
