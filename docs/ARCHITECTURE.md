@@ -1,7 +1,7 @@
 # Incremental refactoring architecture
 
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
-M0–M2. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
+M0–M7. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -40,19 +40,19 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The [versioned inventory](cleanup/complexity.md) measures 104,910 production
-lines in core and 15,248 in the host. Core has 98 functions over 150 lines and
-20 files over 1,500; the host has 16 and 3. Its conservative dispatch inventory
-contains 1,476 core and 165 host candidates, including validation conditions;
+The [versioned inventory](cleanup/complexity.md) measures 104,757 production
+lines in core and 15,243 in the host. Core has 98 functions over 150 lines and
+19 files over 1,500; the host has 16 and 3. Its conservative dispatch inventory
+contains 1,474 core and 165 host candidates, including validation conditions;
 13 core chunk conditions are counted separately. These counts measure
 complexity; some conditions validate inputs rather than select algorithms.
 
 Largest inherited files are `fe/borrowed_map.rs` (10,198 production lines),
-`ols/prepared_fit.rs` (7,395) and `ols/linear_session.rs` (6,213). The largest
+`ols/prepared_fit.rs` (7,392) and `ols/linear_session.rs` (6,213). The largest
 functions are PPML IRLS orchestration (2,014 physical lines), PPML route-memory
 estimation (1,208), and retained-rank solving (925). Six OLS host branches
-(representation × VCE), fast/low twins and repeated FE entry points remain
-candidate simplifications, to be chosen with exercised-path evidence.
+(representation × VCE) now share completion, but preparation/inference branches,
+fast/low twins and repeated FE entry points remain candidate simplifications.
 
 The [M1 Mac coverage summary](../bench/history/2026-10-02-m1-runtime-coverage-macos.json)
 maps the bounded oracle/replay campaign to 2,813 reached source functions,
@@ -86,19 +86,64 @@ fixed-thread repeats at 1/2/4/8/16, and identical coefficients/samples in 214
 paired benchmark commands. All 34 timing ranges overlap. Higher-thread
 slowdowns remain; M2 makes no speedup claim.
 
-A proposed M3 is to consolidate the repeated OLS post-fit completion sequence
-in the six representation-by-VCE branches of the plugin's `estimate.rs`.
-Existing result views and `CertifiedOlsInference` already expose the relevant
-common boundary. Keep estimator preparation/inference differences explicit;
-share derived-output construction, validated result construction and handoff to
-the existing transaction. Preserve categorical normalization, cluster metadata,
-allocation admission, lifetimes, error order and rollback. Require a useful
-net reduction without a new representation/framework, matched scientific and
-transaction checks, and no timing regression. This is a discussion candidate,
-not authorization to implement M3.
+M3 shares the six OLS completion sequences through `complete_ols`, using the
+existing borrowed result views. M4 shares QR pivot selection, triangular solve
+and coefficient/status finalization while retaining fast/low storage. M5 gives
+robust/clustered inference one Wald solve and shares finite-coordinate lookup
+with IID. M6 shares deferred categorical DoF consumption, nesting state and
+checked report-total accumulation; the distinct row identity/rank checks remain.
+Common internal invariant errors use common wording with the same error codes.
+These remove repeated operations without changing numerical routes or public
+options. Together they remove 158 production lines, one oversized core file and
+two lexical dispatch candidates. The latter are shared QR validation conditions;
+they are not two removed solver routes. Long-function counts are unchanged.
 
-An alternative next priority is a timeboxed diagnosis of one measured OLS
-thread-scaling slowdown using the existing phase timers. Its cause has not
-been established. Any resulting route simplification needs its own bounded
-scope and comparative evidence; neither a new thread-count fence nor a
-wholesale solver-policy rewrite follows from these timings.
+The [M3–M7 evidence](../bench/history/2026-10-03-m3-m7-refactoring.json) binds
+each change to parent-next replay and local checks. The clean final binary passes
+73 scientific cases at five thread counts, exact one-thread comparison with M2,
+fixed-thread repeats, 46 licensed Stata fixtures and combined Linux CI/replay.
+The initial smoke/scaling timing ratios are 1.040/1.073; 13 PPML pairs have
+nonoverlapping ranges. A reversed-order follow-up of all 15 PPML groups has
+overlapping ranges and geometric-mean ratio 1.00009. Both campaigns are retained.
+The slowdown was not reproduced; these bounded measurements establish neither
+performance equivalence nor a speed gain. No new Windows or SCC qualification
+is claimed, and the frozen binaries are unchanged on all three platforms.
+
+M7 localizes the existing 100,000-row, 16-regressor OLS slowdown: uninstrumented
+estimation medians rise from 43 ms at 8 threads to 53 ms at 16; M2 also rises
+from 43 to 51 ms. Existing phase timers put most of the increase inside native
+fitting. Initial absorption rises about 2.53 ms, finite QR 0.97 ms and the
+overlapped residual/bread interval 1.22 ms. Schur selection, iteration counts
+and overlap are the same at 8 and 16 threads. The probe alone rises from
+3.21 to 4.43 ms within absorption. Timings are nested and their independent
+medians need not add. Process startup/data loading are outside the command
+timer; input loading and host preparation change much less. Scheduler overhead,
+task granularity, memory traffic and hardware placement remain hypotheses.
+
+## Proposed next milestone: shared Schur preparation
+
+The next change should remove a substantive repeated preparation operation,
+with a measured benefit or a clear maintenance gain. More tiny helper
+extractions alone will not address the main complexity or scaling problems.
+
+Start with the exercised Schur probe/full-solve boundary in `fe/borrowed_map.rs`.
+The wide probe creates a three-column workspace and computes level totals/RHS
+products; the accepted full solve creates a new absorber/workspace. Audit the
+common level reductions and setup before choosing one consolidation. Prefer
+one shared kernel or removal of redundant setup, with bounded ownership and
+memory accounting. Do not presume that retaining the whole probe workspace
+is beneficial: its shape and lifetime differ from the full solve.
+
+Before implementation, name the exact duplicate operation to delete and its
+callers, allocation/error-order obligations and expected timing effect. Keep
+the probe, weighted operator, convergence rules, certificates, fallbacks and
+explicit solvers. Do not add a special thread/size route. Check dense and weak
+weighted graphs, accepted/rejected probes, saved effects, fast/low modes and
+allocation failures using existing witnesses. Require exact parent outputs for
+an arithmetic-preserving change, independent science, fixed-thread repeats and
+paired timings across the existing ladder. A broader numerical change needs
+an explicit scoped decision; a weak-graph failure is not a reason to weaken
+its certificate. Timebox diagnosis under the existing blocker rule.
+
+This is a discussion proposal only. M7 supplies phase attribution; it does not
+establish that repeated setup causes the slowdown or authorize M8 implementation.

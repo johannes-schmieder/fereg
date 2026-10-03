@@ -1,4 +1,4 @@
-# Incremental refactoring: M0–M2
+# Incremental refactoring: M0–M7
 
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
 Historical plan and evidence remain at 15a57ba285a3afede2e3337fe8598e72529a4090.

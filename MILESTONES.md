@@ -2,7 +2,7 @@
 
 Plan: [M0–M7](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M7 combined qualification and scaling diagnosis; M3–M6 local checks pass.
+Current task: none; M0–M7 complete. Discuss proposed shared Schur preparation before implementing M8.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -31,13 +31,14 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M4 Shared QR pivot/solve/status kernels; full/long checks, 73 exact/scientific native replay and 2 fast/low Stata fixtures pass.
 - [x] M5 Shared robust/clustered Wald solve and IID coefficient lookup; full/long checks, 73 exact/scientific replay and 2 Stata fixtures pass.
 - [x] M6 Shared deferred categorical DoF and checked totals; full/long checks, 73 exact/scientific replay and 3 Stata fixtures pass.
-- [ ] M7 Scaling diagnosis, combined qualification and next-step discussion.
+- [x] M7 Scaling diagnosis and combined qualification; shared Schur preparation proposed for discussion, not implemented.
 
 ## Gates
 
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
 - [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
 - [x] G-M2: shared classification, exact parent-next checks, independent science and performance/complexity evidence; CI 37118979350 passes.
+- [x] G-M3–M7: local/long checks, exact parent replay, five-thread science, 46 Stata and Linux CI 37121923471 pass; timings investigated.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -48,7 +49,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No remaining M0–M2 blockers. The intermittent dictionary audit was isolated and verified in CI 37093239587.
+No remaining M0–M7 blockers. The intermittent dictionary audit was isolated and verified in CI 37093239587.
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -96,3 +97,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M4.1 this commit — shared QR pivot/solve/status; core -3 lines, dispatch inventory -2; analytic regression, full/long tests, 73 replay and 2 Stata pass.
 - 2026-10-03 M5.1 this commit — common Wald solve/lookup; core -118 lines, large files 20 to 19; full/long tests, 73 exact/scientific replay and 2 Stata pass.
 - 2026-10-03 M6.1 this commit — common deferred DoF/totals; core -32 lines; identity, slope and nesting checks retained; full/long tests, 73 replay and 3 Stata pass.
+- 2026-10-03 M7.1 b3fa58a7 — clean Mac 73/five-thread replay, 46 Stata and CI 37121923471 pass; 158 production lines removed; legacy unchanged.
+- 2026-10-03 G-M3–M7 this commit — timings/phase diagnosis and [evidence](bench/history/2026-10-03-m3-m7-refactoring.json); PPML follow-up ranges overlap; M8 discussion only.
