@@ -2,6 +2,11 @@ name: Freeze legacy comparator
 
 on:
   workflow_dispatch:
+    inputs:
+      windows_only:
+        description: Finish Windows without rebuilding an already qualified Linux comparator
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -12,6 +17,7 @@ concurrency:
 
 jobs:
   linux:
+    if: ${{ !inputs.windows_only }}
     runs-on: ubuntu-24.04
     container: quay.io/pypa/manylinux_2_28_x86_64
     steps:
@@ -54,6 +60,7 @@ jobs:
 
   store:
     needs: [linux, windows]
+    if: ${{ always() && !cancelled() && (needs.linux.result == 'success' || needs.linux.result == 'skipped') && needs.windows.result == 'success' }}
     runs-on: ubuntu-24.04
     permissions:
       contents: write
@@ -68,7 +75,10 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          python3 scripts/legacy_comparator.py register --platform linux --directory native-artifacts/collected
-          python3 scripts/legacy_comparator.py register --platform windows --directory native-artifacts/collected
+          for platform in linux windows; do
+            if test -f "native-artifacts/collected/fereg_legacy_${platform}.plugin"; then
+              python3 scripts/legacy_comparator.py register --platform "$platform" --directory native-artifacts/collected
+            fi
+          done
           gh release view legacy-comparator-v1 --json isDraft --jq '.isDraft' | grep -qx true
           gh release upload legacy-comparator-v1 native-artifacts/collected/*

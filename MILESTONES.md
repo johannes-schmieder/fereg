@@ -1,7 +1,7 @@
 # Incremental refactoring — milestones
 
 Plan: [M0–M1](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
-Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac canonical asset qualified; Linux/Windows pending.
+Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux canonical assets qualified; Windows finalization pending.
 Current task: M0.2b Windows asset finalization; M0.4 replay development can use the qualified Mac comparator.
 Current runtime: working legacy implementation; next selection/default lands in M1.1.
 
@@ -45,4 +45,5 @@ The old source-string assertion for fit_absorb_matrix also fails against unchang
 - 2026-10-02 M0.1 6643939b — governance reset; fmt/Clippy, 1906 workspace, 173 doc/FFI, 9 isolated working audits, size/mock/static pass; rewrite-only audits retired.
 - 2026-10-02 M0.2a 9323fe00 — tag 15a57ba2; Mac 80329f51 ABI/native audit and 34/34 Stata pass; 5 identity tests pass; hosted platforms pending.
 - 2026-10-02 M0.2b this commit — build setup repair 1: scoped Linux checkout trust and LF archive override; frozen source hash check retained.
-- 2026-10-02 M0.3 this commit — 176 retained source files byte-checked; 1635 test invocations, long oracle suite, Mac ABI and 13 bench tests pass.
+- 2026-10-02 M0.3 599793c3 — 176 retained source files byte-checked; 1635 test invocations, long oracle suite, Mac ABI and 13 bench tests pass.
+- 2026-10-02 M0.2b this commit — Linux ABI/audit pass; Windows ABI/audit pass, final checksum failed under old PowerShell; factory uses pwsh.

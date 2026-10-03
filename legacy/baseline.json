@@ -1,5 +1,10 @@
 {
   "assets": {
+    "linux": {
+      "filename": "fereg_legacy_linux.plugin",
+      "metadata_sha256": "3711f9b0aa478c61992378f6c69aa6cd818b431b953b83d8b98cc0863cd1e633",
+      "sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc"
+    },
     "macos": {
       "filename": "fereg_legacy_macos.plugin",
       "metadata_sha256": "4e68a12b6ca9f9f91032d17d9382aa930dcca067f0f4b7a7b48c6c9912f7f0ff",

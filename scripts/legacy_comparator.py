@@ -147,7 +147,7 @@ def build(directory: Path, platform: str) -> None:
         environment["CARGO_TARGET_DIR"] = str(build_root / f"cargo-{platform}")
         if platform == "windows":
             environment.pop("CARGO_TARGET_DIR", None)  # The pinned PS1 uses source/target.
-            command = ["powershell", "-NoProfile", "-File", str(source / "scripts/build_windows.ps1"),
+            command = ["pwsh", "-NoProfile", "-File", str(source / "scripts/build_windows.ps1"),
                        "-SourceRoot", str(source), "-ExpectedSourceCommit", manifest["source_commit"],
                        "-ExpectedBuildDate", manifest["build_date"]]
         else:
