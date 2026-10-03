@@ -25,7 +25,6 @@ use fereg_core::ols::{
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
 };
 use fereg_core::ols::{
-    fit_prepared_ols_unadjusted_map_with_loaded_moments,
     prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
     prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
     LoadedOlsRows, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole,
@@ -291,212 +290,41 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             || !term.slope_sources.is_empty()
             || !term.saved_name.is_empty()
     });
-    match (action.vce, categorical) {
-        (OlsVceKind::Iid, false) => {
-            let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
-            let trace_started = Instant::now();
-            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded,
-                loaded_rhs,
-                &mut action,
-                prepare_ols_data_owned,
-            )?;
-            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-            let prepare_seconds = trace_started.elapsed().as_secs_f64();
-            let inference_started = Instant::now();
-            let inference = fit_prepared_ols_unadjusted_map_with_loaded_moments(
-                &prepared,
-                PreparedOlsUnadjustedConfig {
-                    fit: action.fit,
-                    absorbed_dof: action.absorbed_dof,
-                    ..PreparedOlsUnadjustedConfig::default()
-                },
-                loaded_rows,
-            )?;
-            action.admit_output_parent(inference.owned_buffer_bytes())?;
-            let inference_seconds = inference_started.elapsed().as_secs_f64();
-            complete_ols(
-                &action,
-                PreparedOlsResultData::legacy(&prepared),
-                None,
-                CertifiedOlsInference::Iid(&inference),
-                &observation,
-                spi,
-                trace_enabled.then_some(OlsPhaseTrace {
-                    label: "iid_plugin",
-                    started: trace_started,
-                    prepare_seconds,
-                    inference_seconds,
-                }),
-            )
-        }
-        (OlsVceKind::Robust, false) => {
-            let trace_enabled = std::env::var_os("FEREG_PHASE_TIMING").is_some();
-            let trace_started = Instant::now();
-            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded,
-                loaded_rhs,
-                &mut action,
-                prepare_ols_data_owned,
-            )?;
-            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-            let prepare_seconds = trace_started.elapsed().as_secs_f64();
-            let inference_started = Instant::now();
-            let inference = fereg_core::ols::fit_prepared_ols_robust_map_with_loaded_moments(
-                &prepared,
-                PreparedOlsRobustConfig {
-                    fit: action.fit,
-                    absorbed_dof: action.absorbed_dof,
-                    ..PreparedOlsRobustConfig::default()
-                },
-                loaded_rows,
-            )?;
-            action.admit_output_parent(inference.owned_buffer_bytes())?;
-            let inference_seconds = inference_started.elapsed().as_secs_f64();
-            complete_ols(
-                &action,
-                PreparedOlsResultData::legacy(&prepared),
-                None,
-                CertifiedOlsInference::Robust(&inference),
-                &observation,
-                spi,
-                trace_enabled.then_some(OlsPhaseTrace {
-                    label: "robust_plugin",
-                    started: trace_started,
-                    prepare_seconds,
-                    inference_seconds,
-                }),
-            )
-        }
-        (OlsVceKind::Clustered, false) => {
-            let request = OlsClusteredRequestV1 {
-                ols: action.request.clone(),
-                clusters: action.clusters.clone(),
-            };
-            let (prepared, loaded_rows) =
-                prepare_loaded_ols_with_moments(loaded, loaded_rhs, &mut action, |_, loaded| {
-                    prepare_ols_clustered_data_owned(&request, loaded)
-                })?;
-            drop(request);
-            action.admit_prepared_parent(
-                prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes(),
-            )?;
-            let inference = fereg_core::ols::fit_prepared_ols_clustered_map_with_loaded_moments(
-                &prepared,
-                PreparedOlsClusteredConfig {
-                    fit: action.fit,
-                    absorbed_dof: action.absorbed_dof,
-                    account_cluster_nesting: action.account_cluster_nesting,
-                    ..PreparedOlsClusteredConfig::default()
-                },
-                loaded_rows,
-            )?;
-            action.admit_output_parent(inference.owned_buffer_bytes())?;
-            complete_ols(
-                &action,
-                PreparedOlsResultData::legacy(prepared.ols()),
-                Some(PreparedOlsClusteredResultData::legacy(&prepared)),
-                CertifiedOlsInference::Clustered(&inference),
-                &observation,
-                spi,
-                None,
-            )
-        }
-        (OlsVceKind::Iid, true) => {
-            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded,
-                loaded_rhs,
-                &mut action,
-                prepare_categorical_ols_data_owned,
-            )?;
-            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-            let inference =
-                fereg_core::ols::fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
-                    &prepared,
-                    PreparedOlsUnadjustedConfig {
-                        fit: action.fit,
-                        absorbed_dof: action.absorbed_dof,
-                        ..PreparedOlsUnadjustedConfig::default()
-                    },
-                    loaded_rows,
-                )?;
-            action.admit_output_parent(inference.owned_buffer_bytes())?;
-            complete_ols(
-                &action,
-                PreparedOlsResultData::categorical(&prepared),
-                None,
-                CertifiedOlsInference::CategoricalIid(&inference),
-                &observation,
-                spi,
-                None,
-            )
-        }
-        (OlsVceKind::Robust, true) => {
-            let (prepared, loaded_rows) = prepare_loaded_ols_with_moments(
-                loaded,
-                loaded_rhs,
-                &mut action,
-                prepare_categorical_ols_data_owned,
-            )?;
-            action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-            let inference =
-                fereg_core::ols::fit_prepared_categorical_ols_robust_map_with_loaded_moments(
-                    &prepared,
-                    PreparedOlsRobustConfig {
-                        fit: action.fit,
-                        absorbed_dof: action.absorbed_dof,
-                        ..PreparedOlsRobustConfig::default()
-                    },
-                    loaded_rows,
-                )?;
-            action.admit_output_parent(inference.owned_buffer_bytes())?;
-            complete_ols(
-                &action,
-                PreparedOlsResultData::categorical(&prepared),
-                None,
-                CertifiedOlsInference::CategoricalRobust(&inference),
-                &observation,
-                spi,
-                None,
-            )
-        }
-        (OlsVceKind::Clustered, true) => {
-            let request = OlsClusteredRequestV1 {
-                ols: action.request.clone(),
-                clusters: action.clusters.clone(),
-            };
-            let (prepared, loaded_rows) =
-                prepare_loaded_ols_with_moments(loaded, loaded_rhs, &mut action, |_, loaded| {
-                    prepare_categorical_ols_clustered_data_owned(&request, loaded)
-                })?;
-            drop(request);
-            action.admit_prepared_parent(
-                prepared.ols().owned_buffer_bytes() + prepared.clusters().owned_buffer_bytes(),
-            )?;
-            let inference =
-                fereg_core::ols::fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
-                    &prepared,
-                    PreparedOlsClusteredConfig {
-                        fit: action.fit,
-                        absorbed_dof: action.absorbed_dof,
-                        account_cluster_nesting: action.account_cluster_nesting,
-                        ..PreparedOlsClusteredConfig::default()
-                    },
-                    loaded_rows,
-                )?;
-            action.admit_output_parent(inference.owned_buffer_bytes())?;
-            complete_ols(
-                &action,
-                PreparedOlsResultData::categorical(prepared.ols()),
-                Some(PreparedOlsClusteredResultData::categorical(&prepared)),
-                CertifiedOlsInference::CategoricalClustered(&inference),
-                &observation,
-                spi,
-                None,
-            )
-        }
-    }
+    let trace_enabled = !categorical
+        && action.vce != OlsVceKind::Clustered
+        && std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let trace_started = Instant::now();
+    let (prepared, loaded_rows) =
+        prepare_ols_pipeline(loaded, loaded_rhs, &mut action, categorical)?;
+    action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
+    let prepare_seconds = trace_started.elapsed().as_secs_f64();
+    let inference_started = Instant::now();
+    let inference = prepared.infer(&action, loaded_rows)?;
+    let view = inference.view();
+    action.admit_output_parent(view.owned_buffer_bytes())?;
+    let inference_seconds = inference_started.elapsed().as_secs_f64();
+    complete_ols(
+        &action,
+        prepared.data(),
+        prepared.clusters(),
+        view,
+        &observation,
+        spi,
+        trace_enabled.then_some(OlsPhaseTrace {
+            label: if action.vce == OlsVceKind::Iid {
+                "iid_plugin"
+            } else {
+                "robust_plugin"
+            },
+            started: trace_started,
+            prepare_seconds,
+            inference_seconds,
+        }),
+    )
 }
+
+mod ols_pipeline;
+use ols_pipeline::prepare_ols_pipeline;
 
 struct OlsPhaseTrace {
     label: &'static str,

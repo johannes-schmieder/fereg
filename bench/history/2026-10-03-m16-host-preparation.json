@@ -1,0 +1,73 @@
+{
+  "schema": 1,
+  "milestone": "M16",
+  "implementation": "Four host-local prepared owners bind ordinary/categorical and clustered/unclustered preparations. IID/robust share preparation. Six concrete typed inference calls build one lazily selected VCE config, then share output admission and complete_ols. Cluster request clones die before prepared admission; loaded moment overlap and ordinary timing labels remain.",
+  "complexity": {
+    "host_before": 15243,
+    "host_after": 15222,
+    "delta": -21,
+    "long_functions_before_after": [
+      16,
+      15
+    ],
+    "large_files": 3
+  },
+  "checks": {
+    "full_local": true,
+    "mac_universal_abi": true,
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "791af0012bb19a34507165cb8809e2dcc4523a1a5305930c5afe02bdaa94a4f2",
+      "baseline_sha256": "ebe9a4796278353672ac5e8097928bb3e09211c2d783d38d2d99dad87e118fc5",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "licensed_stata": {
+      "status": "success",
+      "fixtures": [
+        {
+          "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/installation/engine_selection.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/absorbed_slopes_and_clusters.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parser/string_sources.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+          "status": "success"
+        },
+        {
+          "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+          "status": "success"
+        }
+      ]
+    }
+  },
+  "qualification": {
+    "clean_mac": "pending",
+    "linux_ci": "pending",
+    "timings": "pending"
+  },
+  "scope": "Host-only nonnumerical change; no protocol, algorithms, numerical or admission predicates changed. Core long oracles passed on unchanged M13 core."
+}

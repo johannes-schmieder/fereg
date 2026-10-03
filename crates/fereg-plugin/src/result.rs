@@ -95,6 +95,17 @@ pub(crate) enum CertifiedOlsInference<'a> {
 }
 
 impl<'a> CertifiedOlsInference<'a> {
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        match self {
+            Self::Iid(value) => value.owned_buffer_bytes(),
+            Self::Robust(value) => value.owned_buffer_bytes(),
+            Self::CategoricalIid(value) => value.owned_buffer_bytes(),
+            Self::CategoricalRobust(value) => value.owned_buffer_bytes(),
+            Self::Clustered(value) => value.owned_buffer_bytes(),
+            Self::CategoricalClustered(value) => value.owned_buffer_bytes(),
+        }
+    }
+
     pub(crate) const fn kind(&self) -> OlsVceKind {
         match self {
             Self::Iid(_) | Self::CategoricalIid(_) => OlsVceKind::Iid,
