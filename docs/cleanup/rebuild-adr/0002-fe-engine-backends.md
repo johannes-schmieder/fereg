@@ -1,7 +1,10 @@
 # ADR 0002: One FE interface with retained solver backends
 
-**Status:** Accepted
+**Status:** Deferred; proposed Schur default withdrawn
 **Date:** 2026-09-29
+
+Current authority: [active ADR index](../../adr/README.md). Historical text below
+is subordinate to that disposition and the approved incremental plan.
 
 ## Context
 

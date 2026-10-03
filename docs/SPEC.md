@@ -1,11 +1,23 @@
 # fereg behavioral specification
 
-This is the contract for the clean-core rebuild in [PLAN](cleanup/PLAN.md).
-It specifies results and failure behavior, not a claim that the new engine is
-implemented or qualified. [MILESTONES](../MILESTONES.md) records implementation
-and evidence. Until cutover, the legacy engine retains its existing interface
-except the M0 safety repairs. Source-by-source reconciliation and replacement
-checks are in [coverage](cleanup/coverage.md); source documents remain until M7.
+This is the scientific contract for [incremental refactoring](cleanup/PLAN.md).
+[MILESTONES](../MILESTONES.md) records implementation and qualification; this
+specification does not claim that a pending correction has shipped.
+
+The initial next implementation is the working legacy code, not the discarded
+rewrite. M0 establishes exact-copy identity and explicitly captured legacy
+scientific defects. M1 corrects the declared defects with independent evidence.
+Legacy and pinned external packages are comparisons, not absolute authorities.
+Historical implementation policies do not override this contract or the
+[active ADR index](adr/README.md).
+
+Existing algorithms, options, starts, iteration policies and memory modes stay
+unchanged in the initial copy. Old references below to rewrite modules, M2–M9,
+shared-interface implementation or old cutover gates describe historical
+implementation proposals, not prerequisites or active tasks. The approved
+M0–M1 plan controls those implementation choices. Scientific samples, weights,
+DoF, estimator meanings, independent accuracy and transaction rules remain.
+Requirements-to-tests mapping is maintained in [coverage](cleanup/coverage.md).
 
 In this document N is retained physical rows, N_eff is effective observations,
 D is the complete absorbed design, X the finite design, and W positive fitting
@@ -31,7 +43,7 @@ Stata 18 is the minimum host. Installed diagnostic calls remain
 | `dof()` | pairwise (default), firstpair, continuous, none | No public DoF-policy override |
 | `noconstant` | Suppress reported constant | Unsupported; structural constant required |
 | `residuals(newvar)` | Response residual | Formula selected by `residualtype()` |
-| `solver()` | auto (default), lsmr, cmg | auto (default), lsmr, cmg |
+| `solver()` | auto (default), map, lsmr, cmg, it, squarem | auto (default), map, lsmr, cmg |
 | `threads(#)` | Nonnegative integer; 0 resolves native default | Same |
 | `tolerance(#)` | Finite 0 < t < 1; default 1e-8 | Same, outer convergence tolerance |
 | `iterate(#)` | Positive integer; default 16,000 | Positive integer; default 10,000 outer iterations |
@@ -43,14 +55,21 @@ Stata 18 is the minimum host. Installed diagnostic calls remain
 | `biascorrection(exact|randomized)` | Unsupported | Optional mean correction (§15) |
 | `biasunit()`, `biasfe()`, `biasprobes()`, `biasseed()`, `biasstream()` | Unsupported | Correction controls (§15) |
 
-Removed at the specified migration/cleanup boundary: public
-`solver(map|cg|it|squarem)`, `preconditioner()` (including aliases), `poolsize()`,
-`memory()`, and `deterministic`. Determinism becomes unconditional.
-`solver(cg)` already returns r(198) under the M0 safety repair. Unknown or removed
-syntax is rejected explicitly, never translated to auto. During migration only,
-hidden `engine(legacy|next)` overrides the developer `FEREG_ENGINE` global,
-which overrides the current default; next ignores `memory()` with a note.
-The engine selector and global lookup disappear at M7.
+During M0–M1 keep existing supported solver/map/iteration options,
+preconditioner(), poolsize(), memory() and deterministic. solver(cg) remains
+rejected with r(198) under the existing safety repair. Explicit LSMR/CMG and
+both PPML mean-bias modes remain required. Option removal is deferred.
+
+M1 selection is engine(legacy|next), then a validated FEREG_ENGINE developer
+global, then next. Unknown selections return r(198); missing selected binaries
+fail clearly, never trigger cross-engine fallback. Next uses the existing
+plugin filename; legacy uses a separate frozen binary. Post e(fereg_engine)
+or e(feppml_engine); diagnostics identify the selected engine. Legacy calls
+print a concise note. The engine switch has no scheduled removal date.
+
+The comparator is frozen native plugin plus current shared ado. Preserve its
+native protocol and record both frontend and binary identity. Any necessary
+next-specific frontend behavior fix must prove legacy behavior unchanged.
 
 The model capabilities below are preserved. IV/GMM, new categorical-continuous
 or continuous-continuous RHS interactions, group outcomes with individual FEs,
@@ -61,9 +80,10 @@ interfaces, not additions to the public options above.
 ### Solver support and dispatch
 
 `within` names the pinned modified-LSMR library, not a fourth public solver.
-Every backend uses the same sample, weights, FE span, coefficient/residual
-interface, finite solve, inference and certificate. Supplied weights do not
-disable an otherwise supported backend. No memory-mode restriction survives.
+All supported backends must honor the same scientific model and accuracy
+contract. A common internal interface and removal of memory-mode restrictions
+are future consolidation tasks, not M0–M1 prerequisites. Preserve existing
+explicit support; unsupported requests fail clearly.
 
 | Request | OLS support to preserve | PPML support to preserve |
 |---|---|---|
@@ -80,40 +100,18 @@ the 64-column bound is an explicit adapter support limit, not an auto-routing
 threshold. Retain all saved-output and bias-correction capabilities on supported
 solver/model combinations. Tests force each supported backend independently.
 
-The initial auto candidate uses no-work for no FE, exact per-level projection
-for one FE, and Schur-PCG for multiple FEs. Adoption requires G-M3 and estimator
-gates. Auto may transfer unfinished columns to LSMR on measured stagnation or
-projected iteration exhaustion. CMG is selectable explicitly; adding it to auto
-requires comparative evidence and a documented structural/convergence rule.
-Routing cannot depend on row count, finite-regressor count, worker count,
-weight kind or available memory.
-
-For each linear RHS/frame, the new engine permits at most two backend attempts:
-the selected backend followed, only after numerical nonconvergence, by LSMR.
-Explicit LSMR has one attempt. Explicit CMG starts with CMG and can use that
-same visible LSMR fallback; unsupported topology, invalid data, allocation,
-interruption and internal errors are fatal. All attempts share the original
-linear iteration budget; remaining budget, not a reset budget, transfers.
-Completed RHSs are retained only after independent certification. Certification
-is always recomputed from original inputs and returned coefficients.
-If no budget remains, return r(430). There is no recursive fallback.
-
-OLS `iterate()` bounds Krylov work per RHS in each required linear projection;
-iteration reports distinguish maximum-per-RHS from summed work. PPML `iterate()`
-bounds outer steps, not total inner work. Each PPML linear frame has the fixed
-16,000-iteration per-RHS budget, shared across attempts; strict and final-Hessian
-frames are separately counted. Two consecutive accepted outer passes and the
-strict/final checks remain mandatory (§13). Direct solves report zero Krylov
-iterations. Backend setup, retries and final recovery cannot disappear from
-diagnostics. Record requested, selected and actually used backend, checkpoint
-backend, attempts, iteration counts, stop reason and fallback reason. Preserve
-legacy solver macros through the seam; M7 result-wire v2 can simplify obsolete
-rows but must retain these meanings.
+The copied engine retains its existing automatic solver policy, iteration
+budgets, support checks and numerical fallbacks. The abandoned direct/Schur
+candidate and fixed two-attempt policy are not adopted. Future route changes
+need a scoped decision and comparative evidence; no new N/width/thread/weight/
+memory fences may be introduced to rescue individual performance cells.
+Preserve requested/used solver, work accounting and existing reason diagnostics;
+unsupported explicit requests must not silently become auto.
 
 Tests: `tests/model_wire_{roundtrip,adversarial}.rs`, `parser/`,
 `parity_ppmlhdfe/feppml_command_contract.do`,
 `development/ols_cmg_raw_residual_oracle.do`, `tests/prepared_fit_oracle.rs`.
-M3/M5/M6 add forced support/rejection, exhaustion and fallback identity checks.
+The M0 feature matrix maps existing support/rejection, exhaustion and fallback checks.
 
 ## 2. Sample construction, missingness and restrictions
 
@@ -219,9 +217,9 @@ the same normalization to all backends. The distinct bias anchor in §15 must
 not replace this ordinary saved-FE gauge.
 
 Output recovery reconstructs the declared FE sum from coefficients, checks
-each row, and certifies at the requested tolerance. PLAN §3.5 explicitly
-supersedes the legacy automatic 1e-14 output re-solve. Independent tighter
-test oracles remain required; reducing output work cannot relax their accuracy
+each row, and certifies at the requested tolerance. M0–M1 retain existing
+output recovery and any automatic tighter re-solve. Simplifying that work
+requires a later scoped change. Independent tighter test oracles remain required; reducing output work cannot relax their accuracy
 envelopes. No output request may change the sample, rank, VCE or coefficient
 status. Unsupported explicit backend structures fail before publication.
 
@@ -344,7 +342,10 @@ meat. No OLS residual-DoF or subset-specific multiplier applies.
 Grouping is collision-safe and deterministic. Apply the registered symmetric
 CGM PSD repair only after the complete multiway covariance has been formed;
 retain repair diagnostics, symmetry/finite/diagonal checks and independent
-covariance reconstruction. Multiway repair sets negative covariance
+covariance reconstruction. Johannes approved full-matrix OLS repair including
+the reported constant; never restore a separately clipped slope block afterward.
+This is a named expected difference from frozen legacy/pinned reghdfe and lands
+in M1.2b, with an independent regression; it is no longer an open policy question. Multiway repair sets negative covariance
 eigenvalues to zero and independently checks the eigensystem and reconstructed
 matrix. Robust and one-way clustered covariance must already satisfy the
 strict PSD policy; they do not receive that multiway repair. Do not clip individual scores, coefficients or
@@ -400,10 +401,9 @@ Required OLS families include `fereg_status`, `fereg_dof`, `fereg_fe`,
   separation, adjustment, predict=feppml_p, requested output bindings and
   bias-correction results when requested (§15).
 
-Migration adapters retain the existing result layouts. M7 explicitly replaces
-legacy memory/allocation tables and redundant route rows with result wire v2;
-this permits deleting implementation telemetry, not scientific fields or solver
-identity/failure evidence. Preserve runtime input/native/total measurements
+M0–M1 retain the existing result layouts and frozen native protocol. Any later
+telemetry simplification needs a scoped compatibility change; scientific fields
+and solver identity/failure evidence remain required. Preserve runtime input/native/total measurements
 needed by the benchmark suite, with defined boundaries. Undefined, unavailable
 and absent remain distinct; validators reject stale/malformed matrices.
 
@@ -464,8 +464,8 @@ exposure exactly once. Adjustments affect fit/prediction but not the
 homogeneous separation cone.
 
 Start from `c0=log(sum qy)−log(sum q exp(offset))` using stable logarithmic
-sums. PLAN M6.1 permits global plus analytic one-FE group start only,
-superseding legacy multi-FE coordinate/slope start optimizations. A declined
+sums. M0–M1 preserve existing analytic/group/coordinate/slope start policies;
+the abandoned global/one-FE-only proposal is not an active requirement. A declined
 or invalid start proposal restores a finite global state. Starts never certify
 rank, optimality or the final Hessian. Do not clip eta/mu to artificial bounds.
 
@@ -712,7 +712,7 @@ Retain independently versioned exact estimation handshakes. Current migration
 versions are action 1.6, model 2.1, OLS result 1.5, PPML request 1.8, PPML
 result 1.5, ado identity 0.5.0 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
-no-absorbed-metadata shape. M7 introduces result v2 with matching validators;
+no-absorbed-metadata shape. No result-v2 migration is scheduled in M0–M1;
 unknown/newer identities and malformed framing fail before observation access.
 
 Use canonical byte-length/count framing inline through 4,000 payload bytes;
@@ -733,54 +733,42 @@ Tests: `tests/mock_spi/`, native FFI transaction tests, `tests/licensed_stata/`,
 `parity_ppmlhdfe/estimate_ppml_hidden_transaction.do`,
 `estimate_ppml_runtime_validator.do`, installation and framing failure fixtures.
 
-## 18. Threads and determinism
+## 18. Threads and repeatability
 
-One call-owned team obeys threads(); 0 resolves the native default. Scientific
-results must be bit-identical across worker counts on the same machine,
-including within and CMG adapters, rank ties, factor codes, separation reasons,
-saved outputs and randomized bias results with fixed seed/stream. Partition
-and merge order are fixed independently of worker count. Timing, resolved
-thread counts and process resource observations are diagnostics and excluded
-from scientific identity. Cross-platform bit identity is not promised;
-scientific tolerances still apply. Any temporary host-processor restriction
-introduced at M8 must restore on success, every error and Break.
+Honor threads(); 0 resolves the existing native default. Preserve repeatability
+at a fixed thread count with deterministic and fixed random seed/stream.
+Across worker counts require scientific agreement under §20 and stable sample,
+omission, separation and other discrete model decisions. Bitwise identity
+across different worker counts or platforms is not required. This explicitly
+supersedes rebuild ADR 0005; deterministic remains a supported option.
 
-Tests: existing `src/parallel.rs`/thread fixtures; M3/M4/M6 force identical
-scientific outputs over 1/2/4/8 workers locally and 1/2/4/8/14/28 on SCC,
-including dependency execution and bias probes. Legacy determinism tests
-alone do not establish this stronger cross-worker contract.
+The one-thread deterministic initial copy must match frozen legacy scientific
+bits on the replay corpus. No-numerical-change commits preserve bits and
+available solver/route signatures against the parent under equal build settings.
+Numerical fixes declare affected cases/fields; unaffected science remains exact.
+Exclude timing, build identity and environmental resource observations only.
+A tolerance pass cannot silently waive an unexplained exact-change failure.
+Preserve Stata processor restoration on success, error and Break.
 
 ## 19. Memory behavior
 
-The new engine has one memory mode and one whole-call estimate, checked for
-size overflow and clearly insufficient capacity before large allocation.
-Include loaded state, topology, all live solver/inference/output/bias work and
-publication overlap. Otherwise use fallible reservations and deterministic
-error cleanup. Insufficient memory returns r(909); it cannot silently veto
-a supported explicit solver or route to an alternate estimator pipeline.
-No nested optional-memory admission. The explicit simplex resource-cap rule
-in §14 is a scientific detector policy, with visible skip and mandatory IR
-coverage, not permission for silent backend substitution.
-
-Requested outputs alone require their O(N) banks. Release temporary owners
-at their actual lifetime boundaries; no persistent cross-fit cache or leaked
-worker/foreign owner. Report estimates as estimates, not process RSS or strict
-OS bounds. M7 removes the legacy tracking allocator, route-specific admission
-tables and fast/low audits after replacement allocation-failure and one-mode
-checks pass. Historical measured receipts remain attached to their source.
-
-Tests: `tests/feppml_constrained_memory_contract.rs`, plugin allocator/failure
-audits during migration; M2–M6 replace these with checked-size, allocation
-failure, repeated-call and atomic-output tests for the one-mode engine.
+M0–M1 preserve the working implementation's memory modes, admission policy and
+public controls. A single prepared representation and whole-call memory plan
+remain future simplification goals, not requirements for the copied engine.
+Preserve checked sizing, fallible allocation, r(909), ownership cleanup and
+transaction atomicity. Reuse existing allocation/failure tests; no new exhaustive
+memory-audit framework is required. Estimates remain estimates, not process RSS
+or strict OS bounds. No new route-specific admission fences may be added to
+hide a performance regression. Future removal of a mode needs mapped coverage.
 
 ## 20. Accuracy tolerances and independent evidence
 
 For well-conditioned comparisons, require coefficients rtol=1e-7/atol=1e-10,
 SE/VCE rtol=1e-6/atol=1e-10, and residual/fitted values
 rtol=1e-7/atol=1e-9. Preserve stronger named regression thresholds, including
-the 2e-8 CMG dense-oracle check. Exact equality is required for success/error,
-sample, omission/status, VCE/DoF policy, clusters, singleton accounting and
-all discrete metadata. Runtime tolerance is not permission to weaken these
+the 2e-8 CMG dense-oracle check. Exact equality is required for applicable success/error, sample, omission/
+status, VCE/DoF policy, clusters, singleton accounting and discrete scientific
+metadata, except named independently justified bug-fix differences. Runtime tolerance is not permission to weaken these
 independent accuracy checks. Adjudicate nonunique FE coordinates through
 identified combinations, fitted values, residuals and objectives.
 
@@ -812,5 +800,5 @@ Do not count missing/timeout pairs as successes. Licensed checks require
 application return codes and terminal sentinels in addition to process status.
 Tests: `tests/weak_graph_decimal_oracle.rs`,
 `tests/python/test_weak_graph_decimal_oracle.py`, the independent Python
-oracles and native/Stata parity families above; M3 requires at least 2,000
-random designs, with G-OLS/G-PPML differential and public-surface gates.
+oracles and native/Stata parity families above. M0.4 commits the bounded
+seeded feature matrix before M1 corrections; G-M0/G-M1 replace the old gates.

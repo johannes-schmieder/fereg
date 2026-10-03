@@ -2,6 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
+python3 scripts/check_governance.py
 
 command -v cargo >/dev/null 2>&1 || {
   printf '%s\n' 'Rust/Cargo is required; install the pinned rust-toolchain.toml toolchain.' >&2
@@ -18,8 +19,26 @@ cargo test --workspace --all-targets --no-default-features --profile "$profile"
 cargo test -p fereg-engine --doc --profile "$profile"
 # The FFI allocator observes every test's allocations, even outside an audit.
 cargo test -p fereg-plugin --features ffi --lib --profile "$profile" -- --test-threads=1
-# Exercise the explicitly isolated allocator audits as well.
-cargo test -p fereg-plugin --features ffi --lib --profile "$profile" -- --ignored --test-threads=1
+# Serial test threads still share counters and surviving worker allocations.
+# Each process-global audit needs a fresh process, not only a serial runner.
+audit_list="$(cargo test -p fereg-plugin --features ffi --lib --profile "$profile" -- --ignored --list)"
+audit_count=0
+while IFS= read -r audit; do
+  case "$audit" in
+    next_memory_tests::*)
+      # The approved reset abandons this rewrite; M0.3 removes its scaffolding.
+      printf 'Retired rewrite-only audit: %s\n' "${audit%: test}"
+      ;;
+    *": test")
+      audit_count=$((audit_count + 1))
+      cargo test -p fereg-plugin --features ffi --lib --profile "$profile" "${audit%: test}" -- --ignored --exact --test-threads=1
+      ;;
+  esac
+done <<< "$audit_list"
+if [[ "$audit_count" -eq 0 ]]; then
+  printf '%s\n' 'No allocator audits discovered; refusing an empty audit gate.' >&2
+  exit 1
+fi
 if [[ -f scripts/check_sizes.sh ]]; then
   bash scripts/check_sizes.sh
 fi

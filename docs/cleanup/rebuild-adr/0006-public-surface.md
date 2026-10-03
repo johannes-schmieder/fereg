@@ -1,7 +1,10 @@
 # ADR 0006: Public surface reduction with retained solver choice
 
-**Status:** Accepted
+**Status:** Deferred
 **Date:** 2026-09-29
+
+Current authority: [active ADR index](../../adr/README.md). Historical text below
+is subordinate to that disposition and the approved incremental plan.
 
 ## Context
 

@@ -1,7 +1,10 @@
 # ADR 0008: Retained dependencies and GPLv3 distribution direction
 
-**Status:** Accepted
+**Status:** Accepted, amended by ADR 0247
 **Date:** 2026-09-29
+
+Current authority: [active ADR index](../../adr/README.md). Historical text below
+is subordinate to that disposition and the approved incremental plan.
 
 ## Context
 
