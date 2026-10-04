@@ -1,4 +1,4 @@
-# Incremental refactoring: M0–M23
+# Incremental refactoring: M0–M24
 
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
 Historical plan and evidence remain at 15a57ba285a3afede2e3337fe8598e72529a4090.
@@ -688,3 +688,89 @@ establish uniform acceleration. The next proposal is a bounded attribution of
 remaining PPML cost using existing timing/profiling on verified public paths,
 followed by one source-local optimization proposal. No new telemetry framework
 or structural tranche is implied; this proposal is not implemented by M23.
+
+## M24: bounded PPML cost attribution
+
+Johannes authorizes the next milestone in the same manner. Use Astra extra-high
+for the bounded plan, difficult invariant questions and a separate final review.
+M24 measures the qualified runtime; it makes no numerical or production change.
+Finish with one measured, source-local M25 proposal, or an explicitly inconclusive
+finding. M25 implementation is outside this milestone.
+
+Compare three verified stock Mac binaries with the same current frontend: M21
+before either repair, M22.1 after the PPML repair, and the restored M23 runtime.
+The M21-to-M22.1 pair isolates that repair; comparison to current includes the
+later saved-FE repair. Reuse the existing seed-739391 datasets byte for byte.
+Hold unit weights, robust VCE, default tolerance, no observation outputs and
+eight Stata processors fixed. Native timing threads stay at or below sixteen.
+
+Use eight groups: gravity N=100,000/K=10 at four threads, and the existing
+N=100,000/K=16 cell at one/four/sixteen threads, each with auto and an explicit
+MAP/Fast control. Check the actual selected/effective owners and ordinary-frame
+counters. Auto ownership must be observed, not inferred from the option name.
+The large cell retains its existing gravity generator and dataset identity.
+
+For each artifact/group use one untimed warmup and five fresh-process measured
+fits. Keep builds, agents, samplers and trace/allocation audits out of clean runs.
+Allow one reverse-order follow-up on at most four auto groups. Capture existing
+runtime and solver matrices after the timer, including phases, route/basis/work
+decisions, coefficients, covariance, fit, DoF, certificates and complete samples.
+Compare six separate tighter-tolerance fits using the existing accuracy policy;
+these are numerical references, not an independent oracle.
+
+Sample the stock current plugin on gravity/auto/four, large/auto/one and sixteen,
+and large/MAP/Fast/four, twice each. Allow two supplemental artifact/workload
+combinations, twice each: at most twelve completed ten-second captures. Repeated
+fits used for sampling are diagnostic and distinct from fresh-process timings.
+Use the existing system sampler, published phase accounting and source inspection;
+no telemetry framework or differently optimized profiling build is needed.
+
+Interpret phase names from their implementation. Joint ordinary projection time
+includes setup/solve and finite time includes certification; fresh canonical work
+also contributes. Strict-final time covers its controller interval, including
+assessment and final Hessian work, and is not separately counted in ordinary
+inner phases. Solver times overlap runtime phases. Independent medians need not
+add. Inclusive samples across worker threads, including waits, are not elapsed-time
+percentages. Neither an unsampled function nor a timing remainder proves absence
+of work or frontend overhead. Keep whole-command run-order sensitivity visible.
+
+Store one compact identity-bound summary in bench/history; raw outputs stay
+ignored. Synchronize the architecture's historical numerical-witness discussion.
+The lead verifies capture recipes, hashes, arithmetic summaries and governance/
+links. A fresh Astra extra-high reviewer checks evidence and proposal. Since M24
+changes documentation only, do not repeat runtime qualification locally; CI still
+runs the full entrypoint on the push. The existing one-working-day timebox applies.
+
+### Proposed M25: reuse normalized values within coefficient refinement
+
+The M24 target is the two divisions of the same retained row entry by its
+reference norm in `ols/retained_refinement.rs`: residual construction followed by
+score accumulation. Stock ARM64 code retains both divisions. Normalize into the
+already-admitted row scratch during the first loop and reuse that rounded value
+in the second. Add no bank, adapter, extra row scan or reciprocal multiplication.
+Keep FMA, multiplication association, compensated sums, traversal/correction order,
+coefficient envelope, four-pass/three-update budget and fail-closed behavior.
+
+Both production callers produce strictly increasing unique active positions.
+Make that private precondition explicit in the refiner's existing validation,
+before scratch or coefficient mutation, retaining preceding tolerance/rank-zero
+behavior and the existing invalid-input error. Duplicate or descending private
+indices currently pass local validation but are not a supported production path;
+do not claim unchanged behavior for such malformed invocations. Dense, implicit
+and scratch readers must still refill the complete row from immutable storage.
+
+Before acceptance, exercise noncontiguous active positions, nonunit norms, weights,
+multiple correction passes, complete-row refill and omitted-value corruption.
+Add only the missing direct malformed-index/arithmetic regression and enable the
+existing implicit fixture's coefficient refinement; its current None tolerance
+does not exercise this helper. Reuse strict fresh/scratch, independent optimum,
+bounded failure and error/unwind rollback witnesses. Require full/long checks,
+exact qualified-parent replay and fixed-thread repeats, Mac/ABI, both M22 witness
+matrices, mapped licensed/allocation/transaction checks and Linux CI.
+
+Inspect compiled work and repeat the original eight clean parent/candidate groups,
+with the bounded reverse-order confirmation where flagged. An extra scratch store
+can offset the saved division; no speedup or recovery of all M22 cost is promised.
+Reject a repeated regression under the existing gate. Keep M23's adapter rejected;
+do not change routing, admission, tolerances or add size/thread/memory fences.
+Finish any future M25 implementation with a separate Astra extra-high review.

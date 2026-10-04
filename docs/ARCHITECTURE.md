@@ -224,13 +224,23 @@ tranche qualification and the separate review are recorded in the
 [M21 evidence](../bench/history/2026-10-03-m21-strict-recovery.json), with progress
 only in MILESTONES. Maintenance consolidation is not a speed claim.
 
-Two additional numerical witnesses remain unresolved: strict no-FE PPML
-references fail with r(430), including a full-rank constant-outcome design
-with condition number 7.885 and an independent closed-form solution; and an
-extra near-within saved-FE CG oracle fails with r(459). Both reproduce on
-qualified predecessors. The [M14](../bench/history/2026-10-03-m14-encoding-transfer.json)
-and [M17](../bench/history/2026-10-03-m17-active-fe-owner.json) summaries retain
-those failures. Passing required matrices do not certify these extra cases.
+Two extra numerical witnesses exposed defects in the qualified predecessors:
+strict no-FE PPML failed with r(430), including a full-rank constant-outcome
+design with condition number 7.885 and an independent closed-form solution;
+near-within saved-FE CG failed with r(459). The historical
+[M14](../bench/history/2026-10-03-m14-encoding-transfer.json) and
+[M17](../bench/history/2026-10-03-m17-active-fe-owner.json) summaries retain those
+failures. Passing the original required matrices did not certify these cases.
+
+[M22 PPML](../bench/history/2026-10-03-m22-ppml-correction.json) adds independent
+row-residual coefficient refinement in retained finite solves. A cancellation or
+underflow guard checks covariance with independently accumulated transformed score
+factors, preserving original bits when the checks agree. Independent tests cover
+lost-null-direction meat and the original-space score/meat identities.
+[M22 saved-FE](../bench/history/2026-10-04-m22-saved-fe-correction.json) repairs
+CG polishing and original-model FE-discrepancy stopping without weakening the
+original residual certificate. Independent optimum/design tests and public
+24/48-configuration witness matrices cover the repairs.
 
 
 The clean M21 runtime `9c08141b` passes 73 exact parent cases, five-thread
@@ -241,11 +251,30 @@ have smoke/scaling ratios 1.007/1.006; M20-to-M21 PPML paths have ratio 1.001.
 These results establish no reproduced regression in this bounded campaign,
 without establishing equivalence, consistent acceleration or broad scaling.
 
-The separate Astra review found all ten implementation scopes fulfilled and
+The M21 separate Astra review found all ten implementation scopes fulfilled and
 no demonstrable new runtime defect. It confirmed concrete removals in
 preparation and OLS owners, while observing that the PPML phases largely make
-existing policy easier to inspect. It recommends prioritizing the two numerical
-witnesses before another broad structural tranche, then using attributable
+existing policy easier to inspect. It recommended prioritizing the two numerical
+witnesses, subsequently repaired in M22, then using attributable
 phase-level evidence to choose performance changes. M17's stale qualification
 placeholders were corrected during review. The full report is preserved in
 the M21 evidence; no new implementation scope is implied by this assessment.
+
+## Measured PPML work after the numerical repairs
+
+[M24 attribution](../bench/history/2026-10-04-m24-ppml-cost-attribution.json)
+compares verified M21, M22.1 and restored M23 stock binaries on the same frontend
+and datasets. Finite-solve and strict-final phase increments repeat in the auto
+order reversal, while whole-command and current-versus-M22.1 differences remain
+order-sensitive. Phase names cover broader intervals than individual kernels:
+ordinary joint finite time includes certification; strict time includes candidate
+assessment and final Hessian work. They cannot isolate all repair cost.
+
+Stock sampling locates `ols/retained_refinement.rs` in fresh and strict canonical
+solves; explicit MAP also reaches it in ordinary frozen solves. Its residual and
+score loops each divide the same row value by the same reference norm, and the
+stock ARM64 function contains both divisions. Reusing the normalized value in
+existing row scratch is the proposed next local change. The two callers supply
+unique canonical active positions; dense, implicit and scratch readers refill the
+complete row. M24 changes no runtime. Samples identify an exercised target, not
+wall-time shares, a dominant package bottleneck or an established future speedup.

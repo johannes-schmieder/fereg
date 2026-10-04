@@ -1,8 +1,8 @@
 # Incremental refactoring — milestones
 
-Plan: [M0–M23](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Plan: [M0–M24](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: none. M22 repairs approved; M23 closed as rejected experiment with fully qualified restoration. Next proposal: bounded PPML cost attribution.
+Current task: M24 push CI qualification; separate Astra review and local documentation checks pass. Proposed M25 normalization reuse remains unimplemented.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -62,6 +62,9 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M22.2 Near-within/saved-FE recovery repaired; full/30/ABI, clean73/five-thread, saved48/PPML24/46 Stata, timing and Linux CI pass.
 - [x] M22.3 Fresh Astra extra-high review approves both qualified fixes; no unresolved source defect or missing required gate.
 - [x] M23 Experiment rejected under its gate; production restored, rollback test retained; clean qualification/Linux CI and fresh Astra review pass.
+- [x] M24.1 Astra extra-high plan; eight scopes, verified three-artifact identity, owners and capture recipes.
+- [x] M24.2 180 timed/36 warmup captures exact by scope; six tighter references, twelve samples; normalization reuse scoped with Astra help.
+- [ ] M24.3 Separate Astra extra-high review approved; governance/links/ratchet pass; push CI pending.
 
 ## Gates
 
@@ -82,8 +85,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No active blockers. M22 repairs approved; M23 rejected and fully qualified restoration approved. Next proposal: bounded cost attribution, not a structural tranche.
-PPML repeated ~3–5% regression is recorded; duplicate row loading localized, with no optimization or unavoidable-cost claim.
+No active blockers. M22 repairs and M23 restoration remain qualified. M24 review/docs pass; push CI pending; no runtime optimization implemented.
+Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
@@ -187,3 +190,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 M23.1 5dc4b934 — clean73/five-thread/402912 witness values exact and CI37178782967 pass; mapped timings show gain/cost; Astra permits one inline experiment.
 - 2026-10-04 M23.2 this commit — rejected adapter/hint removed; production exactly663bca8c; full/30/Mac ABI/exact73/five-thread/46 Stata/PPML24/FE48 pass; clean/Linux pending.
 - 2026-10-04 G-M23 5bffd091 — clean73/five-thread/402912 values exact, CI37180419294 all pass; fresh Astra approves restored M22; [rejected experiment](bench/history/2026-10-04-m23-frozen-scan.json).
+- 2026-10-04 M24.1 this commit — 180 timed/36 warmup captures exact by scope, six tighter references/12 profiles; fresh Astra xhigh approves; docs/links/ratchet pass; push CI pending.
