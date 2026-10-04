@@ -5088,15 +5088,18 @@ mod tests {
                 .recover_model_effects(&raw, &residuals, 1.0, &[true], false, true, map, None)
                 .unwrap()
         };
+        // Worker initialization is embedding state; RSS sampling is host
+        // telemetry. Neither belongs to this numerical workspace envelope.
+        drop(rayon::broadcast(|_| ()));
         drop(run());
         let mut modeled = 0;
         for iteration in 0..3 {
             let local_start = crate::ffi::thread_allocations::begin();
-            let start = instrumentation::begin_observation();
+            let (start, _) = crate::ffi::begin_ols_allocation_observation();
             let boundary = crate::ffi::allocation_usage();
             let recovered = run();
             let usage = crate::ffi::allocation_usage();
-            let observed = usage.peak_bytes - start.allocation_current_bytes;
+            let observed = usage.peak_bytes - start.current_bytes;
             modeled = recovered.solver_workspace_peak().bytes().unwrap();
             for value in recovered.absorbed_sum() {
                 assert!((value - 0.75).abs() < 1e-12);
@@ -5106,7 +5109,7 @@ mod tests {
             let local_end = crate::ffi::thread_allocations::usage();
             eprintln!(
                 "recovery audit {iteration}: workers={} start={} boundary={} peak={} end={} dropped={} local_start={} local_peak={} local_end={} modeled={modeled}",
-                rayon::current_num_threads(), start.allocation_current_bytes,
+                rayon::current_num_threads(), start.current_bytes,
                 boundary.peak_bytes, usage.peak_bytes, usage.current_bytes,
                 after_drop.current_bytes, local_start.current_bytes,
                 local_end.peak_bytes, local_end.current_bytes
@@ -5165,6 +5168,7 @@ mod tests {
                 .num_threads(workers)
                 .build()
                 .unwrap();
+            drop(pool.broadcast(|_| ()));
             pool.install(|| {
                 for mask in [[true, true], [false, true]] {
                     let run = || {
@@ -5189,10 +5193,10 @@ mod tests {
                     // numerical attempt, including pinned within setup.
                     drop(run());
                     for _ in 0..3 {
-                        let start = instrumentation::begin_observation();
+                        let (start, _) = crate::ffi::begin_ols_allocation_observation();
                         let recovered = run();
                         let usage = crate::ffi::allocation_usage();
-                        let observed = usage.peak_bytes - start.allocation_current_bytes;
+                        let observed = usage.peak_bytes - start.current_bytes;
                         let modeled = recovered.solver_workspace_peak().bytes().unwrap();
                         assert!(
                             observed <= modeled,

@@ -41,6 +41,12 @@ provides their dependency packages. A missing dependency or archive is a setup
 failure to investigate before retrying. A held benchmark verifies setup success
 itself because SGE dependencies alone do not imply success.
 
+The command stopwatch build loads `llvm/16.0.6` in an isolated subshell. Setup
+then uses the existing runner for one licensed OLS clock smoke outside that
+compiler environment and requires complete identities and five successful
+measurements before its completion signal. This qualifies clock operation,
+not SCC timing calibration or the program's performance envelope.
+
 Full runs require the external prepared Veneto DTA path via `--veneto-data` to
 `prepare.py`. Confirm the data's existing project location and classification
 before supplying it. Do not upload or commit private data to make a cell pass.

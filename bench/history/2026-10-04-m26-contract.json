@@ -2036,7 +2036,7 @@
       "sha256": "b97eec87df3e44ad3ad840651bce83803ab752790b74006c7b9e94139e098116"
     },
     "review": "Separate Astra high accepts diagnostic scope; Astra xhigh identifies worker-startup and RSS-window hypotheses; no cause or repair claimed from Mac capture",
-    "gate": "Latest required CI passes; keep allocation-window investigation open until Linux diagnostics discriminate the original intermittent failure. Dependent runtime has not started.",
+    "gate": "Repair reviewed by Astra high; current-change local full entrypoint and Linux CI remain required. Original unexplained failure remains archived.",
     "passing_diagnostic_run": {
       "commit": "1a5c93620b1432caa292dae2f3aaf7bbdff848cc",
       "run": 37214466826,
@@ -2060,6 +2060,64 @@
       "passed": true,
       "raw_path": "target/m26-contract/diagnostic-visible-full-tests.log",
       "sha256": "0dc13e797f10834c5b6ceac6d3e0e69ac77f97f674e4f1f3dfc5bc3af5eccd89"
+    },
+    "visible_linux_capture": {
+      "commit": "bbe6f5996eadfadf2adfffb0ebede45ee22c25ec",
+      "run": 37215724968,
+      "url": "https://github.com/johannes-schmieder/fereg/actions/runs/37215724968",
+      "all_required_jobs_passed": true,
+      "rows": [
+        {
+          "workers": 2,
+          "pre_recovery_peak_increment": 2048,
+          "observed_increment": 2048,
+          "local_increment": 2048,
+          "retained_after_drop": 0,
+          "modeled": 5592
+        },
+        {
+          "workers": 2,
+          "pre_recovery_peak_increment": 2048,
+          "observed_increment": 2048,
+          "local_increment": 2048,
+          "retained_after_drop": 0,
+          "modeled": 5592
+        },
+        {
+          "workers": 2,
+          "pre_recovery_peak_increment": 2048,
+          "observed_increment": 2048,
+          "local_increment": 2048,
+          "retained_after_drop": 0,
+          "modeled": 5592
+        }
+      ],
+      "raw_path": "target/m26-contract/ci-visible-check.log",
+      "sha256": "41c3e3d315fde9df70f4f1624c2e1b5816badffb6f12bbefe31d6e84948e046f",
+      "finding": "Every observed peak in this run occurred during RSS sampling before recovery, with no persistent foreign growth. Earlier5872 failure is not uniquely reconstructed.",
+      "replay_summary": {
+        "raw_path": "target/m26-contract/linux-visible/summary.json",
+        "sha256": "0c662dc0f031754d1f9d2f009f10066f637d99557765d7fea00a1b2736869521"
+      }
+    },
+    "window_repair_scope": "Test only: broadcast fully primes worker runtime before warmup; direct global allocator snapshot excludes RSS collection from both numerical recovery workspace audits. Bound, three iterations, values and one-byte-short rejection unchanged. No production or admission formula change.",
+    "window_repair_mac": {
+      "fresh_processes": 50,
+      "worker_counts": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "failures": 0,
+      "raw_path": "target/m26-contract/recovery-window-repeat.log",
+      "sha256": "5ce0448b2834c09758ff31215a3bf6ed8201bab647b0a42a3e0fe277168174ae"
+    },
+    "window_repair_local_entrypoint": {
+      "passed": true,
+      "raw_path": "target/m26-contract/recovery-window-full-tests.log",
+      "sha256": "9580b83fca773d19de9de52e79d85bfa5bc40d7bd087b97539c1fa7c6d5948f9"
     }
   },
   "scc_tooling_smoke": {
@@ -2073,7 +2131,26 @@
     "cpu_type": "E5-2680v4",
     "memory_per_core": "3G",
     "wall_limit": "02:00:00",
-    "state": "Submitted; not passing evidence",
-    "input_source_sha256": "7d3f1e1093828849f1eb45e097ad686268e37e5c73b6bc9dc408e01128884f59"
+    "state": "First attempt failed before timings: native build/ABI and comparators pass; PATH lacks clang. Dependent task fails setup guard.",
+    "input_source_sha256": "7d3f1e1093828849f1eb45e097ad686268e37e5c73b6bc9dc408e01128884f59",
+    "accounting": {
+      "setup_failed": 0,
+      "setup_exit_status": 1,
+      "benchmark_failed": 0,
+      "benchmark_exit_status": 1,
+      "setup_maxvmem": "10.566G",
+      "raw_path": "target/m26-contract/scc-smoke-failed-accounting.log",
+      "sha256": "7c1a6731f0d6f8c1615413688af14bd761689ee9f699a58d57adc8ecb29c12f2"
+    },
+    "narrow_fix": "Load available llvm/16.0.6 only in clock build subshell; require existing-runner licensed clock smoke outside that environment before setup completion. One focused remote retest pending.",
+    "local_clock_integration": {
+      "passed": true,
+      "cell": "ols-1fe",
+      "threads": 4,
+      "measured_repetitions": 5,
+      "raw_path": "target/m26-contract/clock-integration-local/results.json",
+      "sha256": "59d0f57f8b1f3cea449f8c4322f7d96cca56955ad419fa421c35c995fd21b71f",
+      "claim": "Clock loading/operation only; no calibration/performance claim"
+    }
   }
 }

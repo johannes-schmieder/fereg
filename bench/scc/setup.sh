@@ -30,7 +30,13 @@ python3 -c 'import numpy,pandas; print("numpy",numpy.__version__,"pandas",pandas
     bash scripts/build_linux.sh
 ) > logs/build.log 2>&1
 python3 source/bench/setup.py --root "$run_root/environment" > logs/comparators.log 2>&1
-python3 source/bench/build_clock.py --output "$run_root/environment/command-clock.plugin" > logs/clock-build.log 2>&1
+(
+    set +u
+    source /etc/bashrc
+    module load llvm/16.0.6
+    set -u
+    python3 source/bench/build_clock.py --output "$run_root/environment/command-clock.plugin"
+) > logs/clock-build.log 2>&1
 python3 - "$run_root" <<'PY'
 import hashlib,json,sys
 from pathlib import Path
@@ -45,5 +51,21 @@ manifest=root/'input/suite.json' if (root/'input/suite.json').exists() else None
     'native_identity':native_identity(policy['engine'],root/'source'),
     'timing_identity':{'method':'monotonic-command-v1','plugin_sha256':hashlib.sha256((root/'environment/command-clock.plugin').read_bytes()).hexdigest()},
     'tooling_identity':tooling_identity(manifest)},indent=2)+'\n')
+PY
+python3 source/bench/run.py --tier smoke --cells ols-1fe --engine next \
+    --environment "$run_root/environment" --root "$run_root/output/clock-smoke" \
+    --summary "$run_root/output/clock-smoke.csv" --stata "$(command -v stata-mp)" \
+    --stata-processors 4 --fereg-only --clock-plugin "$run_root/environment/command-clock.plugin" \
+    > logs/clock-smoke.log 2>&1
+python3 - "$run_root/output" <<'PY'
+import csv,json,sys
+from pathlib import Path
+root=Path(sys.argv[1])
+campaign=json.loads((root/'clock-smoke/results.json').read_text())
+rows=list(csv.DictReader((root/'clock-smoke.csv').open()))
+assert campaign['complete'] and campaign['identities_verified']
+assert len(rows)==1 and all(row['status']=='ok' and row['accuracy']=='pass' and row['repetitions']=='5' for row in rows)
+assert campaign['timing_identity']['method']=='monotonic-command-v1'
+print('FEREG_CLOCK_SMOKE_COMPLETE')
 PY
 printf 'FEREG_BENCH_SETUP_COMPLETE job=%s\n' "${JOB_ID:-local}" > environment/SETUP.COMPLETE
