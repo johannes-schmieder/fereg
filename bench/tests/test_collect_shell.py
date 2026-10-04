@@ -42,6 +42,8 @@ if '-n' not in sys.argv and 'qacct' in sys.argv[-1]:
     sys.stdin.read()
 if 'qacct' in sys.argv[-1]:
     print('=====\\nfailed 0\\nexit_status 0\\nslots 28\\ntaskid 1')
+elif 'test -f' in sys.argv[-1] and 'suite.json' in sys.argv[-1]:
+    sys.exit(1)
 else:
     print('FEREG_BENCH_COMPLETE 16 groups 0 command failures')
 ''',

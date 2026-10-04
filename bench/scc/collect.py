@@ -6,6 +6,7 @@ import io
 import json
 from pathlib import Path
 import tomllib
+import hashlib
 
 
 def accounting(text, expected_tasks):
@@ -46,7 +47,7 @@ def expected_groups(suite, tier, cell_name="all", thread_name="all"):
     for cell in cells:
         if cell_name!='all' and cell['id']!=cell_name:
             continue
-        threads=set(spec['threads']+(spec.get('ladder_threads',[]) if cell['id'] in spec.get('ladder_cells',[]) else []))
+        threads=set(cell.get('threads',spec['threads'])+(spec.get('ladder_threads',[]) if cell['id'] in spec.get('ladder_cells',[]) else []))
         if thread_name!='all':
             threads &= {int(thread_name)}
         result.update((cell['id'],str(thread),arm) for thread in threads for arm in suite['comparators'][cell['model']])
@@ -61,7 +62,7 @@ def combine(root):
         accounting((root/f'{phase}-qacct.txt').read_text(),int(tasks))
     expected=int(next(row[2] for row in jobs if row[0]=='benchmark'))
     rows=[]
-    suite=tomllib.loads((root/'suite.toml').read_text())
+    suite=json.loads((root/'suite.json').read_text()) if (root/'suite.json').exists() else tomllib.loads((root/'suite.toml').read_text())
     manifest=[line.split() for line in (root/'tasks.tsv').read_text().splitlines()]
     source=json.loads((root/'source.json').read_text())
     if len(manifest)!=expected:
@@ -84,6 +85,25 @@ def combine(root):
         raise ValueError('task source/platform/policy identities disagree')
     if any(r['source_sha']!=source['commit'] for r in rows):
         raise ValueError('summary source differs from the staged commit')
+    if suite.get('program'):
+        policy=json.loads((root/'policy.json').read_text())
+        build=json.loads((root/'build.json').read_text())
+        native=build['native_identity']
+        tooling=hashlib.sha256(json.dumps(build['tooling_identity'],sort_keys=True).encode()).hexdigest()
+        manifest_hash=hashlib.sha256((root/'suite.json').read_bytes()).hexdigest()
+        if build['source'] != source or build['tooling_identity']['manifest'] != manifest_hash:
+            raise ValueError('setup identity differs from staged source/manifest')
+        if any(r['engine']!=policy['engine'] for r in rows):
+            raise ValueError('summary engine differs from staged policy')
+        cells={c['id']:{**suite['defaults'],**c} for c in suite['cells']}
+        for row in rows:
+            if row.get('plugin_sha256')!=native['plugin_sha256'] or row.get('frontend_sha256')!=native['frontend_sha256'] or row.get('tooling_sha256')!=tooling or row.get('manifest_sha256')!=manifest_hash:
+                raise ValueError('summary artifact/tooling identity differs from setup')
+            if row.get('timing_method')!=build['timing_identity']['method'] or row.get('clock_sha256')!=build['timing_identity']['plugin_sha256']:
+                raise ValueError('summary timing identity differs from setup')
+            cell=cells[row['cell']]
+            if any(row.get(key)!=str(cell[key]) for key in ['memory','output_mode']) or row.get('requested_solver')!=cell['solver']:
+                raise ValueError('summary controls differ from declared cell')
     keys=[(r['cell'],r['threads'],r['arm']) for r in rows]
     if len(set(keys))!=len(keys):
         raise ValueError('duplicate benchmark group')
@@ -96,8 +116,9 @@ def combine(root):
     writer=csv.DictWriter(buffer,fieldnames=list(rows[0]),lineterminator='\n')
     writer.writeheader()
     writer.writerows(rows)
-    if len(buffer.getvalue().encode())>100000:
-        raise ValueError('combined summary exceeds 100 KB')
+    limit=8*1024*1024 if suite.get('program') else 100000
+    if len(buffer.getvalue().encode())>limit:
+        raise ValueError('combined summary exceeds declared collection bound')
     return buffer.getvalue()
 
 

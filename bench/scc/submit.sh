@@ -2,10 +2,10 @@
 # Local deployment; only exact new namespaces are created, with no deletion.
 set -euo pipefail
 run_id=${1:?run id}
-tier=${2:?smoke, standard or full}
+tier=${2:?declared benchmark tier}
 staging=${3:?local input staging directory}
 [[ "$run_id" =~ ^[A-Za-z0-9][A-Za-z0-9._-]{0,95}$ ]]
-[[ "$tier" =~ ^(smoke|standard|full)$ ]]
+[[ "$tier" =~ ^(smoke|standard|full|development-scc|holdout-scc|baseline-pilot|capture-pilot)$ ]]
 lane=runs
 if [[ "$tier" == smoke ]]; then lane=dev; fi
 remote="/projectnb/welfgr/fereg/$lane/$run_id"

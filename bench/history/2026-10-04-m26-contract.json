@@ -1,0 +1,2010 @@
+{
+  "schema": 1,
+  "milestone": "M26",
+  "scope": "Benchmark tooling and replacement contract; no production runtime or scientific change",
+  "baseline": {
+    "commit": "444c4389652a51864e67945dc4b7370cf1497f6f",
+    "archive_sha256": "6bd14b5d5c9376d7a5f4c16280a1d7b87cfaaac11272ccd19e14710acaea9314"
+  },
+  "runtime_source": "cbeb40d77a72e3c82689d1007e67ddd1104dec61",
+  "qualified_runtime_evidence": {
+    "path": "bench/history/2026-10-04-m25-normalization-reuse.json",
+    "sha256": "2de44b7b8aba04af5b2c1b3c71e18db1d2f8e1e9e4d2de9e4deaed833685fecd"
+  },
+  "manifest": {
+    "path": "bench/program-v1.json",
+    "sha256": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9",
+    "cells": 384,
+    "core_cube_cells": 154,
+    "holdout_cells": 98,
+    "protocol": {
+      "warmups": 1,
+      "repetitions": 32,
+      "coefficient_rtol": 1e-07,
+      "coefficient_atol": 1e-10,
+      "reference_tolerance": 1e-12,
+      "fresh_process_per_command": true,
+      "confirmation_orders": [
+        [
+          "parent",
+          "candidate"
+        ],
+        [
+          "candidate",
+          "parent"
+        ]
+      ],
+      "maximum_confirmation_blocks": 2,
+      "slowdown_fraction": 0.05,
+      "short_workload_allowance_seconds": 0.001,
+      "timing_primary": "median command seconds",
+      "trace_outside_timing": true,
+      "uncertainty": "32 predetermined interleaved fresh-process artifact pairs; alternating artifact order, inverted in independent second block. Central95% paired bootstrap interval for difference of full-command medians,50000 resamples PCG64 seed260041; +/-2microseconds for difference quantization (1microsecond per duration, bounding two timestamp endpoints, recorded resolution<=500ns). Identical-baseline calibration requires each interval inside symmetric unchanged5%/1ms allowance. Exactly2blocks; no fallback clock,no overhead subtraction,no favorable subset. Stata timer is secondary witness.",
+      "uncertainty_method": "paired-bootstrap-medians-v1",
+      "uncertainty_seed": 260041,
+      "uncertainty_resamples": 50000,
+      "calibration": "Before runtime candidates: identical qualified source/native/frontend artifacts, forward calibration and independent inverse-order validation; every block interval lies inside [-allowance,+allowance]. Terminal post-timing identity verification mandatory. Failure keeps M26 open; no favorable subset or increased follow-up budget.",
+      "revision": "monotonic-command-v1",
+      "duration_quantization_seconds": 1e-06
+    }
+  },
+  "retirement_inventory": {
+    "path": "bench/history/2026-10-04-m26-retirement-inventory.json",
+    "sha256": "d334f766591badc324568164ca5f9e0c00b43ce6c0694e7dafc6ab1e120a71de",
+    "named_envelope_lines": 87568,
+    "replacement_budgets": 69100,
+    "preliminary_reduction": 18468,
+    "contingency": 3468,
+    "net_required_reduction": 15000,
+    "baseline_production_lines": 121396
+  },
+  "toolchain": {
+    "rustc": "1.85.1 (4eb161250 2025-03-15)",
+    "clang": "21.0.0",
+    "python": "3.12",
+    "numpy": "1.26.4",
+    "pandas": "2.2.2",
+    "cargo_lock_sha256": "d19c0f23ba32b6d91c8ce34b7a65d8fe68864ad4fca86fc16a6ad89e53e5e452",
+    "rust_toolchain_sha256": "f93479dd58b2bce65dd3a0e579efe4c0988894247e7243e1479f8de84f16d81d"
+  },
+  "tooling": {
+    "bench/run.py": "d22c853146adc0746645e0711c69d024a5630ba51f8191edea5afe04b5dd9531",
+    "bench/generate.py": "96f1acd83d0227bd475e590d0903e0bd1793b4f1229d60dbb549d3b1b048691b",
+    "bench/compare.py": "2b35cae152aedf4c054cbc33e4ccf1549ed9a6023ab67142d5d0977f58daba61",
+    "bench/stata_runner.do": "b2ca5e4dc09cb8093d7c86e3b2ce1e37c10e11620a441efc0e78cebbe1b04a91",
+    "references.lock.toml": "b90c83dd767425de67304287aa2ff97c567a45f26b1dcd938dcca2b6af5197e8"
+  },
+  "local_checks": {
+    "full_local_entrypoint": {
+      "result": "pass",
+      "raw_path": "target/m26-contract/full-tests.log",
+      "sha256": "976885638f3119b5f57ef953b953f9fc5343c37ec112c0beba2f63b0a4269356"
+    },
+    "actual_mac_plugin_abi": {
+      "result": "pass",
+      "raw_path": "target/m26-contract/abi.log",
+      "sha256": "8751b854d28b30459e644da7801662df0d13c4f2c60b010643e62c31425f76ac"
+    },
+    "benchmark_contract": {
+      "result": "pass",
+      "tests": 24,
+      "command": "python3.12 -m unittest discover -s bench/tests"
+    },
+    "governance_links_shell_diff": {
+      "result": "pass",
+      "ledger_lines": 219
+    },
+    "exploratory_legacy_repository_audit": {
+      "result": "fail",
+      "raw_path": "target/m26-contract/repository-check.log",
+      "sha256": "364fd513f17bed0bb906896f33693ee45a8a9f3d1d2b4f076025a01e7963331f",
+      "classification": "Inherited obsolete audits outside required local/CI entrypoint; no affected runtime or audit-source changes. Not counted as a passing check."
+    }
+  },
+  "campaigns": {
+    "baseline-final": {
+      "raw_path": "target/m26-contract/baseline-final/results.json",
+      "raw_sha256": "daf0aae5cd5c13e888b886dfd507520ce22866281406b51f44a9048ad65de116",
+      "csv_sha256": "56d3e72a725600880a411abb90077b76c3e4851ae0cca8afdca1a3fa4069c7e3",
+      "native_identity": {
+        "plugin_filename": "fereg_macos.plugin",
+        "plugin_sha256": "706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981",
+        "build_source_commit": "cbeb40d77a72e3c82689d1007e67ddd1104dec61",
+        "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+      },
+      "manifest_sha256": "bfc783065fe411aba9b1eb58ea486894228a27e344cd77e80081f8c3d547e6ac",
+      "stata_runner_sha256": "dddc83f231727b6810f62cc4db9baa536c60744a0933f6b14b81f49a103837ed",
+      "generator_sha256": "96f1acd83d0227bd475e590d0903e0bd1793b4f1229d60dbb549d3b1b048691b",
+      "generator_identity_binding": "Reconstructed from unchanged pilot generator; new runner now captures/checks all tooling and dataset identities pre/post campaign. Historical raw pilot is unchanged.",
+      "datasets": {
+        "development-ols-1fe-none-robust": "2969fc685066d3a5e043c3ce16f881045590bed7feed7d442bf14a332cf83e68",
+        "development-ols-2fe-none-robust": "ca9984f20051b56dc3f759d2d171b30eff9962478274d89da417806f1b39a53e",
+        "development-ppml-1fe-none-robust": "541a768cd0a8f2ebe9f0b3ccaecca24530a69e3804683b15ca0813aa300ef8de",
+        "development-ppml-2fe-none-robust": "0f228aec981a4040f8a80d5fdf36662dc3041dda11be4da916874b9814cf7d21",
+        "development-ppml-3fe-none-robust": "7091d8357c08d0e835011edf00c884e98f2d667e144b0b40d339a8a582ab7bf6",
+        "development-ppml-0fe-none-robust": "9a782aacdd456d02ef1962415a8d159d298f5438e33ad4aab496766f58dd5c88",
+        "development-ols-3fe-none-robust": "74a1bb7ed57da49a09db7701e58ad429b7c98ca33e9678753a2babad2cc53cb1",
+        "development-ols-0fe-none-robust": "2f8d0b736ffe690b6d63103d79761816d145fe9179a692215bab9b39a6f9bdab"
+      },
+      "records": 152,
+      "groups": [
+        {
+          "cell": "development-ppml-3fe-none-robust",
+          "threads": 16,
+          "range_seconds": [
+            0.22,
+            0.275
+          ],
+          "median_seconds": 0.223,
+          "mad_seconds": 0.0030000000000000027,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.01115,
+            "uncertainty_seconds": 0.019000000000000017,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "120d4a3147b60373e1348450658968692286c278c3c6d0cc7b4d5b6d2a0be49a",
+          "first_science_sha256": "7ffe7c0443329124a6bb1d876f138c8827411103cba8bfc4a6cdd4896b56ec77",
+          "first_scalars_sha256": "2a65961f1c922e404b933b1ad835cbc0a3bc26ac2b6a03477ec0a0e97cba3b9b"
+        },
+        {
+          "cell": "development-ppml-3fe-none-robust",
+          "threads": 8,
+          "range_seconds": [
+            0.215,
+            0.222
+          ],
+          "median_seconds": 0.217,
+          "mad_seconds": 0.0020000000000000018,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.01085,
+            "uncertainty_seconds": 0.013000000000000012,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "e64e18ec7e06fa70d1f9883fc3dd567ef855cdca90027b911c4be88c4c615906",
+          "first_science_sha256": "7ffe7c0443329124a6bb1d876f138c8827411103cba8bfc4a6cdd4896b56ec77",
+          "first_scalars_sha256": "2a65961f1c922e404b933b1ad835cbc0a3bc26ac2b6a03477ec0a0e97cba3b9b"
+        },
+        {
+          "cell": "development-ppml-3fe-none-robust",
+          "threads": 1,
+          "range_seconds": [
+            0.364,
+            0.377
+          ],
+          "median_seconds": 0.369,
+          "mad_seconds": 0.0050000000000000044,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.01845,
+            "uncertainty_seconds": 0.031000000000000028,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "637c03c5489dab0b65197dddfe6b2bed3a5b41d20f1ce36d1d34240ff233b295",
+          "first_science_sha256": "17de6c962be412c10bdf92efe47d82a8d846fe552cfb7cb5ae7102e96d61ab5b",
+          "first_scalars_sha256": "49d0c608dc2b4219b3c50a05ee7cbb0b4e0ed032758de844c9d269180270645c"
+        },
+        {
+          "cell": "development-ppml-2fe-none-robust",
+          "threads": 16,
+          "range_seconds": [
+            0.213,
+            0.217
+          ],
+          "median_seconds": 0.215,
+          "mad_seconds": 0.0020000000000000018,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.010750000000000001,
+            "uncertainty_seconds": 0.013000000000000012,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "57ba1f4cdab4bfcf9270f4a101e90fa819eac3fa32eac271eaeeb98a47d870e7",
+          "first_science_sha256": "fadda3e1e9e1a758f14e5a8ac3e629f48eed689ff0e2c31dde3194c4bf4bd928",
+          "first_scalars_sha256": "a2b8708837ae1671ec54efc19abd5d3d43d4a9759e25d80b463747696294135c"
+        },
+        {
+          "cell": "development-ppml-2fe-none-robust",
+          "threads": 8,
+          "range_seconds": [
+            0.198,
+            0.201
+          ],
+          "median_seconds": 0.199,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.00995,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "c7b1f6c8bbdc488108d12daf30e642808524280b1a83a15c00a8a00dc919653c",
+          "first_science_sha256": "0042c4e7fea6746f7522f0d42600e7b446fc772f56651694d4aa5f2b96cf11fe",
+          "first_scalars_sha256": "a1ebe690ca5430c71a228e39d2a5954b4427ed730af183882e14ed7496a9d9d9"
+        },
+        {
+          "cell": "development-ppml-2fe-none-robust",
+          "threads": 1,
+          "range_seconds": [
+            0.378,
+            0.386
+          ],
+          "median_seconds": 0.38,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.019000000000000003,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "d0796b78d39793d322d5c71b1aa89ccec1dc0afb47eac7ae532b5ede83b4a2a6",
+          "first_science_sha256": "3def57c7172a9ef2a2b28a66fec7c8ce60897aaeed4369791980a545ae77b758",
+          "first_scalars_sha256": "37704377a35f9781dc346ac22a3d1a1f2af4b83cca215a12fee60c880769bc5f"
+        },
+        {
+          "cell": "development-ppml-1fe-none-robust",
+          "threads": 16,
+          "range_seconds": [
+            0.142,
+            0.173
+          ],
+          "median_seconds": 0.161,
+          "mad_seconds": 0.011999999999999983,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.00805,
+            "uncertainty_seconds": 0.0729999999999999,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "95dcba86eec8f73df4469a4c6182df93d9227ec54888f7ef84241cdda3b3fe89",
+          "first_science_sha256": "2fd2185c138575653efe256eeaa4870f4baa3e5b31b901eb0030fdd96ce2e981",
+          "first_scalars_sha256": "edbff0cb93c169bf4591412342be26a98f882c5da2047792e41c8c358631bac5"
+        },
+        {
+          "cell": "development-ppml-1fe-none-robust",
+          "threads": 8,
+          "range_seconds": [
+            0.128,
+            0.146
+          ],
+          "median_seconds": 0.131,
+          "mad_seconds": 0.0030000000000000027,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.00655,
+            "uncertainty_seconds": 0.019000000000000017,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "5b52dccee151650ad4ad49e54434047e3d7c93a12c91929d47f15ecbce8cebf6",
+          "first_science_sha256": "2fd2185c138575653efe256eeaa4870f4baa3e5b31b901eb0030fdd96ce2e981",
+          "first_scalars_sha256": "edbff0cb93c169bf4591412342be26a98f882c5da2047792e41c8c358631bac5"
+        },
+        {
+          "cell": "development-ppml-1fe-none-robust",
+          "threads": 1,
+          "range_seconds": [
+            0.206,
+            0.251
+          ],
+          "median_seconds": 0.21,
+          "mad_seconds": 0.0040000000000000036,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0105,
+            "uncertainty_seconds": 0.025000000000000022,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "2e627fbd27f39e1c4947a9f523918bc323e4ab0a0fdd6d2b76ae81e5ebf140d6",
+          "first_science_sha256": "2fd2185c138575653efe256eeaa4870f4baa3e5b31b901eb0030fdd96ce2e981",
+          "first_scalars_sha256": "edbff0cb93c169bf4591412342be26a98f882c5da2047792e41c8c358631bac5"
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "threads": 16,
+          "range_seconds": [
+            0.208,
+            0.231
+          ],
+          "median_seconds": 0.215,
+          "mad_seconds": 0.007000000000000006,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.010750000000000001,
+            "uncertainty_seconds": 0.04300000000000004,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "35d99f835460e5f0f515620d25b7d11e37ae45ff739162a9351819619d2d7dcc",
+          "first_science_sha256": "bc5019fe7ec35210ca9ccc83b8727ef26514a4d6fe7a15c0090c2c8c3f411f9d",
+          "first_scalars_sha256": "c951303ed01dbb5f11e5c6732098f196fee30f8f01dd7c804f20af943d4a6170"
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "threads": 8,
+          "range_seconds": [
+            0.204,
+            0.208
+          ],
+          "median_seconds": 0.205,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.01025,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "de55ac1c03f5f6a85d9c9a201d2062c911996574400d9ec04beb519c0a1e8b79",
+          "first_science_sha256": "bc5019fe7ec35210ca9ccc83b8727ef26514a4d6fe7a15c0090c2c8c3f411f9d",
+          "first_scalars_sha256": "c951303ed01dbb5f11e5c6732098f196fee30f8f01dd7c804f20af943d4a6170"
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "threads": 1,
+          "range_seconds": [
+            0.261,
+            0.266
+          ],
+          "median_seconds": 0.263,
+          "mad_seconds": 0.0020000000000000018,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.013150000000000002,
+            "uncertainty_seconds": 0.013000000000000012,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "f1825a9fd74f30a672e113c277af13c3c1c91cc4d993e93b3071a8a6985eb26d",
+          "first_science_sha256": "bc5019fe7ec35210ca9ccc83b8727ef26514a4d6fe7a15c0090c2c8c3f411f9d",
+          "first_scalars_sha256": "c951303ed01dbb5f11e5c6732098f196fee30f8f01dd7c804f20af943d4a6170"
+        },
+        {
+          "cell": "development-ols-3fe-none-robust",
+          "threads": 16,
+          "range_seconds": [
+            0.082,
+            0.095
+          ],
+          "median_seconds": 0.088,
+          "mad_seconds": 0.0040000000000000036,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0044,
+            "uncertainty_seconds": 0.025000000000000022,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "334392cc0cb6348ee1a48b25274688ea13b10ae3dd2e902d2793e3edc2e27074",
+          "first_science_sha256": "cd91f7f18bafd138f105f1bff07edfb36b3fd6488455874c0bcc53abeae61469",
+          "first_scalars_sha256": "3d80d3b99a31177dcda82f708616b3642ec1daf7bf62a54d3196e2a9536cc40d"
+        },
+        {
+          "cell": "development-ols-3fe-none-robust",
+          "threads": 8,
+          "range_seconds": [
+            0.078,
+            0.094
+          ],
+          "median_seconds": 0.082,
+          "mad_seconds": 0.0030000000000000027,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0041,
+            "uncertainty_seconds": 0.019000000000000017,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "56524d16c5daadf6308356b8cbd7e77c2761947298d6e395740c5e738b51f24f",
+          "first_science_sha256": "b311ad559d7c3c7131a4089f30c444931d13c553b5da42e46969f0e0d12c2d71",
+          "first_scalars_sha256": "34b8cda7134c9dbffc109a736a3b58ec2ead5242e43a8058156789de8dd8ad47"
+        },
+        {
+          "cell": "development-ols-3fe-none-robust",
+          "threads": 1,
+          "range_seconds": [
+            0.208,
+            0.214
+          ],
+          "median_seconds": 0.212,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0106,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "f942aa2387d15e511fa6185b11dcc7435f4d41855c5b4748f46dc2dcfb659ef4",
+          "first_science_sha256": "440a7a8b606664b4029cbfb3bde35f385830349a4d5ec0d32074e9bc1b740266",
+          "first_scalars_sha256": "b395c5ec7200d39f967b34715c6cfa92dbb0bf4d1d4e59d87a2c5cd8f3c061a3"
+        },
+        {
+          "cell": "development-ols-2fe-none-robust",
+          "threads": 16,
+          "range_seconds": [
+            0.068,
+            0.093
+          ],
+          "median_seconds": 0.076,
+          "mad_seconds": 0.007000000000000006,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0038,
+            "uncertainty_seconds": 0.04300000000000004,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "ae8138178e2d28dfc7156b330031641e45a3e932f71543a40cc5f008a7726689",
+          "first_science_sha256": "8a555dc59f6ddc069fc8f58b53a97062cc9a7f92ec3a1e11736449dd7505ea85",
+          "first_scalars_sha256": "c803d54fe579c16d3847abd9b91b0dbe6bff375474b774f8720f7544d67b1dc9"
+        },
+        {
+          "cell": "development-ols-2fe-none-robust",
+          "threads": 8,
+          "range_seconds": [
+            0.062,
+            0.071
+          ],
+          "median_seconds": 0.067,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0033500000000000005,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "385013df6e002627627f321bc1d05b5b1cdae626b35f8f809163d63f9cdd0cef",
+          "first_science_sha256": "8a555dc59f6ddc069fc8f58b53a97062cc9a7f92ec3a1e11736449dd7505ea85",
+          "first_scalars_sha256": "c803d54fe579c16d3847abd9b91b0dbe6bff375474b774f8720f7544d67b1dc9"
+        },
+        {
+          "cell": "development-ols-2fe-none-robust",
+          "threads": 1,
+          "range_seconds": [
+            0.131,
+            0.138
+          ],
+          "median_seconds": 0.132,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.006600000000000001,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "175f938b7d193a07f795292e39a4d19cfb7be27df5c10d373f780bf5742e82ad",
+          "first_science_sha256": "0bed16b74aa057e83777c8078242dea37d7cfd5d190110fb473fcf6d94a412d3",
+          "first_scalars_sha256": "63d66fa08dd7c6c54bda4e2c97a1a8ee502e16ed04159588c9c5ed85a9643b17"
+        },
+        {
+          "cell": "development-ols-1fe-none-robust",
+          "threads": 16,
+          "range_seconds": [
+            0.04,
+            0.046
+          ],
+          "median_seconds": 0.043,
+          "mad_seconds": 0.001999999999999995,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.00215,
+            "uncertainty_seconds": 0.01299999999999997,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "5fb655fd84958a20b70576833400e5a8be84ee96837156e8a620a3975ccd7585",
+          "first_science_sha256": "34f8557aa5ffa5594409fbe377670aa41fc0fdd71dd583ddde255119dc6b274e",
+          "first_scalars_sha256": "0ba3a2ab3f2f7aea096737733ec739ab41ec99c26958348925ab7f8ffa7730be"
+        },
+        {
+          "cell": "development-ols-1fe-none-robust",
+          "threads": 8,
+          "range_seconds": [
+            0.036,
+            0.042
+          ],
+          "median_seconds": 0.037,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.00185,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "c47895a5433da102a8a8f185b3d79aba96ab7cc019e87f4bbe38aabee962f2bf",
+          "first_science_sha256": "34f8557aa5ffa5594409fbe377670aa41fc0fdd71dd583ddde255119dc6b274e",
+          "first_scalars_sha256": "0ba3a2ab3f2f7aea096737733ec739ab41ec99c26958348925ab7f8ffa7730be"
+        },
+        {
+          "cell": "development-ols-1fe-none-robust",
+          "threads": 1,
+          "range_seconds": [
+            0.055,
+            0.057
+          ],
+          "median_seconds": 0.056,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0028000000000000004,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "c2772d789e120ce8d8b00b37d1f8b855d0fdd54ee426aa8147ecbda3dcdad3cd",
+          "first_science_sha256": "34f8557aa5ffa5594409fbe377670aa41fc0fdd71dd583ddde255119dc6b274e",
+          "first_scalars_sha256": "0ba3a2ab3f2f7aea096737733ec739ab41ec99c26958348925ab7f8ffa7730be"
+        },
+        {
+          "cell": "development-ols-0fe-none-robust",
+          "threads": 16,
+          "range_seconds": [
+            0.046,
+            0.051
+          ],
+          "median_seconds": 0.05,
+          "mad_seconds": 0.000999999999999994,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0025000000000000005,
+            "uncertainty_seconds": 0.006999999999999964,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "e8d3a9afb94b8637b171fab9f17d383cf1c5890d53964603f64fb9220029c731",
+          "first_science_sha256": "6e04f1fbfa928308ba78ad32897521f6bb63dacf9d4ef462513fc54c9b5db71e",
+          "first_scalars_sha256": "12a391ec1ce5188a4d46df38c664c9c938198c60999d084c4982c6073cfe0735"
+        },
+        {
+          "cell": "development-ols-0fe-none-robust",
+          "threads": 8,
+          "range_seconds": [
+            0.045,
+            0.046
+          ],
+          "median_seconds": 0.045,
+          "mad_seconds": 0.0,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.00225,
+            "uncertainty_seconds": 0.001,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "e41c0bd8efc5774c5debf6f67066b0621871aa9bd5f640053abd3503b1a34591",
+          "first_science_sha256": "6e04f1fbfa928308ba78ad32897521f6bb63dacf9d4ef462513fc54c9b5db71e",
+          "first_scalars_sha256": "12a391ec1ce5188a4d46df38c664c9c938198c60999d084c4982c6073cfe0735"
+        },
+        {
+          "cell": "development-ols-0fe-none-robust",
+          "threads": 1,
+          "range_seconds": [
+            0.053,
+            0.057
+          ],
+          "median_seconds": 0.054,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0027,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "7e55e783d4e5faffe5b734b249afe23501b0da6b88b1319afa28cede6ab038b6",
+          "first_science_sha256": "6e04f1fbfa928308ba78ad32897521f6bb63dacf9d4ef462513fc54c9b5db71e",
+          "first_scalars_sha256": "12a391ec1ce5188a4d46df38c664c9c938198c60999d084c4982c6073cfe0735"
+        }
+      ],
+      "self_noise_unresolved_groups": 18,
+      "accuracy_scope": "Coefficient/sample against same qualified binary at 1e-12; not independent full scientific acceptance. Fixed-configuration capture repeats additionally check b/V and selected scalars; wider science remains M25 bound witnesses."
+    },
+    "capture-final": {
+      "raw_path": "target/m26-contract/capture-final/results.json",
+      "raw_sha256": "5dcda4a8919f07275fcec7a33852ef66fcb20ff3859d1a4ee7e645455ec9e97d",
+      "csv_sha256": "eb3318b5d72895e1413316dd5cf0224810265bb60dbf9b27671224df8d4118d7",
+      "native_identity": {
+        "plugin_filename": "fereg_macos.plugin",
+        "plugin_sha256": "706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981",
+        "build_source_commit": "cbeb40d77a72e3c82689d1007e67ddd1104dec61",
+        "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+      },
+      "manifest_sha256": "bfc783065fe411aba9b1eb58ea486894228a27e344cd77e80081f8c3d547e6ac",
+      "stata_runner_sha256": "dddc83f231727b6810f62cc4db9baa536c60744a0933f6b14b81f49a103837ed",
+      "generator_sha256": "96f1acd83d0227bd475e590d0903e0bd1793b4f1229d60dbb549d3b1b048691b",
+      "generator_identity_binding": "Reconstructed from unchanged pilot generator; new runner now captures/checks all tooling and dataset identities pre/post campaign. Historical raw pilot is unchanged.",
+      "datasets": {
+        "development-ols-2fe-residual-robust": "ca9984f20051b56dc3f759d2d171b30eff9962478274d89da417806f1b39a53e",
+        "development-ols-2fe-fe-cluster": "ca9984f20051b56dc3f759d2d171b30eff9962478274d89da417806f1b39a53e",
+        "development-ppml-2fe-fe-cluster": "0f228aec981a4040f8a80d5fdf36662dc3041dda11be4da916874b9814cf7d21",
+        "development-ols-2fe-combined-multiway": "ca9984f20051b56dc3f759d2d171b30eff9962478274d89da417806f1b39a53e",
+        "cover-ols-2fe-probability": "cf9eac02af6d700c5bd91a62e3eb43c74e2416425df713768d0f8aa581e24559",
+        "cover-ppml-bias-randomized": "c031aa2e47615a22062cc3113f629567c846cd15edb0f9625b4c85396ca4760c",
+        "cover-ppml-separation-fe-simplex-ir": "24ea31bd7ee1a01e60464deb7f6baebf1179e27b7b5cce116501840157a50128",
+        "development-ppml-2fe-combined-multiway": "0f228aec981a4040f8a80d5fdf36662dc3041dda11be4da916874b9814cf7d21",
+        "development-ppml-finite-factor-combined-multiway": "77808d795ffca551581554d19c92426df53713c6fe2c38b2c2a1e17816152ec6",
+        "development-ols-finite-factor-combined-multiway": "20e177f4e008742fe549138b8e7b1921024128eb2d78a6e853f6316b5f4b7d34",
+        "development-ppml-absorbed-slope-combined-multiway": "b62efe3b2db1c0619b56d1ac60d5c2211f40f83db2f3a2b64fbcdaa0eb1d9270",
+        "cover-ols-2fe-frequency": "a4d715f523d590b5eb1a4860cc868ee6bfd4517f532b999583fd7dd578c17e71",
+        "cover-ppml-bias-exact": "c031aa2e47615a22062cc3113f629567c846cd15edb0f9625b4c85396ca4760c",
+        "development-ols-absorbed-slope-combined-multiway": "84a6f30f605f23c344f1a2b34b7402f6a048f71b2515efab6de8cbb28855404e",
+        "development-ppml-2fe-residual-robust": "0f228aec981a4040f8a80d5fdf36662dc3041dda11be4da916874b9814cf7d21"
+      },
+      "records": 105,
+      "groups": [
+        {
+          "cell": "development-ols-2fe-residual-robust",
+          "threads": 4,
+          "range_seconds": [
+            0.083,
+            0.094
+          ],
+          "median_seconds": 0.084,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.004200000000000001,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "da736ac17d6f4951b79621c895ef8263f3915ca05add62a887bd5dfa10857a1b",
+          "first_science_sha256": "0bed16b74aa057e83777c8078242dea37d7cfd5d190110fb473fcf6d94a412d3",
+          "first_scalars_sha256": "63d66fa08dd7c6c54bda4e2c97a1a8ee502e16ed04159588c9c5ed85a9643b17"
+        },
+        {
+          "cell": "development-ols-2fe-fe-cluster",
+          "threads": 4,
+          "range_seconds": [
+            0.37,
+            0.39
+          ],
+          "median_seconds": 0.373,
+          "mad_seconds": 0.0030000000000000027,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.01865,
+            "uncertainty_seconds": 0.019000000000000017,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "ca360f0ca294711bdf87e592959fcae4d8bd6383930c83d294ea0f7b9293e622",
+          "first_science_sha256": "eff8c539b831e3f8b012bdb9f8b3a5600bbda27a46ac8b12c0555bdb33f26fb3",
+          "first_scalars_sha256": "64a826ca0e9ce7b10326b960af48791d322ca6580d3551c3ca9bb02e3e9f6e2c"
+        },
+        {
+          "cell": "development-ols-2fe-combined-multiway",
+          "threads": 4,
+          "range_seconds": [
+            0.371,
+            0.388
+          ],
+          "median_seconds": 0.382,
+          "mad_seconds": 0.0020000000000000018,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.019100000000000002,
+            "uncertainty_seconds": 0.013000000000000012,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "59f48587da5125cc68a0acf1578a951742bc9aebf16f62bce776e9f5a416d8ea",
+          "first_science_sha256": "211b3719f62eb0c04e4c2f39a381abf6c5923ebcd92171c2cb9f452218ffac37",
+          "first_scalars_sha256": "97cba5d9ad703ffcb6d5c8571fc98377600b8af0ac15b3fa0c1baa43c58b1303"
+        },
+        {
+          "cell": "development-ppml-2fe-residual-robust",
+          "threads": 4,
+          "range_seconds": [
+            0.24,
+            0.258
+          ],
+          "median_seconds": 0.246,
+          "mad_seconds": 0.0030000000000000027,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0123,
+            "uncertainty_seconds": 0.019000000000000017,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "cbcb9b18ef2c76ecc759c126563232cea7c3f34e791e3e21644e4c26decbc5d4",
+          "first_science_sha256": "ec82d76959305edd0c63fe85d3e27d90bc42ae383fef19ce378c918d9bee5439",
+          "first_scalars_sha256": "2411145e6358a4376c9fc52132362dcd6ae51a2d8d8a2984382f27ffd0b3e9d1"
+        },
+        {
+          "cell": "development-ppml-2fe-fe-cluster",
+          "threads": 4,
+          "range_seconds": [
+            0.254,
+            0.265
+          ],
+          "median_seconds": 0.26,
+          "mad_seconds": 0.0040000000000000036,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.013000000000000001,
+            "uncertainty_seconds": 0.025000000000000022,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "9f82aebfccbc67b6d5a726ca20c1cd03cd9b71d618ec9fb2306135f0195e9d38",
+          "first_science_sha256": "9fc828f0321a27a090febcfa2996332b1b7a1227a6b99d6ddb52c9ca2decbc76",
+          "first_scalars_sha256": "a7d40b268855e4de5fe484339748bde40b4953e811f22db10ea089f34bbc0d0c"
+        },
+        {
+          "cell": "development-ppml-2fe-combined-multiway",
+          "threads": 4,
+          "range_seconds": [
+            0.282,
+            0.286
+          ],
+          "median_seconds": 0.283,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.01415,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "56c604612fbf8cb81ae610cb011704b8811910bd4b702c32878a08768efb5f7a",
+          "first_science_sha256": "509a923f5b80cb9f1b38af8f159346cd8989885a543ee7154e85a27d069ef452",
+          "first_scalars_sha256": "45604a690e9b808dee366ae940f9428da17f888baf949dd9c9df5f02e5717ca8"
+        },
+        {
+          "cell": "development-ols-finite-factor-combined-multiway",
+          "threads": 4,
+          "range_seconds": [
+            0.171,
+            0.176
+          ],
+          "median_seconds": 0.172,
+          "mad_seconds": 0.0009999999999999731,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0086,
+            "uncertainty_seconds": 0.006999999999999839,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "6b3deffeec3c8aaa85433856f43c1d700d5d0d2aebe46394a0eaab5dcabc2fe5",
+          "first_science_sha256": "d7c9220643ec90000786e39f2e6b71b50d5b3bc384be00c5f65be80707685411",
+          "first_scalars_sha256": "dbfec510bcd4734d7d52c1c919053fac58fac912633eaf12d257864def4cf571"
+        },
+        {
+          "cell": "development-ols-absorbed-slope-combined-multiway",
+          "threads": 4,
+          "range_seconds": [
+            0.072,
+            0.076
+          ],
+          "median_seconds": 0.074,
+          "mad_seconds": 0.0020000000000000018,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0037,
+            "uncertainty_seconds": 0.013000000000000012,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "ba536850d2ba88aa13ac73f43d9773acb07b44c3544fdb6acc2794228e5f23a4",
+          "first_science_sha256": "33f6c8c2ae1d853abec189ddc5279ea49dc8d28778bfccc3455d790c53cb1bea",
+          "first_scalars_sha256": "dd4800b368afe078f98a3fbe4be120af810448e31dd34c35ccbb590e77ad7c44"
+        },
+        {
+          "cell": "development-ppml-finite-factor-combined-multiway",
+          "threads": 4,
+          "range_seconds": [
+            0.32,
+            0.326
+          ],
+          "median_seconds": 0.325,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.01625,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "407a182f5e827d7ce525d1b8a500891ae33ff8b4a7d212186cf33a2c4a418367",
+          "first_science_sha256": "6c8e0e840de7a78cd9ff503795670870fabe17e99f1bd252b336782f3665c81d",
+          "first_scalars_sha256": "dd2ae5f64d61d6242dbf34fecbe0366a133a05df27075c36123e2032a243d8c1"
+        },
+        {
+          "cell": "development-ppml-absorbed-slope-combined-multiway",
+          "threads": 4,
+          "range_seconds": [
+            0.442,
+            0.465
+          ],
+          "median_seconds": 0.459,
+          "mad_seconds": 0.006000000000000005,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.02295,
+            "uncertainty_seconds": 0.03700000000000003,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "82f864750ae90c1123243e7e36aeecdea52c6b6e04f0208e1dad1a46422cdadd",
+          "first_science_sha256": "5b9c1280e4987fb522819a10ac398d4c8673259ccfa663691a5db3d0dcc70dbf",
+          "first_scalars_sha256": "e2c31d1fdb7e3f0fbb1badf552db5027e8cee6e9c9dff161d7a0396f8813fb74"
+        },
+        {
+          "cell": "cover-ols-2fe-frequency",
+          "threads": 4,
+          "range_seconds": [
+            0.091,
+            0.115
+          ],
+          "median_seconds": 0.092,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0046,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "6369d7b5c4bfdd81600d231e718d6f21b05df5b6fcdf773ea251238810e7edab",
+          "first_science_sha256": "fe9ae0e29bf8aa69725a0e0f269a4a705ea450736dc5b8cd86eec08f502b3f68",
+          "first_scalars_sha256": "141ad84ab9e736d68293e142c16d909590e736a247d5d38ab93ad5c58e3487a3"
+        },
+        {
+          "cell": "cover-ols-2fe-probability",
+          "threads": 4,
+          "range_seconds": [
+            0.089,
+            0.091
+          ],
+          "median_seconds": 0.09,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0045,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "963d288cfb65d6411fb77fce8b1f34c1abced65f0194754e9b7ce85294e64f3c",
+          "first_science_sha256": "eb4b99bd3c4e65aba61f3e2fccd091cf38f68959fad470dd92d124fae0d5211b",
+          "first_scalars_sha256": "d0f422592c4ea02b4e650437c2497b6edd5fbbf4dfdaefecf1f9af4e6074b762"
+        },
+        {
+          "cell": "cover-ppml-bias-exact",
+          "threads": 4,
+          "range_seconds": [
+            0.036,
+            0.038
+          ],
+          "median_seconds": 0.037,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.00185,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "508a7cf212399515162a76dcbf878a777bf894b0624ce1cea2eb70aacd365c2d",
+          "first_science_sha256": "6b6802c71b007ad50526105a43eb16b25d6d66facf1fef2d278123d72f25148e",
+          "first_scalars_sha256": "e1a0be238fe5473c0fe671d856729eb4a0886857f4f301ccda68e079f4a768bd"
+        },
+        {
+          "cell": "cover-ppml-bias-randomized",
+          "threads": 4,
+          "range_seconds": [
+            0.043,
+            0.045
+          ],
+          "median_seconds": 0.045,
+          "mad_seconds": 0.0,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "within",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.00225,
+            "uncertainty_seconds": 0.001,
+            "noise_resolves_allowance": true
+          },
+          "telemetry_sha256": "778b5bff45041bb2e83c4f56041e053557617e899200194b88ea21b5795e01b7",
+          "first_science_sha256": "6b6802c71b007ad50526105a43eb16b25d6d66facf1fef2d278123d72f25148e",
+          "first_scalars_sha256": "e1a0be238fe5473c0fe671d856729eb4a0886857f4f301ccda68e079f4a768bd"
+        },
+        {
+          "cell": "cover-ppml-separation-fe-simplex-ir",
+          "threads": 4,
+          "range_seconds": [
+            0.029,
+            0.032
+          ],
+          "median_seconds": 0.031,
+          "mad_seconds": 0.0010000000000000009,
+          "coefficient_sample_accuracy": "pass",
+          "status": "ok",
+          "fixed_configuration_b_V_selected_scalars_exact_repeats": true,
+          "self_noise_diagnostic": {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0,
+            "allowance_seconds": 0.0015500000000000002,
+            "uncertainty_seconds": 0.007000000000000005,
+            "noise_resolves_allowance": false
+          },
+          "telemetry_sha256": "a64b6a91859aaedc85b936458106ebf8ab99d5466bda6b6b115cb8b9dc9cc42b",
+          "first_science_sha256": "65f210ea3117c65ecb23696c3ce6b197a857d6a0ec102a7baef4c5a57aecf507",
+          "first_scalars_sha256": "18ff89432471868370291d577a276f393251cf855eeb437c02c86f5a3a1147d3"
+        }
+      ],
+      "self_noise_unresolved_groups": 10,
+      "accuracy_scope": "Coefficient/sample against same qualified binary at 1e-12; not independent full scientific acceptance. Fixed-configuration capture repeats additionally check b/V and selected scalars; wider science remains M25 bound witnesses."
+    }
+  },
+  "platforms": {
+    "linux": {
+      "source_commit": "444c4389652a51864e67945dc4b7370cf1497f6f",
+      "ci_run": 37202238253,
+      "ci_result": "success",
+      "summary_path": "target/m26-contract/linux-baseline/summary.json",
+      "summary_sha256": "60d4872e45412f60161242eb48b3e729261314393c455b47ef0657b46255b930",
+      "next_sha256": "872a0010cfcd1fc35fb345a63dd6cc539c543f2c73d61a66786dfa4bb2954631",
+      "frozen_legacy_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc",
+      "scientific_pass_cases": 73,
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "replay_passed": true
+    },
+    "scc": {
+      "result": "not_run",
+      "scope": "M26 tooling staged controls only; whole-node scaling before M29 acceptance and complete matrix at M35"
+    },
+    "windows": {
+      "result": "not_run",
+      "scope": "M35 build/ABI/transaction and available licensed science qualification remains required"
+    }
+  },
+  "open_findings": [
+    {
+      "finding": "Earlier timing noise and quantization failed M26 resolution",
+      "owner": "M26",
+      "result": "Replaced before runtime candidates by reviewed, fully calibrated monotonic-command-v1 method; old failures retained."
+    },
+    {
+      "finding": "Inherited 8-to-16 losses in OLS and PPML",
+      "owner": "M29/M30 scheduling and FE policy; M35 complete envelope",
+      "result": "one order block only; inherited cliff diagnosis, not confirmed new regression"
+    },
+    {
+      "finding": "Narrow three-FE PPML automatic ceiling retains eight effective workers at requested sixteen",
+      "owner": "M29",
+      "result": "inherited; captured in runtime telemetry"
+    },
+    {
+      "finding": "Full interaction/development/holdout and SCC/Windows matrices not executed",
+      "owner": "mapped migration milestones and M35",
+      "result": "unqualified cases remain visible; pilot does not pass final program gate"
+    },
+    {
+      "finding": "Output-dependent factor reporting conflict confirmed on unchanged baseline",
+      "owner": "M27",
+      "trigger": "Singleton pruning removes original factor base: fereg y c.x i.f, absorb(a) versus absorb(alpha=a)",
+      "ordinary_result": "r(459): coefficient-name count disagrees with receipt",
+      "saved_fe_result": "success, N=8, names x 2b.f 3.f _cons",
+      "authority_conflict": "SPEC sections 2/6 preserve original slots and base flags; categorical rebase witness and shared frontend expect final-sample expansion",
+      "result": "Scientific clarification requested from Johannes; no runtime or frontend fix made",
+      "raw_reproducer": "target/m27-investigation/owner-output-rebase.do",
+      "reproducer_sha256": "0f6bd2f87d5b52151aded7fc2bc863c9e36852951e2ca34ba672ead982d260aa",
+      "raw_log": "target/m27-investigation/owner-output-rebase.log",
+      "log_sha256": "7d43b734f31633e60bb10d09e9a9def61b52a684ec4ef4697b41d967c5eb3b23"
+    }
+  ],
+  "review": {
+    "result": "accepted with limitations; no blocking implementation or evidence findings",
+    "prior_Astra_high_reviews": [
+      "15,000 net retirement arithmetic accepted; initial measurement/execution/summary blockers identified",
+      "Paired32 method reviewed; terminal markers, two-sided calibration and cross-reference provenance fixed",
+      "Isolated monotonic repair approved before runtime candidates; implementation reviewed without blocking findings; SDK/build input hashes added"
+    ],
+    "reviewer": "fresh independent gpt-6-astra, high effort, read-only final M26 review",
+    "verified": "24 cells and 32 interleaved pairs in each of two inverse-order blocks; all 48 symmetric intervals pass; disjoint retirement arithmetic and unchanged runtime qualification verified",
+    "limitations": "Mac pilot only; full interaction/holdout, inherited scaling cliffs, licensed SCC and Windows remain mapped gates; new-commit CI pending",
+    "maximum_interval_fraction_of_allowance": 0.611
+  },
+  "measurement_calibration": {
+    "historical_millisecond_method": {
+      "result": "failed",
+      "blocks": [
+        {
+          "raw_path": "target/m26-contract/calibration-forward/results.json",
+          "sha256": "5b286fe7daf56b1806a03051f38840642b8df14e720df750b550ad04612d84f6",
+          "manifest_sha256": "f12ceb638332a861dd9f01eb461e4b1ad8c694a890b8fe88f7780350c00209f3",
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 32,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true,
+            "confirmation_orders": [
+              [
+                "parent",
+                "candidate"
+              ],
+              [
+                "candidate",
+                "parent"
+              ]
+            ],
+            "maximum_confirmation_blocks": 2,
+            "slowdown_fraction": 0.05,
+            "short_workload_allowance_seconds": 0.001,
+            "timing_primary": "median command seconds",
+            "trace_outside_timing": true,
+            "uncertainty": "32 predetermined interleaved fresh-process artifact pairs; alternate pair order and invert each order in the second block. Paired percentile bootstrap of difference of command medians (50000 resamples, PCG64 seed 260041, central 95% interval) plus +/-1 ms difference quantization. Both block upper bounds must fit unchanged allowance; both lower bounds above allowance confirm failure. Exactly two blocks; unresolved cannot pass. Identical-baseline calibration then independent opposite-order validation before runtime candidates.",
+            "uncertainty_method": "paired-bootstrap-medians-v1",
+            "uncertainty_seed": 260041,
+            "uncertainty_resamples": 50000,
+            "calibration": "Before runtime candidates: identical qualified source/native/frontend artifacts, forward calibration and independent inverse-order validation; every block interval lies inside [-allowance,+allowance]. Terminal post-timing identity verification mandatory. Failure keeps M26 open; no favorable subset or increased follow-up budget."
+          },
+          "coefficient_sample_groups": 48,
+          "symmetric_resolved_cells": 22,
+          "unresolved": [
+            {
+              "cell": "development-ols-0fe-none-robust",
+              "threads": 8,
+              "verdict": "unresolved",
+              "delta_seconds": 0.0,
+              "allowance_seconds": 0.002,
+              "lower_seconds": -0.001,
+              "upper_seconds": 0.002000000000000001,
+              "uncertainty_seconds": 0.002000000000000001,
+              "noise_resolves_allowance": false
+            },
+            {
+              "cell": "development-ols-1fe-none-robust",
+              "threads": 16,
+              "verdict": "within",
+              "delta_seconds": 0.0,
+              "allowance_seconds": 0.0016500000000000002,
+              "lower_seconds": -0.002000000000000001,
+              "upper_seconds": 0.001,
+              "uncertainty_seconds": 0.002000000000000001,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "raw_path": "target/m26-contract/calibration-reverse/results.json",
+          "sha256": "1fedc4177c82dd040f228a003e0c9de1c109a258faa368628aef02affc555c23",
+          "manifest_sha256": "f12ceb638332a861dd9f01eb461e4b1ad8c694a890b8fe88f7780350c00209f3",
+          "protocol": {
+            "warmups": 1,
+            "repetitions": 32,
+            "coefficient_rtol": 1e-07,
+            "coefficient_atol": 1e-10,
+            "reference_tolerance": 1e-12,
+            "fresh_process_per_command": true,
+            "confirmation_orders": [
+              [
+                "parent",
+                "candidate"
+              ],
+              [
+                "candidate",
+                "parent"
+              ]
+            ],
+            "maximum_confirmation_blocks": 2,
+            "slowdown_fraction": 0.05,
+            "short_workload_allowance_seconds": 0.001,
+            "timing_primary": "median command seconds",
+            "trace_outside_timing": true,
+            "uncertainty": "32 predetermined interleaved fresh-process artifact pairs; alternate pair order and invert each order in the second block. Paired percentile bootstrap of difference of command medians (50000 resamples, PCG64 seed 260041, central 95% interval) plus +/-1 ms difference quantization. Both block upper bounds must fit unchanged allowance; both lower bounds above allowance confirm failure. Exactly two blocks; unresolved cannot pass. Identical-baseline calibration then independent opposite-order validation before runtime candidates.",
+            "uncertainty_method": "paired-bootstrap-medians-v1",
+            "uncertainty_seed": 260041,
+            "uncertainty_resamples": 50000,
+            "calibration": "Before runtime candidates: identical qualified source/native/frontend artifacts, forward calibration and independent inverse-order validation; every block interval lies inside [-allowance,+allowance]. Terminal post-timing identity verification mandatory. Failure keeps M26 open; no favorable subset or increased follow-up budget."
+          },
+          "coefficient_sample_groups": 48,
+          "symmetric_resolved_cells": 22,
+          "unresolved": [
+            {
+              "cell": "development-ols-0fe-none-robust",
+              "threads": 8,
+              "verdict": "unresolved",
+              "delta_seconds": 0.0,
+              "allowance_seconds": 0.0019500000000000001,
+              "lower_seconds": -0.002000000000000001,
+              "upper_seconds": 0.002000000000000001,
+              "uncertainty_seconds": 0.002000000000000001,
+              "noise_resolves_allowance": false
+            },
+            {
+              "cell": "development-ols-1fe-none-robust",
+              "threads": 16,
+              "verdict": "unresolved",
+              "delta_seconds": 0.0,
+              "allowance_seconds": 0.0016500000000000002,
+              "lower_seconds": -0.001,
+              "upper_seconds": 0.002000000000000001,
+              "uncertainty_seconds": 0.002000000000000001,
+              "noise_resolves_allowance": false
+            }
+          ]
+        }
+      ]
+    },
+    "monotonic_command_method": {
+      "result": "pass",
+      "raw_path": "target/m26-contract/monotonic-calibration.json",
+      "sha256": "681f8ae5c2150754fd9fe68f838939f5c9cf0470ec3c4739f180fcbacdcaf489",
+      "cells": 24,
+      "artifact_groups_per_block": 48,
+      "paired_fresh_measurements_per_block": 1536,
+      "warmups_per_block": 48,
+      "references_per_block": 16,
+      "both_symmetric_intervals_pass": true,
+      "comparisons": [
+        {
+          "cell": "development-ols-0fe-none-robust",
+          "threads": 1,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 3.3333333333482318e-06,
+              "allowance_seconds": 0.0025421114583333328,
+              "lower_seconds": -0.0002650416666666996,
+              "upper_seconds": 0.0003080416666666524,
+              "uncertainty_seconds": 0.00030470833333330415,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00014041666666665675,
+              "allowance_seconds": 0.0026944479166666675,
+              "lower_seconds": -0.0002904999999999971,
+              "upper_seconds": 0.00042579166666670076,
+              "uncertainty_seconds": 0.00043091666666665384,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-0fe-none-robust",
+          "threads": 8,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00015460416666665533,
+              "allowance_seconds": 0.0019949250000000003,
+              "lower_seconds": -0.000816333333333292,
+              "upper_seconds": 0.0001350833333333531,
+              "uncertainty_seconds": 0.0006617291666666367,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 4.487499999995814e-05,
+              "allowance_seconds": 0.0019753041666666672,
+              "lower_seconds": -0.0005787291666666924,
+              "upper_seconds": 0.0004665624999999945,
+              "uncertainty_seconds": 0.0006236041666666506,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-0fe-none-robust",
+          "threads": 16,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0002576666666666977,
+              "allowance_seconds": 0.002242315625,
+              "lower_seconds": -0.0007054583333333997,
+              "upper_seconds": 0.0003040416666665998,
+              "uncertainty_seconds": 0.0005617083333332976,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0005796458333333504,
+              "allowance_seconds": 0.0022351,
+              "lower_seconds": -0.0003837098958333945,
+              "upper_seconds": 0.0013651874999999947,
+              "uncertainty_seconds": 0.0009633557291667449,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-1fe-none-robust",
+          "threads": 1,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00011058333333334447,
+              "allowance_seconds": 0.0026174229166666656,
+              "lower_seconds": -0.00017779166666670253,
+              "upper_seconds": 0.00023683854166663067,
+              "uncertainty_seconds": 0.000288375000000047,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 3.6479166666651686e-05,
+              "allowance_seconds": 0.002657665625,
+              "lower_seconds": -0.0006075208333333035,
+              "upper_seconds": 0.00022629166666670247,
+              "uncertainty_seconds": 0.0006439999999999552,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-1fe-none-robust",
+          "threads": 8,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -9.770833333352935e-06,
+              "allowance_seconds": 0.0014422614583333327,
+              "lower_seconds": -0.00029583333333329875,
+              "upper_seconds": 0.0006064166666666004,
+              "uncertainty_seconds": 0.0006161874999999534,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00012397916666669756,
+              "allowance_seconds": 0.001472794791666665,
+              "lower_seconds": -0.00019677083333329855,
+              "upper_seconds": 0.0008062916666666997,
+              "uncertainty_seconds": 0.0006823125000000021,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-1fe-none-robust",
+          "threads": 16,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -5.662500000004622e-05,
+              "allowance_seconds": 0.0016493104166666675,
+              "lower_seconds": -0.0005449791666666517,
+              "upper_seconds": 0.0004317083333332993,
+              "uncertainty_seconds": 0.0004883541666666055,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0001091458333333517,
+              "allowance_seconds": 0.0016776312500000003,
+              "lower_seconds": -0.0005634166666666476,
+              "upper_seconds": 0.0004622083333333992,
+              "uncertainty_seconds": 0.000571354166666751,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-none-robust",
+          "threads": 1,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -9.729166666666567e-06,
+              "allowance_seconds": 0.005878804166666668,
+              "lower_seconds": -0.000943541666666601,
+              "upper_seconds": 0.0008380000000000035,
+              "uncertainty_seconds": 0.0009338124999999345,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.000745583333333355,
+              "allowance_seconds": 0.005943068750000002,
+              "lower_seconds": -0.0032814791666666543,
+              "upper_seconds": 0.00034652187500002775,
+              "uncertainty_seconds": 0.0025358958333332993,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-none-robust",
+          "threads": 8,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0004409375000000021,
+              "allowance_seconds": 0.0025506927083333328,
+              "lower_seconds": 8.414583333335646e-05,
+              "upper_seconds": 0.000812937500000046,
+              "uncertainty_seconds": 0.00037200000000004395,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00011412499999999964,
+              "allowance_seconds": 0.0025938885416666676,
+              "lower_seconds": -0.0004977140624999706,
+              "upper_seconds": 0.00046731250000005075,
+              "uncertainty_seconds": 0.0005814375000000504,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-none-robust",
+          "threads": 16,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0004576249999999893,
+              "allowance_seconds": 0.0028688333333333326,
+              "lower_seconds": -0.0010602708333333538,
+              "upper_seconds": 0.0002569999999999983,
+              "uncertainty_seconds": 0.0007146249999999876,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0005140208333333576,
+              "allowance_seconds": 0.002905807291666668,
+              "lower_seconds": -0.0009199166666666503,
+              "upper_seconds": 1.7166666666649454e-05,
+              "uncertainty_seconds": 0.0005311875000000071,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-3fe-none-robust",
+          "threads": 1,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00018856250000007235,
+              "allowance_seconds": 0.010132572916666667,
+              "lower_seconds": -0.00020329166666671416,
+              "upper_seconds": 0.00041360416666666255,
+              "uncertainty_seconds": 0.0003918541666667865,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0002603333333333069,
+              "allowance_seconds": 0.010155913541666667,
+              "lower_seconds": -0.000509147395833308,
+              "upper_seconds": 0.00012920833333335068,
+              "uncertainty_seconds": 0.00038954166666665756,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-3fe-none-robust",
+          "threads": 8,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0008348333333333541,
+              "allowance_seconds": 0.0034480843750000004,
+              "lower_seconds": -0.0012522499999999945,
+              "upper_seconds": -0.000281916666666606,
+              "uncertainty_seconds": 0.0005529166666667481,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00018343749999999437,
+              "allowance_seconds": 0.003419726041666668,
+              "lower_seconds": -0.0006098333333333353,
+              "upper_seconds": 0.0005799999999999952,
+              "uncertainty_seconds": 0.0007932708333333296,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-3fe-none-robust",
+          "threads": 16,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00016077083333333742,
+              "allowance_seconds": 0.0034974000000000008,
+              "lower_seconds": -0.0006761041666666892,
+              "upper_seconds": 0.0008256458333333447,
+              "uncertainty_seconds": 0.0008368750000000266,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00030329166666670515,
+              "allowance_seconds": 0.0034728270833333354,
+              "lower_seconds": -0.0009389583333332932,
+              "upper_seconds": 0.0009859583333333957,
+              "uncertainty_seconds": 0.0012892500000001009,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "threads": 1,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00020664583333332431,
+              "allowance_seconds": 0.012059372916666672,
+              "lower_seconds": -0.00021977083333329727,
+              "upper_seconds": 0.0005035625000000246,
+              "uncertainty_seconds": 0.0004264166666666216,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 7.350000000000412e-05,
+              "allowance_seconds": 0.012081390625000002,
+              "lower_seconds": -0.0004469374999999367,
+              "upper_seconds": 0.0005773541666666806,
+              "uncertainty_seconds": 0.0005204374999999409,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "threads": 8,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0002965000000000051,
+              "allowance_seconds": 0.009047310416666668,
+              "lower_seconds": -0.0007987083333332848,
+              "upper_seconds": 0.0003130000000000612,
+              "uncertainty_seconds": 0.0006095000000000664,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0004907916666666567,
+              "allowance_seconds": 0.009034623958333335,
+              "lower_seconds": -0.0014329583333333987,
+              "upper_seconds": 0.0002550416666666202,
+              "uncertainty_seconds": 0.0009421666666667419,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "threads": 16,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0002493541666666599,
+              "allowance_seconds": 0.009184876041666668,
+              "lower_seconds": -0.0011059583333333492,
+              "upper_seconds": 0.001112416666666697,
+              "uncertainty_seconds": 0.001361770833333357,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0003690000000000637,
+              "allowance_seconds": 0.00925777291666667,
+              "lower_seconds": -0.0010647500000000012,
+              "upper_seconds": 0.0004167255208333158,
+              "uncertainty_seconds": 0.0007857255208333796,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-1fe-none-robust",
+          "threads": 1,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -2.975000000005057e-05,
+              "allowance_seconds": 0.00928896354166667,
+              "lower_seconds": -0.0005252499999999752,
+              "upper_seconds": 0.000331791666666579,
+              "uncertainty_seconds": 0.0004954999999999246,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00014562499999998257,
+              "allowance_seconds": 0.009243483333333335,
+              "lower_seconds": -0.0002577098958334086,
+              "upper_seconds": 0.0006847640625000105,
+              "uncertainty_seconds": 0.0005391390625000279,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-1fe-none-robust",
+          "threads": 8,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0002762499999999918,
+              "allowance_seconds": 0.005243383333333335,
+              "lower_seconds": -0.0006474166666667039,
+              "upper_seconds": 0.0004877770833333408,
+              "uncertainty_seconds": 0.0007640270833333327,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0004492916666666569,
+              "allowance_seconds": 0.0052583322916666675,
+              "lower_seconds": -0.0008326666666666879,
+              "upper_seconds": 0.00021685416666663925,
+              "uncertainty_seconds": 0.0006661458333332962,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-1fe-none-robust",
+          "threads": 16,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0009161041666666953,
+              "allowance_seconds": 0.005371151041666668,
+              "lower_seconds": -0.0007651041666666533,
+              "upper_seconds": 0.0017699791666667111,
+              "uncertainty_seconds": 0.0016812083333333486,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0001816250000000047,
+              "allowance_seconds": 0.005384787500000003,
+              "lower_seconds": -0.0007697140625000193,
+              "upper_seconds": 0.0006593333333333015,
+              "uncertainty_seconds": 0.0008409583333333062,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-none-robust",
+          "threads": 1,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00018850000000003586,
+              "allowance_seconds": 0.017215290625,
+              "lower_seconds": -0.0008969583333333067,
+              "upper_seconds": 0.0010402916666666354,
+              "uncertainty_seconds": 0.0010854583333333426,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00033333333333340764,
+              "allowance_seconds": 0.017140984375000008,
+              "lower_seconds": -0.000694687500000011,
+              "upper_seconds": 0.0002484791666666466,
+              "uncertainty_seconds": 0.0005818125000000543,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-none-robust",
+          "threads": 8,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 6.045833333334638e-05,
+              "allowance_seconds": 0.008349113541666668,
+              "lower_seconds": -0.0002218749999999805,
+              "upper_seconds": 0.0007493749999999674,
+              "uncertainty_seconds": 0.000688916666666621,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 7.829166666661891e-05,
+              "allowance_seconds": 0.008359165625000003,
+              "lower_seconds": -0.0036240416666666587,
+              "upper_seconds": 0.001351208333333296,
+              "uncertainty_seconds": 0.0037023333333332776,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-none-robust",
+          "threads": 16,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0002405000000000046,
+              "allowance_seconds": 0.008354870833333335,
+              "lower_seconds": -0.0013252708333333343,
+              "upper_seconds": 0.0012157500000000135,
+              "uncertainty_seconds": 0.001456250000000018,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0004440416666666447,
+              "allowance_seconds": 0.008310614583333336,
+              "lower_seconds": -0.0006586781250000264,
+              "upper_seconds": 0.0016740833333333796,
+              "uncertainty_seconds": 0.001230041666666735,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-3fe-none-robust",
+          "threads": 1,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00019645833333337137,
+              "allowance_seconds": 0.016982292708333336,
+              "lower_seconds": -0.0004671250000001217,
+              "upper_seconds": 0.0010089682291666944,
+              "uncertainty_seconds": 0.000812509895833323,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 2.166666666580941e-06,
+              "allowance_seconds": 0.01689090520833334,
+              "lower_seconds": -0.0012830416666667047,
+              "upper_seconds": 0.0004924791666666131,
+              "uncertainty_seconds": 0.0012852083333332856,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-3fe-none-robust",
+          "threads": 8,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0004833750000000636,
+              "allowance_seconds": 0.00909446666666667,
+              "lower_seconds": -0.0011086838541666984,
+              "upper_seconds": 4.462499999999059e-05,
+              "uncertainty_seconds": 0.0006253088541666348,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 9.789583333336127e-05,
+              "allowance_seconds": 0.009001171875000004,
+              "lower_seconds": -0.0003925833333333608,
+              "upper_seconds": 0.0009221041666667132,
+              "uncertainty_seconds": 0.0008242083333333519,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-3fe-none-robust",
+          "threads": 16,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00010304166666666448,
+              "allowance_seconds": 0.009061539583333337,
+              "lower_seconds": -0.0007141666666667359,
+              "upper_seconds": 0.000605020833333301,
+              "uncertainty_seconds": 0.0007080624999999654,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0001359374999999885,
+              "allowance_seconds": 0.009029484375000002,
+              "lower_seconds": -0.0006868781249999684,
+              "upper_seconds": 0.0006888125000000225,
+              "uncertainty_seconds": 0.000824750000000011,
+              "noise_resolves_allowance": true
+            }
+          ]
+        }
+      ],
+      "block_identities": [
+        {
+          "path": "target/m26-contract/monotonic-forward/results.json",
+          "sha256": "7a7eb6fb3d4eba6fad48857f4856d25e382edfb4a142ddb711ff06a1749d3e2a"
+        },
+        {
+          "path": "target/m26-contract/monotonic-reverse/results.json",
+          "sha256": "32540f8fe33d25f2f3a13183bb504aa3a437341bb27ca2278ff8027d2057f40c"
+        }
+      ],
+      "context": {
+        "protocol": {
+          "warmups": 1,
+          "repetitions": 32,
+          "coefficient_rtol": 1e-07,
+          "coefficient_atol": 1e-10,
+          "reference_tolerance": 1e-12,
+          "fresh_process_per_command": true,
+          "confirmation_orders": [
+            [
+              "parent",
+              "candidate"
+            ],
+            [
+              "candidate",
+              "parent"
+            ]
+          ],
+          "maximum_confirmation_blocks": 2,
+          "slowdown_fraction": 0.05,
+          "short_workload_allowance_seconds": 0.001,
+          "timing_primary": "median command seconds",
+          "trace_outside_timing": true,
+          "uncertainty": "32 predetermined interleaved fresh-process artifact pairs; alternating artifact order, inverted in independent second block. Central95% paired bootstrap interval for difference of full-command medians,50000 resamples PCG64 seed260041; +/-2microseconds for difference quantization (1microsecond per duration, bounding two timestamp endpoints, recorded resolution<=500ns). Identical-baseline calibration requires each interval inside symmetric unchanged5%/1ms allowance. Exactly2blocks; no fallback clock,no overhead subtraction,no favorable subset. Stata timer is secondary witness.",
+          "uncertainty_method": "paired-bootstrap-medians-v1",
+          "uncertainty_seed": 260041,
+          "uncertainty_resamples": 50000,
+          "calibration": "Before runtime candidates: identical qualified source/native/frontend artifacts, forward calibration and independent inverse-order validation; every block interval lies inside [-allowance,+allowance]. Terminal post-timing identity verification mandatory. Failure keeps M26 open; no favorable subset or increased follow-up budget.",
+          "revision": "monotonic-command-v1",
+          "duration_quantization_seconds": 1e-06
+        },
+        "tooling_identity": {
+          "bench/run.py": "d22c853146adc0746645e0711c69d024a5630ba51f8191edea5afe04b5dd9531",
+          "bench/generate.py": "96f1acd83d0227bd475e590d0903e0bd1793b4f1229d60dbb549d3b1b048691b",
+          "bench/compare.py": "2b35cae152aedf4c054cbc33e4ccf1549ed9a6023ab67142d5d0977f58daba61",
+          "bench/stata_runner.do": "b2ca5e4dc09cb8093d7c86e3b2ce1e37c10e11620a441efc0e78cebbe1b04a91",
+          "references.lock.toml": "b90c83dd767425de67304287aa2ff97c567a45f26b1dcd938dcca2b6af5197e8",
+          "bench/clock.c": "e4aa711868a1bafd0a2b07622fa1193db83c9e7dd8729ce917916efc623ed3f0",
+          "bench/build_clock.py": "7f1d371c244889f1417a3e02551051556f3af051a9e2a86ce76b785017bd0ef1",
+          "manifest": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9"
+        },
+        "platform": "darwin",
+        "environment": {
+          "reghdfe": "b8c2c5dcfa23fe59ff1ca72d2f7fedf507763757ea2ad52fe301a5fe686a01bd",
+          "ftools": "d112fc4b662945c1f76c8462a0d6c904ddc336813f24fb8c83c3aad3a0f49680",
+          "require": "d190c105f703b12d696b9aa426cd70c6c05dbd7102e62a1fcf59f0ae30616cf1",
+          "ppmlhdfe": "366ddb71ebbe53bb4d7e0d4066e0a419ec6f0b689d0004be2da23e0c295d953e",
+          "fixest": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9"
+        },
+        "tier": "baseline-pilot",
+        "timing_identity": {
+          "method": "monotonic-command-v1",
+          "plugin_sha256": "fa7caefcd52f5dfdf41be15896991f67673d01de786f09f1a85c5b2a7b9dda50"
+        }
+      },
+      "monotonic-forward": {
+        "terminal_verified": true,
+        "command_statuses": "all ok",
+        "coefficient_sample_summary_sha256": "35da749903af18b9a61439fe9a1cf958646a00ae8d9986daac40ad1c380047db",
+        "fixed_configuration_b_V_selected_scalars_exact_groups": 48,
+        "expected_exact_groups": 48,
+        "secondary_stata_minus_monotonic_range_seconds": [
+          -0.0008989583333333939,
+          0.0010009166666666014
+        ],
+        "secondary_interpretation": "Within millisecond Stata rounding plus small outer stopwatch dispatch interval. Neither overhead subtraction nor per-cell clock substitution."
+      },
+      "monotonic-reverse": {
+        "terminal_verified": true,
+        "command_statuses": "all ok",
+        "coefficient_sample_summary_sha256": "d969793d1bfff617dca2cf26dee9d150dc8a5591cf0519252ba787e08563a2e8",
+        "fixed_configuration_b_V_selected_scalars_exact_groups": 48,
+        "expected_exact_groups": 48,
+        "secondary_stata_minus_monotonic_range_seconds": [
+          -0.0009392500000000581,
+          0.0011076666666665902
+        ],
+        "secondary_interpretation": "Within millisecond Stata rounding plus small outer stopwatch dispatch interval. Neither overhead subtraction nor per-cell clock substitution."
+      }
+    }
+  },
+  "command_clock": {
+    "binary_sha256": "fa7caefcd52f5dfdf41be15896991f67673d01de786f09f1a85c5b2a7b9dda50",
+    "source_inputs": {
+      "bench/clock.c": "e4aa711868a1bafd0a2b07622fa1193db83c9e7dd8729ce917916efc623ed3f0",
+      "plugin/stplugin.c": "7f954e5985c53bb80533d0cbd5df794c0aaa94de2a69013e3b8c610d9011c69a",
+      "plugin/stplugin.h": "2ff392f78fdef0a41602994f6cf540ead3e1bfe4f1ef8336a5f2055fd2f2b3f1",
+      "plugin/exports_macos.txt": "b3d3f7e98b7896eb948879a07eab68fe5d6cb69b3c0fbe3abf53e43277903c1f"
+    },
+    "compiler": [
+      "Apple clang version 21.0.0 (clang-2100.3.34.2)",
+      "Target: arm64-apple-darwin25.6.0"
+    ],
+    "build_command": "clang -std=c11 -O2 -fPIC -Wall -Wextra -Werror -Wconversion -Wshadow -Wstrict-prototypes -Wmissing-prototypes -DSYSTEM=APPLEMAC -Iplugin -bundle -Wl,-exported_symbols_list,plugin/exports_macos.txt bench/clock.c plugin/stplugin.c -o <private clock>; codesign --force --sign - <private clock>",
+    "scalar_abi_failure_and_exports_tests": "pass",
+    "licensed_stata_smoke": "pass",
+    "licensed_stata_smoke_sha256": "2f69ddded6adbeaa91ef5606ea7b9d3551f93f7a73f5703b8ee5879b660ea379",
+    "nominal_counter_resolution_seconds": 4.166666666666667e-08,
+    "windows_operation": "unqualified; M35 check required",
+    "linux_operation": "CI harness pending; licensed SCC smoke before M29 acceptance"
+  }
+}

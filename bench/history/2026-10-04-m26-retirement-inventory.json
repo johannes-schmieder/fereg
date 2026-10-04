@@ -1,0 +1,246 @@
+{
+  "schema": 1,
+  "program": "M26-M35",
+  "baseline_source": "444c4389652a51864e67945dc4b7370cf1497f6f",
+  "qualified_runtime_source": "cbeb40d77a72e3c82689d1007e67ddd1104dec61",
+  "baseline_metrics": {
+    "fereg-core": {
+      "production_lines": 106083,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "dispatch_candidates": 1480,
+      "chunk_candidates": 14
+    },
+    "fereg-plugin": {
+      "production_lines": 15313,
+      "files_over_1500": 3,
+      "functions_over_150": 15,
+      "dispatch_candidates": 166,
+      "chunk_candidates": 0
+    }
+  },
+  "inventory_sha256": "72c119d033ee2efb22cc7ff66025ff028d00d5e5edc84e1382d80098fdd53fc1",
+  "accounting": "Disjoint replacement envelopes include unchanged survivors, all adapters and independent science; existing lines are not a count of proven duplication.",
+  "pools": {
+    "M27": {
+      "files": {
+        "crates/fereg-core/src/ols/prepared.rs": 2101,
+        "crates/fereg-core/src/ols/prepared_categorical_data.rs": 1954,
+        "crates/fereg-core/src/ols/prepared_categorical_clusters.rs": 387,
+        "crates/fereg-core/src/ols/prepared_categorical_rebase.rs": 379,
+        "crates/fereg-core/src/ols/prepared_categorical_effect.rs": 85,
+        "crates/fereg-core/src/ols/prepared_categorical_singleton.rs": 58,
+        "crates/fereg-core/src/ols/prepared_categorical_topology.rs": 262,
+        "crates/fereg-core/src/ols/prepared_clustered_view.rs": 37,
+        "crates/fereg-core/src/ols/prepared_clusters.rs": 520,
+        "crates/fereg-core/src/ols/prepared_fit_view.rs": 1349,
+        "crates/fereg-plugin/src/estimate/ols_pipeline.rs": 142,
+        "crates/fereg-plugin/src/result_view.rs": 108
+      },
+      "existing_production_lines": 7382,
+      "successor_budget": 5700,
+      "reassigned_function_slices": [],
+      "planned_reduction": 1682
+    },
+    "M28": {
+      "files": {
+        "crates/fereg-core/src/memory.rs": 702,
+        "crates/fereg-core/src/memory/categorical_schwarz.rs": 170,
+        "crates/fereg-core/src/memory/owned_fe.rs": 246,
+        "crates/fereg-core/src/memory/slope_recovery.rs": 118,
+        "crates/fereg-core/src/memory/workspace_peak.rs": 75,
+        "crates/fereg-core/src/ppml/memory.rs": 3115,
+        "crates/fereg-core/src/ppml/metadata_memory.rs": 302,
+        "crates/fereg-core/src/ols/prepared_scratch.rs": 785,
+        "crates/fereg-plugin/src/action_memory.rs": 213,
+        "crates/fereg-plugin/src/input_memory.rs": 209,
+        "crates/fereg-plugin/src/memory_forecast.rs": 86,
+        "crates/fereg-plugin/src/memory_report.rs": 130,
+        "crates/fereg-plugin/src/metadata_memory.rs": 117,
+        "crates/fereg-plugin/src/ols_frame_memory.rs": 108,
+        "crates/fereg-plugin/src/ols_preparation_memory.rs": 207,
+        "crates/fereg-plugin/src/ols_publication_memory.rs": 157
+      },
+      "existing_production_lines": 6740,
+      "successor_budget": 4800,
+      "reassigned_function_slices": [],
+      "planned_reduction": 1940
+    },
+    "M29": {
+      "files": {
+        "crates/fereg-core/src/parallel.rs": 231,
+        "crates/fereg-plugin/src/thread_policy.rs": 29
+      },
+      "existing_production_lines": 419,
+      "successor_budget": 400,
+      "reassigned_function_slices": [
+        {
+          "path": "crates/fereg-core/src/fe/borrowed_map.rs",
+          "function": "parallel_level_chunk_size",
+          "production_lines": 6,
+          "reassigned_from": "M30"
+        },
+        {
+          "path": "crates/fereg-core/src/fe/auto.rs",
+          "function": "admit_parallel_projection",
+          "production_lines": 14,
+          "reassigned_from": "M30"
+        },
+        {
+          "path": "crates/fereg-core/src/ols/finite_wls_kernel.rs",
+          "function": "finite_wls_moment_layout",
+          "production_lines": 54,
+          "reassigned_from": "M31"
+        },
+        {
+          "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+          "function": "fit_with_independent_outcome_and_check",
+          "production_lines": 36,
+          "reassigned_from": "M32"
+        },
+        {
+          "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+          "function": "robust_reduction_chunks",
+          "production_lines": 15,
+          "reassigned_from": "M32"
+        },
+        {
+          "path": "crates/fereg-core/src/sandwich.rs",
+          "function": "reduction_chunks",
+          "production_lines": 14,
+          "reassigned_from": null
+        },
+        {
+          "path": "crates/fereg-core/src/sandwich/qualified_cluster.rs",
+          "function": "reduction_chunks",
+          "production_lines": 20,
+          "reassigned_from": null
+        }
+      ],
+      "planned_reduction": 19
+    },
+    "M30": {
+      "files": {
+        "crates/fereg-core/src/fe/auto.rs": 425,
+        "crates/fereg-core/src/fe/borrowed_map.rs": 10195,
+        "crates/fereg-core/src/fe/map.rs": 1547,
+        "crates/fereg-core/src/fe/topology_map.rs": 360,
+        "crates/fereg-core/src/fe/topology_slope_map.rs": 3650,
+        "crates/fereg-core/src/fe/design.rs": 585,
+        "crates/fereg-core/src/fe/topology_adapter.rs": 97,
+        "crates/fereg-core/src/fe/borrowed_map/three_fe_schur.rs": 473
+      },
+      "existing_production_lines": 17312,
+      "successor_budget": 12500,
+      "reassigned_function_slices": [
+        {
+          "path": "crates/fereg-core/src/fe/borrowed_map.rs",
+          "function": "parallel_level_chunk_size",
+          "production_lines": 6,
+          "reassigned_from": "M30"
+        },
+        {
+          "path": "crates/fereg-core/src/fe/auto.rs",
+          "function": "admit_parallel_projection",
+          "production_lines": 14,
+          "reassigned_from": "M30"
+        }
+      ],
+      "planned_reduction": 4812
+    },
+    "M31": {
+      "files": {
+        "crates/fereg-core/src/ols/prepared_fit.rs": 7075,
+        "crates/fereg-core/src/ols/linear_session.rs": 6273,
+        "crates/fereg-core/src/ols/finite_wls_kernel.rs": 2130,
+        "crates/fereg-core/src/ols/canonical_products.rs": 1592,
+        "crates/fereg-core/src/ols/implicit_centered.rs": 548,
+        "crates/fereg-core/src/ols/prepared_rhs.rs": 797,
+        "crates/fereg-core/src/ols/prepared_fit/qr_factorization.rs": 268,
+        "crates/fereg-core/src/ols/canonical_products/three.rs": 422
+      },
+      "existing_production_lines": 19051,
+      "successor_budget": 14500,
+      "reassigned_function_slices": [
+        {
+          "path": "crates/fereg-core/src/ols/finite_wls_kernel.rs",
+          "function": "finite_wls_moment_layout",
+          "production_lines": 54,
+          "reassigned_from": "M31"
+        }
+      ],
+      "planned_reduction": 4551
+    },
+    "M32": {
+      "files": {
+        "crates/fereg-core/src/ols/prepared_clustered.rs": 1785,
+        "crates/fereg-core/src/ols/prepared_robust.rs": 1368,
+        "crates/fereg-core/src/ols/prepared_unadjusted.rs": 2003,
+        "crates/fereg-core/src/ols/prepared_scores.rs": 1353,
+        "crates/fereg-core/src/ols/prepared_inference_view.rs": 473,
+        "crates/fereg-core/src/ppml/result.rs": 3612,
+        "crates/fereg-core/src/ppml/vce.rs": 1399,
+        "crates/fereg-core/src/ppml/residuals.rs": 67,
+        "crates/fereg-plugin/src/result.rs": 1207,
+        "crates/fereg-plugin/src/ppml_result.rs": 2293
+      },
+      "existing_production_lines": 15509,
+      "successor_budget": 13500,
+      "reassigned_function_slices": [
+        {
+          "path": "crates/fereg-core/src/ols/prepared_unadjusted.rs",
+          "function": "fit_with_independent_outcome_and_check",
+          "production_lines": 36,
+          "reassigned_from": "M32"
+        },
+        {
+          "path": "crates/fereg-core/src/ols/prepared_robust.rs",
+          "function": "robust_reduction_chunks",
+          "production_lines": 15,
+          "reassigned_from": "M32"
+        }
+      ],
+      "planned_reduction": 2009
+    },
+    "M33": {
+      "files": {
+        "crates/fereg-core/src/ppml/categorical_fwl_cmg.rs": 1508,
+        "crates/fereg-core/src/ppml/categorical_lsmr.rs": 2111,
+        "crates/fereg-core/src/ppml/one_fe_profile.rs": 660,
+        "crates/fereg-core/src/ppml/profiled_intercept_curve.rs": 377,
+        "crates/fereg-core/src/ppml/prepared_irls.rs": 3682,
+        "crates/fereg-core/src/ppml/prepared_model.rs": 792,
+        "crates/fereg-core/src/ppml/prepared.rs": 834,
+        "crates/fereg-core/src/ppml/prepared_estimator.rs": 1589,
+        "crates/fereg-core/src/ppml/solver.rs": 491,
+        "crates/fereg-core/src/ppml/prepared_irls/admission.rs": 646,
+        "crates/fereg-core/src/ppml/prepared_irls/controller.rs": 694,
+        "crates/fereg-core/src/ppml/prepared_irls/direction.rs": 227,
+        "crates/fereg-core/src/ppml/prepared_irls/retry.rs": 65
+      },
+      "existing_production_lines": 13676,
+      "successor_budget": 11200,
+      "reassigned_function_slices": [],
+      "planned_reduction": 2476
+    },
+    "M34": {
+      "files": {
+        "crates/fereg-plugin/src/estimate.rs": 3801,
+        "crates/fereg-plugin/src/ppml_estimate.rs": 3209,
+        "crates/fereg-plugin/src/numeric_pipeline.rs": 321,
+        "crates/fereg-plugin/src/dispatch.rs": 148
+      },
+      "existing_production_lines": 7479,
+      "successor_budget": 6500,
+      "reassigned_function_slices": [],
+      "planned_reduction": 979
+    }
+  },
+  "total_named_envelopes": 87568,
+  "outside_envelopes": 33828,
+  "preliminary_reduction": 18468,
+  "explicit_contingency": 3468,
+  "required_net_reduction": 15000,
+  "required_oversize_change": "Fewer than the baseline 112 oversized functions and 22 oversized files, with all replacements obeying 150/1500 limits.",
+  "contingency_rule": "Every use or transfer counts in ordinary ratchet reviews and the whole-program net reduction. No hidden exclusions or moving scientific code outside envelopes to claim deletion."
+}

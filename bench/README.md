@@ -1,5 +1,51 @@
 # Benchmark suite
 
+The [M26–M35 contract](../docs/cleanup/REPLACEMENTS.md) uses the same runner
+with [program-v1.json](program-v1.json). Select it with `--manifest` and a
+declared `--tier` (`development-mac`, `development-scc`, `holdout-mac`,
+`holdout-scc`, `baseline-pilot` or `capture-pilot`). `--source-root` binds a
+frozen source/frontend/dist snapshot. `--paired-source-root` adds the qualified
+parent (or fixed baseline), using the same dataset and 32 interleaved fresh-process
+pairs. Pair order alternates; `--reverse-order` flips every pair in the second
+block. Holdout results cannot be used for tuning while retaining
+their holdout label. Pilot successes do not pass the integrated M35 matrix.
+
+For each reference artifact, run a forward and reverse block in separate roots:
+
+```sh
+python3 bench/build_clock.py --output target/bench-env/command-clock.plugin
+python3 bench/run.py --manifest bench/program-v1.json --tier baseline-pilot \
+  --source-root target/candidate --paired-source-root target/parent --fereg-only \
+  --clock-plugin target/bench-env/command-clock.plugin \
+  --environment target/bench-env --root target/pair-forward
+python3 bench/run.py --manifest bench/program-v1.json --tier baseline-pilot \
+  --source-root target/candidate --paired-source-root target/parent --fereg-only \
+  --clock-plugin target/bench-env/command-clock.plugin \
+  --environment target/bench-env --root target/pair-reverse --reverse-order
+python3 bench/compare.py --parent-blocks target/pair-forward/results.json target/pair-reverse/results.json \
+  --baseline-blocks target/fixed-forward/results.json target/fixed-reverse/results.json \
+  --fixed-plugin-sha256 FROZEN_PLATFORM_SHA256 --fixed-frontend-sha256 FROZEN_FRONTEND_SHA256 \
+  --output target/envelope.json
+```
+
+The checker requires both references, matching artifact/tooling/manifest/data
+identities, complete accurate pairs and the declared order. When parent and
+fixed baseline are the same artifact, the same pair of blocks can serve both.
+It evaluates the paired-bootstrap difference of command medians with the frozen
+seed, sample budget and quantization allowance; unresolved results cannot pass.
+Baseline calibration adds `--calibrate`, requires identical artifacts and both
+interval ends within the symmetric allowance in each block.
+The monotonic clock brackets the complete command and OLS prediction, with
+Stata's timer retained as a secondary witness. It is built in the private
+environment, loaded before timing, and hash-checked before and after the run.
+Its tick resolution must be at most 500 ns. The frozen 1 μs bound per duration
+covers two timestamp endpoints; scheduling and dispatch variability stay in
+the paired sample. No overhead is subtracted and no timer fallback is allowed.
+Windows stopwatch support remains unqualified until the Windows platform check.
+Full program CSVs are bounded to 8 MiB and default to the ignored raw run root.
+Committed evidence remains a compact summary of at most 100 KB. A full tier can
+also be partitioned deterministically with existing `--cells` selections.
+
 `suite.toml` declares 22 general cells and six bounded M1 cells, immutable seed, comparator policy and tiers.
 `generate.py` ports the preserved synthetic generators and writes a single
 numeric DTA for every estimator. The first controls are invariant to K. Seeds,
@@ -26,7 +72,8 @@ Acquisition/builds happen before timing. Source-index files stay with their
 package; only runtime files share the private Stata reference path.
 
 Each cell/thread/comparator receives one untimed warm-up process followed by
-five fresh measurement processes. The reported value is the median of five
+five fresh measurement processes in `suite.toml`; the second program fixes 32.
+The reported value is the median of the declared number of
 successful estimation times, excluding process startup and dataset loading.
 Requested residual/FE outputs are included in estimation work. A separate
 fereg fit at tolerance 1e-12 supplies reference coefficients and exact sample

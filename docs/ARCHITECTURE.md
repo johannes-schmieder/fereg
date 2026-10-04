@@ -1,7 +1,9 @@
 # Incremental refactoring architecture
 
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
-M0–M21. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
+M0–M25. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
+The [second program](../milestones2.md) and [replacement contract](cleanup/REPLACEMENTS.md)
+define the next scoped retirements without claiming a changed runtime.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -40,17 +42,17 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The [versioned inventory](cleanup/complexity.md) measures 105,187 production
-lines in core and 15,222 in the host. Core has 97 functions over 150 lines and
+The [versioned inventory](cleanup/complexity.md) measures 106,083 production
+lines in core and 15,313 in the host. Core has 97 functions over 150 lines and
 19 files over 1,500; the host has 15 and 3. Its conservative dispatch inventory
-contains 1,474 core and 165 host candidates, including validation conditions;
+contains 1,480 core and 166 host candidates, including validation conditions;
 14 core chunk conditions are counted separately. These counts measure
 complexity; some conditions validate inputs rather than select algorithms.
 
-Largest inherited files are `fe/borrowed_map.rs` (10,162 production lines),
-`ols/prepared_fit.rs` (7,070) and `ols/linear_session.rs` (6,213). The largest
-functions are PPML route-memory estimation (1,154 physical lines), PPML IRLS
-orchestration (962), and retained-rank solving (925). Fast/Low storage remains
+Largest inherited files are `fe/borrowed_map.rs` (10,195 production lines),
+`ols/prepared_fit.rs` (7,075) and `ols/linear_session.rs` (6,273). The largest
+functions are PPML route-memory estimation (1,173 physical lines), PPML IRLS
+orchestration (962), and retained-rank solving (961). Fast/Low storage remains
 distinct; the preparation, inference and exclusive FE owners described below
 replace several earlier forks without changing solver policy.
 

@@ -30,12 +30,20 @@ python3 -c 'import numpy,pandas; print("numpy",numpy.__version__,"pandas",pandas
     bash scripts/build_linux.sh
 ) > logs/build.log 2>&1
 python3 source/bench/setup.py --root "$run_root/environment" > logs/comparators.log 2>&1
+python3 source/bench/build_clock.py --output "$run_root/environment/command-clock.plugin" > logs/clock-build.log 2>&1
 python3 - "$run_root" <<'PY'
 import hashlib,json,sys
 from pathlib import Path
 root=Path(sys.argv[1])
 plugin=root/'source/dist/fereg_linux.plugin'
+sys.path.insert(0,str(root/'source/bench'))
+from run import native_identity, tooling_identity
+policy=json.loads((root/'input/policy.json').read_text()) if (root/'input/policy.json').exists() else {'engine':'legacy'}
+manifest=root/'input/suite.json' if (root/'input/suite.json').exists() else None
 (root/'environment/build.json').write_text(json.dumps({'source':json.loads((root/'input/source.json').read_text()),
-    'plugin_sha256':hashlib.sha256(plugin.read_bytes()).hexdigest()},indent=2)+'\n')
+    'plugin_sha256':hashlib.sha256(plugin.read_bytes()).hexdigest(),
+    'native_identity':native_identity(policy['engine'],root/'source'),
+    'timing_identity':{'method':'monotonic-command-v1','plugin_sha256':hashlib.sha256((root/'environment/command-clock.plugin').read_bytes()).hexdigest()},
+    'tooling_identity':tooling_identity(manifest)},indent=2)+'\n')
 PY
 printf 'FEREG_BENCH_SETUP_COMPLETE job=%s\n' "${JOB_ID:-local}" > environment/SETUP.COMPLETE

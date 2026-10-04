@@ -1,5 +1,14 @@
 # SCC benchmark tooling
 
+For the second program, pass `--manifest bench/program-v1.json --engine next`
+to `prepare.py` and select `development-scc` or `holdout-scc`. Preparation reads
+the manifest from the exact committed source and records engine policy; program
+tasks keep a complete native-thread ladder on one whole node. The original
+tiers retain their legacy default. The program collector permits an 8 MiB raw
+scalar summary in an ignored collection directory; commit compact per-family
+evidence rather than the entire matrix. These extensions require a real compute
+node smoke before M29 scaling acceptance; local syntax/tests alone do not qualify SCC.
+
 The scripts use `/projectnb/welfgr/fereg/dev/<id>` for smoke and
 `/projectnb/welfgr/fereg/runs/<id>` for standard/full runs. Inspect current
 quota and jobs before deploying. Source archives contain an explicit allowlist

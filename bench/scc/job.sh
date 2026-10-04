@@ -36,11 +36,17 @@ if [[ "$task" == undefined ]]; then task=1; fi
 [[ "$task" =~ ^[1-9][0-9]*$ ]]
 read -r cell threads < <(sed -n "${task}p" input/tasks.tsv)
 [[ "$cell" =~ ^[a-z0-9-]+$ && "$threads" =~ ^(all|[0-9]+)$ ]]
-args=(--tier "$tier" --engine legacy --environment "$run_root/environment"
+engine=legacy
+if [[ -f input/policy.json ]]; then
+    engine=$(python3 -c 'import json; print(json.load(open("input/policy.json"))["engine"])')
+fi
+[[ "$engine" =~ ^(next|legacy)$ ]]
+args=(--tier "$tier" --engine "$engine" --environment "$run_root/environment"
       --root "$run_root/output/task-$task" --summary "$run_root/summaries/task-$task.csv"
       --stata "$(command -v stata-mp)" --stata-processors 4)
 if [[ "$cell" != all ]]; then args+=(--cells "$cell"); fi
 if [[ "$threads" != all ]]; then args+=(--threads-only "$threads"); fi
+if [[ -f input/suite.json ]]; then args+=(--manifest "$run_root/input/suite.json" --fereg-only --clock-plugin "$run_root/environment/command-clock.plugin"); fi
 if [[ -f input/veneto-path.txt ]]; then args+=(--veneto-data "$(cat input/veneto-path.txt)"); fi
 python3 source/bench/run.py "${args[@]}"
 python3 - "$run_root/summaries/task-$task.csv" "$tier" <<'PY'

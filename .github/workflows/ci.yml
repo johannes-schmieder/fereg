@@ -13,7 +13,7 @@ concurrency:
 
 jobs:
   check:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     env:
       CARGO_TERM_COLOR: always
@@ -35,6 +35,11 @@ jobs:
           restore-keys: rust-${{ runner.os }}-
       - name: Rust and mock-SPI checks
         run: ./scripts/run_tests.sh
+      - name: Executable benchmark contract checks
+        run: |
+          python3.12 -m venv target/bench-ci-env
+          target/bench-ci-env/bin/pip install numpy==1.26.4 pandas==2.2.2
+          target/bench-ci-env/bin/python -m unittest discover -s bench/tests
 
   comparator:
     # Draft listings require push access. This job runs no repository code;

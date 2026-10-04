@@ -23,6 +23,8 @@ def sha256(path):
 
 def groups(cell, rng):
     n, q = cell["rows"], cell["effects"]
+    if q == 0:
+        return {}
     row = np.arange(n, dtype=np.int64)
     if cell["design"].startswith("akm"):
         periods = 5
@@ -35,7 +37,7 @@ def groups(cell, rng):
             destination = (104729 * (np.arange(workers) + 1) + 7919 * (t + 1) - 1) % firms
             assignment[:, t] = np.where(rng.random(workers) < mobility, destination, assignment[:, t-1])
         result = {"g1": row // periods + 1, "g2": assignment.reshape(-1)[:n] + 1}
-        if q == 3:
+        if q >= 3:
             result["g3"] = row % periods + 1
     else:
         # Dense panels/gravity share connected, balanced Cartesian memberships.
@@ -43,8 +45,17 @@ def groups(cell, rng):
         result = {"g1": row % levels + 1}
         if q >= 2:
             result["g2"] = (row // levels) % levels + 1
-        if q == 3:
+        if q >= 3:
             result["g3"] = (row // (levels * levels)) % 4 + 1
+    for effect in range(4, q + 1):
+        result[f"g{effect}"] = (row // (effect + 3)) % (effect + 3) + 1
+    if cell.get("topology") == "skewed":
+        for name in result:
+            levels = int(result[name].max())
+            result[name] = 1 + np.minimum(rng.zipf(1.6, n) - 1, levels - 1)
+    if cell.get("topology") == "disconnected":
+        component = row % 3
+        result = {name: values + component * int(values.max()) for name, values in result.items()}
     return result
 
 
@@ -72,9 +83,16 @@ def generate(cell, seed, path):
         if cell.get("separation"):
             data["y"] = rng.poisson(mu).astype(float)
             data["y"][data["g1"] <= 2] = 0.0
-    if cell["weights"] == "analytic":
-        data["weight"] = np.exp(np.random.default_rng(np.random.SeedSequence([seed, 905])).normal(0, 0.5, n))
-    if cell["vce"] == "cluster":
+    if cell["weights"] in {"analytic", "probability"}:
+        data["weight"] = np.exp(np.random.default_rng(np.random.SeedSequence([seed, 905])).normal(0, cell.get("weight_spread", 0.5), n))
+    if cell["weights"] == "frequency":
+        data["weight"] = 1 + np.arange(n) % 5
+    if cell.get("program_data"):
+        data["cluster"] = np.arange(n) % max(10, min(100, n // 100)) + 1
+        data["cluster2"] = (np.arange(n) // 7) % 23 + 1
+        data["biasunit"] = np.arange(n) % 17 + 1
+        data["factor"] = (np.arange(n) // 13) % 3 + 1
+    elif cell["vce"] == "cluster":
         data["cluster"] = (data["g1"] - 1) % max(10, min(100, n // 100)) + 1
     frame = pd.DataFrame(data)
     path = Path(path)

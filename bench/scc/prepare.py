@@ -16,7 +16,7 @@ PATHS = ['Cargo.toml','Cargo.lock','rust-toolchain.toml','clippy.toml','referenc
          'bench','AGENTS.md','docs/SPEC.md','docs/ARCHITECTURE.md']
 
 
-def prepare(root, tier, environment, revision, veneto):
+def prepare(root, tier, environment, revision, veneto, manifest=None, engine=None):
     if root.exists():
         raise ValueError('staging root already exists')
     commit=subprocess.check_output(['git','rev-parse',revision+'^{commit}'],cwd=ROOT,text=True).strip()
@@ -28,10 +28,27 @@ def prepare(root, tier, environment, revision, veneto):
     metadata={'commit':commit,'archive_sha256':sha256(source),'paths':paths}
     (root/'source.json').write_text(json.dumps(metadata,indent=2)+'\n')
     suite=tomllib.loads(subprocess.check_output(["git","show",commit+":bench/suite.toml"],cwd=ROOT,text=True))
+    if manifest:
+        relative=Path(manifest)
+        if relative.is_absolute():
+            relative=relative.relative_to(ROOT)
+        if '..' in relative.parts or relative.parts[0] != 'bench' or relative.suffix != '.json':
+            raise ValueError('program manifest must be a committed bench JSON file')
+        suite=json.loads(subprocess.check_output(['git','show',commit+':'+relative.as_posix()],cwd=ROOT,text=True))
+        (root/'suite.json').write_text(json.dumps(suite,indent=2)+'\n')
+    if tier not in suite['tiers']:
+        raise ValueError('tier is outside the committed manifest')
+    selected_engine=engine or ('next' if manifest else 'legacy')
+    if selected_engine not in {'next','legacy'}:
+        raise ValueError('unknown native engine')
+    (root/'policy.json').write_text(json.dumps({'engine':selected_engine,'program':bool(manifest)})+'\n')
     lock=tomllib.loads(subprocess.check_output(["git","show",commit+":references.lock.toml"],cwd=ROOT,text=True))
     pins={ref["name"]:ref for ref in lock["reference"]}
     if tier=='smoke':
         tasks=['all all']
+    elif manifest:
+        # Keep each complete ladder on the same whole node and avoid tiny arrays.
+        tasks=[f'{cell["id"]} all' for cell in selected_cells(suite,tier)]
     else:
         tasks=[f'{cell["id"]} {threads}' for cell in selected_cells(suite,tier) for threads in thread_counts(suite,tier,cell)]
     (root/'tasks.tsv').write_text('\n'.join(tasks)+'\n')
@@ -52,9 +69,11 @@ def prepare(root, tier, environment, revision, veneto):
 if __name__=='__main__':
     parser=argparse.ArgumentParser()
     parser.add_argument('--root',type=Path,required=True)
-    parser.add_argument('--tier',choices=['smoke','standard','full'],required=True)
+    parser.add_argument('--tier',required=True)
+    parser.add_argument('--manifest',type=Path)
+    parser.add_argument('--engine',choices=['next','legacy'])
     parser.add_argument('--environment',type=Path,required=True)
     parser.add_argument('--revision',default='HEAD')
     parser.add_argument('--veneto-data')
     args=parser.parse_args()
-    prepare(args.root,args.tier,args.environment,args.revision,args.veneto_data)
+    prepare(args.root,args.tier,args.environment,args.revision,args.veneto_data,args.manifest,args.engine)

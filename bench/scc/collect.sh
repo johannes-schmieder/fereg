@@ -10,6 +10,10 @@ mkdir -p "$local_root/summaries"
 rsync -rt "scc:$remote/jobs.tsv" "$local_root/"
 rsync -rt "scc:$remote/input/tasks.tsv" "scc:$remote/input/source.json" "$local_root/"
 rsync -rt "scc:$remote/source/bench/suite.toml" "$local_root/"
+if ssh scc "test -f '$remote/input/suite.json'"; then
+    rsync -rt "scc:$remote/input/suite.json" "scc:$remote/input/policy.json" "$local_root/"
+    rsync -rt "scc:$remote/environment/build.json" "$local_root/"
+fi
 while IFS=$'\t' read -r phase job tasks; do
     [[ "$phase" =~ ^(setup|benchmark)$ && "$job" =~ ^[0-9]+$ && "$tasks" =~ ^[1-9][0-9]*$ ]]
     ssh -n scc "qacct -j '$job'" > "$local_root/$phase-qacct.txt"
