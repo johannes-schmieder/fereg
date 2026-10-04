@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M25.3 clean restoration artifact, terminal Astra review and Linux CI; then pause.
+Current task: none. M25 rejected trial and restored runtime fully qualified; paused after M25 at Johannes's request.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -68,7 +68,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M24.3 Separate Astra extra-high review approves; governance/links/ratchet and full Linux CI 37197177076 pass; no runtime change.
 - [x] M25.1 Cache trial and canonical-index validation scientifically qualified; exact parent arithmetic/failure/implicit regressions pass.
 - [x] M25.2 Trial rejected by Astra; parent production restored; full/30/Mac/73/five-thread/46Stata/witness local checks pass.
-- [ ] M25.3 Clean restoration replay/witness equality, terminal Astra extra-high review and Linux CI; pause after completion.
+- [x] M25.3 Clean restoration73/five-thread/402912 values exact; Astra extra-high terminal approval and Linux CI37201256978 pass; paused.
 
 - [x] M26.0 Roadmap and active ADR 0249 recorded; separate Astra extra-high review and local governance/links pass; runtime work not started.
 - [ ] M26.1 Freeze the qualified baseline, interaction/holdout matrix, performance envelope and quantified retirement inventory.
@@ -102,7 +102,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-M25 cache rejected for repeated small-MAP cost; restoration local checks pass. Clean/CI/terminal review pending; no later implementation is authorized here.
+No active blockers. M25 trial rejected; restored runtime fully qualified and reviewed. Paused after M25; no later implementation is authorized here.
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
@@ -214,3 +214,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 M25.2 worktree — 160 timed/32 warmup captures exact; repeated small-MAP cost; Astra xhigh recommends rejection; cache/guard removed, scientific tests retained.
 - 2026-10-04 M25.1 2ba9c93c — CI37200086886 all three jobs pass; separate Astra xhigh rejects trial for repeated small-MAP cost; source restoration checks pass locally.
 - 2026-10-04 M25.2 this commit — production exactly5bffd091; full/30/Mac ABI/exact73/five-thread/46Stata/PPML24/FE48 pass; independent tests retained; clean/Linux pending.
+- 2026-10-04 G-M25 cbeb40d7 — clean73/five-thread/402912 exact; CI37201256978 pass; Astra approves restored runtime; [evidence](bench/history/2026-10-04-m25-normalization-reuse.json).

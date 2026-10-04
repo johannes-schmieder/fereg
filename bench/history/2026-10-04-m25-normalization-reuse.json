@@ -1,17 +1,9 @@
 {
   "schema": 1,
   "milestone": "M25",
-  "scope": "Reuse one rounded normalized retained-row value between residual construction and score accumulation. No allocation, extra row traversal, routing, tolerance, admission or model change. Canonical private active indices explicitly validated before mutation.",
-  "qualified": false,
+  "scope": "Rejected candidate reused one rounded retained-row quotient between residual construction and score accumulation with a private canonical-index guard. Terminal runtime restores parent production exactly and retains scientific regression tests.",
+  "qualified": true,
   "runtime_candidate_source": "2ba9c93c00511d7e40511fa27d29e6aec5bcfa57",
-  "production_delta": {
-    "core_lines": 4,
-    "host_lines": 0,
-    "new_long_functions": 0,
-    "new_large_files": 0,
-    "dispatch_delta": 0,
-    "reason": "Explicit private canonical-index validation plus scratch cache write; arithmetic sequence and four-pass/three-update budget retained."
-  },
   "identities": {
     "parent": {
       "plugin_filename": "fereg_macos.plugin",
@@ -26,7 +18,7 @@
       "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
     }
   },
-  "comparison_boundary": "Parent runtime is 5bffd091; documentation HEAD4284bbaa has identical production runtime. All supported scientific outputs unchanged; malformed duplicate/descending private indices now reject before scratch/coefficients change. Disposable row scratch may differ on failure, with public error/publication/rollback behavior preserved.",
+  "comparison_boundary": "Parent runtime is5bffd091; documentation HEAD4284bbaa has identical production runtime. Candidate supported scientific outputs stayed exact. Its malformed duplicate/descending private inputs rejected before mutation; that guard is removed on restoration, restoring original private-input behavior. Candidate disposable row scratch could differ on failure; public error/publication/rollback checks passed.",
   "protocol": {
     "machine": "Mac Studio, 24 physical cores, 16 performance cores; Stata/MP eight-processor license.",
     "stock_release_binaries": true,
@@ -3665,7 +3657,299 @@
       "clean2": "2e2c2afc85953e667d152c1c0a92a0aef90ffd55b2841b28e9617d4de8a64447"
     }
   },
-  "checks": {
+  "direct_regressions": {
+    "qualified_parent_before_change": {
+      "production_source": "5bffd0919bc4639080395352073ee92ff314080b",
+      "checkout": "4284bbaa3e9eb2f6a030ea7c51a06173c7118b08",
+      "direct_log_sha256": "68734978745e8ed9200bf28b3741fed3b8e9eb30c9fb9d4f2b9a8bd7e4fff93d",
+      "implicit_log_sha256": "01d469abfb76e423827b325c963ed5523f1b7d9eab636cdaca894334cb786b85"
+    },
+    "independent_truth": {
+      "active_positions": [
+        1,
+        3
+      ],
+      "reference_norms": [
+        1,
+        3,
+        1,
+        5
+      ],
+      "rows": 512,
+      "repeat_pattern": 128,
+      "normalized_coefficients": [
+        6,
+        -2.5
+      ],
+      "initial_coefficients": [
+        5.625,
+        -1.875
+      ],
+      "unit_bread_fractions": [
+        "63/2560",
+        "-15/512",
+        "-15/512",
+        "25/512"
+      ],
+      "provided_bread_fractions": [
+        "1/16",
+        "-5/64",
+        "-5/64",
+        "25/192"
+      ],
+      "provided_weight_divisor": 4,
+      "construction": "Two-column explicit Gram inversion, weighted-orthogonal nonzero residuals; one real correction then accepted re-scan. Dense and two-page scratch storage stay bit-identical."
+    },
+    "restored_failure_provenance": "M23 speculative adapter tests were removed with its restoration at5bffd091; restore their direct scientific intent here without the rejected adapter.",
+    "candidate_coverage": [
+      "Exact parent coefficient/score/compensation bits for unit/provided weights",
+      "Independent coefficient truth and full row refill after real correction",
+      "Storage immutability",
+      "Bounded exhaustion at three updates",
+      "Nonfinite refinement fail-closed",
+      "Corrupt omitted scratch value rejects",
+      "Malformed duplicate/descending indices reject before mutation; invalid tolerance and rank-zero precedence retained",
+      "Existing implicit rank fallback/final inference fixture now enables refinement",
+      "Existing strict error/unwind rollback already enables refinement"
+    ],
+    "retained_coverage": [
+      "Exact parent coefficient/score/compensation bits for unit/provided weights",
+      "Independent coefficient truth and full row refill after real correction",
+      "Storage immutability",
+      "Bounded exhaustion at three updates",
+      "Nonfinite refinement fail-closed",
+      "Corrupt omitted scratch value rejects",
+      "Existing implicit rank fallback/final inference fixture now enables refinement",
+      "Existing strict error/unwind rollback already enables refinement"
+    ]
+  },
+  "compiled_work": {
+    "architecture": "arm64",
+    "function": "ols::linear_session::retained_refinement::refine_retained_coefficients",
+    "artifacts": {
+      "parent": {
+        "excerpt_sha256": "53065130bda1aa41cd9d81ca887e608feda39a35b0b8c7767ae95d3ad336ce7f",
+        "function_vma": "0x2be39c",
+        "fdiv_in_function": 6,
+        "residual_normalization_vma": "0x2be7b4",
+        "score_normalization_vma": "0x2be82c"
+      },
+      "candidate": {
+        "excerpt_sha256": "d45a320d75d6834c29219f0d323aeadf07da19cd0e0055742f03c0c5055f3950",
+        "function_vma": "0x2be414",
+        "fdiv_in_function": 5,
+        "residual_normalization_vma": "0x2be83c",
+        "quotient_store_vma": "0x2be840",
+        "score_quotient_load_vma": "0x2be8b8",
+        "score_multiply_vmas": [
+          "0x2be8bc",
+          "0x2be8c0"
+        ]
+      }
+    },
+    "observation": "Second per-row normalization fdiv removed. Residual loop keeps division/FMA and stores rounded quotient; score loop reloads quotient and retains two multiplications in original association. Other fdiv instructions belong to coefficient envelope. Extra store and once-per-call index validation remain costs; fewer divisions alone is no speed claim."
+  },
+  "hard_problem_help": {
+    "agent": "m25_arithmetic_help",
+    "model": "gpt-6-astra",
+    "effort": "xhigh",
+    "read_only": true,
+    "outcome": "Derived independent two-column oracle and found direct M23 failure witnesses absent after restoration; lead implemented tests and qualification."
+  },
+  "findings": {
+    "first_block_geometric_mean": 1.007799975656388,
+    "reverse_block_geometric_mean": 0.9741672424755655,
+    "interpretation": "Initial auto gravity slowdown does not repeat. Small MAP command medians +3.72%/+2.87% and native medians +2.73%/+3.04% repeat across artifact orders. Reverse command ranges overlap, but6ms shift exceeds within-arm2/1ms MADs. Large MAP gains and geometric mean do not satisfy the no-regression requirement. Astra independently recomputed the distributions and rejected the candidate; no causal speedup/store-cost attribution is claimed.",
+    "decision": "Reject and restore, no additional tuning/timing search. Small MAP command/native median cost repeats in both orders; geometric mean and reversed range overlap do not erase it."
+  },
+  "independent_review": {
+    "agent": "m25_review",
+    "model": "gpt-6-astra",
+    "effort": "xhigh",
+    "status": "Reject production optimization; no actionable arithmetic/storage/failure defect.",
+    "independent_execution": "Read-only source/binary and small arithmetic/hash/distribution checks, no builds/estimators/tests/timings.",
+    "verified": [
+      "Both artifact and raw capture hashes",
+      "192 science/sample/76 non-time solver comparisons",
+      "Both geometric means and small MAP command/native distributions",
+      "Independent explicit-design Gram inverses and weighted orthogonality",
+      "Clean/worktree73 and thread/repeat summaries",
+      "Licensed46 and witness execution summaries",
+      "Canonical callers, complete-row refill and compiled work"
+    ],
+    "rationale": "Small MAP +3.72%/+2.87% command and +2.73%/+3.04% native medians repeat across orders. Reversed overlap does not erase median effect; the repeated6ms shift exceeds within-arm2/1ms MADs. No further search under scoped gate.",
+    "limitations": "Full/long execution and detailed witness-value counts supplied by lead; reviewer executed no builds/tests/estimators/timings. Candidate CI pending at candidate review.",
+    "terminal": {
+      "status": "Approve rejected experiment and qualified restoration; no required technical gate remains open.",
+      "source": "cbeb40d77a72e3c82689d1007e67ddd1104dec61",
+      "verified": [
+        "Clean restored binary hash",
+        "Clean73/five-thread zero errors",
+        "402912 witness-value equality summary",
+        "571 identical ARM64 refiner instructions",
+        "Successful closure harness",
+        "All three successful restoration CI jobs",
+        "Historical candidate wording and zero terminal production delta"
+      ],
+      "limitations": "Read-only source/artifact and small hash/arithmetic checks; lead executed builds/tests/estimations/timings."
+    }
+  },
+  "push_ci": {
+    "run": 37200086886,
+    "source": "2ba9c93c00511d7e40511fa27d29e6aec5bcfa57",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": {
+      "comparator": "success",
+      "check": "success",
+      "replay": "success"
+    }
+  },
+  "raw_evidence_location": "Ignored target/m25-normalization, target/replay-m25-*, native-artifacts/m25-*-stata; no raw outputs or datasets committed.",
+  "outcome": "M25 closed as a rejected optimization with a qualified restoration; pause after M25.",
+  "restoration": {
+    "status": "Complete: source/complexity and ARM64 refiner instruction bytes equalparent; full/long/Mac/ABI/73/five-thread/46Stata/PPML24/FE48/402912 witness equality/Linux CI pass.",
+    "source_proof": {
+      "parent": "5bffd0919bc4639080395352073ee92ff314080b",
+      "production_files": 151,
+      "changed_production_text_files": [
+        "crates/fereg-core/src/ols/retained_refinement.rs"
+      ],
+      "production_tokens_exact": true,
+      "inventory_exact": true,
+      "remaining_test_differences": "Three independent refiner witnesses and enabled implicit refinement; malformed cache-specific test removed."
+    },
+    "net_production_delta": 0,
+    "retained_coverage": "Three independent arithmetic/failure/corruption witnesses and enabled implicit fixture; cache-specific malformed-index test removed.",
+    "timing_policy": "No more timing/tuning; original qualified production restored exactly.",
+    "checks": {
+      "full_entrypoint": {
+        "passed": true,
+        "log_sha256": "a546f74855ce340c2471ea4d25d57a6ba1db51410051471ff02132b6222c5fe2",
+        "core_tests_passed": 1197
+      },
+      "long_oracles": {
+        "passed": true,
+        "tests": 30,
+        "log_sha256": "6878dcb94a79097f29f3cb312034d2bf8df7488a5aa23627b622043925486e36"
+      },
+      "mac_universal_binary_audit_actual_abi": {
+        "passed": true,
+        "worktree_log_sha256": "d5f9e52076df2f76d2dfd13f187d576b6380f96f304326dd515ac9cc41510119",
+        "clean_log_sha256": "2b7d027c70c7a90a695583948e2f4bc139ccf25c41df63d6c641b5020941321c"
+      },
+      "native_replay_worktree": {
+        "results": {
+          "passed": true,
+          "cases": 73,
+          "summary_sha256": "92944cd0d0bcb71a242f5b02b852c29618fde591103790adad71b9e8858da8e0",
+          "threads": [
+            1
+          ]
+        },
+        "five-thread": {
+          "passed": true,
+          "cases": 73,
+          "summary_sha256": "cdc3ec7e5c7a1ba54772636c8c1bec0b7b51625bcf5a38b07b52460c4623c1f7",
+          "threads": [
+            1,
+            2,
+            4,
+            8,
+            16
+          ]
+        }
+      },
+      "mapped_stata": {
+        "passed": true,
+        "fixture_count": 46,
+        "summary_sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+      },
+      "M22_witnesses": {
+        "passed": true,
+        "fixture_count": 2,
+        "summary_sha256": "7c876baab5f6358e83fe1577eb565d19d4a877749a1f4a308d0c1a11a40059b8"
+      },
+      "native_replay_clean": {
+        "results": {
+          "passed": true,
+          "cases": 73,
+          "summary_sha256": "8face418c08e3b64c8b3c633d442d88dff1fe1108c80aa3e438aace9054c5be6",
+          "threads": [
+            1
+          ]
+        },
+        "five-thread": {
+          "passed": true,
+          "cases": 73,
+          "summary_sha256": "4f64b457505f2d6ddc4b174a54ed380df98df2a6079df1d44577fc45ef53e732",
+          "threads": [
+            1,
+            2,
+            4,
+            8,
+            16
+          ]
+        }
+      },
+      "exact_M22_witness_values": {
+        "feppml_no_fe_strict_oracle": {
+          "exact_values": 396960,
+          "sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+        },
+        "ols_near_within_cmg_oracle": {
+          "exact_values": 5952,
+          "sha256": "bb023d3152f3bddc8e6f6bace277daaee33ac9bf2253e08a873a186becef7ac2"
+        }
+      },
+      "compiled_refiner_instruction_bytes": {
+        "parent_instruction_bytes_exact": true,
+        "instructions": 571,
+        "restored_excerpt_sha256": "53065130bda1aa41cd9d81ca887e608feda39a35b0b8c7767ae95d3ad336ce7f",
+        "parent_excerpt_sha256": "53065130bda1aa41cd9d81ca887e608feda39a35b0b8c7767ae95d3ad336ce7f",
+        "scope": "Entire ARM64 refiner instruction bytes, not complete plugin; build identity differs."
+      },
+      "closeout_full_entrypoint": {
+        "passed": true,
+        "log_sha256": "56975ac1dc4c015b7054bc62fb62d1b7072ac050be9c07a49a0ee70cabb52b50"
+      }
+    },
+    "source": "cbeb40d77a72e3c82689d1007e67ddd1104dec61",
+    "plugin_sha256": "706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981",
+    "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d",
+    "push_ci": {
+      "run": 37201256978,
+      "source": "cbeb40d77a72e3c82689d1007e67ddd1104dec61",
+      "status": "completed",
+      "conclusion": "success",
+      "jobs": {
+        "comparator": "success",
+        "check": "success",
+        "replay": "success"
+      }
+    },
+    "qualified": true
+  },
+  "candidate_accepted": false,
+  "candidate_scientific_checks_passed": true,
+  "candidate_performance_gate_passed": false,
+  "candidate_production_delta": {
+    "core_lines": 4,
+    "host_lines": 0,
+    "new_long_functions": 0,
+    "new_large_files": 0,
+    "dispatch_delta": 0,
+    "reason": "Explicit private canonical-index validation plus scratch cache write; arithmetic sequence and four-pass/three-update budget retained."
+  },
+  "production_delta": {
+    "core_lines": 0,
+    "host_lines": 0,
+    "dispatch_delta": 0,
+    "long_functions_delta": 0,
+    "large_files_delta": 0,
+    "description": "Restored complete production tokens and inventory equalparent; only scientific tests retained."
+  },
+  "candidate_checks": {
     "full_entrypoint": {
       "passed": true,
       "log_sha256": "6829ea230ac39e80f39ebda6bc887bfa1e7c39852dfb46792e0dd52c4752564b",
@@ -3797,197 +4081,10 @@
     },
     "allocation_interruption_transaction": "Existing full harness allocator/admission/rollback checks and mapped hidden Stata fixtures pass; no allocation or lifetime changes are introduced."
   },
-  "direct_regressions": {
-    "qualified_parent_before_change": {
-      "production_source": "5bffd0919bc4639080395352073ee92ff314080b",
-      "checkout": "4284bbaa3e9eb2f6a030ea7c51a06173c7118b08",
-      "direct_log_sha256": "68734978745e8ed9200bf28b3741fed3b8e9eb30c9fb9d4f2b9a8bd7e4fff93d",
-      "implicit_log_sha256": "01d469abfb76e423827b325c963ed5523f1b7d9eab636cdaca894334cb786b85"
-    },
-    "independent_truth": {
-      "active_positions": [
-        1,
-        3
-      ],
-      "reference_norms": [
-        1,
-        3,
-        1,
-        5
-      ],
-      "rows": 512,
-      "repeat_pattern": 128,
-      "normalized_coefficients": [
-        6,
-        -2.5
-      ],
-      "initial_coefficients": [
-        5.625,
-        -1.875
-      ],
-      "unit_bread_fractions": [
-        "63/2560",
-        "-15/512",
-        "-15/512",
-        "25/512"
-      ],
-      "provided_bread_fractions": [
-        "1/16",
-        "-5/64",
-        "-5/64",
-        "25/192"
-      ],
-      "provided_weight_divisor": 4,
-      "construction": "Two-column explicit Gram inversion, weighted-orthogonal nonzero residuals; one real correction then accepted re-scan. Dense and two-page scratch storage stay bit-identical."
-    },
-    "coverage": [
-      "Exact parent coefficient/score/compensation bits for unit/provided weights",
-      "Independent coefficient truth and full row refill after real correction",
-      "Storage immutability",
-      "Bounded exhaustion at three updates",
-      "Nonfinite refinement fail-closed",
-      "Corrupt omitted scratch value rejects",
-      "Malformed duplicate/descending indices reject before mutation; invalid tolerance and rank-zero precedence retained",
-      "Existing implicit rank fallback/final inference fixture now enables refinement",
-      "Existing strict error/unwind rollback already enables refinement"
-    ],
-    "restored_failure_provenance": "M23 speculative adapter tests were removed with its restoration at5bffd091; restore their direct scientific intent here without the rejected adapter."
+  "local_documentation_checks": {
+    "governance": true,
+    "local_links": true,
+    "diff_check": true
   },
-  "compiled_work": {
-    "architecture": "arm64",
-    "function": "ols::linear_session::retained_refinement::refine_retained_coefficients",
-    "artifacts": {
-      "parent": {
-        "excerpt_sha256": "53065130bda1aa41cd9d81ca887e608feda39a35b0b8c7767ae95d3ad336ce7f",
-        "function_vma": "0x2be39c",
-        "fdiv_in_function": 6,
-        "residual_normalization_vma": "0x2be7b4",
-        "score_normalization_vma": "0x2be82c"
-      },
-      "candidate": {
-        "excerpt_sha256": "d45a320d75d6834c29219f0d323aeadf07da19cd0e0055742f03c0c5055f3950",
-        "function_vma": "0x2be414",
-        "fdiv_in_function": 5,
-        "residual_normalization_vma": "0x2be83c",
-        "quotient_store_vma": "0x2be840",
-        "score_quotient_load_vma": "0x2be8b8",
-        "score_multiply_vmas": [
-          "0x2be8bc",
-          "0x2be8c0"
-        ]
-      }
-    },
-    "observation": "Second per-row normalization fdiv removed. Residual loop keeps division/FMA and stores rounded quotient; score loop reloads quotient and retains two multiplications in original association. Other fdiv instructions belong to coefficient envelope. Extra store and once-per-call index validation remain costs; fewer divisions alone is no speed claim."
-  },
-  "hard_problem_help": {
-    "agent": "m25_arithmetic_help",
-    "model": "gpt-6-astra",
-    "effort": "xhigh",
-    "read_only": true,
-    "outcome": "Derived independent two-column oracle and found direct M23 failure witnesses absent after restoration; lead implemented tests and qualification."
-  },
-  "findings": {
-    "first_block_geometric_mean": 1.007799975656388,
-    "reverse_block_geometric_mean": 0.9741672424755655,
-    "interpretation": "Initial auto gravity slowdown does not repeat. Small MAP command median is +3.72%/+2.87%; initial ranges disjoint, reversed ranges overlap. Large MAP medians improve at4/16 threads, but phase and overall differences vary with order. No broad or causally attributed speedup claim. Independent reviewer must assess remaining small-MAP concern under the scoped gate.",
-    "decision": "Reject and restore, no additional tuning/timing search. Small MAP command/native median cost repeats in both orders; geometric mean and reversed range overlap do not erase it."
-  },
-  "independent_review": {
-    "agent": "m25_review",
-    "model": "gpt-6-astra",
-    "effort": "xhigh",
-    "status": "Reject production optimization; no actionable arithmetic/storage/failure defect.",
-    "independent_execution": "Read-only source/binary and small arithmetic/hash/distribution checks, no builds/estimators/tests/timings.",
-    "verified": [
-      "Both artifact and raw capture hashes",
-      "192 science/sample/76 non-time solver comparisons",
-      "Both geometric means and small MAP command/native distributions",
-      "Independent explicit-design Gram inverses and weighted orthogonality",
-      "Clean/worktree73 and thread/repeat summaries",
-      "Licensed46 and witness execution summaries",
-      "Canonical callers, complete-row refill and compiled work"
-    ],
-    "rationale": "Small MAP +3.72%/+2.87% command and +2.73%/+3.04% native medians repeat across orders. Reversed overlap does not erase median effect; the repeated6ms shift exceeds within-arm2/1ms MADs. No further search under scoped gate.",
-    "limitations": "Full/long execution and detailed witness-value counts supplied by lead; reviewer executed no builds/tests/estimators/timings. Candidate CI pending at candidate review."
-  },
-  "push_ci": {
-    "run": 37200086886,
-    "source": "2ba9c93c00511d7e40511fa27d29e6aec5bcfa57",
-    "status": "completed",
-    "conclusion": "success",
-    "jobs": {
-      "comparator": "success",
-      "check": "success",
-      "replay": "success"
-    }
-  },
-  "raw_evidence_location": "Ignored target/m25-normalization, target/replay-m25-*, native-artifacts/m25-*-stata; no raw outputs or datasets committed.",
-  "outcome": "Rejected production optimization; restoration qualification in progress.",
-  "restoration": {
-    "status": "Local full/long/Mac/ABI/exact73/five-thread/46Stata/PPML24/FE48 pass; clean committed artifact and CI pending.",
-    "source_proof": {
-      "parent": "5bffd0919bc4639080395352073ee92ff314080b",
-      "production_files": 151,
-      "changed_production_text_files": [
-        "crates/fereg-core/src/ols/retained_refinement.rs"
-      ],
-      "production_tokens_exact": true,
-      "inventory_exact": true,
-      "remaining_test_differences": "Three independent refiner witnesses and enabled implicit refinement; malformed cache-specific test removed."
-    },
-    "net_production_delta": 0,
-    "retained_coverage": "Three independent arithmetic/failure/corruption witnesses and enabled implicit fixture; cache-specific malformed-index test removed.",
-    "timing_policy": "No more timing/tuning; original qualified production restored exactly.",
-    "checks": {
-      "full_entrypoint": {
-        "passed": true,
-        "log_sha256": "a546f74855ce340c2471ea4d25d57a6ba1db51410051471ff02132b6222c5fe2",
-        "core_tests_passed": 1197
-      },
-      "long_oracles": {
-        "passed": true,
-        "tests": 30,
-        "log_sha256": "6878dcb94a79097f29f3cb312034d2bf8df7488a5aa23627b622043925486e36"
-      },
-      "mac_universal_binary_audit_actual_abi": {
-        "passed": true,
-        "worktree_log_sha256": "d5f9e52076df2f76d2dfd13f187d576b6380f96f304326dd515ac9cc41510119"
-      },
-      "native_replay_worktree": {
-        "results": {
-          "passed": true,
-          "cases": 73,
-          "summary_sha256": "92944cd0d0bcb71a242f5b02b852c29618fde591103790adad71b9e8858da8e0",
-          "threads": [
-            1
-          ]
-        },
-        "five-thread": {
-          "passed": true,
-          "cases": 73,
-          "summary_sha256": "cdc3ec7e5c7a1ba54772636c8c1bec0b7b51625bcf5a38b07b52460c4623c1f7",
-          "threads": [
-            1,
-            2,
-            4,
-            8,
-            16
-          ]
-        }
-      },
-      "mapped_stata": {
-        "passed": true,
-        "fixture_count": 46,
-        "summary_sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
-      },
-      "M22_witnesses": {
-        "passed": true,
-        "fixture_count": 2,
-        "summary_sha256": "7c876baab5f6358e83fe1577eb565d19d4a877749a1f4a308d0c1a11a40059b8"
-      }
-    }
-  },
-  "candidate_accepted": false,
-  "candidate_scientific_checks_passed": true,
-  "candidate_performance_gate_passed": false
+  "qualified_runtime_source": "cbeb40d77a72e3c82689d1007e67ddd1104dec61"
 }
