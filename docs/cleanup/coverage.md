@@ -145,3 +145,47 @@ results use the original scientific tolerances. The 20 licensed fixtures and
 32-fixture quick profile overlap; together with selector and correction tests
 they comprise 46 distinct fixtures. Compact source/binary/frontend-bound
 evidence is in `bench/history/2026-10-02-m1-scientific-qualification.json`.
+
+## M22 numerical change boundary
+
+Retained PPML frames, including initial, ordinary and strict frames, now estimate
+finite-coefficient error from reconstructed row residuals and apply at most
+three inverse-Hessian corrections when the existing
+publication coefficient envelope requires them. Requested tolerances, samples,
+rank policy and Hessian/bread calculations are unchanged. Coefficients, fitted
+means, objectives and derived inference may change when a frame requires a
+correction and along its subsequent IRLS trajectory. A frame receiving the same
+inputs and requiring no correction retains its original arithmetic outputs.
+The no-FE constant-outcome regression has the independently known unique
+optimum (all slopes zero, constant ln(2)). The licensed strict fixture defines
+unit/FW/PW, fast/low, threads 1/4 and robust/cluster inference. All 24 cells
+pass on the isolated PPML correction; clean-source and Linux qualification
+are recorded separately in the milestone ledger.
+
+Strict constant-outcome PPML also exposes a PSD eigensystem gap: the global
+Jacobi stopping cutoff can pass while a small covariance row fails the
+unchanged row-relative reconstruction certificate. Only a failed eigensystem
+is refined against the smaller row scale, reusing the existing rotation budget
+and admitted buffers. Accepted covariance arithmetic remains unchanged; PSD,
+rank, clipping and reconstruction tolerances are preserved. A positive-definite
+three-by-three block with a closed-form spectrum reproduces the old failure
+under common scales from 1e-150 to 1e100.
+
+Rounded Gram meat can lose score-factor null directions before B*M*B' is
+formed: high-precision multiplication of the actual rounded meat still yields
+negative variances in the strict PPML witness. Robust/one-way inference now
+uses a conservative Cauchy/roundoff envelope to request a factor check at the
+existing row-relative covariance tolerance. Zero/subnormal or nonfinite scales
+request verification; the envelope does not certify observation-level group
+score construction. The factor check independently accumulates forward/reverse
+bread-transformed scores, preserving both compensated group-score parts and
+multiplication remainders. It changes covariance/derived inference only when
+that check disproves the original covariance or its diagonal is invalid; an
+agreeing check preserves the old covariance, PSD report and certificate bits.
+Strict PSD tolerances and clipping policy are unchanged. Multiway signed meat
+retains its existing full-matrix policy. Independent exact-null, positive
+near-null and representable-after-score-square-underflow witnesses prevent
+variance clamping from masquerading as a repair. The cluster memory ceiling
+now includes complete sorting, partial and merge banks; retaining the old
+compact covariance reuses the admitted result-covariance allowance before
+full-axis expansion. All final gates remain explicit in MILESTONES.md.

@@ -66,7 +66,7 @@ pub(crate) fn apply_ppml_psd_policy(
 
     let mut symmetric = fallible_copy(covariance, "unable to reserve PPML symmetric covariance")?;
     symmetrize(&mut symmetric, dimension)?;
-    let raw = symmetric_eigensystem(&symmetric, dimension)?;
+    let raw = symmetric_eigensystem(&symmetric, dimension, tolerance)?;
     let raw_minimum = raw.values.iter().copied().fold(f64::INFINITY, f64::min);
     let raw_scale = matrix_scale(&symmetric, dimension)?;
     if cluster_dimensions <= 1 && raw_minimum < -tolerance * raw_scale {
@@ -84,7 +84,7 @@ pub(crate) fn apply_ppml_psd_policy(
             drop(raw);
             drop(symmetric);
             symmetrize(&mut repaired, dimension)?;
-            let final_system = symmetric_eigensystem(&repaired, dimension)?;
+            let final_system = symmetric_eigensystem(&repaired, dimension, tolerance)?;
             let final_scale = matrix_scale(&repaired, dimension)?;
             (
                 repaired,
@@ -200,7 +200,7 @@ pub(crate) fn inspect_published_ppml_covariance(
     }
     let mut symmetric = fallible_copy(covariance, "unable to reserve PPML symmetric covariance")?;
     symmetrize(&mut symmetric, dimension)?;
-    let spectrum = symmetric_eigensystem(&symmetric, dimension)?;
+    let spectrum = symmetric_eigensystem(&symmetric, dimension, tolerance)?;
     let minimum = spectrum
         .values
         .iter()
@@ -239,7 +239,11 @@ pub(crate) fn inspect_published_ppml_covariance(
     Ok((comparison, inspection))
 }
 
-fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEigensystem> {
+fn symmetric_eigensystem(
+    matrix: &[f64],
+    dimension: usize,
+    tolerance: f64,
+) -> Result<SymmetricEigensystem> {
     let square = checked_square(dimension, "PPML eigensystem dimensions overflow usize")?;
     if matrix.len() != square {
         return Err(invalid_argument(
@@ -259,43 +263,85 @@ fn symmetric_eigensystem(matrix: &[f64], dimension: usize) -> Result<SymmetricEi
     for (row, maximum) in values.iter_mut().enumerate() {
         *maximum = upper_row_maximum(&work, dimension, row).1;
     }
-    if dimension > 1 {
-        let threshold = 128.0 * f64::EPSILON * matrix_scale(&work, dimension)?;
-        let maximum_iterations = dimension
-            .checked_mul(dimension)
-            .and_then(|value| value.checked_mul(128))
-            .ok_or_else(|| allocation("PPML Jacobi iteration limit overflows usize"))?;
-        let mut converged = false;
-        for _ in 0..maximum_iterations {
-            let (pivot_row, pivot_column, maximum) = cached_jacobi_pivot(&work, dimension, &values);
-            if maximum <= threshold {
-                converged = true;
-                break;
-            }
-            invalidate_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
-            jacobi_rotate(&mut work, &mut vectors, dimension, pivot_row, pivot_column)?;
-            refresh_rotated_maxima(&work, dimension, &mut values, pivot_row, pivot_column);
-        }
-        if !converged {
-            return Err(numerical_nonconvergence(
-                "PPML symmetric eigensystem did not converge",
-            ));
-        }
-    }
+    let maximum_iterations = dimension
+        .checked_mul(dimension)
+        .and_then(|value| value.checked_mul(128))
+        .ok_or_else(|| allocation("PPML Jacobi iteration limit overflows usize"))?;
+    let threshold = 128.0 * f64::EPSILON * matrix_scale(&work, dimension)?;
+    let consumed = if dimension > 1 {
+        diagonalize_jacobi(
+            &mut work,
+            &mut vectors,
+            &mut values,
+            dimension,
+            threshold,
+            maximum_iterations,
+        )?
+    } else {
+        0
+    };
     for index in 0..dimension {
         values[index] = work[index * dimension + index];
+    }
+    let mut certificate = certify_eigensystem(matrix, &values, &vectors, dimension)?;
+    if certificate.0 > tolerance && dimension > 1 {
+        // The old global cutoff can leave a material error on a small row.
+        // Refine only failed certificates; accepted arithmetic stays exact.
+        // The existing rotation budget and admitted cache bank are reused.
+        let smallest_row = matrix
+            .chunks_exact(dimension)
+            .map(|row| row.iter().map(|value| value.abs()).sum::<f64>())
+            .filter(|&scale| scale > 0.0)
+            .fold(f64::INFINITY, f64::min);
+        let row_threshold = (tolerance * smallest_row / (4.0 * dimension as f64)).min(threshold);
+        for (row, maximum) in values.iter_mut().enumerate() {
+            *maximum = upper_row_maximum(&work, dimension, row).1;
+        }
+        diagonalize_jacobi(
+            &mut work,
+            &mut vectors,
+            &mut values,
+            dimension,
+            row_threshold,
+            maximum_iterations.saturating_sub(consumed),
+        )?;
+        for index in 0..dimension {
+            values[index] = work[index * dimension + index];
+        }
+        certificate = certify_eigensystem(matrix, &values, &vectors, dimension)?;
     }
     if values.iter().any(|value| !value.is_finite()) {
         return Err(numerical_nonconvergence("PPML eigenvalue is not finite"));
     }
-    let (reconstruction_relative_error, orthogonality_relative_error) =
-        certify_eigensystem(matrix, &values, &vectors, dimension)?;
+    let (reconstruction_relative_error, orthogonality_relative_error) = certificate;
     Ok(SymmetricEigensystem {
         values,
         vectors,
         reconstruction_relative_error,
         orthogonality_relative_error,
     })
+}
+
+fn diagonalize_jacobi(
+    work: &mut [f64],
+    vectors: &mut [f64],
+    maxima: &mut [f64],
+    dimension: usize,
+    threshold: f64,
+    budget: usize,
+) -> Result<usize> {
+    for iteration in 0..budget {
+        let (p, q, maximum) = cached_jacobi_pivot(work, dimension, maxima);
+        if maximum <= threshold {
+            return Ok(iteration);
+        }
+        invalidate_rotated_maxima(work, dimension, maxima, p, q);
+        jacobi_rotate(work, vectors, dimension, p, q)?;
+        refresh_rotated_maxima(work, dimension, maxima, p, q);
+    }
+    Err(numerical_nonconvergence(
+        "PPML symmetric eigensystem did not converge",
+    ))
 }
 
 #[cfg(test)]
@@ -670,6 +716,29 @@ fn allocation(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn disparate_covariance_rows_require_the_same_relative_certificate() {
+        // The isolated first eigenvalue is exact. The trailing 2x2 block is
+        // positive definite by its positive diagonal and determinant. Its
+        // off-diagonal lies below the old whole-matrix Jacobi cutoff but is
+        // material on the small row's own certificate scale.
+        for scale in [1e-150, 1.0, 1e100] {
+            let covariance: Vec<_> = [1e-32, 0.0, 0.0, 0.0, 1e-40, 1e-48, 0.0, 1e-48, 1e-52]
+                .iter()
+                .map(|value| value * scale)
+                .collect();
+            for clusters in [0, 1] {
+                let (output, report) =
+                    apply_ppml_psd_policy(&covariance, 3, clusters, 1e-12).unwrap();
+                assert_eq!(output, covariance);
+                assert!(report.passed && !report.adjusted);
+                assert!(report.final_minimum_eigenvalue > 0.0);
+                assert!(report.eigensystem_reconstruction_relative_error <= 1e-12);
+                inspect_published_ppml_covariance(&output, 3, clusters, 1e-12).unwrap();
+            }
+        }
+    }
 
     #[test]
     fn unchanged_covariance_certificate_matches_known_householder_spectrum() {

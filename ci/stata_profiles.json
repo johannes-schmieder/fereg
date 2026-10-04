@@ -258,7 +258,8 @@
         "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
         "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
         "tests/stata/parity_ppmlhdfe/feppml_time_series.do",
-        "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do"
+        "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "tests/stata/development/feppml_no_fe_strict_oracle.do"
       ],
       "timeout_seconds": 900,
       "required_outputs": [

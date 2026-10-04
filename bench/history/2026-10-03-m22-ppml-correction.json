@@ -1,0 +1,487 @@
+{
+  "schema": 1,
+  "milestone": "M22.1",
+  "qualified": false,
+  "status": "Local correction gates pass; clean-source timing and Linux CI pending.",
+  "comparison": {
+    "parent_commit": "160308c5c3b44a581faceca8794e69d15200916c",
+    "parent_runtime_source": "9c08141b17314563f3100b3cbe8e62dd65508837",
+    "parent_mac_sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1",
+    "candidate_source": "uncommitted m22-psd-worktree before certificate-cache cleanup",
+    "candidate_mac_sha256": "1f5dc2e79346c1332d5e91386aaeaf367e417c6d82462dcf96fe037ba317c235",
+    "frozen_legacy_changed": false
+  },
+  "original": "No-FE full-rank constant outcome y=2, N=16384, four continuous controls and six indicator columns, tolerance 1e-12; parent r430 despite tiny score.",
+  "independent_truth": "Unique finite optimum: all slopes zero, constant ln(2), fitted mean 2; original design singular values confirm rank 11 and condition number 7.885221451609008.",
+  "repair_attempt": 5,
+  "repairs": [
+    "Bounded compensated reconstructed-row coefficient refinement using the unchanged publication envelope and existing retained banks.",
+    "Failed PSD eigensystem refinement uses unchanged row-relative tolerance, existing rotation budget and buffers.",
+    "Strict robust/one-way covariance verified from independently accumulated forward/reverse bread-transformed score factors when a conservative cancellation or underflow envelope requires it. Agreeing checks preserve original covariance/certificate bits.",
+    "Complete clustered reducer workspace ceiling, including ordering, partial, merge and subset-report owners; old compact covariance occupies the admitted final covariance bank."
+  ],
+  "root_cause": {
+    "rounded_meat": "Actual strict witness covariance remains negative in 100-digit B*M*B evaluation using the binary rounded meat: the Gram matrix already lost a null direction.",
+    "example_negative_exact": "-1.125591585130209202460796428457478152222308588971240131421998920394162157317967864429E-53",
+    "independent_regressions": [
+      "Known unique constant-outcome Poisson optimum; strict unit/FW/PW, fast/low, threads1/4, robust/one-way cluster (24 cells).",
+      "Closed-form SPD eigensystem with small row under scales 1e-150/1/1e100.",
+      "Exact-null and positive near-null cluster influence, scaled 2^-60/1/2^60, threads1/4.",
+      "Representable factor covariance after raw score-square underflow: raw meat zero, expected covariance4e200."
+    ]
+  },
+  "change_boundary": "Corrected retained frames and dependent IRLS trajectories, failed PSD reconstruction diagnostics, and covariance disproved by independent score factors may differ. No model, sample, weight, DoF, backend-selection or tolerance change. All73 unaffected parent cases are exact.",
+  "complexity": {
+    "fereg-core": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1477,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 105835
+    },
+    "fereg-plugin": {
+      "chunk_candidates": 0,
+      "dispatch_candidates": 165,
+      "files_over_1500": 3,
+      "functions_over_150": 15,
+      "production_lines": 15222
+    }
+  },
+  "checks": {
+    "full_local": true,
+    "local_passed_test_invocations": 1648,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "candidate_source": "m22-ppml-qualified-worktree",
+    "candidate_sha256": "a8721d2c498b9aaefdd98428b566a2be0b4155b78886b086cd4569f18f3d3b90",
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "a8721d2c498b9aaefdd98428b566a2be0b4155b78886b086cd4569f18f3d3b90",
+      "baseline_sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "unaffected_exact_cases": 73,
+    "five_thread": {
+      "passed": true,
+      "cases": 73,
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "science_discrete_and_fixed_thread_repeats": true
+    },
+    "licensed_strict_fixture": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_no_fe_strict_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "mapped_licensed_stata": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/feppml_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/fereg_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/reference_factor_precedence.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/documentation/help_examples.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/engine_selection.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/estimate_ols_categorical_interaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/factor_availability.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/frequency_singleton_validation.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/installation_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/reload_loop.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/slope_dof_validation.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_iweight_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_string_fe_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_time_series_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/candidate_sample.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/model_wire_v2_capture.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/ordinary_factor_terms.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/reject_ambiguous_absorb.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/string_sources.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/time_series_marker.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/postestimation/fail_closed.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ]
+  },
+  "astra_review": {
+    "model": "gpt-6-astra",
+    "reasoning_effort": "xhigh",
+    "verdict": "No concrete unresolved source issue after underflow guard repair, compensated score-factor preservation, complete cluster admission and paired-group helper addendum. Final qualification evidence pending.",
+    "independence": "Read-only source review; reviewer did not run builds or tests. Separate final review follows both qualified repairs."
+  },
+  "qualification": {
+    "runtime": "pending implementation commit",
+    "clean_native": "pending",
+    "clean_timing": "pending",
+    "linux_ci": "pending"
+  },
+  "limits": [
+    "No PPML IID support is claimed; default inference is robust.",
+    "Factor guard prompts independent verification and is not itself a proof of observation-level group score construction.",
+    "No current Windows/SCC campaign or general acceleration claim."
+  ]
+}

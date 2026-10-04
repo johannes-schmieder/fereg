@@ -822,6 +822,7 @@ fn build_dense_covariance<R: PreparedInferenceReservation>(
             maximum_blocks: ROBUST_MAX_BLOCKS,
             partial_budget_bytes: ROBUST_PARTIAL_BUDGET_BYTES,
         },
+        None,
         reservation,
     )?;
     let values = bread_meat_bread(

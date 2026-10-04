@@ -29,6 +29,11 @@ use std::time::Instant;
 #[path = "bias_linear.rs"]
 mod bias_linear;
 
+#[path = "retained_refinement.rs"]
+mod retained_refinement;
+pub(crate) use retained_refinement::coefficient_accuracy_scale;
+use retained_refinement::{refine_retained_coefficients, RefinementFrame, RefinementWorkspace};
+
 use super::finite_wls_kernel::{
     certify_normal_equations, certify_retained_qr_dropped_span, factor_guarded_cholesky_in_place,
     factor_rank_revealing_retained_qr, fill_finite_wls_moments, finite_wls_moment_layout,
@@ -4931,6 +4936,42 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             generated_coefficients[generated] = Some(coefficient);
             generated_statuses[generated] = PreparedOlsFitStatus::Kept;
         }
+        if let Some(tolerance) = self.config.coefficient_tolerance {
+            resize_zeroed(
+                &mut workspace.scores,
+                rank,
+                "unable to reserve retained refinement scores",
+            )?;
+            resize_zeroed(
+                &mut workspace.solve,
+                rank,
+                "unable to reserve retained refinement corrections",
+            )?;
+            refine_retained_coefficients(
+                RefinementFrame {
+                    storage: &retained.storage,
+                    active_positions: &active_positions,
+                    reference_norms: &retained.reference_norms,
+                    response: within_response,
+                    weights: self.weights.borrowed(),
+                    weight_scale: self.bread_weight_scale,
+                },
+                RefinementWorkspace {
+                    coefficients: &mut workspace.coefficients,
+                    bread: &workspace.bread,
+                    row: &mut workspace.row,
+                    scores: &mut workspace.scores,
+                    corrections: &mut workspace.solve,
+                },
+                tolerance,
+            )?;
+            for (selected, &generated) in workspace.kept.iter().enumerate() {
+                generated_coefficients[generated] = Some(
+                    workspace.coefficients[selected]
+                        / retained.reference_norms[active_positions[selected]],
+                );
+            }
+        }
         let left_inverse_error = inverse_relative_infinity_norm(
             &workspace.gram,
             candidate_count,
@@ -7017,6 +7058,26 @@ fn stream_frozen_solve(
         true,
     )?;
 
+    if let Some(tolerance) = config.coefficient_tolerance {
+        refine_retained_coefficients(
+            RefinementFrame {
+                storage,
+                active_positions,
+                reference_norms,
+                response: within_response,
+                weights,
+                weight_scale: bread_weight_scale,
+            },
+            RefinementWorkspace {
+                coefficients: &mut workspace.coefficients,
+                bread: &workspace.bread,
+                row: &mut workspace.row,
+                scores: &mut workspace.scores,
+                corrections: &mut workspace.solve,
+            },
+            tolerance,
+        )?;
+    }
     workspace.scores.copy_from_slice(&workspace.coefficients);
     for (coefficient, scale) in workspace
         .coefficients
@@ -7702,6 +7763,7 @@ mod inference_scan_tests {
                                 dense,
                                 scores,
                                 policy,
+                                None,
                                 &mut SystemSandwichReservation,
                             )
                         })
@@ -7716,6 +7778,7 @@ mod inference_scan_tests {
                                 design,
                                 scores,
                                 policy,
+                                None,
                                 &mut SystemSandwichReservation,
                             )
                         })

@@ -7,6 +7,7 @@ pub(crate) use canonical_products::canonical_three_workspace_bytes;
 mod fit;
 mod implicit_centered;
 mod linear_session;
+pub(crate) use linear_session::coefficient_accuracy_scale;
 mod prepared;
 mod prepared_categorical_clusters;
 mod prepared_clustered;

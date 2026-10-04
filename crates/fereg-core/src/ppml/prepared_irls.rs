@@ -3478,6 +3478,13 @@ fn ppml_linear_config(
 ) -> Result<PreparedOlsFitConfig> {
     let mut linear = config.linear;
     linear.absorb = config.ppml.absorb;
+    linear.coefficient_tolerance = Some(
+        config
+            .ppml
+            .tolerance
+            .min(config.ppml.score_tolerance)
+            .min(1e-8),
+    );
     if linear.absorb.solver == FeSolverKind::Auto {
         linear.absorb.solver = FeSolverKind::Map;
     }
@@ -3802,12 +3809,11 @@ fn strict_coefficient_difference(left: &[f64], right: &[f64], slots: Option<&[us
         if !left.is_finite() || !right.is_finite() {
             return f64::INFINITY;
         }
-        let magnitude = left.abs().max(right.abs());
         // The registered coefficient envelope has atol/rtol = 1e-3. With
         // the strict tolerance capped at 1e-8, this requires Newton movement
         // within one tenth of that envelope even near zero. Retain the old
         // scale as an upper bound so no coefficient gets a weaker check.
-        let scale = (1e-3 + magnitude).min(magnitude.max(1.0));
+        let scale = crate::ols::coefficient_accuracy_scale(left, right);
         (left - right).abs() / scale
     };
     match slots {
@@ -4402,6 +4408,55 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: None,
             },
+        )
+        .expect("prepared fixture")
+    }
+
+    fn prepared_no_fe_categorical(
+        outcome: &[f64],
+        regressors: &[Vec<f64>],
+    ) -> crate::PreparedCategoricalOlsData {
+        let mut sources = Vec::new();
+        let mut terms = Vec::new();
+        let mut numeric_sources = Vec::new();
+        let mut bindings = vec![
+            OlsInputBinding {
+                stata_var_position: 1,
+                role: OlsInputRole::Candidate,
+            },
+            OlsInputBinding {
+                stata_var_position: 2,
+                role: OlsInputRole::Outcome,
+            },
+        ];
+        for (zero_based, values) in regressors.iter().enumerate() {
+            let id = u32::try_from(zero_based + 1).expect("small fixture");
+            let entry = source(id, &format!("x{id}"));
+            terms.push(continuous_term(id, entry.id));
+            bindings.push(OlsInputBinding {
+                stata_var_position: id + 2,
+                role: OlsInputRole::NumericSource(entry.id),
+            });
+            numeric_sources.push((entry.id, loaded(values)));
+            sources.push(entry);
+        }
+        crate::prepared_categorical_data::prepare_ppml_categorical_ols_data(
+            &OlsRequestV1 {
+                model: CompiledTermGraph { sources, terms },
+                absorbed_terms: Vec::new(),
+                bindings,
+                include_intercept: true,
+                keep_singletons: true,
+            },
+            &LoadedOlsInput {
+                candidate: vec![true; outcome.len()],
+                outcome: loaded(outcome),
+                numeric_sources,
+                analytic_weight: None,
+                frequency_weight: None,
+                probability_weight: None,
+            },
+            &[],
         )
         .expect("prepared fixture")
     }
@@ -8013,6 +8068,69 @@ mod tests {
         fill_candidate_eta_from_linear_output(&expected, &offset, &mut expected_eta)
             .expect("comparison eta");
         assert!(relative_infinity_difference(&actual_eta, &expected_eta) <= 1e-11);
+    }
+
+    #[test]
+    fn strict_no_fe_constant_outcome_matches_the_independent_optimum() {
+        let rows = 16_384;
+        let outcome = vec![2.0; rows];
+        let mut columns: Vec<Vec<f64>> = (0..4)
+            .map(|column| {
+                (0..rows)
+                    .map(|row| ((row + 1) as f64 * (column + 1) as f64 * 1.123).sin())
+                    .collect()
+            })
+            .collect();
+        for level in 1..7 {
+            columns.push(
+                (0..rows)
+                    .map(|row| f64::from((row + 1) % 7 == level))
+                    .collect(),
+            );
+        }
+        let data = prepared_no_fe_categorical(&outcome, &columns);
+        for mode in [
+            PreparedOlsExecutionMode::Fast,
+            PreparedOlsExecutionMode::Low,
+        ] {
+            let mut config = PreparedPpmlIrlsConfig::default();
+            config.ppml.tolerance = 1e-12;
+            config.ppml.score_tolerance = 1e-12;
+            config.linear.execution.mode = mode;
+            config.linear.execution.poolsize = 1;
+            config.memory.requested = if mode == PreparedOlsExecutionMode::Fast {
+                crate::options::MemoryMode::Fast
+            } else {
+                crate::options::MemoryMode::Low
+            };
+            config.memory.poolsize = 1;
+            let plan = plan_ppml_memory(memory_dimensions(&data, config), config.memory).unwrap();
+            let fit = fit_prepared_ppml_irls(
+                &data,
+                &outcome,
+                &vec![1.0; rows],
+                &vec![0.0; rows],
+                config,
+                plan,
+                None,
+            )
+            .expect("full-rank no-FE constant outcome has a unique finite optimum");
+            assert!(fit.diagnostics().converged && fit.diagnostics().final_score.passed);
+            assert!(fit.diagnostics().iterations < 40);
+            assert_eq!(fit.linear().fit().finite_rank(), 11);
+            for (slot, coefficient) in fit.coefficients().iter().enumerate() {
+                let expected = if slot == 10 { 2.0_f64.ln() } else { 0.0 };
+                assert!(
+                    (coefficient.value.expect("full-rank coefficient") - expected).abs() < 1e-13,
+                    "mode={mode:?} slot={slot} coefficient={coefficient:?}"
+                );
+            }
+            assert!(fit
+                .eta()
+                .iter()
+                .all(|eta| (eta - 2.0_f64.ln()).abs() < 1e-13));
+            assert!(fit.mean().iter().all(|mean| (mean - 2.0).abs() < 2e-13));
+        }
     }
 
     #[test]

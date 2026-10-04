@@ -17,6 +17,9 @@ use crate::sandwich::{
 use super::prepared::{checked_frequency_effective_observations, PreparedPpmlWeightReport};
 use super::psd::{apply_ppml_psd_policy, PpmlPsdReport};
 
+#[path = "factor_covariance.rs"]
+mod factor_covariance;
+
 const PPML_SANDWICH_REDUCTION: FixedBlockReductionPolicy = FixedBlockReductionPolicy {
     rows_per_block: 16_384,
     maximum_blocks: 64,
@@ -63,6 +66,59 @@ pub(super) fn dense_score_partials_bound(rows: usize, dimension: usize) -> Resul
         FeregError::new(ErrorCode::Allocation, "PPML score partial bank overflows")
     })?;
     Ok(requested.min((policy.partial_budget_bytes as u128).max(stride)))
+}
+
+/// Bound ordered and paired clustered reducers at every possible final rank.
+/// Paired tables replace the ordering banks and are explicitly bounded by two
+/// observation-length word banks. The retained original covariance during a
+/// factor check occupies the already-admitted final result covariance bank.
+pub(super) fn clustered_score_workspace_bound(rows: usize, dimension: usize) -> Result<u128> {
+    let k = dimension as u128;
+    let square = k
+        .checked_mul(k)
+        .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "PPML clustered square overflows"))?;
+    let stride = square
+        .checked_mul(2)
+        .and_then(|value| value.checked_add(5 * k + 1))
+        .and_then(|value| value.checked_mul(8))
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "PPML clustered partial stride overflows",
+            )
+        })?;
+    let blocks = rows
+        .div_ceil(PPML_SANDWICH_REDUCTION.rows_per_block)
+        .min(PPML_SANDWICH_REDUCTION.maximum_blocks) as u128;
+    let partials = stride
+        .checked_mul(blocks)
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "PPML clustered partial bank overflows",
+            )
+        })?
+        .min((PPML_SANDWICH_REDUCTION.partial_budget_bytes as u128).max(stride));
+    let words = std::mem::size_of::<usize>() as u128;
+    let order = square
+        .checked_mul(32)
+        .and_then(|value| value.checked_add(3 * rows as u128 * words))
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "PPML clustered ordering bound overflows",
+            )
+        })?;
+    let reduction = square
+        .checked_mul(64)
+        .and_then(|value| value.checked_add(rows as u128 * words + partials + (blocks + 1) * words))
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::Allocation,
+                "PPML clustered reduction bound overflows",
+            )
+        })?;
+    Ok(order.max(reduction))
 }
 
 /// Translate only numerical failures emitted by the estimator-neutral
@@ -388,6 +444,7 @@ where
                         design,
                         multipliers,
                         dense_score_reduction(rank),
+                        None,
                         &mut reservation,
                     ))
                 })??;
@@ -412,6 +469,7 @@ where
                         multipliers,
                         clusters,
                         PPML_SANDWICH_REDUCTION,
+                        None,
                         &mut reservation,
                     ))
                 })??;
@@ -500,8 +558,8 @@ where
         ));
     }
 
-    let (identified_covariance, meat_error, covariance_error) = if rank == 0 {
-        (Vec::new(), 0.0, 0.0)
+    let (mut raw_covariance, meat_error, mut covariance_error, factor_check) = if rank == 0 {
+        (Vec::new(), 0.0, 0.0, false)
     } else {
         let meat_error = matrix_relative_difference(&production_meat, &certificate_meat, rank)?;
         let production_covariance = ppml_sandwich_result(bread_meat_bread(
@@ -513,7 +571,7 @@ where
             &mut reservation,
         ))?;
         interrupt()?;
-        let certificate_covariance = ppml_sandwich_result(bread_meat_bread(
+        let mut certificate_covariance = ppml_sandwich_result(bread_meat_bread(
             input.identified_bread,
             &certificate_meat,
             rank,
@@ -524,20 +582,54 @@ where
         interrupt()?;
         let covariance_error =
             matrix_relative_difference(&production_covariance, &certificate_covariance, rank)?;
-        (production_covariance, meat_error, covariance_error)
+        let factor_check = (effective_kind == PpmlVceKind::Robust || input.clusters.len() <= 1)
+            && factor_covariance::needs_factor_check(
+                &input,
+                &production_meat,
+                &production_covariance,
+                &mut certificate_covariance,
+                minimum_cluster_groups.unwrap_or(rows),
+                correction,
+            );
+        (
+            production_covariance,
+            meat_error,
+            covariance_error,
+            factor_check,
+        )
     };
+    drop(production_meat);
+    drop(certificate_meat);
 
     let cluster_dimensions = if effective_kind == PpmlVceKind::Clustered {
         input.clusters.len()
     } else {
         0
     };
+    if factor_check {
+        let (reconstructed, error) =
+            factor_covariance::reconstruct(&input, effective_kind, threads, correction, interrupt)?;
+        if error > input.certificate_tolerance {
+            return Err(FeregError::new(
+                ErrorCode::NonConvergence,
+                "PPML influence covariance failed independent certification",
+            ));
+        }
+        let disagreement = matrix_relative_difference(&raw_covariance, &reconstructed, rank)?;
+        if disagreement > input.certificate_tolerance
+            || (0..rank).any(|row| raw_covariance[row * rank + row] < 0.0)
+        {
+            raw_covariance = reconstructed;
+            covariance_error = error;
+        }
+    }
     let (identified_covariance, psd) = apply_ppml_psd_policy(
-        &identified_covariance,
+        &raw_covariance,
         rank,
         cluster_dimensions,
         input.certificate_tolerance,
     )?;
+    drop(raw_covariance);
     interrupt()?;
     let covariance_symmetry = matrix_symmetry_error(&identified_covariance, rank)?;
     let mut reservation = SystemSandwichReservation;
@@ -1577,6 +1669,88 @@ pub(crate) fn compute_ppml_vce(input: PpmlVceInput<'_>) -> Result<VceReport> {
 mod tests {
     use super::*;
     use std::sync::atomic::{AtomicU64, AtomicUsize, Ordering};
+
+    #[test]
+    fn cancelled_cluster_influences_preserve_zero_and_positive_variances() {
+        let bread = [0.3, -0.7, -0.7, 1.7];
+        for scale in [2.0_f64.powi(-60), 1.0, 2.0_f64.powi(60)] {
+            for perturbation in [0.0, 1e-9] {
+                let a = (0.7 + perturbation) * scale;
+                let b = 0.3 * scale;
+                let design =
+                    DenseMatrix::from_columns(&[vec![a, a, 1.0, 0.0], vec![b, b, 0.0, 1.0]])
+                        .unwrap();
+                for threads in [1, 4] {
+                    let inference = compute_ppml_inference_interruptible_with_threads(
+                        PpmlInferenceInput {
+                            coefficients: &[0.0; 2],
+                            full_dimension: 2,
+                            within_design: &design,
+                            reported_finite_rank: 2,
+                            score_residuals: &[1.0, -1.0, 0.0, 0.0],
+                            prior_weights: &[1.0; 4],
+                            weight_report: unweighted_report(4),
+                            identified_bread: &bread,
+                            kept_full_slots: &[0, 1],
+                            absorbed_rank: 0,
+                            connected_components: 0,
+                            absorbed_rank_is_approximate: false,
+                            clusters: &[&[0, 1, 0, 1]],
+                            requested_vce: PpmlVceRequest::Clustered,
+                            wald_columns: &[],
+                            certificate_tolerance: 1e-12,
+                        },
+                        ThreadConfig::from_requested(threads, true).unwrap(),
+                        &mut || Ok(()),
+                    )
+                    .expect("rank-deficient score factors define nonnegative variances");
+                    // Binary 0.3*0.7 and 0.7*0.3 cancel exactly. Compute the
+                    // perturbed product with its FMA remainder, independently
+                    // of rounded meat, group reduction and bread products.
+                    let product = 0.3 * a;
+                    let opposite = 0.7 * b;
+                    let first = (product - opposite) + 0.3_f64.mul_add(a, -product)
+                        - 0.7_f64.mul_add(b, -opposite);
+                    let expected = 4.0 * first * first;
+                    let actual = inference.vce.covariance[0];
+                    if perturbation == 0.0 {
+                        assert_eq!(actual, 0.0);
+                    } else {
+                        assert!(actual > 0.0);
+                        assert!((actual - expected).abs() <= 1e-12 * expected,
+                            "scale={scale:e} perturbation={perturbation:e} actual={actual:e} expected={expected:e} psd={:?}", inference.vce.psd);
+                    }
+                    assert!(inference.vce.psd.passed);
+                    assert!(inference.vce.certificate.passed);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn factor_check_recovers_variance_when_raw_score_squares_underflow() {
+        let design = DenseMatrix::from_columns(&[vec![1e-150; 2]]).unwrap();
+        let result = compute_ppml_inference(PpmlInferenceInput {
+            coefficients: &[0.0],
+            full_dimension: 1,
+            within_design: &design,
+            reported_finite_rank: 1,
+            score_residuals: &[1e-50, -1e-50],
+            prior_weights: &[1.0; 2],
+            weight_report: unweighted_report(2),
+            identified_bread: &[1e300],
+            kept_full_slots: &[0],
+            absorbed_rank: 0,
+            connected_components: 0,
+            absorbed_rank_is_approximate: false,
+            clusters: &[],
+            requested_vce: PpmlVceRequest::Robust,
+            wald_columns: &[],
+            certificate_tolerance: 1e-12,
+        })
+        .unwrap();
+        assert!((result.vce.covariance[0] / 4e200 - 1.0).abs() < 1e-12);
+    }
 
     #[derive(Debug, Clone, Copy)]
     struct InvalidDataInferenceDesign;

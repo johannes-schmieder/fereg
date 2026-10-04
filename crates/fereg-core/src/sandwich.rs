@@ -11,6 +11,7 @@ use std::cmp::Ordering;
 
 use crate::error::{ErrorCode, FeregError, Result};
 
+mod influence;
 mod qualified_cluster;
 pub(crate) use qualified_cluster::{
     prepare_cluster_score_batch, reduce_qualified_cluster_subset, QualifiedClusterCertificateRoute,
@@ -474,6 +475,7 @@ pub(crate) fn reduce_dense_score_meats<D, M, R>(
     design: D,
     multipliers: M,
     policy: FixedBlockReductionPolicy,
+    influence_bread: Option<&[f64]>,
     reservation: &mut R,
 ) -> Result<IndependentScoreMeats>
 where
@@ -495,6 +497,7 @@ where
         ));
     }
     let square = checked_square(dimension, "dense sandwich meat dimensions overflow usize")?;
+    influence::validate_bread(influence_bread, dimension)?;
     let workspace = dimension
         .checked_mul(2)
         .ok_or_else(|| allocation("dense sandwich score workspace overflows usize"))?;
@@ -526,6 +529,16 @@ where
             let end = start + rows_per_chunk + usize::from(chunk < remainder);
             design.visit_range(start..end, production_score, |row, production_score| {
                 let score = multipliers.score_pair(row)?;
+                if let Some(bread) = influence_bread {
+                    return influence::dense_row(
+                        bread,
+                        production_score,
+                        certificate_score,
+                        score,
+                        production_meat,
+                        certificate_meat,
+                    );
+                }
                 for coordinate in 0..dimension {
                     let raw = production_score[coordinate];
                     production_score[coordinate] = score.production * raw;
@@ -791,6 +804,7 @@ pub(crate) fn reduce_clustered_score_meats<D, M, R>(
     multipliers: M,
     clusters: SandwichClusters<'_>,
     policy: FixedBlockReductionPolicy,
+    influence_bread: Option<&[f64]>,
     reservation: &mut R,
 ) -> Result<ClusteredScoreMeats>
 where
@@ -815,6 +829,7 @@ where
         dimension,
         "clustered sandwich meat dimensions overflow usize",
     )?;
+    influence::validate_bread(influence_bread, dimension)?;
     let subset_count = 1_usize
         .checked_shl(
             u32::try_from(cluster_dimensions.len())
@@ -863,7 +878,7 @@ where
                 multipliers,
                 cluster_dimensions,
                 mask,
-                QualifiedClusterCertificateRoute::PairedIndependent(policy),
+                QualifiedClusterCertificateRoute::PairedIndependent(policy, influence_bread),
                 QualifiedClusterRoutePolicy {
                     maximum_dimensions: u16::BITS as usize,
                     reduction_maximum_blocks: policy.maximum_blocks,
@@ -939,6 +954,7 @@ fn reduce_one_cluster_subset<D, M, R>(
     dimensions: &[&[u32]],
     mask: usize,
     policy: FixedBlockReductionPolicy,
+    influence_bread: Option<&[f64]>,
     reservation: &mut R,
 ) -> Result<ClusterSubsetMeats>
 where
@@ -1011,6 +1027,8 @@ where
                         certificate_correction,
                         production_meat,
                         certificate_meat,
+                        row_values,
+                        influence_bread,
                     )?;
                     production_group.fill(0.0);
                     production_correction.fill(0.0);
@@ -1042,6 +1060,8 @@ where
                     certificate_correction,
                     production_meat,
                     certificate_meat,
+                    row_values,
+                    influence_bread,
                 )?;
                 count[0] += 1.0;
             }
@@ -1121,13 +1141,16 @@ where
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn finish_cluster_group(
-    production_score: &[f64],
-    production_corrections: &[f64],
-    certificate_score: &[f64],
-    certificate_corrections: &[f64],
+    production_score: &mut [f64],
+    production_corrections: &mut [f64],
+    certificate_score: &mut [f64],
+    certificate_corrections: &mut [f64],
     production_meat: &mut [f64],
     certificate_meat: &mut [f64],
+    row_workspace: &mut [f64],
+    influence_bread: Option<&[f64]>,
 ) -> Result<()> {
     let dimension = production_score.len();
     if production_corrections.len() != dimension
@@ -1139,6 +1162,22 @@ fn finish_cluster_group(
         return Err(invalid_argument(
             "clustered sandwich group dimensions are inconsistent",
         ));
+    }
+    if let Some(bread) = influence_bread {
+        influence::transform_group(
+            production_score,
+            production_corrections,
+            row_workspace,
+            bread,
+            false,
+        )?;
+        influence::transform_group(
+            certificate_score,
+            certificate_corrections,
+            row_workspace,
+            bread,
+            true,
+        )?;
     }
     for left in 0..dimension {
         let production_left = production_score[left] + production_corrections[left];
@@ -2103,6 +2142,7 @@ mod tests {
                 maximum_blocks: 4,
                 partial_budget_bytes: 1 << 20,
             },
+            None,
             &mut reservation,
         )
         .expect("meats");
@@ -2145,7 +2185,7 @@ mod tests {
         let multipliers =
             SliceSandwichScoreMultiplier::new(&production, &certificate).expect("scores");
         let mut reservation = Reservation;
-        let shared = reduce_dense_score_meats(design, multipliers, policy, &mut reservation)
+        let shared = reduce_dense_score_meats(design, multipliers, policy, None, &mut reservation)
             .expect("shared meats");
         assert_eq!(shared.production, legacy_production);
         assert_eq!(shared.certificate, legacy_certificate);
@@ -2183,7 +2223,7 @@ mod tests {
                         let actual = reduce_dense_score_meats(
                             RowMajorSandwichDesign::new(&values, nrows, dimension).unwrap(),
                             SliceSandwichScoreMultiplier::new(&production, &certificate).unwrap(),
-                            policy, &mut Reservation,
+                            policy, None, &mut Reservation,
                         ).unwrap();
                         assert_eq!(actual.production, expected.0,
                             "production dimension={dimension} threads={threads} block={rows_per_block}");
@@ -2347,6 +2387,7 @@ mod tests {
                 maximum_blocks: 4,
                 partial_budget_bytes: 1 << 20,
             },
+            None,
             &mut reservation,
         )
         .expect("clustered meat");

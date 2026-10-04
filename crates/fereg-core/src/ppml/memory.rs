@@ -1757,9 +1757,31 @@ fn estimate_route(
     } else {
         0
     };
+    let cluster_subsets = if clusters == 0 {
+        0
+    } else {
+        (1_u128 << dimensions.cluster_dimensions) - 1
+    };
     let sandwich_inference_workspace_bytes = checked_sum(&[
-        bytes_f64(checked_mul(square, 6, "PPML sandwich square workspaces")?)?,
+        if clusters == 0 {
+            bytes_f64(checked_mul(square, 6, "PPML sandwich square workspaces")?)?
+        } else {
+            super::vce::clustered_score_workspace_bound(
+                dimensions.observations,
+                dimensions.finite_columns,
+            )?
+            .max(bytes_f64(checked_mul(
+                square,
+                6,
+                "PPML sandwich square workspaces",
+            )?)?)
+        },
         bytes_f64(checked_mul(subset_groups, k, "PPML cluster subset scores")?)?,
+        checked_mul(
+            cluster_subsets,
+            size_of::<crate::sandwich::ClusterSubsetReduction>() as u128,
+            "PPML reducer subset reports",
+        )?,
         bytes_f64(checked_mul(k, threads.max(1), "PPML sandwich reductions")?)?,
         // Retain the prior square envelope and conservatively add the complete
         // robust partial bank, including any smaller final numerical rank.
@@ -1785,12 +1807,9 @@ fn estimate_route(
     let inference_workspace_bytes =
         sandwich_inference_workspace_bytes.max(rank_zero_cluster_inventory_bytes);
     let inference_slots = coefficient_slots.max(reported_coefficient_slots);
-    let cluster_subsets = if clusters == 0 {
-        0
-    } else {
-        (1_u128 << dimensions.cluster_dimensions) - 1
-    };
-    // The full-axis VCE survives the six compact sandwich workspaces, then
+    // During factor verification this full-axis covariance allowance instead
+    // holds the old compact covariance; expansion follows that decision.
+    // The full-axis VCE survives the compact sandwich workspaces, then
     // coexists with FE recovery and the private publication matrices. Count
     // each subset's dimension vector at its declared subset width ceiling.
     let inference_result_bytes = checked_sum(&[
@@ -6500,7 +6519,7 @@ mod tests {
     }
 
     #[test]
-    fn rank_zero_cluster_inventory_charges_one_fallible_row_ordering() {
+    fn rank_zero_candidate_keeps_the_possible_positive_rank_workspace_ceiling() {
         let mut rank_zero_candidate = dimensions();
         rank_zero_candidate.observations = 100;
         rank_zero_candidate.separation_generation_capacity = 100;
@@ -6514,7 +6533,16 @@ mod tests {
         rank_zero_candidate.threads = 1;
         let estimate = estimate_ppml_memory(rank_zero_candidate, PpmlMemoryConfig::default())
             .expect("rank-zero cluster inventory");
-        let expected = 100_u128 * size_of::<usize>() as u128;
+        // Admission precedes rank discovery. One candidate column can retain
+        // rank one, whose ordering lifetime owns four scalar matrix banks and
+        // three row-order banks, plus scores, a subset report and one reduction.
+        let rank_zero_ordering = 100_u128 * size_of::<usize>() as u128;
+        let expected = 32
+            + 3 * rank_zero_ordering
+            + 16
+            + size_of::<crate::sandwich::ClusterSubsetReduction>() as u128
+            + 8;
+        assert!(expected > rank_zero_ordering);
         assert_eq!(estimate.fast.inference_workspace_bytes, expected);
         assert_eq!(estimate.low.inference_workspace_bytes, expected);
     }

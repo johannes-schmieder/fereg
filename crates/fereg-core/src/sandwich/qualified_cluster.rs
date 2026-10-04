@@ -18,7 +18,7 @@ use crate::error::Result;
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum QualifiedClusterCertificateRoute<'a> {
     /// PPML retains independently constructed production/certificate scores.
-    PairedIndependent(FixedBlockReductionPolicy),
+    PairedIndependent(FixedBlockReductionPolicy, Option<&'a [f64]>),
     /// OLS scratch certification transforms every completed group by bread.
     OlsPerGroupBread(&'a [f64]),
     /// Dense OLS retains a reverse-order raw meat and applies bread once after
@@ -88,7 +88,8 @@ where
                 "qualified clustered dense and streaming designs disagree",
             ));
         }
-        if let QualifiedClusterCertificateRoute::PairedIndependent(blocks) = certificate {
+        if let QualifiedClusterCertificateRoute::PairedIndependent(blocks, bread) = certificate {
+            super::influence::validate_bread(bread, dimension)?;
             if dense.prefers_sequential_scan() {
                 if let Some(plan) = paired_subset_plan(dimensions, mask, nobs, dimension) {
                     return aggregate_paired_scan(
@@ -97,6 +98,7 @@ where
                         dimensions,
                         mask,
                         plan,
+                        bread,
                         reservation,
                     );
                 }
@@ -107,6 +109,7 @@ where
                 dimensions,
                 mask,
                 blocks,
+                bread,
                 reservation,
             )?;
             return Ok(QualifiedClusterSubsetResult {
@@ -142,7 +145,7 @@ where
                 "qualified clustered streaming route requires per-group bread",
             ))
         }
-        QualifiedClusterCertificateRoute::PairedIndependent(_) => {
+        QualifiedClusterCertificateRoute::PairedIndependent(_, _) => {
             return Err(invalid_argument(
                 "qualified clustered paired route requires a parallel-safe design",
             ))
@@ -188,6 +191,7 @@ fn aggregate_paired_scan<D, M, R>(
     dimensions: &[&[u32]],
     mask: usize,
     plan: DenseSubsetPlan,
+    influence_bread: Option<&[f64]>,
     reservation: &mut R,
 ) -> Result<QualifiedClusterSubsetResult>
 where
@@ -272,26 +276,15 @@ where
         0.0_f64,
         "unable to reserve paired cluster meat correction",
     )?;
-    // Keep the legacy matrix indices and numerical traversal order explicit.
-    #[allow(clippy::needless_range_loop)]
-    for group in 0..plan.group_slots {
-        if seen[group] == 0 {
-            continue;
-        }
-        let offset = group * dimension;
-        for left in 0..dimension {
-            let a = production[offset + left] + production_correction[offset + left];
-            for right in left..dimension {
-                let b = production[offset + right] + production_correction[offset + right];
-                let position = left * dimension + right;
-                compensated_add(
-                    a * b,
-                    &mut production_meat[position],
-                    &mut correction[position],
-                )?;
-            }
-        }
-    }
+    aggregate_paired_groups::<false>(
+        production,
+        production_correction,
+        &seen,
+        &mut row_values,
+        &mut production_meat,
+        &mut correction,
+        influence_bread,
+    )?;
     super::finalize_symmetric_triangle(&mut production_meat, correction, dimension)?;
     let mut correction = reserved_filled(
         reservation,
@@ -299,32 +292,65 @@ where
         0.0_f64,
         "unable to reserve paired cluster certificate correction",
     )?;
-    // Independent multipliers, group storage, arithmetic and reverse merge;
-    // the certificate never reads production sums or its meat.
-    for group in (0..plan.group_slots).rev() {
-        if seen[group] == 0 {
-            continue;
-        }
-        let offset = group * dimension;
-        for left in 0..dimension {
-            let a = certificate_correction[offset + left] + certificate[offset + left];
-            for right in left..dimension {
-                let b = certificate_correction[offset + right] + certificate[offset + right];
-                let position = left * dimension + right;
-                compensated_add(
-                    b * a,
-                    &mut certificate_meat[position],
-                    &mut correction[position],
-                )?;
-            }
-        }
-    }
+    // Independent multipliers, storage and reverse traversal; this pass never
+    // reads production sums or its meat.
+    aggregate_paired_groups::<true>(
+        certificate,
+        certificate_correction,
+        &seen,
+        &mut row_values,
+        &mut certificate_meat,
+        &mut correction,
+        influence_bread,
+    )?;
     super::finalize_symmetric_triangle(&mut certificate_meat, correction, dimension)?;
     Ok(QualifiedClusterSubsetResult {
         production: production_meat,
         certificate: certificate_meat,
         groups: seen.iter().filter(|&&present| present != 0).count(),
     })
+}
+
+#[allow(clippy::needless_range_loop)]
+fn aggregate_paired_groups<const REVERSE: bool>(
+    scores: &mut [f64],
+    score_corrections: &mut [f64],
+    seen: &[u8],
+    workspace: &mut [f64],
+    meat: &mut [f64],
+    corrections: &mut [f64],
+    influence_bread: Option<&[f64]>,
+) -> Result<()> {
+    let dimension = workspace.len();
+    for position in 0..seen.len() {
+        let group = if REVERSE {
+            seen.len() - 1 - position
+        } else {
+            position
+        };
+        if seen[group] == 0 {
+            continue;
+        }
+        let offset = group * dimension;
+        if let Some(bread) = influence_bread {
+            super::influence::transform_group(
+                &mut scores[offset..offset + dimension],
+                &mut score_corrections[offset..offset + dimension],
+                workspace,
+                bread,
+                REVERSE,
+            )?;
+        }
+        for left in 0..dimension {
+            let a = scores[offset + left] + score_corrections[offset + left];
+            for right in left..dimension {
+                let b = scores[offset + right] + score_corrections[offset + right];
+                let slot = left * dimension + right;
+                compensated_add(a * b, &mut meat[slot], &mut corrections[slot])?;
+            }
+        }
+    }
+    Ok(())
 }
 
 fn dense_subset_plan(
@@ -2039,11 +2065,14 @@ mod paired_scan_tests {
         }
     }
     fn certificate() -> QualifiedClusterCertificateRoute<'static> {
-        QualifiedClusterCertificateRoute::PairedIndependent(FixedBlockReductionPolicy {
-            rows_per_block: 16384,
-            maximum_blocks: 64,
-            partial_budget_bytes: 32 << 20,
-        })
+        QualifiedClusterCertificateRoute::PairedIndependent(
+            FixedBlockReductionPolicy {
+                rows_per_block: 16384,
+                maximum_blocks: 64,
+                partial_budget_bytes: 32 << 20,
+            },
+            None,
+        )
     }
 
     #[test]

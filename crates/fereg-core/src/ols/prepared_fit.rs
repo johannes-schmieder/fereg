@@ -53,6 +53,9 @@ pub struct PreparedOlsFitConfig {
     pub fixed_effect_collinearity_tolerance: f64,
     /// Maximum recomputed normalized finite-score moment.
     pub score_tolerance: f64,
+    /// Optional independent retained-solve coefficient accuracy, using the
+    /// PPML publication envelope. No correction is made when already accurate.
+    pub coefficient_tolerance: Option<f64>,
     /// Maximum normalized inverse, symmetry, and reported-intercept error.
     pub bread_tolerance: f64,
     /// Native materialization policy for the prepared finite-regressor path.
@@ -113,6 +116,7 @@ impl Default for PreparedOlsFitConfig {
             allow_final_fe_recovery: false,
             fixed_effect_collinearity_tolerance: 1e-9,
             score_tolerance: 5e-10,
+            coefficient_tolerance: None,
             bread_tolerance: 5e-10,
             execution: PreparedOlsExecutionConfig::default(),
         }
@@ -3893,6 +3897,9 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
         || !config.rank_tolerance_multiplier.is_finite()
         || config.rank_tolerance_multiplier <= 0.0
         || !valid_unit_tolerance(config.fixed_effect_collinearity_tolerance)
+        || config
+            .coefficient_tolerance
+            .is_some_and(|value| !valid_unit_tolerance(value))
         || !valid_unit_tolerance(config.score_tolerance)
         || !valid_unit_tolerance(config.bread_tolerance)
         || config

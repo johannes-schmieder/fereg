@@ -1,8 +1,8 @@
 # Incremental refactoring — milestones
 
-Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Plan: [M0–M23](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M22.1/M22.2 resumed by Johannes; ten-repair policy, Astra extra-high numerical help and independent review.
+Current task: M22.1 local gates pass; clean-source timing/Linux qualification, then M22.2 saved-FE qualification.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -82,12 +82,11 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-M22.2: three CG candidates tested. 1: retiring certified unstable RHSs lost forward accuracy; reverted. 2: retained-vector reconstruction did not affect unretained polishing; reverted.
-3: stable group-mean action fixes energy/forward witness; saved-FE target span still fails (2.105e-7 relative). Johannes authorized continuation under ten-repair policy.
-M22.1: finite refinement fixes the original optimum witness; first unit/fast/thread1 robust cell passes. The matching one-way cluster cell fails r(430), negative covariance diagonal.
-PPML attempts 1–3: compensated Gram drift; residual correction fixes optimum; PSD refinement passes first robust cell but fails cluster. Johannes authorized continuation to ten.
-Reviewed candidate full/30/Mac ABI, exact73/five-thread and existing46 Stata pass. Both new witnesses fail; clean timing and Linux CI gates remain pending.
-Astra extra-high review confirms localized fixes, unresolved publication and added PPML scan cost; M23 prerequisite is unmet. See [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
+M22.1 candidate5: full/30/Mac ABI, exact73/five-thread, strict24 and mapped46 Stata pass; clean timing/Linux CI pending.
+M22.2: candidates1–3 localized stable CG;4 raw-model recovery failed weighted forward witness;5 normalized FE-discrepancy recovery under qualification; tolerances unchanged.
+Johannes authorized continuation under ten-repair policy. Both prototype public witnesses pass; enhanced science/full/native/replay/timing/Linux CI remain pending.
+Astra extra-high review/addenda find no unresolved source defect after guard/recovery repairs. Final qualification review and M23 remain blocked.
+Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -177,3 +176,6 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M21.2 this commit — M17 stale qualification fields corrected; Astra finds no new runtime defect; two inherited numerical witnesses prioritized; governance/links/ratchet pass.
 - 2026-10-03 M22 worktree — full/30/Mac ABI, exact73/five-thread and46 Stata pass; two new witnesses fail; Astra extra-high review done; timebox directions pending; uncommitted, M21 binary restored.
 - 2026-10-03 M22.0 this commit — Johannes authorizes continuation and ten repairs; policy/ADR/plan synchronized; Astra extra-high assistance; governance/links pass.
+
+- 2026-10-03 M22 worktree — PPML24 and original FE prototype pass; weighted disconnected recovery exposed raw-noise stopping; normalized FE-discrepancy candidate5 under qualification.
+- 2026-10-03 M22.1 this commit — full/30, Mac ABI, exact73/five-thread, strict24/mapped46 Stata pass; timing/Linux pending; [evidence](bench/history/2026-10-03-m22-ppml-correction.json).
