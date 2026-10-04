@@ -2,7 +2,7 @@
 
 Plan: [M0–M23](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M22.1 local gates pass; clean-source timing/Linux qualification, then M22.2 saved-FE qualification.
+Current task: M22.2 saved-FE qualification; M22.1 science/native/Linux complete, measured PPML correctness cost recorded.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -58,7 +58,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M21 Strict recovery/readiness; full/30, clean exact73/five-thread Mac/ABI, 46 Stata, clean timings, Linux CI and separate Astra review complete.
 
 - [x] M22.0 Johannes raises repair limit to ten; active policy synchronized; Astra assistance authorized.
-- [ ] M22.1 Reproduce/localize strict no-FE PPML; repair without weaker tolerance, add independent regression and qualify.
+- [x] M22.1 Strict no-FE PPML repaired; independent strict24, full/30, clean73/five-thread/Mac ABI/46 Stata and Linux CI pass; timing cost recorded.
 - [ ] M22.2 Reproduce/localize near-within saved-FE CG recovery; preserve explicit backend and independent accuracy, repair and qualify.
 - [ ] M22.3 Separate Astra extra-high review of both qualified fixes; resolve findings before next milestone.
 - [ ] M23 Astra extra-high plan for next priority, implementation, qualification and separate extra-high review.
@@ -82,8 +82,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-M22.1 candidate5: full/30/Mac ABI, exact73/five-thread, strict24 and mapped46 Stata pass; clean timing/Linux CI pending.
-M22.2: candidates1–3 localized stable CG;4 raw-model recovery failed weighted forward witness;5 normalized FE-discrepancy recovery under qualification; tolerances unchanged.
+M22.1 qualified at b34596b2/CI37175370337; repeated PPML ~3–5% correctness cost is explicit in bench/history, with possible duplicate scan localized.
+M22.2 candidate5: final full/30/ABI, exact73/five-thread, both enhanced witnesses and46 mapped Stata pass; clean timing/Linux CI pending.
 Johannes authorized continuation under ten-repair policy. Both prototype public witnesses pass; enhanced science/full/native/replay/timing/Linux CI remain pending.
 Astra extra-high review/addenda find no unresolved source defect after guard/recovery repairs. Final qualification review and M23 remain blocked.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
@@ -179,3 +179,6 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 
 - 2026-10-03 M22 worktree — PPML24 and original FE prototype pass; weighted disconnected recovery exposed raw-noise stopping; normalized FE-discrepancy candidate5 under qualification.
 - 2026-10-03 M22.1 this commit — full/30, Mac ABI, exact73/five-thread, strict24/mapped46 Stata pass; timing/Linux pending; [evidence](bench/history/2026-10-03-m22-ppml-correction.json).
+- 2026-10-04 M22.1 b34596b2 — clean73/five-thread/strict24 pass; repeated PPML ~3–5% cost recorded; Linux replay passes/full check pending.
+- 2026-10-04 M22.1 b34596b2 — CI37175370337 all jobs pass; correction qualified with repeated PPML timing cost; saved-FE checks underway.
+- 2026-10-04 M22.2 this commit — full/30/Mac ABI, exact73/five-thread, saved48/PPML24/mapped46 pass; slope error guard reviewed; clean timing/Linux pending.

@@ -42,7 +42,14 @@ foreach kind in unit aw fw pw {
                 assert e(sample)==1
                 assert e(N)==oracle_N
                 assert e(df_r)==oracle_df
-                if "`solver'"=="cmg" assert e(fereg_solver)[1,2]==7
+                if "`solver'"=="cmg" {
+                    assert e(fereg_solver)[1,1]==7
+                    assert inlist(e(fereg_solver)[1,2],4,7)
+                    if e(fereg_solver)[1,2]==4 {
+                        assert e(fereg_solver)[1,11]==1
+                        assert e(fereg_solver)[1,12]>0
+                    }
+                }
                 matrix finite_b = e(b)[1,1..2]
                 matrix finite_V = e(V)[1..2,1..2]
                 assert mreldif(finite_b,oracle_b)<1e-10
@@ -52,20 +59,26 @@ foreach kind in unit aw fw pw {
             }
         }
     }
-    * Requested FE products exercise their distinct retaining/recovery path.
-    quietly fereg y x1 x2 `weight', absorb(left=g right=h) solver(cmg) ///
-        memory(low) poolsize(1) threads(4) tolerance(1e-12) ///
-        vce(robust) residuals(saved_residual)
-    matrix finite_b = e(b)[1,1..2]
-    matrix finite_V = e(V)[1..2,1..2]
-    assert mreldif(finite_b,oracle_b)<1e-10
-    assert mreldif(finite_V,oracle_V)<1e-10
-    assert e(fereg_certificate)[32,2]==1
-    predict double fitted, xbd
-    predict double xb, xb
-    assert abs(saved_residual-noise)<1e-9
-    assert abs(y-fitted-saved_residual)<1e-9
-    assert abs(fitted-xb-left-right)<1e-9
-    drop oracle_residual left right saved_residual fitted xb
+    * Recovery must retain a nonzero FE contribution at its original scale.
+    foreach mode in fast low {
+        foreach t in 1 4 {
+            quietly fereg y x1 x2 `weight', absorb(left=g right=h) solver(cmg) ///
+                memory(`mode') poolsize(1) threads(`t') tolerance(1e-12) ///
+                vce(robust) residuals(saved_residual)
+            matrix finite_b = e(b)[1,1..2]
+            matrix finite_V = e(V)[1..2,1..2]
+            assert mreldif(finite_b,oracle_b)<1e-10
+            assert mreldif(finite_V,oracle_V)<1e-10
+            assert e(fereg_certificate)[32,2]==1
+            predict double fitted, xbd
+            predict double xb, xb
+            assert abs(saved_residual-noise)<1e-9
+            assert abs(y-fitted-saved_residual)<1e-14
+            assert abs(fitted-xb-left-right)<1e-14
+            assert abs(y-xb-noise-left-right)<1e-14
+            drop left right saved_residual fitted xb
+        }
+    }
+    drop oracle_residual
 }
 display as result "END_FIXTURE|ols_near_within_cmg_oracle|rc=0"

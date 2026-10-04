@@ -5,6 +5,10 @@
 //! numeric sample.  All numerical workspace is reserved before the first
 //! projection; iterations and final certificates allocate nothing.
 
+#[path = "model_recovery.rs"]
+mod model_recovery;
+pub(crate) use model_recovery::recover_finalized_model_effects_certified;
+
 use std::time::Instant;
 
 use crate::data::DenseMatrix;

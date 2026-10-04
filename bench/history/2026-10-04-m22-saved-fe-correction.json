@@ -1,0 +1,542 @@
+{
+  "schema": 1,
+  "milestone": "M22.2",
+  "qualified": false,
+  "status": "Final-source local gates pass; clean-source timing and Linux CI pending.",
+  "parent_runtime": "b34596b25806b9b4fbf83c1e38aa221366a4c1a6",
+  "repair_attempt": 5,
+  "localization": [
+    "Subtractive observation-space CG action contaminates nearly within RHS; shared group-mean projection action preserves the FE-span operation. CMG bulk solve and its existing certified CG polish remain.",
+    "The derived fitted-model FE target is about4e-9 with about6e-16 subtraction roundoff; target-relative error about2.105e-7 is incompatible with strict target-span tolerance1e-12. Requiring that rounded target to be in span is the wrong recovery precondition.",
+    "Raw-model projection was noise-dominated and failed the independent weighted forward witness. Candidate5 normalizes the fresh FE discrepancy (y-Xb)-accepted residual, allowing its nonzero off-span remainder."
+  ],
+  "implementation": [
+    "Complete retained coefficient products use the shared stable CG action; one fresh complete projection for failed intercept-only model recovery.",
+    "Normalize coefficients once, restore RHS scale, directly evaluate Dalpha and certify original raw (y-Xb)-Dalpha at unchanged FE tolerance and original model scales.",
+    "Strict final span certificate uses directly evaluated Dalpha. Host independently recomputes Xb and verifies the original model before any publication. Accepted fit/residual/coefficient/VCE remain authoritative.",
+    "Only the precise InvalidData span-certificate failure on an intercept-only model is eligible. Slope errors, allocation, interruption and unrelated numerical errors retain their original behavior.",
+    "Joint CG recovery memory admission is enforced; observed allocator peak and one-byte-short r909 regression pass."
+  ],
+  "independent_witnesses": {
+    "licensed_hadamard": {
+      "rows": 48,
+      "weights": [
+        "unit",
+        "analytic",
+        "frequency",
+        "probability"
+      ],
+      "memory": [
+        "fast",
+        "low"
+      ],
+      "threads": [
+        1,
+        4
+      ],
+      "unsaved_solver_cells": 32,
+      "saved_cmg_cells": 16,
+      "targets": "beta(.7,-.4), residual4uv, weighted explicit-dummy VCE and DoF; saved sums and original model reconstruction within1e-14."
+    },
+    "core_scaled_disconnected": {
+      "rows": 96,
+      "components": 2,
+      "scales": [
+        1e-100,
+        1,
+        1e+100
+      ],
+      "weights": [
+        "unit",
+        "provided"
+      ],
+      "outputs": [
+        "saved-only",
+        "full-sum"
+      ],
+      "maximum_forward_error_required": "<1e-14 * common scale",
+      "corrupted_accepted_residual": "FE component contamination1e-4*scale must fail independent reconstructed FE certificate."
+    },
+    "stable_polish": "Unit/provided weights scaled1e-100/1/1e100, threads1/4, RHS widths4/65/first beyond fused tile; complete products reconstruct inputs.",
+    "unsupported_recovery_precedence": "Real slope preparation refuses intercept-only recovery at unlimited and one-byte budgets before intercept memory planning."
+  },
+  "change_boundary": "CG polishing may change coefficients/residuals/VCE/iterations/products in polished cases; corrected failed span recovery may change saved FE/absorbed outputs and recovery work. Successful original recovery, unpolished cases and public model/sample/weight/DoF semantics retain original behavior. All73 bounded parent cases remain exact.",
+  "complexity": {
+    "fereg-core": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1480,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 106083
+    },
+    "fereg-plugin": {
+      "chunk_candidates": 0,
+      "dispatch_candidates": 166,
+      "files_over_1500": 3,
+      "functions_over_150": 15,
+      "production_lines": 15313
+    }
+  },
+  "checks": {
+    "full_local": true,
+    "local_passed_test_invocations": 1655,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "candidate_source": "m22-fe-qualified-worktree",
+    "candidate_sha256": "b5b6433401a42d13caab5a42526c773bbe19230a307a4f16545fbb3f19c5219b",
+    "native_parent_replay": {
+      "schema": 1,
+      "next_sha256": "b5b6433401a42d13caab5a42526c773bbe19230a307a4f16545fbb3f19c5219b",
+      "baseline_sha256": "2b1a7ea0cbdedba76050c95948c6a20d0a7405268bcf048d565c0e8449272ca0",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "unaffected_exact_cases": 73,
+    "five_thread": {
+      "passed": true,
+      "cases": 73,
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "science_discrete_and_fixed_thread_repeats": true
+    },
+    "licensed_witnesses": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_near_within_cmg_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_no_fe_strict_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "mapped_licensed_stata": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/feppml_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "ci/fereg_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/reference_factor_precedence.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/documentation/help_examples.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/engine_selection.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/estimate_ols_categorical_interaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/factor_availability.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/frequency_singleton_validation.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/installation_smoke.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/reload_loop.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/installation/slope_dof_validation.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_iweight_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_string_fe_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parity_reghdfe/estimate_ols_time_series_parity.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/candidate_sample.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/model_wire_v2_capture.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/ordinary_factor_terms.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/reject_ambiguous_absorb.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/string_sources.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/parser/time_series_marker.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/postestimation/fail_closed.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ],
+    "allocator_peak_and_one_byte_short": true
+  },
+  "astra_review": {
+    "model": "gpt-6-astra",
+    "reasoning_effort": "xhigh",
+    "verdict": "No unresolved source defect after candidate5 and slope eligibility addenda. Final qualification review pending.",
+    "limits": "Read-only source review; reviewer ran no production builds/tests."
+  },
+  "qualification": {
+    "runtime": "pending implementation commit",
+    "clean_native": "pending",
+    "clean_timing": "pending",
+    "linux_ci": "pending"
+  },
+  "historical_unqualified_witness": {
+    "fixture": "tests/stata/development/ols_near_within_cmg_oracle.do",
+    "original_return_code": 459,
+    "original_message": "borrowed CG Hestenes improvement potential became negative",
+    "localized": "First unretained CMG CG-polishing, before named-FE recovery: subtractive projection contaminated the off-span recurrence and produced enormous step lengths. The FE moment certificate alone missed forward error.",
+    "attempts": [
+      "Retiring energy-invalid independently moment-certified RHSs lost forward accuracy; reverted.",
+      "Retained-vector reconstruction did not exercise unretained polishing; reverted.",
+      "Shared stable group-mean action fixes independent forward/energy witness, but downstream named-FE reconstruction still fails."
+    ],
+    "current_repair": "CMG polishing uses the existing stable group-mean action, with optional products recorded by the same action. Standalone CG action and energy/recurrence audits are preserved; RHS tiling uses existing admitted banks.",
+    "proved": "Independent Hadamard forward accuracy passes; direct retained polishing requires coefficient reconstruction over weights/scales, threads1/4, widths4/65 and first width beyond fused tile. The CMG batch regression checks products only if the permitted fallback retained them.",
+    "public_terminal": {
+      "return_code": 459,
+      "message": "categorical recovery target is not certified to lie in the absorbed span",
+      "relative_infinity_residual": 2.104797e-07,
+      "source": "Named FE target formed by y-xb-residual has order1e-9 FE signal with order1e-15 cancellation contamination.",
+      "actual_threshold": "max(100*tolerance,1e-10); at tolerance1e-12 this is relative1e-10, approximately absolute1e-19 for the tiny target."
+    },
+    "remaining": "Investigate complete retained coefficient history and gauge to construct an in-span target; separately certify full original-model reconstruction. Retaining only a final correction after partial CMG fallback is insufficient. The public fixture stops at the first named-FE failure; later weight combinations remain unexecuted."
+  }
+}

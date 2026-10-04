@@ -2911,8 +2911,8 @@ fn retained_cg_correction_fits(
     config: CmgConfig,
     retained: SolverWorkspacePeak,
 ) -> Result<bool> {
-    // Stable projection needs four coefficient banks, even when the caller
-    // does not request saved effects. The OLS owner controls this admission;
+    // Retained CG products need four coefficient banks. Stable group-mean
+    // projection itself does not. The OLS owner controls this admission;
     // explicit solvers and tighter budgets keep their established policy.
     if config.requested_solver != FeSolverKind::Auto || design.effects().len() != 2 {
         return Ok(false);
@@ -5907,6 +5907,72 @@ mod tests {
         assert!(result.report().fallback_used);
         for (residual, expected) in result.residualized().as_slice().iter().zip(noise) {
             assert!((residual - expected).abs() < 1e-12);
+        }
+    }
+
+    #[test]
+    fn near_within_cmg_hadamard_batch_preserves_forward_accuracy() {
+        let rows = 48;
+        let left: Vec<_> = (0..rows).map(|row| (row % 4) as u32).collect();
+        let right: Vec<_> = (0..rows).map(|row| ((row / 4) % 3) as u32).collect();
+        let li = LevelIndex::from_codes(&left, 4).unwrap();
+        let ri = LevelIndex::from_codes(&right, 3).unwrap();
+        let u: Vec<_> = (0..rows)
+            .map(|row| if row / 12 < 2 { 1.0 } else { -1.0 })
+            .collect();
+        let v: Vec<_> = (0..rows)
+            .map(|row| if (row / 12) % 2 == 0 { 1.0 } else { -1.0 })
+            .collect();
+        let x1: Vec<_> = (0..rows)
+            .map(|row| u[row] + 2e-9 * (left[row] + 1) as f64)
+            .collect();
+        let x2: Vec<_> = (0..rows)
+            .map(|row| v[row] + 1e-9 * (right[row] + 1) as f64)
+            .collect();
+        let y: Vec<_> = (0..rows)
+            .map(|row| {
+                0.7 * x1[row] - 0.4 * x2[row]
+                    + 2e-9 * (left[row] + 1) as f64
+                    + 1e-9 * (right[row] + 1) as f64
+                    + 4.0 * u[row] * v[row]
+            })
+            .collect();
+        let input = DenseMatrix::from_columns(&[y, x1, x2, vec![1.0; rows]]).unwrap();
+        let design = BorrowedInterceptFeDesign::new(
+            rows,
+            vec![effect(&left, 4, &li), effect(&right, 3, &ri)],
+        )
+        .unwrap();
+        let mut options = config(4);
+        options.map.tolerance = 1e-14;
+        options.retain_coefficients = true;
+        let mut session =
+            CmgAbsorber::build(design, BorrowedMapWeights::Unit, options, false).unwrap();
+        let result = session
+            .absorb(input.clone())
+            .expect("well-conditioned Hadamard design must certify");
+        let (within, report, coefficients) = result.into_full_parts();
+        assert!(report.certified());
+        for row in 0..rows {
+            assert!(
+                (within[(row, 0)] - (0.7 * u[row] - 0.4 * v[row] + 4.0 * u[row] * v[row])).abs()
+                    < 1e-12,
+                "row={row} value={} expected={}",
+                within[(row, 0)],
+                0.7 * u[row] - 0.4 * v[row] + 4.0 * u[row] * v[row]
+            );
+            assert!((within[(row, 1)] - u[row]).abs() < 1e-12);
+            assert!((within[(row, 2)] - v[row]).abs() < 1e-12);
+            assert!(within[(row, 3)].abs() < 1e-12);
+        }
+        if let Some(coefficients) = coefficients {
+            assert_coefficients_reconstruct(
+                &input,
+                &within,
+                &[&left, &right],
+                &coefficients,
+                1e-12,
+            );
         }
     }
 

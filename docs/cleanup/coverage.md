@@ -162,6 +162,39 @@ unit/FW/PW, fast/low, threads 1/4 and robust/cluster inference. All 24 cells
 pass on the isolated PPML correction; clean-source and Linux qualification
 are recorded separately in the milestone ledger.
 
+CMG's existing CG polishing uses the shared group-mean projection action to
+avoid subtractive contamination outside the FE span, with optional products
+recorded by that same action. It preserves the CMG bulk solve and all existing
+energy, recurrence and FE-moment certificates. Ordinary standalone CG retains
+its previous action. Cases requiring polishing can change coefficients,
+residuals, VCE, iteration diagnostics and saved FE products; unpolished cases
+and frontend/model/sample/weight/DoF semantics remain unchanged. Executable
+Hadamard regressions independently check forward accuracy and reconstruction,
+including weighted scaling, threads 1/4 and RHS widths 4/65 and the first width
+beyond the fused tile. The direct polishing test requires product reconstruction;
+the CMG batch test checks products only when its existing fallback retains them.
+The full licensed near-within fixture checks estimation and final saved-FE
+publication. All48 enhanced fast/low, threads1/4, weighted cells pass; saved cells require
+original-model and saved sum reconstruction within1e-14. Final-source local
+qualification passes; clean-source and Linux evidence is recorded in the ledger.
+Successful existing recovery retains its original arithmetic. Only an intercept-only failed
+strict target-span recovery invokes one fresh ordinary retained CG projection
+of (y-Xb)-accepted residual, normalized by its maximum absolute value. This
+projection permits a nonzero off-span remainder. Normalize the complete FE
+coefficient product once, restore its scale, reconstruct the original model
+residual independently and check FE orthogonality at the unchanged tolerance.
+The final span certificate uses directly evaluated D*alpha, while independent
+original-model reconstruction and known-design witnesses establish accuracy.
+The host recomputes Xb from original columns before publication; it never
+replaces the accepted fit, residual, coefficient or covariance. Only affected
+saved FE/absorbed outputs and recovery work can differ from the parent.
+Weighted disconnected known-design tests cover common scales 1e-100/1/1e100,
+saved-only/full output materialization and contaminated accepted-residual
+rejection. Slope failures keep their original errors; unsupported direct recovery calls
+fail before intercept-only memory planning. The existing allocation audit runner
+covers the admitted CG envelope
+and one-byte-short r909; ordinary rollback/Break checks remain required.
+
 Strict constant-outcome PPML also exposes a PSD eigensystem gap: the global
 Jacobi stopping cutoff can pass while a small covariance row fails the
 unchanged row-relative reconstruction certificate. Only a failed eigensystem

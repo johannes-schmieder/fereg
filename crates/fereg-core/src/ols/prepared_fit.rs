@@ -9593,6 +9593,31 @@ mod tests {
                 crate::prepared_categorical_data::prepare_categorical_ols_data(&request, &input)
                     .unwrap();
             let target = y.iter().zip(&noise).map(|(y, e)| y - e).collect::<Vec<_>>();
+            for budget in [
+                None,
+                Some(crate::memory::FeSolverMemoryBudget {
+                    execution_bytes: 0,
+                    usable_bytes: 1,
+                }),
+            ] {
+                let error = prepared
+                    .recover_model_effects(
+                        &target,
+                        &noise,
+                        10.0,
+                        &[true, true],
+                        false,
+                        true,
+                        crate::fe::MapConfig::default(),
+                        budget,
+                    )
+                    .unwrap_err();
+                assert_eq!(error.code, ErrorCode::InvalidArgument);
+                assert_eq!(
+                    error.message,
+                    "model FE recovery requires intercept-only effects"
+                );
+            }
             let weights = (0..n).map(|row| 1.0 + (row % 3) as f64).collect::<Vec<_>>();
             for workers in [1, 4] {
                 rayon::ThreadPoolBuilder::new()

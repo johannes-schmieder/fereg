@@ -862,7 +862,7 @@ struct CgContinuation<'a> {
     reference_norms: Option<&'a [f64]>,
     refinement: CgRefinementPolicy,
     retain_coefficients: bool,
-    reconstruct_projection: bool,
+    stable_projection: bool,
     reconstruction_tolerance: Option<f64>,
 }
 
@@ -871,7 +871,7 @@ impl CgContinuation<'_> {
         reference_norms: None,
         refinement: CgRefinementPolicy::ORDINARY,
         retain_coefficients: false,
-        reconstruct_projection: false,
+        stable_projection: false,
         reconstruction_tolerance: None,
     };
 }
@@ -4268,6 +4268,31 @@ pub(crate) fn absorb_borrowed_intercept_cg_retaining_certified(
     )
 }
 
+/// Saved model recovery needs the complete product of a fresh raw RHS, while
+/// allowing its nonzero within residual. Stable group actions avoid subtracting
+/// nearly identical observation-space projections during the CG recurrence.
+pub(crate) fn absorb_borrowed_intercept_stable_cg_retaining_certified(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: BorrowedMapWeights<'_>,
+    values: DenseMatrix,
+    config: MapConfig,
+) -> Result<CertifiedBorrowedMap> {
+    let mut reservation = SystemWorkspaceReservation;
+    absorb_cg_with_reservation(
+        design,
+        weights,
+        values,
+        config,
+        false,
+        CgContinuation {
+            retain_coefficients: true,
+            stable_projection: true,
+            ..CgContinuation::ORDINARY
+        },
+        &mut reservation,
+    )
+}
+
 /// Recover an intercept-only coefficient product with CG and continue the
 /// existing recurrence until the observation-space reconstruction is strict
 /// enough for categorical publication. Ordinary absorption intentionally does
@@ -5077,7 +5102,7 @@ pub(crate) fn polish_borrowed_intercept_cg_with_products_certified(
             reference_norms: Some(reference_norms),
             refinement: CgRefinementPolicy::ORDINARY,
             retain_coefficients,
-            reconstruct_projection: retain_coefficients,
+            stable_projection: true,
             reconstruction_tolerance: None,
         },
         &mut reservation,
@@ -5696,7 +5721,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
                                     reference_norms: Some(&original_reference_norms),
                                     refinement: CgRefinementPolicy::ORDINARY,
                                     retain_coefficients: false,
-                                    reconstruct_projection: false,
+                                    stable_projection: false,
                                     reconstruction_tolerance: None,
                                 },
                                 reservation,
@@ -5770,7 +5795,7 @@ fn absorb_auto_with_prepared_lsmr<'a, R: WorkspaceReservation>(
             reference_norms: Some(&original_reference_norms),
             refinement: CgRefinementPolicy::ORDINARY,
             retain_coefficients,
-            reconstruct_projection: false,
+            stable_projection: false,
             reconstruction_tolerance: None,
         },
         reservation,
@@ -6883,7 +6908,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         reference_norms: continuation_reference_norms,
         refinement,
         retain_coefficients,
-        reconstruct_projection,
+        stable_projection,
         reconstruction_tolerance,
     } = continuation;
     validate_config(config)?;
@@ -7094,23 +7119,15 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     let mut residual_coefficients = retain_coefficients
         .then(|| FeCoefficientBatch::intercept_zeros(design, values.ncols()))
         .transpose()?;
-    borrowed_symmetric_projection_into_recording(
+    cg_projection_action(
         design,
         weights,
         &values,
         &mut residual,
         &mut workspace,
         residual_coefficients.as_mut(),
+        stable_projection,
     )?;
-    if reconstruct_projection {
-        reconstruct_intercept_product(
-            design,
-            residual_coefficients.as_ref().ok_or_else(|| {
-                invalid_argument("stable CG projection requires coefficient products")
-            })?,
-            &mut residual,
-        )?;
-    }
     let mut direction =
         fallible_matrix_copy(&residual, "unable to reserve borrowed CG direction matrix")?;
     let mut direction_coefficients = residual_coefficients
@@ -7157,23 +7174,15 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
         if let Some(coefficients) = projection_coefficients.as_mut() {
             coefficients.fill_zero();
         }
-        borrowed_symmetric_projection_into_recording(
+        cg_projection_action(
             design,
             weights,
             &direction,
             &mut projection,
             &mut workspace,
             projection_coefficients.as_mut(),
+            stable_projection,
         )?;
-        if reconstruct_projection {
-            reconstruct_intercept_product(
-                design,
-                projection_coefficients.as_ref().ok_or_else(|| {
-                    invalid_argument("stable CG projection requires coefficient products")
-                })?,
-                &mut projection,
-            )?;
-        }
         weighted_dot_columns_into(
             &direction,
             &projection,
@@ -8857,8 +8866,9 @@ fn certify_effects_parallel(
 /// Form I-S from its FE contributions, not by subtracting two observation
 /// vectors. The latter introduces off-model-space cancellation error that CG
 /// can amplify along weak graph directions despite passing FE normal equations.
-/// This PPML action reuses the admitted mean buffers and retains no coefficient
-/// history; ordinary OLS projection arithmetic remains unchanged.
+/// Reuses admitted mean buffers; optional products record the same action.
+/// PPML and CMG polishing share this construction without subtracting two
+/// observation-scale matrices. Ordinary OLS absorption retains its arithmetic.
 fn borrowed_symmetric_projection_from_group_means(
     design: &BorrowedInterceptFeDesign<'_>,
     weights: ValidatedWeights<'_>,
@@ -8866,12 +8876,25 @@ fn borrowed_symmetric_projection_from_group_means(
     projection: &mut DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<()> {
+    borrowed_symmetric_projection_from_group_means_recording(
+        design, weights, input, projection, workspace, None,
+    )
+}
+
+#[allow(clippy::too_many_arguments)]
+fn borrowed_symmetric_projection_from_group_means_recording(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    input: &DenseMatrix,
+    projection: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    mut coefficients: Option<&mut FeCoefficientBatch>,
+) -> Result<()> {
     let columns = input.ncols();
     if projection.nrows() != input.nrows()
         || projection.ncols() != columns
         || input.nrows() != design.nobs()
         || columns == 0
-        || columns > PARALLEL_GROUP_MAX_RHS
     {
         return Err(invalid_argument(
             "categorical projection action dimensions differ",
@@ -8895,18 +8918,22 @@ fn borrowed_symmetric_projection_from_group_means(
                 .enumerate()
                 .try_for_each(|(part, means)| -> Result<()> {
                     for (local, means) in means.chunks_mut(columns).enumerate() {
-                        fused_group_means_by_value(
+                        projection_group_means(
                             effect,
                             part * (chunk / columns) + local,
                             weights,
                             input.nrows(),
                             means,
-                            |row, rhs| input[(row, rhs)] - projection[(row, rhs)],
+                            input,
+                            projection,
                         )?;
                     }
                     Ok(())
                 })?;
             let means = &workspace.parallel_group_means[..cells];
+            if let Some(batch) = coefficients.as_mut() {
+                batch.add_intercept_level_major(effect_index, means, effect.n_levels())?;
+            }
             projection
                 .as_mut_slice()
                 .par_chunks_mut(columns)
@@ -8922,16 +8949,20 @@ fn borrowed_symmetric_projection_from_group_means(
                     Ok(())
                 })?;
         } else {
-            let mut means = [0.0; PARALLEL_GROUP_MAX_RHS];
+            let means = &mut workspace.group_sums[..columns];
             for level in 0..effect.n_levels() {
-                fused_group_means_by_value(
+                projection_group_means(
                     effect,
                     level,
                     weights,
                     input.nrows(),
-                    &mut means[..columns],
-                    |row, rhs| input[(row, rhs)] - projection[(row, rhs)],
+                    means,
+                    input,
+                    projection,
                 )?;
+                if let Some(batch) = coefficients.as_mut() {
+                    batch.add_intercept_level(effect_index, level, means)?;
+                }
                 for &row in effect.level_index().checked_members(level)? {
                     for rhs in 0..columns {
                         projection[(row, rhs)] += means[rhs];
@@ -8946,48 +8977,54 @@ fn borrowed_symmetric_projection_from_group_means(
     Ok(())
 }
 
-fn reconstruct_intercept_product(
-    design: &BorrowedInterceptFeDesign<'_>,
-    coefficients: &FeCoefficientBatch,
-    values: &mut DenseMatrix,
+#[allow(clippy::too_many_arguments)]
+fn projection_group_means(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    level: usize,
+    weights: ValidatedWeights<'_>,
+    nrows: usize,
+    means: &mut [f64],
+    input: &DenseMatrix,
+    projection: &DenseMatrix,
 ) -> Result<()> {
-    if coefficients.rhs_count() != values.ncols()
-        || values.nrows() != design.nobs()
-        || coefficients.effect_channels().len() != design.effects().len()
-        || design.effects().iter().enumerate().any(|(effect, source)| {
-            coefficients.effect_channels()[effect] != 1
-                || coefficients.level_counts()[effect] != source.n_levels()
-        })
-    {
-        return Err(invalid_argument(
-            "CG projection product layout differs from its design",
-        ));
+    for (tile, output) in means.chunks_mut(PARALLEL_GROUP_MAX_RHS).enumerate() {
+        let start = tile * PARALLEL_GROUP_MAX_RHS;
+        fused_group_means_by_value(effect, level, weights, nrows, output, |row, rhs| {
+            input[(row, start + rhs)] - projection[(row, start + rhs)]
+        })?;
     }
-    // Near the within space, input - projected_input can amplify subtraction
-    // noise into a spurious CG direction. Reconstruct from the recorded group
-    // means, so the operator output stays in the intended FE span.
-    let width = values.ncols();
-    values
-        .as_mut_slice()
-        .par_chunks_mut(4096 * width)
-        .enumerate()
-        .try_for_each(|(block, output)| -> Result<()> {
-            for (local, row) in output.chunks_exact_mut(width).enumerate() {
-                let observation = block * 4096 + local;
-                for (rhs, value) in row.iter_mut().enumerate() {
-                    let product = coefficients.rhs(rhs)?;
-                    *value = 0.0;
-                    for (effect, source) in design.effects().iter().enumerate() {
-                        *value += product[coefficients.effect_offsets[effect]
-                            + source.codes()[observation] as usize];
-                    }
-                    if !value.is_finite() {
-                        return Err(invalid_data("CG projection product is nonfinite"));
-                    }
-                }
-            }
-            Ok(())
-        })
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
+fn cg_projection_action(
+    design: &BorrowedInterceptFeDesign<'_>,
+    weights: ValidatedWeights<'_>,
+    input: &DenseMatrix,
+    projection: &mut DenseMatrix,
+    workspace: &mut BorrowedMapWorkspace,
+    coefficients: Option<&mut FeCoefficientBatch>,
+    stable: bool,
+) -> Result<()> {
+    if stable {
+        borrowed_symmetric_projection_from_group_means_recording(
+            design,
+            weights,
+            input,
+            projection,
+            workspace,
+            coefficients,
+        )
+    } else {
+        borrowed_symmetric_projection_into_recording(
+            design,
+            weights,
+            input,
+            projection,
+            workspace,
+            coefficients,
+        )
+    }
 }
 
 fn borrowed_symmetric_projection_into_recording(
@@ -15685,6 +15722,53 @@ mod tests {
     }
 
     #[test]
+    fn stable_cg_polish_preserves_near_within_hadamard_products_at_every_width() {
+        let rows = 48;
+        let left: Vec<_> = (0..rows).map(|row| (row % 4) as u32).collect();
+        let right: Vec<_> = (0..rows).map(|row| ((row / 4) % 3) as u32).collect();
+        let li = LevelIndex::from_codes(&left, 4).unwrap();
+        let ri = LevelIndex::from_codes(&right, 3).unwrap();
+        let ls = ValidatedBorrowedInterceptSource::new(&left, 4, &li).unwrap();
+        let rs = ValidatedBorrowedInterceptSource::new(&right, 3, &ri).unwrap();
+        let design = BorrowedInterceptFeDesign::new(rows, vec![ls.effect(), rs.effect()]).unwrap();
+        for threads in [1, 4] {
+            rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap().install(|| {
+                for width in [4, PARALLEL_GROUP_MAX_RHS+1,65] {
+                    let truth: Vec<Vec<_>> = (0..width).map(|column| (0..rows).map(|row| {
+                        let u = if row/12<2 {1.0} else {-1.0};
+                        let v = if (row/12)%2==0 {1.0} else {-1.0};
+                        match column%4 { 0 => 0.7*u-0.4*v+4.0*u*v, 1 => u, 2 => v, _ => 0.0 }
+                    }).collect()).collect();
+                    let columns: Vec<Vec<_>> = truth.iter().enumerate().map(|(column, values)| values.iter().enumerate().map(|(row,&value)| {
+                        value + if column%4==3 {1.0} else {2e-9*(left[row]+1) as f64+1e-9*(right[row]+1) as f64}
+                    }).collect()).collect();
+                    for weight_scale in [None,Some(1.0),Some(1e-100),Some(1e100)] {
+                        let raw = weight_scale.map(|scale| (0..rows).map(|row| scale*(0.25+(left[row]+1) as f64/4.0+(right[row]+1) as f64/8.0)).collect::<Vec<_>>());
+                        let weights = raw.as_deref().map_or(BorrowedMapWeights::Unit,BorrowedMapWeights::Provided);
+                        let input = DenseMatrix::from_columns(&columns).unwrap();
+                        let mut norms = vec![0.0;width];
+                        let mut scales = vec![0.0;width];
+                        let mut sums = vec![0.0;width];
+                        weighted_column_norms(&input,validate_weights(weights,rows).unwrap(),&mut norms,&mut scales,&mut sums).unwrap();
+                        let result = polish_borrowed_intercept_cg_with_products_certified(&design,weights,input.clone(),MapConfig {tolerance:1e-12,..config()},&norms,true).unwrap();
+                        let (within, report, coefficients) = result.into_full_parts();
+                        assert!(report.certified());
+                        let coefficients = coefficients.unwrap();
+                        for (column, expected) in truth.iter().enumerate() {
+                            let product = coefficients.rhs(column).unwrap();
+                            for row in 0..rows {
+                                let fitted = product[coefficients.effect_offsets()[0]+left[row] as usize] + product[coefficients.effect_offsets()[1]+right[row] as usize];
+                                assert!((within[(row,column)]-expected[row]).abs()<1e-12,"threads={threads} width={width} scale={weight_scale:?} row={row} col={column}");
+                                assert!((input[(row,column)]-within[(row,column)]-fitted).abs()<1e-12);
+                            }
+                        }
+                    }
+                }
+            });
+        }
+    }
+
+    #[test]
     fn borrowed_cg_constant_energy_roundoff_preserves_weighted_projection() {
         let n = 45;
         let codes = vec![0_u32; n];
@@ -16662,7 +16746,7 @@ mod tests {
                     reference_norms: None,
                     refinement: CgRefinementPolicy::forced(forced_iterations),
                     retain_coefficients: false,
-                    reconstruct_projection: false,
+                    stable_projection: false,
                     reconstruction_tolerance: None,
                 },
                 &mut reservation,

@@ -2204,6 +2204,46 @@ fn read_into(
     Ok(())
 }
 
+fn certify_recovered_model_outputs(
+    prepared: PreparedOlsResultData<'_>,
+    fit: &CertifiedPreparedOlsFit,
+    fitted_terms: &[(usize, f64)],
+    absorbed: &[f64],
+    workspace: &mut [f64],
+    tolerance: f64,
+) -> Result<()> {
+    if absorbed.len() != workspace.len() || workspace.len() != fit.residuals().len() {
+        return Err(invalid("model recovery output dimensions disagree"));
+    }
+    workspace.fill(0.0);
+    prepared.add_fitted_terms(fitted_terms, workspace)?;
+    let mut error = 0.0_f64;
+    let mut scale = 0.0_f64;
+    for row in 0..workspace.len() {
+        let y = prepared.sample().outcome[row];
+        let xb = workspace[row];
+        let fe = absorbed[row];
+        let residual = fit.residuals()[row];
+        let difference = y - ((xb + fe) + residual);
+        if !difference.is_finite() {
+            return Err(invalid_data(
+                "saved FE original model reconstruction is nonfinite",
+            ));
+        }
+        error = error.max(difference.abs());
+        scale = scale.max(y.abs() + xb.abs() + fe.abs() + residual.abs());
+    }
+    if !scale.is_finite()
+        || (scale == 0.0 && error != 0.0)
+        || (scale > 0.0 && error / scale > tolerance)
+    {
+        return Err(invalid_data(
+            "saved FE product failed independent original model reconstruction",
+        ));
+    }
+    Ok(())
+}
+
 fn build_derived_observation_outputs(
     prepared: PreparedOlsResultData<'_>,
     categorical: Option<&PreparedCategoricalOlsData>,
@@ -2398,9 +2438,61 @@ fn build_derived_observation_outputs_in_team(
                 symmetric: true,
             },
             recovery_budget,
-        )?;
+        );
+        let recovered = match recovered {
+            Ok(recovered) => recovered,
+            Err(error)
+                if error.code == ErrorCode::InvalidData
+                    && !categorical.has_absorbed_slope()
+                    && error.message.starts_with(
+                        "categorical recovery target is not certified to lie in the absorbed span:",
+                    ) =>
+            {
+                let raw = absorbed_target
+                    .as_mut()
+                    .ok_or_else(|| invalid("model FE recovery target is absent"))?;
+                raw.fill(0.0);
+                prepared.add_fitted_terms(&fitted_terms, raw)?;
+                let mut recovery_model_scale = 0.0_f64;
+                for (row, value) in raw.iter_mut().enumerate() {
+                    let y = prepared.sample().outcome[row];
+                    recovery_model_scale = recovery_model_scale
+                        .max(y.abs() + value.abs() + fit.residuals()[row].abs());
+                    *value = y - *value;
+                }
+                let recovered = categorical.recover_model_effects(
+                    raw,
+                    fit.residuals(),
+                    recovery_model_scale,
+                    &mask,
+                    known_connected,
+                    true,
+                    MapConfig {
+                        tolerance: 1e-12,
+                        max_iterations: 20_000,
+                        check_every: 1,
+                        symmetric: true,
+                    },
+                    recovery_budget,
+                )?;
+                certify_recovered_model_outputs(
+                    prepared,
+                    fit,
+                    &fitted_terms,
+                    recovered.absorbed_sum(),
+                    raw,
+                    1e-12,
+                )?;
+                recovered
+            }
+            Err(error) => return Err(error),
+        };
         let (absorbed_sum, channels) = recovered.into_optional_parts();
-        recovered_absorbed = absorbed_sum;
+        recovered_absorbed = if requested.absorbed.is_some() {
+            absorbed_sum
+        } else {
+            None
+        };
         saved_channels = channels;
     } else {
         saved_channels.resize_with(requested.saved_channels.len(), || None);
@@ -4922,6 +5014,115 @@ mod tests {
             let bytes = inference.owned_buffer_bytes();
             check(inference, bytes);
         }
+    }
+
+    #[test]
+    fn saved_fe_model_certificate_rejects_an_in_span_corrupted_product() {
+        let (args, mut spi) = saved_output_fixture();
+        let action = EstimateActionSpec::parse(&args)
+            .unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
+        let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+        let result = fit_prepared_categorical_ols_unadjusted_map(
+            &prepared,
+            PreparedOlsUnadjustedConfig {
+                fit: action.fit,
+                ..Default::default()
+            },
+        )
+        .unwrap();
+        let fit = result.fit();
+        let data = PreparedOlsResultData::categorical(&prepared);
+        let terms: Vec<_> = fit
+            .coefficients()
+            .iter()
+            .filter_map(|value| value.generated_column_index.zip(value.value))
+            .collect();
+        let mut xb = vec![0.0; fit.residuals().len()];
+        data.add_fitted_terms(&terms, &mut xb).unwrap();
+        let mut product: Vec<_> = xb
+            .iter()
+            .enumerate()
+            .map(|(row, xb)| data.sample().outcome[row] - xb - fit.residuals()[row])
+            .collect();
+        certify_recovered_model_outputs(data, fit, &terms, &product, &mut xb, 1e-12).unwrap();
+        // A constant shift still lies exactly in the intercept FE span.
+        // Self-reconstruction alone cannot detect this corrupted product.
+        for value in &mut product {
+            *value += 0.25;
+        }
+        assert_eq!(
+            certify_recovered_model_outputs(data, fit, &terms, &product, &mut xb, 1e-12)
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidData
+        );
+    }
+
+    #[test]
+    #[cfg(feature = "ffi")]
+    #[ignore = "process-global allocator audit; run with --test-threads=1"]
+    fn model_recovery_workspace_bounds_observed_allocator_peak() {
+        let _guard = instrumentation::lock_action_observation();
+        let (args, mut spi) = saved_output_fixture();
+        let action = EstimateActionSpec::parse(&args)
+            .unwrap()
+            .decode_with_memory_limit(&mut spi, || Ok(None))
+            .unwrap();
+        let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
+        let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+        let raw = prepared.sample().outcome.clone();
+        let residuals = vec![0.0; raw.len()];
+        let map = MapConfig {
+            tolerance: 1e-12,
+            ..Default::default()
+        };
+        // This exact-span RHS exercises the complete-product ownership; the
+        // independent scaled/disconnected test covers nonzero within residuals.
+        let mut raw = raw;
+        raw.fill(0.75);
+        let run = || {
+            prepared
+                .recover_model_effects(&raw, &residuals, 1.0, &[true], false, true, map, None)
+                .unwrap()
+        };
+        drop(run());
+        let mut modeled = 0;
+        for _ in 0..3 {
+            let start = instrumentation::begin_observation();
+            let recovered = run();
+            let usage = crate::ffi::allocation_usage();
+            let observed = usage.peak_bytes - start.allocation_current_bytes;
+            modeled = recovered.solver_workspace_peak().bytes().unwrap();
+            assert!(
+                observed <= modeled,
+                "model recovery peak {observed} exceeds {modeled}"
+            );
+            for value in recovered.absorbed_sum() {
+                assert!((value - 0.75).abs() < 1e-12);
+            }
+        }
+        assert_eq!(
+            prepared
+                .recover_model_effects(
+                    &raw,
+                    &residuals,
+                    1.0,
+                    &[true],
+                    false,
+                    true,
+                    map,
+                    Some(FeSolverMemoryBudget {
+                        execution_bytes: 0,
+                        usable_bytes: u128::from(modeled) - 1
+                    })
+                )
+                .unwrap_err()
+                .code,
+            ErrorCode::Allocation
+        );
     }
 
     #[test]

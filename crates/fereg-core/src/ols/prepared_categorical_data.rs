@@ -451,6 +451,74 @@ impl PreparedCategoricalOlsData {
         )
     }
 
+    /// Repair a failed fitted-model span recovery using one fresh, complete
+    /// coefficient product. The original model scale controls subtraction
+    /// roundoff; output finishing still uses the unchanged strict span check.
+    #[allow(clippy::too_many_arguments)]
+    pub fn recover_model_effects(
+        &self,
+        target: &[f64],
+        residuals: &[f64],
+        model_scale: f64,
+        requested: &[bool],
+        known_connected: bool,
+        materialize_absorbed_sum: bool,
+        map: MapConfig,
+        memory_budget: Option<FeSolverMemoryBudget>,
+    ) -> Result<RecoveredCategoricalEffects> {
+        if !self.has_absorbed_intercept() || self.has_absorbed_slope() {
+            return Err(invalid("model FE recovery requires intercept-only effects"));
+        }
+        let validation_bytes = self.fe_topology.validation_workspace_bytes()?;
+        if memory_budget.is_some_and(|budget| !budget.fits(validation_bytes)) {
+            return Err(allocation(
+                "model FE recovery topology exceeds the memory budget",
+            ));
+        }
+        let _validated = self.validate_with_reusable_topology(true)?;
+        let effects = self.effect_views()?;
+        let mut levels = Vec::new();
+        levels
+            .try_reserve_exact(effects.len())
+            .map_err(|_| allocation("model recovery level counts"))?;
+        for &source in self.fe_topology.effect_to_topology() {
+            levels.push(self.fe_topology.registry().source(source)?.n_levels());
+        }
+        let memory = estimate_intercept_recovery_memory(
+            self.sample.n_active(),
+            &levels,
+            requested.iter().filter(|&&value| value).count(),
+            rayon::current_num_threads(),
+            None,
+        )?;
+        if memory_budget.is_some_and(|budget| !budget.fits(memory.cg_peak_bytes)) {
+            return Err(allocation(
+                "model FE recovery exceeds the joint memory budget",
+            ));
+        }
+        let weights = match &self.sample.weights {
+            PreparedWeights::None => BorrowedMapWeights::Unit,
+            PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
+        };
+        let recovered = crate::fe::recover_finalized_model_effects_certified(
+            &self.fe_topology,
+            &effects,
+            weights,
+            target,
+            residuals,
+            model_scale,
+            requested,
+            known_connected,
+            materialize_absorbed_sum,
+            map,
+        )?;
+        Ok(
+            recovered.with_solver_workspace_peak(crate::memory::SolverWorkspacePeak::from_bytes(
+                memory.cg_peak_bytes,
+            )?),
+        )
+    }
+
     /// Explicit-weight counterpart retaining the ordinary OLS recovery policy,
     /// including the shared LSMR routes.
     #[allow(clippy::too_many_arguments)]

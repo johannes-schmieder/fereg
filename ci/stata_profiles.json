@@ -106,7 +106,8 @@
         "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
         "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
-        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do"
+        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
+        "tests/stata/development/ols_near_within_cmg_oracle.do"
       ],
       "timeout_seconds": 5400,
       "required_outputs": [

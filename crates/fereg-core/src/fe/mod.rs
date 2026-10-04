@@ -52,7 +52,8 @@ pub(crate) use borrowed_map::{
     absorb_borrowed_intercept_cg_with_structural_constant_certified,
     absorb_borrowed_intercept_irons_tuck_certified, absorb_borrowed_intercept_lsmr_certified,
     absorb_borrowed_intercept_map_retaining_certified,
-    absorb_borrowed_intercept_map_with_structural_constant_certified, absorb_ols_schur_certified,
+    absorb_borrowed_intercept_map_with_structural_constant_certified,
+    absorb_borrowed_intercept_stable_cg_retaining_certified, absorb_ols_schur_certified,
     absorb_ols_schur_reusing_probe_certified, borrowed_cg_recovery_workspace_bytes,
     recover_borrowed_intercept_sd_lsmr_coefficients, schur_ols_probe_with_workspace,
     schur_ols_workspace_bytes, try_absorb_ols_schur_narrow, BorrowedInterceptRecoveryMethod,
@@ -130,9 +131,9 @@ pub(crate) use topology_slope_map::{
     recover_finalized_categorical_effects_from_coefficients_selected_certified,
     recover_finalized_categorical_effects_lsmr_certified,
     recover_finalized_categorical_effects_sd_lsmr_certified,
-    recover_finalized_single_slope_direct_certified, recover_finalized_two_effects_graph_certified,
-    single_slope_recovery_extra_bytes, single_slope_recovery_geometry_bytes,
-    slope_map_workspace_bytes,
+    recover_finalized_model_effects_certified, recover_finalized_single_slope_direct_certified,
+    recover_finalized_two_effects_graph_certified, single_slope_recovery_extra_bytes,
+    single_slope_recovery_geometry_bytes, slope_map_workspace_bytes,
 };
 pub use topology_source::CategoricalTopologySource;
 
