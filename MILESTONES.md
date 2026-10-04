@@ -2,7 +2,7 @@
 
 Plan: [M0–M23](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M23 clean runtime qualification and timing; full/30/Mac ABI/exact73/five-thread/46 Stata/M22 witnesses pass; CI/review pending.
+Current task: M23 restored runtime clean artifact/Linux CI/terminal review; full/30/Mac ABI/exact73/five-thread/46 Stata/PPML24/FE48 pass.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -82,7 +82,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-M22 scientific repairs and review complete. M23 bounded Astra plan accepted; implementation and qualification pending.
+M22 repairs approved. M23 candidate scientifically qualified; mapped performance tradeoff and unchanged call trigger removal; final cleanup pending.
 PPML repeated ~3–5% regression is recorded; duplicate row loading localized, with no optimization or unavoidable-cost claim.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
@@ -184,3 +184,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 M22.2 663bca8c — CI37176849361 all jobs pass; both numerical repairs qualified; separate final Astra review next.
 - 2026-10-04 M22.3 this commit — fresh Astra extra-high review approves both663bca8c repairs/gates; no unresolved findings; PPML timing cost retained.
 - 2026-10-04 M23.1 this commit — one frozen refinement/output scan; full/30/Mac ABI/exact73/five-thread/46 Stata/PPML24/FE48 pass; clean timing/Linux/review pending.
+- 2026-10-04 M23.1 5dc4b934 — clean73/five-thread/402912 witness values exact and CI37178782967 pass; mapped timings show gain/cost; Astra permits one inline experiment.
+- 2026-10-04 M23.2 this commit — rejected adapter/hint removed; production exactly663bca8c; full/30/Mac ABI/exact73/five-thread/46 Stata/PPML24/FE48 pass; clean/Linux pending.

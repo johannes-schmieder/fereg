@@ -667,3 +667,24 @@ noise and a measured affected-path benefit. If the adapter adds burden without
 benefit, revert within this scope. Do not expand to unrelated solver work.
 Record compact evidence and complexity, require Linux CI, then a separate Astra
 extra-high review and next-step assessment. No new ADR is needed.
+
+
+M23 review localized a benchmark-mapping gap: specialized/profile/joint owners
+bypass the changed scan. Retain those campaigns as controls and add supported
+explicit MAP/fast two-FE cases at the same small/large shapes and threads.
+Assert selected/effective MAP and positive ordinary frames after timing. Initial
+mapped timings show a large-case gain and small-case cost. Binary inspection
+confirms a new out-of-line observe call per row. One bounded inline hint on that
+private method is permitted: verify the call disappears and repeat the same
+gates/timings. If it remains or the tradeoff persists, remove the adapter. No
+further tuning search or size-dependent dispatch is authorized by this task.
+
+
+M23 terminal outcome: the one inline hint left the compiled per-row call intact.
+Remove the production adapter under the rejection rule. Preserve both M22
+repairs and the useful existing rollback-fixture extension. Keep compact source,
+route, correctness and order-reversed timing evidence; the experiment does not
+establish uniform acceleration. The next proposal is a bounded attribution of
+remaining PPML cost using existing timing/profiling on verified public paths,
+followed by one source-local optimization proposal. No new telemetry framework
+or structural tranche is implied; this proposal is not implemented by M23.

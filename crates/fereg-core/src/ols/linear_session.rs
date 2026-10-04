@@ -32,9 +32,7 @@ mod bias_linear;
 #[path = "retained_refinement.rs"]
 mod retained_refinement;
 pub(crate) use retained_refinement::coefficient_accuracy_scale;
-use retained_refinement::{
-    refine_retained_coefficients, RefinementFrame, RefinementOutput, RefinementWorkspace,
-};
+use retained_refinement::{refine_retained_coefficients, RefinementFrame, RefinementWorkspace};
 
 use super::finite_wls_kernel::{
     certify_normal_equations, certify_retained_qr_dropped_span, factor_guarded_cholesky_in_place,
@@ -4966,7 +4964,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     corrections: &mut workspace.solve,
                 },
                 tolerance,
-                None,
             )?;
             for (selected, &generated) in workspace.kept.iter().enumerate() {
                 generated_coefficients[generated] = Some(
@@ -7061,30 +7058,7 @@ fn stream_frozen_solve(
         true,
     )?;
 
-    // Reserve the same admitted output bank before the shared scan. Defer a
-    // reservation failure until after refinement and coefficient validation,
-    // preserving their original error precedence.
-    let residual_reservation = config.coefficient_tolerance.map(|_| {
-        workspace.residuals.clear();
-        workspace.residuals.try_reserve(rows)
-    });
-    let mut weighted_residual_square = 0.0_f64;
     if let Some(tolerance) = config.coefficient_tolerance {
-        let output = if residual_reservation
-            .as_ref()
-            .is_some_and(|result| result.is_ok())
-        {
-            workspace.residuals.resize(rows, 0.0);
-            // Factor inversion is finished. Preserve this bank's length and
-            // capacity for reuse while borrowing only its inactive prefix.
-            Some(RefinementOutput {
-                coefficients: &mut workspace.inverse_lower[..rank],
-                residuals: &mut workspace.residuals,
-                weighted_residual_square: &mut weighted_residual_square,
-            })
-        } else {
-            None
-        };
         refine_retained_coefficients(
             RefinementFrame {
                 storage,
@@ -7102,7 +7076,6 @@ fn stream_frozen_solve(
                 corrections: &mut workspace.solve,
             },
             tolerance,
-            output,
         )?;
     }
     workspace.scores.copy_from_slice(&workspace.coefficients);
@@ -7119,34 +7092,24 @@ fn stream_frozen_solve(
         }
     }
 
-    match residual_reservation {
-        Some(Ok(())) => {}
-        Some(Err(_)) => {
-            return Err(allocation(
-                "unable to reserve frozen weighted-linear residuals",
-            ));
+    workspace.residuals.clear();
+    workspace
+        .residuals
+        .try_reserve(rows)
+        .map_err(|_| allocation("unable to reserve frozen weighted-linear residuals"))?;
+    workspace.residuals.extend_from_slice(within_response);
+    let mut weighted_residual_square = 0.0_f64;
+    let mut retained_reader = storage.reader();
+    for row in 0..rows {
+        retained_reader.fill_row(row, &mut workspace.row)?;
+        let mut fitted = 0.0_f64;
+        for (column, &active_position) in active_positions.iter().enumerate().take(rank) {
+            fitted = workspace.coefficients[column].mul_add(workspace.row[active_position], fitted);
         }
-        None => {
-            workspace.residuals.clear();
-            workspace
-                .residuals
-                .try_reserve(rows)
-                .map_err(|_| allocation("unable to reserve frozen weighted-linear residuals"))?;
-            workspace.residuals.extend_from_slice(within_response);
-            let mut retained_reader = storage.reader();
-            for row in 0..rows {
-                retained_reader.fill_row(row, &mut workspace.row)?;
-                let mut fitted = 0.0_f64;
-                for (column, &active_position) in active_positions.iter().enumerate().take(rank) {
-                    fitted = workspace.coefficients[column]
-                        .mul_add(workspace.row[active_position], fitted);
-                }
-                workspace.residuals[row] -= fitted;
-                let weight = normalized_solver_weight(weights, bread_weight_scale, row)?;
-                weighted_residual_square = (weight * workspace.residuals[row])
-                    .mul_add(workspace.residuals[row], weighted_residual_square);
-            }
-        }
+        workspace.residuals[row] -= fitted;
+        let weight = normalized_solver_weight(weights, bread_weight_scale, row)?;
+        weighted_residual_square = (weight * workspace.residuals[row])
+            .mul_add(workspace.residuals[row], weighted_residual_square);
     }
     let residual_norm = weighted_residual_square.max(0.0).sqrt();
     let score_certificate = certify_normal_equations(
