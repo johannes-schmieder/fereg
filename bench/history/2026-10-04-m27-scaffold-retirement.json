@@ -1,0 +1,244 @@
+{
+  "milestone": "M27.3",
+  "kind": "Unpromoted unused categorical scaffold retirement trial; full canonical owner remains unfinished",
+  "parent_commit": "1d003b4fd28d0090b264e89ce2213c447e17424a",
+  "declaration": {
+    "recorded_before_runtime_edits": true,
+    "scope": "Remove three obsolete compiled modules, their lib declarations/reexports, and one uncompiled request planner. Deliberate retirement of unused developer Rust APIs; no stable Rust API promise found. No Stata/native ABI surface change.",
+    "arithmetic": "No active numerical path, source/sample/topology preparation, allocations/admission, route, transaction or error behavior changes. Unaffected science and available routes remain exact.",
+    "exports": [
+      "PreparedCategoricalEffect",
+      "PreparedCategoricalEffectRequest",
+      "PreparedCategoricalFeTopology",
+      "prune_prepared_categorical_singletons"
+    ],
+    "non_claims": "This removes unreachable duplicate source, not an active numerical allocation or active prepared owner. No speedup or completed M27 claim."
+  },
+  "source_before": {
+    "crates/fereg-core/src/ols/prepared_categorical_effect.rs": "25072c7e5b781023adc68e6f81fb708fd9adcaf068ad7d26c2d1c7c81432b68c",
+    "crates/fereg-core/src/ols/prepared_categorical_singleton.rs": "9c2add24a1b2e30a2312f8b28c272ca68427d6398be64e6cba0653a75d8c3872",
+    "crates/fereg-core/src/ols/prepared_categorical_topology.rs": "6fb902f349418c8ba3116abf095f139a28ebf0ef9378ffe53fb34d3573d085aa",
+    "crates/fereg-core/src/ols/prepared_categorical_request.rs": "e64494af9f058d348ae29aedbe711e34daf655caa36d16d994c3919546068b7d"
+  },
+  "retirement_accounting": {
+    "compiled_inventoried_lines": {
+      "effect": 85,
+      "singleton": 58,
+      "topology": 262
+    },
+    "compiled_subtotal": 405,
+    "uncompiled_planner_savings": 0,
+    "lib_decl_export_reduction": 11,
+    "lexical_dispatch_reduction": 10,
+    "oversized_functions_files_change": 0,
+    "active_policy_removal_claim": false,
+    "M27_successor_budget": 5700,
+    "full_program_net_reduction_so_far": 24,
+    "full_program_target": 15000,
+    "trial_core_reduction": 416,
+    "merged_core_reduction": 0,
+    "merged_dispatch_reduction": 0,
+    "realized_M27_pool_lines": 7356,
+    "trial_M27_pool_lines": 6951,
+    "trial_remaining_M27_pool_reduction_needed": 1251,
+    "realized_remaining_M27_pool_reduction_needed": 1656
+  },
+  "retained_requirements": {
+    "effect_identity_and_binding": "fe/categorical_request: ordered tuple/repeated-source, invalid effect/binding/source and every reservation/capacity guard fixtures",
+    "singletons": "fe/partition_singleton: interaction/multi-effect cascades, FW multiplicity, inactive rows, keepsingletons, malformed axes and every allocation guard",
+    "dedup_membership": "fe/topology_registry/source: repeated/reordered tuples, zero-copy single sources, deterministic insertion, corruption and allocation fixtures",
+    "finalization": "fe/topology_finalize: original-level/source compaction, interaction refactorization, repeated/empty samples, transferred membership and corruption/reservation fixtures",
+    "science_transaction": "Unchanged independent categorical/slope/cluster/FW/saved-product/rollback/Break fixtures and M27.2 artifact-bound qualification"
+  },
+  "architecture_help": {
+    "model": "Astra",
+    "effort": "extra-high",
+    "finding": "No repository caller or unique active validation responsibility; native ABI unaffected; unused developer API retirement intentional; existing active witnesses retain requirements"
+  },
+  "parent_ci": {
+    "run_id": 37227673296,
+    "commit": "1d003b4fd28d0090b264e89ce2213c447e17424a",
+    "conclusion": "success",
+    "jobs": [
+      "check",
+      "comparator",
+      "replay"
+    ]
+  },
+  "qualification_plan": {
+    "required": [
+      "Full local entrypoint",
+      "30 long independent oracles",
+      "Universal Mac native build/audit/ABI",
+      "Ratchet/governance/links",
+      "Astra high terminal review",
+      "Linux full CI/native replay after push"
+    ],
+    "unchanged_artifact_reuse": "Only if the complete controlled rebuilt native binary is byte-identical to qualified M27.2 and frontend/toolchain/config identities match; then existing73/five-thread/46 Stata/M22/scoped timing gates bind the same runtime artifact. A differing native binary requires scoped fresh qualification.",
+    "controlled_build": "Match qualified M27.2 embedded metadata d74199bff3c2 and2026-10-04 solely for full binary equivalence; actual candidate source identified by parent plus source patch, never the embedded stamp alone."
+  },
+  "qualified_parent_artifact": {
+    "native_sha256": "42d1681e3354328c424c35abefb6de9ae0c216152eee23d78d03387cb7e1e165",
+    "frontend_sha256": "82d025ddb4c341106186b09e6c7dce4511dbaf4b28dfd045cd35b8f40cb972eb",
+    "evidence": "2026-10-04-m27-factor-axis.json",
+    "timing_envelope_sha256": "772926b5fba166c254d2eca0ecabe1668658571a4964d7a2a8074d46740aadae"
+  },
+  "compiled_test_retention": {
+    "compiled_tests_removed": 0,
+    "uncompiled_historical_tests": [
+      "availability_terms_follow_model_registry_and_preserve_original_effects",
+      "binding_preserves_requested_tuple_order",
+      "repeated_source_is_deduplicated_only_for_availability",
+      "invalid_effect_surfaces_fail_closed",
+      "invalid_bindings_fail_before_plan_publication",
+      "missing_duplicate_and_misaligned_prepared_sources_fail_closed",
+      "every_plan_reservation_and_capacity_guard_fails_closed",
+      "every_binding_reservation_and_capacity_guard_fails_closed"
+    ],
+    "active_retention": "All eight test names remain compiled in fe/categorical_request.rs; uncompiled source receives no production or coverage credit"
+  },
+  "candidate_source": {
+    "parent_commit": "1d003b4fd28d0090b264e89ce2213c447e17424a",
+    "source_patch_sha256": "eca61e16461d48f36acbfd8d6f05043fc762a35a6e479630319c1fe9af725e49",
+    "scope": "Complete runtime-source diff is lib declarations/reexports and four named source deletions; complexity/evidence/ledger updates are separate",
+    "embedded_metadata_identity": "d74199bff3c2 (controlled parent stamp, not a candidate source identifier)",
+    "snapshot": {
+      "commit": "1d003b4fd28d0090b264e89ce2213c447e17424a",
+      "archive_sha256": "8d6950625e79a2d6102c246798b2b1cab8108557b7a5ce490e9155c5e1883d6f",
+      "paths": [
+        "AGENTS.md",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bench",
+        "ci/reference-bundles",
+        "clippy.toml",
+        "crates",
+        "docs/ARCHITECTURE.md",
+        "docs/SPEC.md",
+        "legacy",
+        "plugin",
+        "references.lock.toml",
+        "rust-toolchain.toml",
+        "scripts",
+        "stata",
+        "tests/mock_spi",
+        "vendor"
+      ],
+      "scope": "bounded native/frontend snapshot, not full repository",
+      "patch_sha256": "eca61e16461d48f36acbfd8d6f05043fc762a35a6e479630319c1fe9af725e49"
+    }
+  },
+  "local_checks": {
+    "entrypoint": "PASS ./scripts/run_tests.sh including all compiled tests and isolated allocation/transaction audits",
+    "long_independent_oracles": 30,
+    "complexity": {
+      "fereg-core": {
+        "chunk_candidates": 14,
+        "dispatch_candidates": 1471,
+        "files_over_1500": 19,
+        "functions_over_150": 97,
+        "production_lines": 105642
+      },
+      "fereg-plugin": {
+        "chunk_candidates": 0,
+        "dispatch_candidates": 166,
+        "files_over_1500": 3,
+        "functions_over_150": 15,
+        "production_lines": 15314
+      }
+    },
+    "native73": {
+      "exact": 73,
+      "science": 73,
+      "sha256": "9100de771340b0ea0cf705020b751356a517c17dcbafa77638edf90b48e018f1"
+    },
+    "five_thread": "PASS1/2/4/8/16 scientific/discrete/fixed-repeat73; no exact parent differences",
+    "replay_orchestration": "Initial command omitted FEREG_REPLAY_BASELINE_FIXES and exited1 on three repaired-parent policy labels; all73 science passed and zero exact differences. Correct identified-parent invocation passes; no source/tolerance change.",
+    "licensed_stata": {
+      "status": "success",
+      "fixtures": 46,
+      "summary_sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+    },
+    "m22_exact": {
+      "feppml_no_fe_strict_oracle": {
+        "exact_values": 396960,
+        "sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+      },
+      "ols_near_within_cmg_oracle": {
+        "exact_values": 5952,
+        "sha256": "bb023d3152f3bddc8e6f6bace277daaee33ac9bf2253e08a873a186becef7ac2"
+      }
+    },
+    "closeout_static": "Governance238lines, ledger local links, complexity ratchet and exact recovery of five trial source paths PASS; restored production source and baseline exact to parent"
+  },
+  "qualification_log_sha256": {
+    "full-tests.log": "361028c5f05a948a4afeaac04e0204c4effc375d1a6f4ad48b68e1af64a50498",
+    "long-oracles.log": "a6dca51b200f0ea7873df74c23304f562dea6e1967fe8ee6a840cd787b2b8439",
+    "native-build.log": "9edfa98e0b4aed8a2cd29a5a2ca06a4d66ce6388ade12f25be0876087614cf85",
+    "five-thread.log": "7cb5d34b2e246c3a5ce1fce1fa64eb74456a1a5973f9151533c25e80b518a282",
+    "licensed-stata.log": "420cdb268d02a1afaf69ef4208009e5b4a98bc2288d61dac38e73520240a5423",
+    "exact-witnesses.log": "ec4bad489dfe96b40aaef3457ec2d46d4cbf7664ee180853b1b077f692d040d1"
+  },
+  "native_build": {
+    "audit_abi": "PASS universal Mac/native audit/actual ABI/panic containment",
+    "candidate_sha256": "6900d174259ca32cb5a029fd8d7842ba24de1b7f196af38716164efed29fa497",
+    "full_binary_identical": false,
+    "controlled_embedded_commit": "d74199bff3c2",
+    "controlled_date": "2026-10-04",
+    "disposition": "Fresh artifact-bound73/five-thread/46Stata/M22 and frozen parent/fixed timing qualification required; no prior-artifact reuse asserted"
+  },
+  "performance": {
+    "status": "Incomplete; not a passing gate",
+    "precondition": "No agents/builds/test qualifications were running for this task, but a separate research campaign was observed with twelve active licensed Stata processes competing on the Mac. Own timing loop/runner/child alone were stopped. Foreign campaign untouched.",
+    "partial_block": {
+      "reference": "parent",
+      "order": "forward",
+      "records": 340,
+      "terminal_complete": false,
+      "sha256": "3459ad357bf1939ccc487e9c41e84d2b29b2870d2184e2f57359dd89fa4bdf37"
+    },
+    "disposition": "Partial contaminated block cannot support acceptance. Zero valid terminal blocks; trial not promoted. Clean performance qualification remains mandatory before later retirement. No allowance or workload changes."
+  },
+  "status": "Trial parked/non-promoted because clean performance qualification is unavailable; qualified M27.2 production source and native restored exactly; full M27 remains open",
+  "restoration": {
+    "production_source_exact_to_parent": true,
+    "complexity_baseline_exact_to_parent": true,
+    "native_sha256": "42d1681e3354328c424c35abefb6de9ae0c216152eee23d78d03387cb7e1e165",
+    "recoverable_trial_patch": "2026-10-04-m27-scaffold-retirement-trial.patch",
+    "trial_patch_sha256": "eca61e16461d48f36acbfd8d6f05043fc762a35a6e479630319c1fe9af725e49",
+    "artifact_reuse": "Restored same native/frontend as qualified M27.2; no runtime changes proposed in this documentation closeout",
+    "patch_exact_recovery": {
+      "crates/fereg-core/src/lib.rs": {
+        "deleted": false,
+        "exact": true
+      },
+      "crates/fereg-core/src/ols/prepared_categorical_effect.rs": {
+        "deleted": true,
+        "exact": true
+      },
+      "crates/fereg-core/src/ols/prepared_categorical_request.rs": {
+        "deleted": true,
+        "exact": true
+      },
+      "crates/fereg-core/src/ols/prepared_categorical_singleton.rs": {
+        "deleted": true,
+        "exact": true
+      },
+      "crates/fereg-core/src/ols/prepared_categorical_topology.rs": {
+        "deleted": true,
+        "exact": true
+      }
+    },
+    "recovery_proof_sha256": "7c2d1efa4af473be2b27983fcf0bff68b2dbe3398d062f58be2ede4507fd39cd",
+    "local_manifest": "Restored qualified SCI snapshot Mac plugin entry and corrected local files/checksum entries; selected native SHA42d matches actual restored bytes. Local review-only metadata, not a release.",
+    "local_manifest_sha256": "eafdc12916ac9836b1f5058e0735af1817c25787fa2dc118fd868a2cd8de937c"
+  },
+  "review": {
+    "model": "Astra",
+    "effort": "high",
+    "outcome": "Documentation-only non-promotion/restoration closeout accepted; no runtime retirement approved",
+    "checks": "Independent restoration/source/archive/patch/recovery and six log hashes;340 partial records; restored native/frontend; truthful zero merged reduction",
+    "finding_resolved": "Local dist manifest native entry was stale7067; restored matching SCI42d entry and file/checksum metadata",
+    "remaining": "Clean performance qualification before retirement; Linux full CI before dependent implementation; full M27 open"
+  }
+}

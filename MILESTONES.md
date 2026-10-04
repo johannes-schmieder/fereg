@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M27.2 original-factor-axis correction locally qualified; commit/push and Linux CI next; full M26–M35 remains authorized.
+Current task: M27.3 parked-trial closeout; then omitted-only factor correction; M27.2 qualified; full M26–M35 authorized.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -73,7 +73,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M26.0 Roadmap and active ADR 0249 recorded; separate Astra extra-high review and local governance/links pass; runtime work not started.
 - [x] M26.1 Fixed baseline, interaction/holdout matrix, 15,000-line target, Mac calibration, Linux CI/SCC smoke and fresh Astra high review pass.
 - [x] M27.1 Trial not promoted: 11 within/4 unresolved; production restored; retained fixture/full local and Linux CI37222999041 pass.
-- [ ] M27.2 Original factor slots/base flags preserved; local science/transaction, two-block timing and Astra high pass; Linux CI pending.
+- [x] M27.2 Original factor slots/base flags preserved; full local/scientific/transaction/timing/Astra high and Linux CI37227673296 pass.
+- [ ] M27.3 Scaffold trial parked: source/science passes, clean timing unavailable; qualified production restored; retirement remains open.
 - [ ] M27 Canonical prepared model and optional cluster metadata; retire duplicated owning pipelines.
 - [ ] M28 Common storage operations and owner-based memory admission.
 - [ ] M29 General worker-budget and kernel scheduling policy; Mac/SCC scaling qualification.
@@ -113,6 +114,10 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+
+- 2026-10-04 M27.3: trial parked; production restored after local science pass/competing Stata timing; [evidence](bench/history/2026-10-04-m27-scaffold-retirement.json).
+
+- 2026-10-04 M27.2 1d003b4f — preserved original axis/base flags; Astra high accepts; timing15within/0unresolved; CI37227673296 all three jobs pass.
 
 - 2026-10-04 M27.2: approved original-axis correction; full/30/ABI/73/five-thread/46Stata/M22/legacy exact pass; [evidence](bench/history/2026-10-04-m27-factor-axis.json).
 
