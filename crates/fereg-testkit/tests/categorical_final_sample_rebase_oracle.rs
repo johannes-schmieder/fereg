@@ -12,6 +12,84 @@ use fereg_testkit::explicit_ols::{
 
 const TOLERANCE: f64 = 3e-8;
 
+#[test]
+fn single_level_and_omitted_only_recipes_preserve_science_and_original_slots() {
+    for omitted in [false, true] {
+        for interaction in [false, true] {
+            let (mut request, mut loaded, y, x, _) = singleton_fixture();
+            request.model.terms.truncate(2);
+            request.model.terms[1] = factor_term(2, source(2), 1.0, omitted);
+            if interaction {
+                let mut component = factor_term(2, source(4), 1.0, true).components.remove(0);
+                component.order = ComponentOrder::new(2).expect("component order");
+                request.model.terms[1].components.push(component);
+                request.model.terms[1].raw_kind = RawTermKind::Interaction;
+                request.model.terms[1].canonical_token = "1.f#1b.b".to_owned();
+            }
+            loaded.numeric_sources[1].1.values.fill(1.0);
+            let prepared = prepare_categorical_ols_data(&request, &loaded)
+                .expect("original single-level or syntax-omitted graph");
+            assert_eq!(prepared.sample().retained_rows(), &[1, 2, 3, 4, 5, 6, 7, 8]);
+            assert_eq!(prepared.model().coefficients.len(), 3);
+            assert_eq!(prepared.model().coefficients[1].coefficient_slot.get(), 2);
+            assert_eq!(
+                prepared.model().coefficients[1].status,
+                if omitted {
+                    fereg_core::PreparedOlsCoefficientStatus::SyntaxOmitted
+                } else {
+                    fereg_core::PreparedOlsCoefficientStatus::Active
+                }
+            );
+            let oracle = fit_explicit_ols(&ExplicitOlsProblem {
+                outcome: y[1..9].to_vec(),
+                regressors: vec![x[1..9].to_vec()],
+                effects: vec![
+                    DummyEffect::new(vec![0, 0, 1, 1, 2, 2, 3, 3], 4, true, Vec::new())
+                        .expect("independent final effect"),
+                ],
+                weights: OracleWeights::Unit,
+                clusters: Vec::new(),
+            })
+            .expect("independent dummy model");
+            let fit = fit_prepared_categorical_ols_robust_map(
+                &prepared,
+                PreparedOlsRobustConfig::default(),
+            )
+            .expect("certified original-axis robust fit");
+            assert_eq!(fit.fit().finite_rank(), 1);
+            assert_eq!(fit.dof().residual_dof, oracle.residual_degrees_of_freedom);
+            assert_close(
+                fit.fit().coefficients()[0].value.expect("identified slope"),
+                oracle.coefficients[0].expect("oracle slope"),
+            );
+            assert_slice_close(fit.fit().residuals(), &oracle.residuals);
+            let position = fit
+                .covariance_coordinates()
+                .iter()
+                .position(|coordinate| coordinate.coefficient_slot.get() == 1)
+                .expect("slope covariance coordinate");
+            let width = fit.covariance_coordinates().len();
+            assert_close(
+                fit.covariance().values()[position * width + position],
+                oracle.hc1_vce[(0, 0)],
+            );
+
+            // Even a wholly omitted factor still undergoes original available-
+            // sample domain checks. A candidate exclusion alone removes it.
+            loaded.numeric_sources[1].1.values[2] = -1.0;
+            assert_eq!(
+                prepare_categorical_ols_data(&request, &loaded)
+                    .expect_err("eligible invalid factor")
+                    .code,
+                fereg_core::ErrorCode::InvalidFactor
+            );
+            loaded.candidate[2] = false;
+            prepare_categorical_ols_data(&request, &loaded)
+                .expect("excluded invalid factor is not a domain failure");
+        }
+    }
+}
+
 fn singleton_fixture() -> (OlsRequestV1, LoadedOlsInput, Vec<f64>, Vec<f64>, Vec<f64>) {
     let y = vec![1.1, 2.5, 3.2, 4.8, 5.1, 7.4, 8.0, 9.7, 10.3, 11.9];
     let x = vec![-1.4, -0.9, -0.2, 0.4, 1.1, -1.0, -0.3, 0.5, 1.3, 2.0];

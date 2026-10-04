@@ -60,6 +60,28 @@ fereg_parse i.g, touse(`singleton_candidate')
 assert r(n_model_terms) == 1
 assert strpos("`r(coefficient_names)'", "3.g") > 0
 assert strpos("`r(coefficient_names)'", "b.g") == 0
+matrix single_terms = r(model_terms)
+matrix single_components = r(model_components)
+assert single_terms[1,6] == 0
+assert single_components[1,7] == 0 & single_components[1,8] == 0
+
+// A constant default factor is an active indicator. Whole-column flags,
+// including active interactions with a base-marked component, remain Stata's.
+foreach form in i.g#i.h i.h#i.g {
+    fereg_parse `form', touse(`singleton_candidate')
+    matrix single_terms = r(model_terms)
+    assert rowsof(single_terms) == 2
+    assert single_terms[1,6] == 0 & single_terms[2,6] == 0
+}
+fereg_parse i.g##i.h, touse(`singleton_candidate')
+matrix single_terms = r(model_terms)
+assert rowsof(single_terms) == 5
+assert single_terms[1,6] == 0 & single_terms[2,6] == 1
+assert single_terms[3,6] == 0 & single_terms[4,6] == 1 & single_terms[5,6] == 0
+fereg_parse i.h##i.g, touse(`singleton_candidate')
+matrix single_terms = r(model_terms)
+assert single_terms[1,6] == 1 & single_terms[2,6] == 0
+assert single_terms[3,6] == 0 & single_terms[4,6] == 1 & single_terms[5,6] == 0
 
 fereg_parse, touse(`touse') emptymodel
 assert r(n_sources) == 0

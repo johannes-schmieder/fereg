@@ -319,7 +319,7 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
             assert_eq!(strict.fit().kept_generated_columns().len(), 2);
             assert!(strict.fit().residuals().iter().all(|r| r.abs() < 1e-10));
         }
-        let products = session.into_current_products().unwrap();
+        let products = session.into_current_products(&mut || Ok(())).unwrap();
         assert!(products.fit().residuals().iter().all(|r| r.abs() < 1e-10));
         let SharedPreparedOlsData::Categorical(arc) = &source else {
             unreachable!()

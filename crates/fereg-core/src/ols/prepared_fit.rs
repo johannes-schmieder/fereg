@@ -15561,7 +15561,7 @@ mod tests {
                     &expected,
                 );
                 let products = session
-                    .into_current_products()
+                    .into_current_products(&mut || Ok(()))
                     .expect("rank edge final products");
                 assert_eq!(products.fit().finite_rank(), finite_columns);
                 assert_eq!(products.finite_within_design().dimension(), finite_columns);
@@ -15642,7 +15642,7 @@ mod tests {
                 &expected,
             );
             let products = session
-                .into_current_products()
+                .into_current_products(&mut || Ok(()))
                 .expect("weak-rank final products");
             assert_eq!(products.fit().finite_rank(), 2);
         }
@@ -16125,7 +16125,7 @@ mod tests {
                         "canonical solve transfers its workspace residual into the accepted fit"
                     );
                     let products = session
-                        .into_current_products()
+                        .into_current_products(&mut || Ok(()))
                         .expect("owned final products");
                     assert_fit_science_equal(products.fit(), &final_expected);
                     let design = products.finite_within_design();

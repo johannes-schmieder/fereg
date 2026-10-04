@@ -1,0 +1,1251 @@
+{
+  "milestone": "M27.4",
+  "kind": "Required scientific/support correction before canonical finite-model finalization",
+  "parent_commit": "48325de54bb39ab3b5c3df33b55015fb145285f8",
+  "declaration": "Recorded before runtime edits; SPEC2/6 and Johannes original-slot/base-flag decision authorize the demonstrated default graph. Astra extra-high confirms support scope; Johannes subsequently authorized the separately declared constant-invariant model-Wald correction before its runtime edits.",
+  "authority": [
+    "SPEC2/6",
+    "Original-slot/base-flag decision",
+    "ActiveADR0249 predeclared affected scope"
+  ],
+  "affected_scope": {
+    "native_support": "When a source has no base flag, accept exactly one distinct canonical categorical level declared anywhere in its original graph, including omitted terms/repeated interaction occurrences. Preserve all original active recipes. Existing active multi-level/no-base and nonminimum/multiple-base rejections remain. No inference from surviving sample cardinality or spelling.",
+    "omitted_source": "For a whole-omitted factor or supported all-categorical interaction, validate existing grammar then skip executable-source lookup and interaction allocation. Retain original syntax-omitted slot; valid declared-base omitted-only regression isolates this fix.",
+    "frontend": "Next PPML with interacted or sloped absorption explicitly rejects ib*/fvset RHS overrides at the metadata boundary as SPEC requires. This closes preexisting unsupported-syntax acceptance and prevents the native single-level exception admitting prohibited public requests. Keep OLS guard and legacy behavior unchanged; no-FE/ordinary single-intercept PPML ib0 support retained.",
+    "fields": "Newly successful formerly rejected original graphs: original slots/flags, sample/rank/numerical omission, coefficients/covariance/DoF/fit/output science and allocation/admission observations. Newly rejected prohibited next PPML overrides return498 atomically. Existing rank machinery chooses finite basis; no pivot preference, inferred base or syntax omission.",
+    "unaffected_exact": "All previously successful valid graphs, source/sample/domain precedence and scientific/route signatures; original metadata validation and eligible/excluded invalid factor rules; complete frozen legacy behavior.",
+    "arithmetic_storage": "No arithmetic or retained-storage change for previously accepted graphs. Predeclared omitted-source correction also skips discarded temporary interaction recipes on supported omitted terms; no new owner/finalizer/report-map or solver policy. Extra allocation-free original-graph scans only for absent-base graphs."
+  },
+  "source_before_sha256": {
+    "crates/fereg-core/src/ols/prepared_categorical_rebase.rs": "fd167a9dc28facbddafef3ae752fce9612bfc3ceb44ec22e4ae8c0bb663af00a",
+    "stata/_fereg_estimate_ppml.ado": "9b618228a056fb7a43b584053d45cb0f396ccbedb80c6ff8a3313a9d111e42bc"
+  },
+  "parent_public_capture": {
+    "native_sha256": "42d1681e3354328c424c35abefb6de9ae0c216152eee23d78d03387cb7e1e165",
+    "frontend_sha256": "82d025ddb4c341106186b09e6c7dce4511dbaf4b28dfd045cd35b8f40cb972eb",
+    "records": [
+      "SHAPE|i.f|names= 1.f",
+      "TERM|1|whole=0",
+      "COMP|1|source=1|level=1|base=0|omitted=0",
+      "FIT|saved|i.f|rc=498",
+      "SHAPE|i.f#i.h|names= 1.f#1b.h 1.f#2.h",
+      "TERM|1|whole=0",
+      "TERM|2|whole=0",
+      "COMP|1|source=1|level=1|base=0|omitted=2",
+      "COMP|2|source=2|level=1|base=1|omitted=2",
+      "COMP|3|source=1|level=1|base=0|omitted=2",
+      "COMP|4|source=2|level=2|base=0|omitted=2",
+      "FIT|saved|i.f#i.h|rc=498",
+      "SHAPE|i.f##i.h|names= 1.f 1b.h 2.h 1o.f#1b.h 1.f#2.h",
+      "TERM|1|whole=0",
+      "TERM|2|whole=1",
+      "TERM|3|whole=0",
+      "TERM|4|whole=1",
+      "TERM|5|whole=0",
+      "COMP|1|source=1|level=1|base=0|omitted=0",
+      "COMP|2|source=2|level=1|base=1|omitted=1",
+      "COMP|3|source=2|level=2|base=0|omitted=0",
+      "COMP|4|source=1|level=1|base=0|omitted=2",
+      "COMP|5|source=2|level=1|base=1|omitted=2",
+      "COMP|6|source=1|level=1|base=0|omitted=2",
+      "COMP|7|source=2|level=2|base=0|omitted=2",
+      "FIT|saved|i.f##i.h|rc=498",
+      "SHAPE|i.h#i.f|names= 1b.h#1.f 2.h#1.f",
+      "TERM|1|whole=0",
+      "TERM|2|whole=0",
+      "COMP|1|source=1|level=1|base=1|omitted=2",
+      "COMP|2|source=2|level=1|base=0|omitted=2",
+      "COMP|3|source=1|level=2|base=0|omitted=2",
+      "COMP|4|source=2|level=1|base=0|omitted=2",
+      "FIT|saved|i.h#i.f|rc=498",
+      "SHAPE|i.h##i.f|names= 1b.h 2.h 1.f 1b.h#1o.f 2.h#1.f",
+      "TERM|1|whole=1",
+      "TERM|2|whole=0",
+      "TERM|3|whole=0",
+      "TERM|4|whole=1",
+      "TERM|5|whole=0",
+      "COMP|1|source=1|level=1|base=1|omitted=1",
+      "COMP|2|source=1|level=2|base=0|omitted=0",
+      "COMP|3|source=2|level=1|base=0|omitted=0",
+      "COMP|4|source=1|level=1|base=1|omitted=2",
+      "COMP|5|source=2|level=1|base=0|omitted=2",
+      "COMP|6|source=1|level=2|base=0|omitted=2",
+      "COMP|7|source=2|level=1|base=0|omitted=2",
+      "FIT|saved|i.h##i.f|rc=498"
+    ],
+    "sha256": "e30b0a43da7c0779a3745d5207648f9bbf3262737fcbe942207883cbfb80a68c",
+    "corrected_inference": "Default single-level i.f is ACTIVE whole0/base0, not syntax-omitted. Omitted-only native lookup is a separate regression; neither issue is labelled an arithmetic-preserving error refactor."
+  },
+  "required_checks": [
+    "Full entrypoint",
+    "30 long independent oracles",
+    "Mac native/audit/ABI",
+    "73 parent exact and five-thread science/repeat/discrete",
+    "46 licensed plus original-model default/selected-level and override transaction witnesses",
+    "M22 strictPPML24/savedFE48 exact402912",
+    "Legacy artifact-bound before/after exact",
+    "Frozen parent/fixed two opposite clean timing blocks per reference",
+    "Astra high terminal review",
+    "Linux full CI/native replay before dependent runtime work"
+  ],
+  "witnesses": [
+    "Extend parser capture with actual single-level main/#/## and reversed-order flags",
+    "Native one-declared-level acceptance versus multi-level/no-base, nonminimum/multiple-base rejection",
+    "Categorical OLS valid-base omitted-only independent dummy regression; grammar and invalid eligible/excluded factor precedence",
+    "Default constant-factor and selected2.f OLS ordinary/saved samples/ranks/identified contrast/HC1 and predictions; no inferred omission/base",
+    "NoFE PPML original active factor/constant contrast against closed-form means/HC1 covariance; multi-cell categorical interactions independent means",
+    "Next explicit override transaction failures under interacted/sloped absorption; ordinary/noFE supported override retained; legacy exact"
+  ],
+  "qualification_constraints": "All required local gates and terminal Astra high review pass; post-push Linux fullCI/native replay remainsopen before dependent runtime. FullM27 canonical-owner retirement remainsopen.",
+  "status": "Readycommit/push scientific/support correction; post-push Linux gateopen; fullM27open.",
+  "parent_ci": {
+    "run_id": 37231446216,
+    "conclusion": "success",
+    "jobs": [
+      "check",
+      "comparator",
+      "replay"
+    ]
+  },
+  "frontend_legacy": {
+    "exact": true,
+    "records": 2400,
+    "sha256": "5cd371df0f45dc4d0f48ce85fcbe3b9bc13c8e6e2531aa88826b72b655c8cf81",
+    "excluded": "PPML solver columns14/15/16: setup_seconds, solve_seconds, certification_seconds; all route/counter/science fields retained",
+    "orchestration": "Initial unsealed prototype wrongly omitted9/10 (checkpoint_frames/retries) and retained clocks; corrected artifact-bound parent/current packages capture all counters and omit only declared elapsed telemetry",
+    "reuse_binding": "Current frontend3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667 byte-matches prior frontend-package ados; canonical80329f native unchanged. Reuse prior2400 exact legacy records only for unchanged legacy binary/current same frontend; no claim oldnext gates qualify Wald."
+  },
+  "witness_correction": "New Poisson witness initially used OLS N/(N-K)=1.5. SPEC10 PPML robust multiplier N/(N-1)=6/5 applied to closed-form covariance; runtime unchanged and1e-9 tolerance unchanged. Initial failing prototype is not gate evidence.",
+  "scientific_question": {
+    "status": "Resolved by Johannes: yes to basis-independent unrestricted constant; retain original slots/base flags",
+    "reproducer": "Six no-FE rows y=[.5,1,1.5,1,3,5], x=[0,0,0,1,1,1], f=1; feppml y x i.f, separation(none)",
+    "current": "Original slots x,f,_cons; x/f identified, _cons numerical rank omission; correct coefficients/covariance/means, Wald tests both retained RHS coordinates and df_m=df_chi2=2",
+    "recommended": "Model Wald leaves structural constant unrestricted independent of retained basis: eta-offset in span(D,1); df1 chi2=(27/5)*ln(3)^2",
+    "alternative": "Keep current named non-Intercept-coordinate joint-zero null; df2 chi2=(135/16)*ln(3)^2",
+    "astra_extra_high": "SPEC9/10/13 do not expressly resolve the null; preexisting defect also affects vanished-base graphs. Do not choose another QR basis, invent omission flags or merely decrement df.",
+    "actual_native_records": [
+      "WALD|1|plain|df_chi2=                    1|df_m=                    1|chi2=     6.51752438838795",
+      "B|1|plain|1|     1.09861228866811",
+      "B|1|plain|2|-5.30343587454150e-16",
+      "WALD|1|factor|df_chi2=                    2|df_m=                    2|chi2=     10.1836318568562",
+      "B|1|factor|1|     1.09861228866811",
+      "B|1|factor|2|                    0",
+      "B|1|factor|3|                    0",
+      "WALD|2|plain|df_chi2=                    1|df_m=                    1|chi2=     6.51752438838794",
+      "B|2|plain|1|     1.09861228866811",
+      "B|2|plain|2|     .693147180559945",
+      "WALD|2|factor|df_chi2=                    2|df_m=                    2|chi2=     34.2945620463814",
+      "B|2|factor|1|     1.09861228866811",
+      "B|2|factor|2|     .693147180559946",
+      "B|2|factor|3|                    0"
+    ],
+    "actual_native_records_sha256": "19243c35e84fca60da09791bac2fe776366e8430123a7157b4588d61fd65513d"
+  },
+  "astra_high_review": {
+    "agent": "m27_single_level_review_astra",
+    "verdict": "Conditional acceptance of support slice; no additional blocking defect",
+    "pending": "Historical support-only review conditions now superseded by final Wald-candidate review; historical binary is not final qualification.",
+    "additional_regression": "Second distinct unbased level occurring only in whole-omitted term still fails; original-graph count cannot ignore omissions"
+  },
+  "wald_correction_declaration": {
+    "recorded": "Before Wald runtime edits, following explicit Johannes decision",
+    "null": "PPML model Wald tests eta-offset in span(D,1); absorbed effects and structural constant unrestricted in every retained coefficient basis",
+    "affected_cases": "Prepared PPML final numerical basis omits explicit structural _cons, while its residualized constant adds one finite nuisance direction represented by other identified columns; include vanished-base and constant-factor graphs. Existing explicit-kept _cons and absorbed-normalized constant retain exact coordinate path. Existing cases with zero residualized constant retain their identified finite model null.",
+    "affected_fields": "Only chi2/df_chi2/df_m, Wald restriction metadata/certificates and their checked temporary/retained memory/admission observations; newly successful one-level support fields already declared separately",
+    "unaffected_exact": "Coefficients/covariance/predictions/sample/rank/omission/separation/structural and reported residualDoF/likelihood/fit/solver routes and work signatures. Complete frozen legacy remains exact.",
+    "storage_arithmetic": "Bounded explicit contrasts and constant-representation certification only for omitted nonabsorbed _cons; no new row/width/thread/weight/memory algorithm fences; keep existing coordinate-subset arithmetic exact elsewhere; no data-scale mandatory design or new fit",
+    "witnesses": [
+      "sixrow constant factor versus plain x with analytic df1/W and unchanged covariance",
+      "multiply outcomes by2 preserves model Wald and slope covariance while nuisance intercept shifts",
+      "two retained cell dummies use equality contrast, not an arbitrarily skipped coefficient",
+      "slope-only effects with constant partly/fully in absorbed span",
+      "singular contrast covariance retains existing undefined-statistic behavior",
+      "tampered restriction metadata/certification fails before atomic publication"
+    ],
+    "lifecycle": "Capture existing certified QR dependency in staged rank draft; move accepted/rollback recipe through existing strict transaction; independently rescan current retained within constant/kept columns before compaction. No extra QR/fit/projection/N-vector. Final proof binds captured sample/topology/weight generations and exact kept identities; every successful final-Hessian route commits a current canonical rank solve. Old-weight rollback recipes cannot publish.",
+    "memory_scope": "Before implementation: no-declared-absorbed-intercept PPML preflight conservatively admits up to32bytes per original slot for two simultaneous constant-recipe owners (f64+usize per slot each), also dominating final recipe/report and replay loadings. Numerical rank is unavailable at preflight. All such PPML memory-inventory/admission observations may change, including tight-budget allocation failure or auto memory choice; science/solver policy unaffected and ordinary budgets retain exact routes. All OLS admission stays unchanged. Conditional recipe payload is absent for declared-intercept FE; review identified the separately charged inline descriptor impact below.",
+    "slope_only_limit": "Wald correction applies to successful accepted fits. Fully absorbed constant under declared slope-only FE may fail upstream before inference; identify parent behavior independently, do not silently expand this slice into a new fit/rank policy.",
+    "review_repairs": [
+      "Astra found finite contrast covariance/RHS overflow could masquerade as singularity: new contrast path checks finite transformed inputs and fails numerical430; finite singular covariance retains undefined statistic.",
+      "Astra found restored old-weight recipes could use stale normalization: bind weights generation and require current final canonical capture, without extra projections/scans/QR."
+    ],
+    "memory_descriptor_amendment": {
+      "recorded": "During independent review after initial runtime edits, before native qualification; initial memory declaration was too narrow for the automatic sizeof term. No admission formula is weakened.",
+      "formula": "memory.rs result_metadata_bytes = metadata.result_bytes + size_of::<PreparedPpmlIrlsFit>(); inline constant recipe descriptor increases this existing exact size term for every PPML call, including None. All fitted, strict, inference, recovery and publication peaks inherit the term.",
+      "scope": "All PPML checked memory-inventory/admission observations can change by the automatically measured inline descriptor growth, plus32bytes per original slot only without declared absorbed intercept. Tight-budget refusals/auto choice may change. Ordinary-budget scientific fields and solver/work signatures remain exact; OLS and frozen legacy are unaffected.",
+      "astra": "m27_wald_design_astra extra-high verified exact size charge at memory.rs1952 and final_result_owners, independent of safety headroom."
+    }
+  },
+  "support_only_prior_qualification": {
+    "local_checks": {
+      "native_policy": "PASS5 including added omitted-only second-unbased-level regression; invalid base policies and categorical-TS guards retained",
+      "independent_ols": "PASS original-axis one-level and valid-base omitted-only main/interaction, independent dummy HC1/fitted/sample/DoF; eligible invalid factor452 and excluded invalid success",
+      "mapped_ols": "PASS48 ordinary/saved \u00d7fast/low \u00d71/4threads \u00d76 default/selected factor forms against built-in dummy regress1e-8",
+      "parser": "PASS original active single-level and #/##/reversed whole flags",
+      "full_entrypoint": "PASS including full workspace/FFI, allocator audits, ratchet and Mac mock bridge; Linux ELF audit explicitly unavailable locally",
+      "long_independent_oracles": "PASS30 with --include-ignored, including2000-seed long differential; initial default run skipped it and was not used for long-gate acceptance",
+      "mapped_ppml": "PASS independent cell means and SPEC10 N/(N-1) robust covariance1e-9 for constant-factor and four interaction forms; model Wald awaiting explicit null decision",
+      "native_replay": "PASS73 scientific/unaffected exact plus292 extra-worker checks at2/4/8/16; fixed-thread repeats and discrete decisions",
+      "licensed_matrix": "PASS46 identified Mac plugin/front-end, no missing or failed cases",
+      "m22_exact": {
+        "feppml_no_fe_strict_oracle": {
+          "exact_values": 396960,
+          "sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+        },
+        "ols_near_within_cmg_oracle": {
+          "exact_values": 5952,
+          "sha256": "bb023d3152f3bddc8e6f6bace277daaee33ac9bf2253e08a873a186becef7ac2"
+        }
+      }
+    },
+    "native_build": {
+      "status": "PASS universalMac/native audit/actualABI/panic containment",
+      "sha256": "cfc8b065c4bb56811f0e67a0d992a1effd8b09db7f2d2e380d512edff6a797f7",
+      "embedded_source": "48325de54bb3",
+      "source_identity": "Precommit source diff required; embedded parent stamp alone is not candidate identity"
+    },
+    "qualification_artifact_sha256": {
+      "full-tests.log": "33730692e6cff80f175100a4df4fcf82fac7df6795a594f7a4c799cc0e472891",
+      "long-oracles.log": "9937ae73b8a3741de2e8667f54d5ff1bd08d1a18e4ee85cd69ed470566ee102a",
+      "native-build.log": "1dd058372aee041a9d4110c6cccb9a22aa2441465ccfbb90673208c54eda14e5",
+      "native-policy-tests-final.log": "2045509dd605605282730981721832af08b8972367a7a8454f751f25fc3dc5b4",
+      "replay/summary.json": "129f12c660fe66ade7ae44fe83d68e7589bdac781718a5a8a9d9720a0539b0f3",
+      "exact-witness-summary.json": "5eaa0208334478146529d7c8c44094f89a3c774cbb7416b27668846ca82b4931",
+      "frontend-legacy-exact.json": "6cfed3201da17849c3b1951d25c138084649e0bb105a8ae5f8aedad34841742b"
+    },
+    "scope": "Historical support-only nativecfc8; does not qualify Wald additions.",
+    "complexity": {
+      "fereg-core": {
+        "chunk_candidates": 14,
+        "dispatch_candidates": 1481,
+        "files_over_1500": 19,
+        "functions_over_150": 97,
+        "production_lines": 106077
+      },
+      "fereg-plugin": {
+        "chunk_candidates": 0,
+        "dispatch_candidates": 166,
+        "files_over_1500": 3,
+        "functions_over_150": 15,
+        "production_lines": 15314
+      }
+    }
+  },
+  "final_astra_high_review": {
+    "agent": "m27_wald_final_astra",
+    "verdict": "Terminal acceptance: ready to commit/push; no blocking defect or static fix. Linux post-push gate remainsopen and blocks dependent runtime.",
+    "scope": "Original-axis support/guards and approved constant-invariant null; staged QR recipe/current-generation proof/contrasts/publication/memory/ratchet.",
+    "verified": "Independently verified final native/legacy/frontend/seven gate artifacts/fixtures/archive/patch/envelope hashes;18runtime/frontend files match frozen source;73cases292workerchecks exact/science/repeat/discrete allpass;4080timing commands allsuccess and both15within envelopes; ledgerlimits/historyseparation."
+  },
+  "final_local_checks": {
+    "full_entrypoint": "PASS full workspace/FFI/allocator audits/ratchet/bridge; LinuxELF audit unavailable locally and required inCI",
+    "long_oracles": "PASS30 --include-ignored including2000seedlongdifferential",
+    "native": "PASS universalMac/audit/actualABI/panic containment",
+    "native_replay": "PASS73 parent exact/science and292 extra2/4/8/16worker science/fixedrepeat/discrete checks; all73 constkept/absorbed, so no Wald exception needed",
+    "licensed": "PASS46 originalM1matrix plus2new mappedStata witnesses",
+    "mapped": "PASS48OLS/24PPMLplain-factor-continuous-scaled/4interaction/8partial-slope cases; originalparserflags/overrideatomicity; native21focused incl proofinterrupt/invalidmetadata, full suite finiteoverflow/singularity",
+    "m22_exact": {
+      "feppml_no_fe_strict_oracle": {
+        "exact_values": 396960,
+        "sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+      },
+      "ols_near_within_cmg_oracle": {
+        "exact_values": 5952,
+        "sha256": "bb023d3152f3bddc8e6f6bace277daaee33ac9bf2253e08a873a186becef7ac2"
+      }
+    },
+    "artifact_sha256": {
+      "wald-full-tests.log": "2158a48e05662fceec1d3c009c7180e2c031ac204786cf2872294232f62549dd",
+      "wald-long-oracles.log": "4f6f8d07f4eda1c5801178ea247d6b00ca08cfb903fe329524008677baaf9685",
+      "wald-native-build.log": "f17c73d04b92f849cbd95c75aec4d5592356202c906ac71686a9c81f985295f7",
+      "wald-mapped-stata-final.log": "3f5768d419edd8c9cdfa1830a5bdbf39d9cad1f5b64fc0ad4f8f13d18f54e61e",
+      "wald-replay/summary.json": "28b88e20099615670230d60956d3e736a00cca45b1ebd30be110ddbedc54d1dd",
+      "wald-exact/exact-witness-summary.json": "5eaa0208334478146529d7c8c44094f89a3c774cbb7416b27668846ca82b4931",
+      "wald-stata-matrix.log": "420cdb268d02a1afaf69ef4208009e5b4a98bc2288d61dac38e73520240a5423"
+    },
+    "witness_setup_corrections": "First partial-slope Stata prototype omitted mu() retention required for predict after absorb; corrected test request only, no runtime/tolerance change. Fully-absorbed exploratory marker typo corrected before accepted gate.",
+    "test_fixture_sha256": {
+      "tests/stata/development/factor_single_level_original_axis.do": "853218606535c88ed28235bcf6a100d90be658f34efe857fa6df84be88e1c8fd",
+      "tests/stata/parser/model_wire_v2_capture.do": "ae8cf3c4226915bf9239c129d20b93fddb72370f141bec3e730d6521a3c3ea2d"
+    },
+    "all_four_timing_blocks": {
+      "commands": 4080,
+      "complete": true,
+      "native_frontend_identities_verified": true,
+      "scope": "15 frozen capture-pilot workloads at4nativeworkers; no claim full384matrix/scaling/heldout qualification",
+      "artifact_sha256": {
+        "parent-forward": "febc6ea1f34a2a4a31b3c64ffa6fd1fa011cda9fa70fae74797d9e2ece516594",
+        "parent-reverse": "cdd7181df9a5ee857a812bb779b9a202135fb948a4b4f623407170ab0d8654e7",
+        "baseline-forward": "3e165d5987cc331a377a9de53beedc5cc3ca353034db49d013c6aa52ccd27bd9",
+        "baseline-reverse": "a75cfe670639950d87d61dbbe64f2e3b83a0c3573a17570e5815f42e453eb47a"
+      }
+    }
+  },
+  "final_source_identity": {
+    "source": {
+      "commit": "48325de54bb39ab3b5c3df33b55015fb145285f8",
+      "archive_sha256": "b919f4bd51c6a775cbdf926f58090ecc511f56e9c9277ef28648a6639d4d3cba",
+      "paths": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "clippy.toml",
+        "references.lock.toml",
+        "crates",
+        "legacy",
+        "vendor",
+        "plugin",
+        "stata",
+        "scripts",
+        "ci/reference-bundles",
+        "tests/mock_spi",
+        "bench",
+        "AGENTS.md",
+        "docs/SPEC.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "scope": "bounded native/frontend snapshot, not full repository",
+      "patch_sha256": "ba9d78126a14d173f5695f20726c83628e794ef406990302263e0ceb08377748"
+    },
+    "plugins": [
+      {
+        "path": "fereg_macos.plugin",
+        "engine": "next",
+        "source_sha": "48325de54bb39ab3b5c3df33b55015fb145285f8",
+        "sha256": "4d1ef896db1772b2a417d76716c680989cd18ee7340e34255d5ea40b6039971b",
+        "bytes": 18130608,
+        "source_patch_sha256": "ba9d78126a14d173f5695f20726c83628e794ef406990302263e0ceb08377748",
+        "source_archive_sha256": "b919f4bd51c6a775cbdf926f58090ecc511f56e9c9277ef28648a6639d4d3cba",
+        "identity_kind": "identified precommit bounded source"
+      },
+      {
+        "path": "fereg_legacy_macos.plugin",
+        "engine": "legacy",
+        "source_sha": "15a57ba285a3afede2e3337fe8598e72529a4090",
+        "sha256": "80329f51159990740425171c3457304f303272cfe55943c0afb412b54454c105",
+        "bytes": 18251808
+      }
+    ]
+  },
+  "final_frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667",
+  "fully_absorbed_parent_limit": {
+    "parent_native": "42d1681e3354328c424c35abefb6de9ae0c216152eee23d78d03387cb7e1e165",
+    "candidate_native": "4d1ef896db1772b2a417d76716c680989cd18ee7340e34255d5ea40b6039971b",
+    "result": "Both plain x and x+continuousconstant with slope-only g#c.z and z=1 return459 before inference in parent and candidate; prior regress b remains exact and requested mu variable absent. Existing upstream fully absorbed-constant limitation; this slice makes no new fitting/rank claim.",
+    "fixture_sha256": "10ca9d53a86b3f11d0ee11da4f211a53d783c2abccb54f8d8d1e2b8df226aea6"
+  },
+  "complexity_final": {
+    "fereg-core": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1484,
+      "files_over_1500": 19,
+      "functions_over_150": 97,
+      "production_lines": 106511
+    },
+    "fereg-plugin": {
+      "chunk_candidates": 0,
+      "dispatch_candidates": 166,
+      "files_over_1500": 3,
+      "functions_over_150": 15,
+      "production_lines": 15337
+    },
+    "scope": "SCI support/certificate correction grows core453/plugin23 productionlines; no new long-function/file violation; narrow growth reasons checked in and charged against later retirement budgets."
+  },
+  "performance_preflight": {
+    "no_agents_builds_tests_or_research_campaign": true,
+    "ordinary_os_background": "Spotlight mds_stores about81% of one core, Finder30%, sysmond20%, ActivityMonitor14%; top instantaneous total CPU88.9%idle. Mac24core; frozencapturepilot4nativeworkers. No OS services modified. Paired protocol/uncertainty/5%or1ms allowance unchanged.",
+    "candidate_native": "4d1ef896db1772b2a417d76716c680989cd18ee7340e34255d5ea40b6039971b",
+    "candidate_frontend": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667",
+    "reference_blocks": "Two opposite-order blocks each versus qualifiedSCIparent42d1/82d0 and fixedM26baseline7067/bac7; all15declaredcells,32interleavedfreshprocesspairs each. No favorable subset or extra confirmation."
+  },
+  "performance": {
+    "passed": true,
+    "scope": "15frozen capture-pilot workloads,4nativeworkers; two opposite-order32pair blocks per reference. No fullM27/384matrix/scaling/heldout claim.",
+    "envelope_sha256": "e8d46ac8076b2d4ebd12d9d0729e83325aa27d442be460974c78d970be0ac5dd",
+    "references": {
+      "parent": {
+        "passed": true,
+        "counts": {
+          "within": 15
+        },
+        "blocks": [
+          {
+            "path": "target/m27-single-level/timing-parent-forward/results.json",
+            "sha256": "febc6ea1f34a2a4a31b3c64ffa6fd1fa011cda9fa70fae74797d9e2ece516594"
+          },
+          {
+            "path": "target/m27-single-level/timing-parent-reverse/results.json",
+            "sha256": "cdd7181df9a5ee857a812bb779b9a202135fb948a4b4f623407170ab0d8654e7"
+          }
+        ],
+        "effects": [
+          {
+            "cell": "cover-ols-2fe-frequency",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00037500000000000033,
+                "allowance_seconds": 0.004525684375000003,
+                "lower_seconds": -0.0009945833333333107,
+                "upper_seconds": 0.0007819583333333443,
+                "uncertainty_seconds": 0.0011569583333333447,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 2.606250000003474e-05,
+                "allowance_seconds": 0.004500605208333334,
+                "lower_seconds": -0.000516979166666707,
+                "upper_seconds": 0.00039058333333340044,
+                "uncertainty_seconds": 0.0005430416666667417,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "cover-ols-2fe-probability",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 9.210416666663446e-05,
+                "allowance_seconds": 0.004498923958333336,
+                "lower_seconds": -0.0009734166666666136,
+                "upper_seconds": 0.0010807291666666949,
+                "uncertainty_seconds": 0.001065520833333248,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.00018441666666671463,
+                "allowance_seconds": 0.004420705208333333,
+                "lower_seconds": -0.00042110624999995984,
+                "upper_seconds": 0.0009600000000000006,
+                "uncertainty_seconds": 0.0007755833333332859,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "cover-ppml-bias-exact",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0002747083333333525,
+                "allowance_seconds": 0.0018055302083333326,
+                "lower_seconds": -0.00022137968750003082,
+                "upper_seconds": 0.0006052708333333498,
+                "uncertainty_seconds": 0.0004960880208333833,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 6.881250000000116e-05,
+                "allowance_seconds": 0.0017977802083333325,
+                "lower_seconds": -0.00046537499999999504,
+                "upper_seconds": 0.0008293750000000052,
+                "uncertainty_seconds": 0.0007605625000000041,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "cover-ppml-bias-randomized",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00014022916666664442,
+                "allowance_seconds": 0.002180371875,
+                "lower_seconds": -0.0007125416666666476,
+                "upper_seconds": 0.0002035635416666615,
+                "uncertainty_seconds": 0.0005723125000000032,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0003565624999999975,
+                "allowance_seconds": 0.002108488541666665,
+                "lower_seconds": -0.00012097916666660235,
+                "upper_seconds": 0.0007796249999999971,
+                "uncertainty_seconds": 0.00047754166666659985,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "cover-ppml-separation-fe-simplex-ir",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -3.3958333333351104e-05,
+                "allowance_seconds": 0.0014878072916666677,
+                "lower_seconds": -0.0004434375000000026,
+                "upper_seconds": 0.0002647499999999505,
+                "uncertainty_seconds": 0.0004094791666666515,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 2.93541666666515e-05,
+                "allowance_seconds": 0.0014478635416666677,
+                "lower_seconds": -0.00018610468749998387,
+                "upper_seconds": 0.00024095833333329938,
+                "uncertainty_seconds": 0.00021545885416663537,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-2fe-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.00021895833333340775,
+                "allowance_seconds": 0.017880111458333337,
+                "lower_seconds": -0.001979479166666629,
+                "upper_seconds": 0.00168516666666668,
+                "uncertainty_seconds": 0.0021984375000000367,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0003838750000000335,
+                "allowance_seconds": 0.01802067291666667,
+                "lower_seconds": -0.0019189656250000325,
+                "upper_seconds": 0.001962333333333397,
+                "uncertainty_seconds": 0.002302840625000066,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-2fe-fe-cluster",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0009616458333333577,
+                "allowance_seconds": 0.017527992708333336,
+                "lower_seconds": -0.0020506458333334177,
+                "upper_seconds": 0.002614645833333371,
+                "uncertainty_seconds": 0.0030122916666667754,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0006072708333333399,
+                "allowance_seconds": 0.017859238541666673,
+                "lower_seconds": -0.004512520833333309,
+                "upper_seconds": 0.003491145833333318,
+                "uncertainty_seconds": 0.004098416666666658,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-2fe-residual-robust",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.00021443749999999762,
+                "allowance_seconds": 0.004044432291666668,
+                "lower_seconds": -0.0009882083333332939,
+                "upper_seconds": 0.000996916666666637,
+                "uncertainty_seconds": 0.0012026458333332915,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00016835416666670378,
+                "allowance_seconds": 0.004083589583333335,
+                "lower_seconds": -0.0015719166666666987,
+                "upper_seconds": 0.0006129166666666139,
+                "uncertainty_seconds": 0.0014035624999999949,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-absorbed-slope-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.000523270833333353,
+                "allowance_seconds": 0.0034723635416666677,
+                "lower_seconds": -0.0004430624999999918,
+                "upper_seconds": 0.0010129166666667502,
+                "uncertainty_seconds": 0.0009663333333333449,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0010191458333333459,
+                "allowance_seconds": 0.0035467104166666675,
+                "lower_seconds": -0.0018159828124999621,
+                "upper_seconds": 0.000742270833333348,
+                "uncertainty_seconds": 0.0017614166666666939,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-finite-factor-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.001447208333333283,
+                "allowance_seconds": 0.008338102083333335,
+                "lower_seconds": -0.00349184687499998,
+                "upper_seconds": -8.65833333333641e-05,
+                "uncertainty_seconds": 0.002044638541666697,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0005186458333333588,
+                "allowance_seconds": 0.008309287500000003,
+                "lower_seconds": -0.0012618749999999937,
+                "upper_seconds": 0.002776333333333323,
+                "uncertainty_seconds": 0.002257687499999964,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-2fe-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0005955833333333715,
+                "allowance_seconds": 0.013450370833333336,
+                "lower_seconds": -0.00039599999999989443,
+                "upper_seconds": 0.0017665833333334582,
+                "uncertainty_seconds": 0.0011710000000000867,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0010254166666666675,
+                "allowance_seconds": 0.013437821875,
+                "lower_seconds": -0.00018514583333339795,
+                "upper_seconds": 0.001536645833333348,
+                "uncertainty_seconds": 0.0012105625000000655,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-2fe-fe-cluster",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00012999999999999123,
+                "allowance_seconds": 0.01227962291666667,
+                "lower_seconds": -0.0015096041666666762,
+                "upper_seconds": 0.0010605625000000543,
+                "uncertainty_seconds": 0.001379604166666685,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0012478958333333456,
+                "allowance_seconds": 0.012500409375000002,
+                "lower_seconds": -0.0004008749999999652,
+                "upper_seconds": 0.0019367499999999296,
+                "uncertainty_seconds": 0.001648770833333311,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-2fe-residual-robust",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 4.322916666663068e-05,
+                "allowance_seconds": 0.011695329166666671,
+                "lower_seconds": -0.0010712916666666941,
+                "upper_seconds": 0.0008823333333332886,
+                "uncertainty_seconds": 0.0011145208333333248,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0006693125000000744,
+                "allowance_seconds": 0.011907851041666667,
+                "lower_seconds": -0.0011085833333332998,
+                "upper_seconds": 0.0034182916666665986,
+                "uncertainty_seconds": 0.0027489791666665243,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-absorbed-slope-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0006726666666667103,
+                "allowance_seconds": 0.022291205208333338,
+                "lower_seconds": -0.0009762916666666824,
+                "upper_seconds": 0.0019548166666667754,
+                "uncertainty_seconds": 0.0016489583333333926,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0013590625000000633,
+                "allowance_seconds": 0.02231609479166667,
+                "lower_seconds": -0.001529166666666746,
+                "upper_seconds": 0.0034779166666666895,
+                "uncertainty_seconds": 0.0028882291666668097,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-finite-factor-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00017152083333332735,
+                "allowance_seconds": 0.015762363541666668,
+                "lower_seconds": -0.0018107500000000257,
+                "upper_seconds": 0.0008441328124999714,
+                "uncertainty_seconds": 0.0016392291666666983,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00129575000000004,
+                "allowance_seconds": 0.01575932604166667,
+                "lower_seconds": -0.002326708333333314,
+                "upper_seconds": 2.5125000000123742e-05,
+                "uncertainty_seconds": 0.0013208750000001637,
+                "noise_resolves_allowance": true
+              }
+            ]
+          }
+        ],
+        "worst_upper_over_allowance": 0.4613328126294669,
+        "worst_cell": "cover-ppml-bias-exact",
+        "worst_block": 2
+      },
+      "fixed_baseline": {
+        "passed": true,
+        "counts": {
+          "within": 15
+        },
+        "blocks": [
+          {
+            "path": "target/m27-single-level/timing-baseline-forward/results.json",
+            "sha256": "3e165d5987cc331a377a9de53beedc5cc3ca353034db49d013c6aa52ccd27bd9"
+          },
+          {
+            "path": "target/m27-single-level/timing-baseline-reverse/results.json",
+            "sha256": "a75cfe670639950d87d61dbbe64f2e3b83a0c3573a17570e5815f42e453eb47a"
+          }
+        ],
+        "effects": [
+          {
+            "cell": "cover-ols-2fe-frequency",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0010287291666666587,
+                "allowance_seconds": 0.004792401041666668,
+                "lower_seconds": -0.0030486875000000475,
+                "upper_seconds": 0.0004900833333333057,
+                "uncertainty_seconds": 0.0020199583333333888,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00017600000000000948,
+                "allowance_seconds": 0.004542819791666668,
+                "lower_seconds": -0.0011564166666666578,
+                "upper_seconds": 0.00048241666666670534,
+                "uncertainty_seconds": 0.0009804166666666483,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "cover-ols-2fe-probability",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0005328124999999934,
+                "allowance_seconds": 0.00454006979166667,
+                "lower_seconds": -0.0011996906250000038,
+                "upper_seconds": 0.0005618750000000014,
+                "uncertainty_seconds": 0.0010946874999999948,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00022470833333330942,
+                "allowance_seconds": 0.004449878125,
+                "lower_seconds": -0.0009742291666666022,
+                "upper_seconds": 0.0004375416666666084,
+                "uncertainty_seconds": 0.0007495208333332928,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "cover-ppml-bias-exact",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00047037500000000204,
+                "allowance_seconds": 0.0017931156250000002,
+                "lower_seconds": -0.0009867916666666929,
+                "upper_seconds": 0.00013218749999999662,
+                "uncertainty_seconds": 0.0006025624999999987,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0004370416666666446,
+                "allowance_seconds": 0.0017603072916666678,
+                "lower_seconds": 0.0001567708333333493,
+                "upper_seconds": 0.0006984791666666526,
+                "uncertainty_seconds": 0.0002802708333332953,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "cover-ppml-bias-randomized",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -1.556250000000342e-05,
+                "allowance_seconds": 0.0021305385416666676,
+                "lower_seconds": -0.00040310416666665205,
+                "upper_seconds": 0.0005244375000000073,
+                "uncertainty_seconds": 0.0005400000000000107,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 7.4374999999987645e-06,
+                "allowance_seconds": 0.0021207739583333327,
+                "lower_seconds": -0.00036150000000000564,
+                "upper_seconds": 0.00031765520833333406,
+                "uncertainty_seconds": 0.0003689375000000044,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "cover-ppml-separation-fe-simplex-ir",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00017772916666665417,
+                "allowance_seconds": 0.0014568135416666676,
+                "lower_seconds": -0.0004616249999999982,
+                "upper_seconds": 7.983333333340192e-05,
+                "uncertainty_seconds": 0.00028389583333334405,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 2.5729166666654812e-05,
+                "allowance_seconds": 0.0014374989583333326,
+                "lower_seconds": -0.00017772916666659665,
+                "upper_seconds": 0.00021427083333335075,
+                "uncertainty_seconds": 0.00020345833333325147,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-2fe-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.000551916666666763,
+                "allowance_seconds": 0.018006086458333338,
+                "lower_seconds": -0.0009043750000000109,
+                "upper_seconds": 0.0023092916666666552,
+                "uncertainty_seconds": 0.0017573749999998923,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0052730416666667,
+                "allowance_seconds": 0.02106625000000001,
+                "lower_seconds": -0.01524956250000009,
+                "upper_seconds": 0.007343645833333188,
+                "uncertainty_seconds": 0.012616687499999888,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-2fe-fe-cluster",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0003525208333333141,
+                "allowance_seconds": 0.017686594791666673,
+                "lower_seconds": -0.0037504791666666515,
+                "upper_seconds": 0.003254270833333348,
+                "uncertainty_seconds": 0.004102999999999966,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.002167812499999977,
+                "allowance_seconds": 0.018535010416666674,
+                "lower_seconds": -0.006101687499999895,
+                "upper_seconds": 0.0072479166666665745,
+                "uncertainty_seconds": 0.008269499999999872,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-2fe-residual-robust",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -5.354166666669824e-05,
+                "allowance_seconds": 0.004094436458333336,
+                "lower_seconds": -0.0017333541666667404,
+                "upper_seconds": 0.0011488750000000056,
+                "uncertainty_seconds": 0.0016798125000000422,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -4.3020833333351494e-05,
+                "allowance_seconds": 0.004117723958333336,
+                "lower_seconds": -0.001205854166666643,
+                "upper_seconds": 0.0011612708333332952,
+                "uncertainty_seconds": 0.0012042916666666467,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-absorbed-slope-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0003420000000000367,
+                "allowance_seconds": 0.0036112218750000025,
+                "lower_seconds": -0.001303375000000049,
+                "upper_seconds": 0.001074895833333351,
+                "uncertainty_seconds": 0.0014168958333333878,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 8.633333333331328e-05,
+                "allowance_seconds": 0.0035143135416666675,
+                "lower_seconds": -0.0009307291666666836,
+                "upper_seconds": 0.001244375000000004,
+                "uncertainty_seconds": 0.0011580416666666907,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ols-finite-factor-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0014209583333333609,
+                "allowance_seconds": 0.008606730208333335,
+                "lower_seconds": -0.0036649999999999994,
+                "upper_seconds": 0.0018134791666666297,
+                "uncertainty_seconds": 0.003234437499999991,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00019727083333329065,
+                "allowance_seconds": 0.008468928125,
+                "lower_seconds": -0.004492645833333335,
+                "upper_seconds": 0.002834596354166681,
+                "uncertainty_seconds": 0.004295375000000044,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-2fe-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0007057708333333412,
+                "allowance_seconds": 0.013943214583333335,
+                "lower_seconds": -0.004179687500000027,
+                "upper_seconds": 0.0034484312500000598,
+                "uncertainty_seconds": 0.004154202083333401,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0004547083333333868,
+                "allowance_seconds": 0.01346611979166667,
+                "lower_seconds": -0.000726125000000131,
+                "upper_seconds": 0.0017290619791666523,
+                "uncertainty_seconds": 0.0012743536458332655,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-2fe-fe-cluster",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 0.0010132500000000766,
+                "allowance_seconds": 0.012459335416666668,
+                "lower_seconds": -0.00444004166666667,
+                "upper_seconds": 0.0022864166666666775,
+                "uncertainty_seconds": 0.005453291666666747,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0010168541666667197,
+                "allowance_seconds": 0.01234544791666667,
+                "lower_seconds": -0.002104875000000004,
+                "upper_seconds": 0.0004904791666666389,
+                "uncertainty_seconds": 0.0015073333333333586,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-2fe-residual-robust",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0003282083333333574,
+                "allowance_seconds": 0.011932909375000003,
+                "lower_seconds": -0.001939874479166638,
+                "upper_seconds": 0.0012732916666665908,
+                "uncertainty_seconds": 0.0016116661458332807,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.00022170833333334805,
+                "allowance_seconds": 0.01170125729166667,
+                "lower_seconds": -0.0011216666666667133,
+                "upper_seconds": 0.0009289583333333387,
+                "uncertainty_seconds": 0.0011506666666666868,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-absorbed-slope-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": 8.112500000001521e-05,
+                "allowance_seconds": 0.022736566666666673,
+                "lower_seconds": -0.0018326250000000302,
+                "upper_seconds": 0.002718437500000057,
+                "uncertainty_seconds": 0.002637312500000042,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0003212291666667144,
+                "allowance_seconds": 0.02241083020833334,
+                "lower_seconds": -0.00274250000000009,
+                "upper_seconds": 0.001773791666666689,
+                "uncertainty_seconds": 0.0024212708333333755,
+                "noise_resolves_allowance": true
+              }
+            ]
+          },
+          {
+            "cell": "development-ppml-finite-factor-combined-multiway",
+            "threads": 4,
+            "arm": "fereg",
+            "verdict": "within",
+            "blocks": [
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0002601041666666637,
+                "allowance_seconds": 0.016270458333333335,
+                "lower_seconds": -0.0014878958333333617,
+                "upper_seconds": 0.0022247083333332674,
+                "uncertainty_seconds": 0.002484812499999931,
+                "noise_resolves_allowance": true
+              },
+              {
+                "verdict": "within",
+                "delta_seconds": -0.0005303333333333549,
+                "allowance_seconds": 0.015797442708333338,
+                "lower_seconds": -0.0026142088541666417,
+                "upper_seconds": 0.001591166666666697,
+                "uncertainty_seconds": 0.002121500000000052,
+                "noise_resolves_allowance": true
+              }
+            ]
+          }
+        ],
+        "worst_upper_over_allowance": 0.3967938836436501,
+        "worst_cell": "cover-ppml-bias-exact",
+        "worst_block": 2
+      }
+    },
+    "protocol": {
+      "warmups": 1,
+      "repetitions": 32,
+      "coefficient_rtol": 1e-07,
+      "coefficient_atol": 1e-10,
+      "reference_tolerance": 1e-12,
+      "fresh_process_per_command": true,
+      "confirmation_orders": [
+        [
+          "parent",
+          "candidate"
+        ],
+        [
+          "candidate",
+          "parent"
+        ]
+      ],
+      "maximum_confirmation_blocks": 2,
+      "slowdown_fraction": 0.05,
+      "short_workload_allowance_seconds": 0.001,
+      "timing_primary": "median command seconds",
+      "trace_outside_timing": true,
+      "uncertainty": "32 predetermined interleaved fresh-process artifact pairs; alternating artifact order, inverted in independent second block. Central95% paired bootstrap interval for difference of full-command medians,50000 resamples PCG64 seed260041; +/-2microseconds for difference quantization (1microsecond per duration, bounding two timestamp endpoints, recorded resolution<=500ns). Identical-baseline calibration requires each interval inside symmetric unchanged5%/1ms allowance. Exactly2blocks; no fallback clock,no overhead subtraction,no favorable subset. Stata timer is secondary witness.",
+      "uncertainty_method": "paired-bootstrap-medians-v1",
+      "uncertainty_seed": 260041,
+      "uncertainty_resamples": 50000,
+      "calibration": "Before runtime candidates: identical qualified source/native/frontend artifacts, forward calibration and independent inverse-order validation; every block interval lies inside [-allowance,+allowance]. Terminal post-timing identity verification mandatory. Failure keeps M26 open; no favorable subset or increased follow-up budget.",
+      "revision": "monotonic-command-v1",
+      "duration_quantization_seconds": 1e-06
+    },
+    "tooling_identity": {
+      "bench/run.py": "d22c853146adc0746645e0711c69d024a5630ba51f8191edea5afe04b5dd9531",
+      "bench/generate.py": "96f1acd83d0227bd475e590d0903e0bd1793b4f1229d60dbb549d3b1b048691b",
+      "bench/compare.py": "2b35cae152aedf4c054cbc33e4ccf1549ed9a6023ab67142d5d0977f58daba61",
+      "bench/stata_runner.do": "b2ca5e4dc09cb8093d7c86e3b2ce1e37c10e11620a441efc0e78cebbe1b04a91",
+      "references.lock.toml": "b90c83dd767425de67304287aa2ff97c567a45f26b1dcd938dcca2b6af5197e8",
+      "bench/clock.c": "e4aa711868a1bafd0a2b07622fa1193db83c9e7dd8729ce917916efc623ed3f0",
+      "bench/build_clock.py": "7f1d371c244889f1417a3e02551051556f3af051a9e2a86ce76b785017bd0ef1",
+      "manifest": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9"
+    },
+    "timing_identity": {
+      "method": "monotonic-command-v1",
+      "plugin_sha256": "fa7caefcd52f5dfdf41be15896991f67673d01de786f09f1a85c5b2a7b9dda50"
+    },
+    "datasets": {
+      "development-ols-2fe-residual-robust": "ca9984f20051b56dc3f759d2d171b30eff9962478274d89da417806f1b39a53e",
+      "development-ols-2fe-fe-cluster": "ca9984f20051b56dc3f759d2d171b30eff9962478274d89da417806f1b39a53e",
+      "development-ols-2fe-combined-multiway": "ca9984f20051b56dc3f759d2d171b30eff9962478274d89da417806f1b39a53e",
+      "development-ppml-2fe-residual-robust": "0f228aec981a4040f8a80d5fdf36662dc3041dda11be4da916874b9814cf7d21",
+      "development-ppml-2fe-fe-cluster": "0f228aec981a4040f8a80d5fdf36662dc3041dda11be4da916874b9814cf7d21",
+      "development-ppml-2fe-combined-multiway": "0f228aec981a4040f8a80d5fdf36662dc3041dda11be4da916874b9814cf7d21",
+      "development-ols-finite-factor-combined-multiway": "20e177f4e008742fe549138b8e7b1921024128eb2d78a6e853f6316b5f4b7d34",
+      "development-ols-absorbed-slope-combined-multiway": "84a6f30f605f23c344f1a2b34b7402f6a048f71b2515efab6de8cbb28855404e",
+      "development-ppml-finite-factor-combined-multiway": "77808d795ffca551581554d19c92426df53713c6fe2c38b2c2a1e17816152ec6",
+      "development-ppml-absorbed-slope-combined-multiway": "b62efe3b2db1c0619b56d1ac60d5c2211f40f83db2f3a2b64fbcdaa0eb1d9270",
+      "cover-ols-2fe-frequency": "a4d715f523d590b5eb1a4860cc868ee6bfd4517f532b999583fd7dd578c17e71",
+      "cover-ols-2fe-probability": "cf9eac02af6d700c5bd91a62e3eb43c74e2416425df713768d0f8aa581e24559",
+      "cover-ppml-bias-exact": "c031aa2e47615a22062cc3113f629567c846cd15edb0f9625b4c85396ca4760c",
+      "cover-ppml-bias-randomized": "c031aa2e47615a22062cc3113f629567c846cd15edb0f9625b4c85396ca4760c",
+      "cover-ppml-separation-fe-simplex-ir": "24ea31bd7ee1a01e60464deb7f6baebf1179e27b7b5cce116501840157a50128"
+    }
+  }
+}

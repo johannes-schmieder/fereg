@@ -1220,7 +1220,7 @@ pub(super) fn certify_rank_revealing_dropped_span(
     })
 }
 
-const RANK_REVEALING_GUARD_EPSILONS: f64 = 64.0;
+pub(super) const RANK_REVEALING_GUARD_EPSILONS: f64 = 64.0;
 
 /// Destructively factor a caller-owned Gram/RHS copy. A numerical guard miss
 /// returns `Ok(None)` so one-shot policy can retain its canonical QR fallback.

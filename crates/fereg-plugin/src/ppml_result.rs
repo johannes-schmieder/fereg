@@ -2130,6 +2130,29 @@ fn validate_inference_contract(result: &CertifiedPpmlResult) -> Result<()> {
     {
         return Err(invalid("PPML Wald report is inconsistent"));
     }
+    if wald.reference.as_ref().is_some_and(|reference| {
+        reference.slot() >= coefficients.statuses().len()
+            || coefficients.statuses()[reference.slot()] != PpmlCoefficientStatus::Identified
+            || wald.tested_columns.contains(&reference.slot())
+            || wald.tested_columns.len() + 1 != coefficients.kept_full_slots().len()
+            || coefficients
+                .kept_full_slots()
+                .iter()
+                .any(|slot| *slot != reference.slot() && !wald.tested_columns.contains(slot))
+            || reference.loadings().len() != wald.tested_columns.len()
+            || reference
+                .loadings()
+                .iter()
+                .any(|value| !is_stata_publishable(*value) || value.abs() > 1.0)
+            || !is_stata_publishable(reference.span_error())
+            || reference.span_error() < 0.0
+            || !is_stata_publishable(reference.span_tolerance())
+            || reference.span_tolerance() <= 0.0
+            || reference.span_tolerance() >= 1.0
+            || reference.span_error() > reference.span_tolerance()
+    }) {
+        return Err(invalid("PPML constant contrast report is inconsistent"));
+    }
     if wald
         .statistic
         .is_some_and(|value| !is_stata_publishable(value))

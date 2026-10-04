@@ -6,7 +6,8 @@ use super::prepared_separation::CertifiedSeparationSeal;
 use super::psd::apply_ppml_psd_policy;
 use super::psd::inspect_published_ppml_covariance;
 use super::residuals::{ppml_residuals, PpmlResidualKind};
-use super::vce::{compute_ppml_wald, validate_weight_report};
+use super::vce::validate_weight_report;
+use super::wald::{compute_ppml_wald, validate_reference};
 use super::{
     poisson_null_objective, PoissonNullObjective, PoissonObjective, PpmlAllocationTelemetry,
     PpmlAllocatorSnapshot, PpmlAllocatorSnapshotProbe, PpmlCertificate, PpmlInferenceResult,
@@ -1102,6 +1103,12 @@ impl CertifiedPpmlResult {
                 .map(|subset| bytes(&subset.dimensions))
                 .sum::<u128>()
             + bytes(&self.inference.wald.tested_columns)
+            + self
+                .inference
+                .wald
+                .reference
+                .as_ref()
+                .map_or(0, |reference| bytes(&reference.loadings))
             + bytes(&self.fixed_effects)
             + self
                 .fixed_effects
@@ -2538,6 +2545,11 @@ fn validate_wald(
             "PPML Wald chi-squared identity metadata is inconsistent",
         ));
     }
+    validate_reference(
+        &wald.tested_columns,
+        wald.reference.as_ref(),
+        coefficients.kept_full_slots(),
+    )?;
     if !wald.solve_relative_infinity_norm.is_finite()
         || wald.solve_relative_infinity_norm < 0.0
         || wald.solve_relative_infinity_norm > tolerance
@@ -2559,6 +2571,7 @@ fn validate_wald(
         &inference.vce.covariance,
         dimension,
         &wald.tested_columns,
+        wald.reference.as_ref(),
         tolerance,
     )
     .map_err(|error| composed_result_error("PPML Wald replay failed", error))?;
@@ -4007,6 +4020,7 @@ mod tests {
             clusters: &[],
             requested_vce: PpmlVceRequest::Robust,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: 1e-10,
         })
         .expect("certified inference");
@@ -4191,6 +4205,7 @@ mod tests {
             clusters: &[&cluster],
             requested_vce: PpmlVceRequest::Clustered,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: input.certificate_tolerance,
         })
         .expect("clustered inference");
@@ -4700,6 +4715,20 @@ mod tests {
                 .expect_err("Wald distribution identity")
                 .code,
             ErrorCode::Internal
+        );
+
+        let mut reference = certified_composite_input();
+        reference.inference.wald.reference = Some(super::super::PpmlWaldReference {
+            slot: 1,
+            loadings: Vec::new(),
+            span_error: 0.0,
+            span_tolerance: 1e-12,
+        });
+        assert_eq!(
+            CertifiedPpmlResult::new(reference)
+                .expect_err("constant reference must identify a kept slot")
+                .code,
+            ErrorCode::InvalidArgument
         );
 
         let mut covariance = certified_composite_input();

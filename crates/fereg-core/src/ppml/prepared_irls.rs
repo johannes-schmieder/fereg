@@ -813,6 +813,7 @@ fn summarize_linear_workspace(
     capacity: LinearSessionWorkspaceCapacities,
 ) -> Result<PpmlLinearWorkspaceCapacityReport> {
     let elements = [
+        capacity.constant_recipe_elements,
         capacity.response_elements,
         capacity.weight_elements,
         capacity.finite_predictor_elements,
@@ -1950,7 +1951,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         )?),
         None => None,
     };
-    let linear = session.into_current_products()?;
+    let linear = session
+        .into_current_products(&mut || interrupt(super::PpmlInterruptPoint::InferenceSubset))?;
     validate_final_hessian_frame(linear.weights(), prior_weights, &mean)?;
     let final_generations = linear.generations();
     if final_generations.response != frame_generation

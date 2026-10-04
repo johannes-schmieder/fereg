@@ -1044,3 +1044,8 @@ mod tests {
         assert!(error.message.contains("warm start is inconsistent"));
     }
 }
+
+mod wald;
+pub use wald::PpmlWaldReference;
+
+mod constant_wald;

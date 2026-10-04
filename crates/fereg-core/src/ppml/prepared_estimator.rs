@@ -5,6 +5,7 @@
 //! weighted-linear session, PPML inference, and publication metadata.  It
 //! never calls the legacy dense PPML fitter or its legacy covariance path.
 
+use super::constant_wald::constant_wald_columns;
 use std::time::Duration;
 
 use crate::data::{NumericColumnView, NumericSourceUse, WeightInput, WeightKind};
@@ -460,7 +461,7 @@ pub fn fit_prepared_ppml_interruptible(
     let cluster_codes = cluster_code_views(prepared)?;
 
     let coefficients = map_coefficients(prepared.prepared(), &fit, &omission_statuses)?;
-    let wald_columns = wald_columns(prepared.prepared(), &coefficients)?;
+    let (wald_columns, wald_reference) = wald_columns(prepared.prepared(), &coefficients, &fit)?;
     let reported_finite_rank = coefficients
         .kept_full_slots()
         .len()
@@ -494,6 +495,7 @@ pub fn fit_prepared_ppml_interruptible(
                 clusters: &cluster_codes,
                 requested_vce: request.vce,
                 wald_columns: &wald_columns,
+                wald_reference: wald_reference.as_ref(),
                 certificate_tolerance: request.ppml.tolerance,
             },
             resolved_linear.execution.threads,
@@ -620,6 +622,7 @@ pub fn fit_prepared_ppml_interruptible(
     drop(separation_outcome.original_axis_reasons);
     drop(separation_outcome.candidate_original_rows);
     drop(wald_columns);
+    drop(wald_reference);
     drop(omission_statuses);
     drop(requested_saved_channels);
     drop(loaded.bias_units);
@@ -1584,7 +1587,11 @@ fn map_coefficients(
 fn wald_columns(
     model: &PreparedPpmlModel,
     coefficients: &PpmlCoefficientOutput,
-) -> Result<Vec<usize>> {
+    fit: &PreparedPpmlIrlsFit,
+) -> Result<(Vec<usize>, Option<super::PpmlWaldReference>)> {
+    if let Some(constant) = fit.linear().constant_representation() {
+        return constant_wald_columns(coefficients.kept_full_slots(), constant);
+    }
     let mut columns = Vec::new();
     columns
         .try_reserve_exact(coefficients.kept_full_slots().len())
@@ -1608,7 +1615,7 @@ fn wald_columns(
             columns.push(slot);
         }
     }
-    Ok(columns)
+    Ok((columns, None))
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -2751,6 +2758,140 @@ mod tests {
     }
 
     #[test]
+    fn constant_factor_model_wald_is_basis_and_outcome_scale_invariant() {
+        for memory in [MemoryMode::Fast, MemoryMode::Low] {
+            for workers in [1, 4] {
+                for scale in [1.0, 2.0] {
+                    let (mut request, loaded) = constant_wald_fixture(false, scale);
+                    request.memory.requested = memory;
+                    request.linear.execution.threads =
+                        crate::options::ThreadConfig::from_requested(workers, true).unwrap();
+                    let result = fit_prepared_ppml(request, loaded).expect("constant-factor model");
+                    assert_eq!(
+                        result.coefficients().statuses(),
+                        &[
+                            PpmlCoefficientStatus::Identified,
+                            PpmlCoefficientStatus::Identified,
+                            PpmlCoefficientStatus::NumericallyRankDeficient,
+                        ]
+                    );
+                    assert!((result.coefficients().values()[0] - 3.0_f64.ln()).abs() < 1e-9);
+                    assert!((result.inference().vce.covariance[0] - 5. / 27.).abs() < 1e-9);
+                    assert_eq!(result.inference().wald.degrees_of_freedom, 1);
+                    assert!(
+                        (result.inference().wald.statistic.unwrap()
+                            - (27. / 5.) * 3.0_f64.ln().powi(2))
+                        .abs()
+                            < 1e-8
+                    );
+                    let reference = result.inference().wald.reference.as_ref().unwrap();
+                    assert!(reference.span_error() <= reference.span_tolerance());
+                    assert_eq!(reference.slot(), 1);
+                    for (row, &mean) in result.output().mean().iter().enumerate() {
+                        assert!((mean - scale * if row < 3 { 1. } else { 3. }).abs() < 1e-8);
+                    }
+                }
+            }
+        }
+    }
+
+    // The cellwise residuals sum to zero and are orthogonal to z=(1,2,3).
+    // Thus mu=(1,1,1,3,3,3) is an independent Poisson optimum. Direct dummy
+    // sandwich algebra gives V[x,x]=13/45 with slope-only FE, and 5/27 without.
+    fn constant_wald_fixture(slopes: bool, scale: f64) -> (PreparedPpmlRequestV1, LoadedPpmlInput) {
+        let (mut request, mut loaded) =
+            fixture(usize::from(slopes), false, false, false, false, false);
+        let f = SourceId::new(if slopes { 3 } else { 2 }).unwrap();
+        request.ols.model.sources.push(source(f, "f"));
+        request
+            .ols
+            .model
+            .terms
+            .push(categorical_term(2, f, 1.0, false));
+        request.ols.bindings.push(OlsInputBinding {
+            stata_var_position: if slopes { 5 } else { 4 },
+            role: OlsInputRole::NumericSource(f),
+        });
+        loaded.ols.candidate = vec![true; 6];
+        loaded.ols.outcome = column(if slopes {
+            &[1.25, 0.5, 1.25, 3.5, 2.0, 3.5]
+        } else {
+            &[0.5, 1.0, 1.5, 1.0, 3.0, 5.0]
+        });
+        loaded
+            .ols
+            .outcome
+            .values
+            .iter_mut()
+            .for_each(|y| *y *= scale);
+        loaded.ols.numeric_sources[0].1 = column(&[0., 0., 0., 1., 1., 1.]);
+        loaded.ols.numeric_sources.push((f, column(&[1.; 6])));
+        if slopes {
+            loaded.ols.numeric_sources[1].1 = column(&[1., 1., 1., 2., 2., 2.]);
+            let z = SourceId::new(4).unwrap();
+            request.ols.model.sources.push(source(z, "z"));
+            request.ols.bindings.push(OlsInputBinding {
+                stata_var_position: 6,
+                role: OlsInputRole::NumericSource(z),
+            });
+            request.ols.absorbed_terms[0].intercept = false;
+            request.ols.absorbed_terms[0].slope_sources.push(z);
+            loaded
+                .ols
+                .numeric_sources
+                .push((z, column(&[1., 2., 3., 1., 2., 3.])));
+        }
+        (request, loaded)
+    }
+
+    #[test]
+    fn constant_wald_with_partial_slope_absorption_matches_dummy_sandwich() {
+        for memory in [MemoryMode::Fast, MemoryMode::Low] {
+            for workers in [1, 4] {
+                let (mut request, loaded) = constant_wald_fixture(true, 1.0);
+                request.memory.requested = memory;
+                request.linear.execution.threads =
+                    crate::options::ThreadConfig::from_requested(workers, true).unwrap();
+                let result = fit_prepared_ppml(request, loaded).expect("partly absorbed constant");
+                assert_eq!(result.inference().wald.degrees_of_freedom, 1);
+                assert!((result.coefficients().values()[0] - 3.0_f64.ln()).abs() < 1e-8);
+                assert!((result.inference().vce.covariance[0] - 13.0 / 45.0).abs() < 1e-8);
+                assert!(
+                    (result.inference().wald.statistic.unwrap()
+                        - (45.0 / 13.0) * 3.0_f64.ln().powi(2))
+                    .abs()
+                        < 1e-7
+                );
+                assert!(result.inference().wald.reference.is_some());
+                for (row, &mean) in result.output().mean().iter().enumerate() {
+                    assert!((mean - if row < 3 { 1.0 } else { 3.0 }).abs() < 1e-8);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn constant_wald_proof_interruption_returns_no_composite_result() {
+        let (request, loaded) = constant_wald_fixture(false, 1.0);
+        let caller = std::thread::current().id();
+        let mut inference_started = false;
+        let error = fit_prepared_ppml_interruptible(request, loaded, &mut |point| {
+            assert_eq!(std::thread::current().id(), caller);
+            inference_started |= point == PpmlInterruptPoint::Inference;
+            if point == PpmlInterruptPoint::InferenceSubset && !inference_started {
+                return Err(FeregError::new(
+                    ErrorCode::Interrupted,
+                    "constant proof interrupted",
+                ));
+            }
+            Ok(())
+        })
+        .expect_err("constant proof must interrupt before inference/publication");
+        assert_eq!(error.code, ErrorCode::Interrupted);
+        assert!(!inference_started);
+    }
+
+    #[test]
     fn whole_factor_level_separation_rebuilds_on_the_original_axis() {
         for removed in [1.0, 3.0] {
             let (mut request, mut loaded) = factor_rebase_fixture();
@@ -2857,6 +2998,10 @@ mod tests {
             let expected = if row < 5 { 9.0 / 5.0 } else { 22.0 / 5.0 };
             assert!((mean - expected).abs() < 1e-9);
         }
+        assert_eq!(result.inference().wald.degrees_of_freedom, 1);
+        let independent_wald =
+            (log_means[1] - log_means[0]).powi(2) / (variances[0] + variances[1]);
+        assert!((result.inference().wald.statistic.unwrap() - independent_wald).abs() < 1e-8);
         assert_eq!(result.coefficients().kept_full_slots().len(), 2);
         assert_eq!(result.output().mean().len(), 10);
     }

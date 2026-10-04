@@ -352,6 +352,12 @@ matrix. Robust and one-way clustered covariance must already satisfy the
 strict PSD policy; they do not receive that multiway repair. Do not clip individual scores, coefficients or
 subset meats. Wald rank and missing/undefined test statistics preserve the
 canonical identified coordinates. OLS uses t/F; PPML uses z/Wald chi-squared.
+The PPML model Wald leaves absorbed effects and the structural constant
+unrestricted: it tests whether `eta−offset` lies in `span(D,1)`. Its null and
+degrees of freedom are invariant to which identified recipes represent that
+constant, including when the explicit `_cons` slot is numerically omitted.
+Preserve original coefficient slots, base/omission flags and the accepted basis;
+use identified contrasts when a nuisance constant spans several kept columns.
 
 Tests: `tests/prepared_{robust,clustered}_oracle.rs`,
 `tests/categorical_{iid,robust,clustered}_oracle.rs`, `src/ppml/psd.rs`,

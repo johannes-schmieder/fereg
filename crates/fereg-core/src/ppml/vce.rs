@@ -1,5 +1,6 @@
 #![allow(clippy::needless_range_loop)]
 
+use super::wald::{compute_ppml_wald, validate_reference, PpmlWaldReference};
 use crate::data::DenseMatrix;
 use crate::data::WeightKind;
 use crate::error::{ErrorCode, FeregError, Result};
@@ -227,6 +228,7 @@ pub struct PpmlWaldReport {
     pub statistic: Option<f64>,
     pub degrees_of_freedom: usize,
     pub tested_columns: Vec<usize>,
+    pub reference: Option<PpmlWaldReference>,
     pub distribution: PpmlTestDistribution,
     pub solve_relative_infinity_norm: f64,
 }
@@ -374,6 +376,7 @@ pub struct PpmlInferenceInput<'a, D = &'a DenseMatrix> {
     /// Explicit model-test coordinates, normally identified slopes excluding
     /// the structural constant normalization.
     pub wald_columns: &'a [usize],
+    pub wald_reference: Option<&'a PpmlWaldReference>,
     pub certificate_tolerance: f64,
 }
 
@@ -665,6 +668,7 @@ where
         &covariance,
         full_dimension,
         input.wald_columns,
+        input.wald_reference,
         input.certificate_tolerance,
     )?;
     interrupt()?;
@@ -921,6 +925,11 @@ where
             "PPML Wald slots must be a strictly increasing subset of identified full slots",
         ));
     }
+    validate_reference(
+        input.wald_columns,
+        input.wald_reference,
+        input.kept_full_slots,
+    )?;
     if input.clusters.len() > 5
         || input.clusters.iter().any(|cluster| cluster.len() != rows)
         || (input.requested_vce == PpmlVceRequest::Clustered && input.clusters.is_empty())
@@ -1442,119 +1451,7 @@ fn matrix_symmetry_error(matrix: &[f64], dimension: usize) -> Result<f64> {
     }
 }
 
-pub(crate) fn compute_ppml_wald(
-    coefficients: &[f64],
-    covariance: &[f64],
-    full_dimension: usize,
-    tested: &[usize],
-    tolerance: f64,
-) -> Result<PpmlWaldReport> {
-    if tested.is_empty() {
-        return Ok(PpmlWaldReport {
-            statistic: None,
-            degrees_of_freedom: 0,
-            tested_columns: Vec::new(),
-            distribution: PpmlTestDistribution::ChiSquared,
-            solve_relative_infinity_norm: 0.0,
-        });
-    }
-    let dimension = tested.len();
-    let mut matrix = filled(
-        dimension.checked_mul(dimension).ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "PPML Wald dimensions overflow")
-        })?,
-        0.0_f64,
-        "unable to reserve PPML Wald covariance",
-    )?;
-    let mut rhs = filled(
-        dimension,
-        0.0_f64,
-        "unable to reserve PPML Wald right-hand side",
-    )?;
-    for (row, &source_row) in tested.iter().enumerate() {
-        rhs[row] = coefficients[source_row];
-        for (column, &source_column) in tested.iter().enumerate() {
-            matrix[row * dimension + column] =
-                covariance[source_row * full_dimension + source_column];
-        }
-    }
-    let scale = matrix
-        .iter()
-        .map(|value| value.abs())
-        .fold(0.0_f64, f64::max)
-        .max(f64::MIN_POSITIVE);
-    let mut lower = filled(
-        matrix.len(),
-        0.0_f64,
-        "unable to reserve PPML Wald Cholesky factor",
-    )?;
-    for row in 0..dimension {
-        for column in 0..=row {
-            let mut value = matrix[row * dimension + column];
-            for inner in 0..column {
-                value -= lower[row * dimension + inner] * lower[column * dimension + inner];
-            }
-            if row == column {
-                if value <= tolerance * scale {
-                    return Ok(PpmlWaldReport {
-                        statistic: None,
-                        degrees_of_freedom: dimension,
-                        tested_columns: fallible_copy(
-                            tested,
-                            "unable to reserve PPML singular-Wald slot identities",
-                        )?,
-                        distribution: PpmlTestDistribution::ChiSquared,
-                        solve_relative_infinity_norm: 0.0,
-                    });
-                }
-                lower[row * dimension + column] = value.sqrt();
-            } else {
-                lower[row * dimension + column] = value / lower[column * dimension + column];
-            }
-        }
-    }
-    let mut solution = fallible_copy(&rhs, "unable to reserve PPML Wald solution")?;
-    for row in 0..dimension {
-        for column in 0..row {
-            solution[row] -= lower[row * dimension + column] * solution[column];
-        }
-        solution[row] /= lower[row * dimension + row];
-    }
-    for row in (0..dimension).rev() {
-        for column in (row + 1)..dimension {
-            solution[row] -= lower[column * dimension + row] * solution[column];
-        }
-        solution[row] /= lower[row * dimension + row];
-    }
-    let mut statistic = 0.0_f64;
-    let mut residual_norm = 0.0_f64;
-    let mut reference_norm = f64::MIN_POSITIVE;
-    for row in 0..dimension {
-        statistic = rhs[row].mul_add(solution[row], statistic);
-        let mut fitted = 0.0_f64;
-        for column in 0..dimension {
-            fitted = matrix[row * dimension + column].mul_add(solution[column], fitted);
-        }
-        residual_norm = residual_norm.max((fitted - rhs[row]).abs());
-        reference_norm = reference_norm.max(fitted.abs()).max(rhs[row].abs());
-    }
-    let solve_error = residual_norm / reference_norm;
-    if !statistic.is_finite() || statistic < -tolerance || !solve_error.is_finite() {
-        return Err(FeregError::new(
-            ErrorCode::NonConvergence,
-            "PPML Wald chi-squared calculation is not publishable",
-        ));
-    }
-    Ok(PpmlWaldReport {
-        statistic: Some(statistic.max(0.0)),
-        degrees_of_freedom: dimension,
-        tested_columns: fallible_copy(tested, "unable to reserve PPML Wald slot identities")?,
-        distribution: PpmlTestDistribution::ChiSquared,
-        solve_relative_infinity_norm: solve_error,
-    })
-}
-
-fn filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
+pub(super) fn filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
     let mut output = Vec::new();
     output
         .try_reserve_exact(elements)
@@ -1563,7 +1460,7 @@ fn filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<
     Ok(output)
 }
 
-fn fallible_copy<T: Clone>(source: &[T], message: &'static str) -> Result<Vec<T>> {
+pub(super) fn fallible_copy<T: Clone>(source: &[T], message: &'static str) -> Result<Vec<T>> {
     let mut output = Vec::new();
     output
         .try_reserve_exact(source.len())
@@ -1646,6 +1543,7 @@ pub(crate) fn compute_ppml_vce(input: PpmlVceInput<'_>) -> Result<VceReport> {
             VceKind::Clustered => PpmlVceRequest::Clustered,
         },
         wald_columns: &[],
+        wald_reference: None,
         certificate_tolerance: 1e-9,
     })?;
     Ok(VceReport {
@@ -1698,6 +1596,7 @@ mod tests {
                             clusters: &[&[0, 1, 0, 1]],
                             requested_vce: PpmlVceRequest::Clustered,
                             wald_columns: &[],
+                            wald_reference: None,
                             certificate_tolerance: 1e-12,
                         },
                         ThreadConfig::from_requested(threads, true).unwrap(),
@@ -1746,6 +1645,7 @@ mod tests {
             clusters: &[],
             requested_vce: PpmlVceRequest::Robust,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: 1e-12,
         })
         .unwrap();
@@ -1921,6 +1821,7 @@ mod tests {
                         clusters: &[],
                         requested_vce: PpmlVceRequest::Robust,
                         wald_columns: &[],
+                        wald_reference: None,
                         certificate_tolerance: 1e-10,
                     },
                     ThreadConfig::from_requested(threads, true).unwrap(),
@@ -2001,6 +1902,7 @@ mod tests {
                     clusters: &clusters,
                     requested_vce,
                     wald_columns: &[],
+                    wald_reference: None,
                     certificate_tolerance: 1e-9,
                 },
                 ThreadConfig::from_requested(requested, true).expect("thread config"),
@@ -2088,6 +1990,7 @@ mod tests {
             clusters: &[],
             requested_vce: PpmlVceRequest::Robust,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: 1e-10,
         })
         .expect_err("finite score-design product overflow must fail publication");
@@ -2121,6 +2024,7 @@ mod tests {
             clusters: &[],
             requested_vce: PpmlVceRequest::Robust,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: 1e-10,
         })
         .expect_err("malformed estimator design must retain data-domain taxonomy");
@@ -2149,6 +2053,7 @@ mod tests {
             clusters: &[],
             requested_vce: PpmlVceRequest::Unadjusted,
             wald_columns: &[1],
+            wald_reference: None,
             certificate_tolerance: 1e-10,
         })
         .expect("inference");
@@ -2193,6 +2098,7 @@ mod tests {
             clusters: &[],
             requested_vce: PpmlVceRequest::Robust,
             wald_columns: &[0, 2],
+            wald_reference: None,
             certificate_tolerance: 1e-10,
         })
         .expect("compact mapped inference");
@@ -2230,6 +2136,7 @@ mod tests {
             clusters: &[],
             requested_vce: PpmlVceRequest::Robust,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: 1e-10,
         })
         .expect("compact inference");
@@ -2260,6 +2167,7 @@ mod tests {
             clusters: &[],
             requested_vce: PpmlVceRequest::Robust,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: 1e-10,
         })
         .expect("expanded inference");
@@ -2302,6 +2210,7 @@ mod tests {
                 clusters: &[],
                 requested_vce: PpmlVceRequest::Robust,
                 wald_columns: &[],
+                wald_reference: None,
                 certificate_tolerance: 1e-10,
             })
             .expect("pweight inference")
@@ -2341,6 +2250,7 @@ mod tests {
             clusters: &cluster_slices,
             requested_vce: PpmlVceRequest::Clustered,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: 1e-9,
         })
         .expect("five-way inference");
@@ -2375,6 +2285,7 @@ mod tests {
             clusters: &[&first, &second],
             requested_vce: PpmlVceRequest::Clustered,
             wald_columns: &[],
+            wald_reference: None,
             certificate_tolerance: 1e-10,
         })
         .expect("clustered rank-zero inference");

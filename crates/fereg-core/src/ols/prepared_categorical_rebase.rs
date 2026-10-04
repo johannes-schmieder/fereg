@@ -162,10 +162,10 @@ struct CategoricalBasePolicy {
 }
 
 /// The guarded metadata wire does not distinguish Stata's default minimum
-/// base from an explicit `ib<minimum>.` request. The Stata caller rejects all
-/// explicit base syntax and `fvset` overrides before dispatch; this native
-/// preflight independently rejects every graph that is observably not the
-/// default one-base/minimum-level policy.
+/// base from an explicit `ib<minimum>.` request. Public syntax restrictions
+/// belong to Stata. This native preflight retains the observable minimum-base
+/// rule, allowing Stata's unbased single-level graph without choosing a base
+/// or changing the original recipe's omission status.
 fn validate_default_base_policy(graph: &CompiledTermGraph) -> Result<()> {
     let mut policies = Vec::new();
     policies
@@ -216,7 +216,20 @@ fn validate_default_base_policy(graph: &CompiledTermGraph) -> Result<()> {
         }
     }
     for policy in policies {
-        if policy.base_level_bits != Some(policy.minimum_level_bits) {
+        let single_unbased_level = policy.base_level_bits.is_none()
+            && graph
+                .terms
+                .iter()
+                .flat_map(|term| &term.components)
+                .all(|component| {
+                    component.source != policy.source
+                        || component.kind != ComponentKind::Categorical
+                        || component.level_state != LevelState::Present
+                        || component.time_series_state != TimeSeriesState::None
+                        || canonical_factor_value(component.level_value).to_bits()
+                            == policy.minimum_level_bits
+                });
+        if !single_unbased_level && policy.base_level_bits != Some(policy.minimum_level_bits) {
             return Err(unsupported(
                 "categorical final-sample rebasing requires Stata's default minimum base policy",
             ));
@@ -266,6 +279,9 @@ fn final_term_kind(
                 && component.level_state == LevelState::Present
                 && component.time_series_state == TimeSeriesState::None =>
         {
+            if term.whole_column_omitted {
+                return Ok(None);
+            }
             let categorical_source_index = categorical_source_index(sources, component.source)?;
             let source = &sources[categorical_source_index];
             let level_code = source.resolve_level(topology, component.level_value)?;
@@ -285,6 +301,9 @@ fn final_term_kind(
                         && component.time_series_state == TimeSeriesState::None
                 }) =>
         {
+            if term.whole_column_omitted {
+                return Ok(None);
+            }
             let mut prepared_components = Vec::new();
             prepared_components
                 .try_reserve_exact(components.len())
@@ -479,6 +498,85 @@ mod tests {
             .expect_err("no-base syntax must fail closed");
         assert_eq!(no_base.code, ErrorCode::Unsupported);
         assert!(no_base.message.contains("default minimum base policy"));
+    }
+
+    #[test]
+    fn single_declared_level_does_not_require_or_infer_a_base() {
+        let mut graph = factor_graph(None);
+        graph.terms.truncate(1);
+        validate_default_base_policy(&graph).expect("active single-level default graph");
+        assert!(!graph.terms[0].whole_column_omitted);
+        assert_eq!(graph.terms[0].components[0].base, MetadataFlag::False);
+
+        // Repeated interaction occurrences are one declared level, even when
+        // the actual source will contain other levels (a selected 2.f recipe).
+        graph.terms[0].components[0].level_value = 2.0;
+        let mut repeated = graph.terms[0].components[0].clone();
+        repeated.order = ComponentOrder::new(2).expect("component order");
+        graph.terms[0].components.push(repeated);
+        graph.terms[0].raw_kind = RawTermKind::Interaction;
+        validate_default_base_policy(&graph).expect("one distinct declared level");
+        graph.terms[0].components[1].level_value = 3.0;
+        assert_eq!(
+            validate_default_base_policy(&graph)
+                .expect_err("two unbased levels")
+                .code,
+            ErrorCode::Unsupported
+        );
+
+        let mut multiple = factor_graph(Some(1.0));
+        multiple.terms[1].components[0].base = MetadataFlag::True;
+        assert_eq!(
+            validate_default_base_policy(&multiple)
+                .expect_err("multiple bases")
+                .code,
+            ErrorCode::Unsupported
+        );
+
+        // Omission does not erase a level from the original declaration.
+        let mut omitted_second_level = factor_graph(None);
+        omitted_second_level.terms.truncate(2);
+        omitted_second_level.terms[1].whole_column_omitted = true;
+        omitted_second_level.terms[1].components[0].omitted = MetadataFlag::True;
+        assert_eq!(
+            validate_default_base_policy(&omitted_second_level)
+                .expect_err("omitted distinct unbased level remains declared")
+                .code,
+            ErrorCode::Unsupported
+        );
+    }
+
+    #[test]
+    fn omitted_recipes_skip_final_sources_but_retain_grammar_validation() {
+        let mut graph = factor_graph(Some(1.0));
+        graph.terms.truncate(1);
+        let model = PreparedOlsModel {
+            coefficients: Vec::new(),
+            columns: Vec::new(),
+        };
+        let topology =
+            crate::fe::finalize_categorical_topology(&[], &[], &[]).expect("empty topology");
+        assert_eq!(
+            final_term_kind(&graph.terms[0], &model, &[], &topology)
+                .expect("omitted factor needs no executable source"),
+            None
+        );
+        let mut component = graph.terms[0].components[0].clone();
+        component.order = ComponentOrder::new(2).expect("component order");
+        graph.terms[0].components.push(component);
+        graph.terms[0].raw_kind = RawTermKind::Interaction;
+        assert_eq!(
+            final_term_kind(&graph.terms[0], &model, &[], &topology)
+                .expect("omitted interaction needs no executable sources"),
+            None
+        );
+        graph.terms[0].components[0].time_series_state = TimeSeriesState::Materialized;
+        assert_eq!(
+            final_term_kind(&graph.terms[0], &model, &[], &topology)
+                .expect_err("omitted categorical TS is still unsupported")
+                .code,
+            ErrorCode::Unsupported
+        );
     }
 
     fn factor_graph(base_level: Option<f64>) -> CompiledTermGraph {

@@ -126,6 +126,17 @@ impl PpmlMetadataMemory {
                 ])?)
                 .ok_or_else(overflow)?,
         )?;
+        // Rank is unknown at preflight. Two staged/accepted constant recipes
+        // (each one f64 and one usize per slot) dominate final contrast/replay
+        // owners. Declared absorbed intercepts never require this finite null.
+        if !request.absorbed_terms.iter().any(|effect| effect.intercept) {
+            add(
+                &mut result,
+                bytes::<(f64, usize)>(slots)?
+                    .checked_mul(2)
+                    .ok_or_else(overflow)?,
+            )?;
+        }
         // The candidate model remains alive while the compact model and its
         // nested interaction recipes are rebuilt. Their main descriptors
         // are otherwise counted once in prepared_model_metadata_bytes.

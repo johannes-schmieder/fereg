@@ -26,6 +26,10 @@ use std::cell::Cell;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Instant;
 
+#[path = "linear_constant.rs"]
+mod linear_constant;
+pub(crate) use linear_constant::LinearConstantRepresentation;
+
 #[path = "bias_linear.rs"]
 mod bias_linear;
 
@@ -331,6 +335,7 @@ pub(crate) struct LinearWithinMemoryReport {
 pub(crate) struct LinearSessionWorkspaceCapacities {
     pub(crate) accepted_fit: [usize; 6],
     pub(crate) accepted_fit_optional_owners: bool,
+    pub(crate) constant_recipe_elements: usize,
     pub(crate) within_metadata: [usize; 5],
     pub(crate) basis_metadata: [usize; 3],
     pub(crate) response_elements: usize,
@@ -426,6 +431,7 @@ struct StrictLinearRollbackState {
     active_positions: Vec<usize>,
     within_certificate: LinearWithinDesignCertificate,
     fit: Option<CertifiedPreparedOlsFit>,
+    constant: Option<LinearConstantRepresentation>,
     frozen_step: Option<CertifiedFrozenLinearStep>,
     finite_predictor: Vec<f64>,
     absorbed_predictor: Vec<f64>,
@@ -1447,6 +1453,7 @@ fn merge_canonical_projection_reports(
 /// within-design row access alive after the iterative session is consumed.
 pub(crate) struct CertifiedLinearSessionProducts {
     fit: CertifiedPreparedOlsFit,
+    constant: Option<LinearConstantRepresentation>,
     identified_bread: Vec<f64>,
     generations: LinearSessionGenerations,
     basis: FrozenLinearBasis,
@@ -1458,6 +1465,10 @@ pub(crate) struct CertifiedLinearSessionProducts {
 }
 
 impl CertifiedLinearSessionProducts {
+    pub(crate) fn constant_representation(&self) -> Option<&LinearConstantRepresentation> {
+        self.constant.as_ref()
+    }
+
     pub(crate) const fn fit(&self) -> &CertifiedPreparedOlsFit {
         &self.fit
     }
@@ -1520,6 +1531,7 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
     frozen_basis: Option<FrozenLinearBasis>,
     within: Option<RetainedWithinDesign>,
     fit: Option<CertifiedPreparedOlsFit>,
+    constant: Option<LinearConstantRepresentation>,
     frozen_step: Option<CertifiedFrozenLinearStep>,
     finite_predictor: Vec<f64>,
     absorbed_predictor: Vec<f64>,
@@ -1917,6 +1929,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             frozen_basis: None,
             within: None,
             fit: None,
+            constant: None,
             frozen_step: None,
             finite_predictor: Vec::new(),
             absorbed_predictor: Vec::new(),
@@ -2112,6 +2125,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             CertifiedPreparedOlsFit::session_capacity_inventory,
         );
         LinearSessionWorkspaceCapacities {
+            constant_recipe_elements: self
+                .constant
+                .as_ref()
+                .map_or(0, |constant| constant.capacity_elements()),
             accepted_fit,
             accepted_fit_optional_owners,
             within_metadata: self.within.as_ref().map_or([0; 5], |within| {
@@ -2966,6 +2983,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             active_positions,
             within_certificate: prior_certificate,
             fit: self.fit.take(),
+            constant: self.constant.take(),
             frozen_step: self.frozen_step.take(),
             finite_predictor: std::mem::take(&mut self.finite_predictor),
             absorbed_predictor: std::mem::take(&mut self.absorbed_predictor),
@@ -3001,6 +3019,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             within.generations = WithinGenerations::from_session(self.generations);
         }
         self.fit = rollback.fit;
+        self.constant = rollback.constant;
         self.frozen_step = rollback.frozen_step;
         self.finite_predictor = rollback.finite_predictor;
         self.absorbed_predictor = rollback.absorbed_predictor;
@@ -3152,8 +3171,24 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     /// Consume a session after its final canonical solve while preserving the
     /// final within storage for inference.
-    pub(crate) fn into_current_products(mut self) -> Result<CertifiedLinearSessionProducts> {
+    pub(crate) fn into_current_products(
+        mut self,
+        interrupt: &mut dyn FnMut() -> Result<()>,
+    ) -> Result<CertifiedLinearSessionProducts> {
         self.output()?;
+        if let Some(constant) = &mut self.constant {
+            constant.certify(
+                self.within.as_ref().expect("validated final within design"),
+                self.frozen_basis.as_ref().expect("validated final basis"),
+                (
+                    self.weights.borrowed(),
+                    self.bread_weight_scale.solver_weight_divisor,
+                ),
+                self.generations,
+                &mut self.frozen_workspace.row,
+                interrupt,
+            )?;
+        }
         fill_identified_bread(
             self.fit.as_ref().ok_or_else(|| {
                 invalid_argument("weighted-linear session has no final fit to hand off")
@@ -3172,6 +3207,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             })?
             .compact_for_inference()?;
         Ok(CertifiedLinearSessionProducts {
+            constant: self.constant,
             fit: self.fit.ok_or_else(|| {
                 invalid_argument("weighted-linear session has no final fit to hand off")
             })?,
@@ -3761,6 +3797,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         within.certificate = candidate.within_certificate;
         report.predictor_workspace_reused = predictor_workspace_reused;
         report.certificate_workspace_reused = true;
+        self.constant = candidate.constant;
         self.fit = Some(candidate.fit);
         if let Some(basis) = candidate_basis {
             self.frozen_basis = Some(basis);
@@ -4600,6 +4637,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
         let candidate_count = workspace.candidate_ids.len();
         let candidate_square = checked_elements(candidate_count, candidate_count)?;
+        let mut constant = None;
         let (rank, maximum_dropped_relative_norm, condition_proxy) = if candidate_count == 0 {
             workspace.gram.clear();
             workspace.rhs.clear();
@@ -4868,6 +4906,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         "retained weighted-linear direct dropped-span certificate did not pass",
                     ));
                 }
+                constant = LinearConstantRepresentation::capture(
+                    self.prepared.fit_model(),
+                    retained,
+                    workspace,
+                    rank,
+                    report.initial_norm,
+                    relative_threshold,
+                    self.generations,
+                )?;
                 let rank_square = checked_elements(rank, rank)?;
                 resize_zeroed(
                     &mut workspace.inverse_lower,
@@ -5454,6 +5501,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             draft,
         )?;
         Ok(RetainedRankSolveDraft {
+            constant,
             fit,
             finite_predictor,
             active_positions,
@@ -6739,6 +6787,7 @@ struct FrozenSolveDraft {
 }
 
 struct RetainedRankSolveDraft {
+    constant: Option<LinearConstantRepresentation>,
     fit: CertifiedPreparedOlsFit,
     finite_predictor: Vec<f64>,
     active_positions: Vec<usize>,

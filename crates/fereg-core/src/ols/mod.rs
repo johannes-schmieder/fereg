@@ -40,7 +40,7 @@ pub(crate) use linear_session::{
     classify_frozen_linear_fallback, CertifiedLinearSession, CertifiedLinearSessionOutput,
     CertifiedLinearSessionProducts, CertifiedLinearWithinDesign, FrozenLinearBasis,
     FrozenLinearBasisSlot, FrozenLinearFallbackKind, FrozenLinearSolveCertificate,
-    LinearReconstructionCertificate, LinearSessionGenerations,
+    LinearConstantRepresentation, LinearReconstructionCertificate, LinearSessionGenerations,
     LinearSessionPhaseAllocationObservation, LinearSessionReuseReport, LinearSessionSolveKind,
     LinearSessionWorkspaceCapacities, LinearWithinDesignCertificate, LinearWithinMemoryReport,
     PpmlOrdinaryLinearOutput, StrictLinearCandidateTransaction,
