@@ -10,6 +10,7 @@ Do not resurrect "retain prior policy" instructions from historical documents.
 
 - [0247](0247-incremental-refactoring.md): working copy and frozen comparator.
 - [0248](0248-refactoring-acceptance.md): scientific/change checks, gates and ratchet.
+- [0249](0249-general-execution-and-acceptance.md): scoped algorithm changes, worker budgets and broad performance acceptance.
 - Rebuild 0003, 0008 and 0009 remain active only as amended/indexed below.
 
 ## Staged rebuild dispositions

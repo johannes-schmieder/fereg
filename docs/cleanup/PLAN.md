@@ -1,5 +1,10 @@
 # Incremental refactoring: M0–M24
 
+The [second simplification program](../../milestones2.md) defines the approved
+M26–M35 architectural direction and acceptance policy. M25 below remains a
+reserved source-local proposal; its execution is not a prerequisite for that
+program. [MILESTONES](../../MILESTONES.md) alone records execution status.
+
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
 Historical plan and evidence remain at 15a57ba285a3afede2e3337fe8598e72529a4090.
 [AGENTS](../../AGENTS.md), [SPEC](../SPEC.md) and the [active ADR index](../adr/README.md)

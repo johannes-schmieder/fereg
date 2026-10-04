@@ -10,7 +10,7 @@ fixed-effect absorption, estimation and inference.
 2. `docs/SPEC.md`: scientific results and failure behavior.
 3. Active decisions listed in `docs/adr/README.md` only.
 4. `docs/ARCHITECTURE.md`: current module map and measured hotspots.
-5. `docs/cleanup/PLAN.md`: approved M0–M24 tasks; `MILESTONES.md`: status.
+5. `docs/cleanup/PLAN.md` and `milestones2.md`: scoped plans; `MILESTONES.md`: status.
 6. Tests and code.
 
 Historical ADRs are non-binding. Their requirements bind only where retained
@@ -52,6 +52,10 @@ next-specific frontend adjustment must prove legacy behavior unchanged.
   preserve scientific bits and available solver/route signatures versus its
   parent. Numerical fixes must leave unaffected cases/fields bit-identical.
   Timing, build identity and observed memory are not scientific bit targets.
+- Second-program algorithm/arithmetic/storage changes follow `milestones2.md`
+  and active ADR 0249: declare affected scope before implementation, preserve
+  independent science and unaffected exact results. Threads are a worker budget
+  under the planned execution policy; bounded performance tradeoffs are explicit.
 - One substantive native call per estimation; validate before publication;
   failure leaves no partial results. Preserve existing rollback/Break checks.
 - SPI runs only on Stata's main thread. Workers access Rust-owned memory.
@@ -61,8 +65,9 @@ next-specific frontend adjustment must prove legacy behavior unchanged.
   implementations after qualification. Do not add N/width/thread/weight/memory
   route fences to protect individual benchmark cells. Kernel chunk sizes are
   distinct from algorithm-selection conditions.
-- A shared representation, FE interface and memory mode are future scoped
-  goals, not requirements to rewrite the working copy before it can run.
+- Shared preparation, FE operations and storage policies are scoped by
+  `milestones2.md`. Preserve public memory choices and retire old implementations
+  within qualified milestones; do not revive the abandoned clean-core engine.
 
 ## Gates, timeboxes and workflow
 

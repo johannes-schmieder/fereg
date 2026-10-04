@@ -1,6 +1,7 @@
 # Incremental refactoring — milestones
 
 Plan: [M0–M24](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Second program: [M26–M35](milestones2.md); M25 remains the reserved normalization-reuse proposal.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
 Current task: none. M24 attribution reviewed and qualified; M25 normalization reuse is proposed and remains unimplemented.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
@@ -66,6 +67,18 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M24.2 180 timed/36 warmup captures exact by scope; six tighter references, twelve samples; normalization reuse scoped with Astra help.
 - [x] M24.3 Separate Astra extra-high review approves; governance/links/ratchet and full Linux CI 37197177076 pass; no runtime change.
 
+- [x] M26.0 Roadmap and active ADR 0249 recorded; separate Astra extra-high review and local governance/links pass; runtime work not started.
+- [ ] M26.1 Freeze the qualified baseline, interaction/holdout matrix, performance envelope and quantified retirement inventory.
+- [ ] M27 Canonical prepared model and optional cluster metadata; retire duplicated owning pipelines.
+- [ ] M28 Common storage operations and owner-based memory admission.
+- [ ] M29 General worker-budget and kernel scheduling policy; Mac/SCC scaling qualification.
+- [ ] M30 Small structural FE portfolio and common scientific lifecycle.
+- [ ] M31 Shared finite weighted-linear operations; retire equivalent Fast/Low and retained/frozen pipelines.
+- [ ] M32 Inference and requested outputs from accepted shared products; full interaction qualification.
+- [ ] M33 PPML generation/state/certificate consolidation and repeated-work retirement.
+- [ ] M34 Whole-call integration, outstanding retirements and architecture/coverage refresh.
+- [ ] M35 Held-out, cross-platform, scaling and final independent acceptance.
+
 ## Gates
 
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
@@ -75,6 +88,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] G-M8: clean scientific/transaction checks, bounded paired timings, Linux CI and approved follow-up scopes.
 - [x] G-M9–M11: shared QR/PPML accounting, scheduling trial rejected, combined qualification and strategic review pass.
 - [x] G-M12–M21: ten scoped refactors, parent science, clean tranches/timings, Linux CI and separate Astra review complete.
+- [ ] G-M26–M35: architectural retirements, substantial measured simplification and broad scientific/performance acceptance.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
 ## Decisions
@@ -192,3 +206,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 G-M23 5bffd091 — clean73/five-thread/402912 values exact, CI37180419294 all pass; fresh Astra approves restored M22; [rejected experiment](bench/history/2026-10-04-m23-frozen-scan.json).
 - 2026-10-04 M24.1 this commit — 180 timed/36 warmup captures exact by scope, six tighter references/12 profiles; fresh Astra xhigh approves; docs/links/ratchet pass; push CI pending.
 - 2026-10-04 G-M24 c126f5d9 — CI37197177076 all three jobs pass; bounded attribution approved by separate Astra xhigh; [next proposal](docs/cleanup/PLAN.md).
+- 2026-10-04 M26.0 this commit — M26–M35 roadmap/ADR0249 recorded; Astra xhigh review and governance/links pass; [evidence](bench/history/2026-10-04-m26-roadmap.json).

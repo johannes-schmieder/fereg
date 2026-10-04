@@ -1,6 +1,7 @@
 # fereg behavioral specification
 
-This is the scientific contract for [incremental refactoring](cleanup/PLAN.md).
+This is the scientific contract for [incremental refactoring](cleanup/PLAN.md)
+and the [second simplification program](../milestones2.md).
 [MILESTONES](../MILESTONES.md) records implementation and qualification; this
 specification does not claim that a pending correction has shipped.
 
@@ -742,6 +743,12 @@ omission, separation and other discrete model decisions. Bitwise identity
 across different worker counts or platforms is not required. This explicitly
 supersedes rebuild ADR 0005; deterministic remains a supported option.
 
+The second program's planned execution policy treats threads(n) as an available
+worker budget. Stages may use fewer workers under general work/resource rules,
+with transparent requested, resolved-budget and effective concurrency. This
+target does not claim that existing feature-specific ceilings have been removed;
+their migration and cross-platform qualification belong to M29.
+
 The one-thread deterministic initial copy must match frozen legacy scientific
 bits on the replay corpus. No-numerical-change commits preserve bits and
 available solver/route signatures against the parent under equal build settings.
@@ -749,6 +756,12 @@ Numerical fixes declare affected cases/fields; unaffected science remains exact.
 Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
 Preserve Stata processor restoration on success, error and Break.
+
+Tasks under the second program may deliberately change algorithms, arithmetic
+order and storage under active ADR 0249. Declare affected outputs, routes and
+errors before implementation; require independent scientific acceptance and
+unchanged discrete model semantics. Unaffected outputs remain exact, and pure
+refactors retain exact route/bit checks. No post-hoc parity exception is implied.
 
 ## 19. Memory behavior
 
