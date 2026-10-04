@@ -1,0 +1,197 @@
+{
+  "schema": 1,
+  "milestone": "M22",
+  "qualified": false,
+  "comparison": {
+    "parent_commit": "160308c5c3b44a581faceca8794e69d15200916c",
+    "parent_runtime_source": "9c08141b17314563f3100b3cbe8e62dd65508837",
+    "parent_mac_sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1",
+    "candidate_source": "uncommitted m22-psd-worktree before certificate-cache cleanup",
+    "candidate_mac_sha256": "1f5dc2e79346c1332d5e91386aaeaf367e417c6d82462dcf96fe037ba317c235",
+    "frozen_legacy_changed": false
+  },
+  "ppml_witness": {
+    "original": "No-FE full-rank constant outcome y=2, N=16384, four continuous controls and six indicator columns, tolerance 1e-12; parent r430 despite tiny score.",
+    "independent_truth": "Unique finite optimum: all slopes zero, constant ln(2), fitted mean 2; original design singular values confirm rank 11 and condition number 7.885221451609008.",
+    "discarded_attempt": "Compensated retained Gram/RHS reduced drift but did not meet the unchanged coefficient target; reverted.",
+    "finite_repair": "Bounded independent row-residual/compensated-score inverse-Hessian correction reuses admitted banks; at most three corrections, unchanged coefficient envelope.",
+    "proved": "Known-optimum Rust fast/low regression passes; original constant-outcome native witness rc0. The benchmark-labelled IID cell actually omits vce(), using public PPML default robust; no PPML IID support is claimed.",
+    "psd_repair": "Only a failed row-relative eigensystem certificate gets tighter Jacobi refinement within existing buffers and rotation budget; independent SPD small-row closed-form regression passes at scales 1e-150, 1 and 1e100.",
+    "public_terminal": {
+      "fixture": "tests/stata/development/feppml_no_fe_strict_oracle.do",
+      "robust_first_cell": "unit/fast/thread1 passes",
+      "failed_cell": "unit/fast/thread1/cluster q",
+      "return_code": 430,
+      "message": "PPML numerical sandwich certificate failed: sandwich covariance diagonal is invalid",
+      "localization": "apply_ppml_psd_policy validates finite covariance before standard_errors rejects a negative diagonal; value and slot not yet captured. Rank-deficient tiny-score covariance and B M B transpose cancellation are hypotheses, not a demonstrated root cause."
+    },
+    "remaining": "Complete the constant-outcome cluster covariance repair and qualify all unit/FW/PW, fast/low, thread1/4 robust/cluster cells; no rounding/snapping, clipping or tolerance waiver.",
+    "original_fractional_terminal": {
+      "tolerance": 1e-12,
+      "default_robust_return_code": 0,
+      "cluster_q_return_code": 0,
+      "independent_robust_first4": {
+        "method": "Independent explicit N by11 Poisson Newton score/Hessian, no FE elimination or retained core kernel",
+        "iterations": 6,
+        "coefficient_error_first4": 1.3877787807814457e-17,
+        "coefficient_tolerance": 1e-12,
+        "design_rank": 11,
+        "hessian_condition": 81.88551640597817,
+        "normalized_score_infinity": 4.575333167888829e-17,
+        "native_coefficients": [
+          0.29795625025849776,
+          -0.1093254215770712,
+          0.10566878215938806,
+          -0.04927872577856637
+        ],
+        "oracle_coefficients_first4": [
+          0.29795625025849776,
+          -0.10932542157707122,
+          0.10566878215938805,
+          -0.04927872577856636
+        ]
+      },
+      "independent_cluster_first4": {
+        "method": "Independent explicit N by11 Poisson Newton score/Hessian",
+        "iterations": 6,
+        "coefficient_error_first4": 1.3877787807814457e-17,
+        "coefficient_tolerance": 1e-12,
+        "design_rank": 11,
+        "hessian_condition": 81.88551640597817,
+        "normalized_score_infinity": 4.575333167888829e-17
+      },
+      "limit": "Independent coefficient comparison covers the four continuous controls, not all covariance entries or the complete newly defined fixture matrix."
+    }
+  },
+  "cmg_witness": {
+    "fixture": "tests/stata/development/ols_near_within_cmg_oracle.do",
+    "original_return_code": 459,
+    "original_message": "borrowed CG Hestenes improvement potential became negative",
+    "localized": "First unretained CMG CG-polishing, before named-FE recovery: subtractive projection contaminated the off-span recurrence and produced enormous step lengths. The FE moment certificate alone missed forward error.",
+    "attempts": [
+      "Retiring energy-invalid independently moment-certified RHSs lost forward accuracy; reverted.",
+      "Retained-vector reconstruction did not exercise unretained polishing; reverted.",
+      "Shared stable group-mean action fixes independent forward/energy witness, but downstream named-FE reconstruction still fails."
+    ],
+    "current_repair": "CMG polishing uses the existing stable group-mean action, with optional products recorded by the same action. Standalone CG action and energy/recurrence audits are preserved; RHS tiling uses existing admitted banks.",
+    "proved": "Independent Hadamard forward accuracy passes; direct retained polishing requires coefficient reconstruction over weights/scales, threads1/4, widths4/65 and first width beyond fused tile. The CMG batch regression checks products only if the permitted fallback retained them.",
+    "public_terminal": {
+      "return_code": 459,
+      "message": "categorical recovery target is not certified to lie in the absorbed span",
+      "relative_infinity_residual": 2.104797e-07,
+      "source": "Named FE target formed by y-xb-residual has order1e-9 FE signal with order1e-15 cancellation contamination.",
+      "actual_threshold": "max(100*tolerance,1e-10); at tolerance1e-12 this is relative1e-10, approximately absolute1e-19 for the tiny target."
+    },
+    "remaining": "Investigate complete retained coefficient history and gauge to construct an in-span target; separately certify full original-model reconstruction. Retaining only a final correction after partial CMG fallback is insufficient. The public fixture stops at the first named-FE failure; later weight combinations remain unexecuted."
+  },
+  "checks": {
+    "full_local": true,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "native_parent_replay": {
+      "cases": 73,
+      "scientific_passes": 73,
+      "exact_differences": 0,
+      "passed": true
+    },
+    "mapped_licensed_stata": {
+      "distinct_fixtures": 46,
+      "passed": true
+    },
+    "new_public_witnesses_passed": false,
+    "five_thread_qualification": "Pre-cache run not performed; reviewed-cleanup run passes and is recorded in current_verification.",
+    "clean_timing": "not run; no performance claim",
+    "linux_ci": "not launched; failing witness gates prevent completion",
+    "committed_or_pushed": false,
+    "artifact_sha256": "1f5dc2e79346c1332d5e91386aaeaf367e417c6d82462dcf96fe037ba317c235",
+    "source_scope": "pre-cache cleanup binary; current verification recorded separately"
+  },
+  "complexity": {
+    "reviewed_core_production_delta": 260,
+    "host_delta": 0,
+    "purpose": "bounded correctness repair; no net-simplification or acceleration claim",
+    "unmeasured_cost": "Each retained PPML frame adds a serial N*K independent scan, potentially scratch I/O."
+  },
+  "astra_review": {
+    "model": "gpt-6-astra",
+    "reasoning_effort": "xhigh",
+    "read_only": true,
+    "verdict": "Both public issues remain unresolved/unqualified; M23 prerequisite unmet. No proved wrong-result defect found in the finite correction or stable action within their demonstrated domains.",
+    "findings": [
+      {
+        "priority": 1,
+        "location": "crates/fereg-plugin/src/estimate.rs:2315; crates/fereg-core/src/fe/topology_slope_map.rs:2766",
+        "finding": "Cancellation-contaminated saved target cannot satisfy tiny relative recovery requirement; preserve complete product history, memory accounting and full model certificate.",
+        "status": "unresolved; continuation direction pending"
+      },
+      {
+        "priority": 1,
+        "location": "crates/fereg-core/src/sandwich.rs:1425; crates/fereg-core/src/ppml/vce.rs:72",
+        "finding": "Strict public PPML covariance publication still fails; localize sign/value/cell before repair, use independent transformed-score covariance oracle.",
+        "status": "cell and finite/negative property localized after review; numerical repair direction pending"
+      },
+      {
+        "priority": 2,
+        "location": "crates/fereg-core/src/ppml/psd.rs:286",
+        "finding": "Initial and final eigensystem certificates duplicate O(k^3) work when no retry occurs.",
+        "status": "candidate now reuses initial certificate; targeted verification follows"
+      },
+      {
+        "priority": 2,
+        "location": "tests/stata/development/ols_near_within_cmg_oracle.do:45",
+        "finding": "Forcing used solver CMG rejects an existing permitted CG fallback.",
+        "status": "candidate now asserts requested7 and used4/7, validates CG fallback flag/warning; independent science retained"
+      },
+      {
+        "priority": 3,
+        "location": "docs/cleanup/coverage.md:151; crates/fereg-core/src/fe/cmg.rs:2914",
+        "finding": "Refinement scope includes ordinary frames; four banks retain products, not stable projection; optional batch products do not prove fallback retention.",
+        "status": "scope/comments/test name corrected"
+      }
+    ],
+    "addendum": "Read-only follow-up confirms P2/P3 edits address findings; both P1 blockers remain. It narrows current robust success to the first cell and confirms clustered covariance rank at most seven for eleven coefficients, without claiming a proved sign-error cause."
+  },
+  "workflow": {
+    "timebox": "Three end-to-end repair candidates on each issue; both paused for Johannes direction under AGENTS.md. Independent validation/review cleanup continues.",
+    "next_milestone": "No M23 plan or implementation started; user explicitly conditioned it on both fixes.",
+    "active_mac_runtime": {
+      "source": "9c08141b17314563f3100b3cbe8e62dd65508837",
+      "sha256": "5cc205fbc725b5d2fd95a9ef51edfe49f84785befb1e2b3955d39bcc3b08eae1",
+      "reason": "Restored qualified M21 binary; unqualified candidate preserved in ignored native artifacts, source edits remain uncommitted."
+    }
+  },
+  "current_verification": {
+    "full_local": true,
+    "long_oracles": 30,
+    "mac_universal_abi": true,
+    "source": "uncommitted m22-review-cleanup-worktree",
+    "mac_sha256": "7a9651fca787c4ec2f6021e84b797edf4c3a2f3aa342496ecff3ecc868cb240d",
+    "native_parent_replay": {
+      "cases": 73,
+      "scientific_passes": 73,
+      "exact_differences": 0,
+      "passed": true
+    },
+    "five_thread": {
+      "counts": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "cases": 73,
+      "native_processes": 803,
+      "scientific_agreement": true,
+      "fixed_thread_repeatability": true,
+      "discrete_decisions": true
+    },
+    "licensed_stata": {
+      "existing_passes": 46,
+      "new_failures": 2,
+      "ppml_return_code": 430,
+      "saved_fe_return_code": 459,
+      "all_48_passed": false
+    }
+  }
+}

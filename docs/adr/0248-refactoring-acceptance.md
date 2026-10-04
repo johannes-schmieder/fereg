@@ -1,6 +1,7 @@
 # ADR 0248: Scientific acceptance, exact-change checks and bounded work
 
 **Status:** Accepted by Johannes, 2026-10-02 (approved plan implementation).
+Amended by Johannes, 2026-10-03: ten-repair limit and Astra assistance.
 
 ## Decision
 
@@ -23,9 +24,12 @@ entrypoint and mapped science; docs use static checks; build tools use focused
 checks plus native ABI qualification. Full push CI remains mandatory. Reuse
 rollback, allocation and Break tests. Coverage has no percentage goal.
 
-A failed/unverified prerequisite blocks dependent work. After three unsuccessful
+A failed/unverified prerequisite blocks dependent work. After ten unsuccessful
 substantive repairs or one working day on a blocker, ask Johannes with evidence.
 Keep one ledger: fewer than 300 lines, each at most 200 characters.
+Use Astra at extra-high effort for independent review and difficult problems;
+the lead agent owns implementation and qualification unless delegated. Agent
+work and builds are coordinated; clean timings run without agents.
 
 Ratchet production lines per runtime crate, functions over 150 lines, files
 over 1,500 and N/thread/weight/memory routing conditions. Growth requires a

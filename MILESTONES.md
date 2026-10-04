@@ -2,7 +2,7 @@
 
 Plan: [M0–M21](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M12–M21 complete; separate Astra review recorded. Next scientific priorities: the two numerical follow-ups below.
+Current task: M22.1/M22.2 resumed by Johannes; ten-repair policy, Astra extra-high numerical help and independent review.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -57,6 +57,12 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M20 One ordinary canonical retry transition; full/30, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
 - [x] M21 Strict recovery/readiness; full/30, clean exact73/five-thread Mac/ABI, 46 Stata, clean timings, Linux CI and separate Astra review complete.
 
+- [x] M22.0 Johannes raises repair limit to ten; active policy synchronized; Astra assistance authorized.
+- [ ] M22.1 Reproduce/localize strict no-FE PPML; repair without weaker tolerance, add independent regression and qualify.
+- [ ] M22.2 Reproduce/localize near-within saved-FE CG recovery; preserve explicit backend and independent accuracy, repair and qualify.
+- [ ] M22.3 Separate Astra extra-high review of both qualified fixes; resolve findings before next milestone.
+- [ ] M23 Astra extra-high plan for next priority, implementation, qualification and separate extra-high review.
+
 ## Gates
 
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
@@ -76,8 +82,12 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No tranche blocker. Numerical follow-up: strict no-FE PPML timing references return r(430) on both parent and next; not qualified evidence. See M14 summary.
-Extra near-within saved-FE CG oracle returns r(459) on qualified parent and M17; numerical follow-up, not a passing check. See M17 summary.
+M22.2: three CG candidates tested. 1: retiring certified unstable RHSs lost forward accuracy; reverted. 2: retained-vector reconstruction did not affect unretained polishing; reverted.
+3: stable group-mean action fixes energy/forward witness; saved-FE target span still fails (2.105e-7 relative). Johannes authorized continuation under ten-repair policy.
+M22.1: finite refinement fixes the original optimum witness; first unit/fast/thread1 robust cell passes. The matching one-way cluster cell fails r(430), negative covariance diagonal.
+PPML attempts 1–3: compensated Gram drift; residual correction fixes optimum; PSD refinement passes first robust cell but fails cluster. Johannes authorized continuation to ten.
+Reviewed candidate full/30/Mac ABI, exact73/five-thread and existing46 Stata pass. Both new witnesses fail; clean timing and Linux CI gates remain pending.
+Astra extra-high review confirms localized fixes, unresolved publication and added PPML scan cost; M23 prerequisite is unmet. See [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
@@ -165,3 +175,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M21.1 this commit — one strict recovery/readiness controller; driver2014 to962, core +307 declared; full/30, exact73 Mac/ABI and 7 Stata pass; clean/CI/review pending.
 - 2026-10-03 G-M12–M21 9c08141b — clean73/five-thread/46 Stata and CI 37158517146 pass; all46 timing ranges overlap/290 pairs exact; [Astra review](bench/history/2026-10-03-m21-strict-recovery.json).
 - 2026-10-03 M21.2 this commit — M17 stale qualification fields corrected; Astra finds no new runtime defect; two inherited numerical witnesses prioritized; governance/links/ratchet pass.
+- 2026-10-03 M22 worktree — full/30/Mac ABI, exact73/five-thread and46 Stata pass; two new witnesses fail; Astra extra-high review done; timebox directions pending; uncommitted, M21 binary restored.
+- 2026-10-03 M22.0 this commit — Johannes authorizes continuation and ten repairs; policy/ADR/plan synchronized; Astra extra-high assistance; governance/links pass.

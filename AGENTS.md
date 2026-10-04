@@ -10,7 +10,7 @@ fixed-effect absorption, estimation and inference.
 2. `docs/SPEC.md`: scientific results and failure behavior.
 3. Active decisions listed in `docs/adr/README.md` only.
 4. `docs/ARCHITECTURE.md`: current module map and measured hotspots.
-5. `docs/cleanup/PLAN.md`: approved M0–M21 tasks; `MILESTONES.md`: status.
+5. `docs/cleanup/PLAN.md`: approved M0–M22 tasks and conditional M23; `MILESTONES.md`: status.
 6. Tests and code.
 
 Historical ADRs are non-binding. Their requirements bind only where retained
@@ -70,9 +70,14 @@ Work on main, one named task at a time, in small `M<n>.<k>: <summary>` commits.
 Push completed tasks after their local checks pass. Never force-push or rewrite
 history. A failed or unverified gate blocks all dependent tasks; independent
 work may continue. Never mark missing evidence as a passing gate.
-After three substantive unsuccessful repairs or one working day on the same
+After ten substantive unsuccessful repairs or one working day on the same
 blocker (whichever comes first), record the reproducer, findings and attempts,
 then ask Johannes for direction. Do not silently expand a milestone.
+
+Use Astra at extra-high effort for independent reviews and help with difficult
+numerical or architectural problems. Give agents bounded tasks, coordinate
+edits and builds, and keep implementation and qualification with the lead
+agent unless Johannes delegates them. No agents run during clean timings.
 
 Before each commit run the task's required checks. Runtime changes require
 `./scripts/run_tests.sh` plus their mapped scientific/transaction checks.

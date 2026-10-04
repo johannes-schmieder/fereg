@@ -22,7 +22,7 @@ declare cases/fields; unaffected results remain exact, affected results satisfy
 independent checks. Nonunique FE coefficients are compared through identified sums.
 
 A failed/unverified gate stops dependent work. Independent work may continue.
-After three unsuccessful substantive repairs or a working day on one blocker,
+After ten unsuccessful substantive repairs or a working day on one blocker,
 record the reproducer/findings/attempts and ask Johannes. Use risk-proportionate
 existing tests; no new cancellation/evidence framework. Tasks are small commits
 with local checks and pushes. Do not silently expand M0–M1.
@@ -606,3 +606,30 @@ not unrelated work. Existing timeboxes apply; scientific/domain/rank/support/
 admission-policy ambiguities require a reproducer and Johannes's decision.
 After implementation a separate Astra agent reviews concrete removals, ownership,
 coverage, complexity and measured performance. Report all limitations accurately.
+
+
+## M22: two numerical witnesses
+
+Authorized by Johannes after M12–M21 completion. Reproduce the strict no-FE
+PPML r(430) and saved-FE near-within CG r(459) on the qualified M21 binary;
+localize numerical error before choosing each repair. Preserve requested
+models, solvers, memory modes, tolerances, transactions and fail-closed checks.
+Keep independent known-optimum/explicit-design regressions. Declare affected
+cases/fields and require exact unaffected parent science; never use legacy
+parity, tolerance weakening or backend rerouting to hide a defect.
+
+M22.1 repairs no-FE PPML first; M22.2 repairs CMG's CG polishing and downstream
+saved-FE recovery, localized as distinct numerical stages of the public witness.
+Each runs full local checks, long oracles, native Mac build/ABI, parent replay,
+mapped licensed fixtures and Linux CI. Exercise each new witness across its
+relevant solver/memory/weight/thread configurations. Record original failures,
+localization, repair attempts and terminal results in compact bench/history
+summaries; existing timeboxes and gates apply. After both qualify, a separate
+Astra extra-high review assesses the repairs and unresolved limits (M22.3).
+
+If fixed and reviewed, Astra extra-high proposes one next important milestone
+(M23) towards a cleaner, maintainable and consistently faster package. The
+user authorizes implementing that scoped plan, then another Astra extra-high
+review and next-step assessment. Choose scope from concrete numerical,
+duplicated-work or measured performance evidence rather than a driver-size
+target. No unbounded structural tranche or numerical policy waiver is implied.
