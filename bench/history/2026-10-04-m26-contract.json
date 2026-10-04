@@ -1078,11 +1078,12 @@
       "frozen_legacy_sha256": "188b4b93409ed990dabe7b7185744dc09821030a99c3f5c8f869f72c873ebfdc",
       "scientific_pass_cases": 73,
       "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
-      "replay_passed": true
+      "replay_passed": true,
+      "current_required_ci": 37217034343
     },
     "scc": {
-      "result": "not_run",
-      "scope": "M26 tooling staged controls only; whole-node scaling before M29 acceptance and complete matrix at M35"
+      "result": "existing-tier smoke and licensed clock operation pass",
+      "scope": "Single focused retest7868669/70 passes; program ladder/calibration and whole-node scaling remain M29/M35 requirements"
     },
     "windows": {
       "result": "not_run",
@@ -1133,8 +1134,9 @@
     ],
     "reviewer": "fresh independent gpt-6-astra, high effort, read-only final M26 review",
     "verified": "24 cells and 32 interleaved pairs in each of two inverse-order blocks; all 48 symmetric intervals pass; disjoint retirement arithmetic and unchanged runtime qualification verified",
-    "limitations": "Mac pilot only; full interaction/holdout, inherited scaling cliffs, licensed SCC and Windows remain mapped gates; new-commit CI pending",
-    "maximum_interval_fraction_of_allowance": 0.611
+    "limitations": "Mac paired calibration; SCC environment/old-tier/clock smoke passes. Full development/holdout matrices, program ladders, inherited scaling cliffs and Windows remain mapped future gates.",
+    "maximum_interval_fraction_of_allowance": 0.611,
+    "closeout": "Fresh independent Astra high accepts M26 at deae0260: unchanged runtime/bounds, disjoint budgets, hash-bound calibration, complete Linux CI and SCC accounting/application/output evidence; original5872 attribution remains uncertain."
   },
   "measurement_calibration": {
     "historical_millisecond_method": {
@@ -2005,7 +2007,7 @@
     "licensed_stata_smoke_sha256": "2f69ddded6adbeaa91ef5606ea7b9d3551f93f7a73f5703b8ee5879b660ea379",
     "nominal_counter_resolution_seconds": 4.166666666666667e-08,
     "windows_operation": "unqualified; M35 check required",
-    "linux_operation": "CI harness pending; licensed SCC smoke before M29 acceptance"
+    "linux_operation": "CI scalar ABI/failure-state/export harness and licensed SCC smoke pass; 1ns counter resolution. SCC paired calibration remains required."
   },
   "ci_allocation_diagnosis": {
     "tested_commit": "bd80aa0f41f2e3be803bc3854fda6a28736f7270",
@@ -2036,7 +2038,7 @@
       "sha256": "b97eec87df3e44ad3ad840651bce83803ab752790b74006c7b9e94139e098116"
     },
     "review": "Separate Astra high accepts diagnostic scope; Astra xhigh identifies worker-startup and RSS-window hypotheses; no cause or repair claimed from Mac capture",
-    "gate": "Repair reviewed by Astra high; current-change local full entrypoint and Linux CI remain required. Original unexplained failure remains archived.",
+    "gate": "Current-change full local and Linux gates pass. Numerical audit now excludes RSS and primes workers; original5872 cause remains non-unique, archived without formula changes.",
     "passing_diagnostic_run": {
       "commit": "1a5c93620b1432caa292dae2f3aaf7bbdff848cc",
       "run": 37214466826,
@@ -2118,6 +2120,22 @@
       "passed": true,
       "raw_path": "target/m26-contract/recovery-window-full-tests.log",
       "sha256": "9580b83fca773d19de9de52e79d85bfa5bc40d7bd087b97539c1fa7c6d5948f9"
+    },
+    "final_linux_gate": {
+      "commit": "deae026035b2a582b804cc54bfe434cf257c6538",
+      "run": 37217034343,
+      "url": "https://github.com/johannes-schmieder/fereg/actions/runs/37217034343",
+      "all_required_jobs_passed": true,
+      "observed_numerical_peaks": [
+        632,
+        632,
+        632
+      ],
+      "pre_recovery_increment": 0,
+      "persistent_after_drop": 0,
+      "modeled_bytes": 5592,
+      "raw_path": "target/m26-contract/ci-window-check.log",
+      "sha256": "a86db95a00ad2edef38bfa351eb863e84522dea6866606e5a6c9ec59acea849b"
     }
   },
   "scc_tooling_smoke": {
@@ -2131,7 +2149,7 @@
     "cpu_type": "E5-2680v4",
     "memory_per_core": "3G",
     "wall_limit": "02:00:00",
-    "state": "First attempt failed before timings: native build/ABI and comparators pass; PATH lacks clang. Dependent task fails setup guard.",
+    "state": "First failure retained; single focused retest passes all accounting/application/output checks.",
     "input_source_sha256": "7d3f1e1093828849f1eb45e097ad686268e37e5c73b6bc9dc408e01128884f59",
     "accounting": {
       "setup_failed": 0,
@@ -2142,7 +2160,7 @@
       "raw_path": "target/m26-contract/scc-smoke-failed-accounting.log",
       "sha256": "7c1a6731f0d6f8c1615413688af14bd761689ee9f699a58d57adc8ecb29c12f2"
     },
-    "narrow_fix": "Load available llvm/16.0.6 only in clock build subshell; require existing-runner licensed clock smoke outside that environment before setup completion. One focused remote retest pending.",
+    "narrow_fix": "Available llvm/16.0.6 loaded only for clock build; existing-runner licensed clock smoke required outside compiler environment. Single focused retest7868669/70 passes.",
     "local_clock_integration": {
       "passed": true,
       "cell": "ols-1fe",
@@ -2151,6 +2169,27 @@
       "raw_path": "target/m26-contract/clock-integration-local/results.json",
       "sha256": "59d0f57f8b1f3cea449f8c4322f7d96cca56955ad419fa421c35c995fd21b71f",
       "claim": "Clock loading/operation only; no calibration/performance claim"
+    },
+    "focused_retest": {
+      "commit": "deae026035b2a582b804cc54bfe434cf257c6538",
+      "run_id": "20261004T163106Z-m26-deae0260",
+      "setup_job": 7868669,
+      "benchmark_job": 7868670,
+      "accounting_passed": true,
+      "application_passed": true,
+      "groups": 16,
+      "repetitions": 5,
+      "all_accuracy_passed": true,
+      "clock_resolution_seconds": 1e-09,
+      "native_sha256": "1ddfa763d53d103f148217d6ff122bb484b60647eecced2e1185b2d3663464c1",
+      "clock_sha256": "cc6bea35b78de001c3f97358b799a37d6a454af2d1fe0f903bf48fc5f3afae26",
+      "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d",
+      "native_and_tooling_identities_verified": true,
+      "summary_path": "target/m26-contract/scc-smoke-retest.csv",
+      "summary_sha256": "908bdca5a9e7a8f1d8f916835c880bac70579b3d3ea15db82510b8cf64734b1a",
+      "raw_manifest_path": "target/m26-contract/scc-smoke-retest-collected/benchmark-results.json",
+      "manifest_sha256": "a3ecefe788abc1043d3746900a78c0e635af041b4feb8893284def42984e3087",
+      "claim": "Existing-tier environment, native, comparators and licensed clock operation pass. Program six-thread ladder, paired calibration and broad SCC scaling remain M29/M35 requirements."
     }
   }
 }

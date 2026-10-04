@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M26.4 qualification windows and SCC clock setup; full M26–M35, Astra high reviews and milestone commits/pushes remain authorized.
+Current task: M27.1 optional cluster owner slice; full M26–M35, Astra high reviews and milestone commits/pushes remain authorized.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -71,7 +71,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M25.3 Clean restoration73/five-thread/402912 values exact; Astra extra-high terminal approval and Linux CI37201256978 pass; paused.
 
 - [x] M26.0 Roadmap and active ADR 0249 recorded; separate Astra extra-high review and local governance/links pass; runtime work not started.
-- [ ] M26.1 Freeze the qualified baseline, interaction/holdout matrix, performance envelope and quantified retirement inventory.
+- [x] M26.1 Fixed baseline, interaction/holdout matrix, 15,000-line target, Mac calibration, Linux CI/SCC smoke and fresh Astra high review pass.
 - [ ] M27 Canonical prepared model and optional cluster metadata; retire duplicated owning pipelines.
 - [ ] M28 Common storage operations and owner-based memory admission.
 - [ ] M29 General worker-budget and kernel scheduling policy; Mac/SCC scaling qualification.
@@ -91,6 +91,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] G-M8: clean scientific/transaction checks, bounded paired timings, Linux CI and approved follow-up scopes.
 - [x] G-M9–M11: shared QR/PPML accounting, scheduling trial rejected, combined qualification and strategic review pass.
 - [x] G-M12–M21: ten scoped refactors, parent science, clean tranches/timings, Linux CI and separate Astra review complete.
+- [x] G-M26: contract/inventory, unchanged runtime, Mac calibration, Linux CI37217034343 and SCC tooling smoke pass; fresh Astra high accepts.
 - [ ] G-M26–M35: architectural retirements, substantial measured simplification and broad scientific/performance acceptance.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
@@ -102,7 +103,6 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-M26 CI37215724968 passes; visible2048 peak is RSS before recovery. Isolate numerical windows; old5872 attribution remains uncertain.
 M27 factor slots/base after pruning: ordinary r(459), saved-FE final rebasing; SPEC/test conflict awaits Johannes; see M26 evidence finding.
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
@@ -221,3 +221,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 M26.3 this commit — CI37214466826 full/24 tooling/Linux73 pass; successful diagnostics were captured; full local checks/Astra xhigh pass; expose output before cause closure.
 - 2026-10-04 M26 SCC smoke — source1a5c9362, setup7868597/benchmark7868598; whole28 E5-2680v4, 3G/core, two-hour cap; existing dev workflow.
 - 2026-10-04 M26.4 worktree — isolate worker/RSS audit scope; full/Mac50/clock smoke pass; Astra high accepts; SCC compiler retest/CI pending.
+- 2026-10-04 M26 SCC focused retest — sourcedeae0260, setup7868669/benchmark7868670; original compiler failure retained; whole28/3G/two hours.
+- 2026-10-04 G-M26 deae0260 — CI37217034343 full/24/Linux73 pass; SCC7868669/70 accounting/16 groups/clock pass; fresh Astra high accepts; [evidence](bench/history/2026-10-04-m26-contract.json).
