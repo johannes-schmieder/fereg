@@ -1,4 +1,4 @@
-# Incremental refactoring: M0–M21
+# Incremental refactoring: M0–M23
 
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
 Historical plan and evidence remain at 15a57ba285a3afede2e3337fe8598e72529a4090.
@@ -633,3 +633,37 @@ user authorizes implementing that scoped plan, then another Astra extra-high
 review and next-step assessment. Choose scope from concrete numerical,
 duplicated-work or measured performance evidence rather than a driver-size
 target. No unbounded structural tranche or numerical policy waiver is implied.
+
+
+## M23: share the frozen refinement/output row scan
+
+Astra extra-high identified one concrete duplicated pass in the positive-rank
+frozen solve. Add a private optional output sink to the existing coefficient
+refiner; the strict solve supplies none. The frozen solve supplies the existing
+residual bank and an inactive factor-workspace prefix, with no additional heap
+bank or persistent state. Keep coefficient correction, output residual and RSS
+arithmetic independently unchanged, including row/column order and all checks.
+Each correction pass replaces speculative outputs; only the certified pass is
+returned. Remove the subsequent full row read and weight evaluation.
+
+Reserve the already-admitted residual bank earlier; defer any allocation error
+until the original reporting point, after refinement/coefficient validation.
+Preserve rank-zero and absent-tolerance paths, explicit solvers, QR fallback,
+full stored-column validation, certificate order and transactional rollback.
+Production scope is retained_refinement.rs and linear_session.rs; no numerical
+policy, framework, route fence or strict/joint solver expansion is authorized.
+
+Qualify exact arithmetic, corrected/exhausted passes, omitted scratch corruption
+and page-read reduction, plus existing allocation/rollback fixtures. The
+existing allocator injects the first failure in each phase; deferred residual
+reservation precedence is source-inspected, not specifically fault-injected.
+Run full
+local checks, 30 long oracles, universal Mac/ABI, exact 73 parent replay, five
+thread counts, mapped 46 licensed Stata and both M22 numerical witnesses.
+Clean parent/candidate timings use warmup and five fresh processes: smoke and
+scaling controls, targeted frozen PPML owners and reverse-order flagged cells.
+Require exact science, complete identities, no reproduced regression beyond
+noise and a measured affected-path benefit. If the adapter adds burden without
+benefit, revert within this scope. Do not expand to unrelated solver work.
+Record compact evidence and complexity, require Linux CI, then a separate Astra
+extra-high review and next-step assessment. No new ADR is needed.

@@ -8666,6 +8666,7 @@ mod tests {
             let mut linear_config = PreparedOlsFitConfig::default();
             linear_config.execution.mode = mode;
             linear_config.execution.poolsize = 1;
+            linear_config.coefficient_tolerance = Some(1e-12);
             let mut session = CertifiedLinearSession::new(
                 &prepared,
                 frame,

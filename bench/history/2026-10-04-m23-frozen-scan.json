@@ -1,0 +1,63 @@
+{
+  "schema": 1,
+  "milestone": "M23",
+  "qualified": false,
+  "status": "Implemented and locally qualified; clean artifact timing, Linux CI and separate Astra review pending.",
+  "parent_runtime": "663bca8cd735f57438f45772a6317273357e6fc7",
+  "scope": [
+    "Existing coefficient refiner accepts one private optional frozen-output sink; strict caller supplies none.",
+    "Positive-rank coefficient-refining frozen solves share row reads and normalized weights with output construction. Independent score residual and output residual/RSS arithmetic are preserved separately.",
+    "An inactive inverse-factor prefix supplies output coefficient scratch; no added heap bank or persistent state. Residual reservation failure is deferred to its former reporting point. Rank-zero/absent-tolerance paths and certificate order remain."
+  ],
+  "plan_agent": {
+    "agent": "m23_plan",
+    "model": "gpt-6-astra",
+    "effort": "xhigh",
+    "bounded_plan": "docs/cleanup/PLAN.md#M23"
+  },
+  "hard_problem_help": {
+    "agent": "m23_failure_help",
+    "model": "gpt-6-astra",
+    "effort": "xhigh",
+    "verdict": "No actionable source defect in lifetimes, admission, reuse, failure precedence or accepted-state rollback. Read-only review; no independent execution."
+  },
+  "local_checks": {
+    "full_entrypoint": true,
+    "long_oracle_tests": 30,
+    "universal_mac_and_abi": true,
+    "focused_witnesses": [
+      "exact coefficient/residual/RSS bits after first and corrected pass",
+      "known binary optimum independent of residual recurrence",
+      "exhausted and nonfinite refinements retain errors",
+      "corrupt omitted scratch values still rejected",
+      "one complete multi-page scratch read removed",
+      "existing strict error/unwind fixture now exercises coefficient_tolerance Some and subsequent frozen solve"
+    ],
+    "parent_replay": {
+      "cases": 73,
+      "exact": true,
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "fixed_thread_repeat_and_discrete_decisions": true,
+      "worktree_binary_sha256": "4b3f570fbd4bd5387d155555d19dc0c956176f61406c2d4fb3895b59ec54bfee"
+    },
+    "mapped_licensed_stata": 46,
+    "strict_ppml_witness_configurations": 24,
+    "near_within_saved_fe_configurations": 48
+  },
+  "allocation_evidence_limit": "The existing actual allocator injector targets the first failure in each phase. It does not isolate this residual reserve. Same reservation/growth, bank overlap and deferred error precedence were source-inspected; do not claim targeted fault injection.",
+  "complexity": {
+    "core_production_lines_before": 106083,
+    "core_production_lines_after": 106148,
+    "delta": 65,
+    "new_oversized_functions": 0,
+    "dispatch_delta": 0,
+    "heap_bank_delta": 0,
+    "purpose": "one small private sink and deferred reservation/error handling"
+  }
+}
