@@ -5090,19 +5090,31 @@ mod tests {
         };
         drop(run());
         let mut modeled = 0;
-        for _ in 0..3 {
+        for iteration in 0..3 {
+            let local_start = crate::ffi::thread_allocations::begin();
             let start = instrumentation::begin_observation();
+            let boundary = crate::ffi::allocation_usage();
             let recovered = run();
             let usage = crate::ffi::allocation_usage();
             let observed = usage.peak_bytes - start.allocation_current_bytes;
             modeled = recovered.solver_workspace_peak().bytes().unwrap();
+            for value in recovered.absorbed_sum() {
+                assert!((value - 0.75).abs() < 1e-12);
+            }
+            drop(recovered);
+            let after_drop = crate::ffi::allocation_usage();
+            let local_end = crate::ffi::thread_allocations::usage();
+            eprintln!(
+                "recovery audit {iteration}: workers={} start={} boundary={} peak={} end={} dropped={} local_start={} local_peak={} local_end={} modeled={modeled}",
+                rayon::current_num_threads(), start.allocation_current_bytes,
+                boundary.peak_bytes, usage.peak_bytes, usage.current_bytes,
+                after_drop.current_bytes, local_start.current_bytes,
+                local_end.peak_bytes, local_end.current_bytes
+            );
             assert!(
                 observed <= modeled,
                 "model recovery peak {observed} exceeds {modeled}"
             );
-            for value in recovered.absorbed_sum() {
-                assert!((value - 0.75).abs() < 1e-12);
-            }
         }
         assert_eq!(
             prepared

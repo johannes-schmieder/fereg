@@ -2006,5 +2006,36 @@
     "nominal_counter_resolution_seconds": 4.166666666666667e-08,
     "windows_operation": "unqualified; M35 check required",
     "linux_operation": "CI harness pending; licensed SCC smoke before M29 acceptance"
+  },
+  "ci_allocation_diagnosis": {
+    "tested_commit": "bd80aa0f41f2e3be803bc3854fda6a28736f7270",
+    "ci_run": 37212710016,
+    "ci_url": "https://github.com/johannes-schmieder/fereg/actions/runs/37212710016",
+    "linux_replay": {
+      "passed": true,
+      "scientific_cases": 73,
+      "next_sha256": "0c9eae9edddae8a8ad99c63ba43c9a6e1650e3f09f6c45c89d55149f5c91cb2c",
+      "summary_path": "target/m26-contract/linux-m26/summary.json",
+      "summary_sha256": "875183190f08cb491c78d365c890c0a89601ead0ffeddca7fd2e71046dc21082"
+    },
+    "required_entrypoint_failure": {
+      "test": "estimate::tests::model_recovery_workspace_bounds_observed_allocator_peak",
+      "observed_bytes": 5872,
+      "modeled_bytes": 5592,
+      "raw_path": "target/m26-contract/ci-check-failed.log",
+      "sha256": "56ef807a101f3f2622388abff1f3a206a5542ba5eefe2475630370939db6c6ba"
+    },
+    "diagnostic_scope": "Existing test-only audit retains its global bound, recovered values and one-byte-short rejection; stack snapshots add local/boundary/post-drop discrimination and format only after the window. Production unchanged.",
+    "mac_capture": {
+      "fresh_processes": 30,
+      "worker_count": 2,
+      "failures": 0,
+      "numerical_global_increment_bytes": 632,
+      "persistent_operation_increment_bytes": 0,
+      "raw_path": "target/m26-contract/recovery-diagnostic-mac-repeat.log",
+      "sha256": "b97eec87df3e44ad3ad840651bce83803ab752790b74006c7b9e94139e098116"
+    },
+    "review": "Separate Astra high accepts diagnostic scope; Astra xhigh identifies worker-startup and RSS-window hypotheses; no cause or repair claimed from Mac capture",
+    "gate": "Required Linux gate failed; no dependent runtime change made. Benchmark checks moved before full entrypoint without suppressing either check."
   }
 }
