@@ -4160,12 +4160,21 @@
   },
   "local_documentation_checks": {
     "governance": "pass",
-    "markdown_links": "pass, 42 local links",
+    "markdown_links": "pass, 43 local links in the M24 committed document scope",
     "complexity_ratchet": "pass, unchanged core 106083 / host 15313 production lines",
     "json_and_diff": "pass",
     "capture_recipe_and_arithmetic": "independently recomputed by the lead and fresh reviewer"
   },
   "push_ci": {
-    "pending": true
-  }
+    "source": "c126f5d9ffa12f93cd5596e91a12a88815059752",
+    "run": 37197177076,
+    "url": "https://github.com/johannes-schmieder/fereg/actions/runs/37197177076",
+    "conclusion": "success",
+    "jobs": {
+      "comparator": "success",
+      "check": "success",
+      "replay": "success"
+    }
+  },
+  "qualified_measurement": true
 }
