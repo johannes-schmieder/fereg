@@ -1,10 +1,11 @@
-//! Final-sample rebasing for ordinary categorical OLS terms.
+//! Final-sample code resolution on Stata's original coefficient axis.
 //!
 //! Stata expands factor-variable terms on the candidate sample, while absorbed
 //! fixed-effect singleton deletion can remove complete factor levels. The
-//! reference command then reports the factor graph expanded on the final sample.
-//! This module rebuilds that small coefficient graph after authoritative sample
-//! compaction. It never allocates an observation-scale column.
+//! original slots and whole-column omission flags remain authoritative. Resolve
+//! each original recipe against the compacted codes; a vanished active level
+//! produces a zero column for the existing rank machinery. This never allocates
+//! an observation-scale column or chooses a replacement base.
 
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FinalizedCategoricalTopology;
@@ -19,8 +20,7 @@ use super::{
     PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsModel,
 };
 
-/// Compact mapping from final reported coefficient slots to the original
-/// candidate-sample slots supplied by Stata.
+/// Identity mapping on the original candidate-sample slots supplied by Stata.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PreparedCategoricalOlsReportPlan {
     original_coefficient_count: usize,
@@ -89,20 +89,10 @@ pub(crate) fn rebase_categorical_model(
         .map_err(|_| allocation("unable to reserve categorical reporting slots"))?;
 
     for term in &graph.terms {
-        let originally_base = term
-            .components
-            .iter()
-            .any(|component| component.base == MetadataFlag::True);
-        let explicitly_omitted = term.whole_column_omitted && !originally_base;
-        let Some((kind, final_base_component)) =
-            final_term_kind(term, candidate_model, sources, topology, explicitly_omitted)?
-        else {
-            continue;
-        };
-        let syntax_omitted = explicitly_omitted || final_base_component;
-        let public_slot = next_slot(coefficients.len())?;
+        let kind = final_term_kind(term, candidate_model, sources, topology)?;
+        let public_slot = term.coefficient_slot;
         original_slots.push(term.coefficient_slot);
-        if syntax_omitted {
+        if term.whole_column_omitted {
             coefficients.push(PreparedOlsCoefficient {
                 coefficient_slot: public_slot,
                 status: PreparedOlsCoefficientStatus::SyntaxOmitted,
@@ -141,15 +131,14 @@ pub(crate) fn rebase_categorical_model(
         });
     }
 
-    if original_slots
-        .windows(2)
-        .any(|pair| pair[0].get() >= pair[1].get())
+    if original_slots.len() != original_coefficient_count
         || original_slots
-            .last()
-            .is_some_and(|slot| slot.get() as usize > original_coefficient_count)
+            .iter()
+            .enumerate()
+            .any(|(index, slot)| slot.get() as usize != index + 1)
     {
         return Err(invalid(
-            "rebased categorical reporting slots are not strictly ordered",
+            "final categorical reporting slots do not preserve the original axis",
         ));
     }
 
@@ -251,8 +240,7 @@ fn final_term_kind(
     candidate_model: &PreparedOlsModel,
     sources: &[PreparedCategoricalModelSource],
     topology: &FinalizedCategoricalTopology,
-    explicitly_omitted: bool,
-) -> Result<Option<(Option<PreparedOlsColumnKind>, bool)>> {
+) -> Result<Option<PreparedOlsColumnKind>> {
     match (term.raw_kind, term.components.as_slice()) {
         (RawTermKind::Variable, [component])
             if component.kind == ComponentKind::Continuous
@@ -262,7 +250,7 @@ fn final_term_kind(
                     TimeSeriesState::None | TimeSeriesState::Materialized
                 ) =>
         {
-            let kind = if explicitly_omitted {
+            let kind = if term.whole_column_omitted {
                 None
             } else {
                 Some(candidate_continuous_kind(
@@ -271,7 +259,7 @@ fn final_term_kind(
                     component.source,
                 )?)
             };
-            Ok(Some((kind, false)))
+            Ok(kind)
         }
         (RawTermKind::Factor, [component])
             if component.kind == ComponentKind::Categorical
@@ -280,19 +268,14 @@ fn final_term_kind(
         {
             let categorical_source_index = categorical_source_index(sources, component.source)?;
             let source = &sources[categorical_source_index];
-            let Some(level_code) = source.resolve_level(topology, component.level_value)? else {
-                return Ok(None);
-            };
-            Ok(Some((
-                Some(PreparedOlsColumnKind::Categorical {
+            let level_code = source.resolve_level(topology, component.level_value)?;
+            Ok(Some(PreparedOlsColumnKind::Categorical {
                     source: component.source,
                     prepared_source_index: source.prepared_source_index(),
                     categorical_source_index,
                     level_bits: canonical_factor_value(component.level_value).to_bits(),
-                    level_code: Some(level_code),
-                }),
-                level_code == 0,
-            )))
+                    level_code,
+                }))
         }
         (RawTermKind::Interaction | RawTermKind::Product, components)
             if components.len() >= 2
@@ -306,28 +289,21 @@ fn final_term_kind(
             prepared_components
                 .try_reserve_exact(components.len())
                 .map_err(|_| allocation("unable to reserve rebased interaction components"))?;
-            let mut final_base_component = false;
             for component in components {
                 let categorical_source_index =
                     categorical_source_index(sources, component.source)?;
                 let source = &sources[categorical_source_index];
-                let Some(level_code) = source.resolve_level(topology, component.level_value)? else {
-                    return Ok(None);
-                };
-                final_base_component |= level_code == 0;
+                let level_code = source.resolve_level(topology, component.level_value)?;
                 prepared_components.push(PreparedOlsCategoricalComponent {
                     source: component.source,
                     categorical_source_index,
                     level_bits: canonical_factor_value(component.level_value).to_bits(),
-                    level_code: Some(level_code),
+                    level_code,
                 });
             }
-            Ok(Some((
-                Some(PreparedOlsColumnKind::CategoricalInteraction {
+            Ok(Some(PreparedOlsColumnKind::CategoricalInteraction {
                     components: prepared_components,
-                }),
-                final_base_component,
-            )))
+                }))
         }
         _ => Err(unsupported(
             "final categorical rebasing supports only continuous terms, numeric factor main effects, and numeric all-categorical interactions",

@@ -2013,14 +2013,12 @@ fn validate_report_plan(
     report_plan: &PreparedCategoricalOlsReportPlan,
 ) -> Result<()> {
     if report_plan.public_coefficient_count() != model.coefficients.len()
+        || report_plan.public_coefficient_count() != report_plan.original_coefficient_count()
         || report_plan
             .original_slots()
-            .windows(2)
-            .any(|pair| pair[0].get() >= pair[1].get())
-        || report_plan
-            .original_slots()
-            .last()
-            .is_some_and(|slot| slot.get() as usize > report_plan.original_coefficient_count())
+            .iter()
+            .enumerate()
+            .any(|(index, slot)| slot.get() as usize != index + 1)
     {
         return Err(invalid(
             "categorical OLS final-sample report plan is inconsistent",

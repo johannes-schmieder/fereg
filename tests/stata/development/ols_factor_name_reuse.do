@@ -26,7 +26,8 @@ foreach scenario in complete restricted missing_y missing_x missing_level missin
     if "`scenario'" == "missing_x" replace x = . in 1
     if "`scenario'" == "missing_level" {
         replace y = . if f==1
-        // The categorical tuple path owns final-sample level rebasing.
+        // Stata excludes unavailable rows before parsing; its original base
+        // is already level2 here and must remain unchanged.
         local absorption g#one
     }
     if "`scenario'" == "missing_fw" {

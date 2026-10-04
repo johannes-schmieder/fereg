@@ -29,11 +29,12 @@ class FinalSampleRebaseValidationContractTests(unittest.TestCase):
         self.assertIn("report_plan: rebased.report_plan", data)
         self.assertNotIn("remap_and_resolve_model(", data)
 
-    def test_stata_posts_only_the_final_logical_graph(self) -> None:
+    def test_next_posts_original_graph_and_legacy_keeps_final_expansion(self) -> None:
         text = STATA.read_text(encoding="utf-8")
         self.assertIn("local coefficient_capacity =", text)
         self.assertIn("local coefficient_count = r(coefficients)", text)
         self.assertIn("fvexpand `indepvars' if `sample_shadow'", text)
+        self.assertIn('if "`native_engine\'" == "legacy" &', text)
         self.assertIn('ereturn local fereg_result_wire "1.5"', text)
 
     def test_licensed_rebase_fixture_is_in_every_qualification_profile(self) -> None:

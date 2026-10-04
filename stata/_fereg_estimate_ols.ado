@@ -569,11 +569,10 @@ program define _fereg_estimate_ols, eclass
         matrix `marker_v_shadow' = `marker_v_shadow'[1..`coefficient_count', 1..`coefficient_count']
     }
 
-    // The final sample is a subset of the parser's candidate sample. Equal
-    // validated receipt counts therefore prove the factor names are unchanged.
-    // Plain continuous tokens also survive a sample change without rebasing.
+    // Next retains the parser's original slots and base flags. Frozen legacy
+    // keeps its historical final-sample name expansion and failure behavior.
     local requires_final_fvexpand 0
-    if `receipt_shadow'[1,8] != `receipt_shadow'[1,9] & `n_components' > 0 {
+    if "`native_engine'" == "legacy" & `receipt_shadow'[1,8] != `receipt_shadow'[1,9] & `n_components' > 0 {
         forvalues component = 1/`n_components' {
             if `model_components'[`component',4] == 2 local requires_final_fvexpand 1
         }

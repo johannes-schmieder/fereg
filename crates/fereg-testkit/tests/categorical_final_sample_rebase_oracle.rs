@@ -1,9 +1,10 @@
 use fereg_core::{
-    fit_prepared_categorical_ols_unadjusted_map, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry,
-    SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,
+    prepare_categorical_ols_data, AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph,
+    ComponentKind, ComponentOrder, ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput,
+    MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsFitStatus,
+    PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId,
+    TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -11,8 +12,7 @@ use fereg_testkit::explicit_ols::{
 
 const TOLERANCE: f64 = 3e-8;
 
-#[test]
-fn singleton_deleted_factor_level_rebases_and_matches_explicit_dummy_oracle() {
+fn singleton_fixture() -> (OlsRequestV1, LoadedOlsInput, Vec<f64>, Vec<f64>, Vec<f64>) {
     let y = vec![1.1, 2.5, 3.2, 4.8, 5.1, 7.4, 8.0, 9.7, 10.3, 11.9];
     let x = vec![-1.4, -0.9, -0.2, 0.4, 1.1, -1.0, -0.3, 0.5, 1.3, 2.0];
     let factor = vec![1.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 2.0, 3.0, 1.0];
@@ -67,6 +67,12 @@ fn singleton_deleted_factor_level_rebases_and_matches_explicit_dummy_oracle() {
         probability_weight: None,
     };
 
+    (request, loaded, y, x, factor)
+}
+
+#[test]
+fn singleton_deleted_base_preserves_original_axis_and_identified_contrasts() {
+    let (request, loaded, y, x, factor) = singleton_fixture();
     let prepared = prepare_categorical_ols_data(&request, &loaded)
         .expect("final-sample categorical preparation");
     assert_eq!(prepared.sample().retained_rows(), &[1, 2, 3, 4, 5, 6, 7, 8]);
@@ -79,20 +85,19 @@ fn singleton_deleted_factor_level_rebases_and_matches_explicit_dummy_oracle() {
             .iter()
             .map(|slot| slot.get())
             .collect::<Vec<_>>(),
-        vec![1, 3, 4, 5]
+        vec![1, 2, 3, 4, 5]
     );
-    assert_eq!(prepared.model().coefficients.len(), 4);
-    assert_eq!(prepared.model().columns.len(), 3);
-
+    assert_eq!(prepared.model().coefficients.len(), 5);
+    assert_eq!(prepared.model().columns.len(), 4);
     let result = fit_prepared_categorical_ols_unadjusted_map(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
     )
-    .expect("certified rebased iid fit");
+    .expect("certified original-axis iid fit");
     assert!(result.fit().rank_certificate().passed);
     assert!(result.fit().score_certificate().passed);
     assert!(result.certificate().passed);
-    assert_eq!(result.fit().coefficients().len(), 4);
+    assert_eq!(result.fit().coefficients().len(), 5);
     assert_eq!(
         result.fit().coefficients()[0].status,
         PreparedOlsFitStatus::Kept
@@ -102,23 +107,24 @@ fn singleton_deleted_factor_level_rebases_and_matches_explicit_dummy_oracle() {
         PreparedOlsFitStatus::SyntaxOmitted
     );
     assert_eq!(
-        result.fit().coefficients()[2].status,
-        PreparedOlsFitStatus::Kept
-    );
-    assert_eq!(
-        result.fit().coefficients()[3].status,
+        result.fit().coefficients()[4].status,
         PreparedOlsFitStatus::NormalizedAbsorbedIntercept
     );
+    assert_eq!(result.fit().finite_rank(), 2);
 
     let retained_y = y[1..9].to_vec();
     let retained_x = x[1..9].to_vec();
+    let retained_factor_two = factor[1..9]
+        .iter()
+        .map(|value| f64::from(*value == 2.0))
+        .collect::<Vec<_>>();
     let retained_factor_three = factor[1..9]
         .iter()
         .map(|value| f64::from(*value == 3.0))
         .collect::<Vec<_>>();
     let oracle = fit_explicit_ols(&ExplicitOlsProblem {
         outcome: retained_y,
-        regressors: vec![retained_x, retained_factor_three],
+        regressors: vec![retained_x, retained_factor_two, retained_factor_three],
         effects: vec![
             DummyEffect::new(vec![0, 0, 1, 1, 2, 2, 3, 3], 4, true, Vec::new())
                 .expect("explicit final interaction effect"),
@@ -127,16 +133,17 @@ fn singleton_deleted_factor_level_rebases_and_matches_explicit_dummy_oracle() {
         clusters: Vec::new(),
     })
     .expect("explicit-dummy final-sample oracle");
-    assert_eq!(oracle.kept_regressors, vec![0, 1]);
+    assert_eq!(oracle.finite_regressor_rank, 2);
+    let values = result
+        .fit()
+        .coefficients()
+        .iter()
+        .map(|coefficient| coefficient.value.unwrap_or(0.0))
+        .collect::<Vec<_>>();
+    assert_close(values[0], oracle.coefficients[0].expect("oracle x"));
     assert_close(
-        result.fit().coefficients()[0].value.expect("x coefficient"),
-        oracle.coefficients[0].expect("oracle x coefficient"),
-    );
-    assert_close(
-        result.fit().coefficients()[2]
-            .value
-            .expect("factor-three coefficient"),
-        oracle.coefficients[1].expect("oracle factor-three coefficient"),
+        values[3] - values[2],
+        oracle.coefficients[2].unwrap_or(0.0) - oracle.coefficients[1].unwrap_or(0.0),
     );
     assert_slice_close(result.fit().residuals(), &oracle.residuals);
     assert_eq!(
@@ -145,16 +152,22 @@ fn singleton_deleted_factor_level_rebases_and_matches_explicit_dummy_oracle() {
     );
     assert_eq!(result.dof().absorbed_rank, oracle.explicit_dummy_rank);
 
-    let covariance = result.covariance();
-    assert_eq!(covariance.dimension(), 3);
-    for row in 0..2 {
-        for column in 0..2 {
-            assert_close(
-                covariance.values()[row * 3 + column],
-                oracle.iid_vce[(row, column)],
-            );
-        }
-    }
+    check_contrast_covariance(
+        result.covariance().values(),
+        result.covariance_coordinates(),
+        oracle.iid_vce.as_slice(),
+        &oracle.kept_regressors,
+    );
+    let robust =
+        fit_prepared_categorical_ols_robust_map(&prepared, PreparedOlsRobustConfig::default())
+            .expect("certified original-axis robust fit");
+    assert_slice_close(robust.fit().residuals(), &oracle.residuals);
+    check_contrast_covariance(
+        robust.covariance().values(),
+        robust.covariance_coordinates(),
+        oracle.hc1_vce.as_slice(),
+        &oracle.kept_regressors,
+    );
 }
 
 fn source(value: u32) -> SourceId {
@@ -260,4 +273,249 @@ fn assert_slice_close(actual: &[f64], expected: &[f64]) {
     for (actual, expected) in actual.iter().copied().zip(expected.iter().copied()) {
         assert_close(actual, expected);
     }
+}
+
+// The two fits can choose different representatives of d2+d3=1. Compare
+// covariance only on the identified x and d3-d2 contrasts.
+fn check_contrast_covariance(
+    values: &[f64],
+    coordinates: &[fereg_core::PreparedOlsBreadCoordinate],
+    oracle: &[f64],
+    kept: &[usize],
+) {
+    let weights = coordinates
+        .iter()
+        .map(|coordinate| match coordinate.coefficient_slot.get() {
+            1 => [1.0, 0.0],
+            3 => [0.0, -1.0],
+            4 => [0.0, 1.0],
+            _ => [0.0, 0.0],
+        })
+        .collect::<Vec<_>>();
+    let original_weights = [[1.0, 0.0], [0.0, -1.0], [0.0, 1.0]];
+    let oracle_weights = kept
+        .iter()
+        .map(|&slot| original_weights[slot])
+        .collect::<Vec<_>>();
+    for a in 0..2 {
+        for b in 0..2 {
+            let actual = (0..weights.len())
+                .flat_map(|i| (0..weights.len()).map(move |j| (i, j)))
+                .map(|(i, j)| weights[i][a] * values[i * weights.len() + j] * weights[j][b])
+                .sum();
+            let expected = (0..kept.len())
+                .flat_map(|i| (0..kept.len()).map(move |j| (i, j)))
+                .map(|(i, j)| {
+                    oracle_weights[i][a] * oracle[i * kept.len() + j] * oracle_weights[j][b]
+                })
+                .sum();
+            assert_close(actual, expected);
+        }
+    }
+}
+
+fn small_fixture(
+    terms: Vec<ExpandedTerm>,
+    data: Vec<Vec<f64>>,
+    outcome: Vec<f64>,
+    absorbed: AbsorbedTerm,
+    intercept: bool,
+) -> (OlsRequestV1, LoadedOlsInput) {
+    let count = data.len();
+    let request = OlsRequestV1 {
+        model: CompiledTermGraph {
+            sources: (1..=count)
+                .map(|id| source_entry(id as u32, &format!("s{id}")))
+                .collect(),
+            terms,
+        },
+        absorbed_terms: vec![absorbed],
+        bindings: (1..=count + 2)
+            .map(|position| OlsInputBinding {
+                stata_var_position: position as u32,
+                role: match position {
+                    1 => OlsInputRole::Candidate,
+                    2 => OlsInputRole::Outcome,
+                    id => OlsInputRole::NumericSource(source(id as u32 - 2)),
+                },
+            })
+            .collect(),
+        include_intercept: intercept,
+        keep_singletons: true,
+    };
+    let mut outcome = loaded_column(outcome);
+    outcome.missing[0] = true;
+    outcome.missing[9] = true;
+    let loaded = LoadedOlsInput {
+        candidate: vec![true; 10],
+        outcome,
+        numeric_sources: data
+            .into_iter()
+            .enumerate()
+            .map(|(i, values)| (source(i as u32 + 1), loaded_column(values)))
+            .collect(),
+        analytic_weight: None,
+        frequency_weight: None,
+        probability_weight: None,
+    };
+    (request, loaded)
+}
+
+fn effect(group: u32, slope: Option<u32>) -> AbsorbedTerm {
+    AbsorbedTerm {
+        id: AbsorbTermId::new(1).expect("effect"),
+        intercept: slope.is_none(),
+        categorical_sources: vec![source(group)],
+        slope_sources: slope.map(source).into_iter().collect(),
+        label: "effect".to_owned(),
+        saved_name: String::new(),
+    }
+}
+
+#[test]
+fn vanished_base_does_not_remove_a_slope_only_model_direction() {
+    let f = vec![1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 1.0];
+    let slope = vec![0.0, -3.0, -1.0, 1.0, 3.0, -3.0, -1.0, 1.0, 3.0, 0.0];
+    let errors = [0.1, -0.1, -0.1, 0.1, 0.1, -0.1, -0.1, 0.1];
+    let y = (0..10)
+        .map(|i| {
+            if (1..9).contains(&i) {
+                (if f[i] == 2.0 { 2.0 } else { 5.0 }) + 0.7 * slope[i] + errors[i - 1]
+            } else {
+                0.0
+            }
+        })
+        .collect();
+    let terms = (1..=3)
+        .map(|i| factor_term(i, source(1), f64::from(i), i == 1))
+        .collect();
+    let (request, loaded) = small_fixture(
+        terms,
+        vec![f, vec![1.0; 10], slope],
+        y,
+        effect(2, Some(3)),
+        false,
+    );
+    let prepared =
+        prepare_categorical_ols_data(&request, &loaded).expect("slope-only original graph");
+    let result =
+        fit_prepared_categorical_ols_robust_map(&prepared, PreparedOlsRobustConfig::default())
+            .expect("slope-only robust fit");
+    assert_eq!(result.fit().finite_rank(), 2);
+    assert_eq!(result.dof().absorbed_rank, 1);
+    assert_eq!(result.dof().residual_dof, 5);
+    assert_close(result.fit().coefficients()[1].value.expect("d2"), 2.0);
+    assert_close(result.fit().coefficients()[2].value.expect("d3"), 5.0);
+    assert_slice_close(result.fit().residuals(), &errors);
+    assert_eq!(result.covariance().dimension(), 2);
+    assert_slice_close(result.covariance().values(), &[0.004, 0.0, 0.0, 0.004]);
+}
+
+fn interaction(value: u32, f: f64, z: f64, omitted: bool) -> ExpandedTerm {
+    let mut result = factor_term(value, source(1), f, f == 1.0);
+    result.raw_kind = RawTermKind::Interaction;
+    result.whole_column_omitted = omitted;
+    result.canonical_token = format!("{f}.f#{z}.z");
+    let mut second = factor_term(value, source(2), z, z == 1.0)
+        .components
+        .remove(0);
+    second.order = ComponentOrder::new(2).expect("second component");
+    result.components.push(second);
+    result
+}
+
+#[test]
+fn vanished_base_does_not_remove_nonhierarchical_cell_effects() {
+    let f = vec![1.0, 2.0, 2.0, 2.0, 2.0, 3.0, 3.0, 3.0, 3.0, 1.0];
+    let z = vec![1.0, 1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 2.0];
+    let errors = [0.1, -0.1, 0.1, -0.1, 0.1, -0.1, 0.1, -0.1];
+    let y = (0..10)
+        .map(|i| {
+            1.0 + if z[i] == 2.0 {
+                if f[i] == 2.0 {
+                    2.0
+                } else {
+                    5.0
+                }
+            } else {
+                0.0
+            } + if (1..9).contains(&i) {
+                errors[i - 1]
+            } else {
+                0.0
+            }
+        })
+        .collect();
+    let terms = vec![
+        interaction(1, 1.0, 1.0, true),
+        interaction(2, 1.0, 2.0, true),
+        interaction(3, 2.0, 2.0, false),
+        interaction(4, 3.0, 2.0, false),
+    ];
+    let (request, loaded) =
+        small_fixture(terms, vec![f, z, vec![1.0; 10]], y, effect(3, None), true);
+    let prepared = prepare_categorical_ols_data(&request, &loaded).expect("cell graph");
+    let result = fit_prepared_categorical_ols_unadjusted_map(
+        &prepared,
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("nonhierarchical cell fit");
+    assert_eq!(result.fit().finite_rank(), 2);
+    assert_eq!(result.dof().absorbed_rank, 1);
+    assert_eq!(result.dof().residual_dof, 5);
+    assert_close(result.fit().coefficients()[2].value.expect("d22"), 2.0);
+    assert_close(result.fit().coefficients()[3].value.expect("d32"), 5.0);
+    assert_slice_close(result.fit().residuals(), &errors);
+}
+
+#[test]
+fn whole_column_omission_is_authoritative_for_base_marked_components() {
+    let f = vec![1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 2.0, 2.0, 2.0, 1.0];
+    let z = vec![1.0, 1.0, 1.0, 2.0, 2.0, 1.0, 1.0, 2.0, 2.0, 2.0];
+    let y = (0..10)
+        .map(|i| {
+            1.0 + if z[i] == 2.0 {
+                if f[i] == 1.0 {
+                    2.0
+                } else {
+                    5.0
+                }
+            } else {
+                0.0
+            }
+        })
+        .collect();
+    let terms = vec![
+        interaction(1, 1.0, 1.0, true),
+        interaction(2, 1.0, 2.0, false),
+        interaction(3, 2.0, 1.0, true),
+        interaction(4, 2.0, 2.0, false),
+    ];
+    let (mut request, loaded) =
+        small_fixture(terms, vec![f, z, vec![1.0; 10]], y, effect(3, None), true);
+    let prepared =
+        prepare_categorical_ols_data(&request, &loaded).expect("active base-component cell");
+    let result = fit_prepared_categorical_ols_unadjusted_map(
+        &prepared,
+        PreparedOlsUnadjustedConfig::default(),
+    )
+    .expect("whole-column active fit");
+    assert_eq!(
+        result.fit().coefficients()[1].status,
+        PreparedOlsFitStatus::Kept
+    );
+    assert_close(
+        result.fit().coefficients()[1]
+            .value
+            .expect("base-component d12"),
+        2.0,
+    );
+    request.model.terms[1].whole_column_omitted = true;
+    let omitted =
+        prepare_categorical_ols_data(&request, &loaded).expect("whole-column omitted cell");
+    assert_eq!(
+        omitted.model().coefficients[1].status,
+        fereg_core::PreparedOlsCoefficientStatus::SyntaxOmitted
+    );
+    assert_eq!(omitted.report_plan().original_coefficient_count(), 5);
 }

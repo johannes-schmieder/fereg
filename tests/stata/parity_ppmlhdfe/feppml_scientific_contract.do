@@ -353,7 +353,7 @@ assert _rc == 101
 * The reported factor axis is the parser-owned candidate axis, not a second
 * fvexpand on the final sample.  Level zero exists on the candidate row below
 * but disappears when its missing outcome is excluded.  It must remain the
-* declared base while the lowest surviving level is the numerical omission.
+* declared base while the surviving levels retain their original active recipes.
 clear
 set obs 14
 generate long obs_id = _n
@@ -367,10 +367,10 @@ assert e(sample) == (obs_id > 1)
 assert colsof(e(b)) == 5
 assert rowsof(e(feppml_status)) == 5
 assert e(feppml_status)[1,2] == 2
-assert e(feppml_status)[2,2] == 3
-assert e(feppml_status)[3,2] == 1
+assert inlist(e(feppml_status)[2,2], 1, 6)
+assert inlist(e(feppml_status)[3,2], 1, 6)
+assert inlist(e(feppml_status)[5,2], 1, 6)
 assert e(b)[1,1] == 0
-assert e(b)[1,2] == 0
 
 * Fixed-width string FE and cluster sources are supported, while strL source
 * identities fail closed without disturbing the accepted result or row order.

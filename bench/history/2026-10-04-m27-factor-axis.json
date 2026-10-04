@@ -1,0 +1,630 @@
+{
+  "milestone": "M27.2",
+  "kind": "Approved scientific correction before owner consolidation",
+  "parent_commit": "d74199bff3c2add169e13aeb6837e4091c6744c1",
+  "declaration": "Recorded before runtime edits; user explicitly chose preserve original slots and base flags as SPEC requires on 2026-10-04.",
+  "authority": [
+    "SPEC sections2 and6",
+    "Johannes original-slot/base-flag decision"
+  ],
+  "affected_scope": {
+    "cases": "Next OLS/PPML factor models whose original levels vanish during availability, singleton or PPML separation compaction; categorical interactions whose component base flags differ from authoritative whole-column omission.",
+    "fields": "Original coefficient count/slots/stripes and covariance coordinates; restored finite recipes can change rank/omission/basis, coefficients, covariance, DoF, Wald/fit/output products, solver work and admission within original declared capacities. No inferred replacement base.",
+    "errors": "Valid next OLS calls formerly rejected by final fvexpand name-count mismatch must succeed; legitimate no-absorbed-intercept PPML structural constants can be numerically omitted if the preserved finite basis spans them. Existing metadata/support checks and error precedence remain.",
+    "arithmetic": "Arithmetic unchanged for unaffected finite graphs. Restored original recipes intentionally change formerly rebased finite graphs; independent original-model science rather than old parameterization bit identity applies.",
+    "unaffected_exact": "Candidate classification, availability/factor-domain precedence, original-row ordering, singleton masks/counts, weights and topology; all science/route fields for unchanged graphs; full frozen legacy protocol/frontend behavior including historical failures.",
+    "separation": "Retain independent separation certificates/ledger. Same-span sample/separation decisions must agree; span-restoration cases use independently materialized original finite recipes. Do not adopt a new omission policy or QR pivot priority."
+  },
+  "witness_map": {
+    "original_slots_base_and_active_vanish": "Existing categorical_final_sample_rebase_oracle, PPML original-axis and host publication regressions; materialize original dummy recipes on final rows.",
+    "output_invariance": "Licensed10-row original-base singleton reproducer, ordinary/saved-FE across IID/robust/cluster and fast/low; original slots, sample/rank/status invariant and fitted/residual/identified contrasts independently checked.",
+    "interactions_and_slopes": "All-categorical and nonhierarchical interaction, component-vs-whole omission, missingness and slope-only dense dummy witnesses.",
+    "no_fe_ppml": "Vanished original base with positive counts and robust covariance, explicit full original dummy model; permit only certified numerical structural-constant omission.",
+    "separation_rebuild": "Existing feppml_scientific_contract and prepared-estimator separation/rebase tests, updated only conflicting parameterization expectations.",
+    "failure_and_admission": "Existing rollback/Break, unsupported base-override and generation/allocation/phase overlap fixtures; original-axis memory bounds remain enforced.",
+    "unaffected": "Parent native73 matrix and five-thread science/repeat,46 licensed Stata,M22 strict24/saved48,402912 scoped exact witness values; exact legacy same-source before/after."
+  },
+  "required_checks": [
+    "full ./scripts/run_tests.sh",
+    "30 long independent oracles",
+    "Mac native build/ABI",
+    "parent native replay with predeclared scoped science and unaffected exact",
+    "five-thread science/discrete/fixed-repeat",
+    "mapped licensed Stata and46-fixture integration",
+    "M22 strictPPML24 and savedFE48",
+    "allocator/admission/rollback/Break fixtures",
+    "separate Astra high review",
+    "Linux full CI/native replay before dependent owner consolidation"
+  ],
+  "performance_scope": "Corrected cases compare original-model science; no claim that rebased old coefficients form equivalent timing science. Unaffected preparation/capture-pilot cells retain the frozen two-block envelope. No owner trial is revived.",
+  "historical_reference": "Sealed reghdfe final-sample receipts remain immutable historical evidence of its rebased parameterization, not canonical-slot authority.",
+  "status": "All required local science/transaction/integration and frozen timing gates pass; Astra high terminal acceptance; commit/push ready, Linux CI pending",
+  "architectural_help": {
+    "model": "Astra",
+    "effort": "extra-high",
+    "scope": "Read-only advice on original-axis, whole-column omission authority, and no-FE PPML constant redundancy",
+    "witnesses": "Original-axis explicit-dummy OLS contrasts; closed-form Poisson group log means/covariance; slope-only and nonhierarchical cell directions; active base-component interaction metadata."
+  },
+  "parent_public_capture": {
+    "cases": 24,
+    "next_vanished_ordinary_return_codes": [
+      459,
+      459,
+      459
+    ],
+    "next_vanished_saved_stripe": "x 2b.f 3.f _cons",
+    "legacy": "Vanished ordinary/saved allr459; complete ordinary3success/saved3r459. Preserve exact captured legacy records before/after frontend edit.",
+    "sha256": "cf3f31900ea416766fd51b1e10b164887a4a643cf8957d55b41ac59973e519d6",
+    "scope": "IID/robust/cluster, ordinary/saved, vanished/complete; raw local logs excluded."
+  },
+  "parent_ci": {
+    "run_id": 37222999041,
+    "commit": "d74199bff3c2add169e13aeb6837e4091c6744c1",
+    "status": "success",
+    "jobs": [
+      "check",
+      "comparator",
+      "replay"
+    ]
+  },
+  "local_checks": {
+    "entrypoint": "PASS final ./scripts/run_tests.sh including isolated allocation/rollback/Break audits",
+    "long_independent_oracles": 30,
+    "ols_original_model": "PASS4 independent tests with unchanged3e-8 tolerance; IID/HC1 contrasts, slope-only closed form, nonhierarchical cell effects, whole-column/basecomponent authority",
+    "ppml_original_model": "PASS closed-form cell log means/HC1 covariance1e-9; original omission axis; whole-level simplex separation removes base and active level, exact original rows/slots and cell means",
+    "native": "PASS universal Mac build/audit/actual ABI; final native bytes unchanged from first SCI build",
+    "native73": {
+      "exact": 73,
+      "science": 73
+    },
+    "five_thread": "PASS1/2/4/8/16 science/discrete/fixed-repeat73; unaffected replay all exact",
+    "licensed_integration": "success",
+    "licensed_fixtures": 46,
+    "mapped_stata": "PASS original-axis factor and interaction contrasts6 VCE groups; ordinary/saved-FE\u00d7Fast/Low\u00d73VCE, status/rank/sample invariant and output science5e-9; real parser active base-component PPML cell means/HC1 covariance1e-9",
+    "m22_exact": {
+      "feppml_no_fe_strict_oracle": {
+        "exact_values": 396960,
+        "sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+      },
+      "ols_near_within_cmg_oracle": {
+        "exact_values": 5952,
+        "sha256": "bb023d3152f3bddc8e6f6bace277daaee33ac9bf2253e08a873a186becef7ac2"
+      }
+    },
+    "legacy_frontend": {
+      "records": 399,
+      "sha256": "1387567b3a01be5dc1d013b517d61265d6a253c6cc215fcc22312415bf571010",
+      "exact": true,
+      "excluded": "Existing fereg_solver columns9/10 report elapsed wall times; no scientific fields excluded."
+    },
+    "python_rebase_contracts": 14,
+    "complexity_ratchet": "PASS with4 narrow growth reasons; core -25,host+1,net -24; no new oversized function/file"
+  },
+  "artifacts": {
+    "parent": {
+      "commit": "d74199bff3c2add169e13aeb6837e4091c6744c1",
+      "archive_sha256": "377d67c0a9b54681058df8209de3b857c9eec526f1a980693b8f6a3c5cb5dbf2",
+      "paths": [
+        "AGENTS.md",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bench",
+        "ci/reference-bundles",
+        "clippy.toml",
+        "crates",
+        "docs/ARCHITECTURE.md",
+        "docs/SPEC.md",
+        "legacy",
+        "plugin",
+        "references.lock.toml",
+        "rust-toolchain.toml",
+        "scripts",
+        "stata",
+        "tests/mock_spi",
+        "vendor"
+      ],
+      "scope": "bounded native/frontend snapshot, not full repository",
+      "native_sha256": "706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981",
+      "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+    },
+    "candidate": {
+      "commit": "d74199bff3c2add169e13aeb6837e4091c6744c1",
+      "archive_sha256": "a05c6fa7130a450a6383d97052e6283527f583b75eed243f0b39bdc0ad28e801",
+      "paths": [
+        "AGENTS.md",
+        "Cargo.lock",
+        "Cargo.toml",
+        "bench",
+        "ci/reference-bundles",
+        "clippy.toml",
+        "crates",
+        "docs/ARCHITECTURE.md",
+        "docs/SPEC.md",
+        "legacy",
+        "plugin",
+        "references.lock.toml",
+        "rust-toolchain.toml",
+        "scripts",
+        "stata",
+        "tests/mock_spi",
+        "vendor"
+      ],
+      "scope": "bounded native/frontend snapshot, not full repository",
+      "patch_sha256": "e2872e6aa4e3b18bf283dc5686480338e63f848b986bc46b65c74a39c4a3fde2",
+      "native_sha256": "42d1681e3354328c424c35abefb6de9ae0c216152eee23d78d03387cb7e1e165",
+      "frontend_sha256": "82d025ddb4c341106186b09e6c7dce4511dbaf4b28dfd045cd35b8f40cb972eb"
+    }
+  },
+  "qualification_log_sha256": {
+    "full-tests-final.log": "219b18d429705f495b6fcb50ff276d8fb1791a81a02056bfb41415781b7fbaa5",
+    "long-oracles.log": "4608609722a3e1f01bc5204833da222f7a270feb7d9282ce2ace3c5a8ca7e229",
+    "native-build-final.log": "74f7095547decc9245b242f3e0fadff1c65d0b6ccf96f80bd682cb34dd9c5a18",
+    "separation-original-axis.log": "2cfacd74763fa9e7332ec5f6391309c3c46f86932e3a9183edac36f292d40294",
+    "stata-focused.log": "8e52dfe8359db1efd4bf5f6ba78273c08734dab4f8cca34ef0826ddab95a79be",
+    "stata-hidden.log": "a45db7d7ecfa91fb98e9e2240a2f6621a97ca15506b950286edc034dd3dc67b7",
+    "stata-output.log": "19ebd6b4c4a746a47a8c0038084afec660642f0af6142989f46cd0360e3a45a2",
+    "stata-all-final.log": "420cdb268d02a1afaf69ef4208009e5b4a98bc2288d61dac38e73520240a5423"
+  },
+  "source_review": {
+    "model": "Astra",
+    "effort": "high",
+    "finding": "Astra high terminal acceptance for commit/push: no source/scientific/transaction/performance blocker. Both requested witnesses close; all 15 timing groups within both references, source/artifact/block hashes verified. Linux CI remains a post-push prerequisite; full M27 open."
+  },
+  "performance": {
+    "scope": "Capture-pilot: 15 declared preparation/output/VCE/weight/bias/separation workloads, four native workers; no broader scaling or full-M27 acceptance claim",
+    "passed": true,
+    "references": "Both immediate parent and fixed M26 baseline; their qualified native/frontend artifacts are identical, so the same identified paired observations bind both references",
+    "protocol": {
+      "warmups": 1,
+      "repetitions": 32,
+      "coefficient_rtol": 1e-07,
+      "coefficient_atol": 1e-10,
+      "reference_tolerance": 1e-12,
+      "fresh_process_per_command": true,
+      "confirmation_orders": [
+        [
+          "parent",
+          "candidate"
+        ],
+        [
+          "candidate",
+          "parent"
+        ]
+      ],
+      "maximum_confirmation_blocks": 2,
+      "slowdown_fraction": 0.05,
+      "short_workload_allowance_seconds": 0.001,
+      "timing_primary": "median command seconds",
+      "trace_outside_timing": true,
+      "uncertainty": "32 predetermined interleaved fresh-process artifact pairs; alternating artifact order, inverted in independent second block. Central95% paired bootstrap interval for difference of full-command medians,50000 resamples PCG64 seed260041; +/-2microseconds for difference quantization (1microsecond per duration, bounding two timestamp endpoints, recorded resolution<=500ns). Identical-baseline calibration requires each interval inside symmetric unchanged5%/1ms allowance. Exactly2blocks; no fallback clock,no overhead subtraction,no favorable subset. Stata timer is secondary witness.",
+      "uncertainty_method": "paired-bootstrap-medians-v1",
+      "uncertainty_seed": 260041,
+      "uncertainty_resamples": 50000,
+      "calibration": "Before runtime candidates: identical qualified source/native/frontend artifacts, forward calibration and independent inverse-order validation; every block interval lies inside [-allowance,+allowance]. Terminal post-timing identity verification mandatory. Failure keeps M26 open; no favorable subset or increased follow-up budget.",
+      "revision": "monotonic-command-v1",
+      "duration_quantization_seconds": 1e-06
+    },
+    "timing_identity": {
+      "method": "monotonic-command-v1",
+      "plugin_sha256": "fa7caefcd52f5dfdf41be15896991f67673d01de786f09f1a85c5b2a7b9dda50"
+    },
+    "manifest_sha256": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9",
+    "envelope_sha256": "772926b5fba166c254d2eca0ecabe1668658571a4964d7a2a8074d46740aadae",
+    "blocks": [
+      {
+        "order": "forward",
+        "captures": 1020,
+        "complete": true,
+        "identities_verified": true,
+        "wall_seconds": 450.5620375829749,
+        "sha256": "2f90ca6273f118f3370aaa6ec1767eb5cadf3d1fc2f900b42ec262bcb5a55a95"
+      },
+      {
+        "order": "reverse",
+        "captures": 1020,
+        "complete": true,
+        "identities_verified": true,
+        "wall_seconds": 453.1846259171143,
+        "sha256": "874a767d20bb9c058ea4788e838c2973a3eff8629d988a09b99b04bbe94b72da"
+      }
+    ],
+    "effects": [
+      {
+        "cell": "cover-ols-2fe-frequency",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.0010711666666667063,
+            "allowance_seconds": 0.004614208333333335,
+            "lower_seconds": -0.001470250000000046,
+            "upper_seconds": -0.00018133333333335478,
+            "uncertainty_seconds": 0.0008898333333333516,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 0.00038225000000000064,
+            "allowance_seconds": 0.004591939583333335,
+            "lower_seconds": -0.0008854807291666832,
+            "upper_seconds": 0.001702458333333349,
+            "uncertainty_seconds": 0.0013202083333333484,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "cover-ols-2fe-probability",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.00010564583333330657,
+            "allowance_seconds": 0.004495108333333335,
+            "lower_seconds": -0.0006081666666666993,
+            "upper_seconds": 0.0009383750000000449,
+            "uncertainty_seconds": 0.0010440208333333514,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 0.0004244583333333496,
+            "allowance_seconds": 0.004501819791666668,
+            "lower_seconds": -0.0012414375000000374,
+            "upper_seconds": 0.0011162708333333612,
+            "uncertainty_seconds": 0.001665895833333387,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "cover-ppml-bias-exact",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.00041843749999999347,
+            "allowance_seconds": 0.0018253677083333324,
+            "lower_seconds": -0.0009217291666666538,
+            "upper_seconds": 0.000180187500000003,
+            "uncertainty_seconds": 0.0005986249999999965,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": -0.00013118749999999763,
+            "allowance_seconds": 0.0017845114583333326,
+            "lower_seconds": -0.0005782083333333487,
+            "upper_seconds": 0.00028372916666670266,
+            "uncertainty_seconds": 0.0004470208333333511,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "cover-ppml-bias-randomized",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": 0.0002679999999999974,
+            "allowance_seconds": 0.0021320916666666676,
+            "lower_seconds": -0.0003135833333332957,
+            "upper_seconds": 0.0006482083333333494,
+            "uncertainty_seconds": 0.0005815833333332931,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 3.7437500000049584e-05,
+            "allowance_seconds": 0.002140391666666665,
+            "lower_seconds": -0.000505999999999949,
+            "upper_seconds": 0.0005243151041666214,
+            "uncertainty_seconds": 0.0005434374999999986,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "cover-ppml-separation-fe-simplex-ir",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": 0.0002627499999999991,
+            "allowance_seconds": 0.001452359375,
+            "lower_seconds": 1.7083333333353574e-05,
+            "upper_seconds": 0.0005292291666666984,
+            "uncertainty_seconds": 0.00026647916666669934,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 9.72916666664922e-06,
+            "allowance_seconds": 0.0014546000000000001,
+            "lower_seconds": -0.00028460416666670007,
+            "upper_seconds": 0.0002175000000000004,
+            "uncertainty_seconds": 0.0002943333333333493,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ols-2fe-combined-multiway",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": 0.0010311874999999748,
+            "allowance_seconds": 0.017976015625000005,
+            "lower_seconds": -0.0019589374999999776,
+            "upper_seconds": 0.002887708333333292,
+            "uncertainty_seconds": 0.0029901249999999525,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 0.00012783333333332703,
+            "allowance_seconds": 0.017970045833333337,
+            "lower_seconds": -0.0024929166666666203,
+            "upper_seconds": 0.004162562499999965,
+            "uncertainty_seconds": 0.004034729166666638,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ols-2fe-fe-cluster",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.0010708333333333542,
+            "allowance_seconds": 0.017635155208333336,
+            "lower_seconds": -0.002543791666666626,
+            "upper_seconds": 0.0003342739583334221,
+            "uncertainty_seconds": 0.001472958333333272,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 0.00014610416666671622,
+            "allowance_seconds": 0.01761154479166667,
+            "lower_seconds": -0.0018766250000000187,
+            "upper_seconds": 0.00183970833333341,
+            "uncertainty_seconds": 0.002022729166666735,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ols-2fe-residual-robust",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.00041733333333331124,
+            "allowance_seconds": 0.004118800000000001,
+            "lower_seconds": -0.0012260661458333272,
+            "upper_seconds": 0.0005801875000000492,
+            "uncertainty_seconds": 0.0009975208333333604,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": -0.0003887708333334128,
+            "allowance_seconds": 0.0040997395833333354,
+            "lower_seconds": -0.0012217708333333002,
+            "upper_seconds": 0.0005493125000000079,
+            "uncertainty_seconds": 0.0009380833333334207,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ols-absorbed-slope-combined-multiway",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": 0.0004530416666666398,
+            "allowance_seconds": 0.0035184854166666678,
+            "lower_seconds": -0.0011916666666666584,
+            "upper_seconds": 0.0012066666666666456,
+            "uncertainty_seconds": 0.0016447083333332982,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 0.00038350000000006434,
+            "allowance_seconds": 0.0035198364583333324,
+            "lower_seconds": -0.00025947916666669923,
+            "upper_seconds": 0.0014834791666667021,
+            "uncertainty_seconds": 0.0010999791666666378,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ols-finite-factor-combined-multiway",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.0003478958333333615,
+            "allowance_seconds": 0.008382189583333336,
+            "lower_seconds": -0.002025110416666646,
+            "upper_seconds": 0.001285812500000009,
+            "uncertainty_seconds": 0.0016772145833332847,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 0.0007806249999999515,
+            "allowance_seconds": 0.008336593750000003,
+            "lower_seconds": -0.001628187499999987,
+            "upper_seconds": 0.001899124999999944,
+            "uncertainty_seconds": 0.0024088124999999388,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ppml-2fe-combined-multiway",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.00021570833333334205,
+            "allowance_seconds": 0.013595660416666669,
+            "lower_seconds": -0.0019829999999998993,
+            "upper_seconds": 0.0011748541666665704,
+            "uncertainty_seconds": 0.0017672916666665573,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": -0.0007442083333332739,
+            "allowance_seconds": 0.013635009375000002,
+            "lower_seconds": -0.001796437499999968,
+            "upper_seconds": -4.1416666666740155e-05,
+            "uncertainty_seconds": 0.0010522291666666941,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ppml-2fe-fe-cluster",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.0006472708333333244,
+            "allowance_seconds": 0.012418614583333338,
+            "lower_seconds": -0.0018891874999999983,
+            "upper_seconds": 0.000498041666666669,
+            "uncertainty_seconds": 0.001241916666666674,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 0.00023299999999998322,
+            "allowance_seconds": 0.012435172916666671,
+            "lower_seconds": -0.002104916666666732,
+            "upper_seconds": 0.0010853125000000444,
+            "uncertainty_seconds": 0.002337916666666715,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ppml-2fe-residual-robust",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": 0.00029600000000001847,
+            "allowance_seconds": 0.011811546875000002,
+            "lower_seconds": -0.002079499999999982,
+            "upper_seconds": 0.0016464583333333763,
+            "uncertainty_seconds": 0.0023755000000000004,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 2.8666666666593565e-05,
+            "allowance_seconds": 0.011862662500000006,
+            "lower_seconds": -0.0008664375000000371,
+            "upper_seconds": 0.0013595031250000355,
+            "uncertainty_seconds": 0.001330836458333442,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ppml-absorbed-slope-combined-multiway",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.0003038749999999535,
+            "allowance_seconds": 0.022410951041666672,
+            "lower_seconds": -0.0030983749999998734,
+            "upper_seconds": 0.0008655416666666341,
+            "uncertainty_seconds": 0.00279449999999992,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": -0.001428562500000008,
+            "allowance_seconds": 0.022445637500000004,
+            "lower_seconds": -0.0027373124999999754,
+            "upper_seconds": -0.0008537708333334357,
+            "uncertainty_seconds": 0.0013087499999999675,
+            "noise_resolves_allowance": true
+          }
+        ]
+      },
+      {
+        "cell": "development-ppml-finite-factor-combined-multiway",
+        "threads": 4,
+        "arm": "fereg",
+        "verdict": "within",
+        "blocks": [
+          {
+            "verdict": "within",
+            "delta_seconds": -0.00018902083333321995,
+            "allowance_seconds": 0.015871719791666666,
+            "lower_seconds": -0.001463583333333405,
+            "upper_seconds": 0.0020658541666666564,
+            "uncertainty_seconds": 0.0022548749999998763,
+            "noise_resolves_allowance": true
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": -0.0005521458333333507,
+            "allowance_seconds": 0.01588788541666667,
+            "lower_seconds": -0.001511583333333342,
+            "upper_seconds": 0.0007244166666665588,
+            "uncertainty_seconds": 0.0012765624999999095,
+            "noise_resolves_allowance": true
+          }
+        ]
+      }
+    ],
+    "verdict_counts": {
+      "within": 15,
+      "unresolved": 0,
+      "outside": 0
+    },
+    "limitation": "Only scoped frozen timing acceptance; no speedup, full interaction, holdout or platform-scaling claim"
+  }
+}

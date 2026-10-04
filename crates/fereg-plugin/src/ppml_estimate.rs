@@ -2212,10 +2212,11 @@ fn validate_coefficient_request_identity(
             .get(slot * COEFFICIENT_STATUS_COLUMNS + 1)
             .copied()
             .ok_or_else(|| internal("certified PPML coefficient status is out of range"))?;
-        let expected_omitted = if term
-            .components
-            .iter()
-            .any(|component| component.base == MetadataFlag::True)
+        let expected_omitted = if term.whole_column_omitted
+            && term
+                .components
+                .iter()
+                .any(|component| component.base == MetadataFlag::True)
         {
             Some(2.0)
         } else if term.whole_column_omitted {
@@ -2224,13 +2225,7 @@ fn validate_coefficient_request_identity(
             None
         };
         if expected_omitted.is_some_and(|expected| status != expected)
-            // An originally active factor slot can disappear when the
-            // prepared final sample is rebased (for example, its only level
-            // occurs on an observation with a missing outcome).  Core keeps
-            // the original coefficient axis and records that dynamic final-
-            // sample omission as SyntaxOmitted.  Original base and explicit
-            // omission recipes above remain exact and cannot change status.
-            || expected_omitted.is_none() && !matches!(status as u8, 1 | 3 | 4 | 5 | 6)
+            || expected_omitted.is_none() && !matches!(status as u8, 1 | 4 | 5 | 6)
         {
             return Err(internal(
                 "certified PPML coefficient status disagrees with the model slot recipe",
@@ -2239,17 +2234,19 @@ fn validate_coefficient_request_identity(
     }
     let constant_slot = action.request.model.terms.len();
     let constant_status = shadow.coefficient_status[constant_slot * COEFFICIENT_STATUS_COLUMNS + 1];
-    let expected_constant = if action
+    let valid_constant = if action
         .request
         .absorbed_terms
         .iter()
         .any(|term| term.intercept)
     {
-        7.0
+        constant_status == 7.0
     } else {
-        1.0
+        // Preserved factor recipes can span the constant without an absorbed
+        // intercept. Its generated recipe must survive, but QR may omit it.
+        matches!(constant_status as u8, 1 | 6)
     };
-    if constant_status != expected_constant {
+    if !valid_constant {
         return Err(internal(
             "certified PPML structural-constant status disagrees with the absorb model",
         ));
@@ -5506,13 +5503,13 @@ mod tests {
     }
 
     #[test]
-    fn active_factor_level_that_vanishes_on_rebase_is_syntax_omitted() {
+    fn active_factor_level_that_vanishes_retains_a_zero_numerical_recipe() {
         let (mut args, mut spi) = categorical_absorb_cluster_weight_fixture();
         // The original wire declares h==1 as an active factor slot.  Leave
         // that level on exactly one candidate observation, then make its
         // outcome missing.  The final prepared sample contains only h==0,
-        // so core must preserve the original slot as a dynamic
-        // SyntaxOmitted entry rather than changing the coefficient axis.
+        // so core must preserve the active original recipe as a zero column
+        // classified by the existing numerical rank machinery.
         for observation in 1..=spi.nobs {
             spi.numeric.insert((4, observation), (0.0, false));
         }
@@ -5523,7 +5520,7 @@ mod tests {
         estimate_ppml_test(&args, &mut spi).expect("rebased categorical hidden PPML estimate");
         assert_eq!(spi.receipt_complete(), 1.0);
         assert_eq!(spi.matrices["RSTATUS"][1][1], 2.0);
-        assert_eq!(spi.matrices["RSTATUS"][2], [3.0, 3.0, 0.0, 1.0]);
+        assert_eq!(spi.matrices["RSTATUS"][2], [3.0, 6.0, 0.0, 1.0]);
         assert_eq!(spi.matrices["RREC"][0][8], 31.0);
     }
 

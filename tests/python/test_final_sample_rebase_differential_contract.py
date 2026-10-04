@@ -114,15 +114,16 @@ class FinalSampleRebaseDifferentialContractTests(unittest.TestCase):
                 "+1.0000000000000X+001",
             )
 
-    def test_fixture_consumes_the_exact_oracles_and_failure_contract(self) -> None:
+    def test_fixture_compares_original_axis_contrasts_and_failure_contract(self) -> None:
         text = FIXTURE.read_text(encoding="utf-8")
+        # Keep the sealed old receipt above unchanged: its rebased coefficients
+        # are historical, while the active fixture now follows SPEC's axis.
         for token in (
-            "x 2b.f 3.f _cons",
-            "x 2b.f 3.f 1b.z 2.z 2b.f#1b.z 2b.f#2o.z 3o.f#1b.z 3.f#2.z _cons",
-            "+1.1c5bec29a16c4X+000",
-            "+1.2b33c240ae588X+000",
-            "+1.666666666666cX+000",
-            "+1.999999999999bX-003",
+            "local original_count : word count `original_names'",
+            "matrix contrast_b = L*b'",
+            "matrix contrast_V = L*V*L'",
+            "quietly regress y `rhs' i.ab if sample, `reference_vce'",
+            "assert e(fereg_status)[2,2] == 2",
             'foreach specification in "ib1.f" "ib3.f" "ibn.f"',
             "assert _rc == 498",
             "assert mreldif(e(b), `accepted_b') == 0",

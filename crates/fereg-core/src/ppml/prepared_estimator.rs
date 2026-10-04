@@ -995,10 +995,11 @@ fn original_omission_statuses(request: &OlsRequestV1) -> Result<Vec<PpmlCoeffici
         let target = statuses
             .get_mut(index)
             .ok_or_else(|| invalid_argument("PPML coefficient slot is outside its model graph"))?;
-        *target = if term
-            .components
-            .iter()
-            .any(|component| component.base == crate::metadata::MetadataFlag::True)
+        *target = if term.whole_column_omitted
+            && term
+                .components
+                .iter()
+                .any(|component| component.base == crate::metadata::MetadataFlag::True)
         {
             PpmlCoefficientStatus::BaseLevel
         } else {
@@ -2750,27 +2751,133 @@ mod tests {
     }
 
     #[test]
+    fn whole_factor_level_separation_rebuilds_on_the_original_axis() {
+        for removed in [1.0, 3.0] {
+            let (mut request, mut loaded) = factor_rebase_fixture();
+            loaded.ols.outcome.missing.fill(false);
+            let codes = &loaded.ols.numeric_sources[0].1.values;
+            for (row, &level) in codes.iter().enumerate() {
+                if level == removed {
+                    loaded.ols.outcome.values[row] = 0.0;
+                }
+            }
+            request.output.mean = true;
+            request.output.requested_observation_columns = 1;
+            request.separation = SeparationConfig {
+                methods: SeparationMethods {
+                    fixed_effects: false,
+                    simplex: true,
+                    iterated_rectifier: false,
+                    mu: false,
+                },
+                drop_singletons: false,
+                ..SeparationConfig::default()
+            };
+            let result =
+                fit_prepared_ppml(request, loaded).expect("whole-level separated factor model");
+            assert_eq!(result.separation().generations, 1);
+            assert_eq!(
+                result.separation().separated_count,
+                if removed == 1.0 { 2 } else { 5 }
+            );
+            assert_eq!(result.coefficients().values().len(), 5);
+            assert_eq!(
+                result.coefficients().statuses()[0],
+                PpmlCoefficientStatus::BaseLevel
+            );
+            assert_eq!(
+                result.coefficients().statuses()[3],
+                PpmlCoefficientStatus::SyntaxOmitted
+            );
+            if removed == 3.0 {
+                assert_eq!(
+                    result.coefficients().statuses()[2],
+                    PpmlCoefficientStatus::NumericallyRankDeficient
+                );
+                assert_eq!(result.coefficients().values()[2], 0.0);
+                for j in 0..5 {
+                    assert_eq!(result.inference().vce.covariance[2 * 5 + j], 0.0);
+                    assert_eq!(result.inference().vce.covariance[j * 5 + 2], 0.0);
+                }
+            }
+            let expected_rows = if removed == 1.0 {
+                (2..12).collect::<Vec<_>>()
+            } else {
+                (0..7).collect::<Vec<_>>()
+            };
+            assert_eq!(result.sample().original_rows(), expected_rows);
+            for (row, &mean) in result.output().mean().iter().enumerate() {
+                let original = result.sample().original_rows()[row];
+                let (slot, expected) = if original < 2 {
+                    (None, 1.5)
+                } else if original < 7 {
+                    (Some(1), 1.8)
+                } else {
+                    (Some(2), 4.4)
+                };
+                let values = result.coefficients().values();
+                let eta = values[4] + slot.map_or(0.0, |slot| values[slot]);
+                assert!((eta.exp() - expected).abs() < 1e-9);
+                assert!((mean - expected).abs() < 1e-9);
+            }
+            assert!(result
+                .separation()
+                .methods
+                .iter()
+                .any(|report| report.method == SeparationMethod::Simplex
+                    && report.status == MethodStatus::Certified));
+            assert!(result.certificate().passed);
+        }
+    }
+
+    #[test]
+    fn vanished_base_ppml_preserves_original_cell_means_and_robust_covariance() {
+        let (mut request, loaded) = factor_rebase_fixture();
+        request.output.mean = true;
+        request.output.requested_observation_columns = 1;
+        let result = fit_prepared_ppml(request, loaded).expect("original factor graph PPML");
+        let values = result.coefficients().values();
+        let covariance = &result.inference().vce.covariance;
+        let contrasts = [[0.0, 1.0, 0.0, 0.0, 1.0], [0.0, 0.0, 1.0, 0.0, 1.0]];
+        let log_means = [(9.0_f64 / 5.0).ln(), (22.0_f64 / 5.0).ln()];
+        let variances = [28.0 / 729.0, 13.0 / 1089.0];
+        for a in 0..2 {
+            let eta = (0..5).map(|i| contrasts[a][i] * values[i]).sum::<f64>();
+            assert!((eta - log_means[a]).abs() < 1e-9);
+            for b in 0..2 {
+                let variance = (0..5)
+                    .flat_map(|i| (0..5).map(move |j| (i, j)))
+                    .map(|(i, j)| contrasts[a][i] * covariance[i * 5 + j] * contrasts[b][j])
+                    .sum::<f64>();
+                let expected = if a == b { variances[a] } else { 0.0 };
+                assert!((variance - expected).abs() < 1e-9);
+            }
+        }
+        for (row, &mean) in result.output().mean().iter().enumerate() {
+            let expected = if row < 5 { 9.0 / 5.0 } else { 22.0 / 5.0 };
+            assert!((mean - expected).abs() < 1e-9);
+        }
+        assert_eq!(result.coefficients().kept_full_slots().len(), 2);
+        assert_eq!(result.output().mean().len(), 10);
+    }
+
+    #[test]
     fn final_sample_rebase_preserves_the_full_original_omission_axis() {
         let (request, loaded) = factor_rebase_fixture();
         let result = fit_prepared_ppml(request, loaded).expect("rebased factor composite PPML");
-        assert_eq!(
-            result.coefficients().statuses(),
-            &[
-                // The caller-declared base vanished during numeric sample
-                // preparation but retains its canonical original identity.
-                PpmlCoefficientStatus::BaseLevel,
-                // The lowest surviving category becomes the numerical base;
-                // it was not caller-declared base metadata.
-                PpmlCoefficientStatus::SyntaxOmitted,
-                PpmlCoefficientStatus::Identified,
-                PpmlCoefficientStatus::SyntaxOmitted,
-                PpmlCoefficientStatus::Identified,
-            ]
-        );
-        assert_eq!(result.coefficients().kept_full_slots(), &[2, 4]);
+        let statuses = result.coefficients().statuses();
+        assert_eq!(statuses[0], PpmlCoefficientStatus::BaseLevel);
+        assert_eq!(statuses[3], PpmlCoefficientStatus::SyntaxOmitted);
+        for &slot in &[1_usize, 2, 4] {
+            assert!(matches!(
+                statuses[slot],
+                PpmlCoefficientStatus::Identified | PpmlCoefficientStatus::NumericallyRankDeficient
+            ));
+        }
+        assert_eq!(result.coefficients().kept_full_slots().len(), 2);
         assert_eq!(result.coefficients().values().len(), 5);
         assert_eq!(result.inference().vce.covariance.len(), 25);
-        for &slot in &[0_usize, 1, 3] {
+        for &slot in &[0_usize, 3] {
             assert_eq!(result.coefficients().values()[slot], 0.0);
             assert!(result.inference().vce.standard_errors[slot].is_nan());
         }
@@ -2778,7 +2885,7 @@ mod tests {
             result.memory().plan.dimensions.reported_coefficient_slots,
             5
         );
-        assert!(result.memory().plan.dimensions.coefficient_slots < 5);
+        assert_eq!(result.memory().plan.dimensions.coefficient_slots, 5);
         let inference = result.inference();
         let retained_inference = (inference.vce.covariance.capacity()
             + inference.vce.standard_errors.capacity()

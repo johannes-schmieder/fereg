@@ -240,12 +240,48 @@ replace y = . in 1
 _fereg_estimate_ppml y ib0.group, memory(fast) separation(none)
 local factor_names : colfullnames e(b)
 assert colsof(e(b)) == 4
-assert `"`factor_names'"' == "0b.group 1o.group 2.group _cons"
+assert `"`factor_names'"' == "0b.group 1.group 2.group o._cons"
 assert e(feppml_status)[1,2] == 2
-assert e(feppml_status)[2,2] == 3
+assert e(feppml_status)[2,2] == 1
+assert e(feppml_status)[3,2] == 1
+assert e(feppml_status)[4,2] == 6
+assert e(N_physical) == 39
+restore
+
+* A base-marked component can belong to an active whole interaction. The
+* parser's whole-column flag owns omission; verify the real wire and cell model.
+preserve
+clear
+set obs 40
+generate byte f = mod(floor((_n-1)/10),2)+1
+generate byte z = mod(floor((_n-1)/5),2)+1
+generate double y = 1+(f==2)+2*(z==2)+mod(_n,5)/10
+generate byte touse = 1
+fereg_parse i.f#i.z, touse(touse)
+matrix terms = r(model_terms)
+matrix components = r(model_components)
+assert terms[2,6] == 0
+assert components[3,7] == 1
+assert terms[3,6] == 0
+assert components[6,7] == 1
+_fereg_estimate_ppml y i.f#i.z, separation(none) mu(cell_mu)
+assert colsof(e(b)) == 5
+assert e(feppml_status)[1,2] == 2
+assert e(feppml_status)[2,2] == 1
 assert e(feppml_status)[3,2] == 1
 assert e(feppml_status)[4,2] == 1
-assert e(N_physical) == 39
+assert abs(cell_mu-(1.2+(f==2)+2*(z==2))) < 1e-9
+matrix L = (0,0,0,0,1 \ 0,1,0,0,1 \ 0,0,1,0,1 \ 0,0,0,1,1)
+matrix cell_b = L*e(b)'
+matrix cell_V = L*e(V)*L'
+matrix cell_mean = (1.2,3.2,2.2,4.2)
+forvalues i=1/4 {
+    assert abs(cell_b[`i',1]-ln(cell_mean[1,`i'])) < 1e-9
+    forvalues j=1/4 {
+        local expected = cond(`i'==`j', (40/39)*.2/(10*cell_mean[1,`i'])^2, 0)
+        assert abs(cell_V[`i',`j']-`expected') < 1e-9
+    }
+}
 restore
 
 * A singular tested covariance has a positive tested-column inventory but no
