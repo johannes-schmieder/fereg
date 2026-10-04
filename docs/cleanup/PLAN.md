@@ -1,8 +1,8 @@
-# Incremental refactoring: M0–M24
+# Incremental refactoring: M0–M25
 
 The [second simplification program](../../milestones2.md) defines the approved
-M26–M35 architectural direction and acceptance policy. M25 below remains a
-reserved source-local proposal; its execution is not a prerequisite for that
+M26–M35 architectural direction and acceptance policy. M25 below is a separate
+source-local milestone; its execution is not a prerequisite for that
 program. [MILESTONES](../../MILESTONES.md) alone records execution status.
 
 Approved by Johannes on 2026-10-02. This replaces the clean-core rebuild plan.
@@ -746,7 +746,9 @@ links. A fresh Astra extra-high reviewer checks evidence and proposal. Since M24
 changes documentation only, do not repeat runtime qualification locally; CI still
 runs the full entrypoint on the push. The existing one-working-day timebox applies.
 
-### Proposed M25: reuse normalized values within coefficient refinement
+### M25: reuse normalized values within coefficient refinement
+
+Johannes authorizes completing this scoped proposal and pausing afterward.
 
 The M24 target is the two divisions of the same retained row entry by its
 reference norm in `ols/retained_refinement.rs`: residual construction followed by
@@ -767,9 +769,11 @@ and scratch readers must still refill the complete row from immutable storage.
 Before acceptance, exercise noncontiguous active positions, nonunit norms, weights,
 multiple correction passes, complete-row refill and omitted-value corruption.
 Add only the missing direct malformed-index/arithmetic regression and enable the
-existing implicit fixture's coefficient refinement; its current None tolerance
-does not exercise this helper. Reuse strict fresh/scratch, independent optimum,
-bounded failure and error/unwind rollback witnesses. Require full/long checks,
+existing implicit fixture's coefficient refinement; its prior None tolerance
+did not exercise this helper. Restore the direct omitted-column corruption and
+bounded/nonfinite failure witnesses removed in the M23 restoration. Reuse strict
+fresh/scratch, independent optimum and error/unwind rollback witnesses. Require
+full/long checks,
 exact qualified-parent replay and fixed-thread repeats, Mac/ABI, both M22 witness
 matrices, mapped licensed/allocation/transaction checks and Linux CI.
 
@@ -778,4 +782,4 @@ with the bounded reverse-order confirmation where flagged. An extra scratch stor
 can offset the saved division; no speedup or recovery of all M22 cost is promised.
 Reject a repeated regression under the existing gate. Keep M23's adapter rejected;
 do not change routing, admission, tolerances or add size/thread/memory fences.
-Finish any future M25 implementation with a separate Astra extra-high review.
+Finish M25 with a separate Astra extra-high review and pause afterward.

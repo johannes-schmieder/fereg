@@ -1,9 +1,9 @@
 # Incremental refactoring — milestones
 
-Plan: [M0–M24](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
-Second program: [M26–M35](milestones2.md); M25 remains the reserved normalization-reuse proposal.
+Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
+Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: none. M24 attribution reviewed and qualified; M25 normalization reuse is proposed and remains unimplemented.
+Current task: M25.2 clean artifact replay/witnesses and bounded timings; separate Astra review follows, then pause after M25.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -66,6 +66,9 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M24.1 Astra extra-high plan; eight scopes, verified three-artifact identity, owners and capture recipes.
 - [x] M24.2 180 timed/36 warmup captures exact by scope; six tighter references, twelve samples; normalization reuse scoped with Astra help.
 - [x] M24.3 Separate Astra extra-high review approves; governance/links/ratchet and full Linux CI 37197177076 pass; no runtime change.
+- [x] M25.1 Reuse normalized row values with canonical-index validation; mapped arithmetic/implicit regressions and required local checks.
+- [ ] M25.2 Clean Mac parent replay/witnesses, compiled-work inspection and bounded eight-scope timing qualification.
+- [ ] M25.3 Separate Astra extra-high review and Linux CI; pause after completion.
 
 - [x] M26.0 Roadmap and active ADR 0249 recorded; separate Astra extra-high review and local governance/links pass; runtime work not started.
 - [ ] M26.1 Freeze the qualified baseline, interaction/holdout matrix, performance envelope and quantified retirement inventory.
@@ -99,7 +102,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-No active blockers. M22 repairs and M23 restoration remain qualified. M24 review/docs/CI pass; proposed M25 remains unimplemented.
+No active blockers. M22 repairs, M23 restoration and M24 attribution remain qualified. M25 is authorized; no later implementation is authorized in this thread.
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
@@ -207,3 +210,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 M24.1 this commit — 180 timed/36 warmup captures exact by scope, six tighter references/12 profiles; fresh Astra xhigh approves; docs/links/ratchet pass; push CI pending.
 - 2026-10-04 G-M24 c126f5d9 — CI37197177076 all three jobs pass; bounded attribution approved by separate Astra xhigh; [next proposal](docs/cleanup/PLAN.md).
 - 2026-10-04 M26.0 this commit — M26–M35 roadmap/ADR0249 recorded; Astra xhigh review and governance/links pass; [evidence](bench/history/2026-10-04-m26-roadmap.json).
+- 2026-10-04 M25.1 this commit — cached normalization; full/30, Mac ABI, exact73/five-thread, 46 Stata/PPML24/FE48 pass; core +4 declared; clean timing/CI/review pending.
