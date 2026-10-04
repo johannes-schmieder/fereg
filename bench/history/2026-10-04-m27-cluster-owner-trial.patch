@@ -1,0 +1,779 @@
+diff --git a/crates/fereg-core/src/ols/implicit_centered_tests.rs b/crates/fereg-core/src/ols/implicit_centered_tests.rs
+index 0be3e867..d7f8b2fc 100644
+--- a/crates/fereg-core/src/ols/implicit_centered_tests.rs
++++ b/crates/fereg-core/src/ols/implicit_centered_tests.rs
+@@ -118,9 +118,7 @@ fn fixture_extra_columns(
+         include_intercept: true,
+         keep_singletons: true,
+     };
+-    SharedPreparedOlsData::Categorical(Arc::new(
+-        crate::prepare_categorical_ols_data(&request, &input).unwrap(),
+-    ))
++    SharedPreparedOlsData::new(crate::prepare_categorical_ols_data(&request, &input).unwrap())
+ }
+ 
+ #[test]
+@@ -321,10 +319,7 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
+         }
+         let products = session.into_current_products().unwrap();
+         assert!(products.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+-        let SharedPreparedOlsData::Categorical(arc) = &source else {
+-            unreachable!()
+-        };
+-        let weak = Arc::downgrade(arc);
++        let weak = Arc::downgrade(&source.0);
+         drop(source);
+         assert_eq!(
+             weak.upgrade().is_some(),
+diff --git a/crates/fereg-core/src/ols/prepared_categorical_clusters.rs b/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
+index 7dc674b6..ef36335f 100644
+--- a/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_clusters.rs
+@@ -20,29 +20,26 @@ use super::prepared_clusters::{
+ };
+ use super::{LoadedOlsInput, OlsClusteredRequestV1};
+ 
+-/// Owning categorical-interaction OLS-plus-cluster preparation result. The OLS
+-/// artifact and every cluster dimension share one final compact sample axis.
+-#[derive(Debug, PartialEq)]
+-pub struct PreparedCategoricalOlsClusteredData {
+-    ols: PreparedCategoricalOlsData,
+-    clusters: PreparedOlsClusterDesign,
+-}
++/// Compatibility name for the categorical owner with declared cluster metadata.
++pub type PreparedCategoricalOlsClusteredData = PreparedCategoricalOlsData;
+ 
+-impl PreparedCategoricalOlsClusteredData {
++impl PreparedCategoricalOlsData {
++    /// Compatibility borrow of the same finalized owner.
+     #[must_use]
+-    pub const fn ols(&self) -> &PreparedCategoricalOlsData {
+-        &self.ols
++    pub const fn ols(&self) -> &Self {
++        self
+     }
+ 
+-    #[must_use]
+-    pub const fn clusters(&self) -> &PreparedOlsClusterDesign {
+-        &self.clusters
++    pub(crate) fn required_clusters(&self) -> Result<&PreparedOlsClusterDesign> {
++        self.clusters().ok_or_else(|| {
++            invalid_argument("prepared categorical OLS has no declared cluster dimensions")
++        })
+     }
+ 
+     /// Borrow one declared cluster dimension on the final compact sample axis.
+     pub fn cluster_codes(&self, dimension: usize) -> Result<&[u32]> {
+         let dimension = self
+-            .clusters
++            .required_clusters()?
+             .dimensions
+             .get(dimension)
+             .ok_or_else(|| invalid_argument("categorical cluster dimension is out of range"))?;
+@@ -50,16 +47,15 @@ impl PreparedCategoricalOlsClusteredData {
+             PreparedOlsClusterCodes::CategoricalSource {
+                 categorical_source_index,
+             } => self
+-                .ols
+                 .categorical_sources()
+                 .get(*categorical_source_index)
+                 .ok_or_else(|| {
+                     invalid_argument("categorical simple cluster source is out of range")
+                 })?
+-                .codes(self.ols.fe_topology())?,
++                .codes(self.fe_topology())?,
+             PreparedOlsClusterCodes::Interaction(codes) => codes,
+         };
+-        if codes.len() != self.ols.sample().n_active() {
++        if codes.len() != self.sample().n_active() {
+             return Err(invalid_argument(
+                 "categorical cluster codes are not aligned with the final sample",
+             ));
+@@ -142,7 +138,7 @@ fn finish_prepare_categorical_ols_clusters(
+ ) -> Result<PreparedCategoricalOlsClusteredData> {
+     let mut reservation = SystemCategoricalClusterReservation;
+     let clusters = build_cluster_design(request, &ols, &mut reservation)?;
+-    let prepared = PreparedCategoricalOlsClusteredData { ols, clusters };
++    let prepared = ols.with_clusters(clusters);
+     certify_prepared_clusters(&prepared)?;
+     Ok(prepared)
+ }
+@@ -154,11 +150,7 @@ pub(crate) fn prepare_ppml_categorical_ols_clustered_data(
+ ) -> Result<PreparedCategoricalOlsClusteredData> {
+     let cluster_sources = validate_request(request)?;
+     let ols = prepare_ppml_categorical_ols_data(&request.ols, loaded, &cluster_sources)?;
+-    let mut reservation = SystemCategoricalClusterReservation;
+-    let clusters = build_cluster_design(request, &ols, &mut reservation)?;
+-    let prepared = PreparedCategoricalOlsClusteredData { ols, clusters };
+-    certify_prepared_clusters(&prepared)?;
+-    Ok(prepared)
++    finish_prepare_categorical_ols_clusters(request, ols)
+ }
+ 
+ fn build_cluster_design<R: CategoricalClusterReservation>(
+@@ -285,22 +277,23 @@ fn factorize_interaction<R: CategoricalClusterReservation>(
+ }
+ 
+ fn certify_prepared_clusters(prepared: &PreparedCategoricalOlsClusteredData) -> Result<()> {
+-    prepared.ols.validate()?;
+-    let nobs = prepared.ols.sample().n_active();
+-    if !(1..=10).contains(&prepared.clusters.len()) {
++    prepared.validate()?;
++    let nobs = prepared.sample().n_active();
++    let clusters = prepared.required_clusters()?;
++    if !(1..=10).contains(&clusters.len()) {
+         return Err(invalid_argument(
+             "categorical cluster dimension count is outside the certified range",
+         ));
+     }
+     let mut reservation = SystemCategoricalClusterReservation;
+-    for (dimension_index, dimension) in prepared.clusters.dimensions.iter().enumerate() {
++    for (dimension_index, dimension) in clusters.dimensions.iter().enumerate() {
+         if dimension.label.is_empty() || dimension.sources.is_empty() || dimension.groups < 2 {
+             return Err(invalid_argument(
+                 "categorical cluster metadata is structurally incomplete",
+             ));
+         }
+         let source_indices =
+-            resolve_source_indices(&prepared.ols, &dimension.sources, &mut reservation)?;
++            resolve_source_indices(prepared, &dimension.sources, &mut reservation)?;
+         let codes = prepared.cluster_codes(dimension_index)?;
+         if codes.len() != nobs || codes.iter().any(|code| *code as usize >= dimension.groups) {
+             return Err(invalid_data(
+@@ -315,16 +308,15 @@ fn certify_prepared_clusters(prepared: &PreparedCategoricalOlsClusteredData) ->
+                 [expected],
+             ) if categorical_source_index == expected => {
+                 let source = prepared
+-                    .ols
+                     .categorical_sources()
+                     .get(*expected)
+                     .ok_or_else(|| {
+                         invalid_argument("certified simple cluster source disappeared")
+                     })?;
+-                if source.n_levels(prepared.ols.fe_topology())? != dimension.groups
++                if source.n_levels(prepared.fe_topology())? != dimension.groups
+                     || !std::ptr::eq(
+                         codes.as_ptr(),
+-                        source.codes(prepared.ols.fe_topology())?.as_ptr(),
++                        source.codes(prepared.fe_topology())?.as_ptr(),
+                     )
+                 {
+                     return Err(invalid_argument(
+@@ -333,7 +325,7 @@ fn certify_prepared_clusters(prepared: &PreparedCategoricalOlsClusteredData) ->
+                 }
+             }
+             (PreparedOlsClusterCodes::Interaction(_), indices) if indices.len() >= 2 => {
+-                let expected = factorize_interaction(&prepared.ols, indices, &mut reservation)?;
++                let expected = factorize_interaction(prepared, indices, &mut reservation)?;
+                 if expected.n_levels() != dimension.groups || expected.codes() != codes {
+                     return Err(invalid_data(
+                         "categorical cluster interaction differs from its source tuple partition",
+diff --git a/crates/fereg-core/src/ols/prepared_categorical_data.rs b/crates/fereg-core/src/ols/prepared_categorical_data.rs
+index 799497ea..83052fc4 100644
+--- a/crates/fereg-core/src/ols/prepared_categorical_data.rs
++++ b/crates/fereg-core/src/ols/prepared_categorical_data.rs
+@@ -93,6 +93,7 @@ pub struct PreparedCategoricalOlsData {
+     report_intercept: bool,
+     singletons: PreparedOlsSingletons,
+     report_plan: PreparedCategoricalOlsReportPlan,
++    clusters: Option<crate::ols::PreparedOlsClusterDesign>,
+ }
+ 
+ /// Only the allocation-free topology check may overlap fitting. The immutable
+@@ -147,6 +148,22 @@ impl PreparedCategoricalOlsData {
+                 .sum::<u128>()
+             + self.fe_topology.owned_buffer_bytes()
+             + self.report_plan.owned_buffer_bytes()
++            + self
++                .clusters
++                .as_ref()
++                .map_or(0, crate::ols::PreparedOlsClusterDesign::owned_buffer_bytes)
++    }
++
++    #[must_use]
++    pub const fn clusters(&self) -> Option<&crate::ols::PreparedOlsClusterDesign> {
++        self.clusters.as_ref()
++    }
++
++    // Cluster preparation includes these sources in availability before this
++    // closed construction step; attaching to an arbitrary public owner is forbidden.
++    pub(crate) fn with_clusters(mut self, clusters: crate::ols::PreparedOlsClusterDesign) -> Self {
++        self.clusters = Some(clusters);
++        self
+     }
+ 
+     /// Executable recipe payloads and FE metadata; excludes numeric topology
+@@ -1323,6 +1340,7 @@ pub(crate) fn prepare_ppml_categorical_ols_data(
+         report_intercept,
+         singletons,
+         report_plan: rebased.report_plan,
++        clusters: None,
+     };
+     prepared.validate_with_reusable_topology(false)?;
+     Ok(prepared)
+@@ -1535,6 +1553,7 @@ fn finish_prepare_categorical_ols_data(
+             cascade_events,
+         },
+         report_plan: rebased.report_plan,
++        clusters: None,
+     };
+     prepared.validate_with_reusable_topology(false)?;
+     Ok(prepared)
+diff --git a/crates/fereg-core/src/ols/prepared_clustered.rs b/crates/fereg-core/src/ols/prepared_clustered.rs
+index 7c168de6..2dfc6561 100644
+--- a/crates/fereg-core/src/ols/prepared_clustered.rs
++++ b/crates/fereg-core/src/ols/prepared_clustered.rs
+@@ -808,10 +808,10 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
+ 
+     let mut cluster_counts = reserved_empty(
+         reservation,
+-        prepared.clustered_design().len(),
++        prepared.clustered_design()?.len(),
+         "unable to reserve prepared clustered final group counts",
+     )?;
+-    for dimension in prepared.clustered_design().dimensions() {
++    for dimension in prepared.clustered_design()?.dimensions() {
+         push_reserved(
+             &mut cluster_counts,
+             dimension.groups(),
+@@ -835,7 +835,7 @@ fn validate_config<P: PreparedOlsClusteredView + ?Sized>(
+     prepared: &P,
+     config: PreparedOlsClusteredConfig,
+ ) -> Result<()> {
+-    if !(1..=10).contains(&prepared.clustered_design().len()) {
++    if !(1..=10).contains(&prepared.clustered_design()?.len()) {
+         return Err(invalid_argument(
+             "prepared clustered OLS requires one to ten cluster dimensions",
+         ));
+@@ -861,10 +861,10 @@ fn borrow_cluster_dimensions<
+ ) -> Result<Vec<&'a [u32]>> {
+     let mut dimensions = reserved_empty(
+         reservation,
+-        prepared.clustered_design().len(),
++        prepared.clustered_design()?.len(),
+         "unable to reserve prepared clustered code views",
+     )?;
+-    for index in 0..prepared.clustered_design().len() {
++    for index in 0..prepared.clustered_design()?.len() {
+         push_reserved(
+             &mut dimensions,
+             prepared.clustered_codes(index)?,
+@@ -881,7 +881,7 @@ fn build_clustered_dof<P: PreparedOlsClusteredView + ?Sized>(
+     absorbed: PreparedOlsAbsorbedDofSummary,
+ ) -> Result<PreparedOlsClusteredDofReport> {
+     let minimum_cluster_count = prepared
+-        .clustered_design()
++        .clustered_design()?
+         .dimensions()
+         .iter()
+         .map(|dimension| dimension.groups())
+@@ -2164,7 +2164,7 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
+         ));
+     }
+     if p == 0 {
+-        let state = if prepared.clustered_design().len() == 1 {
++        let state = if prepared.clustered_design()?.len() == 1 {
+             PreparedOlsClusteredPsdState::OneWayStrict
+         } else {
+             PreparedOlsClusteredPsdState::MultiwayRawPsd
+@@ -2207,13 +2207,13 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
+         .copied()
+         .fold(f64::INFINITY, f64::min);
+     let scale = covariance_scale(&symmetric, p)?;
+-    if prepared.clustered_design().len() == 1 && minimum_raw < -tolerance * scale {
++    if prepared.clustered_design()?.len() == 1 && minimum_raw < -tolerance * scale {
+         return Err(invalid_data(
+             "one-way prepared clustered covariance is materially indefinite",
+         ));
+     }
+ 
+-    let cluster_dimensions = prepared.clustered_design().len();
++    let cluster_dimensions = prepared.clustered_design()?.len();
+     let mut output = symmetric;
+     let mut full_adjusted = false;
+     let mut full_clipped = 0_usize;
+@@ -2593,7 +2593,7 @@ fn certify_psd_state<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceR
+             "prepared clustered independent PSD dimensions are inconsistent",
+         ));
+     }
+-    let q = prepared.clustered_design().len();
++    let q = prepared.clustered_design()?.len();
+     if p == 0 {
+         let expected_state = if q == 1 {
+             PreparedOlsClusteredPsdState::OneWayStrict
+diff --git a/crates/fereg-core/src/ols/prepared_clustered_view.rs b/crates/fereg-core/src/ols/prepared_clustered_view.rs
+index edb4b084..72a57ea7 100644
+--- a/crates/fereg-core/src/ols/prepared_clustered_view.rs
++++ b/crates/fereg-core/src/ols/prepared_clustered_view.rs
+@@ -20,7 +20,7 @@ pub(crate) trait PreparedOlsClusteredView {
+ 
+     fn clustered_ols(&self) -> &Self::Ols;
+ 
+-    fn clustered_design(&self) -> &PreparedOlsClusterDesign;
++    fn clustered_design(&self) -> Result<&PreparedOlsClusterDesign>;
+ 
+     fn clustered_codes(&self, dimension: usize) -> Result<&[u32]>;
+ }
+@@ -32,8 +32,8 @@ impl PreparedOlsClusteredView for PreparedOlsClusteredData {
+         self.ols()
+     }
+ 
+-    fn clustered_design(&self) -> &PreparedOlsClusterDesign {
+-        self.clusters()
++    fn clustered_design(&self) -> Result<&PreparedOlsClusterDesign> {
++        Ok(self.clusters())
+     }
+ 
+     fn clustered_codes(&self, dimension: usize) -> Result<&[u32]> {
+@@ -48,8 +48,8 @@ impl PreparedOlsClusteredView for PreparedCategoricalOlsClusteredData {
+         self.ols()
+     }
+ 
+-    fn clustered_design(&self) -> &PreparedOlsClusterDesign {
+-        self.clusters()
++    fn clustered_design(&self) -> Result<&PreparedOlsClusterDesign> {
++        self.required_clusters()
+     }
+ 
+     fn clustered_codes(&self, dimension: usize) -> Result<&[u32]> {
+diff --git a/crates/fereg-core/src/ols/prepared_fit_view.rs b/crates/fereg-core/src/ols/prepared_fit_view.rs
+index 1d71dea7..71731f38 100644
+--- a/crates/fereg-core/src/ols/prepared_fit_view.rs
++++ b/crates/fereg-core/src/ols/prepared_fit_view.rs
+@@ -40,32 +40,25 @@ use crate::ols::build_prepared_ols_rhs_with_response;
+ /// Shared immutable prepared storage for iterative estimators whose certified
+ /// products outlive the borrowed solving session. One-shot OLS has no Arc.
+ #[derive(Debug, Clone, PartialEq)]
+-pub(crate) enum SharedPreparedOlsData {
+-    Categorical(std::sync::Arc<PreparedCategoricalOlsData>),
+-    CategoricalClustered(std::sync::Arc<super::PreparedCategoricalOlsClusteredData>),
+-}
++pub(crate) struct SharedPreparedOlsData(pub(crate) std::sync::Arc<PreparedCategoricalOlsData>);
+ 
+ impl SharedPreparedOlsData {
++    pub(crate) fn new(prepared: PreparedCategoricalOlsData) -> Self {
++        Self(std::sync::Arc::new(prepared))
++    }
++
+     pub(crate) fn fit_view(&self) -> &PreparedCategoricalOlsData {
+-        match self {
+-            Self::Categorical(prepared) => prepared,
+-            Self::CategoricalClustered(prepared) => prepared.ols(),
+-        }
++        &self.0
+     }
+ 
+     // Charge the Arc header and the inline object moved off the generation's
+     // stack. Its nested buffers remain charged once to the prepared generation.
+-    pub(crate) const fn allocation_bytes(clustered: bool) -> u128 {
+-        if clustered {
+-            std::mem::size_of::<(usize, usize, super::PreparedCategoricalOlsClusteredData)>()
+-                as u128
+-        } else {
+-            std::mem::size_of::<(usize, usize, PreparedCategoricalOlsData)>() as u128
+-        }
++    pub(crate) const fn allocation_bytes() -> u128 {
++        std::mem::size_of::<(usize, usize, PreparedCategoricalOlsData)>() as u128
+     }
+ 
+     pub(crate) fn shared_allocation_bytes(&self) -> u128 {
+-        Self::allocation_bytes(matches!(self, Self::CategoricalClustered(_)))
++        Self::allocation_bytes()
+     }
+ }
+ 
+diff --git a/crates/fereg-core/src/ppml/metadata_memory.rs b/crates/fereg-core/src/ppml/metadata_memory.rs
+index 2227c6ae..cd4117d4 100644
+--- a/crates/fereg-core/src/ppml/metadata_memory.rs
++++ b/crates/fereg-core/src/ppml/metadata_memory.rs
+@@ -206,7 +206,7 @@ fn generation_storage(
+         effects.checked_mul(2).ok_or_else(overflow)?.max(4)
+     };
+     let mut fixed = sum(&[
+-        crate::prepared_fit_view::SharedPreparedOlsData::allocation_bytes(!clusters.is_empty()),
++        crate::prepared_fit_view::SharedPreparedOlsData::allocation_bytes(),
+         bytes::<CompactedCategoricalSource>(compacted)?,
+         bytes::<PreparedCategoricalModelSource>(ordinary)?,
+         bytes::<Option<usize>>(categories)?,
+diff --git a/crates/fereg-core/src/ppml/prepared_model.rs b/crates/fereg-core/src/ppml/prepared_model.rs
+index 9c2ad8ad..4ecabafd 100644
+--- a/crates/fereg-core/src/ppml/prepared_model.rs
++++ b/crates/fereg-core/src/ppml/prepared_model.rs
+@@ -35,47 +35,32 @@ pub(crate) use crate::prepared_fit_view::SharedPreparedOlsData as PreparedPpmlMo
+ 
+ impl PreparedPpmlModel {
+     pub(crate) fn model(&self) -> &PreparedOlsModel {
+-        match self {
+-            Self::Categorical(prepared) => prepared.model(),
+-            Self::CategoricalClustered(prepared) => prepared.ols().model(),
+-        }
++        self.fit_view().model()
+     }
+ 
+     pub(crate) fn sample(&self) -> &PreparedNumericSample {
+-        match self {
+-            Self::Categorical(prepared) => prepared.sample(),
+-            Self::CategoricalClustered(prepared) => prepared.ols().sample(),
+-        }
++        self.fit_view().sample()
+     }
+ 
+     pub(crate) fn singletons(&self) -> PreparedOlsSingletons {
+-        match self {
+-            Self::Categorical(prepared) => prepared.singletons(),
+-            Self::CategoricalClustered(prepared) => prepared.ols().singletons(),
+-        }
++        self.fit_view().singletons()
+     }
+ 
+     pub(crate) fn categorical(&self) -> Option<&PreparedCategoricalOlsData> {
+-        match self {
+-            Self::Categorical(prepared) => Some(prepared),
+-            Self::CategoricalClustered(prepared) => Some(prepared.ols()),
+-        }
++        Some(self.fit_view())
+     }
+ 
+     pub(crate) fn clusters(&self) -> Option<&PreparedOlsClusterDesign> {
+-        match self {
+-            Self::CategoricalClustered(prepared) => Some(prepared.clusters()),
+-            Self::Categorical(_) => None,
+-        }
++        self.fit_view().clusters()
+     }
+ 
+     pub(crate) fn cluster_codes(&self, dimension: usize) -> Result<&[u32]> {
+-        match self {
+-            Self::CategoricalClustered(prepared) => prepared.cluster_codes(dimension),
+-            Self::Categorical(_) => Err(invalid_argument(
++        if self.clusters().is_none() {
++            return Err(invalid_argument(
+                 "prepared PPML model has no declared cluster dimensions",
+-            )),
++            ));
+         }
++        self.fit_view().cluster_codes(dimension)
+     }
+ }
+ 
+@@ -109,11 +94,8 @@ impl PreparedPpmlModelGeneration {
+     /// All generation-owned heap capacities. The shared initial-drop-reason
+     /// Arc belongs to the immutable raw owner and is counted there exactly once.
+     pub(super) fn owned_buffer_bytes(&self) -> u128 {
+-        let prepared = self.prepared.shared_allocation_bytes()
+-            + self.fit_view().owned_buffer_bytes()
+-            + self
+-                .cluster_design()
+-                .map_or(0, PreparedOlsClusterDesign::owned_buffer_bytes);
++        let prepared =
++            self.prepared.shared_allocation_bytes() + self.fit_view().owned_buffer_bytes();
+         prepared
+             + crate::memory::vec_capacity_bytes(&self.offset)
+             + self
+@@ -401,13 +383,15 @@ impl PreparedPpmlModelOwner {
+         // categorical topology instead leaves `_cons` in the finite design,
+         // while using the identical production view once effects are present.
+         if self.request.clusters.is_empty() {
+-            Ok(PreparedPpmlModel::Categorical(Arc::new(
+-                prepare_ppml_categorical_ols_data(&self.request.ols, &self.loaded, &[])?,
+-            )))
++            Ok(PreparedPpmlModel::new(prepare_ppml_categorical_ols_data(
++                &self.request.ols,
++                &self.loaded,
++                &[],
++            )?))
+         } else {
+-            Ok(PreparedPpmlModel::CategoricalClustered(Arc::new(
++            Ok(PreparedPpmlModel::new(
+                 prepare_ppml_categorical_ols_clustered_data(&self.request, &self.loaded)?,
+-            )))
++            ))
+         }
+     }
+ 
+@@ -1207,10 +1191,7 @@ mod tests {
+             7,
+             "the owner-side offset keeps the immutable if/in candidate capacity",
+         );
+-        assert!(matches!(
+-            initial.prepared.prepared(),
+-            PreparedPpmlModel::CategoricalClustered(_)
+-        ));
++        assert!(initial.prepared.prepared().clusters().is_some());
+         assert_eq!(
+             initial.prepared.prepared().singletons(),
+             PreparedOlsSingletons {
+@@ -1431,15 +1412,23 @@ mod tests {
+         let generation = owner
+             .rebuild_generation(&[0, 1, 2, 3, 4, 5, 6], 0)
+             .expect("plain generation");
+-        assert!(matches!(
+-            generation.prepared(),
+-            PreparedPpmlModel::Categorical(_)
+-        ));
++        assert!(generation.prepared().clusters().is_none());
+         let categorical = generation
+             .prepared()
+             .categorical()
+             .expect("categorical PPML view");
+         assert!(categorical.effect_specs().is_empty());
++        // The compatibility clustered name denotes this same owner. Reject
++        // absent cluster metadata before even checking the fit configuration.
++        let mut clustered = crate::ols::PreparedOlsClusteredConfig::default();
++        clustered.fit.absorb.map.tolerance = f64::NAN;
++        let error = crate::ols::fit_prepared_categorical_ols_clustered_map(categorical, clustered)
++            .expect_err("clusterless owner cannot enter clustered inference");
++        assert_eq!(error.code, ErrorCode::InvalidArgument);
++        assert_eq!(
++            error.message,
++            "prepared categorical OLS has no declared cluster dimensions"
++        );
+         let concrete_fit: &PreparedCategoricalOlsData = generation.fit_view();
+         assert!(!concrete_fit.has_absorbed_intercept());
+         assert!(concrete_fit.report_intercept());
+diff --git a/crates/fereg-core/src/ppml/result.rs b/crates/fereg-core/src/ppml/result.rs
+index 3b5da9ce..f7a5ca96 100644
+--- a/crates/fereg-core/src/ppml/result.rs
++++ b/crates/fereg-core/src/ppml/result.rs
+@@ -553,10 +553,7 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
+     model: &PreparedPpmlModel,
+     requested_saved_channels: &[bool],
+ ) -> Result<PreparedPpmlFixedEffectReport> {
+-    let prepared = match model {
+-        PreparedPpmlModel::Categorical(prepared) => prepared,
+-        PreparedPpmlModel::CategoricalClustered(prepared) => prepared.ols(),
+-    };
++    let prepared = model.fit_view();
+     if prepared.effect_specs().is_empty() {
+         if !requested_saved_channels.is_empty() {
+             return Err(FeregError::new(
+@@ -731,10 +728,7 @@ pub(crate) fn recover_ppml_fixed_effects(
+             reconstruction_relative_infinity_norm: 0.0,
+         });
+     }
+-    let prepared = match model {
+-        PreparedPpmlModel::Categorical(prepared) => prepared,
+-        PreparedPpmlModel::CategoricalClustered(prepared) => prepared.ols(),
+-    };
++    let prepared = model.fit_view();
+     let rows = absorbed_predictor.len();
+     if rows == 0
+         || prior_weights.len() != rows
+diff --git a/crates/fereg-plugin/src/estimate.rs b/crates/fereg-plugin/src/estimate.rs
+index 855e5781..dcb36c3a 100644
+--- a/crates/fereg-plugin/src/estimate.rs
++++ b/crates/fereg-plugin/src/estimate.rs
+@@ -4837,6 +4837,20 @@ mod tests {
+                 bytes
+             );
+         }
++        fn check_shared(owner: PreparedCategoricalOlsData, bytes: u128) {
++            // Measure the actual allocation of the same payload PPML retains,
++            // independently of core accounting and conservative preflight.
++            let before = crate::ffi::allocation_usage();
++            let owner = std::sync::Arc::new(owner);
++            let allocated = crate::ffi::allocation_usage().current_bytes - before.current_bytes;
++            let payload = std::mem::size_of::<PreparedCategoricalOlsData>();
++            assert_eq!(
++                allocated as usize,
++                payload + 2 * std::mem::size_of::<usize>()
++            );
++            eprintln!("prepared shared owner: payload={payload} allocation={allocated}");
++            check(owner, bytes + u128::from(allocated));
++        }
+         for complex in [false, true] {
+             for clustered in [false, true] {
+                 for weight in [
+@@ -4915,10 +4929,9 @@ mod tests {
+                                 prepare_categorical_ols_clustered_data_owned(&request, loaded)
+                                     .unwrap();
+                             let before = crate::ffi::allocation_usage();
+-                            let bytes = owner.ols().owned_buffer_bytes()
+-                                + owner.clusters().owned_buffer_bytes();
++                            let bytes = owner.owned_buffer_bytes();
+                             assert_eq!(crate::ffi::allocation_usage().events, before.events);
+-                            check(owner, bytes);
++                            check_shared(owner, bytes);
+                         } else {
+                             let owner = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
+                             let bytes = owner.ols().owned_buffer_bytes()
+@@ -4929,7 +4942,7 @@ mod tests {
+                         let owner =
+                             prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+                         let bytes = owner.owned_buffer_bytes();
+-                        check(owner, bytes);
++                        check_shared(owner, bytes);
+                     } else {
+                         let mut owner = prepare_ols_data_owned(&action.request, loaded).unwrap();
+                         owner.sample.outcome.reserve(101);
+@@ -5340,7 +5353,7 @@ mod tests {
+                                 prepared.ols().model().columns.len(),
+                                 prepared.ols().model().coefficients.len(),
+                                 if vce == OlsVceKind::Clustered {
+-                                    prepared.clusters().len()
++                                    prepared.clusters().expect("clustered owner").len()
+                                 } else {
+                                     0
+                                 },
+diff --git a/crates/fereg-plugin/src/estimate/ols_pipeline.rs b/crates/fereg-plugin/src/estimate/ols_pipeline.rs
+index 056bb987..fa9a1fcd 100644
+--- a/crates/fereg-plugin/src/estimate/ols_pipeline.rs
++++ b/crates/fereg-plugin/src/estimate/ols_pipeline.rs
+@@ -5,7 +5,6 @@ pub(super) enum PreparedPipeline {
+     Ordinary(PreparedOlsData),
+     Categorical(PreparedCategoricalOlsData),
+     Clustered(PreparedOlsClusteredData),
+-    CategoricalClustered(PreparedCategoricalOlsClusteredData),
+ }
+ 
+ pub(super) fn prepare_ols_pipeline(
+@@ -35,7 +34,7 @@ pub(super) fn prepare_ols_pipeline(
+             let result = prepare_loaded_ols_with_moments(loaded, loaded_rhs, action, |_, input| {
+                 if categorical {
+                     prepare_categorical_ols_clustered_data_owned(&request, input)
+-                        .map(PreparedPipeline::CategoricalClustered)
++                        .map(PreparedPipeline::Categorical)
+                 } else {
+                     prepare_ols_clustered_data_owned(&request, input)
+                         .map(PreparedPipeline::Clustered)
+@@ -53,9 +52,6 @@ impl PreparedPipeline {
+             Self::Ordinary(p) => p.owned_buffer_bytes(),
+             Self::Categorical(p) => p.owned_buffer_bytes(),
+             Self::Clustered(p) => p.ols().owned_buffer_bytes() + p.clusters().owned_buffer_bytes(),
+-            Self::CategoricalClustered(p) => {
+-                p.ols().owned_buffer_bytes() + p.clusters().owned_buffer_bytes()
+-            }
+         }
+     }
+     pub(super) fn data(&self) -> PreparedOlsResultData<'_> {
+@@ -63,13 +59,14 @@ impl PreparedPipeline {
+             Self::Ordinary(p) => PreparedOlsResultData::legacy(p),
+             Self::Categorical(p) => PreparedOlsResultData::categorical(p),
+             Self::Clustered(p) => PreparedOlsResultData::legacy(p.ols()),
+-            Self::CategoricalClustered(p) => PreparedOlsResultData::categorical(p.ols()),
+         }
+     }
+     pub(super) fn clusters(&self) -> Option<PreparedOlsClusteredResultData<'_>> {
+         match self {
+             Self::Clustered(p) => Some(PreparedOlsClusteredResultData::legacy(p)),
+-            Self::CategoricalClustered(p) => Some(PreparedOlsClusteredResultData::categorical(p)),
++            Self::Categorical(p) if p.clusters().is_some() => {
++                Some(PreparedOlsClusteredResultData::categorical(p))
++            }
+             _ => None,
+         }
+     }
+@@ -115,7 +112,7 @@ impl PreparedPipeline {
+                 fit_prepared_ols_clustered_map_with_loaded_moments(p, clustered(), rows)
+                     .map(OwnedInference::Clustered)
+             }
+-            (Self::CategoricalClustered(p), OlsVceKind::Clustered) => {
++            (Self::Categorical(p), OlsVceKind::Clustered) => {
+                 fit_prepared_categorical_ols_clustered_map_with_loaded_moments(p, clustered(), rows)
+                     .map(OwnedInference::CategoricalClustered)
+             }
+diff --git a/crates/fereg-plugin/src/result.rs b/crates/fereg-plugin/src/result.rs
+index fe55afd1..903feedb 100644
+--- a/crates/fereg-plugin/src/result.rs
++++ b/crates/fereg-plugin/src/result.rs
+@@ -869,15 +869,11 @@ fn build_clusters(
+     )?;
+     if inference.is_clustered() {
+         let prepared = prepared.ok_or_else(|| invalid("clustered OLS preparation is absent"))?;
+-        if prepared.clusters().dimensions().len() != cluster_counts.len() {
++        let design = prepared.clusters()?;
++        if design.dimensions().len() != cluster_counts.len() {
+             return Err(invalid("prepared OLS cluster counts are inconsistent"));
+         }
+-        for (row, (dimension, count)) in prepared
+-            .clusters()
+-            .dimensions()
+-            .iter()
+-            .zip(cluster_counts)
+-            .enumerate()
++        for (row, (dimension, count)) in design.dimensions().iter().zip(cluster_counts).enumerate()
+         {
+             if dimension.groups() != *count {
+                 return Err(invalid(
+diff --git a/crates/fereg-plugin/src/result_view.rs b/crates/fereg-plugin/src/result_view.rs
+index 3f67b8a6..bcd7c6ad 100644
+--- a/crates/fereg-plugin/src/result_view.rs
++++ b/crates/fereg-plugin/src/result_view.rs
+@@ -5,7 +5,7 @@
+ //! cluster metadata. These copyable views let one serializer borrow either path
+ //! without cloning observation-scale state or changing result-wire dimensions.
+ 
+-use fereg_core::error::Result;
++use fereg_core::error::{ErrorCode, FeregError, Result};
+ use fereg_core::{
+     PreparedCategoricalOlsClusteredData, PreparedCategoricalOlsData, PreparedNumericSample,
+     PreparedOlsClusterDesign, PreparedOlsClusteredData, PreparedOlsData, PreparedOlsModel,
+@@ -115,14 +115,19 @@ impl<'a> PreparedOlsClusteredResultData<'a> {
+     pub(crate) const fn ols(self) -> PreparedOlsResultData<'a> {
+         match self {
+             Self::Legacy(value) => PreparedOlsResultData::Legacy(value.ols()),
+-            Self::Categorical(value) => PreparedOlsResultData::Categorical(value.ols()),
++            Self::Categorical(value) => PreparedOlsResultData::Categorical(value),
+         }
+     }
+ 
+-    pub(crate) const fn clusters(self) -> &'a PreparedOlsClusterDesign {
++    pub(crate) fn clusters(self) -> Result<&'a PreparedOlsClusterDesign> {
+         match self {
+-            Self::Legacy(value) => value.clusters(),
+-            Self::Categorical(value) => value.clusters(),
++            Self::Legacy(value) => Ok(value.clusters()),
++            Self::Categorical(value) => value.clusters().ok_or_else(|| {
++                FeregError::new(
++                    ErrorCode::InvalidArgument,
++                    "prepared categorical OLS has no declared cluster dimensions",
++                )
++            }),
+         }
+     }
+ 
+diff --git a/crates/fereg-testkit/tests/categorical_cluster_preparation.rs b/crates/fereg-testkit/tests/categorical_cluster_preparation.rs
+index 23b259a9..40efca1b 100644
+--- a/crates/fereg-testkit/tests/categorical_cluster_preparation.rs
++++ b/crates/fereg-testkit/tests/categorical_cluster_preparation.rs
+@@ -27,8 +27,8 @@ fn simple_cluster_only_source_is_retained_and_borrowed_zero_copy() {
+ 
+     assert_eq!(prepared.ols().sample().n_active(), case.outcome.len());
+     assert_eq!(prepared.ols().singletons().num_singletons, 0);
+-    assert_eq!(prepared.clusters().len(), 1);
+-    let dimension = &prepared.clusters().dimensions()[0];
++    assert_eq!(prepared.clusters().expect("clustered owner").len(), 1);
++    let dimension = &prepared.clusters().expect("clustered owner").dimensions()[0];
+     assert_eq!(dimension.label(), "cluster_a");
+     assert_eq!(dimension.sources(), &[source_id(CLUSTER_A_SOURCE)]);
+     assert!(!dimension.is_interaction());
+@@ -112,7 +112,10 @@ fn singleton_cluster_group_never_drives_fe_singleton_deletion() {
+ 
+     assert_eq!(prepared.ols().sample().n_active(), case.outcome.len());
+     assert_eq!(prepared.ols().singletons().num_singletons, 0);
+-    assert_eq!(prepared.clusters().dimensions()[0].groups(), 2);
++    assert_eq!(
++        prepared.clusters().expect("clustered owner").dimensions()[0].groups(),
++        2
++    );
+     assert_eq!(
+         prepared
+             .cluster_codes(0)
+@@ -137,7 +140,7 @@ fn categorical_cluster_interaction_matches_independent_tuple_partition() {
+     )
+     .expect("categorical cluster interaction preparation");
+ 
+-    let dimension = &prepared.clusters().dimensions()[0];
++    let dimension = &prepared.clusters().expect("clustered owner").dimensions()[0];
+     assert!(dimension.is_interaction());
+     assert_eq!(
+         dimension.sources(),
+@@ -195,7 +198,7 @@ fn ten_cluster_dimensions_are_accepted_and_share_simple_source_codes() {
+         .map(|index| cluster_term(&format!("cluster_{index}"), &[CLUSTER_A_SOURCE]))
+         .collect::<Vec<_>>();
+     let prepared = prepare_case(&case, &clusters, &[]).expect("ten cluster dimensions");
+-    assert_eq!(prepared.clusters().len(), 10);
++    assert_eq!(prepared.clusters().expect("clustered owner").len(), 10);
+     let first = prepared.cluster_codes(0).expect("first codes");
+     for dimension in 1..10 {
+         let codes = prepared

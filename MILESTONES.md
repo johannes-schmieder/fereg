@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M27.1 optional cluster owner slice; full M26–M35, Astra high reviews and milestone commits/pushes remain authorized.
+Current task: M27.1 trial non-promotion/restoration; approved original-factor-axis correction is next; full M26–M35 remains authorized.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -72,6 +72,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 - [x] M26.0 Roadmap and active ADR 0249 recorded; separate Astra extra-high review and local governance/links pass; runtime work not started.
 - [x] M26.1 Fixed baseline, interaction/holdout matrix, 15,000-line target, Mac calibration, Linux CI/SCC smoke and fresh Astra high review pass.
+- [ ] M27.1 Trial science passes; performance 11 within/4 unresolved, parent production restored; retained fixture/full local checks pass; Linux CI pending.
 - [ ] M27 Canonical prepared model and optional cluster metadata; retire duplicated owning pipelines.
 - [ ] M28 Common storage operations and owner-based memory admission.
 - [ ] M29 General worker-budget and kernel scheduling policy; Mac/SCC scaling qualification.
@@ -99,11 +100,11 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 - Full-matrix OLS multiway PSD repair including the reported constant is approved; it is not an open question.
 - Scientific agreement across thread counts; retain fixed-thread deterministic repeatability and exact-change checks.
+- 2026-10-04 Johannes: preserve original factor slots/base flags as SPEC requires; repair next and conflicting tests, with legacy behavior unchanged.
 - Bundle separate plugins; legacy/source policies are historical except retained SPEC/active ADR requirements.
 
 ## Blockers
 
-M27 factor slots/base after pruning: ordinary r(459), saved-FE final rebasing; SPEC/test conflict awaits Johannes; see M26 evidence finding.
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
@@ -111,6 +112,8 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+
+- 2026-10-04 M27.1: Astra high accepts non-promotion; 4 timing cells unresolved; parent production restored; [trial evidence](bench/history/2026-10-04-m27-cluster-owner.json).
 
 - 2026-10-02 M0.1 6643939b — governance reset; fmt/Clippy, 1906 workspace, 173 doc/FFI, 9 isolated working audits, size/mock/static pass; rewrite-only audits retired.
 - 2026-10-02 M0.2a 9323fe00 — tag 15a57ba2; Mac 80329f51 ABI/native audit and 34/34 Stata pass; 5 identity tests pass; hosted platforms pending.

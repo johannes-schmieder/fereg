@@ -4837,6 +4837,20 @@ mod tests {
                 bytes
             );
         }
+        fn check_shared<T>(owner: T, bytes: u128) {
+            // Observe the complete shared allocation independently of the
+            // prepared owner accounting, then release the sole Arc and buffers.
+            let payload = std::mem::size_of_val(&owner);
+            let before = crate::ffi::allocation_usage();
+            let owner = std::sync::Arc::new(owner);
+            let allocated = crate::ffi::allocation_usage().current_bytes - before.current_bytes;
+            assert_eq!(
+                allocated as usize,
+                payload + 2 * std::mem::size_of::<usize>()
+            );
+            eprintln!("prepared shared owner: payload={payload} allocation={allocated}");
+            check(owner, bytes + u128::from(allocated));
+        }
         for complex in [false, true] {
             for clustered in [false, true] {
                 for weight in [
@@ -4918,7 +4932,7 @@ mod tests {
                             let bytes = owner.ols().owned_buffer_bytes()
                                 + owner.clusters().owned_buffer_bytes();
                             assert_eq!(crate::ffi::allocation_usage().events, before.events);
-                            check(owner, bytes);
+                            check_shared(owner, bytes);
                         } else {
                             let owner = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
                             let bytes = owner.ols().owned_buffer_bytes()
@@ -4929,7 +4943,7 @@ mod tests {
                         let owner =
                             prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
                         let bytes = owner.owned_buffer_bytes();
-                        check(owner, bytes);
+                        check_shared(owner, bytes);
                     } else {
                         let mut owner = prepare_ols_data_owned(&action.request, loaded).unwrap();
                         owner.sample.outcome.reserve(101);
