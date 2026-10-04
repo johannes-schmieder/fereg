@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M26.2 Linux allocation-window diagnosis; full M26–M35, Astra high reviews and milestone commits/pushes remain authorized.
+Current task: M26.3 expose successful Linux audit diagnostics; full M26–M35, Astra high reviews and milestone commits/pushes remain authorized.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -102,7 +102,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-M26 CI37212710016: Linux73 passes; recovery audit reports5872>5592. Diagnose worker/RSS window contamination; dependent runtime remains blocked.
+M26 CI37214466826 passes; original5872>5592 remains unexplained. Expose successful audit output to resolve worker/RSS measurement boundary.
 M27 factor slots/base after pruning: ordinary r(459), saved-FE final rebasing; SPEC/test conflict awaits Johannes; see M26 evidence finding.
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
@@ -218,3 +218,5 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 G-M25 cbeb40d7 — clean73/five-thread/402912 exact; CI37201256978 pass; Astra approves restored runtime; [evidence](bench/history/2026-10-04-m25-normalization-reuse.json).
 - 2026-10-04 M26.1 this commit — fixed baseline/cube/15,000-line target; both24-cell calibrations, full/Mac ABI/24 tooling checks pass; Astra high accepts; CI pending.
 - 2026-10-04 M26.2 this commit — Linux-window diagnostics; Mac30 audits/fmt/Clippy/ratchet pass; Astra high accepts; bound/rejection unchanged; CI remains blocked.
+- 2026-10-04 M26.3 this commit — CI37214466826 full/24 tooling/Linux73 pass; successful diagnostics were captured; full local checks/Astra xhigh pass; expose output before cause closure.
+- 2026-10-04 M26 SCC smoke — source1a5c9362, setup7868597/benchmark7868598; whole28 E5-2680v4, 3G/core, two-hour cap; existing dev workflow.

@@ -2036,6 +2036,44 @@
       "sha256": "b97eec87df3e44ad3ad840651bce83803ab752790b74006c7b9e94139e098116"
     },
     "review": "Separate Astra high accepts diagnostic scope; Astra xhigh identifies worker-startup and RSS-window hypotheses; no cause or repair claimed from Mac capture",
-    "gate": "Required Linux gate failed; no dependent runtime change made. Benchmark checks moved before full entrypoint without suppressing either check."
+    "gate": "Latest required CI passes; keep allocation-window investigation open until Linux diagnostics discriminate the original intermittent failure. Dependent runtime has not started.",
+    "passing_diagnostic_run": {
+      "commit": "1a5c93620b1432caa292dae2f3aaf7bbdff848cc",
+      "run": 37214466826,
+      "url": "https://github.com/johannes-schmieder/fereg/actions/runs/37214466826",
+      "jobs": {
+        "check": "success",
+        "comparator": "success",
+        "replay": "success"
+      },
+      "benchmark_tests": 24,
+      "entrypoint_passed": true,
+      "scientific_replay_cases": 73,
+      "raw_log": "target/m26-contract/ci-diagnostic-check.log",
+      "log_sha256": "a287684d7c9fa37be77d07a709794c9da960317c760d13bd9caa746c496e5e8e",
+      "diagnostics_visible": false,
+      "limitation": "Rust captures successful audit output; a passing repeat does not establish the earlier failure cause."
+    },
+    "visibility_scope": "Add --show-output to each existing isolated audit invocation, preserving captured measurement behavior, global bounds, exact selection and serial execution. No test or production arithmetic changes.",
+    "visibility_review": "Astra extra-high accepts --show-output: preserves capture and global audit gates; prints after completion. No cause attributed to a passing capture.",
+    "visibility_local_entrypoint": {
+      "passed": true,
+      "raw_path": "target/m26-contract/diagnostic-visible-full-tests.log",
+      "sha256": "0dc13e797f10834c5b6ceac6d3e0e69ac77f97f674e4f1f3dfc5bc3af5eccd89"
+    }
+  },
+  "scc_tooling_smoke": {
+    "source": "1a5c93620b1432caa292dae2f3aaf7bbdff848cc",
+    "run_id": "20261004T161100Z-m26-1a5c9362",
+    "tier": "smoke",
+    "engine": "next",
+    "setup_job": 7868597,
+    "benchmark_job": 7868598,
+    "slots": 28,
+    "cpu_type": "E5-2680v4",
+    "memory_per_core": "3G",
+    "wall_limit": "02:00:00",
+    "state": "Submitted; not passing evidence",
+    "input_source_sha256": "7d3f1e1093828849f1eb45e097ad686268e37e5c73b6bc9dc408e01128884f59"
   }
 }

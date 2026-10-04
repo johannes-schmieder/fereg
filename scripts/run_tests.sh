@@ -27,7 +27,7 @@ while IFS= read -r audit; do
   case "$audit" in
     *": test")
       audit_count=$((audit_count + 1))
-      cargo test -p fereg-plugin --features ffi --lib --profile "$profile" "${audit%: test}" -- --ignored --exact --test-threads=1
+      cargo test -p fereg-plugin --features ffi --lib --profile "$profile" "${audit%: test}" -- --ignored --exact --test-threads=1 --show-output
       ;;
   esac
 done <<< "$audit_list"
