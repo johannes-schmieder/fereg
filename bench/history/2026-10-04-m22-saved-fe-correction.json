@@ -1,8 +1,8 @@
 {
   "schema": 1,
   "milestone": "M22.2",
-  "qualified": false,
-  "status": "Final-source local gates pass; clean-source timing and Linux CI pending.",
+  "qualified": true,
+  "status": "Both M22 numerical repairs qualified and approved by a fresh independent Astra extra-high review.",
   "parent_runtime": "b34596b25806b9b4fbf83c1e38aa221366a4c1a6",
   "repair_attempt": 5,
   "localization": [
@@ -510,13 +510,959 @@
     "model": "gpt-6-astra",
     "reasoning_effort": "xhigh",
     "verdict": "No unresolved source defect after candidate5 and slope eligibility addenda. Final qualification review pending.",
-    "limits": "Read-only source review; reviewer ran no production builds/tests."
+    "limits": "Read-only source review; reviewer ran no production builds/tests.",
+    "final": {
+      "agent": "m22_qualified_review",
+      "model": "gpt-6-astra",
+      "reasoning_effort": "xhigh",
+      "runtime": "663bca8cd735f57438f45772a6317273357e6fc7",
+      "verdict": "Approve. No unresolved source defect or missing required qualification gate for either reported numerical issue.",
+      "source_findings": [],
+      "assessed": [
+        "Independent coefficient refinement, row-relative PSD refinement and score-factor covariance retain tolerances and fail-closed checks.",
+        "Fresh complete FE-discrepancy products and independently reconstructed original model certify saved outputs; slope/other errors retain their domains.",
+        "Complete clustered/FE admission and publication lifetimes match reviewed owners.",
+        "Clean source/artifact identities and all required local/native/long/licensed/Linux gates are consistently recorded."
+      ],
+      "performance": "PPML disclosed ~3\u20135% regression is material but compatible with numerical-correction acceptance. FE bounded timings show no reproduced regression, not equivalence.",
+      "next": "Permits separately scoped M23 planning; duplicate frozen retained row loading/weight evaluation is a defensible candidate with distinct arithmetic preserved.",
+      "independent_actions": "Read-only source/evidence review and git diff --check. No independent builds/numerical tests/Stata/timings/CI verification."
+    }
   },
   "qualification": {
-    "runtime": "pending implementation commit",
-    "clean_native": "pending",
-    "clean_timing": "pending",
-    "linux_ci": "pending"
+    "runtime": "663bca8cd735f57438f45772a6317273357e6fc7",
+    "clean_native": {
+      "schema": 1,
+      "next_sha256": "9a4be1019a50923c2c55ac80a4127a2558d56fa9f61f6038d7136ce2157fec3c",
+      "baseline_sha256": "2b1a7ea0cbdedba76050c95948c6a20d0a7405268bcf048d565c0e8449272ca0",
+      "known_defect_cases": 0,
+      "scientific_pass_cases": 73,
+      "candidate_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "baseline_fixes": [
+        "frequency-singleton",
+        "full-matrix-covariance",
+        "slope-dof"
+      ],
+      "policy_sha256": "fdaa33ba088a36737ffda8381c8172e0e6771674ee6a0d72a65a3af6cd5dd08a",
+      "passed": true
+    },
+    "clean_timing": {
+      "identities": {
+        "parent": {
+          "checkout": "663bca8cd735f57438f45772a6317273357e6fc7",
+          "binary_source": "b34596b25806b9b4fbf83c1e38aa221366a4c1a6",
+          "binary_sha256": "2b1a7ea0cbdedba76050c95948c6a20d0a7405268bcf048d565c0e8449272ca0",
+          "dirty": false
+        },
+        "next": {
+          "checkout": "663bca8cd735f57438f45772a6317273357e6fc7",
+          "binary_source": "663bca8cd735f57438f45772a6317273357e6fc7",
+          "binary_sha256": "9a4be1019a50923c2c55ac80a4127a2558d56fa9f61f6038d7136ce2157fec3c",
+          "dirty": false
+        }
+      },
+      "protocol": {
+        "warmups": 1,
+        "repetitions": 5,
+        "coefficient_rtol": 1e-07,
+        "coefficient_atol": 1e-10,
+        "reference_tolerance": 1e-12,
+        "fresh_process_per_command": true
+      },
+      "datasets": {
+        "ols-one-fe-fast-owner": {
+          "sha256": "29a939dbe954c0dde66f981dcbd4e540dbb1d669976a7260439ce1a99285bfec",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-single-slope-fast-owner": {
+          "sha256": "84cbc2cfc6c9bb661a04d2af8271f2d958cc0288918345c4b227ea53693e4835",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-two-fe-slopes-fast-owner": {
+          "sha256": "318a92a57c1d283905210ca7ff6c7b12ee8fb9b26af2d2b9572e4033089b5d2e",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-one-fe-low-owner": {
+          "sha256": "29a939dbe954c0dde66f981dcbd4e540dbb1d669976a7260439ce1a99285bfec",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-single-slope-low-owner": {
+          "sha256": "84cbc2cfc6c9bb661a04d2af8271f2d958cc0288918345c4b227ea53693e4835",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-two-fe-low-owner": {
+          "sha256": "b1f172e77c1f231afe0ae00ebee785ee4b524e32d9cb0c12219eba6f1603437c",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-two-fe-slopes-low-owner": {
+          "sha256": "318a92a57c1d283905210ca7ff6c7b12ee8fb9b26af2d2b9572e4033089b5d2e",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        },
+        "ols-two-fe-fast-owner": {
+          "sha256": "b1f172e77c1f231afe0ae00ebee785ee4b524e32d9cb0c12219eba6f1603437c",
+          "seed": 739391,
+          "rows": 16384,
+          "numpy": "2.3.5",
+          "pandas": "2.2.3",
+          "recipe": "bench/generate.py"
+        }
+      },
+      "exact_pairs": 152,
+      "geometric_mean_ratio": 0.9921961334373354,
+      "pairs": [
+        {
+          "cell": "ols-one-fe-fast-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.016,
+            "seconds_min": 0.016,
+            "seconds_max": 0.018,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.016,
+              0.016,
+              0.016,
+              0.017,
+              0.018
+            ]
+          },
+          "next": {
+            "seconds": 0.015,
+            "seconds_min": 0.015,
+            "seconds_max": 0.016,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.015,
+              0.015,
+              0.016,
+              0.015,
+              0.016
+            ]
+          },
+          "ratio": 0.9375,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-one-fe-fast-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.015,
+            "seconds_min": 0.014,
+            "seconds_max": 0.016,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.016,
+              0.015,
+              0.015,
+              0.014,
+              0.015
+            ]
+          },
+          "next": {
+            "seconds": 0.015,
+            "seconds_min": 0.015,
+            "seconds_max": 0.016,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.016,
+              0.015,
+              0.016,
+              0.015,
+              0.015
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-one-fe-fast-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.017,
+            "seconds_min": 0.016,
+            "seconds_max": 0.018,
+            "seconds_mad": 0.0009999999999999974,
+            "measurements": [
+              0.018,
+              0.018,
+              0.017,
+              0.016,
+              0.017
+            ]
+          },
+          "next": {
+            "seconds": 0.017,
+            "seconds_min": 0.016,
+            "seconds_max": 0.017,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.017,
+              0.017,
+              0.017,
+              0.016,
+              0.016
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-one-fe-low-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.022,
+            "seconds_min": 0.021,
+            "seconds_max": 0.022,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.021,
+              0.022,
+              0.022,
+              0.022,
+              0.022
+            ]
+          },
+          "next": {
+            "seconds": 0.022,
+            "seconds_min": 0.021,
+            "seconds_max": 0.022,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.021,
+              0.021,
+              0.022,
+              0.022,
+              0.022
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-one-fe-low-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.02,
+            "seconds_min": 0.02,
+            "seconds_max": 0.021,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.02,
+              0.02,
+              0.02,
+              0.021,
+              0.02
+            ]
+          },
+          "next": {
+            "seconds": 0.02,
+            "seconds_min": 0.02,
+            "seconds_max": 0.023,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.02,
+              0.02,
+              0.02,
+              0.021,
+              0.023
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-one-fe-low-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.025,
+            "seconds_min": 0.024,
+            "seconds_max": 0.026,
+            "seconds_mad": 0.0009999999999999974,
+            "measurements": [
+              0.024,
+              0.026,
+              0.025,
+              0.026,
+              0.025
+            ]
+          },
+          "next": {
+            "seconds": 0.028,
+            "seconds_min": 0.026,
+            "seconds_max": 0.029,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.026,
+              0.029,
+              0.028,
+              0.029,
+              0.026
+            ]
+          },
+          "ratio": 1.1199999999999999,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-single-slope-fast-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.016,
+            "seconds_min": 0.016,
+            "seconds_max": 0.017,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.016,
+              0.016,
+              0.016,
+              0.016,
+              0.017
+            ]
+          },
+          "next": {
+            "seconds": 0.016,
+            "seconds_min": 0.016,
+            "seconds_max": 0.017,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.017,
+              0.016,
+              0.016,
+              0.016,
+              0.016
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-single-slope-fast-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.016,
+            "seconds_min": 0.016,
+            "seconds_max": 0.017,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.016,
+              0.017,
+              0.016,
+              0.017,
+              0.016
+            ]
+          },
+          "next": {
+            "seconds": 0.016,
+            "seconds_min": 0.015,
+            "seconds_max": 0.016,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.016,
+              0.016,
+              0.016,
+              0.015,
+              0.015
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-single-slope-fast-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.018,
+            "seconds_min": 0.018,
+            "seconds_max": 0.018,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.018,
+              0.018,
+              0.018,
+              0.018,
+              0.018
+            ]
+          },
+          "next": {
+            "seconds": 0.019,
+            "seconds_min": 0.017,
+            "seconds_max": 0.024,
+            "seconds_mad": 0.0019999999999999983,
+            "measurements": [
+              0.017,
+              0.022,
+              0.024,
+              0.018,
+              0.019
+            ]
+          },
+          "ratio": 1.0555555555555556,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-single-slope-low-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.029,
+            "seconds_min": 0.028,
+            "seconds_max": 0.03,
+            "seconds_mad": 0.0009999999999999974,
+            "measurements": [
+              0.028,
+              0.028,
+              0.029,
+              0.03,
+              0.029
+            ]
+          },
+          "next": {
+            "seconds": 0.028,
+            "seconds_min": 0.028,
+            "seconds_max": 0.029,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.028,
+              0.029,
+              0.028,
+              0.029,
+              0.028
+            ]
+          },
+          "ratio": 0.9655172413793103,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-single-slope-low-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.026,
+            "seconds_min": 0.025,
+            "seconds_max": 0.026,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.026,
+              0.025,
+              0.026,
+              0.025,
+              0.026
+            ]
+          },
+          "next": {
+            "seconds": 0.026,
+            "seconds_min": 0.025,
+            "seconds_max": 0.026,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.026,
+              0.025,
+              0.026,
+              0.026,
+              0.025
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-single-slope-low-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.034,
+            "seconds_min": 0.032,
+            "seconds_max": 0.042,
+            "seconds_mad": 0.001999999999999995,
+            "measurements": [
+              0.034,
+              0.042,
+              0.032,
+              0.036,
+              0.033
+            ]
+          },
+          "next": {
+            "seconds": 0.031,
+            "seconds_min": 0.029,
+            "seconds_max": 0.042,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.029,
+              0.031,
+              0.031,
+              0.031,
+              0.042
+            ]
+          },
+          "ratio": 0.9117647058823529,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-fast-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.023,
+            "seconds_min": 0.023,
+            "seconds_max": 0.025,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.023,
+              0.025,
+              0.023,
+              0.023,
+              0.024
+            ]
+          },
+          "next": {
+            "seconds": 0.024,
+            "seconds_min": 0.023,
+            "seconds_max": 0.025,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.024,
+              0.023,
+              0.025,
+              0.024,
+              0.025
+            ]
+          },
+          "ratio": 1.0434782608695652,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-fast-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.022,
+            "seconds_min": 0.021,
+            "seconds_max": 0.022,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.022,
+              0.022,
+              0.021,
+              0.022,
+              0.022
+            ]
+          },
+          "next": {
+            "seconds": 0.021,
+            "seconds_min": 0.02,
+            "seconds_max": 0.022,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.02,
+              0.021,
+              0.022,
+              0.021,
+              0.021
+            ]
+          },
+          "ratio": 0.9545454545454547,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-fast-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.028,
+            "seconds_min": 0.025,
+            "seconds_max": 0.035,
+            "seconds_mad": 0.002999999999999999,
+            "measurements": [
+              0.035,
+              0.028,
+              0.032,
+              0.026,
+              0.025
+            ]
+          },
+          "next": {
+            "seconds": 0.026,
+            "seconds_min": 0.025,
+            "seconds_max": 0.028,
+            "seconds_mad": 0.0009999999999999974,
+            "measurements": [
+              0.028,
+              0.025,
+              0.025,
+              0.028,
+              0.026
+            ]
+          },
+          "ratio": 0.9285714285714285,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-low-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.052,
+            "seconds_min": 0.052,
+            "seconds_max": 0.053,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.053,
+              0.053,
+              0.052,
+              0.052,
+              0.052
+            ]
+          },
+          "next": {
+            "seconds": 0.052,
+            "seconds_min": 0.052,
+            "seconds_max": 0.052,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.052,
+              0.052,
+              0.052,
+              0.052,
+              0.052
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-low-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.043,
+            "seconds_min": 0.042,
+            "seconds_max": 0.044,
+            "seconds_mad": 0.000999999999999994,
+            "measurements": [
+              0.042,
+              0.042,
+              0.044,
+              0.043,
+              0.043
+            ]
+          },
+          "next": {
+            "seconds": 0.042,
+            "seconds_min": 0.042,
+            "seconds_max": 0.043,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.042,
+              0.042,
+              0.042,
+              0.043,
+              0.042
+            ]
+          },
+          "ratio": 0.9767441860465118,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-low-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.055,
+            "seconds_min": 0.05,
+            "seconds_max": 0.059,
+            "seconds_mad": 0.0030000000000000027,
+            "measurements": [
+              0.059,
+              0.05,
+              0.056,
+              0.052,
+              0.055
+            ]
+          },
+          "next": {
+            "seconds": 0.053,
+            "seconds_min": 0.051,
+            "seconds_max": 0.057,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.051,
+              0.053,
+              0.053,
+              0.054,
+              0.057
+            ]
+          },
+          "ratio": 0.9636363636363636,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-slopes-fast-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.024,
+            "seconds_min": 0.023,
+            "seconds_max": 0.024,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.023,
+              0.024,
+              0.024,
+              0.024,
+              0.024
+            ]
+          },
+          "next": {
+            "seconds": 0.024,
+            "seconds_min": 0.023,
+            "seconds_max": 0.026,
+            "seconds_mad": 0.0010000000000000009,
+            "measurements": [
+              0.023,
+              0.024,
+              0.026,
+              0.024,
+              0.025
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-slopes-fast-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.019,
+            "seconds_min": 0.019,
+            "seconds_max": 0.02,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.019,
+              0.019,
+              0.019,
+              0.019,
+              0.02
+            ]
+          },
+          "next": {
+            "seconds": 0.019,
+            "seconds_min": 0.019,
+            "seconds_max": 0.02,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.019,
+              0.019,
+              0.02,
+              0.019,
+              0.019
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-slopes-fast-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.026,
+            "seconds_min": 0.023,
+            "seconds_max": 0.028,
+            "seconds_mad": 0.0020000000000000018,
+            "measurements": [
+              0.026,
+              0.023,
+              0.028,
+              0.023,
+              0.027
+            ]
+          },
+          "next": {
+            "seconds": 0.027,
+            "seconds_min": 0.024,
+            "seconds_max": 0.03,
+            "seconds_mad": 0.0020000000000000018,
+            "measurements": [
+              0.026,
+              0.029,
+              0.024,
+              0.027,
+              0.03
+            ]
+          },
+          "ratio": 1.0384615384615385,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-slopes-low-owner",
+          "threads": 1,
+          "parent": {
+            "seconds": 0.03,
+            "seconds_min": 0.029,
+            "seconds_max": 0.03,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.03,
+              0.03,
+              0.03,
+              0.029,
+              0.029
+            ]
+          },
+          "next": {
+            "seconds": 0.03,
+            "seconds_min": 0.029,
+            "seconds_max": 0.031,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.03,
+              0.03,
+              0.03,
+              0.031,
+              0.029
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-slopes-low-owner",
+          "threads": 4,
+          "parent": {
+            "seconds": 0.026,
+            "seconds_min": 0.025,
+            "seconds_max": 0.026,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.026,
+              0.026,
+              0.026,
+              0.025,
+              0.025
+            ]
+          },
+          "next": {
+            "seconds": 0.026,
+            "seconds_min": 0.026,
+            "seconds_max": 0.027,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.027,
+              0.026,
+              0.027,
+              0.026,
+              0.026
+            ]
+          },
+          "ratio": 1.0,
+          "ranges_overlap": true
+        },
+        {
+          "cell": "ols-two-fe-slopes-low-owner",
+          "threads": 16,
+          "parent": {
+            "seconds": 0.033,
+            "seconds_min": 0.031,
+            "seconds_max": 0.036,
+            "seconds_mad": 0.0020000000000000018,
+            "measurements": [
+              0.036,
+              0.035,
+              0.033,
+              0.032,
+              0.031
+            ]
+          },
+          "next": {
+            "seconds": 0.031,
+            "seconds_min": 0.03,
+            "seconds_max": 0.032,
+            "seconds_mad": 0.0,
+            "measurements": [
+              0.03,
+              0.031,
+              0.031,
+              0.031,
+              0.032
+            ]
+          },
+          "ratio": 0.9393939393939393,
+          "ranges_overlap": true
+        }
+      ]
+    },
+    "linux_ci": {
+      "run": 37176849361,
+      "status": "completed",
+      "conclusion": "success",
+      "head_sha": "663bca8cd735f57438f45772a6317273357e6fc7",
+      "jobs": [
+        {
+          "name": "check",
+          "conclusion": "success"
+        },
+        {
+          "name": "comparator",
+          "conclusion": "success"
+        },
+        {
+          "name": "replay",
+          "conclusion": "success"
+        }
+      ]
+    },
+    "five_thread": {
+      "passed": true,
+      "cases": 73,
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "plugin_sha256": "9a4be1019a50923c2c55ac80a4127a2558d56fa9f61f6038d7136ce2157fec3c",
+      "science_discrete_and_fixed_thread_repeats": true
+    },
+    "clean_witnesses": [
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/ols_near_within_cmg_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      },
+      {
+        "failure_detail": null,
+        "failure_kind": null,
+        "fixture": "tests/stata/development/feppml_no_fe_strict_oracle.do",
+        "process_rc": 0,
+        "stata_rc": 0,
+        "status": "success"
+      }
+    ]
   },
   "historical_unqualified_witness": {
     "fixture": "tests/stata/development/ols_near_within_cmg_oracle.do",

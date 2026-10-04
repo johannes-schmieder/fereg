@@ -2,7 +2,7 @@
 
 Plan: [M0–M23](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M22.2 saved-FE qualification; M22.1 science/native/Linux complete, measured PPML correctness cost recorded.
+Current task: M23 separate Astra extra-high plan; M22 repairs fully qualified and independently approved; PPML timing cost disclosed.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -59,8 +59,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 - [x] M22.0 Johannes raises repair limit to ten; active policy synchronized; Astra assistance authorized.
 - [x] M22.1 Strict no-FE PPML repaired; independent strict24, full/30, clean73/five-thread/Mac ABI/46 Stata and Linux CI pass; timing cost recorded.
-- [ ] M22.2 Reproduce/localize near-within saved-FE CG recovery; preserve explicit backend and independent accuracy, repair and qualify.
-- [ ] M22.3 Separate Astra extra-high review of both qualified fixes; resolve findings before next milestone.
+- [x] M22.2 Near-within/saved-FE recovery repaired; full/30/ABI, clean73/five-thread, saved48/PPML24/46 Stata, timing and Linux CI pass.
+- [x] M22.3 Fresh Astra extra-high review approves both qualified fixes; no unresolved source defect or missing required gate.
 - [ ] M23 Astra extra-high plan for next priority, implementation, qualification and separate extra-high review.
 
 ## Gates
@@ -82,10 +82,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-M22.1 qualified at b34596b2/CI37175370337; repeated PPML ~3–5% correctness cost is explicit in bench/history, with possible duplicate scan localized.
-M22.2 candidate5: final full/30/ABI, exact73/five-thread, both enhanced witnesses and46 mapped Stata pass; clean timing/Linux CI pending.
-Johannes authorized continuation under ten-repair policy. Both prototype public witnesses pass; enhanced science/full/native/replay/timing/Linux CI remain pending.
-Astra extra-high review/addenda find no unresolved source defect after guard/recovery repairs. Final qualification review and M23 remain blocked.
+M22 scientific repairs and separate review complete; M23 awaits its own bounded Astra plan.
+PPML repeated ~3–5% regression is recorded; duplicate row loading localized, with no optimization or unavoidable-cost claim.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
@@ -182,3 +180,6 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 M22.1 b34596b2 — clean73/five-thread/strict24 pass; repeated PPML ~3–5% cost recorded; Linux replay passes/full check pending.
 - 2026-10-04 M22.1 b34596b2 — CI37175370337 all jobs pass; correction qualified with repeated PPML timing cost; saved-FE checks underway.
 - 2026-10-04 M22.2 this commit — full/30/Mac ABI, exact73/five-thread, saved48/PPML24/mapped46 pass; slope error guard reviewed; clean timing/Linux pending.
+- 2026-10-04 M22.2 663bca8c — clean73/five-thread/witnesses pass; all24 timing ranges overlap/152 outputs exact, GM0.992; final Linux CI pending.
+- 2026-10-04 M22.2 663bca8c — CI37176849361 all jobs pass; both numerical repairs qualified; separate final Astra review next.
+- 2026-10-04 M22.3 this commit — fresh Astra extra-high review approves both663bca8c repairs/gates; no unresolved findings; PPML timing cost retained.
