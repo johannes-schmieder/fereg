@@ -1,0 +1,3993 @@
+{
+  "schema": 1,
+  "milestone": "M25",
+  "scope": "Reuse one rounded normalized retained-row value between residual construction and score accumulation. No allocation, extra row traversal, routing, tolerance, admission or model change. Canonical private active indices explicitly validated before mutation.",
+  "qualified": false,
+  "runtime_candidate_source": "2ba9c93c00511d7e40511fa27d29e6aec5bcfa57",
+  "production_delta": {
+    "core_lines": 4,
+    "host_lines": 0,
+    "new_long_functions": 0,
+    "new_large_files": 0,
+    "dispatch_delta": 0,
+    "reason": "Explicit private canonical-index validation plus scratch cache write; arithmetic sequence and four-pass/three-update budget retained."
+  },
+  "identities": {
+    "parent": {
+      "plugin_filename": "fereg_macos.plugin",
+      "plugin_sha256": "5c479442eabed28939ae78f8f8a0c6ccb7ae0d97338fa35bd5ae13f9f9e24ebc",
+      "build_source_commit": "5bffd0919bc4639080395352073ee92ff314080b",
+      "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+    },
+    "candidate": {
+      "plugin_filename": "fereg_macos.plugin",
+      "plugin_sha256": "26b246ab6851117c67c23fd71061278366f5e289e44b0e0fcdbda507fc11f07b",
+      "build_source_commit": "2ba9c93c00511d7e40511fa27d29e6aec5bcfa57",
+      "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+    }
+  },
+  "comparison_boundary": "Parent runtime is 5bffd091; documentation HEAD4284bbaa has identical production runtime. All supported scientific outputs unchanged; malformed duplicate/descending private indices now reject before scratch/coefficients change. Disposable row scratch may differ on failure, with public error/publication/rollback behavior preserved.",
+  "protocol": {
+    "machine": "Mac Studio, 24 physical cores, 16 performance cores; Stata/MP eight-processor license.",
+    "stock_release_binaries": true,
+    "stata_processors": 8,
+    "native_threads": [
+      1,
+      4,
+      16
+    ],
+    "seed": 739391,
+    "rows": 100000,
+    "effects": 2,
+    "weights": "unit",
+    "vce": "robust",
+    "tolerance": "default",
+    "observation_outputs": false,
+    "datasets": [
+      {
+        "cell": {
+          "rows": 100000,
+          "regressors": 10,
+          "weights": "unit",
+          "vce": "robust",
+          "outputs": false,
+          "scc": false,
+          "id": "ppml-2fe-gravity",
+          "model": "ppml",
+          "design": "gravity",
+          "effects": 2
+        },
+        "seed": 739391,
+        "sha256": "075f611a2f88038fd11a3ee00c3a1a127c47d196ed64b57775151d5e82a55568",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "rows": 100000,
+        "zero_outcomes": 0
+      },
+      {
+        "cell": {
+          "rows": 100000,
+          "regressors": 16,
+          "weights": "unit",
+          "vce": "robust",
+          "outputs": false,
+          "scc": false,
+          "id": "m1-ppml-n100000-k16",
+          "model": "ppml",
+          "design": "gravity",
+          "effects": 2,
+          "m1_only": true
+        },
+        "seed": 739391,
+        "sha256": "4c63eb34d47b561374b5a2a31685d233291517987195eeb4629db8e805b0c834",
+        "numpy": "2.3.5",
+        "pandas": "2.2.3",
+        "rows": 100000,
+        "zero_outcomes": 0
+      }
+    ],
+    "datasets_reused_byte_identically": true,
+    "initial_order": [
+      "parent",
+      "candidate"
+    ],
+    "one_reverse_order_followup": [
+      "candidate",
+      "parent"
+    ],
+    "reverse_scope": "All eight original scopes, once, after initial flags; no additional timing cells.",
+    "each_artifact_scope_block": "One untimed warmup plus five fresh Stata processes; command timer excludes matrix extraction.",
+    "clean_exclusions": "No agents, builds, sampling, FEREG trace/audit environment or allocation audit; audit-off and robust VCE asserted.",
+    "capture_recipe": {
+      "base": "bench/stata_runner.do plus bench/run.py configuration/launch/native-identity and pinned-environment validation.",
+      "controls": "memory(auto) with solver(auto); memory(fast) with solver(map); fixed eight Stata processors; explicit engine(next).",
+      "post_timer": "All 108 feppml_runtime rows and all 4x22 feppml_solver entries; Mata %21x values of b, V, fit, DoF, status, subset, certificate, inference; complete sample.csv.",
+      "map_guard": "selected_engine==1, effective_engine==1 and map ordinary_frames>0.",
+      "helper_sha256": "ce8b824a5a2c5b6327e6de10432cd2ce8220031724aab6d30f8f2fddb5721cd6",
+      "summarizer_sha256": "d59c348f3f8e9769ffbcc984696d997d2cf7d51c92a46d9fbdde7e11668cb2ca"
+    },
+    "timing_statistic": "Median, range, MAD and all five values for command/native and projection/finite/strict phases; all phase values retained in ignored raw captures. Blocks reported separately; no pooled aggregate hides cells.",
+    "raw_location": "Ignored target/m25-normalization.",
+    "budget": "Eight scopes, one initial block and one reverse-order confirmation, one warmup/five fresh processes per artifact/scope/block; no profiling or SCC campaign."
+  },
+  "timings": {
+    "groups": [
+      {
+        "block": 1,
+        "order": [
+          "parent",
+          "candidate"
+        ],
+        "cell": "ppml-2fe-gravity",
+        "solver": "auto",
+        "threads": 4,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 14.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 0.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 4.0,
+          "rt_threads_effective": 4.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 1.0,
+          "sl_map_selected_family": 3.0,
+          "sl_map_selected_engine": 3.0,
+          "sl_map_effective_family": 3.0,
+          "sl_map_effective_engine": 3.0,
+          "sl_map_checkpoint_family": 3.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 0.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 2.0,
+          "sl_lsmr_fused_requested_family": 1.0,
+          "sl_lsmr_fused_selected_family": 3.0,
+          "sl_lsmr_fused_selected_engine": 3.0,
+          "sl_lsmr_fused_effective_family": 3.0,
+          "sl_lsmr_fused_effective_engine": 3.0,
+          "sl_lsmr_fused_checkpoint_family": 3.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 1.0,
+          "sl_lsmr_joint_selected_family": 3.0,
+          "sl_lsmr_joint_selected_engine": 3.0,
+          "sl_lsmr_joint_effective_family": 3.0,
+          "sl_lsmr_joint_effective_engine": 3.0,
+          "sl_lsmr_joint_checkpoint_family": 3.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 3.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 12.0,
+          "sl_cmg_prepared_requested_family": 1.0,
+          "sl_cmg_prepared_selected_family": 3.0,
+          "sl_cmg_prepared_selected_engine": 3.0,
+          "sl_cmg_prepared_effective_family": 3.0,
+          "sl_cmg_prepared_effective_engine": 3.0,
+          "sl_cmg_prepared_checkpoint_family": 3.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "4f672cd3f4b9b90d25514b8a9c3034c0efdfe9ab853e7a00d0106cabcaeae480",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 251,
+        "groups": {
+          "parent": {
+            "command_seconds": {
+              "median": 0.171,
+              "min": 0.17,
+              "max": 0.172,
+              "mad": 0.0009999999999999731,
+              "values": [
+                0.172,
+                0.171,
+                0.171,
+                0.17,
+                0.172
+              ]
+            },
+            "native_seconds": {
+              "median": 0.141279667,
+              "min": 0.14122125,
+              "max": 0.141966375,
+              "mad": 5.841700000000505e-05,
+              "values": [
+                0.141966375,
+                0.141279667,
+                0.141226,
+                0.14122125,
+                0.141952958
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.038086749,
+                "min": 0.037739333,
+                "max": 0.038205668,
+                "mad": 0.00011891899999999511,
+                "values": [
+                  0.037855376,
+                  0.038205668,
+                  0.038090498,
+                  0.038086749,
+                  0.037739333
+                ]
+              },
+              "finite_solve": {
+                "median": 0.016468084,
+                "min": 0.016176584,
+                "max": 0.016645042,
+                "mad": 0.00017312700000000208,
+                "values": [
+                  0.016468084,
+                  0.016629417,
+                  0.016645042,
+                  0.016294957,
+                  0.016176584
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.028046208,
+                "min": 0.027774583,
+                "max": 0.028571166,
+                "mad": 0.0001501660000000002,
+                "values": [
+                  0.027896042,
+                  0.028046208,
+                  0.027774583,
+                  0.028165834,
+                  0.028571166
+                ]
+              }
+            }
+          },
+          "candidate": {
+            "command_seconds": {
+              "median": 0.181,
+              "min": 0.177,
+              "max": 0.188,
+              "mad": 0.0040000000000000036,
+              "values": [
+                0.181,
+                0.179,
+                0.187,
+                0.177,
+                0.188
+              ]
+            },
+            "native_seconds": {
+              "median": 0.146095958,
+              "min": 0.144179834,
+              "max": 0.154882875,
+              "mad": 0.0019161239999999913,
+              "values": [
+                0.146089792,
+                0.146095958,
+                0.15414625,
+                0.144179834,
+                0.154882875
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.039663751,
+                "min": 0.038486083,
+                "max": 0.043160165,
+                "mad": 0.0009342099999999978,
+                "values": [
+                  0.038486083,
+                  0.039663751,
+                  0.043160165,
+                  0.038729541,
+                  0.039909958
+                ]
+              },
+              "finite_solve": {
+                "median": 0.016799875,
+                "min": 0.016569707,
+                "max": 0.019264042,
+                "mad": 0.00023016799999999935,
+                "values": [
+                  0.016709375,
+                  0.016569707,
+                  0.019264042,
+                  0.016799875,
+                  0.017509791
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.029395,
+                "min": 0.028292917,
+                "max": 0.034875167,
+                "mad": 0.0007597920000000022,
+                "values": [
+                  0.029395,
+                  0.028635208,
+                  0.029505708,
+                  0.028292917,
+                  0.034875167
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 1.0584795321637426,
+        "observed_range_flag": "regression",
+        "command_records": 12
+      },
+      {
+        "block": 1,
+        "order": [
+          "parent",
+          "candidate"
+        ],
+        "cell": "ppml-2fe-gravity",
+        "solver": "map",
+        "threads": 4,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 7.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 1.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 4.0,
+          "rt_threads_effective": 4.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 2.0,
+          "sl_map_selected_family": 2.0,
+          "sl_map_selected_engine": 1.0,
+          "sl_map_effective_family": 2.0,
+          "sl_map_effective_engine": 1.0,
+          "sl_map_checkpoint_family": 2.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 3.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 7.0,
+          "sl_lsmr_fused_requested_family": 2.0,
+          "sl_lsmr_fused_selected_family": 2.0,
+          "sl_lsmr_fused_selected_engine": 1.0,
+          "sl_lsmr_fused_effective_family": 2.0,
+          "sl_lsmr_fused_effective_engine": 1.0,
+          "sl_lsmr_fused_checkpoint_family": 2.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 2.0,
+          "sl_lsmr_joint_selected_family": 2.0,
+          "sl_lsmr_joint_selected_engine": 1.0,
+          "sl_lsmr_joint_effective_family": 2.0,
+          "sl_lsmr_joint_effective_engine": 1.0,
+          "sl_lsmr_joint_checkpoint_family": 2.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 0.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 0.0,
+          "sl_cmg_prepared_requested_family": 2.0,
+          "sl_cmg_prepared_selected_family": 2.0,
+          "sl_cmg_prepared_selected_engine": 1.0,
+          "sl_cmg_prepared_effective_family": 2.0,
+          "sl_cmg_prepared_effective_engine": 1.0,
+          "sl_cmg_prepared_checkpoint_family": 2.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "63dcf6e10caacdffcf645afc4507fa89c5a16147ddaf43aa1d314596da3681f3",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 251,
+        "groups": {
+          "parent": {
+            "command_seconds": {
+              "median": 0.215,
+              "min": 0.213,
+              "max": 0.217,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.216,
+                0.214,
+                0.215,
+                0.217,
+                0.213
+              ]
+            },
+            "native_seconds": {
+              "median": 0.186272792,
+              "min": 0.184396458,
+              "max": 0.187354708,
+              "mad": 0.001081916000000016,
+              "values": [
+                0.186413375,
+                0.184396458,
+                0.186272792,
+                0.187354708,
+                0.184407666
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.069681168,
+                "min": 0.068794791,
+                "max": 0.070364458,
+                "mad": 0.00027179099999999345,
+                "values": [
+                  0.069952959,
+                  0.069412333,
+                  0.069681168,
+                  0.070364458,
+                  0.068794791
+                ]
+              },
+              "finite_solve": {
+                "median": 0.026635293,
+                "min": 0.026488458,
+                "max": 0.026801083,
+                "mad": 0.0001222479999999984,
+                "values": [
+                  0.026488458,
+                  0.026801083,
+                  0.026635293,
+                  0.026757541,
+                  0.026523958
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.028200917,
+                "min": 0.027956917,
+                "max": 0.0284255,
+                "mad": 0.00022458300000000042,
+                "values": [
+                  0.027976209,
+                  0.027956917,
+                  0.028298791,
+                  0.028200917,
+                  0.0284255
+                ]
+              }
+            }
+          },
+          "candidate": {
+            "command_seconds": {
+              "median": 0.223,
+              "min": 0.219,
+              "max": 0.237,
+              "mad": 0.0040000000000000036,
+              "values": [
+                0.23,
+                0.223,
+                0.237,
+                0.219,
+                0.223
+              ]
+            },
+            "native_seconds": {
+              "median": 0.191352167,
+              "min": 0.187690834,
+              "max": 0.203248333,
+              "mad": 0.001601248999999999,
+              "values": [
+                0.192953416,
+                0.190593792,
+                0.203248333,
+                0.187690834,
+                0.191352167
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.073326291,
+                "min": 0.068658791,
+                "max": 0.075900084,
+                "mad": 0.0020852489999999974,
+                "values": [
+                  0.071241042,
+                  0.073326291,
+                  0.075900084,
+                  0.068658791,
+                  0.073959083
+                ]
+              },
+              "finite_solve": {
+                "median": 0.026991917,
+                "min": 0.026637084,
+                "max": 0.027643166,
+                "mad": 0.00025945999999999955,
+                "values": [
+                  0.027643166,
+                  0.026732457,
+                  0.027049917,
+                  0.026637084,
+                  0.026991917
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.028795375,
+                "min": 0.027999416,
+                "max": 0.030097125,
+                "mad": 0.0005281250000000008,
+                "values": [
+                  0.028795375,
+                  0.02826725,
+                  0.030097125,
+                  0.027999416,
+                  0.029140666
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 1.0372093023255815,
+        "observed_range_flag": "regression",
+        "command_records": 12
+      },
+      {
+        "block": 1,
+        "order": [
+          "parent",
+          "candidate"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "auto",
+        "threads": 1,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 13.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 0.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 1.0,
+          "rt_threads_effective": 1.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 1.0,
+          "sl_map_selected_family": 3.0,
+          "sl_map_selected_engine": 3.0,
+          "sl_map_effective_family": 3.0,
+          "sl_map_effective_engine": 3.0,
+          "sl_map_checkpoint_family": 3.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 0.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 2.0,
+          "sl_lsmr_fused_requested_family": 1.0,
+          "sl_lsmr_fused_selected_family": 3.0,
+          "sl_lsmr_fused_selected_engine": 3.0,
+          "sl_lsmr_fused_effective_family": 3.0,
+          "sl_lsmr_fused_effective_engine": 3.0,
+          "sl_lsmr_fused_checkpoint_family": 3.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 1.0,
+          "sl_lsmr_joint_selected_family": 3.0,
+          "sl_lsmr_joint_selected_engine": 3.0,
+          "sl_lsmr_joint_effective_family": 3.0,
+          "sl_lsmr_joint_effective_engine": 3.0,
+          "sl_lsmr_joint_checkpoint_family": 3.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 3.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 11.0,
+          "sl_cmg_prepared_requested_family": 1.0,
+          "sl_cmg_prepared_selected_family": 3.0,
+          "sl_cmg_prepared_selected_engine": 3.0,
+          "sl_cmg_prepared_effective_family": 3.0,
+          "sl_cmg_prepared_effective_engine": 3.0,
+          "sl_cmg_prepared_checkpoint_family": 3.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "e1a9b22686c902d5b08036334c26c3b609510f10a838b2af7a419c2b70f3c11e",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "parent": {
+            "command_seconds": {
+              "median": 0.364,
+              "min": 0.362,
+              "max": 0.366,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.366,
+                0.362,
+                0.364,
+                0.364,
+                0.363
+              ]
+            },
+            "native_seconds": {
+              "median": 0.33251025,
+              "min": 0.330024,
+              "max": 0.334173625,
+              "mad": 0.0009305829999999848,
+              "values": [
+                0.334173625,
+                0.330024,
+                0.332660125,
+                0.33251025,
+                0.331579667
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.103829208,
+                "min": 0.102186957,
+                "max": 0.104033164,
+                "mad": 0.00011037500000000977,
+                "values": [
+                  0.104033164,
+                  0.102186957,
+                  0.103873958,
+                  0.103718833,
+                  0.103829208
+                ]
+              },
+              "finite_solve": {
+                "median": 0.047493583,
+                "min": 0.046925084,
+                "max": 0.047809416,
+                "mad": 0.0003158330000000015,
+                "values": [
+                  0.047691042,
+                  0.047103417,
+                  0.047809416,
+                  0.047493583,
+                  0.046925084
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.06993275,
+                "min": 0.069618084,
+                "max": 0.0703765,
+                "mad": 0.00016499999999999848,
+                "values": [
+                  0.06993275,
+                  0.07009775,
+                  0.069618084,
+                  0.0703765,
+                  0.069865959
+                ]
+              }
+            }
+          },
+          "candidate": {
+            "command_seconds": {
+              "median": 0.371,
+              "min": 0.364,
+              "max": 0.379,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.379,
+                0.37,
+                0.372,
+                0.364,
+                0.371
+              ]
+            },
+            "native_seconds": {
+              "median": 0.338124375,
+              "min": 0.331831625,
+              "max": 0.343908625,
+              "mad": 0.0029639589999999605,
+              "values": [
+                0.343908625,
+                0.335160416,
+                0.338124375,
+                0.331831625,
+                0.340164875
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.106057709,
+                "min": 0.1037635,
+                "max": 0.107482835,
+                "mad": 0.0014251259999999988,
+                "values": [
+                  0.107482835,
+                  0.1037635,
+                  0.106998,
+                  0.103778707,
+                  0.106057709
+                ]
+              },
+              "finite_solve": {
+                "median": 0.047489499,
+                "min": 0.047245875,
+                "max": 0.048376748,
+                "mad": 0.00024362399999999784,
+                "values": [
+                  0.048376748,
+                  0.047805584,
+                  0.047245875,
+                  0.047489499,
+                  0.047261834
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.070005,
+                "min": 0.069379958,
+                "max": 0.070992334,
+                "mad": 0.0006250419999999923,
+                "values": [
+                  0.069379958,
+                  0.070992334,
+                  0.070005,
+                  0.069698291,
+                  0.070845667
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 1.0192307692307692,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 1,
+        "order": [
+          "parent",
+          "candidate"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "auto",
+        "threads": 4,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 13.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 0.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 4.0,
+          "rt_threads_effective": 4.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 1.0,
+          "sl_map_selected_family": 3.0,
+          "sl_map_selected_engine": 3.0,
+          "sl_map_effective_family": 3.0,
+          "sl_map_effective_engine": 3.0,
+          "sl_map_checkpoint_family": 3.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 0.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 2.0,
+          "sl_lsmr_fused_requested_family": 1.0,
+          "sl_lsmr_fused_selected_family": 3.0,
+          "sl_lsmr_fused_selected_engine": 3.0,
+          "sl_lsmr_fused_effective_family": 3.0,
+          "sl_lsmr_fused_effective_engine": 3.0,
+          "sl_lsmr_fused_checkpoint_family": 3.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 1.0,
+          "sl_lsmr_joint_selected_family": 3.0,
+          "sl_lsmr_joint_selected_engine": 3.0,
+          "sl_lsmr_joint_effective_family": 3.0,
+          "sl_lsmr_joint_effective_engine": 3.0,
+          "sl_lsmr_joint_checkpoint_family": 3.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 3.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 11.0,
+          "sl_cmg_prepared_requested_family": 1.0,
+          "sl_cmg_prepared_selected_family": 3.0,
+          "sl_cmg_prepared_selected_engine": 3.0,
+          "sl_cmg_prepared_effective_family": 3.0,
+          "sl_cmg_prepared_effective_engine": 3.0,
+          "sl_cmg_prepared_checkpoint_family": 3.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "e58ba322bb1a904e4c258306808dc53059e75272271269246fead54182094e35",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "parent": {
+            "command_seconds": {
+              "median": 0.208,
+              "min": 0.207,
+              "max": 0.209,
+              "mad": 0.0,
+              "values": [
+                0.208,
+                0.207,
+                0.209,
+                0.208,
+                0.208
+              ]
+            },
+            "native_seconds": {
+              "median": 0.173513209,
+              "min": 0.172444458,
+              "max": 0.174331834,
+              "mad": 0.0008118330000000118,
+              "values": [
+                0.172766042,
+                0.172444458,
+                0.174331834,
+                0.173513209,
+                0.174325042
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.048903625,
+                "min": 0.047823292,
+                "max": 0.050884666,
+                "mad": 0.0009282079999999998,
+                "values": [
+                  0.048903625,
+                  0.047975417,
+                  0.047823292,
+                  0.048908625,
+                  0.050884666
+                ]
+              },
+              "finite_solve": {
+                "median": 0.021081375,
+                "min": 0.020804,
+                "max": 0.021468291,
+                "mad": 0.0002003739999999997,
+                "values": [
+                  0.020936209,
+                  0.021081375,
+                  0.021281749,
+                  0.021468291,
+                  0.020804
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.035005125,
+                "min": 0.03468675,
+                "max": 0.035967542,
+                "mad": 0.00031837499999999574,
+                "values": [
+                  0.035325459,
+                  0.035005125,
+                  0.035967542,
+                  0.034815458,
+                  0.03468675
+                ]
+              }
+            }
+          },
+          "candidate": {
+            "command_seconds": {
+              "median": 0.207,
+              "min": 0.205,
+              "max": 0.21,
+              "mad": 0.0020000000000000018,
+              "values": [
+                0.205,
+                0.205,
+                0.207,
+                0.21,
+                0.207
+              ]
+            },
+            "native_seconds": {
+              "median": 0.173378417,
+              "min": 0.171159709,
+              "max": 0.175294,
+              "mad": 0.001584708000000018,
+              "values": [
+                0.171159709,
+                0.171793709,
+                0.173378417,
+                0.175294,
+                0.17439725
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.048600792,
+                "min": 0.04785121,
+                "max": 0.049366666,
+                "mad": 0.000522666000000005,
+                "values": [
+                  0.04785121,
+                  0.048600792,
+                  0.048554874,
+                  0.049123458,
+                  0.049366666
+                ]
+              },
+              "finite_solve": {
+                "median": 0.020913709,
+                "min": 0.020484668,
+                "max": 0.02139275,
+                "mad": 0.00027658399999999986,
+                "values": [
+                  0.020484668,
+                  0.021190293,
+                  0.020799501,
+                  0.02139275,
+                  0.020913709
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.034868042,
+                "min": 0.034822292,
+                "max": 0.035809583,
+                "mad": 1.537600000000444e-05,
+                "values": [
+                  0.034873917,
+                  0.034852666,
+                  0.034868042,
+                  0.035809583,
+                  0.034822292
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 0.9951923076923077,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 1,
+        "order": [
+          "parent",
+          "candidate"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "auto",
+        "threads": 16,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 13.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 0.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 16.0,
+          "rt_threads_effective": 16.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 1.0,
+          "sl_map_selected_family": 3.0,
+          "sl_map_selected_engine": 3.0,
+          "sl_map_effective_family": 3.0,
+          "sl_map_effective_engine": 3.0,
+          "sl_map_checkpoint_family": 3.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 0.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 2.0,
+          "sl_lsmr_fused_requested_family": 1.0,
+          "sl_lsmr_fused_selected_family": 3.0,
+          "sl_lsmr_fused_selected_engine": 3.0,
+          "sl_lsmr_fused_effective_family": 3.0,
+          "sl_lsmr_fused_effective_engine": 3.0,
+          "sl_lsmr_fused_checkpoint_family": 3.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 1.0,
+          "sl_lsmr_joint_selected_family": 3.0,
+          "sl_lsmr_joint_selected_engine": 3.0,
+          "sl_lsmr_joint_effective_family": 3.0,
+          "sl_lsmr_joint_effective_engine": 3.0,
+          "sl_lsmr_joint_checkpoint_family": 3.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 3.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 11.0,
+          "sl_cmg_prepared_requested_family": 1.0,
+          "sl_cmg_prepared_selected_family": 3.0,
+          "sl_cmg_prepared_selected_engine": 3.0,
+          "sl_cmg_prepared_effective_family": 3.0,
+          "sl_cmg_prepared_effective_engine": 3.0,
+          "sl_cmg_prepared_checkpoint_family": 3.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "d9fe12094a241986d7c3de28aba25671eabe24409bdff2811826a8d7914c3bf4",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "parent": {
+            "command_seconds": {
+              "median": 0.206,
+              "min": 0.201,
+              "max": 0.223,
+              "mad": 0.0020000000000000018,
+              "values": [
+                0.204,
+                0.201,
+                0.207,
+                0.206,
+                0.223
+              ]
+            },
+            "native_seconds": {
+              "median": 0.17160675,
+              "min": 0.168416666,
+              "max": 0.189393208,
+              "mad": 0.0023836250000000003,
+              "values": [
+                0.169223125,
+                0.168416666,
+                0.17160675,
+                0.173680041,
+                0.189393208
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.049739665,
+                "min": 0.047888167,
+                "max": 0.065107834,
+                "mad": 0.001851498,
+                "values": [
+                  0.048645249,
+                  0.047888167,
+                  0.049739665,
+                  0.051672833,
+                  0.065107834
+                ]
+              },
+              "finite_solve": {
+                "median": 0.019600667,
+                "min": 0.018983999,
+                "max": 0.020249417,
+                "mad": 0.0005250830000000026,
+                "values": [
+                  0.019571625,
+                  0.018983999,
+                  0.019600667,
+                  0.020249417,
+                  0.02012575
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.032501292,
+                "min": 0.031809083,
+                "max": 0.032875583,
+                "mad": 0.00034208299999999997,
+                "values": [
+                  0.032501292,
+                  0.032206917,
+                  0.032843375,
+                  0.031809083,
+                  0.032875583
+                ]
+              }
+            }
+          },
+          "candidate": {
+            "command_seconds": {
+              "median": 0.208,
+              "min": 0.203,
+              "max": 0.234,
+              "mad": 0.0040000000000000036,
+              "values": [
+                0.204,
+                0.208,
+                0.203,
+                0.209,
+                0.234
+              ]
+            },
+            "native_seconds": {
+              "median": 0.1732895,
+              "min": 0.169630583,
+              "max": 0.195115917,
+              "mad": 0.0016831250000000075,
+              "values": [
+                0.171606375,
+                0.1732895,
+                0.169630583,
+                0.174783167,
+                0.195115917
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.050619541,
+                "min": 0.049130208,
+                "max": 0.062777042,
+                "mad": 0.0006505819999999968,
+                "values": [
+                  0.049968959,
+                  0.050619541,
+                  0.049130208,
+                  0.050840376,
+                  0.062777042
+                ]
+              },
+              "finite_solve": {
+                "median": 0.019896791,
+                "min": 0.019286001,
+                "max": 0.021329832,
+                "mad": 0.00015091799999999989,
+                "values": [
+                  0.019755792,
+                  0.019896791,
+                  0.019286001,
+                  0.020047709,
+                  0.021329832
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.032935833,
+                "min": 0.03219425,
+                "max": 0.035388542,
+                "mad": 0.000741582999999997,
+                "values": [
+                  0.03219425,
+                  0.035120875,
+                  0.032665459,
+                  0.032935833,
+                  0.035388542
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 1.0097087378640777,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 1,
+        "order": [
+          "parent",
+          "candidate"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "map",
+        "threads": 1,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 7.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 1.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 1.0,
+          "rt_threads_effective": 1.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 2.0,
+          "sl_map_selected_family": 2.0,
+          "sl_map_selected_engine": 1.0,
+          "sl_map_effective_family": 2.0,
+          "sl_map_effective_engine": 1.0,
+          "sl_map_checkpoint_family": 2.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 3.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 7.0,
+          "sl_lsmr_fused_requested_family": 2.0,
+          "sl_lsmr_fused_selected_family": 2.0,
+          "sl_lsmr_fused_selected_engine": 1.0,
+          "sl_lsmr_fused_effective_family": 2.0,
+          "sl_lsmr_fused_effective_engine": 1.0,
+          "sl_lsmr_fused_checkpoint_family": 2.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 2.0,
+          "sl_lsmr_joint_selected_family": 2.0,
+          "sl_lsmr_joint_selected_engine": 1.0,
+          "sl_lsmr_joint_effective_family": 2.0,
+          "sl_lsmr_joint_effective_engine": 1.0,
+          "sl_lsmr_joint_checkpoint_family": 2.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 0.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 0.0,
+          "sl_cmg_prepared_requested_family": 2.0,
+          "sl_cmg_prepared_selected_family": 2.0,
+          "sl_cmg_prepared_selected_engine": 1.0,
+          "sl_cmg_prepared_effective_family": 2.0,
+          "sl_cmg_prepared_effective_engine": 1.0,
+          "sl_cmg_prepared_checkpoint_family": 2.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "22fcec6e3db902c888cb3d003c38ad9f57130dad6be03ca359f1ed72bb2197b0",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "parent": {
+            "command_seconds": {
+              "median": 0.44,
+              "min": 0.4370000000000001,
+              "max": 0.443,
+              "mad": 0.0029999999999998916,
+              "values": [
+                0.44,
+                0.439,
+                0.4429999999999999,
+                0.443,
+                0.4370000000000001
+              ]
+            },
+            "native_seconds": {
+              "median": 0.408945791,
+              "min": 0.405983209,
+              "max": 0.410968917,
+              "mad": 0.001598248999999996,
+              "values": [
+                0.408945791,
+                0.407347542,
+                0.410968917,
+                0.410402542,
+                0.405983209
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.177290042,
+                "min": 0.176560876,
+                "max": 0.180302583,
+                "mad": 0.0007291660000000033,
+                "values": [
+                  0.177290042,
+                  0.176618124,
+                  0.180302583,
+                  0.178693293,
+                  0.176560876
+                ]
+              },
+              "finite_solve": {
+                "median": 0.052757749,
+                "min": 0.052456959,
+                "max": 0.053309417,
+                "mad": 0.00030079000000000217,
+                "values": [
+                  0.052757749,
+                  0.053309417,
+                  0.052754666,
+                  0.053106,
+                  0.052456959
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.070028875,
+                "min": 0.069618292,
+                "max": 0.070614416,
+                "mad": 0.000410583000000006,
+                "values": [
+                  0.07053275,
+                  0.070028875,
+                  0.069644792,
+                  0.070614416,
+                  0.069618292
+                ]
+              }
+            }
+          },
+          "candidate": {
+            "command_seconds": {
+              "median": 0.449,
+              "min": 0.446,
+              "max": 0.465,
+              "mad": 0.0030000000000000027,
+              "values": [
+                0.446,
+                0.463,
+                0.465,
+                0.449,
+                0.446
+              ]
+            },
+            "native_seconds": {
+              "median": 0.415483791,
+              "min": 0.413975375,
+              "max": 0.43228,
+              "mad": 0.0015084160000000124,
+              "values": [
+                0.413975375,
+                0.428418917,
+                0.43228,
+                0.415483791,
+                0.41426325
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.183732709,
+                "min": 0.182979375,
+                "max": 0.19316575,
+                "mad": 0.0007533339999999944,
+                "values": [
+                  0.182979375,
+                  0.187576293,
+                  0.19316575,
+                  0.18323525,
+                  0.183732709
+                ]
+              },
+              "finite_solve": {
+                "median": 0.052974751,
+                "min": 0.052633625,
+                "max": 0.053608709,
+                "mad": 0.00034112599999999715,
+                "values": [
+                  0.05278225,
+                  0.05348575,
+                  0.053608709,
+                  0.052974751,
+                  0.052633625
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.07063275,
+                "min": 0.069245292,
+                "max": 0.077603083,
+                "mad": 0.0013874579999999942,
+                "values": [
+                  0.07063275,
+                  0.077603083,
+                  0.073411834,
+                  0.069245292,
+                  0.069784083
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 1.0204545454545455,
+        "observed_range_flag": "regression",
+        "command_records": 12
+      },
+      {
+        "block": 1,
+        "order": [
+          "parent",
+          "candidate"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "map",
+        "threads": 4,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 7.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 1.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 4.0,
+          "rt_threads_effective": 4.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 2.0,
+          "sl_map_selected_family": 2.0,
+          "sl_map_selected_engine": 1.0,
+          "sl_map_effective_family": 2.0,
+          "sl_map_effective_engine": 1.0,
+          "sl_map_checkpoint_family": 2.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 3.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 7.0,
+          "sl_lsmr_fused_requested_family": 2.0,
+          "sl_lsmr_fused_selected_family": 2.0,
+          "sl_lsmr_fused_selected_engine": 1.0,
+          "sl_lsmr_fused_effective_family": 2.0,
+          "sl_lsmr_fused_effective_engine": 1.0,
+          "sl_lsmr_fused_checkpoint_family": 2.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 2.0,
+          "sl_lsmr_joint_selected_family": 2.0,
+          "sl_lsmr_joint_selected_engine": 1.0,
+          "sl_lsmr_joint_effective_family": 2.0,
+          "sl_lsmr_joint_effective_engine": 1.0,
+          "sl_lsmr_joint_checkpoint_family": 2.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 0.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 0.0,
+          "sl_cmg_prepared_requested_family": 2.0,
+          "sl_cmg_prepared_selected_family": 2.0,
+          "sl_cmg_prepared_selected_engine": 1.0,
+          "sl_cmg_prepared_effective_family": 2.0,
+          "sl_cmg_prepared_effective_engine": 1.0,
+          "sl_cmg_prepared_checkpoint_family": 2.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "bc9ebe3abecc8493f108a2370d4aaaa0c6abcaa87e3c25f374a257a7811479a4",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "parent": {
+            "command_seconds": {
+              "median": 0.272,
+              "min": 0.265,
+              "max": 0.312,
+              "mad": 0.006000000000000005,
+              "values": [
+                0.265,
+                0.272,
+                0.268,
+                0.278,
+                0.312
+              ]
+            },
+            "native_seconds": {
+              "median": 0.23790075,
+              "min": 0.231464959,
+              "max": 0.270337042,
+              "mad": 0.0034755840000000038,
+              "values": [
+                0.231464959,
+                0.23790075,
+                0.234895458,
+                0.241376334,
+                0.270337042
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.092545417,
+                "min": 0.09011775,
+                "max": 0.108866166,
+                "mad": 0.0009327499999999961,
+                "values": [
+                  0.09011775,
+                  0.092545417,
+                  0.092433835,
+                  0.093478167,
+                  0.108866166
+                ]
+              },
+              "finite_solve": {
+                "median": 0.039178207,
+                "min": 0.038565125,
+                "max": 0.042052208,
+                "mad": 0.0006130820000000009,
+                "values": [
+                  0.038565125,
+                  0.039178207,
+                  0.038848,
+                  0.040666499,
+                  0.042052208
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.03654625,
+                "min": 0.034702583,
+                "max": 0.043844208,
+                "mad": 0.0016066669999999991,
+                "values": [
+                  0.034939583,
+                  0.03654625,
+                  0.034702583,
+                  0.037494125,
+                  0.043844208
+                ]
+              }
+            }
+          },
+          "candidate": {
+            "command_seconds": {
+              "median": 0.266,
+              "min": 0.264,
+              "max": 0.269,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.266,
+                0.265,
+                0.267,
+                0.269,
+                0.264
+              ]
+            },
+            "native_seconds": {
+              "median": 0.2332475,
+              "min": 0.232508667,
+              "max": 0.238388417,
+              "mad": 0.0007388329999999943,
+              "values": [
+                0.234184875,
+                0.232508667,
+                0.2332475,
+                0.238388417,
+                0.232668792
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.091344541,
+                "min": 0.090000001,
+                "max": 0.092279251,
+                "mad": 0.0005011669999999968,
+                "values": [
+                  0.091753083,
+                  0.090843374,
+                  0.090000001,
+                  0.092279251,
+                  0.091344541
+                ]
+              },
+              "finite_solve": {
+                "median": 0.038350667,
+                "min": 0.037417791,
+                "max": 0.038466542,
+                "mad": 0.0001158750000000014,
+                "values": [
+                  0.037934125,
+                  0.038466542,
+                  0.038455042,
+                  0.038350667,
+                  0.037417791
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.034794,
+                "min": 0.034706625,
+                "max": 0.036801292,
+                "mad": 8.737500000000065e-05,
+                "values": [
+                  0.035094958,
+                  0.03479275,
+                  0.036801292,
+                  0.034794,
+                  0.034706625
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 0.9779411764705882,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 1,
+        "order": [
+          "parent",
+          "candidate"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "map",
+        "threads": 16,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 7.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 1.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 16.0,
+          "rt_threads_effective": 16.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 2.0,
+          "sl_map_selected_family": 2.0,
+          "sl_map_selected_engine": 1.0,
+          "sl_map_effective_family": 2.0,
+          "sl_map_effective_engine": 1.0,
+          "sl_map_checkpoint_family": 2.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 3.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 7.0,
+          "sl_lsmr_fused_requested_family": 2.0,
+          "sl_lsmr_fused_selected_family": 2.0,
+          "sl_lsmr_fused_selected_engine": 1.0,
+          "sl_lsmr_fused_effective_family": 2.0,
+          "sl_lsmr_fused_effective_engine": 1.0,
+          "sl_lsmr_fused_checkpoint_family": 2.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 2.0,
+          "sl_lsmr_joint_selected_family": 2.0,
+          "sl_lsmr_joint_selected_engine": 1.0,
+          "sl_lsmr_joint_effective_family": 2.0,
+          "sl_lsmr_joint_effective_engine": 1.0,
+          "sl_lsmr_joint_checkpoint_family": 2.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 0.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 0.0,
+          "sl_cmg_prepared_requested_family": 2.0,
+          "sl_cmg_prepared_selected_family": 2.0,
+          "sl_cmg_prepared_selected_engine": 1.0,
+          "sl_cmg_prepared_effective_family": 2.0,
+          "sl_cmg_prepared_effective_engine": 1.0,
+          "sl_cmg_prepared_checkpoint_family": 2.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "b8f391d3c11aedc6f1e9cba08deab17274cb747e945e1eb5115a3091cce4f64f",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "parent": {
+            "command_seconds": {
+              "median": 0.271,
+              "min": 0.27,
+              "max": 0.286,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.286,
+                0.271,
+                0.27,
+                0.273,
+                0.27
+              ]
+            },
+            "native_seconds": {
+              "median": 0.23443325,
+              "min": 0.233413334,
+              "max": 0.24952725,
+              "mad": 0.0010199160000000096,
+              "values": [
+                0.24952725,
+                0.233713208,
+                0.233413334,
+                0.236087875,
+                0.23443325
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.086654457,
+                "min": 0.086050626,
+                "max": 0.0950865,
+                "mad": 0.0006038309999999991,
+                "values": [
+                  0.0950865,
+                  0.086050626,
+                  0.086654457,
+                  0.089515792,
+                  0.086619543
+                ]
+              },
+              "finite_solve": {
+                "median": 0.040208958,
+                "min": 0.039249959,
+                "max": 0.041489375,
+                "mad": 0.00023312400000000122,
+                "values": [
+                  0.041489375,
+                  0.039249959,
+                  0.040208958,
+                  0.04044075,
+                  0.039975834
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.034900167,
+                "min": 0.033283708,
+                "max": 0.039120791,
+                "mad": 0.001559459000000006,
+                "values": [
+                  0.039120791,
+                  0.034900167,
+                  0.033283708,
+                  0.033340708,
+                  0.0352935
+                ]
+              }
+            }
+          },
+          "candidate": {
+            "command_seconds": {
+              "median": 0.257,
+              "min": 0.255,
+              "max": 0.26,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.256,
+                0.26,
+                0.255,
+                0.257,
+                0.257
+              ]
+            },
+            "native_seconds": {
+              "median": 0.223378625,
+              "min": 0.221334125,
+              "max": 0.227997667,
+              "mad": 0.0018977500000000036,
+              "values": [
+                0.222701958,
+                0.227997667,
+                0.221334125,
+                0.223378625,
+                0.225276375
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.081986833,
+                "min": 0.080555084,
+                "max": 0.084801251,
+                "mad": 0.0012787090000000029,
+                "values": [
+                  0.081986833,
+                  0.084801251,
+                  0.080555084,
+                  0.081188043,
+                  0.083265542
+                ]
+              },
+              "finite_solve": {
+                "median": 0.038298666,
+                "min": 0.037592832,
+                "max": 0.038764835,
+                "mad": 0.00046616899999999545,
+                "values": [
+                  0.037788624,
+                  0.038298666,
+                  0.037592832,
+                  0.038764835,
+                  0.038547292
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.032226209,
+                "min": 0.031191583,
+                "max": 0.032691833,
+                "mad": 0.000231501000000002,
+                "values": [
+                  0.032226209,
+                  0.032289459,
+                  0.031994708,
+                  0.032691833,
+                  0.031191583
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 0.9483394833948339,
+        "observed_range_flag": "gain",
+        "command_records": 12
+      },
+      {
+        "block": 2,
+        "order": [
+          "candidate",
+          "parent"
+        ],
+        "cell": "ppml-2fe-gravity",
+        "solver": "auto",
+        "threads": 4,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 14.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 0.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 4.0,
+          "rt_threads_effective": 4.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 1.0,
+          "sl_map_selected_family": 3.0,
+          "sl_map_selected_engine": 3.0,
+          "sl_map_effective_family": 3.0,
+          "sl_map_effective_engine": 3.0,
+          "sl_map_checkpoint_family": 3.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 0.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 2.0,
+          "sl_lsmr_fused_requested_family": 1.0,
+          "sl_lsmr_fused_selected_family": 3.0,
+          "sl_lsmr_fused_selected_engine": 3.0,
+          "sl_lsmr_fused_effective_family": 3.0,
+          "sl_lsmr_fused_effective_engine": 3.0,
+          "sl_lsmr_fused_checkpoint_family": 3.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 1.0,
+          "sl_lsmr_joint_selected_family": 3.0,
+          "sl_lsmr_joint_selected_engine": 3.0,
+          "sl_lsmr_joint_effective_family": 3.0,
+          "sl_lsmr_joint_effective_engine": 3.0,
+          "sl_lsmr_joint_checkpoint_family": 3.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 3.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 12.0,
+          "sl_cmg_prepared_requested_family": 1.0,
+          "sl_cmg_prepared_selected_family": 3.0,
+          "sl_cmg_prepared_selected_engine": 3.0,
+          "sl_cmg_prepared_effective_family": 3.0,
+          "sl_cmg_prepared_effective_engine": 3.0,
+          "sl_cmg_prepared_checkpoint_family": 3.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "4f672cd3f4b9b90d25514b8a9c3034c0efdfe9ab853e7a00d0106cabcaeae480",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 251,
+        "groups": {
+          "candidate": {
+            "command_seconds": {
+              "median": 0.172,
+              "min": 0.17,
+              "max": 0.174,
+              "mad": 0.0009999999999999731,
+              "values": [
+                0.174,
+                0.172,
+                0.172,
+                0.17,
+                0.171
+              ]
+            },
+            "native_seconds": {
+              "median": 0.141638792,
+              "min": 0.139792542,
+              "max": 0.1430325,
+              "mad": 0.0006500420000000173,
+              "values": [
+                0.1430325,
+                0.141960083,
+                0.14098875,
+                0.139792542,
+                0.141638792
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.037755168,
+                "min": 0.037427375,
+                "max": 0.038181668,
+                "mad": 0.0002686670000000002,
+                "values": [
+                  0.038181668,
+                  0.037831375,
+                  0.037427375,
+                  0.037486501,
+                  0.037755168
+                ]
+              },
+              "finite_solve": {
+                "median": 0.016465582,
+                "min": 0.016223793,
+                "max": 0.016719834,
+                "mad": 0.00012620899999999866,
+                "values": [
+                  0.016537792,
+                  0.016719834,
+                  0.016339373,
+                  0.016223793,
+                  0.016465582
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.02819325,
+                "min": 0.027314,
+                "max": 0.02892925,
+                "mad": 0.00024191700000000121,
+                "values": [
+                  0.028411666,
+                  0.02819325,
+                  0.02892925,
+                  0.027314,
+                  0.027951333
+                ]
+              }
+            }
+          },
+          "parent": {
+            "command_seconds": {
+              "median": 0.172,
+              "min": 0.169,
+              "max": 0.173,
+              "mad": 0.0009999999999999731,
+              "values": [
+                0.169,
+                0.172,
+                0.173,
+                0.171,
+                0.172
+              ]
+            },
+            "native_seconds": {
+              "median": 0.142610125,
+              "min": 0.13906825,
+              "max": 0.143626541,
+              "mad": 0.0010164159999999922,
+              "values": [
+                0.13906825,
+                0.143626541,
+                0.143567292,
+                0.141350958,
+                0.142610125
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.037902085,
+                "min": 0.03639,
+                "max": 0.038407584,
+                "mad": 0.0003397499999999998,
+                "values": [
+                  0.03639,
+                  0.037775792,
+                  0.038241835,
+                  0.037902085,
+                  0.038407584
+                ]
+              },
+              "finite_solve": {
+                "median": 0.016482459,
+                "min": 0.016122666,
+                "max": 0.016836793,
+                "mad": 0.0002500840000000011,
+                "values": [
+                  0.016232375,
+                  0.016657458,
+                  0.016836793,
+                  0.016122666,
+                  0.016482459
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.02817,
+                "min": 0.027593292,
+                "max": 0.028878208,
+                "mad": 0.00023570800000000114,
+                "values": [
+                  0.027934292,
+                  0.02817,
+                  0.028878208,
+                  0.027593292,
+                  0.028293833
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 1.0,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 2,
+        "order": [
+          "candidate",
+          "parent"
+        ],
+        "cell": "ppml-2fe-gravity",
+        "solver": "map",
+        "threads": 4,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 7.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 1.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 4.0,
+          "rt_threads_effective": 4.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 2.0,
+          "sl_map_selected_family": 2.0,
+          "sl_map_selected_engine": 1.0,
+          "sl_map_effective_family": 2.0,
+          "sl_map_effective_engine": 1.0,
+          "sl_map_checkpoint_family": 2.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 3.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 7.0,
+          "sl_lsmr_fused_requested_family": 2.0,
+          "sl_lsmr_fused_selected_family": 2.0,
+          "sl_lsmr_fused_selected_engine": 1.0,
+          "sl_lsmr_fused_effective_family": 2.0,
+          "sl_lsmr_fused_effective_engine": 1.0,
+          "sl_lsmr_fused_checkpoint_family": 2.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 2.0,
+          "sl_lsmr_joint_selected_family": 2.0,
+          "sl_lsmr_joint_selected_engine": 1.0,
+          "sl_lsmr_joint_effective_family": 2.0,
+          "sl_lsmr_joint_effective_engine": 1.0,
+          "sl_lsmr_joint_checkpoint_family": 2.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 0.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 0.0,
+          "sl_cmg_prepared_requested_family": 2.0,
+          "sl_cmg_prepared_selected_family": 2.0,
+          "sl_cmg_prepared_selected_engine": 1.0,
+          "sl_cmg_prepared_effective_family": 2.0,
+          "sl_cmg_prepared_effective_engine": 1.0,
+          "sl_cmg_prepared_checkpoint_family": 2.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "63dcf6e10caacdffcf645afc4507fa89c5a16147ddaf43aa1d314596da3681f3",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 251,
+        "groups": {
+          "candidate": {
+            "command_seconds": {
+              "median": 0.215,
+              "min": 0.211,
+              "max": 0.216,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.215,
+                0.216,
+                0.211,
+                0.216,
+                0.213
+              ]
+            },
+            "native_seconds": {
+              "median": 0.185716625,
+              "min": 0.182722292,
+              "max": 0.187191959,
+              "mad": 0.0014753339999999948,
+              "values": [
+                0.185716625,
+                0.186940958,
+                0.182722292,
+                0.187191959,
+                0.182878125
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.071150833,
+                "min": 0.066710083,
+                "max": 0.072245168,
+                "mad": 0.0010943350000000018,
+                "values": [
+                  0.071150833,
+                  0.071536917,
+                  0.067898167,
+                  0.072245168,
+                  0.066710083
+                ]
+              },
+              "finite_solve": {
+                "median": 0.026620999,
+                "min": 0.026484375,
+                "max": 0.02670525,
+                "mad": 8.425100000000046e-05,
+                "values": [
+                  0.026620999,
+                  0.026634084,
+                  0.026485916,
+                  0.026484375,
+                  0.02670525
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.028294833,
+                "min": 0.027810084,
+                "max": 0.028381917,
+                "mad": 8.708400000000116e-05,
+                "values": [
+                  0.028294833,
+                  0.027919792,
+                  0.028381917,
+                  0.027810084,
+                  0.028337875
+                ]
+              }
+            }
+          },
+          "parent": {
+            "command_seconds": {
+              "median": 0.209,
+              "min": 0.207,
+              "max": 0.215,
+              "mad": 0.0020000000000000018,
+              "values": [
+                0.215,
+                0.207,
+                0.209,
+                0.209,
+                0.214
+              ]
+            },
+            "native_seconds": {
+              "median": 0.180240167,
+              "min": 0.177717792,
+              "max": 0.185754375,
+              "mad": 0.0025223749999999934,
+              "values": [
+                0.185754375,
+                0.177717792,
+                0.180240167,
+                0.179499208,
+                0.185331625
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.066962167,
+                "min": 0.063188834,
+                "max": 0.070847209,
+                "mad": 0.0037301260000000003,
+                "values": [
+                  0.070847209,
+                  0.063188834,
+                  0.066962167,
+                  0.063232041,
+                  0.068642917
+                ]
+              },
+              "finite_solve": {
+                "median": 0.026477083,
+                "min": 0.026061083,
+                "max": 0.026806125,
+                "mad": 0.00027366699999999827,
+                "values": [
+                  0.026593917,
+                  0.026203416,
+                  0.026061083,
+                  0.026806125,
+                  0.026477083
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.028153375,
+                "min": 0.027768125,
+                "max": 0.028614833,
+                "mad": 0.00017741699999999916,
+                "values": [
+                  0.028153375,
+                  0.027768125,
+                  0.028027833,
+                  0.028330792,
+                  0.028614833
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 1.0287081339712918,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 2,
+        "order": [
+          "candidate",
+          "parent"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "auto",
+        "threads": 1,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 13.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 0.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 1.0,
+          "rt_threads_effective": 1.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 1.0,
+          "sl_map_selected_family": 3.0,
+          "sl_map_selected_engine": 3.0,
+          "sl_map_effective_family": 3.0,
+          "sl_map_effective_engine": 3.0,
+          "sl_map_checkpoint_family": 3.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 0.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 2.0,
+          "sl_lsmr_fused_requested_family": 1.0,
+          "sl_lsmr_fused_selected_family": 3.0,
+          "sl_lsmr_fused_selected_engine": 3.0,
+          "sl_lsmr_fused_effective_family": 3.0,
+          "sl_lsmr_fused_effective_engine": 3.0,
+          "sl_lsmr_fused_checkpoint_family": 3.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 1.0,
+          "sl_lsmr_joint_selected_family": 3.0,
+          "sl_lsmr_joint_selected_engine": 3.0,
+          "sl_lsmr_joint_effective_family": 3.0,
+          "sl_lsmr_joint_effective_engine": 3.0,
+          "sl_lsmr_joint_checkpoint_family": 3.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 3.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 11.0,
+          "sl_cmg_prepared_requested_family": 1.0,
+          "sl_cmg_prepared_selected_family": 3.0,
+          "sl_cmg_prepared_selected_engine": 3.0,
+          "sl_cmg_prepared_effective_family": 3.0,
+          "sl_cmg_prepared_effective_engine": 3.0,
+          "sl_cmg_prepared_checkpoint_family": 3.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "e1a9b22686c902d5b08036334c26c3b609510f10a838b2af7a419c2b70f3c11e",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "candidate": {
+            "command_seconds": {
+              "median": 0.364,
+              "min": 0.361,
+              "max": 0.383,
+              "mad": 0.0020000000000000018,
+              "values": [
+                0.383,
+                0.366,
+                0.364,
+                0.361,
+                0.362
+              ]
+            },
+            "native_seconds": {
+              "median": 0.332104125,
+              "min": 0.329708042,
+              "max": 0.349609625,
+              "mad": 0.0018507920000000455,
+              "values": [
+                0.349609625,
+                0.333954917,
+                0.332104125,
+                0.329708042,
+                0.330962291
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.104413999,
+                "min": 0.103030833,
+                "max": 0.118961749,
+                "mad": 0.0012207940000000111,
+                "values": [
+                  0.118961749,
+                  0.105634793,
+                  0.104413999,
+                  0.103030833,
+                  0.103719583
+                ]
+              },
+              "finite_solve": {
+                "median": 0.046900334,
+                "min": 0.04613996,
+                "max": 0.047344167,
+                "mad": 0.0003881260000000025,
+                "values": [
+                  0.04613996,
+                  0.047344167,
+                  0.046900334,
+                  0.046512208,
+                  0.047178167
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.06940175,
+                "min": 0.069132375,
+                "max": 0.073806208,
+                "mad": 5.38340000000026e-05,
+                "values": [
+                  0.073806208,
+                  0.069347916,
+                  0.069132375,
+                  0.06944725,
+                  0.06940175
+                ]
+              }
+            }
+          },
+          "parent": {
+            "command_seconds": {
+              "median": 0.362,
+              "min": 0.36,
+              "max": 0.363,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.363,
+                0.361,
+                0.362,
+                0.362,
+                0.36
+              ]
+            },
+            "native_seconds": {
+              "median": 0.330731333,
+              "min": 0.330026917,
+              "max": 0.331474042,
+              "mad": 1.2500000000026379e-05,
+              "values": [
+                0.330740333,
+                0.330731333,
+                0.331474042,
+                0.330718833,
+                0.330026917
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.102632292,
+                "min": 0.101914998,
+                "max": 0.103331165,
+                "mad": 0.00020933400000000546,
+                "values": [
+                  0.102422958,
+                  0.103331165,
+                  0.102824668,
+                  0.101914998,
+                  0.102632292
+                ]
+              },
+              "finite_solve": {
+                "median": 0.047137,
+                "min": 0.046952333,
+                "max": 0.047588915,
+                "mad": 0.00018466699999999947,
+                "values": [
+                  0.047101792,
+                  0.047137,
+                  0.047588915,
+                  0.046952333,
+                  0.047353126
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.069725042,
+                "min": 0.069359208,
+                "max": 0.070007375,
+                "mad": 0.00021683399999999908,
+                "values": [
+                  0.069508208,
+                  0.069359208,
+                  0.070007375,
+                  0.069725042,
+                  0.069747833
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 1.0055248618784531,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 2,
+        "order": [
+          "candidate",
+          "parent"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "auto",
+        "threads": 4,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 13.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 0.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 4.0,
+          "rt_threads_effective": 4.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 1.0,
+          "sl_map_selected_family": 3.0,
+          "sl_map_selected_engine": 3.0,
+          "sl_map_effective_family": 3.0,
+          "sl_map_effective_engine": 3.0,
+          "sl_map_checkpoint_family": 3.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 0.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 2.0,
+          "sl_lsmr_fused_requested_family": 1.0,
+          "sl_lsmr_fused_selected_family": 3.0,
+          "sl_lsmr_fused_selected_engine": 3.0,
+          "sl_lsmr_fused_effective_family": 3.0,
+          "sl_lsmr_fused_effective_engine": 3.0,
+          "sl_lsmr_fused_checkpoint_family": 3.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 1.0,
+          "sl_lsmr_joint_selected_family": 3.0,
+          "sl_lsmr_joint_selected_engine": 3.0,
+          "sl_lsmr_joint_effective_family": 3.0,
+          "sl_lsmr_joint_effective_engine": 3.0,
+          "sl_lsmr_joint_checkpoint_family": 3.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 3.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 11.0,
+          "sl_cmg_prepared_requested_family": 1.0,
+          "sl_cmg_prepared_selected_family": 3.0,
+          "sl_cmg_prepared_selected_engine": 3.0,
+          "sl_cmg_prepared_effective_family": 3.0,
+          "sl_cmg_prepared_effective_engine": 3.0,
+          "sl_cmg_prepared_checkpoint_family": 3.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "e58ba322bb1a904e4c258306808dc53059e75272271269246fead54182094e35",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "candidate": {
+            "command_seconds": {
+              "median": 0.206,
+              "min": 0.205,
+              "max": 0.208,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.205,
+                0.205,
+                0.206,
+                0.208,
+                0.207
+              ]
+            },
+            "native_seconds": {
+              "median": 0.172417083,
+              "min": 0.171556291,
+              "max": 0.173512417,
+              "mad": 0.0008162919999999962,
+              "values": [
+                0.171556291,
+                0.172417083,
+                0.172409958,
+                0.173512417,
+                0.173233375
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.048423749,
+                "min": 0.047206709,
+                "max": 0.049137083,
+                "mad": 0.00039412599999999465,
+                "values": [
+                  0.047206709,
+                  0.048401334,
+                  0.048817875,
+                  0.049137083,
+                  0.048423749
+                ]
+              },
+              "finite_solve": {
+                "median": 0.020630668,
+                "min": 0.020331127,
+                "max": 0.021194375,
+                "mad": 0.00014533099999999854,
+                "values": [
+                  0.020511376,
+                  0.020630668,
+                  0.020775999,
+                  0.021194375,
+                  0.020331127
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.0353405,
+                "min": 0.034406875,
+                "max": 0.035743,
+                "mad": 0.00028470800000000157,
+                "values": [
+                  0.035743,
+                  0.035625208,
+                  0.0353405,
+                  0.035257458,
+                  0.034406875
+                ]
+              }
+            }
+          },
+          "parent": {
+            "command_seconds": {
+              "median": 0.207,
+              "min": 0.204,
+              "max": 0.208,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.207,
+                0.208,
+                0.208,
+                0.206,
+                0.204
+              ]
+            },
+            "native_seconds": {
+              "median": 0.173138625,
+              "min": 0.17209425,
+              "max": 0.176306167,
+              "mad": 0.0009118340000000003,
+              "values": [
+                0.172226791,
+                0.173138625,
+                0.176306167,
+                0.173936125,
+                0.17209425
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.049200165,
+                "min": 0.047865834,
+                "max": 0.050348961,
+                "mad": 0.00026379099999999933,
+                "values": [
+                  0.049296585,
+                  0.048936374,
+                  0.050348961,
+                  0.049200165,
+                  0.047865834
+                ]
+              },
+              "finite_solve": {
+                "median": 0.020933418,
+                "min": 0.020523917,
+                "max": 0.021389083,
+                "mad": 0.00021479100000000237,
+                "values": [
+                  0.020933418,
+                  0.020720166,
+                  0.021389083,
+                  0.021148209,
+                  0.020523917
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.035297625,
+                "min": 0.033933541,
+                "max": 0.035476833,
+                "mad": 0.00017920800000000014,
+                "values": [
+                  0.033933541,
+                  0.034754167,
+                  0.035476833,
+                  0.035297625,
+                  0.03530275
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 0.9951690821256038,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 2,
+        "order": [
+          "candidate",
+          "parent"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "auto",
+        "threads": 16,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 13.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 0.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 16.0,
+          "rt_threads_effective": 16.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 1.0,
+          "sl_map_selected_family": 3.0,
+          "sl_map_selected_engine": 3.0,
+          "sl_map_effective_family": 3.0,
+          "sl_map_effective_engine": 3.0,
+          "sl_map_checkpoint_family": 3.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 0.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 2.0,
+          "sl_lsmr_fused_requested_family": 1.0,
+          "sl_lsmr_fused_selected_family": 3.0,
+          "sl_lsmr_fused_selected_engine": 3.0,
+          "sl_lsmr_fused_effective_family": 3.0,
+          "sl_lsmr_fused_effective_engine": 3.0,
+          "sl_lsmr_fused_checkpoint_family": 3.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 1.0,
+          "sl_lsmr_joint_selected_family": 3.0,
+          "sl_lsmr_joint_selected_engine": 3.0,
+          "sl_lsmr_joint_effective_family": 3.0,
+          "sl_lsmr_joint_effective_engine": 3.0,
+          "sl_lsmr_joint_checkpoint_family": 3.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 3.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 11.0,
+          "sl_cmg_prepared_requested_family": 1.0,
+          "sl_cmg_prepared_selected_family": 3.0,
+          "sl_cmg_prepared_selected_engine": 3.0,
+          "sl_cmg_prepared_effective_family": 3.0,
+          "sl_cmg_prepared_effective_engine": 3.0,
+          "sl_cmg_prepared_checkpoint_family": 3.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "d9fe12094a241986d7c3de28aba25671eabe24409bdff2811826a8d7914c3bf4",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "candidate": {
+            "command_seconds": {
+              "median": 0.203,
+              "min": 0.199,
+              "max": 0.238,
+              "mad": 0.0030000000000000027,
+              "values": [
+                0.238,
+                0.203,
+                0.199,
+                0.2,
+                0.206
+              ]
+            },
+            "native_seconds": {
+              "median": 0.168879542,
+              "min": 0.165780625,
+              "max": 0.204457,
+              "mad": 0.001745373999999994,
+              "values": [
+                0.204457,
+                0.168879542,
+                0.165780625,
+                0.168271916,
+                0.170624916
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.049739958,
+                "min": 0.047878749,
+                "max": 0.052845834,
+                "mad": 0.00048058200000000023,
+                "values": [
+                  0.052845834,
+                  0.050097584,
+                  0.047878749,
+                  0.049259376,
+                  0.049739958
+                ]
+              },
+              "finite_solve": {
+                "median": 0.019463167,
+                "min": 0.018882417,
+                "max": 0.020203376,
+                "mad": 0.00021074999999999913,
+                "values": [
+                  0.019614959,
+                  0.019252417,
+                  0.018882417,
+                  0.020203376,
+                  0.019463167
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.032219625,
+                "min": 0.031408958,
+                "max": 0.038378917,
+                "mad": 0.000810667000000001,
+                "values": [
+                  0.038378917,
+                  0.031516208,
+                  0.032219625,
+                  0.031408958,
+                  0.033155792
+                ]
+              }
+            }
+          },
+          "parent": {
+            "command_seconds": {
+              "median": 0.206,
+              "min": 0.201,
+              "max": 0.248,
+              "mad": 0.004999999999999977,
+              "values": [
+                0.248,
+                0.206,
+                0.201,
+                0.211,
+                0.206
+              ]
+            },
+            "native_seconds": {
+              "median": 0.172648125,
+              "min": 0.167606416,
+              "max": 0.207750791,
+              "mad": 0.005041709000000005,
+              "values": [
+                0.207750791,
+                0.170995375,
+                0.167606416,
+                0.178616166,
+                0.172648125
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.050322165,
+                "min": 0.046941374,
+                "max": 0.062005501,
+                "mad": 0.003380791000000001,
+                "values": [
+                  0.062005501,
+                  0.050322165,
+                  0.046941374,
+                  0.053825875,
+                  0.049356415
+                ]
+              },
+              "finite_solve": {
+                "median": 0.019471125,
+                "min": 0.019325041,
+                "max": 0.021937834,
+                "mad": 0.00014608399999999772,
+                "values": [
+                  0.021937834,
+                  0.019471125,
+                  0.019456458,
+                  0.020093334,
+                  0.019325041
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.033601583,
+                "min": 0.032955416,
+                "max": 0.04158025,
+                "mad": 0.0004449159999999966,
+                "values": [
+                  0.04158025,
+                  0.033156667,
+                  0.033601583,
+                  0.033749,
+                  0.032955416
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 0.9854368932038836,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 2,
+        "order": [
+          "candidate",
+          "parent"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "map",
+        "threads": 1,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 7.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 1.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 1.0,
+          "rt_threads_effective": 1.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 2.0,
+          "sl_map_selected_family": 2.0,
+          "sl_map_selected_engine": 1.0,
+          "sl_map_effective_family": 2.0,
+          "sl_map_effective_engine": 1.0,
+          "sl_map_checkpoint_family": 2.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 3.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 7.0,
+          "sl_lsmr_fused_requested_family": 2.0,
+          "sl_lsmr_fused_selected_family": 2.0,
+          "sl_lsmr_fused_selected_engine": 1.0,
+          "sl_lsmr_fused_effective_family": 2.0,
+          "sl_lsmr_fused_effective_engine": 1.0,
+          "sl_lsmr_fused_checkpoint_family": 2.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 2.0,
+          "sl_lsmr_joint_selected_family": 2.0,
+          "sl_lsmr_joint_selected_engine": 1.0,
+          "sl_lsmr_joint_effective_family": 2.0,
+          "sl_lsmr_joint_effective_engine": 1.0,
+          "sl_lsmr_joint_checkpoint_family": 2.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 0.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 0.0,
+          "sl_cmg_prepared_requested_family": 2.0,
+          "sl_cmg_prepared_selected_family": 2.0,
+          "sl_cmg_prepared_selected_engine": 1.0,
+          "sl_cmg_prepared_effective_family": 2.0,
+          "sl_cmg_prepared_effective_engine": 1.0,
+          "sl_cmg_prepared_checkpoint_family": 2.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "22fcec6e3db902c888cb3d003c38ad9f57130dad6be03ca359f1ed72bb2197b0",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "candidate": {
+            "command_seconds": {
+              "median": 0.437,
+              "min": 0.436,
+              "max": 0.4409999999999999,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.4409999999999999,
+                0.437,
+                0.436,
+                0.4370000000000001,
+                0.436
+              ]
+            },
+            "native_seconds": {
+              "median": 0.40620075,
+              "min": 0.405040166,
+              "max": 0.409877542,
+              "mad": 0.0005168329999999943,
+              "values": [
+                0.409877542,
+                0.40620075,
+                0.405801417,
+                0.406717583,
+                0.405040166
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.177246,
+                "min": 0.175828124,
+                "max": 0.181046126,
+                "mad": 0.0005283739999999981,
+                "values": [
+                  0.181046126,
+                  0.177246,
+                  0.176717626,
+                  0.177421167,
+                  0.175828124
+                ]
+              },
+              "finite_solve": {
+                "median": 0.052492209,
+                "min": 0.052368917,
+                "max": 0.052540209,
+                "mad": 4.799999999999943e-05,
+                "values": [
+                  0.052492209,
+                  0.052368917,
+                  0.052396376,
+                  0.052540209,
+                  0.052516333
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.069431291,
+                "min": 0.069106708,
+                "max": 0.069552209,
+                "mad": 6.174899999999983e-05,
+                "values": [
+                  0.069106708,
+                  0.069431291,
+                  0.069369542,
+                  0.069552209,
+                  0.069478583
+                ]
+              }
+            }
+          },
+          "parent": {
+            "command_seconds": {
+              "median": 0.489,
+              "min": 0.438,
+              "max": 0.516,
+              "mad": 0.027000000000000024,
+              "values": [
+                0.446,
+                0.438,
+                0.489,
+                0.516,
+                0.514
+              ]
+            },
+            "native_seconds": {
+              "median": 0.454046958,
+              "min": 0.405599292,
+              "max": 0.480115458,
+              "mad": 0.026068499999999994,
+              "values": [
+                0.414145416,
+                0.405599292,
+                0.454046958,
+                0.480115458,
+                0.477315792
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.189486709,
+                "min": 0.174968874,
+                "max": 0.205279833,
+                "mad": 0.014517835000000007,
+                "values": [
+                  0.183910292,
+                  0.174968874,
+                  0.189486709,
+                  0.205279833,
+                  0.204847542
+                ]
+              },
+              "finite_solve": {
+                "median": 0.059101709,
+                "min": 0.052268042,
+                "max": 0.060939583,
+                "mad": 0.0018378739999999963,
+                "values": [
+                  0.052762376,
+                  0.052268042,
+                  0.059101709,
+                  0.060939583,
+                  0.059466583
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.086527208,
+                "min": 0.069416584,
+                "max": 0.088430625,
+                "mad": 0.0019034170000000045,
+                "values": [
+                  0.069801083,
+                  0.069416584,
+                  0.086527208,
+                  0.088430625,
+                  0.087432333
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 0.8936605316973415,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      },
+      {
+        "block": 2,
+        "order": [
+          "candidate",
+          "parent"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "map",
+        "threads": 4,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 7.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 1.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 4.0,
+          "rt_threads_effective": 4.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 2.0,
+          "sl_map_selected_family": 2.0,
+          "sl_map_selected_engine": 1.0,
+          "sl_map_effective_family": 2.0,
+          "sl_map_effective_engine": 1.0,
+          "sl_map_checkpoint_family": 2.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 3.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 7.0,
+          "sl_lsmr_fused_requested_family": 2.0,
+          "sl_lsmr_fused_selected_family": 2.0,
+          "sl_lsmr_fused_selected_engine": 1.0,
+          "sl_lsmr_fused_effective_family": 2.0,
+          "sl_lsmr_fused_effective_engine": 1.0,
+          "sl_lsmr_fused_checkpoint_family": 2.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 2.0,
+          "sl_lsmr_joint_selected_family": 2.0,
+          "sl_lsmr_joint_selected_engine": 1.0,
+          "sl_lsmr_joint_effective_family": 2.0,
+          "sl_lsmr_joint_effective_engine": 1.0,
+          "sl_lsmr_joint_checkpoint_family": 2.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 0.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 0.0,
+          "sl_cmg_prepared_requested_family": 2.0,
+          "sl_cmg_prepared_selected_family": 2.0,
+          "sl_cmg_prepared_selected_engine": 1.0,
+          "sl_cmg_prepared_effective_family": 2.0,
+          "sl_cmg_prepared_effective_engine": 1.0,
+          "sl_cmg_prepared_checkpoint_family": 2.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "bc9ebe3abecc8493f108a2370d4aaaa0c6abcaa87e3c25f374a257a7811479a4",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "candidate": {
+            "command_seconds": {
+              "median": 0.264,
+              "min": 0.263,
+              "max": 0.272,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.263,
+                0.263,
+                0.272,
+                0.266,
+                0.264
+              ]
+            },
+            "native_seconds": {
+              "median": 0.233831708,
+              "min": 0.232375666,
+              "max": 0.240448375,
+              "mad": 0.0008745000000000003,
+              "values": [
+                0.233119917,
+                0.232375666,
+                0.240448375,
+                0.234706208,
+                0.233831708
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.091628041,
+                "min": 0.089824375,
+                "max": 0.092489832,
+                "mad": 0.0008336239999999911,
+                "values": [
+                  0.090794417,
+                  0.089824375,
+                  0.092489832,
+                  0.091628041,
+                  0.091656002
+                ]
+              },
+              "finite_solve": {
+                "median": 0.038236541,
+                "min": 0.038101583,
+                "max": 0.039132167,
+                "mad": 0.00012270899999999862,
+                "values": [
+                  0.038236541,
+                  0.038206416,
+                  0.039132167,
+                  0.038101583,
+                  0.03835925
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.035176292,
+                "min": 0.03429675,
+                "max": 0.036515,
+                "mad": 0.000879541999999997,
+                "values": [
+                  0.03429675,
+                  0.035176292,
+                  0.036515,
+                  0.036443125,
+                  0.034540792
+                ]
+              }
+            }
+          },
+          "parent": {
+            "command_seconds": {
+              "median": 0.283,
+              "min": 0.274,
+              "max": 0.289,
+              "mad": 0.006000000000000005,
+              "values": [
+                0.283,
+                0.289,
+                0.289,
+                0.275,
+                0.274
+              ]
+            },
+            "native_seconds": {
+              "median": 0.248429042,
+              "min": 0.24008675,
+              "max": 0.2531415,
+              "mad": 0.0047124580000000305,
+              "values": [
+                0.248429042,
+                0.250728875,
+                0.2531415,
+                0.241521333,
+                0.24008675
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.094561041,
+                "min": 0.091931042,
+                "max": 0.099114125,
+                "mad": 0.0023755420000000083,
+                "values": [
+                  0.099114125,
+                  0.096936583,
+                  0.094561041,
+                  0.093043542,
+                  0.091931042
+                ]
+              },
+              "finite_solve": {
+                "median": 0.041291832,
+                "min": 0.038703749,
+                "max": 0.044594832,
+                "mad": 0.002422414999999997,
+                "values": [
+                  0.041291832,
+                  0.041555584,
+                  0.044594832,
+                  0.038703749,
+                  0.038869417
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.03699225,
+                "min": 0.035660875,
+                "max": 0.037827792,
+                "mad": 0.00033766699999999983,
+                "values": [
+                  0.035660875,
+                  0.037827792,
+                  0.037329917,
+                  0.03699225,
+                  0.036919667
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 0.9328621908127209,
+        "observed_range_flag": "gain",
+        "command_records": 12
+      },
+      {
+        "block": 2,
+        "order": [
+          "candidate",
+          "parent"
+        ],
+        "cell": "m1-ppml-n100000-k16",
+        "solver": "map",
+        "threads": 16,
+        "route": {
+          "rt_outer_iterations": 4.0,
+          "rt_inner_iterations": 7.0,
+          "rt_step_halvings": 0.0,
+          "rt_memory_requested": 1.0,
+          "rt_memory_selected": 1.0,
+          "rt_linear_route": 2.0,
+          "rt_fallback_mask": 0.0,
+          "rt_fallback_count": 0.0,
+          "rt_threads_requested": 16.0,
+          "rt_threads_effective": 16.0,
+          "rt_strict_profile_rejections": 0.0,
+          "sl_map_requested_family": 2.0,
+          "sl_map_selected_family": 2.0,
+          "sl_map_selected_engine": 1.0,
+          "sl_map_effective_family": 2.0,
+          "sl_map_effective_engine": 1.0,
+          "sl_map_checkpoint_family": 2.0,
+          "sl_map_row_engine": 1.0,
+          "sl_map_ordinary_frames": 3.0,
+          "sl_map_checkpoint_frames": 2.0,
+          "sl_map_retries": 0.0,
+          "sl_map_fallback_count": 0.0,
+          "sl_map_fallback_reason": 0.0,
+          "sl_map_iterations": 7.0,
+          "sl_lsmr_fused_requested_family": 2.0,
+          "sl_lsmr_fused_selected_family": 2.0,
+          "sl_lsmr_fused_selected_engine": 1.0,
+          "sl_lsmr_fused_effective_family": 2.0,
+          "sl_lsmr_fused_effective_engine": 1.0,
+          "sl_lsmr_fused_checkpoint_family": 2.0,
+          "sl_lsmr_fused_row_engine": 2.0,
+          "sl_lsmr_fused_ordinary_frames": 0.0,
+          "sl_lsmr_fused_checkpoint_frames": 0.0,
+          "sl_lsmr_fused_retries": 0.0,
+          "sl_lsmr_fused_fallback_count": 0.0,
+          "sl_lsmr_fused_fallback_reason": 0.0,
+          "sl_lsmr_fused_iterations": 0.0,
+          "sl_lsmr_joint_requested_family": 2.0,
+          "sl_lsmr_joint_selected_family": 2.0,
+          "sl_lsmr_joint_selected_engine": 1.0,
+          "sl_lsmr_joint_effective_family": 2.0,
+          "sl_lsmr_joint_effective_engine": 1.0,
+          "sl_lsmr_joint_checkpoint_family": 2.0,
+          "sl_lsmr_joint_row_engine": 3.0,
+          "sl_lsmr_joint_ordinary_frames": 0.0,
+          "sl_lsmr_joint_checkpoint_frames": 0.0,
+          "sl_lsmr_joint_retries": 0.0,
+          "sl_lsmr_joint_fallback_count": 0.0,
+          "sl_lsmr_joint_fallback_reason": 0.0,
+          "sl_lsmr_joint_iterations": 0.0,
+          "sl_cmg_prepared_requested_family": 2.0,
+          "sl_cmg_prepared_selected_family": 2.0,
+          "sl_cmg_prepared_selected_engine": 1.0,
+          "sl_cmg_prepared_effective_family": 2.0,
+          "sl_cmg_prepared_effective_engine": 1.0,
+          "sl_cmg_prepared_checkpoint_family": 2.0,
+          "sl_cmg_prepared_row_engine": 4.0,
+          "sl_cmg_prepared_ordinary_frames": 0.0,
+          "sl_cmg_prepared_checkpoint_frames": 0.0,
+          "sl_cmg_prepared_retries": 0.0,
+          "sl_cmg_prepared_fallback_count": 0.0,
+          "sl_cmg_prepared_fallback_reason": 0.0,
+          "sl_cmg_prepared_iterations": 0.0
+        },
+        "science_sha256": "b8f391d3c11aedc6f1e9cba08deab17274cb747e945e1eb5115a3091cce4f64f",
+        "sample_sha256": "c1b569d1a64263e0dd72a365b6c82c692247ae08edfe9068de63f32e1d2d0dec",
+        "captured_scientific_values": 449,
+        "groups": {
+          "candidate": {
+            "command_seconds": {
+              "median": 0.258,
+              "min": 0.249,
+              "max": 0.269,
+              "mad": 0.0050000000000000044,
+              "values": [
+                0.249,
+                0.269,
+                0.253,
+                0.258,
+                0.262
+              ]
+            },
+            "native_seconds": {
+              "median": 0.227254291,
+              "min": 0.21740475,
+              "max": 0.237738583,
+              "mad": 0.004432040999999998,
+              "values": [
+                0.21740475,
+                0.237738583,
+                0.22282225,
+                0.227254291,
+                0.229852959
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.082176458,
+                "min": 0.081249751,
+                "max": 0.088410958,
+                "mad": 0.0009267069999999988,
+                "values": [
+                  0.081249751,
+                  0.084239208,
+                  0.082176458,
+                  0.082030708,
+                  0.088410958
+                ]
+              },
+              "finite_solve": {
+                "median": 0.038481207,
+                "min": 0.037714457,
+                "max": 0.039867041,
+                "mad": 0.0005489179999999955,
+                "values": [
+                  0.037714457,
+                  0.039867041,
+                  0.037944083,
+                  0.038481207,
+                  0.039030125
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.032557125,
+                "min": 0.030912666,
+                "max": 0.042806083,
+                "mad": 0.001202083999999999,
+                "values": [
+                  0.030912666,
+                  0.042806083,
+                  0.032621166,
+                  0.031355041,
+                  0.032557125
+                ]
+              }
+            }
+          },
+          "parent": {
+            "command_seconds": {
+              "median": 0.269,
+              "min": 0.266,
+              "max": 0.28,
+              "mad": 0.0010000000000000009,
+              "values": [
+                0.269,
+                0.268,
+                0.27,
+                0.266,
+                0.28
+              ]
+            },
+            "native_seconds": {
+              "median": 0.233286292,
+              "min": 0.23075525,
+              "max": 0.244428,
+              "mad": 0.002531042000000011,
+              "values": [
+                0.23075525,
+                0.233286292,
+                0.23635175,
+                0.23166875,
+                0.244428
+              ]
+            },
+            "phase_seconds": {
+              "fe_projection": {
+                "median": 0.086918708,
+                "min": 0.084821833,
+                "max": 0.092516417,
+                "mad": 0.000745166999999991,
+                "values": [
+                  0.086918708,
+                  0.087492875,
+                  0.084821833,
+                  0.086173541,
+                  0.092516417
+                ]
+              },
+              "finite_solve": {
+                "median": 0.039679001,
+                "min": 0.038829124,
+                "max": 0.040975791,
+                "mad": 0.0004982929999999969,
+                "values": [
+                  0.039679001,
+                  0.040056667,
+                  0.039180708,
+                  0.038829124,
+                  0.040975791
+                ]
+              },
+              "strict_final_solve": {
+                "median": 0.033505375,
+                "min": 0.032208834,
+                "max": 0.034693709,
+                "mad": 0.00045612499999999473,
+                "values": [
+                  0.03304925,
+                  0.033505375,
+                  0.034693709,
+                  0.032208834,
+                  0.033642208
+                ]
+              }
+            }
+          }
+        },
+        "ratio_candidate_to_parent": 0.9591078066914498,
+        "observed_range_flag": "overlap",
+        "command_records": 12
+      }
+    ],
+    "geometric_mean_candidate_to_parent": {
+      "1": 1.007799975656388,
+      "2": 0.9741672424755655
+    }
+  },
+  "captures": {
+    "total": 192,
+    "timed": 160,
+    "warmups": 32,
+    "all_science_sample_and_route_signatures_exact_by_scope": true,
+    "all_non_time_solver_entries_exact_by_scope": true,
+    "raw_capture_sha256": {
+      "clean1": "a41f9fa46bd9b027b37d04cc65427774c716c0c7b919b710bc45b1cd1365a230",
+      "clean2": "2e2c2afc85953e667d152c1c0a92a0aef90ffd55b2841b28e9617d4de8a64447"
+    }
+  },
+  "checks": {
+    "full_entrypoint": {
+      "passed": true,
+      "log_sha256": "6829ea230ac39e80f39ebda6bc887bfa1e7c39852dfb46792e0dd52c4752564b",
+      "core_tests_passed": 1198
+    },
+    "long_oracles": {
+      "passed": true,
+      "tests": 30,
+      "log_sha256": "4c0e3543c1ce62a267008a15170f9c2dc34be57eed6e26ba75f8caef340f52c6"
+    },
+    "mac_universal_build_binary_audit_actual_abi": {
+      "passed": true,
+      "clean_log_sha256": "b50854241fdea6a3f4a80a6395e8300babc11b72bb8e4a891f30eb4708f98395"
+    },
+    "native_replay": {
+      "worktree": {
+        "results": {
+          "cases": 73,
+          "passed": true,
+          "summary_sha256": "a6e0c9a3b2ec1b9fe66f60a9c427ca7f2fefed0e0a796582ffeb0473519b67ba",
+          "thread_counts": [
+            1
+          ]
+        },
+        "five-thread": {
+          "cases": 73,
+          "passed": true,
+          "summary_sha256": "04e597809717d643d0da4b4d24725459d73b53210fb220a3759b0557610565d0",
+          "thread_counts": [
+            1,
+            2,
+            4,
+            8,
+            16
+          ]
+        }
+      },
+      "clean": {
+        "results": {
+          "cases": 73,
+          "passed": true,
+          "summary_sha256": "ecc7d595ddedb703f387892944c2e7bc2176962bacca189068ce50e59e81fcf0",
+          "thread_counts": [
+            1
+          ]
+        },
+        "five-thread": {
+          "cases": 73,
+          "passed": true,
+          "summary_sha256": "84191c3d5c9b2f8985aa4e6dd3161b8c98f1af448194e8147c905e0e8683100e",
+          "thread_counts": [
+            1,
+            2,
+            4,
+            8,
+            16
+          ]
+        }
+      }
+    },
+    "licensed_stata": {
+      "passed": true,
+      "mapped_fixture_count": 46,
+      "fixtures": [
+        "ci/feppml_smoke.do",
+        "ci/fereg_smoke.do",
+        "tests/stata/development/ols_cmg_raw_residual_oracle.do",
+        "tests/stata/development/reference_factor_precedence.do",
+        "tests/stata/documentation/help_examples.do",
+        "tests/stata/installation/engine_selection.do",
+        "tests/stata/installation/estimate_ols_categorical_interaction.do",
+        "tests/stata/installation/estimate_ols_eclass_transaction.do",
+        "tests/stata/installation/factor_availability.do",
+        "tests/stata/installation/frequency_singleton_validation.do",
+        "tests/stata/installation/installation_smoke.do",
+        "tests/stata/installation/reload_loop.do",
+        "tests/stata/installation/slope_dof_validation.do",
+        "tests/stata/parity_ppmlhdfe/estimate_ppml_hidden_transaction.do",
+        "tests/stata/parity_ppmlhdfe/feppml_bias_correction.do",
+        "tests/stata/parity_ppmlhdfe/feppml_command_contract.do",
+        "tests/stata/parity_ppmlhdfe/feppml_saved_slopes.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_methods.do",
+        "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
+        "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_final_sample_rebase.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cascade_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_cluster_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_fweight_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_keepsingletons_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_missing_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_remaining_iid_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_categorical_interaction_repeated_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_overabsorbed_fail_closed.do",
+        "tests/stata/parity_reghdfe/estimate_ols_intercept_slope_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_iweight_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_memory_modes.do",
+        "tests/stata/parity_reghdfe/estimate_ols_postestimation_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_saved_outputs_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_slope_only_multiple_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_string_fe_parity.do",
+        "tests/stata/parity_reghdfe/estimate_ols_time_series_parity.do",
+        "tests/stata/parser/absorbed_slopes_and_clusters.do",
+        "tests/stata/parser/candidate_sample.do",
+        "tests/stata/parser/model_wire_v2_capture.do",
+        "tests/stata/parser/ordinary_factor_terms.do",
+        "tests/stata/parser/reject_ambiguous_absorb.do",
+        "tests/stata/parser/string_sources.do",
+        "tests/stata/parser/time_series_marker.do",
+        "tests/stata/postestimation/fail_closed.do"
+      ],
+      "summary_sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+    },
+    "M22_witnesses": {
+      "ppml_configurations": 24,
+      "saved_fe_configurations": 48,
+      "passed": true,
+      "exact_values": 402912,
+      "outputs": {
+        "feppml_no_fe_strict_oracle": {
+          "exact_values": 396960,
+          "sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+        },
+        "ols_near_within_cmg_oracle": {
+          "exact_values": 5952,
+          "sha256": "bb023d3152f3bddc8e6f6bace277daaee33ac9bf2253e08a873a186becef7ac2"
+        }
+      }
+    },
+    "allocation_interruption_transaction": "Existing full harness allocator/admission/rollback checks and mapped hidden Stata fixtures pass; no allocation or lifetime changes are introduced."
+  },
+  "direct_regressions": {
+    "qualified_parent_before_change": {
+      "production_source": "5bffd0919bc4639080395352073ee92ff314080b",
+      "checkout": "4284bbaa3e9eb2f6a030ea7c51a06173c7118b08",
+      "direct_log_sha256": "68734978745e8ed9200bf28b3741fed3b8e9eb30c9fb9d4f2b9a8bd7e4fff93d",
+      "implicit_log_sha256": "01d469abfb76e423827b325c963ed5523f1b7d9eab636cdaca894334cb786b85"
+    },
+    "independent_truth": {
+      "active_positions": [
+        1,
+        3
+      ],
+      "reference_norms": [
+        1,
+        3,
+        1,
+        5
+      ],
+      "rows": 512,
+      "repeat_pattern": 128,
+      "normalized_coefficients": [
+        6,
+        -2.5
+      ],
+      "initial_coefficients": [
+        5.625,
+        -1.875
+      ],
+      "unit_bread_fractions": [
+        "63/2560",
+        "-15/512",
+        "-15/512",
+        "25/512"
+      ],
+      "provided_bread_fractions": [
+        "1/16",
+        "-5/64",
+        "-5/64",
+        "25/192"
+      ],
+      "provided_weight_divisor": 4,
+      "construction": "Two-column explicit Gram inversion, weighted-orthogonal nonzero residuals; one real correction then accepted re-scan. Dense and two-page scratch storage stay bit-identical."
+    },
+    "coverage": [
+      "Exact parent coefficient/score/compensation bits for unit/provided weights",
+      "Independent coefficient truth and full row refill after real correction",
+      "Storage immutability",
+      "Bounded exhaustion at three updates",
+      "Nonfinite refinement fail-closed",
+      "Corrupt omitted scratch value rejects",
+      "Malformed duplicate/descending indices reject before mutation; invalid tolerance and rank-zero precedence retained",
+      "Existing implicit rank fallback/final inference fixture now enables refinement",
+      "Existing strict error/unwind rollback already enables refinement"
+    ],
+    "restored_failure_provenance": "M23 speculative adapter tests were removed with its restoration at5bffd091; restore their direct scientific intent here without the rejected adapter."
+  },
+  "compiled_work": {
+    "architecture": "arm64",
+    "function": "ols::linear_session::retained_refinement::refine_retained_coefficients",
+    "artifacts": {
+      "parent": {
+        "excerpt_sha256": "53065130bda1aa41cd9d81ca887e608feda39a35b0b8c7767ae95d3ad336ce7f",
+        "function_vma": "0x2be39c",
+        "fdiv_in_function": 6,
+        "residual_normalization_vma": "0x2be7b4",
+        "score_normalization_vma": "0x2be82c"
+      },
+      "candidate": {
+        "excerpt_sha256": "d45a320d75d6834c29219f0d323aeadf07da19cd0e0055742f03c0c5055f3950",
+        "function_vma": "0x2be414",
+        "fdiv_in_function": 5,
+        "residual_normalization_vma": "0x2be83c",
+        "quotient_store_vma": "0x2be840",
+        "score_quotient_load_vma": "0x2be8b8",
+        "score_multiply_vmas": [
+          "0x2be8bc",
+          "0x2be8c0"
+        ]
+      }
+    },
+    "observation": "Second per-row normalization fdiv removed. Residual loop keeps division/FMA and stores rounded quotient; score loop reloads quotient and retains two multiplications in original association. Other fdiv instructions belong to coefficient envelope. Extra store and once-per-call index validation remain costs; fewer divisions alone is no speed claim."
+  },
+  "hard_problem_help": {
+    "agent": "m25_arithmetic_help",
+    "model": "gpt-6-astra",
+    "effort": "xhigh",
+    "read_only": true,
+    "outcome": "Derived independent two-column oracle and found direct M23 failure witnesses absent after restoration; lead implemented tests and qualification."
+  },
+  "findings": {
+    "first_block_geometric_mean": 1.007799975656388,
+    "reverse_block_geometric_mean": 0.9741672424755655,
+    "interpretation": "Initial auto gravity slowdown does not repeat. Small MAP command median is +3.72%/+2.87%; initial ranges disjoint, reversed ranges overlap. Large MAP medians improve at4/16 threads, but phase and overall differences vary with order. No broad or causally attributed speedup claim. Independent reviewer must assess remaining small-MAP concern under the scoped gate.",
+    "decision": "Reject and restore, no additional tuning/timing search. Small MAP command/native median cost repeats in both orders; geometric mean and reversed range overlap do not erase it."
+  },
+  "independent_review": {
+    "agent": "m25_review",
+    "model": "gpt-6-astra",
+    "effort": "xhigh",
+    "status": "Reject production optimization; no actionable arithmetic/storage/failure defect.",
+    "independent_execution": "Read-only source/binary and small arithmetic/hash/distribution checks, no builds/estimators/tests/timings.",
+    "verified": [
+      "Both artifact and raw capture hashes",
+      "192 science/sample/76 non-time solver comparisons",
+      "Both geometric means and small MAP command/native distributions",
+      "Independent explicit-design Gram inverses and weighted orthogonality",
+      "Clean/worktree73 and thread/repeat summaries",
+      "Licensed46 and witness execution summaries",
+      "Canonical callers, complete-row refill and compiled work"
+    ],
+    "rationale": "Small MAP +3.72%/+2.87% command and +2.73%/+3.04% native medians repeat across orders. Reversed overlap does not erase median effect; the repeated6ms shift exceeds within-arm2/1ms MADs. No further search under scoped gate.",
+    "limitations": "Full/long execution and detailed witness-value counts supplied by lead; reviewer executed no builds/tests/estimators/timings. Candidate CI pending at candidate review."
+  },
+  "push_ci": {
+    "run": 37200086886,
+    "source": "2ba9c93c00511d7e40511fa27d29e6aec5bcfa57",
+    "status": "completed",
+    "conclusion": "success",
+    "jobs": {
+      "comparator": "success",
+      "check": "success",
+      "replay": "success"
+    }
+  },
+  "raw_evidence_location": "Ignored target/m25-normalization, target/replay-m25-*, native-artifacts/m25-*-stata; no raw outputs or datasets committed.",
+  "outcome": "Rejected production optimization; restoration qualification in progress.",
+  "restoration": {
+    "status": "Local full/long/Mac/ABI/exact73/five-thread/46Stata/PPML24/FE48 pass; clean committed artifact and CI pending.",
+    "source_proof": {
+      "parent": "5bffd0919bc4639080395352073ee92ff314080b",
+      "production_files": 151,
+      "changed_production_text_files": [
+        "crates/fereg-core/src/ols/retained_refinement.rs"
+      ],
+      "production_tokens_exact": true,
+      "inventory_exact": true,
+      "remaining_test_differences": "Three independent refiner witnesses and enabled implicit refinement; malformed cache-specific test removed."
+    },
+    "net_production_delta": 0,
+    "retained_coverage": "Three independent arithmetic/failure/corruption witnesses and enabled implicit fixture; cache-specific malformed-index test removed.",
+    "timing_policy": "No more timing/tuning; original qualified production restored exactly.",
+    "checks": {
+      "full_entrypoint": {
+        "passed": true,
+        "log_sha256": "a546f74855ce340c2471ea4d25d57a6ba1db51410051471ff02132b6222c5fe2",
+        "core_tests_passed": 1197
+      },
+      "long_oracles": {
+        "passed": true,
+        "tests": 30,
+        "log_sha256": "6878dcb94a79097f29f3cb312034d2bf8df7488a5aa23627b622043925486e36"
+      },
+      "mac_universal_binary_audit_actual_abi": {
+        "passed": true,
+        "worktree_log_sha256": "d5f9e52076df2f76d2dfd13f187d576b6380f96f304326dd515ac9cc41510119"
+      },
+      "native_replay_worktree": {
+        "results": {
+          "passed": true,
+          "cases": 73,
+          "summary_sha256": "92944cd0d0bcb71a242f5b02b852c29618fde591103790adad71b9e8858da8e0",
+          "threads": [
+            1
+          ]
+        },
+        "five-thread": {
+          "passed": true,
+          "cases": 73,
+          "summary_sha256": "cdc3ec7e5c7a1ba54772636c8c1bec0b7b51625bcf5a38b07b52460c4623c1f7",
+          "threads": [
+            1,
+            2,
+            4,
+            8,
+            16
+          ]
+        }
+      },
+      "mapped_stata": {
+        "passed": true,
+        "fixture_count": 46,
+        "summary_sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+      },
+      "M22_witnesses": {
+        "passed": true,
+        "fixture_count": 2,
+        "summary_sha256": "7c876baab5f6358e83fe1577eb565d19d4a877749a1f4a308d0c1a11a40059b8"
+      }
+    }
+  },
+  "candidate_accepted": false,
+  "candidate_scientific_checks_passed": true,
+  "candidate_performance_gate_passed": false
+}

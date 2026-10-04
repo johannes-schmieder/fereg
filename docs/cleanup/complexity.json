@@ -1,13 +1,6 @@
 {
   "definition": "docs/cleanup/complexity.md#version-1",
-  "growth": [
-    {
-      "after": 106087,
-      "before": 106083,
-      "metric": "fereg-core/production_lines",
-      "reason": "M25 reuses one rounded normalization in admitted row scratch and explicitly validates the existing strictly increasing private active-index invariant; no allocation, traversal or route is added."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -13762,7 +13755,7 @@
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
-            "condition": "frame . response . len ( ) != frame . storage . rows ( ) || frame . reference_norms . len ( ) != stored || workspace . coefficients . len ( ) != rank || rank . checked_mul ( rank ) != Some ( workspace . bread . len ( ) ) || workspace . row . len ( ) != stored || workspace . scores . len ( ) != rank || workspace . corrections . len ( ) != rank || frame . active_positions . windows ( 2 ) . any ( | pair | pair [ 0 ] >= pair [ 1 ] ) || frame . active_positions . iter ( ) . any ( | & position |",
+            "condition": "frame . response . len ( ) != frame . storage . rows ( ) || frame . reference_norms . len ( ) != stored || workspace . coefficients . len ( ) != rank || rank . checked_mul ( rank ) != Some ( workspace . bread . len ( ) ) || workspace . row . len ( ) != stored || workspace . scores . len ( ) != rank || workspace . corrections . len ( ) != rank || frame . active_positions . iter ( ) . any ( | & position |",
             "line": 46
           }
         ],
@@ -13773,10 +13766,10 @@
           },
           "refine_retained_coefficients#1": {
             "line": 28,
-            "lines": 119
+            "lines": 115
           }
         },
-        "production_lines": 138
+        "production_lines": 134
       },
       "crates/fereg-core/src/ols/slope_absorber.rs": {
         "chunk_candidates": [],
@@ -22702,7 +22695,7 @@
         "dispatch_candidates": 1480,
         "files_over_1500": 19,
         "functions_over_150": 97,
-        "production_lines": 106087
+        "production_lines": 106083
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

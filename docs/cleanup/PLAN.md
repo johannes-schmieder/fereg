@@ -782,4 +782,9 @@ with the bounded reverse-order confirmation where flagged. An extra scratch stor
 can offset the saved division; no speedup or recovery of all M22 cost is promised.
 Reject a repeated regression under the existing gate. Keep M23's adapter rejected;
 do not change routing, admission, tolerances or add size/thread/memory fences.
-Finish M25 with a separate Astra extra-high review and pause afterward.
+[The bounded trial](../../bench/history/2026-10-04-m25-normalization-reuse.json)
+is rejected: small MAP native medians increase about 3% in both
+artifact orders. Restore the qualified parent production routine, remove the
+cache-specific private validation/test and retain the independent arithmetic,
+corruption, bounded/nonfinite and implicit witnesses. Qualify the restoration,
+finish the separate Astra extra-high review and pause afterward.

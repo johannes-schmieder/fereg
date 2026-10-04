@@ -50,10 +50,6 @@ pub(super) fn refine_retained_coefficients(
         || workspace.row.len() != stored
         || workspace.scores.len() != rank
         || workspace.corrections.len() != rank
-        || frame
-            .active_positions
-            .windows(2)
-            .any(|pair| pair[0] >= pair[1])
         || frame.active_positions.iter().any(|&position| {
             position >= stored
                 || !frame.reference_norms[position].is_finite()
@@ -76,12 +72,12 @@ pub(super) fn refine_retained_coefficients(
             let mut residual = response;
             for (column, &position) in frame.active_positions.iter().enumerate() {
                 let value = workspace.row[position] / frame.reference_norms[position];
-                workspace.row[position] = value;
                 residual = (-workspace.coefficients[column]).mul_add(value, residual);
             }
             let weight = normalized_solver_weight(frame.weights, frame.weight_scale, row)?;
             for (column, &position) in frame.active_positions.iter().enumerate() {
-                let value = weight * workspace.row[position] * residual;
+                let value =
+                    weight * (workspace.row[position] / frame.reference_norms[position]) * residual;
                 let sum = workspace.scores[column];
                 let next = sum + value;
                 workspace.corrections[column] += if sum.abs() >= value.abs() {
