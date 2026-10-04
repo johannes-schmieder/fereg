@@ -2,7 +2,7 @@
   "schema": 1,
   "milestone": "M23",
   "qualified": false,
-  "status": "Performance candidate rejected and production restored; restored local qualification passes; clean artifact, cleanup Linux CI and terminal review pending.",
+  "status": "Completed rejected experiment; fully qualified restoration approved by a fresh independent Astra extra-high reviewer. Both M22 repairs preserved.",
   "parent_runtime": "663bca8cd735f57438f45772a6317273357e6fc7",
   "plan_agent": {
     "agent": "m23_plan",
@@ -3961,7 +3961,7 @@
     "production_files": "linear_session.rs and retained_refinement.rs restored byte-for-byte to663bca8c; expanded existing rollback test remains.",
     "m22_numerical_repairs_preserved": true,
     "production_delta_from_m22": 0,
-    "qualification": "local checks passed; clean identity/Linux pending",
+    "qualification": "Fully qualified: local checks, clean Mac artifact/replay/witnesses and distinct cleanup Linux CI pass.",
     "local_checks": {
       "full_entrypoint": true,
       "long_oracles": 30,
@@ -3982,7 +3982,43 @@
       "replay_baseline_source": "663bca8cd735f57438f45772a6317273357e6fc7",
       "replay_baseline_sha256": "9a4be1019a50923c2c55ac80a4127a2558d56fa9f61f6038d7136ce2157fec3c",
       "immediate_parent_bridge": "First candidate5dc4b934 and restored candidate both exact versus663bca8c on same73 corpus/five counts; direct restored comparison is to663bca8c."
-    }
+    },
+    "runtime_commit": "5bffd0919bc4639080395352073ee92ff314080b",
+    "clean_qualification": {
+      "source": "5bffd0919bc4639080395352073ee92ff314080b",
+      "binary_sha256": "5c479442eabed28939ae78f8f8a0c6ccb7ae0d97338fa35bd5ae13f9f9e24ebc",
+      "universal_mac_and_abi": true,
+      "exact_parent_replay_cases": 73,
+      "threads": [
+        1,
+        2,
+        4,
+        8,
+        16
+      ],
+      "science_discrete_repeat_passed": true,
+      "strict_ppml_saved_fe_oracles_passed": true,
+      "witness_exact_values": {
+        "feppml_no_fe_strict_oracle": {
+          "exact_values": 396960,
+          "sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+        },
+        "ols_near_within_cmg_oracle": {
+          "exact_values": 5952,
+          "sha256": "bb023d3152f3bddc8e6f6bace277daaee33ac9bf2253e08a873a186becef7ac2"
+        }
+      },
+      "baseline_source": "663bca8cd735f57438f45772a6317273357e6fc7",
+      "baseline_sha256": "9a4be1019a50923c2c55ac80a4127a2558d56fa9f61f6038d7136ce2157fec3c"
+    },
+    "linux_ci": {
+      "run": 37180419294,
+      "status": "success",
+      "full_check": "success",
+      "comparator": "success",
+      "linux_replay": "success"
+    },
+    "qualified": true
   },
   "next_proposal": "Bounded attribution of remaining PPML cost with existing phase measurements/profiling on verified canonical and specialized public paths; one measured bottleneck and one source-local proposal; no new framework or broad rewrite.",
   "rejected_candidate_scope": [
@@ -4006,5 +4042,16 @@
     "full_check": "success",
     "comparator": "success",
     "status": "success"
-  }
+  },
+  "terminal_review": {
+    "agent": "m23_terminal_review",
+    "model": "gpt-6-astra",
+    "effort": "xhigh",
+    "verdict": "Unconditional approval of rejection/restoration. No required terminal gate remains open; both M22 numerical repairs preserved.",
+    "inspection": "Read-only source differences and evidence; no builds/tests/timings/binary inspection executed.",
+    "next_milestone": "One cost-attribution campaign: gravity/auto t4, denseN100000K16 auto t1/4/16, explicitMAP/fast route controls; verify owners/counters before attribution; existing phase/sampling tools; separate profiles from clean timings; end with one source-local optimization proposal or inconclusive finding.",
+    "final_addendum": "Reviewer incorporated the lead execution results: cleanup5bffd091 clean Mac ABI,73exact/five-thread,PPML24/FE48,402912 exactvalues,ownCI37180419294 allpass. Reviewer performed no independent execution."
+  },
+  "completed": true,
+  "qualification_meaning": "The performance candidate is rejected (qualified=false). The final restored runtime is fully qualified in restoration; no production adapter is retained."
 }
