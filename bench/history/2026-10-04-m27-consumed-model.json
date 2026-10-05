@@ -1,0 +1,1130 @@
+{
+  "milestone": "M27.5",
+  "kind": "Consume compiled categorical finite model and remove separate clustered owning disposition",
+  "parent_commit": "b9d892a658a0506acb61366ff144d62e5abb595c",
+  "declaration": {
+    "recorded_before_runtime_edits": true,
+    "replacement": "Consume availability PreparedOlsModel rather than allocate a second coefficient/column/interaction bank; replace original-axis report Vec with a scalar count; use freed inline storage for optional clusters and retire categorical clustered owner plus shared-owner enum.",
+    "arithmetic": "Preserve final recipes, original slots/base/omission flags, numerical algorithms, arithmetic, samples, ranks, separation, DoF, covariance, constant-invariant PPML Wald, predictions and fixed-configuration work/route signatures at ordinary budgets.",
+    "storage_admission": "Retained model capacities may differ; count capacity, including a removed provisional OLS constant. Remove only duplicate-model transient and identity-slot charges. Count attached clusters once and actual unified Arc payload. Tight-budget refusals and auto mode choices may change with lower proven capacities; both storage modes retain independent science.",
+    "errors": "Keep original metadata/grammar/base/domain validation and cluster availability before singleton pruning. Removed duplicate-model/identity allocations intentionally remove their allocation-refusal points. Clusterless compatibility aliases fail explicitly before clustered inference configuration validation.",
+    "rust_api": "Retire stored-slice original_slots accessor; scalar checked original_slot mapping remains. Categorical clustered type becomes an alias with optional cluster access. No Stata syntax, result metadata or native ABI/protocol change.",
+    "performance": "Frozen capture-pilot15 at four workers, two opposite-order blocks each versus immediate parent and fixed M26 baseline under unchanged5%or1ms envelope. Construction/owner retirement purchases any qualified bounded cost. No new estimator/option benchmark fences.",
+    "surviving_work": "Ordinary finalized owner/topology migration and parked obsolete scaffold retirement remain M27 tasks; no full M27 completion claim."
+  },
+  "predecessor_gate": {
+    "run_id": 37241856158,
+    "commit": "b9d892a658a0506acb61366ff144d62e5abb595c",
+    "status": "All3PASS: check/comparator/Linux native replay"
+  },
+  "architecture_help": {
+    "model": "Astra",
+    "effort": "extra-high",
+    "finding": "Read-only recommendation: compiled-model transfer and identity-vector retirement fund inline optional clusters without enlarging unclustered owner. Actual layout/admission and allocator proof required."
+  },
+  "parent_owner_allocation": {
+    "platform": "Mac arm64",
+    "selected_fresh_process": true,
+    "independent_deallocation_check": "PASS complete owned-buffer capacities plus actual Arc allocation, all ordinary/complex/clustered and four weight dispositions",
+    "payload_arc_counts": {
+      "480/496": 4,
+      "504/520": 4
+    },
+    "log_sha256": "1b2366316c917f135f703e1dd4f583f441df02a82305fe93c089d23c5668ceff",
+    "source_binding": "Qualified parent bounded source snapshot, new dedicated target"
+  },
+  "required_checks": [
+    "Full local entrypoint",
+    "30 long independent oracles",
+    "Mac universal build/native audit/ABI",
+    "Actual parent-next73 replay and five-thread science/discrete/repeat checks",
+    "Licensed46 Stata suite and original-axis/single-level fixtures",
+    "M22 strict24/saved48 exact witnesses",
+    "Actual owner allocation/drop and focused compiled-buffer transfer witness",
+    "Frozen scoped timing envelope versus parent and fixed baseline",
+    "Astra high independent terminal review",
+    "Post-push Linux full CI/native replay"
+  ],
+  "status": "M27.5 trial not promoted: source/science pass; parent14within/1unresolved, fixed15within. Qualified b9d892a6 runtime/4d1e native restored exactly. Full M27 open.",
+  "source_review": {
+    "model": "Astra",
+    "effort": "high",
+    "status": "No blocking source defect found; actual qualification pending",
+    "scope": "Read-only source review, no executions; consumed model, original axis, provisional OLS constant, omitted grammar, cluster early guards and owner/memory accounting verified"
+  },
+  "complexity_trial": {
+    "fereg-core": {
+      "chunk_candidates": 14,
+      "dispatch_candidates": 1491,
+      "files_over_1500": 19,
+      "functions_over_150": 96,
+      "production_lines": 106403
+    },
+    "fereg-plugin": {
+      "chunk_candidates": 0,
+      "dispatch_candidates": 167,
+      "files_over_1500": 3,
+      "functions_over_150": 15,
+      "production_lines": 15335
+    }
+  },
+  "memory_accounting_witness": {
+    "fresh_constrained_contract": "2PASS; peak charges decrease by4bytes/slot; detector separation peak decreases by4bytes/slot; unchanged limits/headroom/one-byte Low admission and refusal",
+    "governing_k51_phase_increments": {
+      "fast_detector": 31530227368,
+      "low_detector": 8811279768,
+      "cascade": 750000000,
+      "accepted_rebase": 5630004171
+    },
+    "generation_rule": "Current and replacement each lose4bytes/slot, but this frozen shape has only one generation at its largest detector phase. The complete-generation supplement is unchanged because both compared generation formulas lose the same identity charge.",
+    "transient_probe": "Temporary prints removed; retained existing exact contract assertions updated for retired storage only",
+    "phase_log_sha256": "aa2b3977bb544e0ce1e675d9e45020207ad30b32a1a9a82dd981de16cc5ed226",
+    "artifact_hygiene": "Selected shared-target test linked an old comparator library whose Cargo dep-info tracked comparator sources. Qualification rebuilds all workspace and native artifacts in a dedicated target directory; no old comparison cache is used."
+  },
+  "local_source_checks": {
+    "full_entrypoint": "PASS; fmt/clippy/workspace/serial-FFI/fresh-process allocation audits/ratchet/mock-SPI; Linux-specific native audit belongs to post-push CI",
+    "core_unit_tests": {
+      "passed": 1209,
+      "ignored": 3
+    },
+    "full_log_sha256": "c21ecbe9606e5c8e4e039fca16fc9a8247b49446e21cc66fbccc31c9d3500cf7",
+    "long_oracles": {
+      "passed": 30,
+      "failed": 0,
+      "log_sha256": "66d0eb518769cbcfe2fba51c3778cbefb5be0b67fe09a925e717164b6ea71daa"
+    },
+    "native_build": "PASS universalMac/audit/actual ABI/panic containment",
+    "native_build_log_sha256": "02e8540bab5386bbffce07d5ed23b16e2b77abe9be2682780d6b24c62d93ed1b"
+  },
+  "artifact_identity": {
+    "source": {
+      "commit": "b9d892a658a0506acb61366ff144d62e5abb595c",
+      "archive_sha256": "6c77df719612b607c925f1fbd868e350ca511af530d84eaf0db8e05f6089ed41",
+      "paths": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "clippy.toml",
+        "references.lock.toml",
+        "crates",
+        "legacy",
+        "vendor",
+        "plugin",
+        "stata",
+        "scripts",
+        "ci/reference-bundles",
+        "tests/mock_spi",
+        "bench",
+        "AGENTS.md",
+        "docs/SPEC.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "scope": "bounded native/frontend snapshot, not full repository",
+      "patch_sha256": "c0d9c9ca001dd4b610b1eec5fb4f855e13c882d1a877102e8dd609a765d8693c"
+    },
+    "plugins": [
+      {
+        "path": "fereg_macos.plugin",
+        "engine": "next",
+        "source_sha": "b9d892a658a0506acb61366ff144d62e5abb595c",
+        "sha256": "b69e022c315421f02cb3b844f96d553ebfddac5b456242c9cc43a2ec6049402d",
+        "bytes": 18130032,
+        "source_patch_sha256": "c0d9c9ca001dd4b610b1eec5fb4f855e13c882d1a877102e8dd609a765d8693c",
+        "source_archive_sha256": "6c77df719612b607c925f1fbd868e350ca511af530d84eaf0db8e05f6089ed41",
+        "identity_kind": "identified precommit bounded source"
+      },
+      {
+        "path": "fereg_legacy_macos.plugin",
+        "engine": "legacy",
+        "source_sha": "15a57ba285a3afede2e3337fe8598e72529a4090",
+        "sha256": "80329f51159990740425171c3457304f303272cfe55943c0afb412b54454c105",
+        "bytes": 18251808
+      }
+    ]
+  },
+  "candidate_owner_allocation": {
+    "platform": "Mac arm64",
+    "selected_fresh_process": true,
+    "independent_deallocation_check": "PASS complete owned-buffer capacities plus actual Arc allocation, all ordinary/complex/clustered and four weight dispositions",
+    "payload_arc_counts": {
+      "480/496": 8
+    },
+    "log_sha256": "1bfd05950adf829290fdb02e26dd7e774fe39464368c913d92ea2c28030f77ea",
+    "source_binding": "Current frozen candidate source, dedicated workspace target"
+  },
+  "allocation_retirement": "Categorical unclustered480/496 preserved; clustered504/520 to480/496. Report identity payload and second compiled-model/component banks retired; transfers verified by pointers/capacities and independent complete deallocation. Both next probes rebuilt away from shared comparator cache.",
+  "native_science": {
+    "cases": 73,
+    "additional_worker_checks": 292,
+    "native_workers": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "exact_parent_scientific_fields": true,
+    "fixed_worker_repeats": true,
+    "independent_science_and_stable_discrete_across_workers": true,
+    "retained_signature": "All available route/convergence/work signatures; excludes only RMEMORY/process timing/build telemetry via unchanged replay exact_view",
+    "summary_sha256": "27c490466c87f31075bd3165f8727dda7ffdce2453c46d293a5af85b34c3bf9d"
+  },
+  "orchestration_corrections": "First extra-Stata launcher guessed nonexistent ppml_constant_contrast fixture and returned r601 after factor fixture passed. Corrected to the actual second M27.4 mapped fixture, parser/model_wire_v2_capture; failed launcher retained as nongate raw evidence. No runtime, tolerance or fixture assertions changed.",
+  "licensed_stata": {
+    "m27-consumed-model": {
+      "passed": 46,
+      "summary_sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+    },
+    "m27-consumed-model-axis-checked": {
+      "passed": 2,
+      "summary_sha256": "93598019538af7b7a1cd2e8c70423651461b924e716858c3b6991bc254bd97c5"
+    }
+  },
+  "exact_witnesses": {
+    "records": {
+      "feppml_no_fe_strict_oracle": {
+        "exact_values": 396960,
+        "sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+      },
+      "ols_near_within_cmg_oracle": {
+        "exact_values": 5952,
+        "sha256": "bb023d3152f3bddc8e6f6bace277daaee33ac9bf2253e08a873a186becef7ac2"
+      },
+      "factor_single_level_original_axis_exact": {
+        "exact_values": 2752,
+        "sha256": "c4688366b20cf37a1a9d4eacb95cf914955a6adf2e385ca516f6c97ebe5b557a"
+      }
+    },
+    "summary_sha256": "ce40886061f1f63f1a8b46ea26b5f927be922bc6c1ff2b5b962f432491039536",
+    "capture_axis": "Existing independent analytic/dense single-level/original-axis fixture extended with e(b)/e(V) hex, coefficient names and curated e() scalars. No fixture assertion or runtime change.",
+    "capture_fixture_sha256": "82fb475ef8496190c4cf0859cd4d3d92519dca144856ce93f9ba78a367661508"
+  },
+  "source_snapshot_match": {
+    "runtime_files": 19,
+    "all_exact": true,
+    "native_unchanged": true
+  },
+  "clean_timing_blocks": {
+    "scope": "15 frozen capture-pilot workloads,4native workers, two opposite-order32pair blocks per reference; no fullM27/384matrix/scaling/heldout qualification",
+    "commands": 4080,
+    "accuracy": "All120 summary groupsPASS",
+    "blocks": {
+      "timing-parent-forward": {
+        "results_sha256": "ee16b47bce41ac6f3683bc0a12ff636725bae555af2abae2e593b4474a93e5e5",
+        "commands": 1020,
+        "groups": 30,
+        "wall_seconds": 450.24028429202735,
+        "manifest_sha256": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9",
+        "complete": true,
+        "identities_verified": true,
+        "accuracy_summary_sha256": "c0c009842a1ddfd5379d28ad0c19e9779c02ae593e5bfe3671fcf1d964ccf6f4"
+      },
+      "timing-parent-reverse": {
+        "results_sha256": "eec23ecad17aa1b94dc348295a66448cb17f162b34b4436da87cbde863c0728e",
+        "commands": 1020,
+        "groups": 30,
+        "wall_seconds": 457.551597208716,
+        "manifest_sha256": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9",
+        "complete": true,
+        "identities_verified": true,
+        "accuracy_summary_sha256": "20c506e0ceabc0a69f4672ba6c3d036955912d0f845473df68da521763f7bd48"
+      },
+      "timing-baseline-forward": {
+        "results_sha256": "21d188bb8c5563701fee6ee678cef6f2f143afd2dc84817dcba311928851e0ac",
+        "commands": 1020,
+        "groups": 30,
+        "wall_seconds": 477.0031211669557,
+        "manifest_sha256": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9",
+        "complete": true,
+        "identities_verified": true,
+        "accuracy_summary_sha256": "e5806d1969de51597ea778213f8460eec96e72409ad24757e96f4c8a2d446c87"
+      },
+      "timing-baseline-reverse": {
+        "results_sha256": "cb8928a9bbd105cd0f224eed3a5e5f8125b74b32532a4cb09588f95536476449",
+        "commands": 1020,
+        "groups": 30,
+        "wall_seconds": 468.85660083405674,
+        "manifest_sha256": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9",
+        "complete": true,
+        "identities_verified": true,
+        "accuracy_summary_sha256": "72cc5b2ed396632150ba58ca0cfdcb54637e881734e57f1a4d7053645f4562a9"
+      }
+    }
+  },
+  "qualified_parent_native_binding": {
+    "qualified_commit": "b9d892a658a0506acb61366ff144d62e5abb595c",
+    "native_sha256": "4d1ef896db1772b2a417d76716c680989cd18ee7340e34255d5ea40b6039971b",
+    "embedded_build_source": "48325de54bb3",
+    "source_snapshot": {
+      "commit": "48325de54bb39ab3b5c3df33b55015fb145285f8",
+      "archive_sha256": "b919f4bd51c6a775cbdf926f58090ecc511f56e9c9277ef28648a6639d4d3cba",
+      "paths": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "clippy.toml",
+        "references.lock.toml",
+        "crates",
+        "legacy",
+        "vendor",
+        "plugin",
+        "stata",
+        "scripts",
+        "ci/reference-bundles",
+        "tests/mock_spi",
+        "bench",
+        "AGENTS.md",
+        "docs/SPEC.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "scope": "bounded native/frontend snapshot, not full repository",
+      "patch_sha256": "ba9d78126a14d173f5695f20726c83628e794ef406990302263e0ceb08377748"
+    },
+    "qualification_relationship": "Parent native was built precommit from the identified M27.4 archive/patch; embedded build source alone is not scientific identity. Qualified b9d892a6 and its passing CI bind the same runtime/frontend bytes.",
+    "tracked_runtime_frontend_build_files_exact_to_qualified_commit": 266
+  },
+  "performance_envelope": {
+    "sha256": "13ccbfb4f204bc402cc1bddbd5df86797f1430c4c0f8b86918a2f2ce8f8563a8",
+    "passed": false,
+    "parent_counts": {
+      "within": 14,
+      "unresolved": 1,
+      "outside": 0
+    },
+    "fixed_baseline_counts": {
+      "within": 15,
+      "unresolved": 0,
+      "outside": 0
+    },
+    "effects": {
+      "parent": [
+        {
+          "cell": "cover-ols-2fe-frequency",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0003744791666667052,
+              "allowance_seconds": 0.004572180208333334,
+              "lower_seconds": -0.0001227520833333229,
+              "upper_seconds": 0.0010364166666667043,
+              "uncertainty_seconds": 0.0006619374999999991,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0003166666666666318,
+              "allowance_seconds": 0.004584554166666667,
+              "lower_seconds": -0.0008353921874999552,
+              "upper_seconds": 0.00026797968750004117,
+              "uncertainty_seconds": 0.000584646354166673,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "cover-ols-2fe-probability",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -4.295833333334276e-05,
+              "allowance_seconds": 0.004478907291666667,
+              "lower_seconds": -0.0009366458333333585,
+              "upper_seconds": 0.00034668750000005154,
+              "uncertainty_seconds": 0.0008936875000000158,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0006540624999999967,
+              "allowance_seconds": 0.004450303125000003,
+              "lower_seconds": -0.00021283333333335452,
+              "upper_seconds": 0.0012277083333333114,
+              "uncertainty_seconds": 0.0008668958333333512,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "cover-ppml-bias-exact",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -7.641666666669683e-05,
+              "allowance_seconds": 0.0017910177083333351,
+              "lower_seconds": -0.0006241458333333027,
+              "upper_seconds": 0.00017979166666670453,
+              "uncertainty_seconds": 0.0005477291666666059,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -6.914583333335333e-05,
+              "allowance_seconds": 0.0017926822916666677,
+              "lower_seconds": -0.0005436874999999433,
+              "upper_seconds": 0.00035929166666664813,
+              "uncertainty_seconds": 0.00047454166666658997,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "cover-ppml-bias-randomized",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00021070833333335787,
+              "allowance_seconds": 0.002138775,
+              "lower_seconds": -0.00015464583333334663,
+              "upper_seconds": 0.0004910833333332998,
+              "uncertainty_seconds": 0.0003653541666667045,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00014204166666664797,
+              "allowance_seconds": 0.002167434375,
+              "lower_seconds": -0.0005212916666666992,
+              "upper_seconds": 0.0003863124999999489,
+              "uncertainty_seconds": 0.000528354166666597,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "cover-ppml-separation-fe-simplex-ir",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 5.1687499999997916e-05,
+              "allowance_seconds": 0.0014671041666666678,
+              "lower_seconds": -0.0003427708333333509,
+              "upper_seconds": 0.0003834999999999999,
+              "uncertainty_seconds": 0.0003944583333333488,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 4.204166666670062e-05,
+              "allowance_seconds": 0.001453465625,
+              "lower_seconds": -0.00021641666666669953,
+              "upper_seconds": 0.0002752708333333493,
+              "uncertainty_seconds": 0.00025845833333340015,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -7.866666666661581e-05,
+              "allowance_seconds": 0.018056746875000005,
+              "lower_seconds": -0.003019416666666661,
+              "upper_seconds": 0.002431916666666587,
+              "uncertainty_seconds": 0.0029407500000000453,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.006586833333333375,
+              "allowance_seconds": 0.018485883333333338,
+              "lower_seconds": -0.002310166666666722,
+              "upper_seconds": 0.011861791666666564,
+              "uncertainty_seconds": 0.008897000000000098,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-fe-cluster",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0008010000000000517,
+              "allowance_seconds": 0.018012081250000006,
+              "lower_seconds": -0.004006750000000057,
+              "upper_seconds": 0.004079857291666667,
+              "uncertainty_seconds": 0.004880857291666718,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.004846375000000014,
+              "allowance_seconds": 0.018075092708333337,
+              "lower_seconds": -0.00821670833333332,
+              "upper_seconds": 0.0030013333333333537,
+              "uncertainty_seconds": 0.007847708333333368,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-residual-robust",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0004986458333333388,
+              "allowance_seconds": 0.004094813541666667,
+              "lower_seconds": -0.0011682291666666436,
+              "upper_seconds": 0.00042808333333329917,
+              "uncertainty_seconds": 0.000926729166666638,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00046833333333329286,
+              "allowance_seconds": 0.004091310416666667,
+              "lower_seconds": -0.001432687499999958,
+              "upper_seconds": 0.0008440833333332989,
+              "uncertainty_seconds": 0.0013124166666665918,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-absorbed-slope-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0001358125000000543,
+              "allowance_seconds": 0.0034941802083333323,
+              "lower_seconds": -0.0005817062499999939,
+              "upper_seconds": 0.000588937500000051,
+              "uncertainty_seconds": 0.0007175187500000482,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0005318541666667481,
+              "allowance_seconds": 0.003532870833333333,
+              "lower_seconds": -0.0007352031249999544,
+              "upper_seconds": 0.0013943161458333253,
+              "uncertainty_seconds": 0.0012670572916667025,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-finite-factor-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "unresolved",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00010183333333332878,
+              "allowance_seconds": 0.008288755208333335,
+              "lower_seconds": -0.002590541666666638,
+              "upper_seconds": 0.0023323333333333507,
+              "uncertainty_seconds": 0.0024887083333333094,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "unresolved",
+              "delta_seconds": 0.0021912708333333697,
+              "allowance_seconds": 0.008577336458333334,
+              "lower_seconds": -0.007858157291666647,
+              "upper_seconds": 0.018916916666666696,
+              "uncertainty_seconds": 0.016725645833333327,
+              "noise_resolves_allowance": false
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00032362499999999406,
+              "allowance_seconds": 0.013467112500000003,
+              "lower_seconds": -0.0013073333333333806,
+              "upper_seconds": 0.0016793958333333728,
+              "uncertainty_seconds": 0.0016309583333333746,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 2.4999999999997247e-05,
+              "allowance_seconds": 0.013546796875000003,
+              "lower_seconds": -0.0011518541666665752,
+              "upper_seconds": 0.0016343749999999638,
+              "uncertainty_seconds": 0.0016093749999999665,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-fe-cluster",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0006332083333333571,
+              "allowance_seconds": 0.012292576041666668,
+              "lower_seconds": -8.386093750008681e-05,
+              "upper_seconds": 0.0019602083333334053,
+              "uncertainty_seconds": 0.0013270000000000482,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0006733750000000316,
+              "allowance_seconds": 0.012373745833333337,
+              "lower_seconds": -0.00029056249999997807,
+              "upper_seconds": 0.001978125000000023,
+              "uncertainty_seconds": 0.0013047499999999912,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-residual-robust",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -1.6687500000001076e-05,
+              "allowance_seconds": 0.011767133333333336,
+              "lower_seconds": -0.00155245833333331,
+              "upper_seconds": 0.0012505239583333442,
+              "uncertainty_seconds": 0.001535770833333309,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00044050000000001033,
+              "allowance_seconds": 0.011786352083333338,
+              "lower_seconds": -0.0005813958333332184,
+              "upper_seconds": 0.0021947708333333016,
+              "uncertainty_seconds": 0.0017542708333332913,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-absorbed-slope-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00021562499999994156,
+              "allowance_seconds": 0.022484529166666673,
+              "lower_seconds": -0.0030300416666666475,
+              "upper_seconds": 0.0017755208333334307,
+              "uncertainty_seconds": 0.003245666666666589,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0011201874999999806,
+              "allowance_seconds": 0.022429659375000008,
+              "lower_seconds": -0.000769020833333354,
+              "upper_seconds": 0.0026932083333333057,
+              "uncertainty_seconds": 0.0018892083333333345,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-finite-factor-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0014131041666667343,
+              "allowance_seconds": 0.015884833333333338,
+              "lower_seconds": -0.002036791666666702,
+              "upper_seconds": -6.247916666668663e-05,
+              "uncertainty_seconds": 0.0013506250000000478,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0010596458333332892,
+              "allowance_seconds": 0.015806714583333336,
+              "lower_seconds": -0.0017465833333333272,
+              "upper_seconds": 5.0229166666691193e-05,
+              "uncertainty_seconds": 0.0011098749999999805,
+              "noise_resolves_allowance": true
+            }
+          ]
+        }
+      ],
+      "fixed_baseline": [
+        {
+          "cell": "cover-ols-2fe-frequency",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0005396041666666518,
+              "allowance_seconds": 0.004668494791666668,
+              "lower_seconds": -9.254166666665197e-05,
+              "upper_seconds": 0.001522916666666719,
+              "uncertainty_seconds": 0.0009833125000000672,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00017145833333334637,
+              "allowance_seconds": 0.004583865625000003,
+              "lower_seconds": -0.0007669375000000486,
+              "upper_seconds": 0.0005282500000000059,
+              "uncertainty_seconds": 0.0006997083333333523,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "cover-ols-2fe-probability",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -9.681250000000141e-05,
+              "allowance_seconds": 0.00459108125,
+              "lower_seconds": -0.0016506666666666594,
+              "upper_seconds": 0.0005211250000000092,
+              "uncertainty_seconds": 0.001553854166666658,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -1.2937499999990387e-05,
+              "allowance_seconds": 0.004490130208333334,
+              "lower_seconds": -0.0007872708333333514,
+              "upper_seconds": 0.001059104166666656,
+              "uncertainty_seconds": 0.0010720416666666463,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "cover-ppml-bias-exact",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00016906249999994183,
+              "allowance_seconds": 0.0018353072916666678,
+              "lower_seconds": -0.0006099583333333458,
+              "upper_seconds": 0.0005907708333333006,
+              "uncertainty_seconds": 0.0007790208333332876,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0001929791666666486,
+              "allowance_seconds": 0.0017815895833333325,
+              "lower_seconds": -0.000282291666666696,
+              "upper_seconds": 0.0005044791666666529,
+              "uncertainty_seconds": 0.0004752708333333446,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "cover-ppml-bias-randomized",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00013141666666670326,
+              "allowance_seconds": 0.002163063541666665,
+              "lower_seconds": -0.00045989583333335354,
+              "upper_seconds": 0.00033985416666665124,
+              "uncertainty_seconds": 0.0005913125000000569,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00039322916666664764,
+              "allowance_seconds": 0.002136092708333335,
+              "lower_seconds": -1.0437499999944253e-05,
+              "upper_seconds": 0.0007100624999999536,
+              "uncertainty_seconds": 0.0004036666666665919,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "cover-ppml-separation-fe-simplex-ir",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0002275416666666502,
+              "allowance_seconds": 0.0014720677083333326,
+              "lower_seconds": -0.0005192291666666503,
+              "upper_seconds": -2.32958333333321e-05,
+              "uncertainty_seconds": 0.00029168750000000006,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -5.5687500000001916e-05,
+              "allowance_seconds": 0.0014689531250000002,
+              "lower_seconds": -0.0004499999999999519,
+              "upper_seconds": 0.00013339583333334967,
+              "uncertainty_seconds": 0.00039431249999995,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.008541895833333313,
+              "allowance_seconds": 0.018733123958333337,
+              "lower_seconds": -0.011754583333333289,
+              "upper_seconds": 0.005001812500000034,
+              "uncertainty_seconds": 0.013543708333333347,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00395822916666666,
+              "allowance_seconds": 0.01905974895833334,
+              "lower_seconds": -0.012976062499999995,
+              "upper_seconds": 0.004762708333333308,
+              "uncertainty_seconds": 0.009017833333333334,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-fe-cluster",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.009012041666666637,
+              "allowance_seconds": 0.018360300000000003,
+              "lower_seconds": -0.01374106250000001,
+              "upper_seconds": 0.00464049999999999,
+              "uncertainty_seconds": 0.013652541666666627,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0005441875000000151,
+              "allowance_seconds": 0.01881004583333334,
+              "lower_seconds": -0.014537833333333415,
+              "upper_seconds": 0.004763208333333378,
+              "uncertainty_seconds": 0.0139936458333334,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-2fe-residual-robust",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0004514583333333072,
+              "allowance_seconds": 0.0041140708333333356,
+              "lower_seconds": -0.0013467500000000057,
+              "upper_seconds": 0.0006982500000000094,
+              "uncertainty_seconds": 0.0011497083333333166,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00019827083333334716,
+              "allowance_seconds": 0.004125413541666667,
+              "lower_seconds": -0.0015464583333333873,
+              "upper_seconds": 0.0008058333333333925,
+              "uncertainty_seconds": 0.0013481875000000401,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-absorbed-slope-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0010195416666666512,
+              "allowance_seconds": 0.003546355208333335,
+              "lower_seconds": -0.0019980416666666423,
+              "upper_seconds": -0.0003760833333332928,
+              "uncertainty_seconds": 0.000978499999999991,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0006738958333333406,
+              "allowance_seconds": 0.003574116666666667,
+              "lower_seconds": -0.001162333333333291,
+              "upper_seconds": 0.000482229166666693,
+              "uncertainty_seconds": 0.0011561250000000336,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-finite-factor-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0013014166666666938,
+              "allowance_seconds": 0.008548096875000003,
+              "lower_seconds": -0.004595251041666636,
+              "upper_seconds": 0.0033560416666666127,
+              "uncertainty_seconds": 0.004657458333333307,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0010724374999999953,
+              "allowance_seconds": 0.008464845833333335,
+              "lower_seconds": -0.002893208333333367,
+              "upper_seconds": 0.0014075416666667598,
+              "uncertainty_seconds": 0.0024799791666667553,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0006251041666666124,
+              "allowance_seconds": 0.013463964583333338,
+              "lower_seconds": -0.00016116666666659917,
+              "upper_seconds": 0.0019266458333333494,
+              "uncertainty_seconds": 0.001301541666666737,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0018650000000000055,
+              "allowance_seconds": 0.013642932291666666,
+              "lower_seconds": -0.0014589249999999554,
+              "upper_seconds": 0.003837499999999936,
+              "uncertainty_seconds": 0.003323924999999961,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-fe-cluster",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0011125833333333335,
+              "allowance_seconds": 0.012315096875000004,
+              "lower_seconds": 0.0001293750000000724,
+              "upper_seconds": 0.0021220833333333556,
+              "uncertainty_seconds": 0.001009500000000022,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0005400416666666019,
+              "allowance_seconds": 0.012411543750000004,
+              "lower_seconds": -0.0013496249999999912,
+              "upper_seconds": 0.0018732916666666635,
+              "uncertainty_seconds": 0.0018896666666665932,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-2fe-residual-robust",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.00023929166666658563,
+              "allowance_seconds": 0.011808097916666668,
+              "lower_seconds": -0.0009829791666666734,
+              "upper_seconds": 0.0010240416666666677,
+              "uncertainty_seconds": 0.0012633333333332533,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.002058354166666637,
+              "allowance_seconds": 0.011940260416666671,
+              "lower_seconds": -0.0003716874999999655,
+              "upper_seconds": 0.003879749999999985,
+              "uncertainty_seconds": 0.0024300416666666025,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-absorbed-slope-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": -0.000464854166666695,
+              "allowance_seconds": 0.02289248958333334,
+              "lower_seconds": -0.0036855000000000616,
+              "upper_seconds": 0.00156112500000005,
+              "uncertainty_seconds": 0.0032206458333333666,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 0.000985666666666718,
+              "allowance_seconds": 0.022671837500000007,
+              "lower_seconds": -0.002776125000000016,
+              "upper_seconds": 0.0038856531249999997,
+              "uncertainty_seconds": 0.003761791666666734,
+              "noise_resolves_allowance": true
+            }
+          ]
+        },
+        {
+          "cell": "development-ppml-finite-factor-combined-multiway",
+          "threads": 4,
+          "arm": "fereg",
+          "verdict": "within",
+          "blocks": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.0002296875000000198,
+              "allowance_seconds": 0.015908556250000004,
+              "lower_seconds": -0.0013169572916666686,
+              "upper_seconds": 0.0018950624999999868,
+              "uncertainty_seconds": 0.001665374999999967,
+              "noise_resolves_allowance": true
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": 9.49374999999475e-05,
+              "allowance_seconds": 0.015855690625000005,
+              "lower_seconds": -0.001102645833333358,
+              "upper_seconds": 0.0016729791666666974,
+              "uncertainty_seconds": 0.0015780416666667499,
+              "noise_resolves_allowance": true
+            }
+          ]
+        }
+      ]
+    },
+    "protocol": "Unchanged5%or1ms,exactly2opposite-order32pairblocks,50000paired-bootstrapresamplesPCG64seed260041; no extra followup or favorable subset",
+    "decision": "No confirmed outside workload, but one parent workload remains unresolved; this is a failed acceptance gate, not equivalence or proof of slowdown."
+  },
+  "terminal_review": {
+    "model": "Astra",
+    "effort": "high",
+    "decision": "Promotion blocked by frozen performance gate; no blocking source/scientific finding",
+    "independently_verified": "19 runtime files/native/archive/patch;73cases292workerchecks; actual allocation;46+2licensed;120accuracy rows and4block hashes; static governance/diff/retirement reasons",
+    "unresolved": "OLS finite-factor combined multiway against parent, reverse block:delta+2.191ms,allowance8.577ms,central95%[-7.858,+18.917]ms; noise_resolves_allowance=false"
+  },
+  "merged_retirement": {
+    "production_lines": 0,
+    "oversized_functions": 0,
+    "reason": "Trial source is not promoted; reductions are candidate evidence only."
+  },
+  "restoration": {
+    "qualified_commit": "b9d892a658a0506acb61366ff144d62e5abb595c",
+    "runtime_frontend_build_files_exact_to_qualified_head": 265,
+    "architecture_and_complexity_exact_to_qualified_head": true,
+    "native_sha256": "4d1ef896db1772b2a417d76716c680989cd18ee7340e34255d5ea40b6039971b",
+    "frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667",
+    "recoverable_trial_source_archive_sha256": "6c77df719612b607c925f1fbd868e350ca511af530d84eaf0db8e05f6089ed41",
+    "recoverable_trial_patch_sha256": "c0d9c9ca001dd4b610b1eec5fb4f855e13c882d1a877102e8dd609a765d8693c",
+    "qualification_reused": "Byte-identical qualified b9d892a6 runtime and 4d1e Mac artifact; M27.4 full/local/scientific/transaction evidence and all-three-job CI37241856158. Trial evidence does not qualify restored runtime.",
+    "scope": "Documentation-only closeout; zero merged runtime/scientific/complexity delta; full M27 owning-model retirement remains open."
+  },
+  "restoration_review": {
+    "model": "Astra",
+    "effort": "high",
+    "decision": "Approve documentation-only closeout; no blockers",
+    "verified": "Qualified b9 runtime/frontend/build/ARCH/complexity exact; native4d/checksum/precommit manifest binding;19file trial recovered; failure/zero-retirement truthfulness; unchanged artifact-bound evidence reuse; ledger/diff checks",
+    "timings_builds_run": false
+  },
+  "documentation_checks": {
+    "governance": "PASS:256lines/max200",
+    "complexity": "PASS:106511core/15337plugin; baseline unchanged",
+    "diff_check": "PASS",
+    "local_markdown_links": "PASS:29ledger links exist",
+    "superseded_repository_checker": {
+      "result": "FAIL (inherited, outside current required entrypoint)",
+      "command": "scripts/check_repository.py",
+      "context": "Optional old clean-core/source-string checker retains abandoned AGENTS/public-wrapper/allocation-manifest expectations; qualified runtime and checker unchanged from HEAD. Do not refresh historical allocation manifests or resume abandoned clean-core workflow. Existing ledger Blockers records obsolete source assertions and manifests.",
+      "required_gate": false
+    }
+  }
+}

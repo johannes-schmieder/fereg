@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M27.4 approved PPML constant-invariant model Wald and original-axis support correction; M27.3 parked; full M26–M35 authorized.
+Current task: M27.5 unpromoted-trial closeout; qualified M27.4 runtime restored; canonical-owner design continues; full M26–M35 authorized.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -75,7 +75,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M27.1 Trial not promoted: 11 within/4 unresolved; production restored; retained fixture/full local and Linux CI37222999041 pass.
 - [x] M27.2 Original factor slots/base flags preserved; full local/scientific/transaction/timing/Astra high and Linux CI37227673296 pass.
 - [ ] M27.3 Scaffold trial parked: source/science passes, clean timing unavailable; qualified production restored; retirement remains open.
-- [ ] M27.4 Original-axis support/constant-invariant PPML Wald: full local/native/science/exact/timing pass; Astra high terminal accepts; Linux gate open.
+- [x] M27.4 Original-axis support/constant-invariant PPML Wald: local/science/exact/timing/Astra high and Linux CI37241856158 all pass.
+- [ ] M27.5 Trial not promoted: parent14within/1unresolved, fixed15within; qualified source/native restored; owning-model retirement remains open.
 - [ ] M27 Canonical prepared model and optional cluster metadata; retire duplicated owning pipelines.
 - [ ] M28 Common storage operations and owner-based memory admission.
 - [ ] M29 General worker-budget and kernel scheduling policy; Mac/SCC scaling qualification.
@@ -115,6 +116,14 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+
+- 2026-10-04 M27.5 closeout: zero merged retirement; recovered trial preserved; b9d892a6 source/4d1e native exact; [evidence](bench/history/2026-10-04-m27-consumed-model.json).
+
+- 2026-10-04 M27.5 trial: science/exact405664 pass; frozen parent14within/1unresolved, fixed15within; Astra high blocks promotion; qualified runtime restored.
+
+- 2026-10-04 M27.5 worktree: source review/full local/30 oracles pass; fresh target resolves stale comparator cache; memory edges unchanged; native/science/timing/CI open.
+
+- 2026-10-04 M27.4 b9d892a6 — Astra high/local science/timing and Linux CI37241856158 all3 pass; M27.5 [scope](bench/history/2026-10-04-m27-consumed-model.json).
 
 - 2026-10-04 M27.4 this commit: original-axis support/constant-invariant Wald; all local gates/fourtimingblocks/Astra high terminal pass; Linux CI/fullM27 open.
 

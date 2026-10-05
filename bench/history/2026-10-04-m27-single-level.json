@@ -96,8 +96,8 @@
     "NoFE PPML original active factor/constant contrast against closed-form means/HC1 covariance; multi-cell categorical interactions independent means",
     "Next explicit override transaction failures under interacted/sloped absorption; ordinary/noFE supported override retained; legacy exact"
   ],
-  "qualification_constraints": "All required local gates and terminal Astra high review pass; post-push Linux fullCI/native replay remainsopen before dependent runtime. FullM27 canonical-owner retirement remainsopen.",
-  "status": "Readycommit/push scientific/support correction; post-push Linux gateopen; fullM27open.",
+  "qualification_constraints": "All required local gates, terminal Astra high review and post-push Linux full CI/native replay pass. Full M27 canonical-owner retirement remains open.",
+  "status": "Qualified M27.4 correction committed/pushed b9d892a6; Linux CI37241856158 all3PASS; fullM27open.",
   "parent_ci": {
     "run_id": 37231446216,
     "conclusion": "success",
@@ -1247,5 +1247,16 @@
       "cover-ppml-bias-randomized": "c031aa2e47615a22062cc3113f629567c846cd15edb0f9625b4c85396ca4760c",
       "cover-ppml-separation-fe-simplex-ir": "24ea31bd7ee1a01e60464deb7f6baebf1179e27b7b5cce116501840157a50128"
     }
+  },
+  "final_ci": {
+    "commit": "b9d892a658a0506acb61366ff144d62e5abb595c",
+    "run_id": 37241856158,
+    "conclusion": "success",
+    "jobs": [
+      "check",
+      "comparator",
+      "replay"
+    ],
+    "url": "https://github.com/johannes-schmieder/fereg/actions/runs/37241856158"
   }
 }
