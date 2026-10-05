@@ -112,6 +112,8 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
+M27 clean Mac timing awaits a quiet window; unrelated twelve-job Stata batches remain active. Source/local science pass; calibration is not accepted.
+
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
 
@@ -119,6 +121,7 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 M28 design: Astra xhigh scopes full capacity/storage/report retirement; disjoint7859 to6090 plan; [declaration](bench/history/2026-10-05-m28-capacity-design.json).
 - 2026-10-05 M27.10: CSV/cache repairs;34 tooling checks and saved verdicts identical; Astra high accepts; [interrupted calibration](bench/history/2026-10-05-m27-measurement-tools.json).
 - 2026-10-05 policy: GitHub CI/testing workflows paused by Johannes; Mac-only local gates replace remote prerequisites; science, max5%/1ms and historical failures unchanged.
 - 2026-10-05 M27.8 3ca65bb4: recoverable candidate/evidence checkpoint pushed; CI37262317024 again never started due billing; candidate remains unpromoted.

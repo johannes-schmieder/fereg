@@ -12,7 +12,9 @@ This contract changes benchmark tooling and documentation, with zero runtime cha
 ## Counted replacements
 
 The [disjoint inventory](../../bench/history/2026-10-04-m26-retirement-inventory.json)
-names every file and reassigned function slice. Its 87,568 lines are accounting
+names the frozen files and reassigned function slices. The [M28 design review](../../bench/history/2026-10-05-m28-capacity-design.json)
+prospectively reassigns 1,119 disjoint baseline lines and their successor budgets.
+The total 87,568 lines are accounting
 envelopes containing surviving code as well as replacements, rather than
 87,568 lines of demonstrated duplication. All adapters, capacity arithmetic,
 certificates and changes outside these envelopes count toward the budgets.
@@ -20,19 +22,21 @@ certificates and changes outside these envelopes count toward the budgets.
 | Milestone | Existing lines | Successor budget | Planned reduction | Concrete competing implementation |
 |---|---:|---:|---:|---|
 | M27 | 7,382 | 5,700 | 1,682 | Ordinary/categorical finalized owners and clustered owning dispositions |
-| M28 | 6,740 | 4,800 | 1,940 | Separate route-capacity formulas and inferred setup flags |
+| M28 | 7,859 | 6,090 | 1,769 | Constructor capacities, storage transport and admitted/report owners |
 | M29 | 419 | 400 | 19 | Feature-specific ceiling, recurrence crossover and repeated chunk policies |
 | M30 | 17,312 | 12,500 | 4,812 | FE representation lifecycles and narrow/wide automatic pilot trees |
-| M31 | 19,051 | 14,500 | 4,551 | Fast/Low full fits and equivalent retained/frozen/streaming assembly |
+| M31 | 18,788 | 14,295 | 4,493 | Fast/Low full fits and equivalent retained/frozen/streaming assembly |
 | M32 | 15,509 | 13,500 | 2,009 | Repeated fit-product, score, residual and output assembly |
-| M33 | 13,676 | 11,200 | 2,476 | Equivalent session setup, weight refresh and final-product transitions |
-| M34 | 7,479 | 6,500 | 979 | Obsolete host dispositions, adapters and internal planning tables |
+| M33 | 12,946 | 10,685 | 2,261 | Equivalent session setup, weight refresh and final-product transitions |
+| M34 | 7,353 | 6,390 | 963 | Obsolete host dispositions, adapters and internal planning tables |
 
-The preliminary reduction is 18,468 lines. A counted 3,468-line contingency
+The revised preliminary reduction is 18,008 lines. A counted 3,008-line contingency
 leaves a required net reduction of **15,000 production lines** from 121,396
 (12.36%). There must also be fewer than 112 functions over 150 lines and 22
-files over 1,500 lines. This is a design budget whose feasibility must be
-challenged during review; it is not completed deletion evidence.
+files over 1,500 lines. These are design allocations, including replacement integrations; they are not
+completed deletion evidence. M28 uses 460 lines of planning contingency after
+subtracting both transferred old slices and successor responsibilities from
+M31/M33/M34. The frozen inventory and all historical measurements remain intact.
 
 M28 cannot remove costs for still-executable FE/finite routes. Constructors
 must take ownership of those formulas before the M30/M31 consumers disappear;

@@ -1,0 +1,184 @@
+{
+  "milestone": "M28",
+  "kind": "Prospective coherent capacity/storage retirement; declared before runtime edits; no implementation acceptance claim.",
+  "baseline_inventory_sha256": "d334f766591badc324568164ca5f9e0c00b43ce6c0694e7dafc6ab1e120a71de",
+  "prerequisite": "M27 local acceptance, including the calibrated parent/fixed performance gate. Runtime implementation starts only after that gate.",
+  "retirements": [
+    "Independent PPML/OLS storage and workspace capacity arithmetic beside allocating constructors",
+    "Duplicated physical scratch row-tile traversal and retained dense/scratch transport ownership",
+    "LateProfiles and admission-only slope/projection flags and numeric authorization sentinels",
+    "Flattened repeated FE/linear actual-capacity fingerprints and repeated scalar summary",
+    "Duplicated steady-state observation/certificate payload ownership and reconstruction",
+    "Independent host action-lifetime assembly for admission ledger and expected-heap forecast"
+  ],
+  "replacements": [
+    "Small typed checked capacities consumed by actual constructors and admission; concrete versus conservative reserved bytes remain distinct",
+    "Coarse physical dense/scratch operations; implicit centered designs and numerical kernels remain separate",
+    "Ordered optional admitted layouts consumed by concrete installation variants",
+    "Nested actual allocation fingerprints and certificate-owned original observation, retaining fresh validation",
+    "One stage-lifetime composition supplies separate admission, expected-heap and coverage channels"
+  ],
+  "consumers": [
+    "OLS one-shot and retained finite storage constructors",
+    "FE workspace constructors and all still-executable explicit/automatic routes",
+    "PPML preparation, generation, separation, reusable linear, strict transaction, recovery and publication owners",
+    "PPML ordered admission/installation and allocator witnesses",
+    "Host preparation/frame/publication admission, ledger and forecast"
+  ],
+  "scientific_scope": "Arithmetic-preserving estimator and current scheduling/solver policy. Original slots/base flags, sample/rank/omission/separation/DoF/weights, deterministic results and available route signatures exact. Internal owner/layout/fingerprint representation changes are allowed. Preserve current public Fast/Low/Auto choices, optional admission order, exact scalar inventory and tight-budget refusals. No silent admission-rule change.",
+  "capacity_invariants": [
+    "Preserve reserve versus reserve_exact growth policy; plans are not substitutes for observed Vec capacities",
+    "Concrete scratch usize/u64 addressability before file creation, column-major bound, nonempty row-major whole-row buffer, unbuffered transfer, poisoning and cleanup",
+    "Retain named conservative PPML empty/wide-row reserves and other existing safe envelopes even when larger than concrete storage",
+    "Base global admission peak plus optional increments remains distinct from phase-specific reporting and expected heap",
+    "Add simultaneous parents, take maxima for sequential attempts; retain old/new generation, detector/cascade, Mu and strict rollback lifetimes",
+    "Full flat memory inventory remains a report with mapped witnesses; no replacement by opaque aggregate capacity equality",
+    "Independent certificate recomputation and actual fingerprint equality remain authoritative; unknown forecast/gaps never become zero"
+  ],
+  "required_qualification": [
+    "Focused exact scalar inventories/admissions, exact and one-byte-short refusals, actual allocation/failure/Break/rollback lifetimes",
+    "Physical scratch/dense roundtrips, empty/wide layouts, immutable readers, forward compaction, poisoning and cleanup",
+    "Independent numeric/FE/strict/separation/rebase/pweight/original-axis witnesses; unaffected exact science/routes",
+    "Full local entrypoint/30 long oracles, Mac build/ABI, actual73 native replay and five-thread science/repeats",
+    "Licensed46/mapped axis and M22 strictPPML24/savedFE48 integration checks",
+    "Predeclared bounded clean timings vs accepted M27 parent and fixedM26; existing max5%/1ms allowance",
+    "Independent Astra high completion acceptance; Mac-only scope while GitHub testing is paused"
+  ],
+  "scope_transfers": [
+    {
+      "from": "M33",
+      "path": "crates/fereg-core/src/ppml/prepared_irls/admission.rs",
+      "slice": "whole file",
+      "existing": 646,
+      "successor_assignment": 450
+    },
+    {
+      "from": "M33",
+      "path": "crates/fereg-core/src/ppml/prepared_irls.rs",
+      "slice": "summarize_linear_workspace",
+      "existing": 84,
+      "successor_assignment": 65
+    },
+    {
+      "from": "M31",
+      "path": "crates/fereg-core/src/ols/linear_session.rs",
+      "slice": "LinearSessionWorkspaceCapacities declaration",
+      "existing": 62,
+      "successor_assignment": 44
+    },
+    {
+      "from": "M31",
+      "path": "crates/fereg-core/src/ols/linear_session.rs",
+      "slice": "workspace_capacities (retained session implementation)",
+      "existing": 113,
+      "successor_assignment": 81
+    },
+    {
+      "from": "M31",
+      "path": "crates/fereg-core/src/ols/linear_session.rs",
+      "slice": "RetainedWithinStorage enum and implementation",
+      "existing": 88,
+      "successor_assignment": 80
+    },
+    {
+      "from": "M34",
+      "path": "crates/fereg-plugin/src/estimate.rs",
+      "slice": "memory_ledger and memory_forecast",
+      "existing": 126,
+      "successor_assignment": 110
+    }
+  ],
+  "successor_outline": [
+    {
+      "responsibility": "Checked primitives, FE capacities and constructor integration",
+      "existing": 1311,
+      "successor": 1000
+    },
+    {
+      "responsibility": "PPML memory/metadata composition, inventory and retained telemetry",
+      "existing": 3417,
+      "successor": 2500
+    },
+    {
+      "responsibility": "Scratch and transferred physical storage operations",
+      "existing": 873,
+      "successor": 820
+    },
+    {
+      "responsibility": "Host owners and shared action composition",
+      "existing": 1353,
+      "successor": 1130
+    },
+    {
+      "responsibility": "Admission and installation replacement",
+      "existing": 646,
+      "successor": 450
+    },
+    {
+      "responsibility": "Actual capacity fingerprints and summary",
+      "existing": 259,
+      "successor": 190
+    }
+  ],
+  "accounting": {
+    "existing_expanded_envelope": 7859,
+    "successor_design_allocation": 6090,
+    "expected_net_reduction": 1769,
+    "all_integrations_adapters_and_fixes_count": true,
+    "successor_allocations_are_planning_only": true,
+    "reconciled_program_pools": {
+      "M27": {
+        "existing_production_lines": 7382,
+        "successor_budget": 5700,
+        "planned_reduction": 1682
+      },
+      "M28": {
+        "existing_production_lines": 7859,
+        "successor_budget": 6090,
+        "planned_reduction": 1769
+      },
+      "M29": {
+        "existing_production_lines": 419,
+        "successor_budget": 400,
+        "planned_reduction": 19
+      },
+      "M30": {
+        "existing_production_lines": 17312,
+        "successor_budget": 12500,
+        "planned_reduction": 4812
+      },
+      "M31": {
+        "existing_production_lines": 18788,
+        "successor_budget": 14295,
+        "planned_reduction": 4493
+      },
+      "M32": {
+        "existing_production_lines": 15509,
+        "successor_budget": 13500,
+        "planned_reduction": 2009
+      },
+      "M33": {
+        "existing_production_lines": 12946,
+        "successor_budget": 10685,
+        "planned_reduction": 2261
+      },
+      "M34": {
+        "existing_production_lines": 7353,
+        "successor_budget": 6390,
+        "planned_reduction": 963
+      }
+    },
+    "preliminary_reduction": 18008,
+    "explicit_contingency": 3008,
+    "required_program_net_reduction": 15000,
+    "contingency_change": -460,
+    "explanation": "171 less M28 planned reduction plus289 reduction already allocated to transferred successor scopes; subtract both old and replacement responsibilities to prevent double credit. Frozen M26 source/inventory/evidence unchanged."
+  },
+  "astra": {
+    "model": "Astra",
+    "effort": "extra-high",
+    "review": "m28_capacity_design_astra",
+    "decision": "Complete retirement credible around1750\u20131850 after disjoint transfers;1940 not yet defensible. Retain scientific/allocator/telemetry survivors; revise planning before implementation."
+  },
+  "prototype": "Ignored target design sketch distinguishes actual scratch construction from historical PPML reserve. Three isolated prototype checks pass; no runtime migration or delivered saving."
+}
