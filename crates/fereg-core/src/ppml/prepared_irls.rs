@@ -4085,33 +4085,58 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
     workspace.fe_basis_squares.fill(0.0);
     let moments = &mut workspace.fe_moments;
     let squares = &mut workspace.fe_basis_squares;
-    let parallel = rows >= 4096 && workspace.team.threads() > 1;
-    let mut accumulate_effects = || {
+    let budget = workspace.team.threads();
+    let parallel = fe_design.effects().iter().any(|effect| {
+        crate::parallel::StagePlan::new(
+            rows as u128 * effect.channels() as u128 * 2,
+            effect.n_levels(),
+            budget,
+        )
+        .lanes
+            > 1
+    });
+    let mut accumulate_effects = || -> Result<()> {
         let mut effect_offset = 0_usize;
         for effect in fe_design.effects() {
             let directions = effect.n_levels().saturating_mul(effect.channels());
-            if parallel {
-                use rayon::prelude::*;
+            let plan = crate::parallel::StagePlan::new(
+                rows as u128 * effect.channels() as u128 * 2,
+                effect.n_levels(),
+                budget,
+            );
+            if plan.lanes > 1 {
                 // A direction owns its two accumulators. Membership order is
                 // original observation order, so independent groups/channels
                 // can run together without reassociating either score sum.
-                moments[effect_offset..effect_offset + directions]
-                    .par_iter_mut()
-                    .zip(squares[effect_offset..effect_offset + directions].par_iter_mut())
-                    .enumerate()
-                    .for_each(|(direction, (moment, square))| {
-                        let level = direction / effect.channels();
-                        let channel = direction % effect.channels();
-                        let mut total = 0.0;
-                        let mut norm = 0.0;
-                        for &row in effect.level_index().members(level) {
-                            let basis = effect.basis_value(channel, row);
-                            total += prior_weights[row] * (outcome[row] - mean[row]) * basis;
-                            norm += prior_weights[row] * mean[row] * basis * basis;
+                let mut contexts = vec![(); plan.lanes];
+                crate::parallel::group_blocks(
+                    crate::parallel::GroupBuffers {
+                        first: &mut moments[effect_offset..effect_offset + directions],
+                        first_stride: effect.channels(),
+                        second: &mut squares[effect_offset..effect_offset + directions],
+                        second_stride: effect.channels(),
+                        scratch: &mut contexts,
+                    },
+                    effect.level_index().membership_offsets(),
+                    0,
+                    &|first, moments, squares, _| {
+                        for (local, (moment, square)) in moments.iter_mut().zip(squares).enumerate()
+                        {
+                            let level = first + local / effect.channels();
+                            let channel = local % effect.channels();
+                            let mut total = 0.0;
+                            let mut norm = 0.0;
+                            for &row in effect.level_index().members(level) {
+                                let basis = effect.basis_value(channel, row);
+                                total += prior_weights[row] * (outcome[row] - mean[row]) * basis;
+                                norm += prior_weights[row] * mean[row] * basis * basis;
+                            }
+                            *moment = total;
+                            *square = norm;
                         }
-                        *moment = total;
-                        *square = norm;
-                    });
+                        Ok(())
+                    },
+                )?;
             } else {
                 for row in 0..rows {
                     let level = effect.codes()[row] as usize;
@@ -4138,13 +4163,14 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
             }
             effect_offset += directions;
         }
+        Ok(())
     };
     // Do not submit a serial task: external Rayon submissions can allocate
     // queue blocks inside the required allocation-free iteration window.
     if parallel {
-        workspace.team.install(accumulate_effects);
+        workspace.team.install(accumulate_effects)?;
     } else {
-        accumulate_effects();
+        accumulate_effects()?;
     }
     let relative_two = if relative_count == 0 {
         0.0

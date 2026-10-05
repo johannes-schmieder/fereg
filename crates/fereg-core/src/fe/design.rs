@@ -166,6 +166,10 @@ impl LevelIndex {
         self.observations.len()
     }
 
+    pub(crate) fn membership_offsets(&self) -> &[usize] {
+        &self.offsets
+    }
+
     fn storage_capacities(&self) -> (usize, usize) {
         (self.offsets.capacity(), self.observations.capacity())
     }

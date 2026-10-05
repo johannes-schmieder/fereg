@@ -777,8 +777,7 @@ fn finish_dense_groups<R: SandwichReservation>(
         0.0_f64,
         "unable to reserve qualified clustered dense partials",
     )?;
-    partials
-        .par_chunks_mut(stride)
+    crate::parallel::stage_rows_mut(&mut partials, stride, group_slots as u128 * square as u128)
         .enumerate()
         .try_for_each(|(chunk, partial)| -> Result<()> {
             let (raw, tail) = partial.split_at_mut(square);
@@ -865,8 +864,7 @@ where
         0.0,
         "unable to reserve qualified clustered ordered partials",
     )?;
-    partials
-        .par_chunks_mut(stride)
+    crate::parallel::stage_rows_mut(&mut partials, stride, nobs as u128 * square as u128)
         .enumerate()
         .try_for_each(|(chunk, partial)| -> Result<()> {
             let (raw, tail) = partial.split_at_mut(square);
@@ -1408,14 +1406,13 @@ fn reduction_chunks(
             "qualified clustered reduction dimensions are empty",
         ));
     }
-    let bytes = stride
-        .checked_mul(std::mem::size_of::<f64>())
-        .ok_or_else(|| allocation("qualified clustered partial bytes overflow"))?;
-    let memory = (policy.partial_budget_bytes / bytes.max(1)).max(1);
-    Ok(work_items
-        .div_ceil(minimum_items)
-        .clamp(1, policy.reduction_maximum_blocks)
-        .min(memory))
+    crate::parallel::reduction_blocks(
+        work_items,
+        minimum_items,
+        policy.reduction_maximum_blocks,
+        stride,
+        policy.partial_budget_bytes,
+    )
 }
 
 fn compare_rows(dimensions: &[&[u32]], mask: usize, left: usize, right: usize) -> Ordering {

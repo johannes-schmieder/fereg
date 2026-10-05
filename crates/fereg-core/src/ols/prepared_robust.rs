@@ -22,14 +22,11 @@ use super::prepared_scores::{
     PreparedInferenceReservation, PreparedOlsDenseScoreView, SystemPreparedInferenceReservation,
 };
 use super::prepared_scratch::PreparedOlsScratch;
-#[cfg(test)]
-use super::prepared_unadjusted::build_reference_weight_report_view;
 use super::prepared_unadjusted::{
-    build_reference_weight_report_with_outcome, build_residual_dof_view, build_statistics,
-    checked_square, compensated_add, compensated_add_scaled_row, exact_integer_as_f64,
-    fit_with_independent_outcome, independent_outcome_sum, independent_residual_sum,
-    relative_difference, validate_fit_and_absorbed_dof_view, validate_sum_of_squares,
-    DeferredOutcome, ReferenceWeightView,
+    build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
+    compensated_add, compensated_add_scaled_row, exact_integer_as_f64, independent_outcome_sum,
+    independent_residual_sum, relative_difference, validate_fit_and_absorbed_dof_view,
+    validate_sum_of_squares, ReferenceWeightView,
 };
 use super::{
     compute_prepared_ols_absorbed_dof, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
@@ -363,14 +360,7 @@ pub fn fit_prepared_ols_robust_map_with_loaded_moments(
     let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
     let prepared = &ordinary;
     validate_config(config)?;
-    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(
-        prepared,
-        config.fit,
-        || {
-            super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)
-        },
-        true,
-    )?;
+    let (fit, score_scratch) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)?;
     let absorbed_dof = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
     ThreadTeam::new(config.fit.execution.threads).install(|| {
         let mut reservation = SystemPreparedInferenceReservation;
@@ -382,7 +372,6 @@ pub fn fit_prepared_ols_robust_map_with_loaded_moments(
             &mut reservation,
             RobustPerturbations::default(),
             score_scratch,
-            outcome_tss,
         )
     })?
 }
@@ -403,22 +392,12 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedCategoricalOlsRobust> {
     validate_config(config)?;
-    let ((fit, score_scratch), outcome_tss, dof_inputs) =
-        super::prepared_unadjusted::fit_with_independent_outcome_and_check(
-            prepared,
-            config.fit,
-            || {
-                super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)
-            },
-            || prepared.validate_dof_inputs_for_overlap(),
-            true,
-        )?;
+    let (fit, score_scratch) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)?;
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
         let (absorbed_dof, absorbed_summary) =
             super::prepared_inference_view::categorical_dof_after_fit(
                 prepared,
                 config.absorbed_dof,
-                dof_inputs,
             )?;
         let mut reservation = SystemPreparedInferenceReservation;
         let components = compose_view_internal(
@@ -429,7 +408,6 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
             &mut reservation,
             RobustPerturbations::default(),
             score_scratch,
-            outcome_tss,
         )?;
         Ok(components.with_absorbed_dof(absorbed_dof))
     })?
@@ -445,7 +423,6 @@ fn compose_internal<R: PreparedInferenceReservation>(
     reservation: &mut R,
     perturbations: RobustPerturbations,
     score_scratch: Option<PreparedOlsScratch>,
-    outcome_tss: DeferredOutcome<'_>,
 ) -> Result<CertifiedPreparedOlsRobust> {
     let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
     let prepared = &ordinary;
@@ -459,7 +436,6 @@ fn compose_internal<R: PreparedInferenceReservation>(
         reservation,
         perturbations,
         score_scratch,
-        outcome_tss,
     )?;
     Ok(components.with_absorbed_dof(absorbed_dof))
 }
@@ -474,20 +450,13 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     reservation: &mut R,
     perturbations: RobustPerturbations,
     score_scratch: Option<PreparedOlsScratch>,
-    mut outcome_tss: DeferredOutcome<'_>,
 ) -> Result<PreparedOlsRobustComponents> {
     let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
     let total_started = Instant::now();
     let phase_started = Instant::now();
     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
     let (weights, weight_view, reference_weight_error) =
-        build_reference_weight_report_with_outcome(
-            prepared,
-            &fit,
-            config.certificate_tolerance,
-            true,
-            &mut outcome_tss,
-        )?;
+        build_reference_weight_report_view(prepared, &fit, config.certificate_tolerance, true)?;
     let mut dof = build_residual_dof_view(prepared, &fit, absorbed_dof, weights)?;
     if perturbations.residual_dof {
         dof.residual_dof = dof
@@ -497,14 +466,11 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     }
     certify_dof_identity(prepared, &fit, weights, dof)?;
 
-    let tss = match outcome_tss {
-        Some(tss) => tss?.tss?,
-        None => independent_outcome_sum(
-            &prepared.fit_sample().outcome,
-            weight_view,
-            dof.has_structural_intercept,
-        )?,
-    };
+    let tss = independent_outcome_sum(
+        &prepared.fit_sample().outcome,
+        weight_view,
+        dof.has_structural_intercept,
+    )?;
     let within_tss = if !prepared.inference_has_explicit_absorbed_effects() {
         tss
     } else {
@@ -1013,42 +979,45 @@ fn build_dense_certificate_meat<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared robust dense certificate meat partials",
     )?;
-    partials
-        .par_chunks_mut(partial_stride)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let (meat, score) = partial.split_at_mut(square);
-            let rows_per_chunk = scores.nrows() / chunks;
-            let remainder = scores.nrows() % chunks;
-            let start = chunk * rows_per_chunk + chunk.min(remainder);
-            let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            for row in start..end {
-                let scale = meat_root_multiplier(weight_kind, weight_view.value(row)?)?
-                    * fit.residuals()[row];
-                scores.fill_reported_row(row, score)?;
-                for score_value in score.iter_mut() {
-                    *score_value *= scale;
-                    if !score_value.is_finite() {
-                        return Err(invalid_data(
-                            "prepared robust dense certificate score is not finite",
-                        ));
-                    }
-                }
-                for left in 0..dimension {
-                    let left_value = score[left];
-                    for right in left..dimension {
-                        meat[left * dimension + right] += left_value * score[right];
-                    }
+    crate::parallel::stage_rows_mut(
+        &mut partials,
+        partial_stride,
+        scores.nrows() as u128 * square as u128,
+    )
+    .enumerate()
+    .try_for_each(|(chunk, partial)| -> Result<()> {
+        let (meat, score) = partial.split_at_mut(square);
+        let rows_per_chunk = scores.nrows() / chunks;
+        let remainder = scores.nrows() % chunks;
+        let start = chunk * rows_per_chunk + chunk.min(remainder);
+        let end = start + rows_per_chunk + usize::from(chunk < remainder);
+        for row in start..end {
+            let scale =
+                meat_root_multiplier(weight_kind, weight_view.value(row)?)? * fit.residuals()[row];
+            scores.fill_reported_row(row, score)?;
+            for score_value in score.iter_mut() {
+                *score_value *= scale;
+                if !score_value.is_finite() {
+                    return Err(invalid_data(
+                        "prepared robust dense certificate score is not finite",
+                    ));
                 }
             }
-            if meat.iter().all(|value| value.is_finite()) {
-                Ok(())
-            } else {
-                Err(invalid_data(
-                    "prepared robust dense certificate meat partial is not finite",
-                ))
+            for left in 0..dimension {
+                let left_value = score[left];
+                for right in left..dimension {
+                    meat[left * dimension + right] += left_value * score[right];
+                }
             }
-        })?;
+        }
+        if meat.iter().all(|value| value.is_finite()) {
+            Ok(())
+        } else {
+            Err(invalid_data(
+                "prepared robust dense certificate meat partial is not finite",
+            ))
+        }
+    })?;
     let mut meat = reserved_filled(
         reservation,
         square,
@@ -1440,14 +1409,13 @@ fn robust_reduction_chunks(nrows: usize, partial_stride: usize) -> Result<usize>
             "prepared robust reduction dimensions are empty",
         ));
     }
-    let partial_bytes = partial_stride
-        .checked_mul(std::mem::size_of::<f64>())
-        .ok_or_else(|| allocation("prepared robust reduction partial bytes overflow usize"))?;
-    let memory_blocks = (ROBUST_PARTIAL_BUDGET_BYTES / partial_bytes.max(1)).max(1);
-    Ok(nrows
-        .div_ceil(ROBUST_REDUCTION_ROWS)
-        .clamp(1, ROBUST_MAX_BLOCKS)
-        .min(memory_blocks))
+    crate::parallel::reduction_blocks(
+        nrows,
+        ROBUST_REDUCTION_ROWS,
+        ROBUST_MAX_BLOCKS,
+        partial_stride,
+        ROBUST_PARTIAL_BUDGET_BYTES,
+    )
 }
 
 fn perturb_optional(value: &mut Option<f64>) -> Result<()> {
@@ -1534,7 +1502,6 @@ mod tests {
                         &mut SystemPreparedInferenceReservation,
                         RobustPerturbations::default(),
                         scratch,
-                        None,
                     )
                 })
                 .unwrap()
@@ -1594,7 +1561,6 @@ mod tests {
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
                 Some(scratch),
-                None,
             )
             .unwrap();
             let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
@@ -1610,7 +1576,6 @@ mod tests {
                 config,
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
-                None,
                 None,
             )
             .unwrap();
@@ -1639,7 +1604,6 @@ mod tests {
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
                 Some(scratch),
-                None,
             )
             .unwrap_err();
             assert!(
@@ -1717,7 +1681,6 @@ mod tests {
             &mut CountingReservation::default(),
             RobustPerturbations::default(),
             None,
-            None,
         )
         .unwrap();
         let fit = build();
@@ -1735,7 +1698,6 @@ mod tests {
             tight,
             &mut CountingReservation::default(),
             RobustPerturbations::default(),
-            None,
             None,
         )
         .unwrap_err();
@@ -1758,7 +1720,6 @@ mod tests {
             tight,
             &mut CountingReservation::default(),
             RobustPerturbations::default(),
-            None,
             None,
         )
         .unwrap();
@@ -1818,7 +1779,6 @@ mod tests {
                     config,
                     &mut CountingReservation::default(),
                     RobustPerturbations::default(),
-                    None,
                     None,
                 )
                 .unwrap();
@@ -1884,7 +1844,6 @@ mod tests {
                 config,
                 &mut reservation,
                 RobustPerturbations::default(),
-                None,
                 None,
             )
             .expect("strided robust fit");
@@ -2372,7 +2331,6 @@ mod tests {
             config,
             reservation,
             perturbations,
-            None,
             None,
         )
     }

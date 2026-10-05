@@ -1,0 +1,66 @@
+{
+  "responsibility": "M30 one FE lifecycle and structural automatic policy; one coherent owner/controller retirement",
+  "status": "Planning only; implementation depends on accepted M29",
+  "retirements": [
+    "ActiveFeAbsorber/FitFeAbsorber and repeated OLS construction/dispatch layers",
+    "ReusableLinearMapProjector setup, capability, capacity and projection controller duplication",
+    "Owned and borrowed independent automatic controllers, AutoLsmrRoute and narrow/wide Schur probe/continuation controllers",
+    "Repeated topology_map descriptor/setup adapters and PreparedOlsFitView absorption dispatch matrix",
+    "Independent saved-effect recovery route controller and feature-specific auto eligibility"
+  ],
+  "replacement": "One coarse FE session/binding owns preparation, current-weight geometry, batched projection, recovery, certification, capacities and cumulative attempt diagnostics. Retain concrete mathematical kernel payloads and independent certificates.",
+  "families": [
+    "No absorption and structural constant remain distinct",
+    "Direct one-intercept FE weighted groups",
+    "Reusable two-intercept FE Schur/PCG graph family with bounded numerical progress and checked resource fallback",
+    "General higher-dimensional/slope family; supported explicit solver adapters retain restrictions"
+  ],
+  "consumers": [
+    "OLS initial and final residual blocks",
+    "Changing-weight linear/PPML projection and geometry authorization",
+    "Prepared ordinary/finalized-topology views",
+    "Saved-effect recovery and original-model reconstruction",
+    "PPML auto selection and joint-LSMR/FWL-CMG FE setup boundaries; full finite/IRLS orchestration remains M31/M33"
+  ],
+  "forecast": {
+    "original_M26_net_reduction": 4812,
+    "proven_initial_gross_controller_pool": 2016,
+    "net_reduction": "Measure integrated removal including replacements; 4812 is unsupported by proven duplication. Additional reusable/recovery/view owner retirement is required, not a sequence of standalone helper trials.",
+    "initial_pool": {
+      "owned_auto": 237,
+      "borrowed_auto_wrappers": 626,
+      "topology_map": 360,
+      "OLS_build_dispatch": 483,
+      "narrow_Schur_entry_continuation": 310
+    },
+    "all_replacements_fixes_adapters_counted": true
+  },
+  "affected_scope": [
+    "Automatic multi-FE/slope projections and recovery; changing-weight PPML reached through structural policy",
+    "Possible numerical values, internal iterations/routes/workspace peaks/convergence behavior within SPEC; stable sample/rank/omission/separation/DoF and original slots/base flags remain binding",
+    "Changed weights invalidate geometry authorization before mutation; response-only refresh and exact weight identity preserve valid dependencies"
+  ],
+  "exact_unaffected": "No-FE/direct-one-FE operations retaining scalar order, untouched explicit kernels and products, public support/request validation and frontend transactions. Do not assume exact explicit results if shared normalization/geometry changes.",
+  "preserved": [
+    "Explicit LSMR/CMG support including nuisance64 and genuine FE/slope restrictions",
+    "Existing unsafe-CG rejection and CMG/M22 repair",
+    "Both bias modes, memory modes, deterministic repeats and stable decisions",
+    "Independent rank-aware FE certificates, raw/final Hessian scores and original-model saved-effect reconstruction",
+    "Main-thread SPI, one native call, panic containment, rollback/Break and checked refusal/admission"
+  ],
+  "required_checks": [
+    "Focused weighted/weak/disconnected/skewed/slopes/multiple-RHS geometry and generation witnesses",
+    "Full local entrypoint and independent long/decimal/original-model oracles",
+    "Native replay, exact unaffected and 1/2/4/7/8/9/15/16 repeat/scientific/discrete checks",
+    "Licensed/mapped-axis/saved-FE/strict PPML/M22/rollback/Break/allocator fixtures",
+    "Clean bounded parent and fixed-M26 timings with fixed mathematical route scaling and startup/iteration/recovery diagnosis",
+    "Astra high independent milestone acceptance review"
+  ],
+  "design_review": {
+    "reviewer": "Astra extra-high",
+    "readonly": true,
+    "finding": "Common owner must replace OLS, reusable changing-weight and recovery controllers together; preserve distinct kernels and independent finishing science. The 17312-line pool is not all duplication; 4812 forecast unsupported."
+  },
+  "acceptance_authority": "Johannes permits architectural acceptance of unclear timing for M29/M30 with significant independently reviewed quality benefit; retain verdict/observations/max(5%,1ms), established regressions and mandatory scientific/local gates.",
+  "platform": "Mac-only; no GitHub/SCC/Windows testing"
+}

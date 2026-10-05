@@ -6,7 +6,7 @@ use rayon::prelude::*;
 // Bound the temporary objective bank by worker count, not the full sample.
 const FAMILY_ROWS_PER_WORKER: usize = 4096;
 pub(super) fn objective_tile_rows(rows: usize, threads: usize) -> usize {
-    if threads <= 1 || rows < FAMILY_ROWS_PER_WORKER {
+    if crate::parallel::StagePlan::new(rows as u128 * 4, rows, threads).lanes <= 1 {
         0
     } else {
         rows.min(threads.checked_mul(FAMILY_ROWS_PER_WORKER).unwrap_or(rows))
@@ -17,7 +17,7 @@ pub(super) fn objective_tile_rows(rows: usize, threads: usize) -> usize {
 // Each worker handles fixed 4096-row blocks; their ordered merge is independent
 // of the number of partials that fit in this reusable bank.
 pub(super) fn objective_partial_cells(rows: usize, threads: usize) -> usize {
-    if threads <= 1 || rows < FAMILY_ROWS_PER_WORKER {
+    if crate::parallel::StagePlan::new(rows as u128 * 4, rows, threads).lanes <= 1 {
         0
     } else {
         // The row-derived bound keeps this multiplication addressable.
@@ -234,7 +234,13 @@ pub(super) fn replay_final_objectives_with_threads(
                 buffer
                     .par_iter_mut()
                     .enumerate()
-                    .with_min_len(256)
+                    .with_min_len(
+                        crate::parallel::StagePlan::current(
+                            outcome.len() as u128 * 4,
+                            outcome.len(),
+                        )
+                        .chunk(outcome.len()),
+                    )
                     .map(|(i, output)| -> Result<()> {
                         *output = row_values(first + i)?;
                         Ok(())
@@ -480,7 +486,13 @@ impl<'a> PreparedPoissonInputs<'a> {
                 terms
                     .par_iter_mut()
                     .enumerate()
-                    .with_min_len(256)
+                    .with_min_len(
+                        crate::parallel::StagePlan::current(
+                            outcome.len() as u128 * 4,
+                            outcome.len(),
+                        )
+                        .chunk(outcome.len()),
+                    )
                     .map(|(row, output)| -> Result<()> {
                         *output = row_terms(row)?;
                         Ok(())
@@ -547,37 +559,40 @@ impl<'a> PreparedPoissonInputs<'a> {
             let count = bank_blocks.min(blocks - first);
             let partials = &mut partials_storage[..4 * count];
             let failure = team.install(|| {
-                partials
-                    .par_chunks_mut(4)
-                    .enumerate()
-                    .map(|(block, output)| -> Result<()> {
-                        let begin = (first + block) * FAMILY_ROWS_PER_WORKER;
-                        let end = begin
-                            .saturating_add(FAMILY_ROWS_PER_WORKER)
-                            .min(self.outcome.len());
-                        let mut deviance = CompensatedSum::default();
-                        let mut likelihood = CompensatedSum::default();
-                        for row in begin..end {
-                            let values = objective_row(
-                                self.outcome,
-                                Some(eta),
-                                mean,
-                                self.prior_weights,
-                                Some(&self.terms),
-                                row,
-                            )?;
-                            deviance.add(values[0]);
-                            likelihood.add(values[1]);
-                        }
-                        output.copy_from_slice(&[
-                            deviance.sum,
-                            deviance.correction,
-                            likelihood.sum,
-                            likelihood.correction,
-                        ]);
-                        Ok(())
-                    })
-                    .find_first(Result::is_err)
+                crate::parallel::stage_rows_mut(
+                    partials,
+                    4,
+                    count as u128 * FAMILY_ROWS_PER_WORKER as u128 * 4,
+                )
+                .enumerate()
+                .map(|(block, output)| -> Result<()> {
+                    let begin = (first + block) * FAMILY_ROWS_PER_WORKER;
+                    let end = begin
+                        .saturating_add(FAMILY_ROWS_PER_WORKER)
+                        .min(self.outcome.len());
+                    let mut deviance = CompensatedSum::default();
+                    let mut likelihood = CompensatedSum::default();
+                    for row in begin..end {
+                        let values = objective_row(
+                            self.outcome,
+                            Some(eta),
+                            mean,
+                            self.prior_weights,
+                            Some(&self.terms),
+                            row,
+                        )?;
+                        deviance.add(values[0]);
+                        likelihood.add(values[1]);
+                    }
+                    output.copy_from_slice(&[
+                        deviance.sum,
+                        deviance.correction,
+                        likelihood.sum,
+                        likelihood.correction,
+                    ]);
+                    Ok(())
+                })
+                .find_first(Result::is_err)
             });
             if let Some(result) = failure {
                 result?;
@@ -620,7 +635,13 @@ impl<'a> PreparedPoissonInputs<'a> {
             mean.par_iter_mut()
                 .zip(eta)
                 .enumerate()
-                .with_min_len(256)
+                .with_min_len(
+                    crate::parallel::StagePlan::current(
+                        self.outcome.len() as u128 * 4,
+                        self.outcome.len(),
+                    )
+                    .chunk(self.outcome.len()),
+                )
                 .map(|(row, (output, &value))| -> Result<()> {
                     *output = mean_row(row, value, bounds)?;
                     Ok(())
@@ -686,7 +707,13 @@ impl<'a> PreparedPoissonInputs<'a> {
                     .zip(response)
                     .zip(scores)
                     .enumerate()
-                    .with_min_len(256)
+                    .with_min_len(
+                        crate::parallel::StagePlan::current(
+                            self.outcome.len() as u128 * 4,
+                            self.outcome.len(),
+                        )
+                        .chunk(self.outcome.len()),
+                    )
                     .map(|(row, ((weight, response), score))| fill(row, weight, response, score))
                     .find_first(Result::is_err)
             });
@@ -1368,7 +1395,7 @@ mod tests {
             }
         }
         assert_eq!(objective_partial_cells(4095, 8), 0);
-        assert_eq!(objective_partial_cells(4096, 8), 4);
+        assert_eq!(objective_partial_cells(4096, 8), 0);
         assert_eq!(objective_partial_cells(17003, 8), 20);
         assert_eq!(objective_partial_cells(1_000_000, 8), 32);
         assert_eq!(objective_partial_cells(usize::MAX, 1), 0);
@@ -1487,7 +1514,7 @@ mod tests {
     fn family_tile_is_bounded_without_overflowing_dimension_arithmetic() {
         assert_eq!(objective_tile_rows(usize::MAX, 1), 0);
         assert_eq!(objective_tile_rows(4095, 4), 0);
-        assert_eq!(objective_tile_rows(4096, 4), 4096);
+        assert_eq!(objective_tile_rows(4096, 4), 0);
         assert_eq!(objective_tile_rows(17003, 4), 16384);
         assert_eq!(objective_tile_rows(17003, usize::MAX), 17003);
     }

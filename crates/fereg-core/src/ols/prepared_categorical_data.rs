@@ -112,33 +112,6 @@ pub(crate) enum PreparationGrammar {
 /// Compatibility name; all finalized preparations have the same owner.
 pub type PreparedCategoricalOlsData = PreparedModel;
 
-/// Only the allocation-free topology check may overlap fitting. The immutable
-/// owner keeps the validated sample and topology fixed until DoF creation;
-/// metadata checks and their allocations still run at the original boundary.
-pub(crate) struct ValidatedCategoricalDofInputs<'a> {
-    prepared: &'a PreparedCategoricalOlsData,
-    topology: crate::fe::ValidatedSingleTopology<'a>,
-}
-
-impl ValidatedCategoricalDofInputs<'_> {
-    pub(crate) fn compute(
-        self,
-        policy: CategoricalTopologyDofPolicy,
-        cluster_dimensions: &[&[u32]],
-    ) -> Result<CategoricalTopologyDofReport> {
-        self.prepared.validate_after_topology()?;
-        compute_categorical_topology_absorbed_dof_with_slopes(
-            &self.prepared.fe_topology,
-            &self.prepared.effect_specs,
-            self.prepared.structural_intercept,
-            policy,
-            cluster_dimensions,
-            &self.prepared.sample.regressors,
-            Some(self.topology),
-        )
-    }
-}
-
 impl PreparedModel {
     #[allow(clippy::too_many_arguments)] // One owner publication boundary; all fields are required.
     pub(crate) fn finish(
@@ -979,26 +952,6 @@ impl PreparedModel {
         validate_numeric_sample(&self.sample)?;
         self.fe_topology.validate()?;
         self.validate_after_topology()
-    }
-
-    pub(crate) fn validate_dof_inputs_for_overlap(
-        &self,
-    ) -> Result<Option<ValidatedCategoricalDofInputs<'_>>> {
-        if self.fe_topology.compacted_sources().len() != 1
-            || self.fe_topology.registry().sources().len() != 1
-            || self.fe_topology.effect_to_topology().len() != 1
-            || self.fe_topology.registry().sources()[0]
-                .partition()
-                .is_interaction()
-        {
-            return Ok(None);
-        }
-        Ok(self
-            .validated_single_topology()?
-            .map(|topology| ValidatedCategoricalDofInputs {
-                prepared: self,
-                topology,
-            }))
     }
 
     fn validate_with_reusable_topology(

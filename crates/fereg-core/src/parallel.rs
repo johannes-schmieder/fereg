@@ -1,7 +1,179 @@
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::options::ThreadConfig;
+use rayon::prelude::*;
 use std::ops::Range;
 use std::sync::{Arc, Mutex, OnceLock};
+
+/// Scheduling grain in scalar operations, independent of estimator and model.
+/// Arithmetic leaves and their ordered merges remain owned by each kernel.
+const MIN_LANE_WORK: u128 = 16_384;
+
+#[derive(Clone, Copy, Debug)]
+pub struct StagePlan {
+    /// Ceiling on concurrently executable tasks; kernels may expose fewer.
+    pub lanes: usize,
+}
+
+impl StagePlan {
+    pub fn new(work: u128, tasks: usize, budget: usize) -> Self {
+        let useful = work.div_ceil(MIN_LANE_WORK).min(usize::MAX as u128) as usize;
+        Self {
+            lanes: budget.min(tasks).min(useful).max(1),
+        }
+    }
+
+    pub(crate) fn current(work: u128, tasks: usize) -> Self {
+        Self::new(work, tasks, rayon::current_num_threads())
+    }
+
+    pub fn chunk(self, items: usize) -> usize {
+        items.div_ceil(self.lanes).max(1)
+    }
+
+    pub(crate) fn groups_mut<T: Send>(
+        self,
+        values: &mut [T],
+        stride: usize,
+        offsets: &[usize],
+        function: impl Fn(usize, &mut [T]) -> Result<()> + Sync,
+    ) -> Result<()> {
+        let mut contexts = vec![(); self.lanes];
+        group_blocks(
+            GroupBuffers {
+                first: values,
+                first_stride: stride,
+                second: &mut [] as &mut [()],
+                second_stride: 0,
+                scratch: &mut contexts,
+            },
+            offsets,
+            0,
+            &|first, values, _, _| function(first, values),
+        )
+    }
+
+    pub(crate) fn trace(self, stage: &str, tasks: usize) {
+        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+            eprintln!("FEREG_SOLVER_TRACE|phase=stage_plan|stage={stage}|budget={}|lane_limit={}|independent_items={tasks}", rayon::current_num_threads(), self.lanes);
+        }
+    }
+}
+
+/// Fixed leaves determine numerical order; the partial target bounds their
+/// count but is not hard admission. Existing kernels always allow one partial.
+pub(crate) fn reduction_blocks(
+    items: usize,
+    grain: usize,
+    maximum: usize,
+    stride: usize,
+    target_bytes: usize,
+) -> Result<usize> {
+    let bytes = stride
+        .checked_mul(std::mem::size_of::<f64>())
+        .ok_or_else(|| {
+            FeregError::new(ErrorCode::Allocation, "reduction partial bytes overflow")
+        })?;
+    Ok(items
+        .div_ceil(grain)
+        .clamp(1, maximum)
+        .min((target_bytes / bytes.max(1)).max(1)))
+}
+
+/// Bound executable tasks while retaining each caller's arithmetic leaves.
+pub(crate) fn stage_items_mut<T: Send>(
+    values: &mut [T],
+    work: u128,
+) -> impl IndexedParallelIterator<Item = &mut T> {
+    let grain = StagePlan::current(work, values.len()).chunk(values.len());
+    values.par_iter_mut().with_min_len(grain)
+}
+
+pub(crate) fn stage_rows_mut<T: Send>(
+    values: &mut [T],
+    width: usize,
+    work: u128,
+) -> impl IndexedParallelIterator<Item = &mut [T]> {
+    let grain =
+        StagePlan::current(work, values.len().div_ceil(width)).chunk(values.len().div_ceil(width));
+    values.par_chunks_mut(width).with_min_len(grain)
+}
+
+/// Two disjoint output banks and one already admitted scratch owner per lane.
+/// Empty banks have stride zero. All splitting is allocation-free.
+pub(crate) struct GroupBuffers<'a, A, B, C> {
+    pub(crate) first: &'a mut [A],
+    pub(crate) first_stride: usize,
+    pub(crate) second: &'a mut [B],
+    pub(crate) second_stride: usize,
+    pub(crate) scratch: &'a mut [C],
+}
+
+pub(crate) fn group_blocks<A: Send, B: Send, C: Send, F>(
+    buffers: GroupBuffers<'_, A, B, C>,
+    offsets: &[usize],
+    first: usize,
+    function: &F,
+) -> Result<()>
+where
+    F: Fn(usize, &mut [A], &mut [B], &mut C) -> Result<()> + Sync,
+{
+    let levels = offsets.len().saturating_sub(1);
+    if levels == 0 {
+        return Ok(());
+    }
+    debug_assert!(!buffers.scratch.is_empty());
+    if buffers.scratch.len() <= 1 || levels == 1 {
+        return function(
+            first,
+            buffers.first,
+            buffers.second,
+            &mut buffers.scratch[0],
+        );
+    }
+    let lanes = buffers.scratch.len().min(levels);
+    let left_lanes = lanes / 2;
+    let right_lanes = lanes - left_lanes;
+    let work = offsets[levels] - offsets[0];
+    let target = offsets[0] + ((work as u128 * left_lanes as u128) / lanes as u128) as usize;
+    let middle = offsets
+        .partition_point(|&x| x < target)
+        .clamp(left_lanes, levels - right_lanes);
+    let (a, b) = buffers.first.split_at_mut(middle * buffers.first_stride);
+    let (c, d) = buffers.second.split_at_mut(middle * buffers.second_stride);
+    let (left, right) = buffers.scratch.split_at_mut(left_lanes);
+    let (x, y) = rayon::join(
+        || {
+            group_blocks(
+                GroupBuffers {
+                    first: a,
+                    first_stride: buffers.first_stride,
+                    second: c,
+                    second_stride: buffers.second_stride,
+                    scratch: left,
+                },
+                &offsets[..=middle],
+                first,
+                function,
+            )
+        },
+        || {
+            group_blocks(
+                GroupBuffers {
+                    first: b,
+                    first_stride: buffers.first_stride,
+                    second: d,
+                    second_stride: buffers.second_stride,
+                    scratch: right,
+                },
+                &offsets[middle..],
+                first + middle,
+                function,
+            )
+        },
+    );
+    x?;
+    y
+}
 
 #[derive(Debug)]
 struct CachedThreadPool {
@@ -271,6 +443,48 @@ impl ThreadTeam {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn stage_limits_follow_work_tasks_and_budget() {
+        for budget in [1, 2, 4, 7, 8, 9, 15, 16] {
+            for tasks in [0, 1, 5, 8, 31] {
+                for work in [0, 16_384, 65_536, u128::MAX] {
+                    let plan = super::StagePlan::new(work, tasks, budget);
+                    assert!(plan.lanes <= budget && plan.lanes <= tasks.max(1));
+                    assert!(tasks.div_ceil(plan.chunk(tasks)) <= plan.lanes);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn degree_blocks_cover_skewed_groups_and_preserve_lane_owners() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        for offsets in [
+            vec![
+                0, 1_000_000, 1_000_001, 1_000_002, 1_000_003, 1_000_004, 1_000_005, 1_000_006,
+                1_000_007,
+            ],
+            vec![0, 1, 2, 3, 4, 5, 6, 7, 1_000_007],
+            vec![0, 2, 5, 7, 11, 13, 17, 19, 23],
+        ] {
+            for lanes in 1..=8 {
+                let calls = AtomicUsize::new(0);
+                let mut output = vec![usize::MAX; 8];
+                super::StagePlan::new(u128::MAX, 8, lanes)
+                    .groups_mut(&mut output, 1, &offsets, |first, values| {
+                        calls.fetch_add(1, Ordering::SeqCst);
+                        for (local, value) in values.iter_mut().enumerate() {
+                            *value = first + local;
+                        }
+                        Ok(())
+                    })
+                    .unwrap();
+                assert_eq!(output, (0..8).collect::<Vec<_>>());
+                assert_eq!(calls.load(Ordering::SeqCst), lanes);
+            }
+        }
+    }
+
     use super::*;
     use crate::options::ThreadConfig;
 
@@ -341,19 +555,6 @@ mod tests {
         let result = team.map_ranges(80, 10, |worker, range| (worker, range));
         for (expected, (worker, _)) in result.into_iter().enumerate() {
             assert_eq!(expected, worker);
-        }
-    }
-
-    #[test]
-    fn ceiling_controls_installed_team_without_rewriting_request() {
-        let request = ThreadConfig::from_requested(28, true).unwrap();
-        for limit in [8, 4, 1, 8] {
-            let config = request.with_ceiling(std::num::NonZeroU16::new(limit).unwrap());
-            assert_eq!(config.requested.unwrap().get(), 28);
-            let actual = ThreadTeam::new(config)
-                .install(rayon::current_num_threads)
-                .unwrap();
-            assert_eq!(actual, usize::from(limit));
         }
     }
 

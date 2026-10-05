@@ -289,7 +289,6 @@ pub struct CertifiedPreparedOlsFit {
     residuals: DenseMatrix,
     // Successful independent IID scan tied to this immutable residual owner.
     // A speculative failure keeps ordinary inference-time error handling.
-    independent_unit_residual_sum: Option<f64>,
     recovered_fe_coefficients: Option<FeCoefficientBatch>,
     fast_score_cache: Option<PreparedOlsFastScoreCache>,
     execution: PreparedOlsExecutionReport,
@@ -586,10 +585,6 @@ impl CertifiedPreparedOlsFit {
         self.residuals.as_slice()
     }
 
-    pub(super) fn independent_unit_residual_sum(&self) -> Option<f64> {
-        self.independent_unit_residual_sum
-    }
-
     /// Combined coefficient-space absorbed contribution, when the selected
     /// solver retained every required RHS and residual-polish correction.
     #[must_use]
@@ -651,7 +646,6 @@ trait FitReservation {
 
 struct SystemFitReservation;
 
-const PARALLEL_QR_MIN_ROWS: usize = 65_536;
 // Above this length, a single naive reduction can consume a material share
 // of the default bread-certificate error budget. Keep short checkpoint
 // arithmetic consistent with the established retained-session path.
@@ -995,7 +989,7 @@ impl LoadedOlsRows {
     /// Bound the three result vectors and deterministic fused partial bank.
     /// Returning None keeps the ordinary fit-time computation.
     pub fn moment_workspace_bytes(nrows: usize, columns: usize) -> Option<usize> {
-        if nrows < 16_384 || !(3..=FUSED_MOMENT_MAX_COLUMNS).contains(&columns) {
+        if nrows == 0 || !(1..=FUSED_MOMENT_MAX_COLUMNS).contains(&columns) {
             return None;
         }
         let chunks = nrows
@@ -1023,7 +1017,7 @@ impl LoadedOlsRows {
             || required > admitted_bytes
             || nrows.checked_mul(columns) != Some(self.rows.len())
             || rayon::current_thread_index().is_none()
-            || rayon::current_num_threads() < 8
+            || crate::parallel::StagePlan::current(nrows as u128 * columns as u128, 2).lanes <= 1
         {
             return self;
         }
@@ -1086,11 +1080,7 @@ struct FitPerturbations {
     finite_bread: bool,
     reported_intercept: bool,
     reported_bread_extension: bool,
-    residual_overlap_disabled: bool,
     one_fe_borrow_reuse_disabled: bool,
-    residual_sums_overlap_disabled: bool,
-    early_score_disabled: bool,
-    raw_residual_overlap_disabled: bool,
     one_fe_final_recovery_disabled: bool,
 }
 
@@ -1324,22 +1314,24 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
         &coefficients,
         &mut finite_predictor,
     )? {
-        finite_predictor.par_iter_mut().enumerate().try_for_each(
-            |(row, target)| -> Result<()> {
-                let mut value = 0.;
-                for (generated, coefficient) in qr.generated_coefficients.iter().enumerate() {
-                    if let Some(coefficient) = coefficient {
-                        value =
-                            coefficient.mul_add(prepared.fit_column_value(generated, row)?, value);
-                    }
+        crate::parallel::stage_items_mut(
+            &mut finite_predictor,
+            prepared.fit_sample().n_active() as u128 * qr.generated_coefficients.len() as u128,
+        )
+        .enumerate()
+        .try_for_each(|(row, target)| -> Result<()> {
+            let mut value = 0.;
+            for (generated, coefficient) in qr.generated_coefficients.iter().enumerate() {
+                if let Some(coefficient) = coefficient {
+                    value = coefficient.mul_add(prepared.fit_column_value(generated, row)?, value);
                 }
-                if !value.is_finite() {
-                    return Err(invalid_data("retained finite predictor is not finite"));
-                }
-                *target = value;
-                Ok(())
-            },
-        )?;
+            }
+            if !value.is_finite() {
+                return Err(invalid_data("retained finite predictor is not finite"));
+            }
+            *target = value;
+            Ok(())
+        })?;
     }
     let bread = finalize_reported_bread_and_intercept(
         prepared,
@@ -1412,7 +1404,6 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
     qr.dropped.sort_unstable();
     Ok((
         CertifiedPreparedOlsFit {
-            independent_unit_residual_sum: None,
             additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
             coefficients,
             kept_generated_columns: qr.kept,
@@ -1507,13 +1498,15 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     if rayon::current_num_threads() == 1 {
         fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
     } else {
-        within_norms
-            .par_iter_mut()
-            .enumerate()
-            .try_for_each(|(column, norm)| -> Result<()> {
-                *norm = weighted_matrix_column_norm(&within, column, weights)?;
-                Ok(())
-            })?;
+        crate::parallel::stage_items_mut(
+            &mut within_norms,
+            within.nrows() as u128 * within.ncols() as u128,
+        )
+        .enumerate()
+        .try_for_each(|(column, norm)| -> Result<()> {
+            *norm = weighted_matrix_column_norm(&within, column, weights)?;
+            Ok(())
+        })?;
     }
     let within_outcome_norm = within_norms[0];
     let score_norms = &within_norms[1..];
@@ -2563,25 +2556,30 @@ fn fit_with_controls_internal_mode_with_frame<
                 &mut reference_mean_scales,
             )?;
         } else {
-            reference_norms
-                .par_iter_mut()
-                .zip(reference_mean_scales.par_iter_mut())
-                .enumerate()
-                .try_for_each(|(column, (norm, mean_scale))| -> Result<()> {
-                    *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
-                    for row in 0..raw.nrows() {
-                        *mean_scale = mean_scale.max(raw[(row, column + 1)].abs());
-                    }
-                    Ok(())
-                })?;
+            crate::parallel::stage_items_mut(
+                &mut reference_norms,
+                raw.nrows() as u128 * generated_columns as u128,
+            )
+            .zip(reference_mean_scales.par_iter_mut())
+            .enumerate()
+            .try_for_each(|(column, (norm, mean_scale))| -> Result<()> {
+                *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
+                for row in 0..raw.nrows() {
+                    *mean_scale = mean_scale.max(raw[(row, column + 1)].abs());
+                }
+                Ok(())
+            })?;
         }
     } else if raw_moments.is_none() {
-        reference_norms.par_iter_mut().enumerate().try_for_each(
-            |(column, norm)| -> Result<()> {
-                *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
-                Ok(())
-            },
-        )?;
+        crate::parallel::stage_items_mut(
+            &mut reference_norms,
+            raw.nrows() as u128 * generated_columns as u128,
+        )
+        .enumerate()
+        .try_for_each(|(column, norm)| -> Result<()> {
+            *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
+            Ok(())
+        })?;
     }
     let strided_score_means = if use_strided_fast_score_cache {
         let cache = raw_moments
@@ -2666,12 +2664,15 @@ fn fit_with_controls_internal_mode_with_frame<
             // Keep enough independent blocks to occupy the existing worker team.
             fill_weighted_matrix_norms_blocked::<8>(&within, weights, &mut within_norms)?;
         } else {
-            within_norms.par_iter_mut().enumerate().try_for_each(
-                |(column, norm)| -> Result<()> {
-                    *norm = weighted_matrix_column_norm(&within, column, weights)?;
-                    Ok(())
-                },
-            )?;
+            crate::parallel::stage_items_mut(
+                &mut within_norms,
+                within.nrows() as u128 * within.ncols() as u128,
+            )
+            .enumerate()
+            .try_for_each(|(column, norm)| -> Result<()> {
+                *norm = weighted_matrix_column_norm(&within, column, weights)?;
+                Ok(())
+            })?;
         }
     }
     let within_outcome_norm = within_norms[0];
@@ -2704,29 +2705,10 @@ fn fit_with_controls_internal_mode_with_frame<
         )?);
     }
     let score_cache_seconds = trace.lap();
-    const RESIDUAL_OVERLAP_MAX_COLUMNS: usize = 64;
-    let residual_overlap = !perturbations.residual_overlap_disabled
-        && phase_probe.is_none()
-        && !config.absorb.retain_coefficients
-        && matches!(config.absorb.solver, FeSolverKind::Auto | FeSolverKind::Map)
-        && (weights.values.is_none()
-            || config.allow_final_fe_recovery
-                && config.absorb.solver == FeSolverKind::Auto
-                && generated_columns <= 8)
-        && (prepared.fit_has_one_ordinary_intercept_effect()
-            || cmg.auto_direct_solver == Some(FeSolverKind::Cg)
-                && cmg
-                    .schur_probe
-                    .is_some_and(|ratio| ratio <= crate::fe::OLS_SCHUR_MAX_CONTRACTION))
-        && prepared.fit_sample().n_active() >= 16_384
-        && (6..=RESIDUAL_OVERLAP_MAX_COLUMNS).contains(&generated_columns)
-        && rayon::current_thread_index().is_some()
-        && rayon::current_num_threads() >= 8;
     let needs_raw_residuals = prepared.fit_has_absorbed_intercept()
         && raw_moments.is_some()
         && qr.generated_coefficients.iter().any(Option::is_some);
-    let defer_raw_residuals = residual_overlap && !perturbations.raw_residual_overlap_disabled;
-    let mut independent_raw_residuals = if needs_raw_residuals && !defer_raw_residuals {
+    let mut independent_raw_residuals = if needs_raw_residuals {
         Some(build_independent_raw_residuals(
             prepared,
             frame.response(),
@@ -2736,130 +2718,21 @@ fn fit_with_controls_internal_mode_with_frame<
     } else {
         None
     };
-    let pending_residuals = qr.within_residuals.take();
-    let mut project_residual = Some(|| {
-        let mut final_residuals = pending_residuals.ok_or_else(|| {
-            invalid_argument("fast prepared OLS QR did not retain its within residual")
-        })?;
-        if perturbations.reconstructed_within_residual_constant {
-            for residual in &mut final_residuals {
-                *residual += 0.25;
-            }
-        }
-        let matrix =
-            DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
-        absorb_fit_matrix(
-            None,
-            prepared,
-            weights.borrowed(),
-            matrix,
-            config.final_absorb_config(),
-            &mut cmg,
-            false,
-            true,
-        )
-    });
-    let mut early_residual_projection = None;
-    let mut early_score = None;
-    let mut early_residual_sum = None;
-    let mut anticipated_statuses =
-        [PreparedOlsFitStatus::SyntaxOmitted; RESIDUAL_OVERLAP_MAX_COLUMNS];
-    let overlap_score = residual_overlap
-        && !perturbations.early_score_disabled
-        && !perturbations.final_residual_constant
-        && qr.generated_statuses.len() == generated_columns;
-    if overlap_score {
-        anticipated_statuses[..generated_columns].copy_from_slice(&qr.generated_statuses);
-        for status in &mut anticipated_statuses[..generated_columns] {
-            if *status == PreparedOlsFitStatus::AbsorbedInterceptDeferred {
-                *status = PreparedOlsFitStatus::NormalizedAbsorbedIntercept;
-            }
-        }
-    }
-    let finite_score = qr.finite_score;
-    let mut finish_bread = || {
-        // The independent raw residual is needed by bread, not projection.
-        // Construct its already admitted owner beside projection, preserving
-        // raw-residual/bread errors ahead of deferred projection errors.
-        if needs_raw_residuals && defer_raw_residuals {
-            independent_raw_residuals = Some(build_independent_raw_residuals(
-                prepared,
-                frame.response(),
-                &qr,
-                reservation,
-            )?);
-        }
-        finalize_reported_bread_and_intercept(
-            prepared,
-            frame.response(),
-            &mut qr,
-            independent_raw_residuals.as_deref_mut(),
-            weights,
-            config.bread_tolerance,
-            reservation,
-            perturbations,
-            fast_score_cache.as_ref(),
-            raw_moments.as_ref(),
-            retain_fast_score_cache.then_some(reference_mean_scales.as_slice()),
-            None,
-            None,
-        )
-    };
-    // A retained sandwich score cache is already live across both phases and
-    // remains immutable; overlapping them adds no cache owner or workspace.
-    // Both jobs use existing owners. Projected residual errors remain deferred
-    // until bread and initial within-TSS validation have passed. Scoped work
-    // joins before either result is consumed; allocator phase probes retain
-    // their original sequential path.
-    let bread = if residual_overlap {
-        let project = project_residual
-            .take()
-            .expect("pending residual projection");
-        rayon::in_place_scope(|scope| {
-            scope.spawn(|_| {
-                let projected = project();
-                if let Ok(ref projected) = projected {
-                    if overlap_score && projected.report().certified() {
-                        // Projection has released its workspace, including a
-                        // 512-row dot bank larger than the score's two 16,384-row
-                        // norm-partial banks. Its immutable result can therefore
-                        // be certified within that allowance while bread finishes. Consume
-                        // these results only at their original boundaries and
-                        // only if bread produced the anticipated slot statuses.
-                        let score = || {
-                            certify_scores(
-                                prepared,
-                                projected.residualized().as_slice(),
-                                weights,
-                                &reference_norms,
-                                score_norms,
-                                finite_score,
-                                &anticipated_statuses[..generated_columns],
-                                within_outcome_norm,
-                                config.score_tolerance,
-                            )
-                        };
-                        if !perturbations.residual_sums_overlap_disabled && weights.values.is_none()
-                        {
-                            let (score, sum) = rayon::join(score, || {
-                                super::prepared_unadjusted::independent_unit_residual_sum(
-                                    projected.residualized().as_slice(),
-                                )
-                            });
-                            early_score = Some(score);
-                            early_residual_sum = sum.ok();
-                        } else {
-                            early_score = Some(score());
-                        }
-                    }
-                }
-                early_residual_projection = Some(projected);
-            });
-            finish_bread()
-        })?
-    } else {
-        finish_bread()?
-    };
+    let bread = finalize_reported_bread_and_intercept(
+        prepared,
+        frame.response(),
+        &mut qr,
+        independent_raw_residuals.as_deref_mut(),
+        weights,
+        config.bread_tolerance,
+        reservation,
+        perturbations,
+        fast_score_cache.as_ref(),
+        raw_moments.as_ref(),
+        retain_fast_score_cache.then_some(reference_mean_scales.as_slice()),
+        None,
+        None,
+    )?;
     let bread_residual_seconds = trace.lap();
     drop(finite_phase);
     let initial_absorbed_outcome_sum_of_squares =
@@ -2876,12 +2749,25 @@ fn fit_with_controls_internal_mode_with_frame<
         phase_observation,
         LinearSessionAllocationPhase::Projection,
     );
-    let residual_absorbed = match early_residual_projection {
-        Some(result) => result?,
-        None => project_residual
-            .take()
-            .expect("pending residual projection")()?,
-    };
+    let mut final_residuals = qr.within_residuals.take().ok_or_else(|| {
+        invalid_argument("fast prepared OLS QR did not retain its within residual")
+    })?;
+    if perturbations.reconstructed_within_residual_constant {
+        for residual in &mut final_residuals {
+            *residual += 0.25;
+        }
+    }
+    let matrix = DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
+    let residual_absorbed = absorb_fit_matrix(
+        None,
+        prepared,
+        weights.borrowed(),
+        matrix,
+        config.final_absorb_config(),
+        &mut cmg,
+        false,
+        true,
+    )?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
             "prepared OLS residual absorption returned an uncertified result",
@@ -2912,22 +2798,7 @@ fn fit_with_controls_internal_mode_with_frame<
             config.score_tolerance,
         )
     };
-    let reused_score =
-        overlap_score && anticipated_statuses[..generated_columns] == qr.generated_statuses;
-    let (score_certificate, independent_unit_residual_sum) =
-        if let Some(early) = early_score.filter(|_| reused_score) {
-            (early?, early_residual_sum)
-        } else if residual_overlap
-            && !perturbations.residual_sums_overlap_disabled
-            && weights.values.is_none()
-        {
-            let (score, sum) = rayon::join(score, || {
-                super::prepared_unadjusted::independent_unit_residual_sum(residuals.as_slice())
-            });
-            (score?, sum.ok())
-        } else {
-            (score()?, None)
-        };
+    let score_certificate = score()?;
     if !score_certificate.passed {
         return Err(invalid_data(
             "prepared OLS finite score certificate did not pass",
@@ -2950,11 +2821,10 @@ fn fit_with_controls_internal_mode_with_frame<
     if trace.enabled {
         eprintln!(
             "FEREG_PHASE|fit|rhs={rhs_seconds:.9}|raw_moments={raw_moments_seconds:.9}|initial_absorb={initial_absorb_seconds:.9}|within_norms={within_norm_seconds:.9}|finite_solve={finite_solve_seconds:.9}|score_cache={score_cache_seconds:.9}|bread_raw_residual={bread_residual_seconds:.9}|residual_absorb={residual_absorb_seconds:.9}|residual_overlap={}|score={score_seconds:.9}|finalize={finalize_seconds:.9}|total={:.9}",
-            usize::from(residual_overlap), trace.total()
+            0, trace.total()
         );
     }
     Ok(CertifiedPreparedOlsFit {
-        independent_unit_residual_sum,
         additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
         coefficients,
         kept_generated_columns: qr.kept,
@@ -3537,24 +3407,26 @@ fn fit_with_controls_low_internal_with_frame<
         0.0_f64,
         "unable to reserve low-memory prepared OLS final residual",
     )?;
-    raw_residuals
-        .par_iter_mut()
-        .enumerate()
-        .try_for_each(|(row, residual)| -> Result<()> {
-            let mut value = frame.response()[row];
-            for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
-                if let Some(coefficient) = coefficient {
-                    value = (-*coefficient).mul_add(prepared.fit_column_value(column, row)?, value);
-                }
+    crate::parallel::stage_items_mut(
+        &mut raw_residuals,
+        rows as u128 * qr.generated_coefficients.len() as u128,
+    )
+    .enumerate()
+    .try_for_each(|(row, residual)| -> Result<()> {
+        let mut value = frame.response()[row];
+        for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
+            if let Some(coefficient) = coefficient {
+                value = (-*coefficient).mul_add(prepared.fit_column_value(column, row)?, value);
             }
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS low-memory raw residual is not finite",
-                ));
-            }
-            *residual = value;
-            Ok(())
-        })?;
+        }
+        if !value.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS low-memory raw residual is not finite",
+            ));
+        }
+        *residual = value;
+        Ok(())
+    })?;
     let bread = finalize_reported_bread_and_intercept(
         prepared,
         frame.response(),
@@ -3651,7 +3523,6 @@ fn fit_with_controls_low_internal_with_frame<
         *destination = Some(original);
     }
     Ok(CertifiedPreparedOlsFit {
-        independent_unit_residual_sum: None,
         additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
         coefficients,
         kept_generated_columns: qr.kept,
@@ -4674,8 +4545,9 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             0.0_f64,
             "unable to reserve prepared OLS rank-zero within residual",
         )?;
-        within_residuals.par_iter_mut().enumerate().try_for_each(
-            |(row, residual)| -> Result<()> {
+        crate::parallel::stage_items_mut(&mut within_residuals, nrows as u128)
+            .enumerate()
+            .try_for_each(|(row, residual)| -> Result<()> {
                 *residual = within[(row, 0)];
                 if residual.is_finite() {
                     Ok(())
@@ -4684,8 +4556,7 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
                         "prepared OLS rank-zero within residual is not finite",
                     ))
                 }
-            },
-        )?;
+            })?;
         let bread = if build_bread {
             Some(build_finite_bread_draft(
                 prepared,
@@ -4723,30 +4594,32 @@ fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             standardized_within_is_reusable: false,
         });
     }
-    within
-        .as_mut_slice()
-        .par_chunks_mut(expected_columns)
-        .enumerate()
-        .try_for_each(|(row, values)| -> Result<()> {
-            let root_weight = weights.root(row)?;
-            let outcome = root_weight * values[0];
-            if !outcome.is_finite() {
+    crate::parallel::stage_rows_mut(
+        within.as_mut_slice(),
+        expected_columns,
+        nrows as u128 * expected_columns as u128,
+    )
+    .enumerate()
+    .try_for_each(|(row, values)| -> Result<()> {
+        let root_weight = weights.root(row)?;
+        let outcome = root_weight * values[0];
+        if !outcome.is_finite() {
+            return Err(invalid_data(
+                "prepared OLS weighted within outcome is not finite",
+            ));
+        }
+        values[0] = outcome;
+        for &column in &candidate_columns {
+            let scaled = root_weight * values[column + 1] / reference_norms[column];
+            if !scaled.is_finite() {
                 return Err(invalid_data(
-                    "prepared OLS weighted within outcome is not finite",
+                    "prepared OLS standardized within regressor is not finite",
                 ));
             }
-            values[0] = outcome;
-            for &column in &candidate_columns {
-                let scaled = root_weight * values[column + 1] / reference_norms[column];
-                if !scaled.is_finite() {
-                    return Err(invalid_data(
-                        "prepared OLS standardized within regressor is not finite",
-                    ));
-                }
-                values[column + 1] = scaled;
-            }
-            Ok(())
-        })?;
+            values[column + 1] = scaled;
+        }
+        Ok(())
+    })?;
     let (standardized_rhs, standardized_gram) =
         build_standardized_moments(within, &canonical_candidates, reservation)?;
     if let Some(fit) = try_fit_scaled_pivoted_cholesky(
@@ -5162,9 +5035,8 @@ fn reconstruct_within_residuals<R: FitReservation>(
         0.0_f64,
         "unable to reserve prepared OLS reconstructed within residual",
     )?;
-    if qr.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
-        residuals[rank..]
-            .par_iter_mut()
+    if crate::parallel::StagePlan::current(qr.nrows() as u128, qr.nrows()).lanes > 1 {
+        crate::parallel::stage_items_mut(&mut residuals[rank..], (qr.nrows() - rank) as u128)
             .enumerate()
             .for_each(|(offset, residual)| *residual = qr[(rank + offset, 0)]);
     } else {
@@ -5185,7 +5057,7 @@ fn reconstruct_within_residuals<R: FitReservation>(
         let mut norm_correction = 0.0_f64;
         let mut dot = residuals[position];
         let mut dot_correction = 0.0_f64;
-        if qr.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+        if crate::parallel::StagePlan::current(qr.nrows() as u128, qr.nrows()).lanes > 1 {
             let (tail_norm_square, tail_dot) =
                 parallel_reflector_moments(qr, &residuals, column, position + 1)?;
             compensated_add(tail_norm_square, &mut norm_square, &mut norm_correction)?;
@@ -5209,9 +5081,8 @@ fn reconstruct_within_residuals<R: FitReservation>(
             ));
         }
         residuals[position] -= projection;
-        if qr.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
-            residuals
-                .par_iter_mut()
+        if crate::parallel::StagePlan::current(qr.nrows() as u128, qr.nrows()).lanes > 1 {
+            crate::parallel::stage_items_mut(&mut residuals, qr.nrows() as u128)
                 .enumerate()
                 .skip(position + 1)
                 .for_each(|(row, residual)| {
@@ -5223,8 +5094,7 @@ fn reconstruct_within_residuals<R: FitReservation>(
             }
         }
     }
-    residuals
-        .par_iter_mut()
+    crate::parallel::stage_items_mut(&mut residuals, qr.nrows() as u128)
         .enumerate()
         .try_for_each(|(row, residual)| -> Result<()> {
             *residual /= weights.root(row)?;
@@ -6325,14 +6195,12 @@ fn fill_bound_weighted_column_means(
             Ok(source.map_or(1.0, |values| values[row]))
         })
     };
-    if nrows >= 16_384
-        && means.len() >= 8
-        && nrows.saturating_mul(means.len()) >= 524_288
-        && rayon::current_thread_index().is_some()
-        && rayon::current_num_threads() > 1
+    if rayon::current_thread_index().is_some()
+        && crate::parallel::StagePlan::current(nrows as u128 * means.len() as u128, means.len())
+            .lanes
+            > 1
     {
-        means
-            .par_iter_mut()
+        crate::parallel::stage_items_mut(means, nrows as u128 * generated_columns.len() as u128)
             .zip(generated_columns.par_iter())
             .try_for_each(|(target, &generated)| {
                 *target = mean(generated)?;
@@ -6469,35 +6337,38 @@ fn fill_raw_moment_cache_fused<R: FitReservation>(
         0.0_f64,
         "unable to reserve prepared OLS raw-moment partials",
     )?;
-    partials
-        .par_chunks_mut(partial_stride)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let (partial_raw_scales, remainder) = partial.split_at_mut(columns);
-            let (partial_norm_scales, partial_norm_sums) = remainder.split_at_mut(columns);
-            partial_norm_sums.fill(1.0);
-            let rows_per_chunk = raw.nrows() / chunks;
-            let remainder = raw.nrows() % chunks;
-            let start = chunk * rows_per_chunk + chunk.min(remainder);
-            let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            for row in start..end {
-                let root_weight = weights.root(row)?;
-                let values = &raw.as_slice()[row * columns..(row + 1) * columns];
-                for column in 0..columns {
-                    let value = values[column];
-                    if !value.is_finite() {
-                        return Err(invalid_data("prepared OLS raw-moment value is not finite"));
-                    }
-                    partial_raw_scales[column] = partial_raw_scales[column].max(value.abs());
-                    update_scaled_sum_of_squares(
-                        root_weight * value,
-                        &mut partial_norm_scales[column],
-                        &mut partial_norm_sums[column],
-                    )?;
+    crate::parallel::stage_rows_mut(
+        &mut partials,
+        partial_stride,
+        raw.nrows() as u128 * columns as u128,
+    )
+    .enumerate()
+    .try_for_each(|(chunk, partial)| -> Result<()> {
+        let (partial_raw_scales, remainder) = partial.split_at_mut(columns);
+        let (partial_norm_scales, partial_norm_sums) = remainder.split_at_mut(columns);
+        partial_norm_sums.fill(1.0);
+        let rows_per_chunk = raw.nrows() / chunks;
+        let remainder = raw.nrows() % chunks;
+        let start = chunk * rows_per_chunk + chunk.min(remainder);
+        let end = start + rows_per_chunk + usize::from(chunk < remainder);
+        for row in start..end {
+            let root_weight = weights.root(row)?;
+            let values = &raw.as_slice()[row * columns..(row + 1) * columns];
+            for column in 0..columns {
+                let value = values[column];
+                if !value.is_finite() {
+                    return Err(invalid_data("prepared OLS raw-moment value is not finite"));
                 }
+                partial_raw_scales[column] = partial_raw_scales[column].max(value.abs());
+                update_scaled_sum_of_squares(
+                    root_weight * value,
+                    &mut partial_norm_scales[column],
+                    &mut partial_norm_sums[column],
+                )?;
             }
-            Ok(())
-        })?;
+        }
+        Ok(())
+    })?;
     for column in 0..columns {
         let mut norm_scale = 0.0_f64;
         let mut norm_sum = 1.0_f64;
@@ -6516,30 +6387,33 @@ fn fill_raw_moment_cache_fused<R: FitReservation>(
     }
 
     partials.fill(0.0);
-    partials
-        .par_chunks_mut(partial_stride)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let (partial_means, partial_corrections) = partial.split_at_mut(columns);
-            let rows_per_chunk = raw.nrows() / chunks;
-            let remainder = raw.nrows() % chunks;
-            let start = chunk * rows_per_chunk + chunk.min(remainder);
-            let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            for row in start..end {
-                let weight = weights.value(row)?;
-                let values = &raw.as_slice()[row * columns..(row + 1) * columns];
-                for column in 0..columns {
-                    if scales[column] != 0.0 {
-                        compensated_add(
-                            weight * (values[column] / scales[column]),
-                            &mut partial_means[column],
-                            &mut partial_corrections[column],
-                        )?;
-                    }
+    crate::parallel::stage_rows_mut(
+        &mut partials,
+        partial_stride,
+        raw.nrows() as u128 * columns as u128,
+    )
+    .enumerate()
+    .try_for_each(|(chunk, partial)| -> Result<()> {
+        let (partial_means, partial_corrections) = partial.split_at_mut(columns);
+        let rows_per_chunk = raw.nrows() / chunks;
+        let remainder = raw.nrows() % chunks;
+        let start = chunk * rows_per_chunk + chunk.min(remainder);
+        let end = start + rows_per_chunk + usize::from(chunk < remainder);
+        for row in start..end {
+            let weight = weights.value(row)?;
+            let values = &raw.as_slice()[row * columns..(row + 1) * columns];
+            for column in 0..columns {
+                if scales[column] != 0.0 {
+                    compensated_add(
+                        weight * (values[column] / scales[column]),
+                        &mut partial_means[column],
+                        &mut partial_corrections[column],
+                    )?;
                 }
             }
-            Ok(())
-        })?;
+        }
+        Ok(())
+    })?;
     for column in 0..columns {
         let mut sum = 0.0_f64;
         let mut correction = 0.0_f64;
@@ -6585,8 +6459,7 @@ fn fill_raw_moment_cache_blocked<const BLOCK: usize>(
             "prepared OLS blocked raw-moment dimensions are inconsistent",
         ));
     }
-    scales
-        .par_chunks_mut(BLOCK)
+    crate::parallel::stage_rows_mut(scales, BLOCK, raw.nrows() as u128 * raw.ncols() as u128)
         .zip(means.par_chunks_mut(BLOCK))
         .zip(norms.par_chunks_mut(BLOCK))
         .enumerate()
@@ -6660,8 +6533,7 @@ fn fill_raw_moment_cache_columnwise(
             "prepared OLS columnwise raw-moment dimensions are inconsistent",
         ));
     }
-    scales
-        .par_iter_mut()
+    crate::parallel::stage_items_mut(scales, raw.nrows() as u128 * raw.ncols() as u128)
         .zip(means.par_iter_mut())
         .zip(norms.par_iter_mut())
         .enumerate()
@@ -6972,7 +6844,7 @@ fn apply_householder(
     tau: f64,
 ) -> Result<()> {
     let mut projection = matrix[(start_row, target_column)];
-    if matrix.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+    if crate::parallel::StagePlan::current(matrix.nrows() as u128, matrix.nrows()).lanes > 1 {
         let tail =
             parallel_matrix_column_dot(matrix, reflector_column, target_column, start_row + 1)?;
         projection += tail;
@@ -7002,11 +6874,10 @@ fn apply_householder(
             "prepared OLS QR transformed value is not finite",
         ));
     }
-    if matrix.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+    if crate::parallel::StagePlan::current(matrix.nrows() as u128, matrix.nrows()).lanes > 1 {
         let ncols = matrix.ncols();
-        matrix
-            .as_mut_slice()
-            .par_chunks_mut(ncols)
+        let nrows = matrix.nrows();
+        crate::parallel::stage_rows_mut(matrix.as_mut_slice(), ncols, (nrows - start_row) as u128)
             .skip(start_row + 1)
             .try_for_each(|row| -> Result<()> {
                 let updated = (-row[reflector_column]).mul_add(projection, row[target_column]);
@@ -7052,8 +6923,7 @@ fn parallel_matrix_column_dot(
         .try_reserve_exact(chunks)
         .map_err(|_| allocation("unable to reserve parallel QR dot partials"))?;
     partials.resize(chunks, 0.0_f64);
-    partials
-        .par_iter_mut()
+    crate::parallel::stage_items_mut(&mut partials, rows as u128)
         .enumerate()
         .try_for_each(|(chunk, partial)| -> Result<()> {
             let start = start_row + chunk * PARALLEL_REDUCTION_CHUNK_ROWS;
@@ -7096,8 +6966,7 @@ fn parallel_reflector_moments(
         .try_reserve_exact(chunks)
         .map_err(|_| allocation("unable to reserve parallel reflector partials"))?;
     partials.resize(chunks, (0.0_f64, 0.0_f64));
-    partials
-        .par_iter_mut()
+    crate::parallel::stage_items_mut(&mut partials, rows as u128)
         .enumerate()
         .try_for_each(|(chunk, partial)| -> Result<()> {
             let start = start_row + chunk * PARALLEL_REDUCTION_CHUNK_ROWS;
@@ -7231,30 +7100,33 @@ fn fill_weighted_matrix_norms_blocked<const BLOCK: usize>(
             "prepared OLS blocked weighted norm output has the wrong width",
         ));
     }
-    output
-        .par_chunks_mut(BLOCK)
-        .enumerate()
-        .try_for_each(|(block, norms)| -> Result<()> {
-            // Output chunks need not be cache-line aligned. Accumulate locally
-            // so adjacent workers do not repeatedly write a shared cache line.
-            let mut scales = [0.0_f64; BLOCK];
-            let mut square_sums = [1.0_f64; BLOCK];
-            let start = block * BLOCK;
-            for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
-                let root = weights.root(row)?;
-                for (column, scale) in scales.iter_mut().enumerate().take(norms.len()) {
-                    update_scaled_sum_of_squares(
-                        root * values[start + column],
-                        scale,
-                        &mut square_sums[column],
-                    )?;
-                }
+    crate::parallel::stage_rows_mut(
+        output,
+        BLOCK,
+        matrix.nrows() as u128 * matrix.ncols() as u128,
+    )
+    .enumerate()
+    .try_for_each(|(block, norms)| -> Result<()> {
+        // Output chunks need not be cache-line aligned. Accumulate locally
+        // so adjacent workers do not repeatedly write a shared cache line.
+        let mut scales = [0.0_f64; BLOCK];
+        let mut square_sums = [1.0_f64; BLOCK];
+        let start = block * BLOCK;
+        for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
+            let root = weights.root(row)?;
+            for (column, scale) in scales.iter_mut().enumerate().take(norms.len()) {
+                update_scaled_sum_of_squares(
+                    root * values[start + column],
+                    scale,
+                    &mut square_sums[column],
+                )?;
             }
-            for ((norm, scale), square_sum) in norms.iter_mut().zip(scales).zip(square_sums) {
-                *norm = checked_norm(scale, square_sum)?;
-            }
-            Ok(())
-        })
+        }
+        for ((norm, scale), square_sum) in norms.iter_mut().zip(scales).zip(square_sums) {
+            *norm = checked_norm(scale, square_sum)?;
+        }
+        Ok(())
+    })
 }
 
 fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
@@ -7318,7 +7190,7 @@ fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
 }
 
 fn weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> Result<f64> {
-    if values.len() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+    if crate::parallel::StagePlan::current(values.len() as u128, values.len()).lanes > 1 {
         let chunks = values.len().div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS);
         let mut scales = Vec::new();
         scales
@@ -7329,8 +7201,7 @@ fn weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> Result
         sums.try_reserve_exact(chunks)
             .map_err(|_| allocation("unable to reserve parallel norm sums"))?;
         sums.resize(chunks, 1.0_f64);
-        scales
-            .par_iter_mut()
+        crate::parallel::stage_items_mut(&mut scales, values.len() as u128)
             .zip(sums.par_iter_mut())
             .enumerate()
             .try_for_each(|(chunk, (scale, sum))| -> Result<()> {
@@ -10424,14 +10295,7 @@ mod tests {
         fit.absorption_report.solve_seconds = 0.0;
         fit.residual_absorption_report.setup_seconds = 0.0;
         fit.residual_absorption_report.solve_seconds = 0.0;
-        if let Some(sum) = fit.independent_unit_residual_sum.take() {
-            assert_eq!(
-                sum.to_bits(),
-                super::super::prepared_unadjusted::independent_unit_residual_sum(fit.residuals())
-                    .unwrap()
-                    .to_bits()
-            );
-        }
+
         fit
     }
 
@@ -10491,7 +10355,15 @@ mod tests {
                             .unwrap();
                         assert_eq!(
                             loaded.moments.is_some(),
-                            required.is_some() && !short && threads >= 8
+                            required.is_some()
+                                && !short
+                                && crate::parallel::StagePlan::new(
+                                    n as u128 * raw.ncols() as u128,
+                                    2,
+                                    threads
+                                )
+                                .lanes
+                                    > 1
                         );
                         let actual = without_solve_timings(
                             fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded)
@@ -10742,7 +10614,7 @@ mod tests {
     }
 
     #[test]
-    fn residual_sums_overlap_preserves_complete_fits_and_error_order() {
+    fn residual_sums_stages_repeat_complete_fits_and_error_order() {
         for n in [16_383, 16_384, 32_771] {
             let columns: Vec<Vec<f64>> = (0..9)
                 .map(|c| {
@@ -10768,27 +10640,18 @@ mod tests {
             for threads in [1, 4, 16] {
                 let mut config = PreparedOlsFitConfig::default();
                 config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
-                let run = |data: &PreparedOlsData, disabled| {
+                let run = |data: &PreparedOlsData, _repeat: bool| {
                     ThreadTeam::new(config.execution.threads)
                         .install(|| {
                             fit_with_controls_internal(
                                 data,
                                 config,
                                 &mut SystemFitReservation,
-                                FitPerturbations {
-                                    residual_sums_overlap_disabled: disabled,
-                                    ..FitPerturbations::default()
-                                },
+                                FitPerturbations::default(),
                             )
                         })
                         .unwrap()
-                        .map(|fit| {
-                            assert_eq!(
-                                fit.independent_unit_residual_sum.is_some(),
-                                !disabled && n >= 16_384 && threads >= 8
-                            );
-                            without_solve_timings(fit)
-                        })
+                        .map(without_solve_timings)
                 };
                 let expected = run(&data, true);
                 let actual = run(&data, false);
@@ -10797,15 +10660,12 @@ mod tests {
             let source = data.categorical_sources()[0].prepared_source_index();
             data.sample.regressors[source][0] += 100.0;
             data.sample.outcome[0] = f64::NAN;
-            let run = |disabled| {
+            let run = |_repeat: bool| {
                 fit_with_controls_internal(
                     &data,
                     PreparedOlsFitConfig::default(),
                     &mut SystemFitReservation,
-                    FitPerturbations {
-                        residual_sums_overlap_disabled: disabled,
-                        ..FitPerturbations::default()
-                    },
+                    FitPerturbations::default(),
                 )
             };
             assert_eq!(run(true).unwrap_err(), run(false).unwrap_err());
@@ -10813,7 +10673,7 @@ mod tests {
     }
 
     #[test]
-    fn early_score_overlap_preserves_complete_fits_and_error_order() {
+    fn score_stages_repeat_complete_fits_and_error_order() {
         for n in [16_383, 16_384, 32_771] {
             let columns: Vec<Vec<f64>> = (0..9)
                 .map(|c| {
@@ -10839,50 +10699,37 @@ mod tests {
             for threads in [1, 4, 16] {
                 let mut config = PreparedOlsFitConfig::default();
                 config.execution.threads = ThreadConfig::from_requested(threads, true).unwrap();
-                let run = |data: &PreparedOlsData, disabled, raw_disabled| {
+                let run = |data: &PreparedOlsData, _repeat: bool, _raw_repeat: bool| {
                     ThreadTeam::new(config.execution.threads)
                         .install(|| {
                             fit_with_controls_internal(
                                 data,
                                 config,
                                 &mut SystemFitReservation,
-                                FitPerturbations {
-                                    early_score_disabled: disabled,
-                                    raw_residual_overlap_disabled: raw_disabled,
-                                    ..FitPerturbations::default()
-                                },
+                                FitPerturbations::default(),
                             )
                         })
                         .unwrap()
-                        .map(|fit| {
-                            assert_eq!(
-                                fit.independent_unit_residual_sum.is_some(),
-                                n >= 16_384 && threads >= 8
-                            );
-                            without_solve_timings(fit)
-                        })
+                        .map(without_solve_timings)
                 };
                 let expected = run(&data, true, true);
                 let actual = run(&data, false, false);
                 assert_eq!(
                     run(&data, false, true),
                     actual,
-                    "raw residual schedule N={n}, threads={threads}"
+                    "raw residual repeat N={n}, threads={threads}"
                 );
                 assert!(expected == actual, "N={n}, threads={threads}");
             }
             let source = data.categorical_sources()[0].prepared_source_index();
             data.sample.regressors[source][0] += 100.0;
             data.sample.outcome[0] = f64::NAN;
-            let run = |disabled| {
+            let run = |_repeat: bool| {
                 fit_with_controls_internal(
                     &data,
                     PreparedOlsFitConfig::default(),
                     &mut SystemFitReservation,
-                    FitPerturbations {
-                        early_score_disabled: disabled,
-                        ..FitPerturbations::default()
-                    },
+                    FitPerturbations::default(),
                 )
             };
             assert_eq!(run(true).unwrap_err(), run(false).unwrap_err());
@@ -10929,7 +10776,7 @@ mod tests {
     }
 
     #[test]
-    fn two_fe_schur_final_overlap_preserves_results_caches_and_error_order() {
+    fn two_fe_schur_final_stages_repeat_results_caches_and_error_order() {
         let n = 16_385;
         for width in [5, 6, 10, 17] {
             let columns = (0..width)
@@ -10968,26 +10815,20 @@ mod tests {
                         ..FitPerturbations::default()
                     },
                 ] {
-                    let run = |disabled| {
+                    let run = |_repeat: bool| {
                         ThreadTeam::new(config.execution.threads)
                             .install(|| {
                                 fit_with_controls_internal_mode(
                                     &data,
                                     config,
                                     &mut SystemFitReservation,
-                                    FitPerturbations {
-                                        residual_overlap_disabled: disabled,
-                                        ..perturbation
-                                    },
+                                    perturbation,
                                     cache,
                                     limit,
                                 )
                             })
                             .unwrap()
-                            .map(|fit| {
-                                assert_eq!(fit.independent_unit_residual_sum.is_some(), !disabled);
-                                without_solve_timings(fit)
-                            })
+                            .map(without_solve_timings)
                     };
                     assert_eq!(
                         run(false),
@@ -11000,7 +10841,7 @@ mod tests {
     }
 
     #[test]
-    fn narrow_weighted_final_overlap_preserves_fits_and_error_order() {
+    fn narrow_weighted_final_stages_repeat_fits_and_error_order() {
         let n = 16_385;
         let weights = (0..n).map(|r| (1 + r % 7) as f64).collect::<Vec<_>>();
         for width in [5, 6] {
@@ -11050,26 +10891,20 @@ mod tests {
                                 ..FitPerturbations::default()
                             },
                         ] {
-                            let run = |disabled| {
+                            let run = |_repeat: bool| {
                                 ThreadTeam::new(config.execution.threads)
                                     .install(|| {
                                         fit_with_controls_internal_mode(
                                             &data,
                                             config,
                                             &mut SystemFitReservation,
-                                            FitPerturbations {
-                                                residual_overlap_disabled: disabled,
-                                                ..perturbation
-                                            },
+                                            perturbation,
                                             cache,
                                             limit,
                                         )
                                     })
                                     .unwrap()
-                                    .map(|fit| {
-                                        assert!(fit.independent_unit_residual_sum.is_none());
-                                        without_solve_timings(fit)
-                                    })
+                                    .map(without_solve_timings)
                             };
                             assert_eq!(run(false), run(true), "width={width} effects={} cache={cache} limit={limit} perturbation={perturbation:?}", effects.len());
                         }
@@ -11080,7 +10915,7 @@ mod tests {
     }
 
     #[test]
-    fn final_residual_overlap_preserves_bits_and_rejection_order() {
+    fn final_residual_stages_repeat_bits_and_rejection_order() {
         for n in [16_383, 16_384, 32_771] {
             let columns: Vec<Vec<f64>> = (0..9)
                 .map(|c| {
@@ -11125,17 +10960,14 @@ mod tests {
                         ..FitPerturbations::default()
                     },
                 ] {
-                    let run = |disabled| {
+                    let run = |_repeat: bool| {
                         ThreadTeam::new(config.execution.threads)
                             .install(|| {
                                 fit_with_controls_internal(
                                     &data,
                                     config,
                                     &mut SystemFitReservation,
-                                    FitPerturbations {
-                                        residual_overlap_disabled: disabled,
-                                        ..perturbation
-                                    },
+                                    perturbation,
                                 )
                             })
                             .unwrap()
@@ -11155,7 +10987,7 @@ mod tests {
     }
 
     #[test]
-    fn wide_residual_overlap_preserves_fits_caches_and_error_order() {
+    fn wide_residual_stages_repeat_fits_caches_and_error_order() {
         let n = 16_385;
         for width in [17, 50] {
             let mut columns: Vec<Vec<f64>> = (0..width)
@@ -11195,26 +11027,20 @@ mod tests {
                         ..FitPerturbations::default()
                     },
                 ] {
-                    let run = |disabled| {
+                    let run = |_repeat: bool| {
                         ThreadTeam::new(config.execution.threads)
                             .install(|| {
                                 fit_with_controls_internal_mode(
                                     &data,
                                     config,
                                     &mut SystemFitReservation,
-                                    FitPerturbations {
-                                        residual_overlap_disabled: disabled,
-                                        ..perturbation
-                                    },
+                                    perturbation,
                                     cache,
                                     limit,
                                 )
                             })
                             .unwrap()
-                            .map(|fit| {
-                                assert_eq!(fit.independent_unit_residual_sum.is_some(), !disabled);
-                                without_solve_timings(fit)
-                            })
+                            .map(without_solve_timings)
                     };
                     assert_eq!(
                         run(false),
@@ -11227,7 +11053,7 @@ mod tests {
     }
 
     #[test]
-    fn retained_score_cache_residual_overlap_preserves_fits_and_errors() {
+    fn retained_score_cache_residual_stages_repeat_fits_and_errors() {
         for n in [16_383, 16_384, 32_771] {
             let columns: Vec<Vec<f64>> = (0..9)
                 .map(|c| {
@@ -11273,17 +11099,14 @@ mod tests {
                             ..FitPerturbations::default()
                         },
                     ] {
-                        let run = |disabled| {
+                        let run = |_repeat: bool| {
                             ThreadTeam::new(config.execution.threads)
                                 .install(|| {
                                     fit_with_controls_internal_mode(
                                         &data,
                                         config,
                                         &mut SystemFitReservation,
-                                        FitPerturbations {
-                                            residual_overlap_disabled: disabled,
-                                            ..perturbation
-                                        },
+                                        perturbation,
                                         true,
                                         cache_limit,
                                     )
@@ -11291,10 +11114,6 @@ mod tests {
                                 .unwrap()
                                 .map(|fit| {
                                     assert!(fit.fast_score_cache.is_some());
-                                    assert_eq!(
-                                        fit.independent_unit_residual_sum.is_some(),
-                                        !disabled && n >= 16_384 && threads >= 8
-                                    );
                                     without_solve_timings(fit)
                                 })
                         };

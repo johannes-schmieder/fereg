@@ -1,7 +1,7 @@
 use super::{
     apply_householder, apply_householder_slices, invalid_argument, invalid_data,
     stable_matrix_segment_norm, stable_slice_segment_norm, DenseMatrix, PreparedOlsRankCertificate,
-    PreparedOlsScratch, Result, PARALLEL_QR_MIN_ROWS,
+    PreparedOlsScratch, Result,
 };
 use rayon::prelude::*;
 
@@ -33,17 +33,31 @@ impl QrStorage for DenseQr<'_> {
                 "prepared OLS QR trailing-norm dimensions are inconsistent",
             ));
         }
-        if self.0.nrows() >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
-            norms.par_iter_mut().enumerate().try_for_each(
-                |(position, destination)| -> Result<()> {
+        if crate::parallel::StagePlan::current(
+            self.0.nrows() as u128 * columns.len() as u128,
+            columns.len(),
+        )
+        .lanes
+            > 1
+        {
+            norms
+                .par_iter_mut()
+                .with_min_len(
+                    crate::parallel::StagePlan::current(
+                        self.0.nrows() as u128 * columns.len() as u128,
+                        columns.len(),
+                    )
+                    .chunk(columns.len()),
+                )
+                .enumerate()
+                .try_for_each(|(position, destination)| -> Result<()> {
                     *destination = if position < rank {
                         0.0
                     } else {
                         stable_matrix_segment_norm(self.0, columns[position] + 1, rank)?
                     };
                     Ok(())
-                },
-            )?;
+                })?;
         } else {
             for (position, generated_column) in columns.iter().copied().enumerate() {
                 norms[position] = if position < rank {
@@ -74,11 +88,15 @@ impl QrStorage for DenseQr<'_> {
         let nrows = self.0.nrows();
         let width = self.0.ncols();
         self.0[(rank, column)] = beta;
-        if nrows >= PARALLEL_QR_MIN_ROWS && rayon::current_num_threads() > 1 {
+        if crate::parallel::StagePlan::current(nrows as u128, nrows).lanes > 1 {
             self.0
                 .as_mut_slice()
                 .par_chunks_mut(width)
                 .skip(rank + 1)
+                .with_min_len(
+                    crate::parallel::StagePlan::current(nrows as u128, nrows)
+                        .chunk(nrows - rank - 1),
+                )
                 .try_for_each(|row| -> Result<()> {
                     row[column] /= denominator;
                     if row[column].is_finite() {

@@ -1,0 +1,84 @@
+{
+  "responsibility": "M29 complete worker-budget and stage scheduling policy retirement",
+  "parent": "2ea82e19",
+  "retirements": [
+    "Plugin thread_policy.rs Workload/Estimator and its narrow3FE PPML whole-command8workerceiling; core ThreadConfig ceiling/with_ceiling",
+    "Two-FE PCG seven-worker recurrence crossover and iteration-cap exception",
+    "Uniform parallel_level_chunk_size ownership and pure projection/certificate row/team eligibility guards",
+    "Duplicated robust/sandwich/qualified-cluster reduction count implementations",
+    "Specialized outcome/residual/bread/score overlap eligibility and anticipatory-result branches",
+    "Scattered pure prepared finite/means/score/QR stage concurrency decisions",
+    "Mapped PPML immutable/objective/final-score/separation digest and host numeric transport/observation worker gates become general bounded work plans; retain SPI capability, concrete kernel support and admitted bytes."
+  ],
+  "replacement": "One resolved command worker budget; common bounded row/independent-group/finite-output/fixed-leaf plans; degree-balanced contiguous group work uses existing membership offsets without new banks. Preserve existing leaf arithmetic, canonical ordered merges and checked owner admission. Sequential dependent phases replace unaccounted specialized overlap.",
+  "consumers": [
+    "OLS/PPML host admission and diagnostics",
+    "FE PCG updates, grouped MAP/Schur operators and independent certificates",
+    "Finite WLS moment layouts, prepared QR/means/score kernels",
+    "Robust/multiway-cluster fixed-leaf reductions",
+    "Ordinary/categorical fit/outcome and residual finishing"
+  ],
+  "forecast": {
+    "central_net_production_reduction": 40,
+    "reviewed_range": [
+      0,
+      100
+    ],
+    "all_replacements_fixes_adapters_counted": true,
+    "purpose": "Small enabling policy retirement for M30 structural FE lifecycle/automatic-route consolidation; M30 original nominal saving4812."
+  },
+  "affected_scope": [
+    "Formerly capped automatic3FE PPML budgets above8: installed team, admission/optional workspaces and existing budget-dependent automatic routes are affected; no hidden8worker route budget",
+    "Migrated work scheduling and optional parallel scratch admission across worker counts",
+    "Prepared QR/norm/score reductions when common stage work policy changes serial/parallel choice: independently witnessed numerical order changes allowed as declared",
+    "Removed overlap and anticipatory product timing/cache lifetimes; preserve original science and error/transaction boundaries",
+    "Prospectively extend migrated scheduling/admission to PPML row objective/final-score/digests and host numeric transport/observation checks; row traversal, arithmetic leaves and ordered error/publication boundaries preserved."
+  ],
+  "exact_unaffected": "One-worker estimator results and route signatures; all retained unchanged leaf operations; mapped M22/original-axis exact witnesses outside changed scheduling scope. Available route identity checked for fixed-route scaling; do not relabel an unexpected exact failure after implementation.",
+  "preserved": [
+    "SPEC science/tolerances/sample/rank/omission/separation/DoF/originalslots/baseflags",
+    "Supported explicit solvers, both bias modes, Fast/Low/Auto",
+    "Fixed-budget repeatability, stable cross-budget discrete decisions, independent raw-model/final-Hessian/M22 witnesses",
+    "Main-thread SPI, one-call publication, Break/rollback and bounded allocation",
+    "Fixed arithmetic leaves/ordered merges; partial-budget scheduling target allows one existing partial and is distinct from hard admitted memory"
+  ],
+  "remaining_routes": "Inherited automatic FE/Schur/LSMR algorithm choice and graph cost fences belong to M30; qualified-cluster dense/ordered algorithm choice belongs to M32. M29 does not claim their retirement.",
+  "required_checks": [
+    "Focused common plan/degree coverage and existing fixed-route FE/projection/QR/reduction/error-order tests",
+    "Full scripts/run_tests.sh and30 independent long oracles; Mac universal build/ABI",
+    "73 independent native replay, exact unaffected scope, 1/2/4/8/16 repeat/discrete/science and diagnostic7/9/15 mapped fixtures",
+    "Licensed46/mappedaxis; strictPPML24/M22savedFE48 exact scope; budget/allocator/Break/rollback fixtures",
+    "Fixed-route balanced/skewed/small-level-largeN/weak/disconnected/slopes/narrow-wide/storage/cluster heldout shapes and Mac1/2/4/7/8/9/15/16 scaling",
+    "Existing bounded parent/fixedM26 timing; retain all captures and uncertainty under explicit architectural override; no favorable retries",
+    "Independent Astra high completion review"
+  ],
+  "design_review": {
+    "reviewer": "Astra extra-high",
+    "readonly": true,
+    "recommendation": "One bounded shared stage-work planner preserving leaves/routes; remove whole-command ceiling and recurrence crossover, balance by degrees, co-own constructor scratch counts, retire duplicated counts and specialized overlaps. General work/bytes/task inputs, no estimator/option routing flags. Effective lanes must be enforced by bounded disjoint tasks, not diagnostics alone."
+  },
+  "platform": "Mac-only; remote CI/SCC/Windows deferred under Johannes override",
+  "performance_qualification": {
+    "protocol": "Reuse unchanged calibrated bounded-median-orders-v2 through existing runner/comparator; freeze artifacts and budgets before the first timing command.",
+    "campaigns": [
+      {
+        "scope": "Existing15 command/correctness workloads at4 workers",
+        "screen_pairs_per_order": 8,
+        "confirmation_pairs": "Existing32, exceptOLSFEcluster64"
+      },
+      {
+        "scope": "Explicit OLS2/3FE MAP Fast/Low at8 workers",
+        "screen_pairs_per_order": 8,
+        "confirmation_pairs_per_order": 32
+      },
+      {
+        "scope": "Same explicit fixed-route families at16 workers",
+        "screen_pairs_per_order": 8,
+        "confirmation_pairs_per_order": 32
+      }
+    ],
+    "scaling": "Use all retained candidate8/16 observations and both orders to assess matching worker budgets; verify mathematical routes outside timing. Other1/2/4/7/8/9/15/16 repeat/discrete/resource boundaries use native/core witnesses.",
+    "stopping": "One screening and the prescribed union-of-unresolved confirmation for each scope; keep all observations, original allowance, artifact checks and terminal unresolved/outside distinctions. No favorable retry. Established regressions still block; reviewed architectural acceptance may retain unclear results.",
+    "calibration": "Prior successful symmetric15-workload calibration demonstrates the unchanged protocol/tooling; new explicit-route scopes are declared prospectively and must separately diagnose stationarity rather than claim their old calibration observations."
+  }
+}

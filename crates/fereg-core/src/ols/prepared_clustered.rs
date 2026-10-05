@@ -26,10 +26,9 @@ use super::prepared_scores::{
 };
 use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
-    build_reference_weight_report_with_outcome, build_residual_dof_view, build_statistics,
-    checked_square, compensated_add, exact_integer_as_f64, fit_with_independent_outcome,
-    independent_outcome_sum, independent_residual_sum, relative_difference,
-    validate_sum_of_squares, DeferredOutcome, ReferenceWeightView,
+    build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
+    compensated_add, exact_integer_as_f64, independent_outcome_sum, independent_residual_sum,
+    relative_difference, validate_sum_of_squares, ReferenceWeightView,
 };
 use super::{
     CertifiedPreparedOlsFit, PreparedCategoricalOlsClusteredData, PreparedOlsAbsorbedDofPolicy,
@@ -543,14 +542,7 @@ fn fit_clustered_view_with_reservation<
 {
     validate_config(prepared, config)?;
     let ols = prepared.clustered_ols();
-    let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(
-        ols,
-        config.fit,
-        || {
-            super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(ols, config.fit, rows)
-        },
-        true,
-    )?;
+    let (fit, score_scratch) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(ols, config.fit, rows)?;
     compose_clustered_view(
         prepared,
         fit,
@@ -558,7 +550,6 @@ fn fit_clustered_view_with_reservation<
         reservation,
         ClusteredPerturbations::default(),
         score_scratch,
-        outcome_tss,
     )
 }
 
@@ -577,7 +568,6 @@ fn compose<R: PreparedInferenceReservation>(
         reservation,
         perturbations,
         None,
-        None,
     )?;
     Ok(components)
 }
@@ -589,7 +579,6 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
     score_scratch: Option<PreparedOlsScratch>,
-    mut outcome_tss: DeferredOutcome<'_>,
 ) -> Result<CertifiedPreparedOlsClustered<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
 {
     let ols = prepared.clustered_ols();
@@ -604,13 +593,8 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     let absorbed_summary =
         ols.inference_clustered_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
 
-    let (weights, weight_view, weight_error) = build_reference_weight_report_with_outcome(
-        ols,
-        &fit,
-        config.certificate_tolerance,
-        true,
-        &mut outcome_tss,
-    )?;
+    let (weights, weight_view, weight_error) =
+        build_reference_weight_report_view(ols, &fit, config.certificate_tolerance, true)?;
     let base_dof = build_residual_dof_view(ols, &fit, absorbed_summary, weights)?;
     let expected_dof = build_clustered_dof(prepared, weights, base_dof, absorbed_summary)?;
     let mut dof = expected_dof;
@@ -626,14 +610,11 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
         ));
     }
 
-    let tss = match outcome_tss {
-        Some(tss) => tss?.tss?,
-        None => independent_outcome_sum(
-            &ols.fit_sample().outcome,
-            weight_view,
-            dof.has_structural_intercept,
-        )?,
-    };
+    let tss = independent_outcome_sum(
+        &ols.fit_sample().outcome,
+        weight_view,
+        dof.has_structural_intercept,
+    )?;
     let within_tss = if ols.inference_has_explicit_absorbed_effects() {
         fit.initial_absorbed_outcome_sum_of_squares()
     } else {
@@ -3156,7 +3137,6 @@ mod tests {
                         &mut SystemPreparedInferenceReservation,
                         ClusteredPerturbations::default(),
                         scratch,
-                        None,
                     )
                 })
                 .unwrap()

@@ -28,12 +28,6 @@ pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX
 // leave the deterministic reduction under-parallelized.
 pub(crate) const PARALLEL_DOT_CHUNK_ROWS: usize = 512;
 const PARALLEL_GROUP_MAX_RHS: usize = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
-const PARALLEL_LEVEL_CHUNKS_PER_THREAD: usize = 4;
-const TWO_FE_PCG_PARALLEL_MIN_ROWS: usize = 16_384;
-// The level-disjoint recurrence wins through seven workers on the difficult
-// chain, then loses to scheduling and memory traffic. Above the measured
-// crossover retain the canonical serial recurrence inside the threaded solve.
-const TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS: usize = 7;
 /// Keep the PPML accelerator available through the development matrix's
 /// control-heavy cases. The exact three-matrix state is charged by the PPML
 /// memory planner, so wider fits fall back to the bounded route rather than
@@ -2851,13 +2845,10 @@ fn absorb_two_fe_pcg_reusing(
     );
     let mut iterations = completed_pilot_iterations;
     let mut active_rhs = 0_usize;
-    // The chain-tuned worker cap belongs to the shared iterative path. Wide
-    // OLS has passed its own contraction probe and benefits from the disjoint
-    // state updates at larger team sizes as well.
-    let parallel_recurrence = design.nobs() >= TWO_FE_PCG_PARALLEL_MIN_ROWS
-        && rayon::current_num_threads() > 1
-        && (iteration_cap.is_some()
-            || rayon::current_num_threads() <= TWO_FE_PCG_PARALLEL_RECURRENCE_MAX_THREADS);
+    let recurrence_plan =
+        crate::parallel::StagePlan::current(right_levels as u128 * rhs_count as u128, right_levels);
+    let parallel_recurrence = recurrence_plan.lanes > 1;
+    recurrence_plan.trace("two_fe_recurrence", right_levels);
     active_rhs_state.fill(0.0);
     for rhs in 0..rhs_count {
         if two_fe_pcg_rhs_ready(
@@ -3016,7 +3007,7 @@ fn absorb_two_fe_pcg_reusing(
         }
         next_residual_square.fill(0.0);
         if parallel_recurrence {
-            let level_chunk = parallel_level_chunk_size(right_levels);
+            let level_chunk = recurrence_plan.chunk(right_levels);
             let cell_chunk = level_chunk
                 .checked_mul(stride)
                 .ok_or_else(|| allocation("two-FE PCG recurrence chunk dimensions overflow"))?;
@@ -3128,7 +3119,7 @@ fn absorb_two_fe_pcg_reusing(
             break;
         }
         if parallel_recurrence {
-            let level_chunk = parallel_level_chunk_size(right_levels);
+            let level_chunk = recurrence_plan.chunk(right_levels);
             let cell_chunk = level_chunk
                 .checked_mul(stride)
                 .ok_or_else(|| allocation("two-FE PCG direction chunk dimensions overflow"))?;
@@ -3427,7 +3418,9 @@ fn cache_weighted_schur_right_edges(
         0,
         &mut graph.left_rhs[..n],
         &mut scratch[..n],
-        parallel_level_chunk_size(right.n_levels()).max(64),
+        crate::parallel::StagePlan::current(design.nobs() as u128, right.n_levels())
+            .chunk(right.n_levels())
+            .max(64),
     )?;
     Ok(true)
 }
@@ -3656,7 +3649,9 @@ fn cache_unit_schur_edges(
             0..left.n_levels(),
             0,
             &mut scratch[..n],
-            parallel_level_chunk_size(left.n_levels()).max(64),
+            crate::parallel::StagePlan::current(design.nobs() as u128, left.n_levels())
+                .chunk(left.n_levels())
+                .max(64),
         )?;
         cache = UnitSchurEdges::BothScratch;
     } else if allow_idle_rhs && graph.left_rhs.len() >= n {
@@ -3666,7 +3661,9 @@ fn cache_unit_schur_edges(
             0..left.n_levels(),
             0,
             &mut graph.left_rhs[..n],
-            parallel_level_chunk_size(left.n_levels()).max(64),
+            crate::parallel::StagePlan::current(design.nobs() as u128, left.n_levels())
+                .chunk(left.n_levels())
+                .max(64),
         )?;
         cache = UnitSchurEdges::BothRhsScratch;
     }
@@ -3676,7 +3673,9 @@ fn cache_unit_schur_edges(
         0..right.n_levels(),
         0,
         &mut scratch[(banks - 1) * n..banks * n],
-        parallel_level_chunk_size(right.n_levels()).max(64),
+        crate::parallel::StagePlan::current(design.nobs() as u128, right.n_levels())
+            .chunk(right.n_levels())
+            .max(64),
     )?;
     Ok(cache)
 }
@@ -3801,7 +3800,18 @@ impl TwoFePcgWorkspace {
         rhs_count: usize,
         stride: usize,
     ) -> Result<()> {
-        if design.nobs() >= TWO_FE_PCG_PARALLEL_MIN_ROWS && rayon::current_num_threads() > 1 {
+        if crate::parallel::StagePlan::current(
+            design.nobs() as u128 * rhs_count as u128,
+            design
+                .effects()
+                .iter()
+                .map(|e| e.n_levels())
+                .max()
+                .unwrap_or(0),
+        )
+        .lanes
+            > 1
+        {
             return self.apply_schur_parallel(design, weights, rhs_count, stride, None, None);
         }
         self.left_work.fill(0.0);
@@ -3869,16 +3879,16 @@ impl TwoFePcgWorkspace {
             _ => None,
         };
         let weighted_neighbor_codes = &self.left_rhs;
-        let left_level_chunk = parallel_level_chunk_size(left.n_levels());
-        let left_cell_chunk = left_level_chunk
-            .checked_mul(stride)
-            .ok_or_else(|| allocation("two-FE PCG left operator chunk dimensions overflow"))?;
-        self.left_work
-            .par_chunks_mut(left_cell_chunk)
-            .enumerate()
-            .try_for_each(|(chunk, work)| -> Result<()> {
+        let left_plan = crate::parallel::StagePlan::current(
+            design.nobs() as u128 * rhs_count as u128,
+            left.n_levels(),
+        );
+        left_plan.groups_mut(
+            &mut self.left_work,
+            stride,
+            left.level_index().membership_offsets(),
+            |first_level, work| {
                 work.fill(0.0);
-                let first_level = chunk * left_level_chunk;
                 for local_level in 0..work.len() / stride {
                     let level = first_level + local_level;
                     let level_work = &mut work[local_level * stride..(local_level + 1) * stride];
@@ -3939,21 +3949,22 @@ impl TwoFePcgWorkspace {
                     }
                 }
                 Ok(())
-            })?;
+            },
+        )?;
 
         let left_work = &self.left_work;
         let right_weights = &self.right_weights;
         let weighted_neighbor_codes = &self.left_rhs;
-        let right_level_chunk = parallel_level_chunk_size(right.n_levels());
-        let right_cell_chunk = right_level_chunk
-            .checked_mul(stride)
-            .ok_or_else(|| allocation("two-FE PCG right operator chunk dimensions overflow"))?;
-        self.operator
-            .par_chunks_mut(right_cell_chunk)
-            .enumerate()
-            .try_for_each(|(chunk, operator)| -> Result<()> {
+        let right_plan = crate::parallel::StagePlan::current(
+            design.nobs() as u128 * rhs_count as u128,
+            right.n_levels(),
+        );
+        right_plan.groups_mut(
+            &mut self.operator,
+            stride,
+            right.level_index().membership_offsets(),
+            |first_level, operator| {
                 operator.fill(0.0);
-                let first_level = chunk * right_level_chunk;
                 for local_level in 0..operator.len() / stride {
                     let level = first_level + local_level;
                     let level_operator =
@@ -4033,7 +4044,8 @@ impl TwoFePcgWorkspace {
                     }
                 }
                 Ok(())
-            })?;
+            },
+        )?;
         if self.operator.iter().any(|value| !value.is_finite()) {
             Err(invalid_data(
                 "two-FE categorical MAP PCG operator product is nonfinite",
@@ -7882,9 +7894,13 @@ fn project_effect_recording_impl<
         .n_levels()
         .checked_mul(values.ncols())
         .ok_or_else(|| allocation("borrowed MAP parallel group-mean dimensions overflow"))?;
-    if rayon::current_num_threads() > 1
+    if crate::parallel::StagePlan::current(
+        values.nrows() as u128 * values.ncols() as u128,
+        effect.n_levels(),
+    )
+    .lanes
+        > 1
         && workspace.parallel_group_means.len() >= parallel_mean_count
-        && (values.ncols() > 1 || values.nrows() >= PARALLEL_PROJECTION_MIN_ROWS)
     {
         return project_effect_parallel::<R, FROM_INPUT, COMPLEMENT>(
             effect,
@@ -8046,20 +8062,17 @@ fn project_effect_parallel<
         }
         Ok(())
     };
+    let row_work = values.nrows() as u128 * columns as u128;
     if FROM_INPUT || COMPLEMENT {
         let auxiliary = auxiliary.expect("validated auxiliary projection matrix");
-        values
-            .as_mut_slice()
-            .par_chunks_mut(columns)
+        crate::parallel::stage_rows_mut(values.as_mut_slice(), columns, row_work)
             .zip(auxiliary.as_slice().par_chunks(columns))
             .enumerate()
             .try_for_each(|(observation, (row, auxiliary))| {
                 update_row(observation, row, Some(auxiliary))
             })?;
     } else {
-        values
-            .as_mut_slice()
-            .par_chunks_mut(columns)
+        crate::parallel::stage_rows_mut(values.as_mut_slice(), columns, row_work)
             .enumerate()
             .try_for_each(|(observation, row)| update_row(observation, row, None))?;
     }
@@ -8086,10 +8099,8 @@ fn project_effect_parallel_fused<
     } else {
         &*values
     };
-    let level_chunk = parallel_level_chunk_size(levels);
-    let mean_chunk = level_chunk
-        .checked_mul(columns)
-        .ok_or_else(|| allocation("borrowed MAP parallel level chunk dimensions overflow"))?;
+    let plan =
+        crate::parallel::StagePlan::current(values.nrows() as u128 * columns as u128, levels);
     let mut coefficients = coefficients;
     let mut recorded_inline = false;
     if let Some((batch, effect_index)) = coefficients.as_mut() {
@@ -8099,12 +8110,18 @@ fn project_effect_parallel_fused<
             ));
         }
         if let Some(accumulated) = batch.level_major_values_mut(*effect_index, levels)? {
-            workspace.parallel_group_means[..parallel_mean_count]
-                .par_chunks_mut(mean_chunk)
-                .zip(accumulated.par_chunks_mut(mean_chunk))
-                .enumerate()
-                .try_for_each(|(chunk, (means, accumulated))| -> Result<()> {
-                    let first_level = chunk * level_chunk;
+            let mut lanes = vec![(); plan.lanes];
+            crate::parallel::group_blocks(
+                crate::parallel::GroupBuffers {
+                    first: &mut workspace.parallel_group_means[..parallel_mean_count],
+                    first_stride: columns,
+                    second: accumulated,
+                    second_stride: columns,
+                    scratch: &mut lanes,
+                },
+                effect.level_index().membership_offsets(),
+                0,
+                &|first_level, means, accumulated, _| {
                     for local_level in 0..means.len() / columns {
                         let level = first_level + local_level;
                         let start = local_level * columns;
@@ -8129,16 +8146,17 @@ fn project_effect_parallel_fused<
                         }
                     }
                     Ok(())
-                })?;
+                },
+            )?;
             recorded_inline = true;
         }
     }
     if !recorded_inline {
-        workspace.parallel_group_means[..parallel_mean_count]
-            .par_chunks_mut(mean_chunk)
-            .enumerate()
-            .try_for_each(|(chunk, means)| -> Result<()> {
-                let first_level = chunk * level_chunk;
+        plan.groups_mut(
+            &mut workspace.parallel_group_means[..parallel_mean_count],
+            columns,
+            effect.level_index().membership_offsets(),
+            |first_level, means| {
                 for local_level in 0..means.len() / columns {
                     let start = local_level * columns;
                     fused_group_means_for_level(
@@ -8150,7 +8168,8 @@ fn project_effect_parallel_fused<
                     )?;
                 }
                 Ok(())
-            })?;
+            },
+        )?;
     }
 
     let means = &workspace.parallel_group_means[..parallel_mean_count];
@@ -8188,31 +8207,21 @@ fn project_effect_parallel_fused<
         }
         Ok(())
     };
+    let row_work = values.nrows() as u128 * columns as u128;
     if FROM_INPUT || COMPLEMENT {
         let auxiliary = auxiliary.expect("validated auxiliary projection matrix");
-        values
-            .as_mut_slice()
-            .par_chunks_mut(columns)
+        crate::parallel::stage_rows_mut(values.as_mut_slice(), columns, row_work)
             .zip(auxiliary.as_slice().par_chunks(columns))
             .enumerate()
             .try_for_each(|(observation, (row, auxiliary))| {
                 update_row(observation, row, Some(auxiliary))
             })?;
     } else {
-        values
-            .as_mut_slice()
-            .par_chunks_mut(columns)
+        crate::parallel::stage_rows_mut(values.as_mut_slice(), columns, row_work)
             .enumerate()
             .try_for_each(|(observation, row)| update_row(observation, row, None))?;
     }
     Ok(())
-}
-
-fn parallel_level_chunk_size(levels: usize) -> usize {
-    let target_chunks = rayon::current_num_threads()
-        .saturating_mul(PARALLEL_LEVEL_CHUNKS_PER_THREAD)
-        .max(1);
-    levels.div_ceil(target_chunks).max(1)
 }
 
 fn fill_parallel_group_statistics(
@@ -8234,18 +8243,22 @@ fn fill_parallel_group_statistics(
             "borrowed MAP parallel group workspaces are not aligned",
         ));
     }
-    let level_chunk = parallel_level_chunk_size(levels);
-    let mean_chunk = level_chunk
-        .checked_mul(columns)
-        .ok_or_else(|| allocation("borrowed MAP parallel level chunk dimensions overflow"))?;
-    group_weights
-        .par_chunks_mut(level_chunk)
-        .zip(means.par_chunks_mut(mean_chunk))
-        .enumerate()
-        .try_for_each(|(chunk, (group_weights, means))| -> Result<()> {
-            let first_level = chunk * level_chunk;
+    let plan =
+        crate::parallel::StagePlan::current(values.nrows() as u128 * columns as u128, levels);
+    let mut lanes = vec![(); plan.lanes];
+    crate::parallel::group_blocks(
+        crate::parallel::GroupBuffers {
+            first: group_weights,
+            first_stride: 1,
+            second: means,
+            second_stride: columns,
+            scratch: &mut lanes,
+        },
+        effect.level_index().membership_offsets(),
+        0,
+        &|first, group_weights, means, _| {
             for (local_level, group_weight) in group_weights.iter_mut().enumerate() {
-                let level = first_level + local_level;
+                let level = first + local_level;
                 let start = local_level * columns;
                 let level_means = &mut means[start..start + columns];
                 if columns <= PARALLEL_GROUP_MAX_RHS {
@@ -8271,7 +8284,8 @@ fn fill_parallel_group_statistics(
                 }
             }
             Ok(())
-        })
+        },
+    )
 }
 
 fn fused_group_means_for_level(
@@ -8568,8 +8582,9 @@ fn certify_with_current_norms(
         .checked_mul(residuals.ncols())
         .ok_or_else(|| allocation("borrowed MAP certificate dimensions overflow"))?;
     if !design.effects().is_empty()
-        && residuals.as_slice().len() >= PARALLEL_PROJECTION_MIN_ROWS
-        && rayon::current_num_threads() > 1
+        && crate::parallel::StagePlan::current(residuals.as_slice().len() as u128, maximum_levels)
+            .lanes
+            > 1
         && workspace.parallel_group_weights.len() >= maximum_levels
         && workspace.parallel_group_means.len() >= maximum_mean_count
     {
@@ -8906,19 +8921,20 @@ fn borrowed_symmetric_projection_from_group_means_recording(
             .n_levels()
             .checked_mul(columns)
             .ok_or_else(|| allocation("categorical projection group dimensions overflow"))?;
-        if rayon::current_num_threads() > 1
-            && workspace.parallel_group_means.len() >= cells
-            && (columns > 1 || input.nrows() >= PARALLEL_PROJECTION_MIN_ROWS)
-        {
-            let chunk = parallel_level_chunk_size(effect.n_levels()) * columns;
-            workspace.parallel_group_means[..cells]
-                .par_chunks_mut(chunk)
-                .enumerate()
-                .try_for_each(|(part, means)| -> Result<()> {
+        let plan = crate::parallel::StagePlan::current(
+            input.nrows() as u128 * columns as u128,
+            effect.n_levels(),
+        );
+        if plan.lanes > 1 && workspace.parallel_group_means.len() >= cells {
+            plan.groups_mut(
+                &mut workspace.parallel_group_means[..cells],
+                columns,
+                effect.level_index().membership_offsets(),
+                |first, means| {
                     for (local, means) in means.chunks_mut(columns).enumerate() {
                         projection_group_means(
                             effect,
-                            part * (chunk / columns) + local,
+                            first + local,
                             weights,
                             input.nrows(),
                             means,
@@ -8927,25 +8943,28 @@ fn borrowed_symmetric_projection_from_group_means_recording(
                         )?;
                     }
                     Ok(())
-                })?;
+                },
+            )?;
             let means = &workspace.parallel_group_means[..cells];
             if let Some(batch) = coefficients.as_mut() {
                 batch.add_intercept_level_major(effect_index, means, effect.n_levels())?;
             }
-            projection
-                .as_mut_slice()
-                .par_chunks_mut(columns)
-                .enumerate()
-                .try_for_each(|(row, values)| -> Result<()> {
-                    let start = effect.codes()[row] as usize * columns;
-                    for (value, mean) in values.iter_mut().zip(&means[start..start + columns]) {
-                        *value += mean;
-                        if !value.is_finite() {
-                            return Err(invalid_data("categorical projection action is nonfinite"));
-                        }
+            crate::parallel::stage_rows_mut(
+                projection.as_mut_slice(),
+                columns,
+                input.nrows() as u128 * columns as u128,
+            )
+            .enumerate()
+            .try_for_each(|(row, values)| -> Result<()> {
+                let start = effect.codes()[row] as usize * columns;
+                for (value, mean) in values.iter_mut().zip(&means[start..start + columns]) {
+                    *value += mean;
+                    if !value.is_finite() {
+                        return Err(invalid_data("categorical projection action is nonfinite"));
                     }
-                    Ok(())
-                })?;
+                }
+                Ok(())
+            })?;
         } else {
             let means = &mut workspace.group_sums[..columns];
             for level in 0..effect.n_levels() {
@@ -10238,7 +10257,10 @@ pub(crate) fn schur_ols_workspace_bytes(
     let left = design.effects().iter().map(|e| e.n_levels()).max().unwrap() as u128;
     let right = design.effects().iter().map(|e| e.n_levels()).min().unwrap() as u128;
     let width = rhs as u128;
-    let parallel = design.nobs() >= PARALLEL_PROJECTION_MIN_ROWS && threads > 1;
+    let parallel =
+        crate::parallel::StagePlan::new(design.nobs() as u128 * width, left as usize, threads)
+            .lanes
+            > 1;
     let mut elements = left + right + (2 * left + 4 * right) * width + 12 * width;
     if parallel {
         elements +=
@@ -12900,7 +12922,10 @@ mod tests {
             .build()
             .unwrap();
         let mut serial = ReusableCategoricalMapAbsorber::new(design(), rhs, 1).unwrap();
-        let mut parallel = ReusableCategoricalMapAbsorber::new(design(), rhs, 4).unwrap();
+        // A one-lane admission has no parallel banks. Exercise the existing
+        // PCG bank loan on a wider installed team; ordinary common-plan
+        // admission now owns parallel banks even below the old row boundary.
+        let mut parallel = ReusableCategoricalMapAbsorber::new(design(), rhs, 1).unwrap();
         let capacities = parallel.capacities();
         assert!(parallel.workspace.parallel_group_means.is_empty());
         assert!(parallel.workspace.parallel_group_weights.is_empty());
@@ -14423,7 +14448,7 @@ mod tests {
 
     #[test]
     fn large_two_fe_schur_operator_is_bit_stable_across_threads() {
-        let rows = TWO_FE_PCG_PARALLEL_MIN_ROWS;
+        let rows = 16_384;
         let first_levels = 1_024;
         let second_levels = 997;
         let first_codes = (0..rows)
@@ -14491,7 +14516,7 @@ mod tests {
 
     #[test]
     fn large_two_fe_pcg_recurrence_is_bit_stable_across_threads() {
-        let rows = TWO_FE_PCG_PARALLEL_MIN_ROWS;
+        let rows = 16_384;
         let first_levels = 1_024;
         let second_levels = 997;
         let first_codes = (0..rows)
@@ -14546,6 +14571,74 @@ mod tests {
         let serial = run(1);
         assert!(serial.report().iterations > CATEGORICAL_MAP_PILOT_SWEEPS);
         for threads in [7, 14] {
+            let parallel = run(threads);
+            assert_eq!(serial.residualized(), parallel.residualized());
+            assert_eq!(serial.report().iterations, parallel.report().iterations);
+            assert_eq!(serial.report().stop_reason, parallel.report().stop_reason);
+            assert_eq!(serial.report().certificate, parallel.report().certificate);
+        }
+    }
+
+    #[test]
+    fn active_two_fe_pcg_recurrence_is_bit_stable_across_budget_boundaries() {
+        let rows = 65_536;
+        let first_levels = 8_192;
+        let second_levels = 8_191;
+        let first_codes = (0..rows)
+            .map(|row| (row % first_levels) as u32)
+            .collect::<Vec<_>>();
+        let second_codes = (0..rows)
+            .map(|row| ((7 * row + row / first_levels) % second_levels) as u32)
+            .collect::<Vec<_>>();
+        let first_index = LevelIndex::from_codes(&first_codes, first_levels).expect("first index");
+        let second_index =
+            LevelIndex::from_codes(&second_codes, second_levels).expect("second index");
+        let first = ValidatedBorrowedInterceptSource::new(&first_codes, first_levels, &first_index)
+            .expect("first source");
+        let second =
+            ValidatedBorrowedInterceptSource::new(&second_codes, second_levels, &second_index)
+                .expect("second source");
+        let columns = (0..3)
+            .map(|column| {
+                (0..rows)
+                    .map(|row| {
+                        ((row * (column + 3) % 103) as f64 - 51.0)
+                            .mul_add(column as f64 + 0.5, (row % 29) as f64 / 31.0)
+                    })
+                    .collect::<Vec<_>>()
+            })
+            .collect::<Vec<_>>();
+        let weights = (0..rows)
+            .map(|row| 1.0 + (row % 17) as f64 / 11.0)
+            .collect::<Vec<_>>();
+        let run = |threads| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(threads)
+                .build()
+                .expect("pool")
+                .install(|| {
+                    let design =
+                        BorrowedInterceptFeDesign::new(rows, vec![first.effect(), second.effect()])
+                            .expect("design");
+                    let mut reusable =
+                        ReusableCategoricalMapAbsorber::new_ppml(design, columns.len(), threads)
+                            .expect("reusable map");
+                    assert!(reusable.two_fe_pcg.is_some());
+                    reusable
+                        .absorb(
+                            BorrowedMapWeights::Provided(&weights),
+                            DenseMatrix::from_columns(&columns).expect("matrix"),
+                            config(),
+                        )
+                        .expect("certified PCG")
+                })
+        };
+        let serial = run(1);
+        assert!(serial.report().iterations > CATEGORICAL_MAP_PILOT_SWEEPS);
+        assert!(
+            crate::parallel::StagePlan::new(second_levels as u128 * 3, second_levels, 7).lanes > 1
+        );
+        for threads in [7, 9, 15] {
             let parallel = run(threads);
             assert_eq!(serial.residualized(), parallel.residualized());
             assert_eq!(serial.report().iterations, parallel.report().iterations);

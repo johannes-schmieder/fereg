@@ -66,6 +66,21 @@ M28's 1,865-line forecast miss leaves 16,184 planned program lines retired and
 a planning forecast; it does not waive M28's architectural or qualification gates.
 The original declaration and inventory remain historical evidence.
 
+M29's [accepted worker-policy retirement](../../bench/history/2026-10-05-m29-worker-acceptance.json)
+measures 119,561 lines: 208 below M28 and 1,835 below M26, including the scheduler,
+all adapters and the exact-arithmetic repair. Entire ceiling, speculative
+outcome/DoF/RSS owners and their overlap coordination disappear. Shared bounded
+stage work replaces the migrated independent scheduling policies.
+Johannes's architectural override and Astra high review accept the quality benefit;
+timing remains interrupted/incomplete, with 200 command records and 201 raw
+capture directories retained. Explicit-route campaigns remain unstarted and final
+scaling is open. No missing measurement is reported as a pass.
+The original M29 19-line forecast is exceeded by 189; the arithmetic program
+forecast becomes 16,373 lines with 1,373 contingency. M30's 4,812-line allocation
+is still unproved: its [reviewed complete-owner declaration](../../bench/history/2026-10-05-m30-fe-lifecycle-design.json)
+requires measuring genuine controller deletion and every replacement. The target
+remains 15,000; accepted delivery is 1,835, with 13,165 still required.
+
 M28 cannot remove costs for still-executable FE/finite routes. Constructors
 must take ownership of those formulas before the M30/M31 consumers disappear;
 later simplification of those formulas remains counted within this pool.

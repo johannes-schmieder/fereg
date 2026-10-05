@@ -3,7 +3,7 @@
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
 M0–M25. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The [second program](../milestones2.md) and [replacement contract](cleanup/REPLACEMENTS.md)
-define the remaining scoped retirements; M27 preparation and M28 capacity/storage ownership are accepted.
+define the remaining scoped retirements; M27 preparation, M28 capacity/storage and M29 worker-policy ownership are accepted.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -42,19 +42,30 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The accepted M28 runtime's [versioned inventory](cleanup/complexity.md) measures
-104,651 production lines in core and 15,118 in the host.
+The accepted M29 runtime's [versioned inventory](cleanup/complexity.md) measures
+104,486 production lines in core and 15,075 in the host.
 Core has 92 functions over 150 lines and 18 files over 1,500;
 the host has 15 and 3. Its conservative dispatch inventory contains
-1,443 core and 158 host candidates, including validation conditions;
-15 core chunk conditions are counted separately. These measure complexity;
-some conditions validate inputs rather than select algorithms. Local scientific,
-transaction gates pass; Astra high reviewed the integrated retirement. Johannes
-accepted M28 architecturally while its measured timing remains unresolved.
-Total production is 119,769 lines, 1,627 below fixed M26 including all replacements.
+1,436 core and 153 host candidates, including validation conditions;
+13 core chunk conditions are counted separately. These measure complexity;
+some conditions validate inputs rather than select algorithms. Local scientific
+and transaction gates pass. Astra high recommends architectural acceptance
+under Johannes's code-quality override. M28 timing remains unresolved; M29's
+attempt is interrupted/incomplete and final scaling remains open.
+Total production is 119,561 lines, 1,835 below fixed M26 including all replacements.
 
-Largest inherited files are `fe/borrowed_map.rs` (10,195 production lines),
-`ols/prepared_fit.rs` (7,075) and `ols/linear_session.rs` (6,351). The largest
+M29 resolves one command worker budget and applies common bounded row, group,
+finite-output and fixed-leaf scheduling. Group tasks use membership degrees and
+already admitted scratch; finite numerical leaves remain distinct from active
+lanes. The plugin ceiling owner, seven-worker PCG exception, speculative
+outcome/deferred-DoF/RSS owners and special phase overlaps are retired.
+Automatic FE algorithm/lifecycle routes remain for M30; concrete finite and
+cluster algorithm variants remain for M31/M32. The
+[acceptance record](../bench/history/2026-10-05-m29-worker-acceptance.json) retains
+all scientific evidence and the 200 interrupted timing records without inference.
+
+Largest inherited files are `fe/borrowed_map.rs` (10,223 production lines),
+`ols/prepared_fit.rs` (6,965) and `ols/linear_session.rs` (6,351). The largest
 functions are PPML route-memory estimation (1,086 physical lines), PPML IRLS
 orchestration (963), and retained-rank solving (972). Fast/Low storage remains
 distinct; the preparation, inference and exclusive FE owners described below

@@ -268,6 +268,8 @@ impl FiniteWlsMomentLayout {
         } else {
             // Disjoint Gram rows preserve the canonical row order and avoid a
             // chunks*K² bank. Scratch supplies a bounded stored-row tile.
+            // Physical leaves also select the accepted scratch reduction order.
+            // Bound their execution separately; fewer lanes must not change sums.
             let columns_per_partition = dimension.div_ceil(threads.min(dimension).max(1));
             let partitions = dimension.div_ceil(columns_per_partition);
             Ok(Self {
@@ -285,6 +287,14 @@ impl FiniteWlsMomentLayout {
             })
         }
     }
+}
+
+fn moment_lane_grain(rows: usize, dimension: usize, leaves: usize) -> usize {
+    let work = (rows as u128)
+        .saturating_mul(dimension as u128)
+        .saturating_mul(dimension as u128 + 1)
+        / 2;
+    crate::parallel::StagePlan::current(work, leaves).chunk(leaves)
 }
 
 pub(crate) fn retained_scratch_moment_envelope(
@@ -345,6 +355,7 @@ pub(super) fn fill_finite_wls_moments(
             };
             partials
                 .par_chunks_mut(layout.partial_stride)
+                .with_min_len(moment_lane_grain(rows, dimension, layout.partitions))
                 .enumerate()
                 .try_for_each(|(chunk, partial)| -> Result<()> {
                     let rows_per_chunk = rows / layout.partitions;
@@ -2053,6 +2064,11 @@ fn fill_prepared_partitioned(
         .windows(2)
         .all(|pair| pair[1] == pair[0] + 1);
     rhs.par_chunks_mut(layout.columns_per_partition)
+        .with_min_len(moment_lane_grain(
+            within.nrows(),
+            dimension,
+            layout.partitions,
+        ))
         .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
         .enumerate()
         .for_each(|(partition, (rhs_part, gram_part))| {
@@ -2153,6 +2169,11 @@ fn fill_retained_partitioned(
             let bound = values.bind_columns()?;
             let dimension = rhs.len();
             gram.par_chunks_mut(dimension * layout.columns_per_partition)
+                .with_min_len(moment_lane_grain(
+                    values.rows(),
+                    dimension,
+                    layout.partitions,
+                ))
                 .zip(rhs.par_chunks_mut(layout.columns_per_partition))
                 .zip(partials.par_chunks_mut(layout.partial_stride))
                 .enumerate()
@@ -2255,6 +2276,11 @@ fn fill_retained_dense_partitioned(
         }
     }
     rhs.par_chunks_mut(layout.columns_per_partition)
+        .with_min_len(moment_lane_grain(
+            response.len(),
+            dimension,
+            layout.partitions,
+        ))
         .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
         .enumerate()
         .try_for_each(|(partition, (rhs_rows, gram_rows))| -> Result<()> {
@@ -2319,6 +2345,11 @@ fn fill_retained_dense_standardized_rows(
 ) -> Result<()> {
     let dimension = rhs.len();
     rhs.par_chunks_mut(layout.columns_per_partition)
+        .with_min_len(moment_lane_grain(
+            response.len(),
+            dimension,
+            layout.partitions,
+        ))
         .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
         .enumerate()
         .try_for_each(|(partition, (rhs_rows, gram_rows))| -> Result<()> {
@@ -2371,6 +2402,11 @@ fn fill_retained_dense_standardized_tiles(
 ) -> Result<()> {
     let dimension = rhs.len();
     rhs.par_chunks_mut(layout.columns_per_partition)
+        .with_min_len(moment_lane_grain(
+            response.len(),
+            dimension,
+            layout.partitions,
+        ))
         .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
         .enumerate()
         .try_for_each(|(partition, (rhs_rows, gram_rows))| -> Result<()> {
@@ -2485,6 +2521,7 @@ fn fill_retained_scratch_row_partitions(
     };
     let used = &mut partials[..partitions * stride];
     used.par_chunks_mut(stride)
+        .with_min_len(moment_lane_grain(response.len(), dimension, partitions))
         .enumerate()
         .try_for_each(|(part, bank)| -> Result<()> {
             record_retained_moment_worker();
@@ -2569,6 +2606,11 @@ fn fill_retained_scratch_partitioned(
     let stored_columns = values.columns();
     partials
         .par_chunks_mut(layout.partial_stride)
+        .with_min_len(moment_lane_grain(
+            response.len(),
+            dimension,
+            layout.partitions,
+        ))
         .zip(rhs.par_chunks_mut(layout.columns_per_partition))
         .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
         .enumerate()
@@ -2888,6 +2930,28 @@ fn invalid_data(message: &'static str) -> FeregError {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn retained_arithmetic_leaves_survive_serial_stage_admission() {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap()
+            .install(|| {
+                let layout = super::FiniteWlsMomentLayout::plan(6, 2, false, 12, 4).unwrap();
+                assert_eq!(layout.partitions, 2);
+                assert_eq!(super::moment_lane_grain(6, 2, layout.partitions), 2);
+                assert!(super::scratch_row_partition_plan(6, 2, 2, layout).is_some());
+            });
+    }
+
+    #[test]
+    fn extreme_schedule_shapes_fail_capacity_without_panicking() {
+        let error =
+            super::FiniteWlsMomentLayout::plan(usize::MAX, usize::MAX, false, usize::MAX, 16)
+                .expect_err("unaddressable scratch must fail checked capacity");
+        assert_eq!(error.code, crate::ErrorCode::Allocation);
+    }
+
     use super::*;
 
     fn assert_close(actual: f64, expected: f64, tolerance: f64) {

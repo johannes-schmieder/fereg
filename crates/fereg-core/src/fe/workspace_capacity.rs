@@ -1,7 +1,6 @@
 //! Shape-only plans consumed by the reusable projection owners.
 use super::borrowed_map::{
     CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS,
-    PARALLEL_PROJECTION_MIN_ROWS,
 };
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::memory::Capacity;
@@ -63,7 +62,10 @@ pub(crate) fn categorical_parallel_counts(
     rhs: u128,
     threads: u128,
 ) -> Result<[u128; 3]> {
-    if rows < PARALLEL_PROJECTION_MIN_ROWS as u128 || threads <= 1 {
+    let work = product(rows, rhs)?;
+    let levels_usize = usize::try_from(levels).map_err(|_| overflow())?;
+    let threads_usize = usize::try_from(threads).map_err(|_| overflow())?;
+    if crate::parallel::StagePlan::new(work, levels_usize, threads_usize).lanes <= 1 {
         return Ok([0; 3]);
     }
     Ok([

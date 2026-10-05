@@ -457,10 +457,11 @@ panic, or Break. If no certified plan fits, the command returns {cmd:r(909)}
 before publishing output. {cmd:poolsize()} sets the low-memory block width.
 
 {pstd}
-{cmd:threads(0)} uses the native default ceiling; a positive integer sets the
-maximum native team for the call. Rust may select a smaller team according to
-the model and workload before memory planning. {cmd:e(feppml_requested_threads)}
-records the request and {cmd:e(feppml_threads)} records the selected team.
+{cmd:threads(0)} resolves the native default worker budget; a positive integer
+sets the available native team for the call. {cmd:e(feppml_requested_threads)} records the request
+and {cmd:e(feppml_threads)} records the resolved command budget. Stages may use fewer
+workers according to work, independent tasks and admitted storage. Existing
+stage traces distinguish lane limits and independent work from this budget.
 {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
 {cmd:solver(auto)} is the default. It selects LSMR for exactly two or three

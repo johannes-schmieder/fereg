@@ -180,14 +180,8 @@ impl PreparedOlsAbsorbedDofSummary {
 pub(super) fn categorical_dof_after_fit(
     prepared: &PreparedCategoricalOlsData,
     policy: PreparedOlsAbsorbedDofPolicy,
-    deferred: Option<
-        Result<Option<crate::prepared_categorical_data::ValidatedCategoricalDofInputs<'_>>>,
-    >,
 ) -> Result<(CategoricalTopologyDofReport, PreparedOlsAbsorbedDofSummary)> {
-    let report = match deferred.transpose()?.flatten() {
-        Some(inputs) => inputs.compute(categorical_policy(policy), &[])?,
-        None => prepared.inference_compute_absorbed_dof(policy)?,
-    };
+    let report = prepared.inference_compute_absorbed_dof(policy)?;
     let summary = prepared.inference_absorbed_dof_summary(&report, policy)?;
     Ok((report, summary))
 }

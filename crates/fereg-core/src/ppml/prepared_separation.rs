@@ -274,7 +274,8 @@ pub(crate) struct PreparedPpmlSeparationExecution {
 fn parallel_digest_team(rows: usize) -> bool {
     // Public PPML already owns an installed, scoped team. Standalone callers
     // keep serial execution rather than initializing an unrelated global pool.
-    rows >= 4096 && rayon::current_thread_index().is_some() && rayon::current_num_threads() > 1
+    crate::parallel::StagePlan::current(rows as u128 * 2, 2).lanes > 1
+        && rayon::current_thread_index().is_some()
 }
 
 fn final_frame_digests(rows: &[usize], outcome: &[f64]) -> (Result<u64>, Result<u64>) {

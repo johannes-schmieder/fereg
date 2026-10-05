@@ -3,11 +3,11 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M29 general worker policy, then M30 structural FE retirement; M28 architecturally accepted by Johannes; performance uncertainty retained.
+Current task: M30 structural FE lifecycle/automatic-route retirement; M29 architecturally accepted under Johannes override; timing/final scaling remain open.
 
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
-Accepted runtime: M28 capacity/storage owners; production119769, net vsM26 -1627; nativeb5be22471a5ec7677f6a4df415290aac37488aaf7c603773b027b54439fd8cd3.
+Accepted runtime: M29 common worker/stage policy; production119561, net vsM26 -1835; native401ffac221efc258baffd8c850f1961f5a678709a325adb31b52b29725817e3c.
 
 ## Tasks and prerequisites
 
@@ -83,7 +83,7 @@ Accepted runtime: M28 capacity/storage owners; production119769, net vsM26 -1627
 - [ ] M27.6 Trial not promoted: parent15within, fixed14within/1unresolved; source/science pass; preserved for complete M27 replacement.
 - [x] M27 Canonical owner/optional clusters; duplicated ownership/construction retired; local science/timing and Astra high completion pass.
 - [x] M28 Common storage/admission owners; local science pass; Johannes accepts architectural benefit with timing unresolved.
-- [ ] M29 General worker-budget and kernel scheduling policy; Mac/SCC scaling qualification.
+- [x] M29 Common worker/stage policy retired; Mac scientific gates pass; architectural override retains interrupted timing and open final scaling.
 - [ ] M30 Small structural FE portfolio and common scientific lifecycle.
 - [ ] M31 Shared finite weighted-linear operations; retire equivalent Fast/Low and retained/frozen pipelines.
 - [ ] M32 Inference and requested outputs from accepted shared products; full interaction qualification.
@@ -114,8 +114,9 @@ Accepted runtime: M28 capacity/storage owners; production119769, net vsM26 -1627
 
 ## Blockers
 
-M28 accepted architecturally by Johannes: +96 vsM27/-1627 vsM26; full local/science pass; timing remains unresolved for three workloads, with no established regression.
+M28 accepted architecturally: +96 vsM27/-1627 vsM26; timing unresolved for three workloads, with no established regression; full local/science pass.
 All4720 commands retained; FE-cluster timing drifts in both roles. Optimization remains open; [acceptance](bench/history/2026-10-05-m28-capacity-owner-acceptance.json).
+M29 accepted architecturally: -208 vsM28/-1835 vsM26; all local/science pass; timing interrupted by unrelated Stata;200 records/201 raw dirs retained; final scaling open.
 
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
@@ -124,6 +125,9 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 M29.1 this commit: policy/outcome owners retired; Astra high accepts; local/science pass, timing/scaling open; [evidence](bench/history/2026-10-05-m29-worker-acceptance.json).
+- 2026-10-05 M29 candidate: full/30/ABI/73/eight budgets/48 Stata/exact405664 pass; -208 vsM28; timing interrupted/review pending; [evidence](bench/history/2026-10-05-m29-worker-candidate.json).
+- 2026-10-05 M29 design: Astra xhigh common stage-work policy; ceiling/recurrence/chunk/overlap retirement; [scope](bench/history/2026-10-05-m29-worker-design.json).
 - 2026-10-05 M28.3 this commit: Johannes accepts complete architectural retirement with timing unresolved; exact frozen runtime/evidence restored; M29/M30 authorized.
 - 2026-10-05 M28.1: recoverable integrated candidate; local/science pass, timing unresolved; no runtime promotion or favorable retry; Astra high confirms blocker.
 - 2026-10-05 M27.13 this commit: canonical ownership retired, net vsM26 -1723; all local/science/timing/Astra high pass; M28 unlocked; Mac-only scope.

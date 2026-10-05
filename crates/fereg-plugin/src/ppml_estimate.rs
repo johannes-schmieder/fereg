@@ -1148,22 +1148,7 @@ impl EstimatePpmlSpec {
         };
         let config = PpmlConfig::with_outer_controls(self.tolerance, self.iterate)?;
         let solver = self.decode_solver()?;
-        let threads = crate::thread_policy::plan(
-            ThreadConfig::from_requested(self.threads, self.deterministic)?,
-            crate::thread_policy::Workload {
-                estimator: crate::thread_policy::Estimator::Ppml,
-                automatic_solver: solver == PpmlSolverFamily::Auto,
-                memory: self.memory,
-                effects: request.absorbed_terms.len(),
-                intercept_only: request
-                    .absorbed_terms
-                    .iter()
-                    .all(|term| term.intercept && term.slope_sources.is_empty()),
-                // The wire terms include omitted/base coordinates, so this
-                // is a conservative width before observation-dependent rank.
-                finite_columns: request.model.terms.len(),
-            },
-        );
+        let threads = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let execution_mode = match self.memory {
             MemoryMode::Low => PreparedOlsExecutionMode::Low,
             MemoryMode::Auto | MemoryMode::Fast => PreparedOlsExecutionMode::Fast,

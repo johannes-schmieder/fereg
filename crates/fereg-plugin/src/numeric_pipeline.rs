@@ -83,20 +83,16 @@ pub(crate) fn try_read_with_rhs(
     memory: &mut InputMemory,
     mut rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
 ) -> Result<bool> {
-    let min_width = if rhs.is_some() {
-        if team.threads() >= 8 {
-            3
-        } else {
-            8
-        }
-    } else {
-        16
-    };
     if !spi.supports_numeric_rows()
-        || team.threads() <= 1
-        || !(min_width..=MAX_COLUMNS).contains(&positions.len())
+        || !(1..=MAX_COLUMNS).contains(&positions.len())
         || columns.is_empty()
-        || columns[0].len() < 16_384
+        || fereg_core::parallel::StagePlan::new(
+            columns[0].len() as u128 * positions.len() as u128,
+            2,
+            team.threads(),
+        )
+        .lanes
+            <= 1
     {
         return Ok(false);
     }
@@ -167,19 +163,11 @@ pub(crate) fn try_read_reserved(
     mut rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
 ) -> Result<bool> {
     let width = positions.len();
-    let min_width = if rhs.is_some() {
-        if team.threads() >= 8 {
-            3
-        } else {
-            8
-        }
-    } else {
-        16
-    };
     if !spi.supports_numeric_rows()
-        || team.threads() <= 1
-        || !(min_width..=MAX_COLUMNS).contains(&width)
-        || rows < 16_384
+        || !(1..=MAX_COLUMNS).contains(&width)
+        || fereg_core::parallel::StagePlan::new(rows as u128 * width as u128, 2, team.threads())
+            .lanes
+            <= 1
     {
         return Ok(false);
     }
@@ -506,9 +494,9 @@ mod tests {
     fn numeric_pipeline_constructs_owned_rhs_without_changing_fe_or_missing() {
         for append_intercept in [false, true] {
             for (width, threads) in [
-                (3, 8),
-                (4, 8),
-                (6, 8),
+                (3, 4),
+                (4, 4),
+                (6, 4),
                 (8, 8),
                 (9, 4),
                 (12, 4),
@@ -529,26 +517,6 @@ mod tests {
                     let mut rhs = Vec::with_capacity(rows * rhs_width);
                     let capacity = rhs.capacity();
                     let mut input = Input::new();
-                    if width < 8 {
-                        assert!(!try_read_with_rhs(
-                            &mut input,
-                            &positions,
-                            &mut columns,
-                            &mut missing,
-                            ThreadTeam::new(ThreadConfig::from_requested(4, false).unwrap()),
-                            &mut InputMemory::new(None, 0).unwrap(),
-                            Some((
-                                &mut rhs,
-                                NumericRhsLayout {
-                                    width: rhs_width,
-                                    append_intercept
-                                }
-                            ))
-                        )
-                        .unwrap());
-                        assert_eq!(input.calls, 0);
-                        assert!(rhs.is_empty());
-                    }
                     assert!(try_read_with_rhs(
                         &mut input,
                         &positions,
@@ -598,9 +566,9 @@ mod tests {
     fn reserved_pipeline_preserves_values_capacities_and_failure_shutdown() {
         for append_intercept in [false, true] {
             for (width, threads) in [
-                (3, 8),
-                (4, 8),
-                (6, 8),
+                (3, 4),
+                (4, 4),
+                (6, 4),
                 (8, 8),
                 (9, 4),
                 (16, 4),
@@ -710,8 +678,8 @@ mod tests {
     #[test]
     fn numeric_pipeline_declines_before_reads_and_accounts_scratch() {
         for (rows, width, threads, usable) in [
-            (16383, 52, 4, None),
-            (16384, 15, 4, None),
+            (256, 52, 4, None),
+            (8192, 1, 4, None),
             (16384, 65, 4, None),
             (16384, 52, 1, None),
             (16384, 52, 4, Some(1000)),

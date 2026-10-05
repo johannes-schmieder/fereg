@@ -218,23 +218,27 @@ impl ParallelProjectionPlan {
         rhs: usize,
         threads: usize,
     ) -> Result<Option<Self>> {
-        if design.nobs() < 16_384
-            || rhs == 0
-            || threads <= 1
-            || !design.effects().iter().any(|e| !e.slopes().is_empty())
+        let levels = design
+            .effects()
+            .iter()
+            .map(|e| e.n_levels())
+            .max()
+            .unwrap_or(0);
+        let channels = design.max_channels();
+        let work = (design.nobs() as u128)
+            .saturating_mul(rhs as u128)
+            .saturating_mul(channels as u128)
+            .saturating_mul(channels as u128);
+        let stage = crate::parallel::StagePlan::new(work, levels, threads);
+        if rhs == 0 || stage.lanes <= 1 || !design.effects().iter().any(|e| !e.slopes().is_empty())
         {
             return Ok(None);
         }
         let plan = Self {
-            channels: design.max_channels(),
+            channels,
             rhs,
-            levels: design
-                .effects()
-                .iter()
-                .map(|e| e.n_levels())
-                .max()
-                .unwrap_or(0),
-            workers: threads,
+            levels,
+            workers: stage.lanes,
         };
         plan.bytes()?;
         Ok(Some(plan))
@@ -385,24 +389,27 @@ fn project_parallel(
         ));
     }
     let group_width = channels * rhs;
-    let chunk_levels = effect.n_levels().div_ceil(workspace.workers.len());
     let coefficients = &mut workspace.coefficients[..effect.n_levels() * group_width];
-    // Contiguous level chunks preserve first-error order. No input row is
-    // modified until all groups have completed the original small-system solve.
     for worker in &mut workspace.workers {
         worker.error = None;
     }
-    coefficients
-        .par_chunks_mut(chunk_levels * group_width)
-        .zip(workspace.workers.par_iter_mut())
-        .enumerate()
-        .for_each(|(chunk, (output, worker))| {
+    crate::parallel::group_blocks(
+        crate::parallel::GroupBuffers {
+            first: coefficients,
+            first_stride: group_width,
+            second: &mut [] as &mut [f64],
+            second_stride: 0,
+            scratch: &mut workspace.workers,
+        },
+        effect.level_index().membership_offsets(),
+        0,
+        &|first, output, _, worker| {
             for (local, coefficient) in output.chunks_exact_mut(group_width).enumerate() {
                 if let Err(error) = group_coefficients(
                     effect,
                     weights,
                     values,
-                    chunk * chunk_levels + local,
+                    first + local,
                     &mut worker.gram[..channels * channels],
                     coefficient,
                 ) {
@@ -410,25 +417,33 @@ fn project_parallel(
                     break;
                 }
             }
-        });
+            Ok(())
+        },
+    )?;
     for worker in &mut workspace.workers {
         if let Some(error) = worker.error.take() {
             return Err(error);
         }
     }
+    let stage =
+        crate::parallel::StagePlan::current(values.nrows() as u128 * rhs as u128, values.nrows());
+    let rows = stage.chunk(values.nrows());
     values
         .as_mut_slice()
-        .par_chunks_mut(rhs)
+        .par_chunks_mut(rows * rhs)
         .enumerate()
-        .for_each(|(row, values)| {
-            let start = effect.codes()[row] as usize * group_width;
-            subtract_row(
-                effect,
-                row,
-                values,
-                &coefficients[start..start + group_width],
-                rhs,
-            );
+        .for_each(|(part, output)| {
+            for (local, values) in output.chunks_mut(rhs).enumerate() {
+                let row = part * rows + local;
+                let start = effect.codes()[row] as usize * group_width;
+                subtract_row(
+                    effect,
+                    row,
+                    values,
+                    &coefficients[start..start + group_width],
+                    rhs,
+                );
+            }
         });
     Ok(())
 }
@@ -808,8 +823,8 @@ mod tests {
                     for n in [16_383, 16_384] {
                         for slopes in [false, true] {
                             let effect = EffectTerm::new(
-                                vec![0; n],
-                                1,
+                                (0..n).map(|r| (r % 8) as u32).collect(),
+                                8,
                                 true,
                                 if slopes { vec![vec![1.; n]] } else { vec![] },
                             )
@@ -819,7 +834,14 @@ mod tests {
                                 ParallelProjectionPlan::for_design(&design, 1)
                                     .unwrap()
                                     .is_some(),
-                                workers > 1 && n >= 16_384 && slopes
+                                crate::parallel::StagePlan::new(
+                                    n as u128 * if slopes { 4 } else { 1 },
+                                    8,
+                                    workers
+                                )
+                                .lanes
+                                    > 1
+                                    && slopes
                             );
                             assert!(ParallelProjectionPlan::for_design(&design, 0)
                                 .unwrap()

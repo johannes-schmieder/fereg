@@ -395,7 +395,13 @@ fn prepare_loaded_ols_with_moments<T: Send>(
             && loaded.analytic_weight.is_none()
             && loaded.frequency_weight.is_none()
             && loaded.probability_weight.is_none()
-            && action.fit.execution.threads.resolved() >= 8
+            && fereg_core::parallel::StagePlan::new(
+                nrows as u128 * columns as u128,
+                2,
+                action.fit.execution.threads.resolved(),
+            )
+            .lanes
+                > 1
             && action.memory_plan.usable_bytes.is_none_or(|usable| {
                 action
                     .preparation_memory
@@ -1130,20 +1136,7 @@ impl EstimateActionSpec {
             self.vce != OlsVceKind::Iid,
         )?;
         let default_fit = PreparedOlsFitConfig::default();
-        let thread_config = crate::thread_policy::plan(
-            ThreadConfig::from_requested(self.threads, self.deterministic)?,
-            crate::thread_policy::Workload {
-                estimator: crate::thread_policy::Estimator::Ols,
-                automatic_solver: self.solver == FeSolverKind::Auto,
-                memory: self.memory,
-                effects: request.absorbed_terms.len(),
-                intercept_only: request
-                    .absorbed_terms
-                    .iter()
-                    .all(|term| term.intercept && term.slope_sources.is_empty()),
-                finite_columns: prepared_model.columns.len(),
-            },
-        );
+        let thread_config = ThreadConfig::from_requested(self.threads, self.deterministic)?;
         let fit = PreparedOlsFitConfig {
             allow_final_fe_recovery: true,
             // Residual-derived outputs need pointwise accuracy even when low
@@ -1688,9 +1681,12 @@ fn load_ols_input_with_team(
     });
     let numeric_width = request.model.sources.len() + 1 + usize::from(has_weight);
     let defer_columns = candidate_all
-        && n >= 16_384
-        && (3..=64).contains(&numeric_width)
-        && team.is_some_and(|t| t.threads() >= 8)
+        && (1..=64).contains(&numeric_width)
+        && team.is_some_and(|t| {
+            fereg_core::parallel::StagePlan::new(n as u128 * numeric_width as u128, 2, t.threads())
+                .lanes
+                > 1
+        })
         && spi.supports_numeric_rows();
     let mut outcome = loaded_column_reservation(n, "OLS outcome", defer_columns)?;
     let mut source_loaders = reserved_empty(request.model.sources.len(), "OLS source table")?;
@@ -1754,16 +1750,19 @@ fn load_ols_input_with_team(
     if candidate_all && all_sources_numeric {
         if let Some(team) = team {
             let width = numeric_width;
-            let min_rhs_width = if team.threads() >= 8 { 3 } else { 8 };
-            let min_numeric_width = if team.threads() >= 8 { 3 } else { 9 };
             if spi.supports_numeric_rows()
-                && team.threads() > 1
-                && n >= 16_384
-                && (min_numeric_width..=64).contains(&width)
+                && fereg_core::parallel::StagePlan::new(
+                    n as u128 * width as u128,
+                    2,
+                    team.threads(),
+                )
+                .lanes
+                    > 1
+                && (1..=64).contains(&width)
                 && numeric_pipeline_effects_supported(request)
             {
                 if let Some(layout) = compiled_rhs_layout.filter(|layout| {
-                    (min_rhs_width..=width).contains(&layout.width)
+                    (2..=width).contains(&layout.width)
                         && (layout.append_intercept
                             || (request.absorbed_terms.len() == 1
                                 && (1..=3)
@@ -2800,8 +2799,13 @@ fn invalid_shadow_observations(
 ) -> Result<bool> {
     if retained_rows.len() == drop_reasons.len()
         && residuals.len() == retained_rows.len()
-        && retained_rows.len() >= 16_384
-        && threads.resolved() >= 8
+        && fereg_core::parallel::StagePlan::new(
+            retained_rows.len() as u128 * 3,
+            retained_rows.len(),
+            threads.resolved(),
+        )
+        .lanes
+            > 1
     {
         // A bounded, strictly increasing map of N rows into N positions must
         // be the identity. The original count/mapping checks then require every
@@ -2814,6 +2818,14 @@ fn invalid_shadow_observations(
                 .zip(retained_rows.par_iter())
                 .zip(drop_reasons.par_iter())
                 .enumerate()
+                .with_min_len(
+                    fereg_core::parallel::StagePlan::new(
+                        retained_rows.len() as u128 * 3,
+                        retained_rows.len(),
+                        threads.resolved(),
+                    )
+                    .chunk(retained_rows.len()),
+                )
                 .any(|(row, ((value, original), reason))| {
                     !value.is_finite()
                         || *original != row
@@ -6881,7 +6893,15 @@ mod tests {
                     assert_eq!(loaded, reference);
                     assert_eq!(
                         rhs.is_some(),
-                        candidate_all && budget > 0 && (threads.resolved() >= 8 || k == 6)
+                        candidate_all
+                            && budget > 0
+                            && fereg_core::parallel::StagePlan::new(
+                                spi.nobs as u128 * (k + 3) as u128,
+                                2,
+                                threads.resolved()
+                            )
+                            .lanes
+                                > 1
                     );
                     let expected = prepare_categorical_ols_data_owned(&request, reference);
                     let actual = prepare_categorical_ols_data_owned(&request, loaded);

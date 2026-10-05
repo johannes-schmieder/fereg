@@ -516,77 +516,80 @@ where
         "unable to reserve dense sandwich partials",
     )?;
     let fixed_triangle = fixed_dense_triangle_update(dimension);
-    partials
-        .par_chunks_mut(partial_stride)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let (production_meat, tail) = partial.split_at_mut(square);
-            let (certificate_meat, workspace) = tail.split_at_mut(square);
-            let (production_score, certificate_score) = workspace.split_at_mut(dimension);
-            let rows_per_chunk = nrows / chunks;
-            let remainder = nrows % chunks;
-            let start = chunk * rows_per_chunk + chunk.min(remainder);
-            let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            design.visit_range(start..end, production_score, |row, production_score| {
-                let score = multipliers.score_pair(row)?;
-                if let Some(bread) = influence_bread {
-                    return influence::dense_row(
-                        bread,
-                        production_score,
-                        certificate_score,
-                        score,
-                        production_meat,
-                        certificate_meat,
-                    );
-                }
-                for coordinate in 0..dimension {
-                    let raw = production_score[coordinate];
-                    production_score[coordinate] = score.production * raw;
-                    certificate_score[coordinate] = score.certificate * raw;
-                    if !production_score[coordinate].is_finite()
-                        || !certificate_score[coordinate].is_finite()
-                    {
-                        return Err(invalid_data("dense sandwich scaled score is not finite"));
-                    }
-                }
-                if let Some(update) = fixed_triangle {
-                    update(
-                        production_meat,
-                        certificate_meat,
-                        production_score,
-                        certificate_score,
-                    )?;
-                } else {
-                    for left in 0..dimension {
-                        let production_left = production_score[left];
-                        let certificate_left = certificate_score[left];
-                        let range = left * dimension + left..(left + 1) * dimension;
-                        // Contiguous triangle rows expose independent coordinates to
-                        // vectorization while preserving each sum's observation order.
-                        for (((production, certificate), &production_right), &certificate_right) in
-                            production_meat[range.clone()]
-                                .iter_mut()
-                                .zip(&mut certificate_meat[range])
-                                .zip(&production_score[left..])
-                                .zip(&certificate_score[left..])
-                        {
-                            *production += production_left * production_right;
-                            *certificate += certificate_right * certificate_left;
-                        }
-                    }
-                }
-                Ok(())
-            })?;
-            if production_meat.iter().all(|value| value.is_finite())
-                && certificate_meat.iter().all(|value| value.is_finite())
-            {
-                Ok(())
-            } else {
-                Err(invalid_data(
-                    "dense sandwich partial contains a nonfinite value",
-                ))
+    crate::parallel::stage_rows_mut(
+        &mut partials,
+        partial_stride,
+        nrows as u128 * square as u128,
+    )
+    .enumerate()
+    .try_for_each(|(chunk, partial)| -> Result<()> {
+        let (production_meat, tail) = partial.split_at_mut(square);
+        let (certificate_meat, workspace) = tail.split_at_mut(square);
+        let (production_score, certificate_score) = workspace.split_at_mut(dimension);
+        let rows_per_chunk = nrows / chunks;
+        let remainder = nrows % chunks;
+        let start = chunk * rows_per_chunk + chunk.min(remainder);
+        let end = start + rows_per_chunk + usize::from(chunk < remainder);
+        design.visit_range(start..end, production_score, |row, production_score| {
+            let score = multipliers.score_pair(row)?;
+            if let Some(bread) = influence_bread {
+                return influence::dense_row(
+                    bread,
+                    production_score,
+                    certificate_score,
+                    score,
+                    production_meat,
+                    certificate_meat,
+                );
             }
+            for coordinate in 0..dimension {
+                let raw = production_score[coordinate];
+                production_score[coordinate] = score.production * raw;
+                certificate_score[coordinate] = score.certificate * raw;
+                if !production_score[coordinate].is_finite()
+                    || !certificate_score[coordinate].is_finite()
+                {
+                    return Err(invalid_data("dense sandwich scaled score is not finite"));
+                }
+            }
+            if let Some(update) = fixed_triangle {
+                update(
+                    production_meat,
+                    certificate_meat,
+                    production_score,
+                    certificate_score,
+                )?;
+            } else {
+                for left in 0..dimension {
+                    let production_left = production_score[left];
+                    let certificate_left = certificate_score[left];
+                    let range = left * dimension + left..(left + 1) * dimension;
+                    // Contiguous triangle rows expose independent coordinates to
+                    // vectorization while preserving each sum's observation order.
+                    for (((production, certificate), &production_right), &certificate_right) in
+                        production_meat[range.clone()]
+                            .iter_mut()
+                            .zip(&mut certificate_meat[range])
+                            .zip(&production_score[left..])
+                            .zip(&certificate_score[left..])
+                    {
+                        *production += production_left * production_right;
+                        *certificate += certificate_right * certificate_left;
+                    }
+                }
+            }
+            Ok(())
         })?;
+        if production_meat.iter().all(|value| value.is_finite())
+            && certificate_meat.iter().all(|value| value.is_finite())
+        {
+            Ok(())
+        } else {
+            Err(invalid_data(
+                "dense sandwich partial contains a nonfinite value",
+            ))
+        }
+    })?;
 
     let mut production = reserved_filled(
         reservation,
@@ -1002,57 +1005,27 @@ where
         0.0_f64,
         "unable to reserve clustered sandwich subset partials",
     )?;
-    partials
-        .par_chunks_mut(partial_stride)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let (production_meat, tail) = partial.split_at_mut(square);
-            let (certificate_meat, workspace) = tail.split_at_mut(square);
-            let (production_group, workspace) = workspace.split_at_mut(dimension);
-            let (production_correction, workspace) = workspace.split_at_mut(dimension);
-            let (certificate_group, workspace) = workspace.split_at_mut(dimension);
-            let (certificate_correction, workspace) = workspace.split_at_mut(dimension);
-            let (row_values, count) = workspace.split_at_mut(dimension);
-            let start = boundaries[chunk];
-            let end = boundaries[chunk + 1];
-            let mut previous = None;
-            for row in order[start..end].iter().copied() {
-                if previous.is_some_and(|prior| {
-                    compare_cluster_rows(dimensions, mask, prior, row) != Ordering::Equal
-                }) {
-                    finish_cluster_group(
-                        production_group,
-                        production_correction,
-                        certificate_group,
-                        certificate_correction,
-                        production_meat,
-                        certificate_meat,
-                        row_values,
-                        influence_bread,
-                    )?;
-                    production_group.fill(0.0);
-                    production_correction.fill(0.0);
-                    certificate_group.fill(0.0);
-                    certificate_correction.fill(0.0);
-                    count[0] += 1.0;
-                }
-                design.fill_row(row, row_values)?;
-                let score = multipliers.score_pair(row)?;
-                for coordinate in 0..dimension {
-                    compensated_add(
-                        score.production * row_values[coordinate],
-                        &mut production_group[coordinate],
-                        &mut production_correction[coordinate],
-                    )?;
-                    compensated_add(
-                        score.certificate * row_values[coordinate],
-                        &mut certificate_group[coordinate],
-                        &mut certificate_correction[coordinate],
-                    )?;
-                }
-                previous = Some(row);
-            }
-            if previous.is_some() {
+    crate::parallel::stage_rows_mut(
+        &mut partials,
+        partial_stride,
+        nrows as u128 * square as u128,
+    )
+    .enumerate()
+    .try_for_each(|(chunk, partial)| -> Result<()> {
+        let (production_meat, tail) = partial.split_at_mut(square);
+        let (certificate_meat, workspace) = tail.split_at_mut(square);
+        let (production_group, workspace) = workspace.split_at_mut(dimension);
+        let (production_correction, workspace) = workspace.split_at_mut(dimension);
+        let (certificate_group, workspace) = workspace.split_at_mut(dimension);
+        let (certificate_correction, workspace) = workspace.split_at_mut(dimension);
+        let (row_values, count) = workspace.split_at_mut(dimension);
+        let start = boundaries[chunk];
+        let end = boundaries[chunk + 1];
+        let mut previous = None;
+        for row in order[start..end].iter().copied() {
+            if previous.is_some_and(|prior| {
+                compare_cluster_rows(dimensions, mask, prior, row) != Ordering::Equal
+            }) {
                 finish_cluster_group(
                     production_group,
                     production_correction,
@@ -1063,16 +1036,49 @@ where
                     row_values,
                     influence_bread,
                 )?;
+                production_group.fill(0.0);
+                production_correction.fill(0.0);
+                certificate_group.fill(0.0);
+                certificate_correction.fill(0.0);
                 count[0] += 1.0;
             }
-            if partial.iter().all(|value| value.is_finite()) {
-                Ok(())
-            } else {
-                Err(invalid_data(
-                    "clustered sandwich subset partial contains a nonfinite value",
-                ))
+            design.fill_row(row, row_values)?;
+            let score = multipliers.score_pair(row)?;
+            for coordinate in 0..dimension {
+                compensated_add(
+                    score.production * row_values[coordinate],
+                    &mut production_group[coordinate],
+                    &mut production_correction[coordinate],
+                )?;
+                compensated_add(
+                    score.certificate * row_values[coordinate],
+                    &mut certificate_group[coordinate],
+                    &mut certificate_correction[coordinate],
+                )?;
             }
-        })?;
+            previous = Some(row);
+        }
+        if previous.is_some() {
+            finish_cluster_group(
+                production_group,
+                production_correction,
+                certificate_group,
+                certificate_correction,
+                production_meat,
+                certificate_meat,
+                row_values,
+                influence_bread,
+            )?;
+            count[0] += 1.0;
+        }
+        if partial.iter().all(|value| value.is_finite()) {
+            Ok(())
+        } else {
+            Err(invalid_data(
+                "clustered sandwich subset partial contains a nonfinite value",
+            ))
+        }
+    })?;
 
     let mut production = reserved_filled(
         reservation,
@@ -1476,14 +1482,13 @@ fn reduction_chunks(
     partial_stride: usize,
     policy: FixedBlockReductionPolicy,
 ) -> Result<usize> {
-    let partial_bytes = partial_stride
-        .checked_mul(std::mem::size_of::<f64>())
-        .ok_or_else(|| allocation("sandwich reduction partial bytes overflow usize"))?;
-    let memory_blocks = (policy.partial_budget_bytes / partial_bytes.max(1)).max(1);
-    Ok(nrows
-        .div_ceil(policy.rows_per_block)
-        .clamp(1, policy.maximum_blocks)
-        .min(memory_blocks))
+    crate::parallel::reduction_blocks(
+        nrows,
+        policy.rows_per_block,
+        policy.maximum_blocks,
+        partial_stride,
+        policy.partial_budget_bytes,
+    )
 }
 
 fn finalize_symmetric_triangle(

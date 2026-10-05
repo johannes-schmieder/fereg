@@ -1,7 +1,6 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
-use rayon::prelude::*;
 
 /// Final weighted fixed-effect orthogonality certificate.
 #[derive(Debug, Clone, PartialEq)]
@@ -301,23 +300,42 @@ fn certify_parallel_groups(
     let mut relative_count = 0;
     for effect in design.effects() {
         let results = &mut scratch[..effect.n_levels() * width];
-        results
-            .par_chunks_mut(width)
-            .enumerate()
-            .for_each(|(level, output)| {
-                let observations = effect.level_index().members(level);
-                for rhs in 0..rhs_count {
-                    output[rhs] = relative_projection(
-                        observations,
-                        &bases[group + level],
-                        weights,
-                        residuals,
-                        rhs,
-                        rhs_scales[rhs],
-                    );
+        let plan = crate::parallel::StagePlan::current(
+            design.nobs() as u128 * width as u128 * effect.channels() as u128,
+            effect.n_levels(),
+        );
+        // Zero-sized lane contexts carry no allocation or retained bank.
+        let mut lanes = vec![(); plan.lanes];
+        crate::parallel::group_blocks(
+            crate::parallel::GroupBuffers {
+                first: results,
+                first_stride: width,
+                second: &mut [] as &mut [f64],
+                second_stride: 0,
+                scratch: &mut lanes,
+            },
+            effect.level_index().membership_offsets(),
+            0,
+            &|first, output, _, _| {
+                for (local, output) in output.chunks_mut(width).enumerate() {
+                    let level = first + local;
+                    let observations = effect.level_index().members(level);
+                    for rhs in 0..rhs_count {
+                        output[rhs] = relative_projection(
+                            observations,
+                            &bases[group + level],
+                            weights,
+                            residuals,
+                            rhs,
+                            rhs_scales[rhs],
+                        );
+                    }
+                    output[rhs_count] =
+                        raw_moment_maximum(observations, effect, weights, residuals);
                 }
-                output[rhs_count] = raw_moment_maximum(observations, effect, weights, residuals);
-            });
+                Ok(())
+            },
+        )?;
         for output in results.chunks_exact(width) {
             for &relative in &output[..rhs_count] {
                 if !relative.is_finite() {
@@ -422,9 +440,15 @@ impl<'a> CertificateContext<'a> {
     pub(super) fn parallel_workspace_bytes(&self, rhs: usize) -> Result<u128> {
         if self.bases.is_none()
             || rhs == 0
-            || self.design.nobs() < 16_384
             || rayon::current_thread_index().is_none()
-            || rayon::current_num_threads() <= 1
+            || !self.design.effects().iter().any(|effect| {
+                crate::parallel::StagePlan::current(
+                    self.design.nobs() as u128 * (rhs as u128 + 1) * effect.channels() as u128,
+                    effect.n_levels(),
+                )
+                .lanes
+                    > 1
+            })
         {
             return Ok(0);
         }
