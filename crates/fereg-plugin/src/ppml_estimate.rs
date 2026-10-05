@@ -464,57 +464,55 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         },
     )?;
     publication_memory.validate_capacity(&shadow)?;
-    let mut memory_ledger = ppml_action_memory_ledger(
+    let expected_solver = match result.memory().expected_solver_workspace_peak {
+        Some(peak) => peak.expected_heap_bytes().map(u128::from),
+        None => Some(result.memory().plan.solver_workspace_bytes),
+    };
+    // The expected channel never re-enters admission or telemetry validation.
+    let expected_plan = expected_solver.map(|solver_workspace_bytes| {
+        let mut plan = result.memory().plan;
+        plan.solver_workspace_bytes = solver_workspace_bytes;
+        plan
+    });
+    let mut memory = ppml_action_memory_composition(
         result.memory().plan,
+        expected_plan,
         Some(input_memory.peak()),
         Some(action.metadata_peak_bytes),
     )?;
-    memory_ledger.record(
+    let publication = crate::action_memory::Frame {
+        parents: publication_memory.parent_bytes,
+        workspace: publication_memory.shadow_bytes,
+    };
+    memory.record(
         crate::action_memory::Stage::Publication,
-        crate::action_memory::Frame {
-            parents: publication_memory.parent_bytes,
-            workspace: publication_memory.shadow_bytes,
-        },
+        publication,
+        Some(publication),
         crate::action_memory::Gaps::WORKER_RUNTIME,
     )?;
     if std::env::var_os("FEREG_ACTION_MEMORY_AUDIT").is_some() {
         let resources = crate::instrumentation::snapshot();
         crate::action_memory::emit(
-            &memory_ledger,
+            &memory.ledger,
             resources
                 .allocation_peak_bytes
                 .saturating_sub(resources_start.allocation_current_bytes),
         )?;
     }
-    let expected_solver = match result.memory().expected_solver_workspace_peak {
-        Some(peak) => peak.expected_heap_bytes().map(u128::from),
-        None => Some(result.memory().plan.solver_workspace_bytes),
-    };
-    let forecast = if let Some(expected_solver) = expected_solver {
-        // This copy is reporting-only. It must never re-enter admission or
-        // telemetry validation, which retain the original conservative plan.
-        let mut expected_plan = result.memory().plan;
-        expected_plan.solver_workspace_bytes = expected_solver;
-        let expected = ppml_action_memory_ledger(
-            expected_plan,
-            Some(input_memory.peak()),
-            Some(action.metadata_peak_bytes),
-        )?;
-        Some(crate::memory_forecast::Forecast {
-            native_peak: expected
-                .summary()
-                .accounted_peak
-                .max(publication_memory.parent_bytes + publication_memory.shadow_bytes),
-            stata_growth: crate::memory_forecast::Forecast::publication_growth(
-                shadow.drop_reasons.len(),
-                action.publication_matrix_cells as u128,
-                crate::memory_forecast::has_factor_stripes(&action.request.model),
-                action.memory_baseline.before_allocated,
-            )?,
+    let forecast = memory
+        .expected_peak
+        .map(|native_peak| {
+            Ok::<_, FeregError>(crate::memory_forecast::Forecast {
+                native_peak,
+                stata_growth: crate::memory_forecast::Forecast::publication_growth(
+                    shadow.drop_reasons.len(),
+                    action.publication_matrix_cells as u128,
+                    crate::memory_forecast::has_factor_stripes(&action.request.model),
+                    action.memory_baseline.before_allocated,
+                )?,
+            })
         })
-    } else {
-        None
-    };
+        .transpose()?;
     if let Some(forecast) = forecast {
         forecast.trace(
             action.memory_baseline,
@@ -524,7 +522,7 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     let memory_report = MemoryReport::estimated(
         action.memory_baseline,
         crate::instrumentation::native_live_before(),
-        memory_ledger.summary(),
+        memory.ledger.summary(),
         result.memory().plan.safety_headroom_bytes,
         forecast,
     )?;
@@ -1414,96 +1412,97 @@ fn load_optional_numeric(
     Ok(Some(LoadedNumericColumn { values, missing }))
 }
 
+#[cfg(all(test, feature = "ffi"))]
 fn ppml_action_memory_ledger(
     plan: fereg_core::ppml::PpmlMemoryPlan,
-    input_peak_bytes: Option<u128>,
-    metadata_peak_bytes: Option<u128>,
+    input: Option<u128>,
+    metadata: Option<u128>,
 ) -> Result<crate::action_memory::Ledger> {
-    use crate::action_memory::{Estimator, Frame, Gaps, Ledger, Stage};
-    let mut ledger = Ledger::new(Estimator::Ppml);
-    let inventory = plan.selected_inventory();
-    let embedding = inventory.embedding_resident_bytes;
-    ledger.record(
-        Stage::Metadata,
-        Frame {
-            parents: 0,
-            workspace: metadata_peak_bytes.unwrap_or(embedding),
-        },
-        Gaps::TRANSPORT_COMPILER,
-    )?;
-    ledger.record(
-        Stage::Loading,
-        Frame {
-            parents: 0,
-            workspace: input_peak_bytes.unwrap_or(embedding),
-        },
-        if input_peak_bytes.is_some() {
-            Gaps::TRANSPORT_COMPILER
-        } else {
-            Gaps::STRING_LOADING.union(Gaps::TRANSPORT_COMPILER)
-        },
-    )?;
-    let runtime = Gaps::WORKER_RUNTIME.union(Gaps::DEPENDENCY_CONTAINERS);
-    let generation = runtime.union(Gaps::PPML_GENERATION_PARENT);
-    let stages = [
+    Ok(ppml_action_memory_composition(plan, None, input, metadata)?.ledger)
+}
+
+fn ppml_action_memory_composition(
+    plan: fereg_core::ppml::PpmlMemoryPlan,
+    expected: Option<fereg_core::ppml::PpmlMemoryPlan>,
+    input: Option<u128>,
+    metadata: Option<u128>,
+) -> Result<crate::action_memory::Composition> {
+    use crate::action_memory::{Composition, Estimator, Frame, Gaps, Stage};
+    let mut composition = Composition::new(Estimator::Ppml);
+    let embedding = plan.selected_inventory().embedding_resident_bytes;
+    for (stage, peak, gaps) in [
         (
-            Stage::Preparation,
-            plan.modeled_phase_peak_bytes(PpmlPhase::Preparation),
-            generation.union(Gaps::CONSTRUCTION),
+            Stage::Metadata,
+            metadata.unwrap_or(embedding),
+            Gaps::TRANSPORT_COMPILER,
         ),
         (
-            Stage::Separation,
-            plan.modeled_phase_peak_bytes(PpmlPhase::SeparationFe)
-                .max(plan.modeled_phase_peak_bytes(PpmlPhase::SeparationMu)),
-            generation,
-        ),
-        (
-            Stage::Fit,
-            plan.modeled_phase_peak_bytes(PpmlPhase::FeProjection),
-            generation.union(Gaps::NUMERICAL_FRAMES),
-        ),
-        (
-            Stage::Iteration,
-            plan.modeled_phase_peak_bytes(PpmlPhase::WeightResponseRefresh)
-                .max(plan.modeled_phase_peak_bytes(PpmlPhase::ObjectiveLineSearch))
-                .max(plan.modeled_phase_peak_bytes(PpmlPhase::FeProjection)),
-            generation.union(Gaps::NUMERICAL_FRAMES),
-        ),
-        (
-            Stage::Strict,
-            plan.modeled_phase_peak_bytes(PpmlPhase::StrictFinalSolve),
-            generation.union(Gaps::NUMERICAL_FRAMES),
-        ),
-        (
-            Stage::Inference,
-            plan.modeled_phase_peak_bytes(PpmlPhase::Inference),
-            generation.union(Gaps::NUMERICAL_FRAMES),
-        ),
-        (
-            Stage::Recovery,
-            plan.modeled_phase_peak_bytes(PpmlPhase::FeRecovery),
-            generation.union(Gaps::RECOVERY),
-        ),
-        (
-            Stage::Publication,
-            plan.modeled_phase_peak_bytes(PpmlPhase::Publication),
-            generation.union(Gaps::PUBLICATION),
-        ),
-    ];
-    for (stage, peak, gaps) in stages {
-        let workspace = peak
-            .checked_sub(embedding)
-            .ok_or_else(|| internal("PPML action phase omits its embedding parent"))?;
-        ledger.record(
-            stage,
-            Frame {
-                parents: embedding,
-                workspace,
+            Stage::Loading,
+            input.unwrap_or(embedding),
+            if input.is_some() {
+                Gaps::TRANSPORT_COMPILER
+            } else {
+                Gaps::STRING_LOADING.union(Gaps::TRANSPORT_COMPILER)
             },
-            gaps,
-        )?;
+        ),
+    ] {
+        let frame = Frame {
+            parents: 0,
+            workspace: peak,
+        };
+        composition.record(stage, frame, Some(frame), gaps)?;
     }
-    Ok(ledger)
+    let generation = Gaps::WORKER_RUNTIME
+        .union(Gaps::DEPENDENCY_CONTAINERS)
+        .union(Gaps::PPML_GENERATION_PARENT);
+    let numerical = generation.union(Gaps::NUMERICAL_FRAMES);
+    for (stage, gaps) in [
+        (Stage::Preparation, generation.union(Gaps::CONSTRUCTION)),
+        (Stage::Separation, generation),
+        (Stage::Fit, numerical),
+        (Stage::Iteration, numerical),
+        (Stage::Strict, numerical),
+        (Stage::Inference, numerical),
+        (Stage::Recovery, generation.union(Gaps::RECOVERY)),
+        (Stage::Publication, generation.union(Gaps::PUBLICATION)),
+    ] {
+        let admission = ppml_stage_frame(plan, stage)?;
+        let expected = expected
+            .map(|plan| ppml_stage_frame(plan, stage))
+            .transpose()?;
+        composition.record(stage, admission, expected, gaps)?;
+    }
+    Ok(composition)
+}
+
+fn ppml_stage_frame(
+    plan: fereg_core::ppml::PpmlMemoryPlan,
+    stage: crate::action_memory::Stage,
+) -> Result<crate::action_memory::Frame> {
+    use crate::action_memory::{Frame, Stage};
+    let phase = |phase| plan.modeled_phase_peak_bytes(phase);
+    let peak = match stage {
+        Stage::Preparation => phase(PpmlPhase::Preparation),
+        Stage::Separation => phase(PpmlPhase::SeparationFe).max(phase(PpmlPhase::SeparationMu)),
+        Stage::Fit => phase(PpmlPhase::FeProjection),
+        Stage::Iteration => phase(PpmlPhase::WeightResponseRefresh)
+            .max(phase(PpmlPhase::ObjectiveLineSearch))
+            .max(phase(PpmlPhase::FeProjection)),
+        Stage::Strict => phase(PpmlPhase::StrictFinalSolve),
+        Stage::Inference => phase(PpmlPhase::Inference),
+        Stage::Recovery => phase(PpmlPhase::FeRecovery),
+        Stage::Publication => phase(PpmlPhase::Publication),
+        Stage::Metadata | Stage::Loading => {
+            return Err(internal("PPML core stage requires a phase"))
+        }
+    };
+    let parents = plan.selected_inventory().embedding_resident_bytes;
+    Ok(Frame {
+        parents,
+        workspace: peak
+            .checked_sub(parents)
+            .ok_or_else(|| internal("PPML action phase omits its embedding parent"))?,
+    })
 }
 
 fn precommit(

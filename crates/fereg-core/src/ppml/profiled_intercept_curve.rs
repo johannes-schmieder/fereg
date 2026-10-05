@@ -9,6 +9,60 @@ use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 use rayon::prelude::*;
 
+#[derive(Clone, Copy)]
+pub(super) struct InterceptCurveLayout {
+    rows: usize,
+    columns: usize,
+    effect: usize,
+    groups: usize,
+    slopes: usize,
+}
+impl InterceptCurveLayout {
+    pub(super) fn for_design(design: &FeDesign, columns: usize) -> Option<Self> {
+        let effect = ProfiledInterceptCurve::selected_effect(design)?;
+        Some(Self {
+            rows: design.nobs(),
+            columns,
+            effect,
+            groups: design.effects()[effect].n_levels(),
+            slopes: design.effects()[effect].slopes().len(),
+        })
+    }
+    pub(super) fn bytes(self) -> u128 {
+        std::mem::size_of::<ProfiledInterceptCurve>() as u128
+            + std::mem::size_of::<usize>() as u128 * 2 * self.columns as u128
+            + 8 * (self.rows as u128
+                + (2 + 2 * self.slopes as u128 + u128::from(self.slopes > 0)) * self.groups as u128)
+    }
+    pub(super) fn construct<P: PreparedOlsFitView + ?Sized>(
+        self,
+        prepared: &P,
+        active: &[usize],
+        design: &FeDesign,
+        y: &[f64],
+        q: &[f64],
+        threads: ThreadConfig,
+    ) -> Result<ProfiledInterceptCurve> {
+        if self.rows != design.nobs()
+            || active.len() > self.columns
+            || Some(self.effect) != ProfiledInterceptCurve::selected_effect(design)
+        {
+            return Err(allocation());
+        }
+        let mut result =
+            ProfiledInterceptCurve::from_layout(self, design, y, q, threads, active.len())?;
+        for (j, &column) in active.iter().enumerate() {
+            result.slots[j] = prepared
+                .fit_model()
+                .coefficients
+                .iter()
+                .position(|c| c.generated_column_index == Some(column))
+                .ok_or_else(numerical)?;
+        }
+        Ok(result)
+    }
+}
+
 pub(super) struct ProfiledInterceptCurve {
     team: InstalledThreadTeam,
     effect: usize,
@@ -63,12 +117,25 @@ impl ProfiledInterceptCurve {
         }
         selected
     }
-    pub(super) fn bytes(n: usize, k: usize, g: usize, slopes: usize) -> u128 {
-        std::mem::size_of::<Self>() as u128
-            + std::mem::size_of::<usize>() as u128 * 2 * k as u128
-            + 8 * (n as u128 + (2 + 2 * slopes as u128 + u128::from(slopes > 0)) * g as u128)
-    }
+    #[cfg(test)]
     fn from_inputs(
+        design: &FeDesign,
+        y: &[f64],
+        q: &[f64],
+        threads: ThreadConfig,
+        k: usize,
+    ) -> Result<Self> {
+        Self::from_layout(
+            InterceptCurveLayout::for_design(design, k).ok_or_else(numerical)?,
+            design,
+            y,
+            q,
+            threads,
+            k,
+        )
+    }
+    fn from_layout(
+        layout: InterceptCurveLayout,
         design: &FeDesign,
         y: &[f64],
         q: &[f64],
@@ -78,9 +145,9 @@ impl ProfiledInterceptCurve {
         if y.len() != design.nobs() || q.len() != y.len() {
             return Err(numerical());
         }
-        let effect = Self::selected_effect(design).ok_or_else(numerical)?;
-        let g = design.effects()[effect].n_levels();
-        let slopes = design.effects()[effect].slopes().len();
+        let effect = layout.effect;
+        let g = layout.groups;
+        let slopes = layout.slopes;
         let moments = g.checked_mul(slopes).ok_or_else(allocation)?;
         let mut result = Self {
             team: ThreadTeam::new(threads).acquire()?,
@@ -151,25 +218,6 @@ impl ProfiledInterceptCurve {
                     return Err(numerical());
                 }
             }
-        }
-        Ok(result)
-    }
-    pub(super) fn new<P: PreparedOlsFitView + ?Sized>(
-        prepared: &P,
-        active: &[usize],
-        design: &FeDesign,
-        y: &[f64],
-        q: &[f64],
-        threads: ThreadConfig,
-    ) -> Result<Self> {
-        let mut result = Self::from_inputs(design, y, q, threads, active.len())?;
-        for (j, &column) in active.iter().enumerate() {
-            result.slots[j] = prepared
-                .fit_model()
-                .coefficients
-                .iter()
-                .position(|c| c.generated_column_index == Some(column))
-                .ok_or_else(numerical)?;
         }
         Ok(result)
     }

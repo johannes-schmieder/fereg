@@ -1,5 +1,5 @@
 //! Ordinary direction storage is exclusive; the canonical checkpoint and curve coexist.
-use super::admission::LateProfiles;
+use super::admission::AdmittedProfiles;
 use super::*;
 
 // Inline storage preserves the existing allocation and lifetime envelope.
@@ -103,7 +103,7 @@ impl OrdinaryDirection {
         prepared: &P,
         design: &FeDesign,
         columns: Option<&[usize]>,
-        profiles: &LateProfiles,
+        profiles: &AdmittedProfiles,
         outcome: &[f64],
         prior_weights: &[f64],
         config: PreparedPpmlIrlsConfig,
@@ -111,8 +111,8 @@ impl OrdinaryDirection {
         admission: PublicSolverMemoryAdmission,
         budget: FeSolverMemoryBudget,
     ) -> Result<Option<ProfiledInterceptCurve>> {
-        if profiles.one_fe {
-            match ProfiledOneFe::new(
+        if let Some(layout) = profiles.one_fe {
+            match layout.construct(
                 prepared,
                 columns.expect("profile basis"),
                 design,
@@ -129,8 +129,8 @@ impl OrdinaryDirection {
                 Err(error) => return Err(error),
             }
         }
-        let curve = if profiles.curve {
-            match ProfiledInterceptCurve::new(
+        let curve = if let Some(layout) = profiles.curve {
+            match layout.construct(
                 prepared,
                 columns.expect("curve basis"),
                 design,

@@ -3145,7 +3145,7 @@ mod tests {
             .as_ref()
             .expect("steady-state certificate");
         assert_eq!(
-            certificate.measured_iterations,
+            certificate.observation.measured_iterations,
             PPML_STEADY_STATE_AUDIT_ITERATIONS
         );
     }
@@ -3163,8 +3163,8 @@ mod tests {
                 .expect("categorical steady-state certificate");
             assert!(certificate.workspace_capacity_stable);
             assert!(certificate.linear_workspace_capacity_stable);
-            assert!(certificate.linear_session_allocation_free);
-            assert!(certificate.fresh_warm_equivalent);
+            assert!(certificate.observation.linear_session_allocation_free);
+            assert!(certificate.observation.fresh_warm_equivalent);
             assert!(certificate.passed);
         }
     }

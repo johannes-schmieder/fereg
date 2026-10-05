@@ -20,6 +20,10 @@ mod partition_registry;
 mod partition_singleton;
 mod partition_validation;
 mod projection;
+mod workspace_capacity;
+pub(crate) use workspace_capacity::{
+    categorical_parallel_counts, CategoricalAcceleratorCapacity, MapCapacity,
+};
 mod report;
 mod single_slope;
 mod singleton;
@@ -59,9 +63,11 @@ pub(crate) use borrowed_map::{
     recover_borrowed_intercept_sd_lsmr_coefficients, schur_ols_probe_with_workspace,
     schur_ols_workspace_bytes, try_absorb_ols_schur_narrow, BorrowedInterceptRecoveryMethod,
     BorrowedLsmrAbsorber, NarrowOlsSchurAttempt, ReusableCategoricalMapAbsorber,
-    CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS, OLS_SCHUR_MAX_CONTRACTION,
-    OLS_SCHUR_MAX_ITERATIONS, OLS_SCHUR_PROBE_ITERATIONS, PARALLEL_DOT_CHUNK_ROWS,
-    PARALLEL_PROJECTION_MIN_ROWS,
+    OLS_SCHUR_MAX_CONTRACTION, OLS_SCHUR_MAX_ITERATIONS, OLS_SCHUR_PROBE_ITERATIONS,
+};
+#[cfg(test)]
+pub(crate) use borrowed_map::{
+    CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
 };
 pub(crate) use categorical_request::bind_categorical_effect_recipes;
 pub use categorical_request::{plan_categorical_absorbed_request, CategoricalAbsorbRequestPlan};

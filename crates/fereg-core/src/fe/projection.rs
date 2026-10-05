@@ -15,17 +15,21 @@ pub struct ProjectionWorkspace {
 
 impl ProjectionWorkspace {
     pub fn new(max_channels: usize, rhs_count: usize) -> Result<Self> {
-        let gram_length = max_channels.checked_mul(max_channels).ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "projection Gram dimensions overflow")
-        })?;
-        let rhs_length = max_channels.checked_mul(rhs_count).ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "projection RHS dimensions overflow")
-        })?;
+        let plan = super::workspace_capacity::ProjectionCapacity::new(
+            max_channels as u128,
+            rhs_count as u128,
+        )?;
+        plan.gram.len("projection Gram dimensions overflow")?;
+        plan.rhs.len("projection RHS dimensions overflow")?;
         Ok(Self {
             max_channels,
             rhs_count,
-            gram: fallible_zeros(gram_length)?,
-            right_hand_sides: fallible_zeros(rhs_length)?,
+            gram: plan
+                .gram
+                .filled(0.0, "unable to reserve generic FE projection workspace")?,
+            right_hand_sides: plan
+                .rhs
+                .filled(0.0, "unable to reserve generic FE projection workspace")?,
         })
     }
 
@@ -35,15 +39,8 @@ impl ProjectionWorkspace {
 }
 
 fn fallible_zeros(elements: usize) -> Result<Vec<f64>> {
-    let mut values = Vec::new();
-    values.try_reserve_exact(elements).map_err(|_| {
-        FeregError::new(
-            ErrorCode::Allocation,
-            "unable to reserve generic FE projection workspace",
-        )
-    })?;
-    values.resize(elements, 0.0);
-    Ok(values)
+    crate::memory::Capacity::new(elements as u128)
+        .filled(0.0, "unable to reserve generic FE projection workspace")
 }
 
 /// Subtract the weighted least-squares projection onto one effect term.

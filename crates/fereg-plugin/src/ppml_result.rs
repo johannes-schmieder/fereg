@@ -1013,7 +1013,12 @@ fn build_subset_shadow(result: &CertifiedPpmlResult) -> Result<(Vec<f64>, usize)
 }
 
 fn build_runtime_shadow(result: &CertifiedPpmlResult, elapsed_seconds: f64) -> Result<Vec<f64>> {
-    validate_memory_telemetry(result)?;
+    result.memory().validate_publication().map_err(|error| {
+        invalid(format!(
+            "PPML publication memory telemetry is invalid: {}",
+            error.message
+        ))
+    })?;
     let memory = result.memory();
     let convergence = result.convergence();
     let plan = memory.plan;
@@ -1084,17 +1089,18 @@ fn build_runtime_shadow(result: &CertifiedPpmlResult, elapsed_seconds: f64) -> R
         }
     }
     if let Some(certificate) = memory.steady_state_allocation_certificate {
+        let observation = certificate.observation;
         runtime[40] = 1.0;
         runtime[41] = exact_count(
-            certificate.measured_iterations,
+            observation.measured_iterations,
             "allocation-audit measured iterations",
         )?;
         runtime[42] = telemetry_u128(
-            u128::from(certificate.allocator_events_start),
+            u128::from(observation.allocator_events_start),
             "allocation-audit allocator events start",
         )?;
         runtime[43] = telemetry_u128(
-            u128::from(certificate.allocator_events_end),
+            u128::from(observation.allocator_events_end),
             "allocation-audit allocator events end",
         )?;
         runtime[44] = telemetry_u128(
@@ -1102,23 +1108,23 @@ fn build_runtime_shadow(result: &CertifiedPpmlResult, elapsed_seconds: f64) -> R
             "allocation-audit allocator events delta",
         )?;
         runtime[45] = telemetry_u128(
-            u128::from(certificate.allocator_current_start),
+            u128::from(observation.allocator_current_start),
             "allocation-audit allocator current start",
         )?;
         runtime[46] = telemetry_u128(
-            u128::from(certificate.allocator_current_end),
+            u128::from(observation.allocator_current_end),
             "allocation-audit allocator current end",
         )?;
         runtime[47] = telemetry_i128(
-            certificate.allocator_growth_bytes,
+            certificate.allocator_growth_bytes(),
             "allocation-audit allocator current growth",
         )?;
         runtime[48] = telemetry_u128(
-            u128::from(certificate.allocator_peak_start),
+            u128::from(observation.allocator_peak_start),
             "allocation-audit allocator peak start",
         )?;
         runtime[49] = telemetry_u128(
-            u128::from(certificate.allocator_peak_end),
+            u128::from(observation.allocator_peak_end),
             "allocation-audit allocator peak end",
         )?;
         runtime[50] = telemetry_u128(
@@ -1126,82 +1132,82 @@ fn build_runtime_shadow(result: &CertifiedPpmlResult, elapsed_seconds: f64) -> R
             "allocation-audit allocator peak growth",
         )?;
         runtime[51] = exact_count(
-            certificate.workspace_start.observation_capacity_sum,
+            observation.workspace_start.observation_capacity_sum,
             "allocation-audit PPML observation capacity start",
         )?;
         runtime[52] = exact_count(
-            certificate.workspace_start.coefficient_capacity_sum,
+            observation.workspace_start.coefficient_capacity_sum,
             "allocation-audit PPML coefficient capacity start",
         )?;
         runtime[53] = exact_count(
-            certificate.workspace_start.diagnostic_capacity,
+            observation.workspace_start.diagnostic_capacity,
             "allocation-audit PPML diagnostic capacity start",
         )?;
         runtime[54] = exact_count(
-            certificate.workspace_end.observation_capacity_sum,
+            observation.workspace_end.observation_capacity_sum,
             "allocation-audit PPML observation capacity end",
         )?;
         runtime[55] = exact_count(
-            certificate.workspace_end.coefficient_capacity_sum,
+            observation.workspace_end.coefficient_capacity_sum,
             "allocation-audit PPML coefficient capacity end",
         )?;
         runtime[56] = exact_count(
-            certificate.workspace_end.diagnostic_capacity,
+            observation.workspace_end.diagnostic_capacity,
             "allocation-audit PPML diagnostic capacity end",
         )?;
         runtime[57] = f64::from(certificate.workspace_capacity_stable);
         runtime[58] = telemetry_u128(
-            certificate.linear_workspace_start.element_capacity_sum,
+            observation.linear_workspace_start.element_capacity_sum,
             "allocation-audit linear element capacity start",
         )?;
         runtime[59] = exact_count(
-            certificate
+            observation
                 .linear_workspace_start
                 .retained_resident_elements,
             "allocation-audit linear resident elements start",
         )?;
         runtime[60] = telemetry_u128(
-            u128::from(certificate.linear_workspace_start.retained_scratch_bytes),
+            u128::from(observation.linear_workspace_start.retained_scratch_bytes),
             "allocation-audit linear retained scratch start",
         )?;
         runtime[61] = telemetry_u128(
-            certificate
+            observation
                 .linear_workspace_start
                 .fe_topology_resident_bytes,
             "allocation-audit linear FE topology bytes start",
         )?;
         runtime[62] = telemetry_u128(
-            certificate.linear_workspace_end.element_capacity_sum,
+            observation.linear_workspace_end.element_capacity_sum,
             "allocation-audit linear element capacity end",
         )?;
         runtime[63] = exact_count(
-            certificate.linear_workspace_end.retained_resident_elements,
+            observation.linear_workspace_end.retained_resident_elements,
             "allocation-audit linear resident elements end",
         )?;
         runtime[64] = telemetry_u128(
-            u128::from(certificate.linear_workspace_end.retained_scratch_bytes),
+            u128::from(observation.linear_workspace_end.retained_scratch_bytes),
             "allocation-audit linear retained scratch end",
         )?;
         runtime[65] = telemetry_u128(
-            certificate.linear_workspace_end.fe_topology_resident_bytes,
+            observation.linear_workspace_end.fe_topology_resident_bytes,
             "allocation-audit linear FE topology bytes end",
         )?;
         runtime[66] = f64::from(certificate.linear_workspace_capacity_stable);
         runtime[67] = telemetry_u128(
-            u128::from(certificate.scratch_bytes_start),
+            u128::from(observation.scratch_bytes_start),
             "allocation-audit scratch bytes start",
         )?;
         runtime[68] = telemetry_u128(
-            u128::from(certificate.scratch_bytes_end),
+            u128::from(observation.scratch_bytes_end),
             "allocation-audit scratch bytes end",
         )?;
         runtime[69] = f64::from(certificate.scratch_stable);
-        runtime[70] = linear_route_code(certificate.linear_route);
+        runtime[70] = linear_route_code(observation.linear_route);
         runtime[71] = f64::from(certificate.route_allocation_qualified);
-        runtime[72] = f64::from(certificate.linear_session_allocation_free);
-        runtime[73] = f64::from(certificate.fresh_warm_equivalent);
+        runtime[72] = f64::from(observation.linear_session_allocation_free);
+        runtime[73] = f64::from(observation.fresh_warm_equivalent);
         runtime[74] = telemetry_u128(
-            certificate.steady_iteration_median_nanoseconds,
+            observation.steady_iteration_median_nanoseconds,
             "allocation-audit median steady iteration nanoseconds",
         )?;
         runtime[75] = f64::from(certificate.passed);
@@ -1239,120 +1245,6 @@ fn build_runtime_shadow(result: &CertifiedPpmlResult, elapsed_seconds: f64) -> R
         }
     }
     Ok(runtime)
-}
-
-fn validate_memory_telemetry(result: &CertifiedPpmlResult) -> Result<()> {
-    let memory = result.memory();
-    let route = memory
-        .linear_route
-        .ok_or_else(|| invalid("certified PPML result lacks the final linear route"))?;
-    if route == FeSolverKind::Auto {
-        return Err(invalid(
-            "PPML memory telemetry has an unresolved linear route",
-        ));
-    }
-    if memory.scratch_peak_bytes.is_none() {
-        return Err(invalid(
-            "PPML memory telemetry lacks observed scratch usage",
-        ));
-    }
-    if memory.effective_threads == 0 || memory.plan.dimensions.threads != memory.effective_threads {
-        return Err(invalid(
-            "PPML memory telemetry has inconsistent thread counts",
-        ));
-    }
-    if memory.fallback_mask & !0b1_1111 != 0
-        || memory.fallback_count < memory.fallback_mask.count_ones() as usize
-        || (memory.fallback_mask == 0) != (memory.fallback_count == 0)
-    {
-        return Err(invalid("PPML memory telemetry has inconsistent fallbacks"));
-    }
-    let workspace_capacity = memory
-        .workspace_capacity
-        .ok_or_else(|| invalid("PPML memory telemetry lacks its workspace capacity"))?;
-    // Bounded iteration reports live in their own memory-plan inventory. The
-    // steady-state PPML iteration fingerprint intentionally excludes them so
-    // it can compare only buffers touched by every weighted iteration.
-    if workspace_capacity.diagnostic_capacity != 0 {
-        return Err(invalid(
-            "PPML steady-state workspace capacity unexpectedly includes diagnostics",
-        ));
-    }
-    let allocations = memory.allocations;
-    match (
-        allocations.start_bytes,
-        allocations.current_bytes,
-        allocations.peak_bytes,
-    ) {
-        (None, None, None) => {}
-        (Some(start), Some(current), Some(peak)) if peak >= start && peak >= current => {}
-        _ => {
-            return Err(invalid(
-                "PPML allocator telemetry is partial or nonmonotone",
-            ))
-        }
-    }
-    match (
-        allocations.allocation_events_start,
-        allocations.allocation_events_end,
-    ) {
-        (None, None) if allocations.start_bytes.is_none() => {}
-        (Some(start), Some(end)) if allocations.start_bytes.is_some() && end >= start => {}
-        _ => {
-            return Err(invalid(
-                "PPML action allocator event telemetry is partial or nonmonotone",
-            ));
-        }
-    }
-    match memory.steady_state_allocation_certificate {
-        None if memory.whole_iteration_allocation_free => {
-            return Err(invalid(
-                "PPML whole-iteration allocation claim lacks its certificate",
-            ));
-        }
-        Some(certificate)
-            if !memory
-                .plan
-                .audit_route_matches_final(certificate.linear_route, route)
-                || certificate.workspace_capacity_stable
-                    != (certificate.workspace_start == certificate.workspace_end)
-                || certificate.scratch_stable
-                    != (certificate.scratch_bytes_start == certificate.scratch_bytes_end)
-                || certificate.allocation_events
-                    != certificate
-                        .allocator_events_end
-                        .checked_sub(certificate.allocator_events_start)
-                        .ok_or_else(|| {
-                            invalid("PPML allocator audit events are not monotone")
-                        })?
-                || certificate.allocator_growth_bytes
-                    != i128::from(certificate.allocator_current_end)
-                        - i128::from(certificate.allocator_current_start)
-                || certificate.allocator_peak_growth_bytes
-                    != certificate
-                        .allocator_peak_end
-                        .checked_sub(certificate.allocator_peak_start)
-                        .ok_or_else(|| {
-                            invalid("PPML allocator audit peaks are not monotone")
-                        })?
-                || certificate.passed != memory.whole_iteration_allocation_free
-                || certificate.passed
-                    && (!memory.ppml_workspace_allocation_free
-                        || !certificate.workspace_capacity_stable
-                        || !certificate.linear_workspace_capacity_stable
-                        || !certificate.scratch_stable
-                        || !certificate.route_allocation_qualified
-                        || !certificate.linear_session_allocation_free
-                        || !certificate.fresh_warm_equivalent) =>
-        {
-            return Err(invalid(
-                "PPML warmed allocation certificate is inconsistent",
-            ));
-        }
-        Some(_) => {}
-        None => {}
-    }
-    Ok(())
 }
 
 const fn residual_prediction_kind(kind: PpmlResidualKind) -> PpmlPredictionKind {

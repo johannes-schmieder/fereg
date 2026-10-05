@@ -844,30 +844,6 @@ fn summarize_linear_workspace(
         capacity.projection_block_elements,
         capacity.within_resident_elements,
         capacity.within_io_buffer_elements,
-        capacity.fe_rhs_elements,
-        capacity.fe_max_channels,
-        capacity.fe_max_level_members,
-        capacity.fe_reference_norm_elements,
-        capacity.fe_residual_norm_elements,
-        capacity.fe_rhs_scale_elements,
-        capacity.fe_norm_scale_elements,
-        capacity.fe_norm_sum_elements,
-        capacity.fe_group_sum_elements,
-        capacity.fe_group_correction_elements,
-        capacity.fe_projection_gram_elements,
-        capacity.fe_projection_rhs_elements,
-        capacity.fe_projection_workers,
-        capacity.fe_certificate_column_elements,
-        capacity.fe_certificate_basis_elements,
-        capacity.fe_certificate_geometry_elements,
-        capacity.fe_certificate_rank_elements,
-        capacity.fe_accelerator_state_elements,
-        capacity.fe_topology_effect_elements,
-        capacity.fe_topology_code_elements,
-        capacity.fe_topology_slope_vector_elements,
-        capacity.fe_topology_slope_value_elements,
-        capacity.fe_topology_level_offset_elements,
-        capacity.fe_topology_level_observation_elements,
     ];
     if capacity.accepted_fit_optional_owners {
         return Err(internal(
@@ -876,6 +852,7 @@ fn summarize_linear_workspace(
     }
     let element_capacity_sum = elements
         .iter()
+        .chain(capacity.fe.element_capacities().iter())
         .chain(capacity.accepted_fit.iter())
         .chain(capacity.within_metadata.iter())
         .chain(capacity.basis_metadata.iter())
@@ -891,7 +868,7 @@ fn summarize_linear_workspace(
         element_capacity_sum,
         retained_resident_elements: capacity.within_resident_elements,
         retained_scratch_bytes: capacity.within_scratch_bytes,
-        fe_topology_resident_bytes: capacity.fe_topology_resident_bytes,
+        fe_topology_resident_bytes: capacity.fe.topology_resident_bytes,
     })
 }
 
@@ -1324,15 +1301,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 &output,
                 workspace.candidate_coefficients_mut(),
             )?;
-            let specialized_columns =
-                (selected_engine != PpmlSolverEngine::Map || profiles.one_fe || profiles.curve)
-                    .then(|| {
-                        fallible_copy(
-                            output.fit().kept_generated_columns(),
-                            "unable to reserve PPML specialized active-column identity",
-                        )
-                    })
-                    .transpose()?;
+            let specialized_columns = (selected_engine != PpmlSolverEngine::Map
+                || profiles.one_fe.is_some()
+                || profiles.curve.is_some())
+            .then(|| {
+                fallible_copy(
+                    output.fit().kept_generated_columns(),
+                    "unable to reserve PPML specialized active-column identity",
+                )
+            })
+            .transpose()?;
             let result = (
                 output.fit().finite_rank(),
                 output.reuse_report(),
@@ -5905,15 +5883,15 @@ mod tests {
             .expect("steady-state allocation certificate");
         assert_eq!(STABLE_AUDIT_PROBE_CALLS.load(Ordering::SeqCst), 2);
         assert_eq!(
-            certificate.measured_iterations,
+            certificate.observation.measured_iterations,
             PPML_STEADY_STATE_AUDIT_ITERATIONS
         );
         assert_eq!(certificate.allocation_events, 0);
         assert!(certificate.workspace_capacity_stable);
         assert!(certificate.linear_workspace_capacity_stable);
         assert!(certificate.scratch_stable);
-        assert!(certificate.linear_session_allocation_free);
-        assert!(certificate.fresh_warm_equivalent);
+        assert!(certificate.observation.linear_session_allocation_free);
+        assert!(certificate.observation.fresh_warm_equivalent);
         assert!(certificate.passed);
         assert!(fitted.diagnostics().memory.whole_iteration_allocation_free);
     }
@@ -5929,7 +5907,7 @@ mod tests {
             .expect("steady-state allocation certificate");
         assert_eq!(CHURN_AUDIT_PROBE_CALLS.load(Ordering::SeqCst), 2);
         assert_eq!(certificate.allocation_events, 1);
-        assert_eq!(certificate.allocator_growth_bytes, 0);
+        assert_eq!(certificate.allocator_growth_bytes(), 0);
         assert_eq!(certificate.allocator_peak_growth_bytes, 0);
         assert!(!certificate.passed);
         assert!(!fitted.diagnostics().memory.whole_iteration_allocation_free);
@@ -6921,7 +6899,7 @@ mod tests {
             assert_eq!(scratch.is_some(), mode == PreparedOlsExecutionMode::Low);
             if mode == PreparedOlsExecutionMode::Low {
                 assert_eq!(
-                    session.workspace_capacities().fe_rhs_elements,
+                    session.workspace_capacities().fe.rhs,
                     poolsize.min(prepared.fit_model().columns.len().max(1))
                 );
                 assert_eq!(session.workspace_capacities().within_resident_elements, 0);
@@ -7317,8 +7295,8 @@ mod tests {
         let memory = &fit.diagnostics().memory;
         memory.validate().unwrap();
         let audit = memory.steady_state_allocation_certificate.unwrap();
-        assert!(audit.passed && audit.fresh_warm_equivalent);
-        assert_eq!(audit.linear_route, FeSolverKind::Map);
+        assert!(audit.passed && audit.observation.fresh_warm_equivalent);
+        assert_eq!(audit.observation.linear_route, FeSolverKind::Map);
         // The admitted centered Schur checkpoint is a coefficient-space MAP
         // accelerator. Its allocating canonical work is outside the audited
         // ordinary window; the separately certified LSMR alternative remains
@@ -7414,7 +7392,7 @@ mod tests {
         // Optional certificate-bank refusal must leave the established
         // categorical projector available without a second topology copy.
         session
-            .enable_ppml_coefficient_solver(1, true, true)
+            .enable_ppml_coefficient_solver(1, u128::MAX, Some(u128::MAX), Some(u128::MAX))
             .unwrap();
         assert!(session.uses_ppml_categorical_map_for_test());
         let actual = session.solve_fresh().unwrap();
@@ -7895,11 +7873,16 @@ mod tests {
                     prepared.fit_owned_fe_design().unwrap(),
                 )
                 .unwrap();
-                session.enable_ppml_certificate_geometry().unwrap();
+                session.enable_ppml_certificate_geometry(u128::MAX).unwrap();
                 session
-                    .enable_ppml_coefficient_solver(threads, true, true)
+                    .enable_ppml_coefficient_solver(
+                        threads,
+                        u128::MAX,
+                        Some(u128::MAX),
+                        Some(u128::MAX),
+                    )
                     .unwrap();
-                session.enable_ppml_joint_slopes().unwrap();
+                session.enable_ppml_joint_slopes(u128::MAX).unwrap();
                 assert!(session.solve_fresh().unwrap().certified());
                 for generation in 2..7 {
                     let weights: Vec<_> = (0..n)

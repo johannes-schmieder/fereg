@@ -1,5 +1,7 @@
 //! Ordered, fit-lifetime admission before any optional workspace is installed.
 use super::*;
+use crate::ppml::one_fe_profile::OneFeProfileLayout;
+use crate::ppml::profiled_intercept_curve::InterceptCurveLayout;
 
 pub(super) struct LinearAdmission {
     plan: PpmlMemoryPlan,
@@ -17,36 +19,28 @@ struct AdmissionInputs<'a, P: PreparedOlsFitView + Sync + ?Sized> {
     shared_prepared: bool,
 }
 
-pub(super) struct LateProfiles {
-    pub(super) one_fe: bool,
-    pub(super) curve: bool,
-}
-struct SlopeOptions {
-    certificate: bool,
-    coupling: bool,
-    joint: bool,
-}
-struct ProjectionAdmission {
-    coefficient_solver: bool,
-    projection_rhs: usize,
-    categorical_checkpoints: bool,
-    parallel: Option<crate::fe::ParallelProjectionPlan>,
-    geometry: bool,
+pub(super) struct AdmittedProfiles {
+    pub(super) one_fe: Option<OneFeProfileLayout>,
+    pub(super) curve: Option<InterceptCurveLayout>,
 }
 enum ProjectionInstallation {
     Generic {
         parallel: Option<crate::fe::ParallelProjectionPlan>,
-        geometry: bool,
+        geometry: Option<u128>,
     },
     Coefficient {
-        options: SlopeOptions,
-        component_checkpoint: bool,
+        geometry: u128,
+        workspace: u128,
+        certificate: Option<u128>,
+        coupling: Option<u128>,
+        joint: Option<u128>,
+        component_checkpoint: Option<u128>,
     },
 }
 pub(super) struct LinearInstallation {
-    profiles: LateProfiles,
-    centered: bool,
-    fast_products: u128,
+    profiles: AdmittedProfiles,
+    centered: Option<u128>,
+    fast_products: Option<u128>,
     projection: ProjectionInstallation,
 }
 
@@ -137,93 +131,87 @@ impl LinearAdmission {
     fn admit_one_fe<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         inputs: &AdmissionInputs<'_, P>,
-    ) -> Result<bool> {
-        let prepared = inputs.prepared;
-        let fe_design = inputs.fe_design;
-        let config = inputs.config;
-        let purpose = inputs.purpose;
-        let admitted = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-            && config.solver_plan.selected == crate::ppml::PpmlSolverFamily::Map
-            && prepared.fit_has_one_ordinary_intercept_effect()
-            && fe_design.effects().len() == 1
-            && fe_design.effects()[0].has_intercept()
-            && fe_design.effects()[0].slopes().is_empty()
+    ) -> Result<Option<OneFeProfileLayout>> {
+        let design = inputs.fe_design;
+        if !matches!(inputs.purpose, PreparedPpmlIrlsPurpose::Publication)
+            || inputs.config.solver_plan.selected != crate::ppml::PpmlSolverFamily::Map
+            || !inputs.prepared.fit_has_one_ordinary_intercept_effect()
+            || design.effects().len() != 1
+            || !design.effects()[0].has_intercept()
+            || !design.effects()[0].slopes().is_empty()
         {
-            let profile_bytes = ProfiledOneFe::bytes(
-                fe_design.nobs(),
-                prepared.fit_model().columns.len(),
-                fe_design.effects()[0].n_levels(),
-            )
-            .ok()
-            .and_then(|bytes| {
-                if config.allocation_snapshot_probe.is_some() {
-                    ProfiledOneFe::audit_bytes(
-                        fe_design.nobs(),
-                        prepared.fit_model().columns.len(),
-                        fe_design.effects()[0].n_levels(),
-                    )
-                    .ok()
-                    .and_then(|audit| bytes.checked_add(audit))
-                } else {
-                    Some(bytes)
-                }
-            });
-            self.try_solver_increment(profile_bytes, "one-FE profile workspace size overflows")?
-        } else {
-            false
-        };
-        Ok(admitted)
+            return Ok(None);
+        }
+        let layout = OneFeProfileLayout::new(
+            design.nobs(),
+            inputs.prepared.fit_model().columns.len(),
+            design.effects()[0].n_levels(),
+        )
+        .ok();
+        let bytes = layout.and_then(|plan| {
+            plan.bytes(inputs.config.allocation_snapshot_probe.is_some())
+                .ok()
+        });
+        Ok(
+            if self.try_solver_increment(bytes, "one-FE profile workspace size overflows")? {
+                layout
+            } else {
+                None
+            },
+        )
     }
     fn admit_curve<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         inputs: &AdmissionInputs<'_, P>,
-    ) -> Result<bool> {
-        let prepared = inputs.prepared;
-        let fe_design = inputs.fe_design;
-        let purpose = inputs.purpose;
-        let admitted = if profile_curve_enabled()
-            && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
-            && ProfiledInterceptCurve::selected_effect(fe_design).is_some()
+    ) -> Result<Option<InterceptCurveLayout>> {
+        let layout = if profile_curve_enabled()
+            && matches!(inputs.purpose, PreparedPpmlIrlsPurpose::Publication)
         {
-            let effect =
-                &fe_design.effects()[ProfiledInterceptCurve::selected_effect(fe_design).unwrap()];
-            let bytes = ProfiledInterceptCurve::bytes(
-                fe_design.nobs(),
-                prepared.fit_model().columns.len(),
-                effect.n_levels(),
-                effect.slopes().len(),
-            );
-            self.try_solver_increment(Some(bytes), "profile curve size overflows")?
+            InterceptCurveLayout::for_design(
+                inputs.fe_design,
+                inputs.prepared.fit_model().columns.len(),
+            )
         } else {
-            false
+            None
         };
-        Ok(admitted)
+        Ok(
+            if self.try_solver_increment(
+                layout.map(InterceptCurveLayout::bytes),
+                "profile curve size overflows",
+            )? {
+                layout
+            } else {
+                None
+            },
+        )
     }
     fn admit_centered<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         inputs: &AdmissionInputs<'_, P>,
         one_fe_profile_admitted: bool,
-    ) -> Result<bool> {
-        let prepared = inputs.prepared;
-        let fe_design = inputs.fe_design;
-        let effective_threads = inputs.threads;
-        let admitted = if one_fe_profile_admitted && inputs.shared_prepared {
-            let bytes = crate::ols::ImplicitCenteredDesign::bytes(
-                fe_design.effects()[0].n_levels(),
-                prepared.fit_model().columns.len(),
-                effective_threads,
+    ) -> Result<Option<u128>> {
+        let bytes = if one_fe_profile_admitted && inputs.shared_prepared {
+            crate::ols::ImplicitCenteredDesign::bytes(
+                inputs.fe_design.effects()[0].n_levels(),
+                inputs.prepared.fit_model().columns.len(),
+                inputs.threads,
             )
-            .ok();
-            self.try_solver_increment(bytes, "implicit one-FE workspace size overflows")?
+            .ok()
         } else {
-            false
+            None
         };
-        Ok(admitted)
+        Ok(
+            if self.try_solver_increment(bytes, "implicit one-FE workspace size overflows")? {
+                bytes
+            } else {
+                None
+            },
+        )
     }
     fn admit_fast_products<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         inputs: &AdmissionInputs<'_, P>,
-    ) -> Result<u128> {
+    ) -> Result<Option<u128>> {
         let fe_design = inputs.fe_design;
         let config = inputs.config;
         let purpose = inputs.purpose;
@@ -257,19 +245,19 @@ impl LinearAdmission {
                         .is_some_and(|bytes| bytes <= allowance)
                 });
             if self.try_solver_increment(bytes, "fast canonical product workspace overflows")? {
-                bytes.unwrap_or(0)
+                bytes.filter(|&n| n > 0)
             } else {
-                0
+                None
             }
         } else {
-            0
+            None
         };
         Ok(admitted)
     }
     fn admit_projection<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         inputs: &AdmissionInputs<'_, P>,
-    ) -> Result<ProjectionAdmission> {
+    ) -> Result<ProjectionInstallation> {
         let fe_design = inputs.fe_design;
         let config = inputs.config;
         let purpose = inputs.purpose;
@@ -310,25 +298,13 @@ impl LinearAdmission {
             let mut candidate = self.plan;
             match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(fe_design).and_then(
                 |geometry| {
-                    crate::fe::ReusableMapAbsorber::coefficient_solver_bytes(
+                    crate::ols::ppml_coefficient_lifetime_bytes(
                         fe_design,
                         projection_rhs,
                         effective_threads,
+                        categorical_checkpoints,
                     )
-                    .and_then(|workspace| {
-                        let checkpoint = if categorical_checkpoints {
-                            crate::fe::ReusableCategoricalMapAbsorber::coexisting_owner_bytes(
-                                fe_design.effects().len(),
-                                projection_rhs,
-                            )?
-                        } else {
-                            0
-                        };
-                        Ok((
-                            geometry,
-                            workspace + 8 * fe_design.nobs() as u128 + checkpoint,
-                        ))
-                    })
+                    .map(|workspace| (geometry, workspace))
                 },
             ) {
                 Ok((geometry, workspace))
@@ -336,17 +312,17 @@ impl LinearAdmission {
                         && candidate.admit_reusable_slope(workspace) =>
                 {
                     self.plan = candidate;
-                    true
+                    Some((geometry, workspace))
                 }
-                Ok(_) => false,
-                Err(error) if error.code == ErrorCode::Allocation => false,
+                Ok(_) => None,
+                Err(error) if error.code == ErrorCode::Allocation => None,
                 Err(error) => return Err(error),
             }
         } else {
-            false
+            None
         };
         // Mu exploration has a separate parent separation-phase envelope.
-        let projection_plan = if !coefficient_solver
+        let projection_plan = if coefficient_solver.is_none()
             && matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
             && config.solver_plan.selected == crate::ppml::PpmlSolverFamily::Map
         {
@@ -363,8 +339,8 @@ impl LinearAdmission {
         } else {
             None
         };
-        let certificate_geometry = if coefficient_solver {
-            true
+        let certificate_geometry = if coefficient_solver.is_some() {
+            None
         } else if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
             && config.solver_plan.selected == crate::ppml::PpmlSolverFamily::Map
             && fe_design.effects().len() > 1
@@ -374,119 +350,102 @@ impl LinearAdmission {
                 .any(|effect| !effect.slopes().is_empty())
         {
             match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(fe_design) {
-                Ok(bytes) => self.plan.admit_reusable_certificate(bytes),
-                Err(error) if error.code == ErrorCode::Allocation => false,
+                Ok(bytes) => self.plan.admit_reusable_certificate(bytes).then_some(bytes),
+                Err(error) if error.code == ErrorCode::Allocation => None,
                 Err(error) => return Err(error),
             }
         } else {
-            false
+            None
         };
 
-        Ok(ProjectionAdmission {
-            coefficient_solver,
-            projection_rhs,
-            categorical_checkpoints,
-            parallel: projection_plan,
-            geometry: certificate_geometry,
+        if let Some((geometry, workspace)) = coefficient_solver {
+            self.admit_coefficient_options(
+                inputs,
+                categorical_checkpoints,
+                projection_rhs,
+                geometry,
+                workspace,
+            )
+        } else {
+            Ok(ProjectionInstallation::Generic {
+                parallel: projection_plan,
+                geometry: certificate_geometry,
+            })
+        }
+    }
+    fn admit_coefficient_options<P: PreparedOlsFitView + Sync + ?Sized>(
+        &mut self,
+        inputs: &AdmissionInputs<'_, P>,
+        categorical_checkpoints: bool,
+        projection_rhs: usize,
+        geometry: u128,
+        workspace: u128,
+    ) -> Result<ProjectionInstallation> {
+        // Preserve this order: geometry/solver, certificate, coupling,
+        // joint finite bank, then the coexisting checkpoint reserve.
+        let certificate = self.try_slope_estimate(
+            crate::fe::ReusableMapAbsorber::coefficient_certificate_bytes(
+                inputs.fe_design,
+                projection_rhs,
+            )
+            .map(Some),
+        )?;
+        let coupling =
+            self.try_slope_estimate(crate::fe::ReusableMapAbsorber::coefficient_coupling_bytes(
+                inputs.fe_design,
+                projection_rhs,
+            ))?;
+        let joint = if self.rhs > 1 {
+            self.try_slope_estimate(
+                crate::fe::ReusableMapAbsorber::joint_slope_bytes(inputs.fe_design, self.rhs - 1)
+                    .map(Some),
+            )?
+        } else {
+            None
+        };
+        let component_checkpoint =
+            self.admit_low_checkpoint(inputs, categorical_checkpoints, projection_rhs)?;
+        Ok(ProjectionInstallation::Coefficient {
+            geometry,
+            workspace,
+            certificate,
+            coupling,
+            joint,
+            component_checkpoint,
         })
     }
-    fn try_slope_estimate(&mut self, estimate: Result<Option<u128>>) -> Result<bool> {
+    fn try_slope_estimate(&mut self, estimate: Result<Option<u128>>) -> Result<Option<u128>> {
         match estimate {
-            Ok(Some(bytes)) => Ok(self.try_slope_increment(bytes)),
-            Ok(None) => Ok(false),
-            Err(error) if error.code == ErrorCode::Allocation => Ok(false),
+            Ok(Some(bytes)) => Ok(self.try_slope_increment(bytes).then_some(bytes)),
+            Ok(None) => Ok(None),
+            Err(error) if error.code == ErrorCode::Allocation => Ok(None),
             Err(error) => Err(error),
         }
     }
 
-    fn admit_slope_options<P: PreparedOlsFitView + Sync + ?Sized>(
-        &mut self,
-        inputs: &AdmissionInputs<'_, P>,
-        coefficient_solver: bool,
-        projection_rhs: usize,
-    ) -> Result<SlopeOptions> {
-        if !coefficient_solver {
-            return Ok(SlopeOptions {
-                certificate: false,
-                coupling: false,
-                joint: false,
-            });
-        }
-        let design = inputs.fe_design;
-        let certificate = self.try_slope_estimate(
-            crate::fe::ReusableMapAbsorber::coefficient_certificate_bytes(design, projection_rhs)
-                .map(Some),
-        )?;
-        let coupling = self.try_slope_estimate(
-            crate::fe::ReusableMapAbsorber::coefficient_coupling_bytes(design, projection_rhs),
-        )?;
-        let joint = self.rhs > 1
-            && self.try_slope_estimate(
-                crate::fe::ReusableMapAbsorber::joint_slope_bytes(design, self.rhs - 1).map(Some),
-            )?;
-        Ok(SlopeOptions {
-            certificate,
-            coupling,
-            joint,
-        })
-    }
     fn admit_low_checkpoint<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         inputs: &AdmissionInputs<'_, P>,
-        coefficient_solver: bool,
         categorical_checkpoints: bool,
         projection_rhs: usize,
-    ) -> Result<bool> {
+    ) -> Result<Option<u128>> {
         let fe_design = inputs.fe_design;
         let effective_threads = inputs.threads;
-        let admitted =
-            if coefficient_solver && categorical_checkpoints && fe_design.effects().len() == 3 {
-                let mut level_storage = [0; 3];
-                for (slot, effect) in level_storage.iter_mut().zip(fe_design.effects()) {
-                    *slot = effect.n_levels();
-                }
-                let levels = &level_storage[..fe_design.effects().len()];
-                match estimate_checkpoint_lsmr_workspace_bytes(
-                    fe_design.nobs(),
-                    projection_rhs,
-                    levels,
-                    effective_threads,
-                )
-                .and_then(|bytes| {
-                    // Scaling overlaps the LSMR frame: N weights, component labels
-                    // and maxima. Topology construction uses <32 bytes/level plus
-                    // <512 bytes of descriptors for these three effects.
-                    let component_bytes = 8 * fe_design.nobs() as u128
-                        + 32 * levels.iter().map(|&n| n as u128).sum::<u128>()
-                        + 512;
-                    let bytes = bytes
-                        .checked_add(component_bytes)
-                        .ok_or_else(|| allocation("component checkpoint workspace overflows"))?;
-                    self.plan
-                        .solver_workspace_bytes
-                        .checked_add(bytes)
-                        .ok_or_else(|| allocation("low PPML checkpoint workspace overflows"))
-                        .and_then(|total| {
-                            self.plan
-                                .with_solver_workspace(total)
-                                .map(|plan| (plan, bytes))
-                        })
-                }) {
-                    Ok((plan, bytes)) => {
-                        self.plan = plan;
-                        self.execution_bytes = self
-                            .execution_bytes
-                            .checked_add(bytes)
-                            .ok_or_else(|| allocation("low PPML checkpoint overlap overflows"))?;
-                        true
-                    }
-                    Err(error) if error.code == ErrorCode::Allocation => false,
-                    Err(error) => return Err(error),
-                }
-            } else {
-                false
-            };
-        Ok(admitted)
+        if !categorical_checkpoints || fe_design.effects().len() != 3 {
+            return Ok(None);
+        }
+        let estimate = crate::ols::ppml_component_checkpoint_bytes(
+            fe_design,
+            projection_rhs,
+            effective_threads,
+        );
+        match estimate {
+            Ok(bytes) => Ok(self
+                .try_solver_increment(Some(bytes), "low PPML checkpoint overlap overflows")?
+                .then_some(bytes)),
+            Err(error) if error.code == ErrorCode::Allocation => Ok(None),
+            Err(error) => Err(error),
+        }
     }
 
     fn prepare_installation<P: PreparedOlsFitView + Sync + ?Sized>(
@@ -508,33 +467,11 @@ impl LinearAdmission {
         };
         let one_fe = self.admit_one_fe(&inputs)?;
         let curve = self.admit_curve(&inputs)?;
-        let centered = self.admit_centered(&inputs, one_fe)?;
+        let centered = self.admit_centered(&inputs, one_fe.is_some())?;
         let fast_products = self.admit_fast_products(&inputs)?;
         let projection = self.admit_projection(&inputs)?;
-        let options = self.admit_slope_options(
-            &inputs,
-            projection.coefficient_solver,
-            projection.projection_rhs,
-        )?;
-        let low = self.admit_low_checkpoint(
-            &inputs,
-            projection.coefficient_solver,
-            projection.categorical_checkpoints,
-            projection.projection_rhs,
-        )?;
-        let projection = if projection.coefficient_solver {
-            ProjectionInstallation::Coefficient {
-                options,
-                component_checkpoint: low,
-            }
-        } else {
-            ProjectionInstallation::Generic {
-                parallel: projection.parallel,
-                geometry: projection.geometry,
-            }
-        };
         Ok(LinearInstallation {
-            profiles: LateProfiles { one_fe, curve },
+            profiles: AdmittedProfiles { one_fe, curve },
             centered,
             fast_products,
             projection,
@@ -597,7 +534,7 @@ impl LinearInstallation {
         config: &PreparedPpmlIrlsConfig,
         purpose: PreparedPpmlIrlsPurpose,
         effective_threads: usize,
-    ) -> Result<(CertifiedLinearSession<'a, P>, LateProfiles, bool)> {
+    ) -> Result<(CertifiedLinearSession<'a, P>, AdmittedProfiles, bool)> {
         let mut session = if matches!(self.projection, ProjectionInstallation::Coefficient { .. }) {
             CertifiedLinearSession::new_with_fe_design(
                 prepared,
@@ -616,44 +553,50 @@ impl LinearInstallation {
             )?
         };
         // A refused centered option retains the caller's shared owner through the fit.
-        if self.centered {
+        if let Some(allowance) = self.centered {
             session.enable_group_centered_one_fe(
                 shared_prepared
                     .take()
                     .ok_or_else(|| invalid_argument("implicit prepared owner is absent"))?,
+                allowance,
             )?;
         }
-        if self.fast_products > 0 {
-            session.enable_fast_canonical_products(self.fast_products)?;
+        if let Some(allowance) = self.fast_products {
+            session.enable_fast_canonical_products(allowance)?;
         }
         let low_checkpoint = match self.projection {
             ProjectionInstallation::Generic { parallel, geometry } => {
                 if let Some(plan) = parallel {
                     session.enable_ppml_parallel_projection(plan)?;
                 }
-                if geometry {
-                    session.enable_ppml_certificate_geometry()?;
+                if let Some(allowance) = geometry {
+                    session.enable_ppml_certificate_geometry(allowance)?;
                 }
-                false
+                None
             }
             ProjectionInstallation::Coefficient {
-                options,
+                geometry,
+                workspace,
+                certificate,
+                coupling,
+                joint,
                 component_checkpoint,
             } => {
-                session.enable_ppml_certificate_geometry()?;
+                session.enable_ppml_certificate_geometry(geometry)?;
                 session.enable_ppml_coefficient_solver(
                     effective_threads,
-                    options.certificate,
-                    options.coupling,
+                    workspace,
+                    certificate,
+                    coupling,
                 )?;
-                if options.joint {
-                    session.enable_ppml_joint_slopes()?;
+                if let Some(allowance) = joint {
+                    session.enable_ppml_joint_slopes(allowance)?;
                 }
                 component_checkpoint
             }
         };
         session.set_phase_allocator_probe(config.linear_phase_allocation_probe);
-        let initial_checkpoint = low_checkpoint
+        let initial_checkpoint = low_checkpoint.is_some()
             || use_initial_checkpoint_lsmr_accelerator(
                 config,
                 purpose,
@@ -662,8 +605,8 @@ impl LinearInstallation {
             );
         if initial_checkpoint {
             session.enable_checkpoint_lsmr();
-            if low_checkpoint {
-                session.enable_component_checkpoint_scaling();
+            if let Some(allowance) = low_checkpoint {
+                session.enable_component_checkpoint_scaling(allowance, effective_threads)?;
             }
         }
         Ok((session, self.profiles, initial_checkpoint))

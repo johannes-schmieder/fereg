@@ -31,17 +31,7 @@ impl OwnedFeDesignMemoryEstimate {
         let n = rows as u128;
         let d = effects as u128;
         let s = slope_channels as u128;
-        let resident_bytes = checked_sum(&[
-            bytes::<EffectTerm>(d)?,
-            bytes::<u32>(checked_mul(n, d, "owned FE summary codes")?)?,
-            bytes::<usize>(checked_sum(&[
-                checked_mul(n, d, "owned FE summary memberships")?,
-                total_levels as u128,
-                d,
-            ])?)?,
-            bytes::<f64>(checked_mul(n, s, "owned FE summary slopes")?)?,
-            bytes::<Vec<f64>>(s)?,
-        ])?;
+        let resident_bytes = effect_resident_bytes(n, d, total_levels as u128, s)?;
         let construction_bytes = checked_sum(&[
             resident_bytes,
             bytes::<usize>(checked_mul(
@@ -61,13 +51,7 @@ impl OwnedFeDesignMemoryEstimate {
         let n = rows as u128;
         let l = levels as u128;
         let s = slopes as u128;
-        let resident = checked_sum(&[
-            std::mem::size_of::<EffectTerm>() as u128,
-            bytes::<u32>(n)?,
-            bytes::<usize>(checked_sum(&[n, l, 1])?)?,
-            bytes::<f64>(checked_mul(n, s, "owned FE slope cells")?)?,
-            bytes::<Vec<f64>>(s)?,
-        ])?;
+        let resident = effect_resident_bytes(n, 1, l, s)?;
         let scratch = bytes::<usize>(checked_mul(l, 2, "owned FE membership scratch")?)?;
         self.construction_bytes = checked_sum(&[self.construction_bytes, resident])?
             .max(checked_sum(&[self.resident_bytes, resident, scratch])?);
@@ -91,6 +75,22 @@ impl OwnedFeDesignMemoryEstimate {
         ])?;
         Ok(())
     }
+}
+
+// The aggregate preflight and the sequential allocating adapter use the same
+// effect payload; only their construction-overlap composition differs.
+fn effect_resident_bytes(n: u128, d: u128, levels: u128, s: u128) -> Result<u128> {
+    checked_sum(&[
+        bytes::<EffectTerm>(d)?,
+        bytes::<u32>(checked_mul(n, d, "owned FE summary codes")?)?,
+        bytes::<usize>(checked_sum(&[
+            checked_mul(n, d, "owned FE summary memberships")?,
+            levels,
+            d,
+        ])?)?,
+        bytes::<f64>(checked_mul(n, s, "owned FE summary slopes")?)?,
+        bytes::<Vec<f64>>(s)?,
+    ])
 }
 
 pub(crate) fn owned_fe_matrix_bytes(rows: usize, rhs: usize) -> Result<u128> {

@@ -211,6 +211,35 @@ impl Ledger {
 
 /// This opt-in development trace precedes every public store. It is not a
 /// completion receipt or a change to either estimator's public memory wire.
+/// One lifetime timeline, with independent coverage/admission and expected
+/// heap channels. Missing expected data remains unknown through composition.
+pub(crate) struct Composition {
+    pub(crate) ledger: Ledger,
+    pub(crate) expected_peak: Option<u128>,
+}
+impl Composition {
+    pub(crate) fn new(estimator: Estimator) -> Self {
+        Self {
+            ledger: Ledger::new(estimator),
+            expected_peak: Some(0),
+        }
+    }
+    pub(crate) fn record(
+        &mut self,
+        stage: Stage,
+        admission: Frame,
+        expected: Option<Frame>,
+        gaps: Gaps,
+    ) -> Result<()> {
+        self.ledger.record(stage, admission, gaps)?;
+        self.expected_peak = match (self.expected_peak, expected) {
+            (Some(peak), Some(frame)) => Some(peak.max(frame.peak()?)),
+            _ => None,
+        };
+        Ok(())
+    }
+}
+
 pub(crate) fn emit(ledger: &Ledger, observed_bytes: u64) -> Result<()> {
     ledger
         .write(std::io::stderr().lock(), observed_bytes)

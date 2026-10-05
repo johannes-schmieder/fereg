@@ -1002,35 +1002,18 @@ impl BorrowedMapWorkspace {
         rhs_count: usize,
         parallel_threads: usize,
     ) -> Result<[usize; 3]> {
-        let parallel_group_levels =
-            if observation_count >= PARALLEL_PROJECTION_MIN_ROWS && parallel_threads > 1 {
-                maximum_levels
-            } else {
-                0
-            };
-        let parallel_group_mean_count = if rhs_count > 1 || parallel_group_levels > 0 {
-            parallel_group_levels
-                .checked_mul(rhs_count)
-                .ok_or_else(|| allocation("borrowed MAP parallel group-mean dimensions overflow"))?
-        } else {
-            0
-        };
-        let parallel_dot_sum_count = if observation_count >= PARALLEL_PROJECTION_MIN_ROWS
-            && rhs_count <= FUSED_PARALLEL_MAX_RHS
-            && parallel_threads > 1
-        {
-            observation_count
-                .div_ceil(PARALLEL_DOT_CHUNK_ROWS)
-                .checked_mul(rhs_count)
-                .ok_or_else(|| allocation("borrowed CG parallel dot dimensions overflow"))?
-        } else {
-            0
-        };
-        Ok([
-            parallel_group_levels,
-            parallel_group_mean_count,
-            parallel_dot_sum_count,
-        ])
+        let counts = super::categorical_parallel_counts(
+            maximum_levels as u128,
+            observation_count as u128,
+            rhs_count as u128,
+            parallel_threads as u128,
+        )?;
+        let mut concrete = [0; 3];
+        for (target, count) in concrete.iter_mut().zip(counts) {
+            *target = usize::try_from(count)
+                .map_err(|_| allocation("borrowed MAP parallel dimensions overflow"))?;
+        }
+        Ok(concrete)
     }
 
     fn planned_payload_bytes(
@@ -1291,12 +1274,15 @@ impl TwoFePcgWorkspace {
         let right_effect = 1 - left_effect;
         let left_levels = design.effects()[left_effect].n_levels();
         let right_levels = design.effects()[right_effect].n_levels();
-        let left_cells = left_levels
-            .checked_mul(max_rhs)
-            .ok_or_else(|| allocation("two-FE PCG left workspace dimensions overflow"))?;
-        let right_cells = right_levels
-            .checked_mul(max_rhs)
-            .ok_or_else(|| allocation("two-FE PCG right workspace dimensions overflow"))?;
+        let plan = super::workspace_capacity::TwoFeCapacity::new(
+            left_levels as u128,
+            right_levels as u128,
+            max_rhs as u128,
+        )?;
+        let left_cells = usize::try_from(plan.left)
+            .map_err(|_| allocation("two-FE PCG left workspace dimensions overflow"))?;
+        let right_cells = usize::try_from(plan.right)
+            .map_err(|_| allocation("two-FE PCG right workspace dimensions overflow"))?;
         Ok(Self {
             left_effect,
             right_effect,
@@ -1518,19 +1504,28 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             parallel_threads,
             &mut reservation,
         )?;
-        let two_fe_pcg = if design.effects().len() == 2
-            && design.nobs() >= 128
-            && max_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS
-        {
+        let accelerator = super::CategoricalAcceleratorCapacity::new(
+            design.effects().len(),
+            true,
+            design.nobs() as u128,
+            max_rhs as u128,
+            design.effects().iter().map(|e| e.n_levels() as u128).sum(),
+            design
+                .effects()
+                .iter()
+                .map(|e| e.n_levels() as u128)
+                .max()
+                .unwrap_or(0),
+        )?;
+        let two_fe_pcg = if matches!(accelerator, super::CategoricalAcceleratorCapacity::TwoFe(_)) {
             Some(TwoFePcgWorkspace::new(&design, max_rhs, &mut reservation)?)
         } else {
             None
         };
-        // A single categorical projection is exact and needs no observation-sized accelerator.
-        let (accelerator_x0, accelerator_x1, accelerator_x2) = if design.effects().len() > 1
-            && max_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS
-            && two_fe_pcg.is_none()
-        {
+        let (accelerator_x0, accelerator_x1, accelerator_x2) = if matches!(
+            accelerator,
+            super::CategoricalAcceleratorCapacity::Observation(_)
+        ) {
             (
                 Some(DenseMatrix::zeros(design.nobs(), max_rhs)?),
                 Some(DenseMatrix::zeros(design.nobs(), max_rhs)?),
@@ -1539,7 +1534,10 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         } else {
             (None, None, None)
         };
-        let cg_scalar_rhs = usize::from(accelerator_x0.is_some() || two_fe_pcg.is_some()) * max_rhs;
+        let cg_scalar_rhs = usize::from(!matches!(
+            accelerator,
+            super::CategoricalAcceleratorCapacity::None
+        )) * max_rhs;
         Ok(Self {
             design,
             workspace,

@@ -54,5 +54,9 @@ active, including the ratchet, evidence gates, timebox and one status ledger.
 Johannes's 2026-10-05 execution override pauses GitHub testing and restricts
 qualification to the lead's Mac until resumed. Local acceptance precedes
 dependent work; no CI or remote-platform gate applies during this period.
-Preserve all scientific/performance gates and historical failures. Report
-Mac scope and deferred Linux/SCC/Windows evidence without portability claims.
+Preserve scientific gates, measured performance and historical failures. His
+subsequent M28–M30 override permits architectural acceptance of inconclusive
+performance with an independently reviewed substantial code-quality benefit.
+Keep the allowance and raw verdict unchanged; uncertainty remains recorded,
+not a timing pass. Established regressions still require correction or his
+separate decision. Report Mac scope and deferred remote evidence without claims.

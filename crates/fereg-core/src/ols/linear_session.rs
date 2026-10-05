@@ -67,6 +67,44 @@ pub(crate) struct LinearSessionGenerations {
     pub(crate) basis: u64,
 }
 
+/// The coefficient frame coexists with the prior response and optional Low
+/// categorical owner. Admission and installation consume this same envelope.
+pub(crate) fn ppml_coefficient_lifetime_bytes(
+    design: &FeDesign,
+    rhs: usize,
+    threads: usize,
+    categorical_checkpoint: bool,
+) -> Result<u128> {
+    let checkpoint = if categorical_checkpoint {
+        ReusableCategoricalMapAbsorber::coexisting_owner_bytes(design.effects().len(), rhs)?
+    } else {
+        0
+    };
+    ReusableMapAbsorber::coefficient_solver_bytes(design, rhs, threads)?
+        .checked_add(8 * design.nobs() as u128)
+        .and_then(|bytes| bytes.checked_add(checkpoint))
+        .ok_or_else(|| allocation("PPML coefficient workspace overlap overflows"))
+}
+
+/// Component scaling and its three-effect topology overlap the LSMR frame.
+pub(crate) fn ppml_component_checkpoint_bytes(
+    design: &FeDesign,
+    rhs: usize,
+    threads: usize,
+) -> Result<u128> {
+    if design.effects().len() != 3 {
+        return Err(invalid_argument(
+            "component checkpoint requires three effects",
+        ));
+    }
+    let levels: [usize; 3] = std::array::from_fn(|e| design.effects()[e].n_levels());
+    let component =
+        8 * design.nobs() as u128 + 32 * levels.iter().map(|&n| n as u128).sum::<u128>() + 512;
+    crate::ppml::estimate_checkpoint_lsmr_workspace_bytes(design.nobs(), rhs, &levels, threads)?
+        .checked_add(component)
+        .ok_or_else(|| allocation("component checkpoint workspace overflows"))
+}
+
 impl LinearSessionGenerations {
     const fn map_geometry(self) -> MapGeometryGeneration {
         MapGeometryGeneration {
@@ -333,6 +371,7 @@ pub(crate) struct LinearWithinMemoryReport {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct LinearSessionWorkspaceCapacities {
+    pub(crate) fe: ReusableMapCapacities,
     pub(crate) accepted_fit: [usize; 6],
     pub(crate) accepted_fit_optional_owners: bool,
     pub(crate) constant_recipe_elements: usize,
@@ -369,31 +408,6 @@ pub(crate) struct LinearSessionWorkspaceCapacities {
     pub(crate) within_resident_elements: usize,
     pub(crate) within_scratch_bytes: u64,
     pub(crate) within_io_buffer_elements: usize,
-    pub(crate) fe_rhs_elements: usize,
-    pub(crate) fe_max_channels: usize,
-    pub(crate) fe_max_level_members: usize,
-    pub(crate) fe_reference_norm_elements: usize,
-    pub(crate) fe_residual_norm_elements: usize,
-    pub(crate) fe_rhs_scale_elements: usize,
-    pub(crate) fe_norm_scale_elements: usize,
-    pub(crate) fe_norm_sum_elements: usize,
-    pub(crate) fe_group_sum_elements: usize,
-    pub(crate) fe_group_correction_elements: usize,
-    pub(crate) fe_projection_gram_elements: usize,
-    pub(crate) fe_projection_rhs_elements: usize,
-    pub(crate) fe_projection_workers: usize,
-    pub(crate) fe_certificate_column_elements: usize,
-    pub(crate) fe_certificate_basis_elements: usize,
-    pub(crate) fe_certificate_geometry_elements: usize,
-    pub(crate) fe_certificate_rank_elements: usize,
-    pub(crate) fe_accelerator_state_elements: usize,
-    pub(crate) fe_topology_effect_elements: usize,
-    pub(crate) fe_topology_code_elements: usize,
-    pub(crate) fe_topology_slope_vector_elements: usize,
-    pub(crate) fe_topology_slope_value_elements: usize,
-    pub(crate) fe_topology_level_offset_elements: usize,
-    pub(crate) fe_topology_level_observation_elements: usize,
-    pub(crate) fe_topology_resident_bytes: u128,
 }
 
 /// Independent certificates for one full-rank solve on the frozen finite
@@ -826,35 +840,23 @@ impl RetainedWithinStorage {
     }
 
     fn memory_report(&self) -> LinearWithinMemoryReport {
-        let rows = self.rows();
-        let columns = self.columns();
-        match self {
-            Self::Dense(values) => LinearWithinMemoryReport {
-                // In-place cache compaction deliberately preserves the
-                // source allocation so no fallible N-by-K reallocation can
-                // occur after the canonical solve. Report retained capacity,
-                // not logical length, to keep preflight and telemetry honest
-                // for the N-by-(K+1) strided cache representation.
-                resident_bytes: values.storage_capacity() as u128 * 8,
-                scratch_bytes: 0,
-                rows,
-                columns,
-                mode: PreparedOlsExecutionMode::Fast,
-            },
-            Self::Implicit(values) => LinearWithinMemoryReport {
-                resident_bytes: values.resident_bytes(),
-                scratch_bytes: 0,
-                rows,
-                columns,
-                mode: values.mode(),
-            },
-            Self::Scratch(values) => LinearWithinMemoryReport {
-                resident_bytes: 0,
-                scratch_bytes: values.bytes(),
-                rows,
-                columns,
-                mode: PreparedOlsExecutionMode::Low,
-            },
+        let (resident_bytes, scratch_bytes, mode) = match self {
+            // Compaction preserves the original strided allocation; report its
+            // capacity, rather than logical length after rank reduction.
+            Self::Dense(values) => (
+                values.storage_capacity() as u128 * 8,
+                0,
+                PreparedOlsExecutionMode::Fast,
+            ),
+            Self::Implicit(values) => (values.resident_bytes(), 0, values.mode()),
+            Self::Scratch(values) => (0, values.bytes(), PreparedOlsExecutionMode::Low),
+        };
+        LinearWithinMemoryReport {
+            resident_bytes,
+            scratch_bytes,
+            rows: self.rows(),
+            columns: self.columns(),
+            mode,
         }
     }
 }
@@ -1957,6 +1959,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn enable_group_centered_one_fe(
         &mut self,
         source: SharedPreparedOlsData,
+        allowance: u128,
     ) -> Result<()> {
         if self.within.is_some()
             || self.config.absorb.solver != FeSolverKind::Map
@@ -1968,6 +1971,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 "implicit prepared owner does not match the linear session",
             ));
         }
+        crate::memory::require_admitted_capacity(
+            super::ImplicitCenteredDesign::bytes(
+                self.fe_design().effects()[0].n_levels(),
+                self.prepared.fit_model().columns.len(),
+                self.config.execution.threads.resolved(),
+            )?,
+            allowance,
+        )?;
         self.group_centered_source = Some(source);
         Ok(())
     }
@@ -2125,6 +2136,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             CertifiedPreparedOlsFit::session_capacity_inventory,
         );
         LinearSessionWorkspaceCapacities {
+            fe,
             constant_recipe_elements: self
                 .constant
                 .as_ref()
@@ -2191,31 +2203,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             within_resident_elements,
             within_scratch_bytes,
             within_io_buffer_elements,
-            fe_rhs_elements: fe.rhs,
-            fe_max_channels: fe.max_channels,
-            fe_max_level_members: fe.max_level_members,
-            fe_reference_norm_elements: fe.reference_norms,
-            fe_residual_norm_elements: fe.residual_norms,
-            fe_rhs_scale_elements: fe.rhs_scales,
-            fe_norm_scale_elements: fe.norm_scales,
-            fe_norm_sum_elements: fe.norm_sums,
-            fe_group_sum_elements: fe.group_sums,
-            fe_group_correction_elements: fe.group_corrections,
-            fe_projection_gram_elements: fe.projection_gram,
-            fe_projection_rhs_elements: fe.projection_rhs,
-            fe_projection_workers: fe.projection_workers,
-            fe_certificate_column_elements: fe.certificate_columns,
-            fe_certificate_basis_elements: fe.certificate_basis,
-            fe_certificate_geometry_elements: fe.certificate_geometry,
-            fe_certificate_rank_elements: fe.certificate_ranks,
-            fe_accelerator_state_elements: fe.accelerator_state,
-            fe_topology_effect_elements: fe.topology_effects,
-            fe_topology_code_elements: fe.topology_codes,
-            fe_topology_slope_vector_elements: fe.topology_slope_vectors,
-            fe_topology_slope_value_elements: fe.topology_slope_values,
-            fe_topology_level_offset_elements: fe.topology_level_offsets,
-            fe_topology_level_observation_elements: fe.topology_level_observations,
-            fe_topology_resident_bytes: fe.topology_resident_bytes,
         }
     }
 
@@ -2244,7 +2231,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
     }
 
-    pub(crate) fn enable_ppml_certificate_geometry(&mut self) -> Result<()> {
+    pub(crate) fn enable_ppml_certificate_geometry(&mut self, allowance: u128) -> Result<()> {
+        crate::memory::require_admitted_capacity(
+            ReusableMapAbsorber::certificate_geometry_bytes(self.fe_design())?,
+            allowance,
+        )?;
         match self.fe_projector.as_mut() {
             Some(ReusableLinearMapProjector::Generic(projector)) => {
                 match projector.enable_certificate_geometry() {
@@ -2262,9 +2253,23 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn enable_ppml_coefficient_solver(
         &mut self,
         threads: usize,
-        parallel_certificate: bool,
-        prepared_coupling: bool,
+        allowance: u128,
+        parallel_certificate: Option<u128>,
+        prepared_coupling: Option<u128>,
     ) -> Result<()> {
+        let rhs = self.fe_projector.as_ref().expect("MAP owner").max_rhs();
+        let categorical_checkpoint = self.config.execution.mode == PreparedOlsExecutionMode::Low
+            && self
+                .prepared
+                .fit_borrowed_intercept_map_design()?
+                .is_some_and(|d| matches!(d.effects().len(), 2 | 3));
+        let required = ppml_coefficient_lifetime_bytes(
+            self.fe_design(),
+            rhs,
+            threads,
+            categorical_checkpoint,
+        )?;
+        crate::memory::require_admitted_capacity(required, allowance)?;
         // Joint ordinary directions do not provide a canonical within design.
         // Keep the established categorical checkpoint projector, including its
         // local-mean arithmetic on disconnected, unequal-mass components.
@@ -2300,14 +2305,23 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
             Err(error) => return Err(error),
         }
-        if parallel_certificate {
+        if let Some(allowance) = parallel_certificate {
+            crate::memory::require_admitted_capacity(
+                ReusableMapAbsorber::coefficient_certificate_bytes(projector.design(), rhs)?,
+                allowance,
+            )?;
             match projector.enable_coefficient_certificates() {
                 Ok(()) => {}
                 Err(error) if error.code == ErrorCode::Allocation => {}
                 Err(error) => return Err(error),
             }
         }
-        if prepared_coupling {
+        if let Some(allowance) = prepared_coupling {
+            crate::memory::require_admitted_capacity(
+                ReusableMapAbsorber::coefficient_coupling_bytes(projector.design(), rhs)?
+                    .unwrap_or(0),
+                allowance,
+            )?;
             match projector.enable_coefficient_coupling() {
                 Ok(()) => {}
                 Err(error) if error.code == ErrorCode::Allocation => {}
@@ -2352,7 +2366,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         Ok(())
     }
-    pub(crate) fn enable_ppml_joint_slopes(&mut self) -> Result<()> {
+    pub(crate) fn enable_ppml_joint_slopes(&mut self, allowance: u128) -> Result<()> {
+        crate::memory::require_admitted_capacity(
+            ReusableMapAbsorber::joint_slope_bytes(
+                self.fe_design(),
+                self.prepared.fit_model().columns.len(),
+            )?,
+            allowance,
+        )?;
         if let Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) =
             self.fe_projector.as_mut()
         {
@@ -2372,13 +2393,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
     }
 
-    pub(crate) fn enable_component_checkpoint_scaling(&mut self) {
+    pub(crate) fn enable_component_checkpoint_scaling(
+        &mut self,
+        allowance: u128,
+        threads: usize,
+    ) -> Result<()> {
+        let rhs = self.fe_projector.as_ref().expect("MAP owner").max_rhs();
+        let required = ppml_component_checkpoint_bytes(self.fe_design(), rhs, threads)?;
+        crate::memory::require_admitted_capacity(required, allowance)?;
         if let Some(ReusableLinearMapProjector::PpmlCoefficients {
             canonical: Some(p), ..
         }) = self.fe_projector.as_mut()
         {
             p.enable_component_checkpoint_scaling();
         }
+        Ok(())
     }
 
     #[cfg(test)]
@@ -7411,8 +7440,12 @@ fn require_newer(current: u64, next: u64, label: &'static str) -> Result<()> {
 }
 
 fn checked_elements(rows: usize, columns: usize) -> Result<usize> {
-    rows.checked_mul(columns)
-        .ok_or_else(|| allocation("weighted-linear matrix dimensions overflow"))
+    crate::memory::Capacity::<f64>::matrix(
+        rows as u128,
+        columns as u128,
+        "weighted-linear dimensions overflow",
+    )?
+    .len("weighted-linear dimensions overflow")
 }
 
 fn fallible_empty<T>(capacity: usize, message: &'static str) -> Result<Vec<T>> {

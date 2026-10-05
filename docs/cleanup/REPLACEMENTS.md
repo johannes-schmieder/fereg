@@ -45,19 +45,20 @@ the M27 replacement allocation; the remaining table entries are design budgets.
 Its scientific/transaction and calibrated performance gates plus Astra high
 completion review pass on this Mac; remote qualification remains deferred.
 
-M28's integrated draft currently measures 119,769 lines, **96 above accepted M27**
+M28's accepted integrated replacement measures 119,769 lines, **96 above accepted M27**
 and 1,627 below M26, including all plans, adapters and fixes. The original 1,769-line
 saving forecast was unsupported: generation, detector/cascade, Mu, strict rollback,
 recovery and publication envelopes encode different live owners. They cannot be
-collapsed to improve the count. The draft removes duplicated storage/workspace
+collapsed to improve the count. The replacement removes duplicated storage/workspace
 formulas, admission payloads and physical scratch traversal, and cuts the route
 calculation by 87 lines. Its local/scientific gates pass, but the frozen
 screening and prescribed confirmation end unresolved for three workloads.
 The [terminal evidence](../../bench/history/2026-10-05-m28-capacity-owner-terminal.json)
 retains all 4,720 commands, measured drift and the
 [recoverable candidate](../../bench/history/2026-10-05-m28-capacity-owner-candidate.patch).
-M28 is unpromoted; accepted production remains M27's 119,673 lines. This
-measurement uncertainty does not establish a regression or permit favorable retries.
+Johannes [accepts this architectural replacement](../../bench/history/2026-10-05-m28-capacity-owner-acceptance.json)
+with its measured performance unresolved. Accepted production is 119,769 lines;
+the allowance and original verdict remain unchanged. No favorable retry occurred.
 
 Prospectively accounting for M27's 41-line improvement over its allocation and
 M28's 1,865-line forecast miss leaves 16,184 planned program lines retired and

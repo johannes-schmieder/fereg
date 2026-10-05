@@ -13,6 +13,7 @@ use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::memory::Capacity;
 
 const IO_BUFFER_BYTES: usize = 1 << 20;
 const SHARED_READ_BUFFER_BYTES: usize = 8 << 10;
@@ -22,6 +23,67 @@ static SCRATCH_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 pub(crate) enum ScratchLayout {
     ColumnMajor,
     RowMajor,
+}
+
+/// Concrete storage and conservative admission have different row-buffer rules.
+struct ScratchCapacityPlan {
+    bytes: u64,
+    buffer: Capacity<u8>,
+}
+impl ScratchCapacityPlan {
+    fn concrete(
+        rows: usize,
+        columns: usize,
+        layout: ScratchLayout,
+        buffered: bool,
+    ) -> Result<Self> {
+        let cells = Capacity::<f64>::matrix(
+            rows as u128,
+            columns as u128,
+            "prepared OLS scratch dimensions overflow usize",
+        )?;
+        let elements = cells.len("prepared OLS scratch dimensions overflow usize")?;
+        let bytes = u64::try_from(elements)
+            .ok()
+            .and_then(|n| n.checked_mul(8))
+            .ok_or_else(|| allocation("prepared OLS scratch size overflows u64"))?;
+        let row = if layout == ScratchLayout::RowMajor && rows != 0 {
+            columns
+                .checked_mul(8)
+                .ok_or_else(|| allocation("prepared OLS row-major scratch row size overflows"))?
+        } else {
+            0
+        };
+        let buffer = IO_BUFFER_BYTES
+            .min(usize::try_from(bytes).unwrap_or(usize::MAX))
+            .max(row)
+            .max(8);
+        Ok(Self {
+            bytes,
+            buffer: Capacity::new(if buffered { buffer as u128 } else { 0 }),
+        })
+    }
+}
+
+/// OLS historically reserves a complete transpose tile whenever finite
+/// columns exist, independently of the smaller concrete scratch file.
+pub(crate) const fn ols_scratch_transpose_reserve(columns: usize) -> u128 {
+    if columns == 0 {
+        0
+    } else {
+        IO_BUFFER_BYTES as u128
+    }
+}
+
+pub(crate) fn conservative_scratch_io_bytes(file_bytes: u128, columns: u128) -> Result<u128> {
+    // PPML historically reserves a complete row even for an empty design.
+    Ok(file_bytes
+        .min(IO_BUFFER_BYTES as u128)
+        .max(
+            Capacity::<f64>::new(columns)
+                .bytes("PPML memory estimate overflow while sizing PPML f64 storage")?,
+        )
+        .max(8))
 }
 
 #[derive(Debug)]
@@ -42,6 +104,11 @@ pub(crate) struct PreparedOlsScratch {
     encoded_tile_writes: u64,
 }
 
+enum RowMajorBlock<'a> {
+    Read(&'a mut [f64]),
+    Patch(&'a [f64]),
+}
+
 /// One immutable scan owns its encoded page. Borrowing the scratch prevents
 /// writes, compaction or weight-frame replacement while cached bytes are live.
 /// The page replaces the same-sized temporary used by each shared row read.
@@ -53,6 +120,31 @@ pub(crate) struct PreparedOlsScratchReader<'a> {
 }
 
 impl PreparedOlsScratchReader<'_> {
+    fn refill(&mut self, start: usize, maximum: usize) -> Result<()> {
+        // Revoke the previous page before fallible I/O. A failed read
+        // must not authorize its partially overwritten bytes.
+        self.elements = 0;
+        self.start = start;
+        let total = self.scratch.rows * self.scratch.columns;
+        let elements = (total - self.start).min(maximum);
+        let byte_offset = u64::try_from(self.start)
+            .ok()
+            .and_then(|value| value.checked_mul(8))
+            .ok_or_else(|| allocation("prepared OLS shared read offset overflows u64"))?;
+        #[cfg(test)]
+        self.scratch
+            .shared_read_chunks
+            .fetch_add(1, Ordering::Relaxed);
+        read_exact_at(
+            self.scratch.file_ref(),
+            &mut self.encoded[..elements * 8],
+            byte_offset,
+        )
+        .map_err(|error| io_error("unable to positionally read prepared OLS scratch", error))?;
+        self.elements = elements;
+        Ok(())
+    }
+
     pub(crate) fn read_linear(&mut self, offset: usize, values: &mut [f64]) -> Result<()> {
         self.scratch.validate_linear_range(offset, values.len())?;
         let page_elements = self.encoded.len() / 8;
@@ -60,29 +152,7 @@ impl PreparedOlsScratchReader<'_> {
         let mut remaining = values;
         while !remaining.is_empty() {
             if position < self.start || position - self.start >= self.elements {
-                // Revoke the previous page before fallible I/O. A failed read
-                // must not authorize its partially overwritten bytes.
-                self.elements = 0;
-                self.start = position / page_elements * page_elements;
-                let total = self.scratch.rows * self.scratch.columns;
-                let elements = (total - self.start).min(page_elements);
-                let byte_offset = u64::try_from(self.start)
-                    .ok()
-                    .and_then(|value| value.checked_mul(8))
-                    .ok_or_else(|| allocation("prepared OLS shared read offset overflows u64"))?;
-                #[cfg(test)]
-                self.scratch
-                    .shared_read_chunks
-                    .fetch_add(1, Ordering::Relaxed);
-                read_exact_at(
-                    self.scratch.file_ref(),
-                    &mut self.encoded[..elements * 8],
-                    byte_offset,
-                )
-                .map_err(|error| {
-                    io_error("unable to positionally read prepared OLS scratch", error)
-                })?;
-                self.elements = elements;
+                self.refill(position / page_elements * page_elements, page_elements)?;
             }
             let local = position - self.start;
             let count = remaining.len().min(self.elements - local);
@@ -137,36 +207,20 @@ impl PreparedOlsScratch {
         layout: ScratchLayout,
         buffered: bool,
     ) -> Result<Self> {
-        let elements = rows
-            .checked_mul(columns)
-            .ok_or_else(|| allocation("prepared OLS scratch dimensions overflow usize"))?;
-        let bytes = u64::try_from(elements)
-            .ok()
-            .and_then(|value| value.checked_mul(8))
-            .ok_or_else(|| allocation("prepared OLS scratch size overflows u64"))?;
-        let mut io_buffer = Vec::new();
-        let addressable_bytes = usize::try_from(bytes).unwrap_or(usize::MAX);
-        let minimum_row_bytes = if layout == ScratchLayout::RowMajor && rows != 0 {
-            columns
-                .checked_mul(8)
-                .ok_or_else(|| allocation("prepared OLS row-major scratch row size overflows"))?
-        } else {
-            0
-        };
-        let buffer_bytes = IO_BUFFER_BYTES
-            .min(addressable_bytes)
-            .max(minimum_row_bytes)
-            .max(8);
-        let buffer_bytes = if buffered { buffer_bytes } else { 0 };
-        io_buffer
-            .try_reserve_exact(buffer_bytes)
-            .map_err(|_| allocation("unable to reserve prepared OLS scratch I/O buffer"))?;
-        if io_buffer.capacity() < buffer_bytes {
+        let plan = ScratchCapacityPlan::concrete(rows, columns, layout, buffered)?;
+        let bytes = plan.bytes;
+        let io_buffer = plan
+            .buffer
+            .filled(0, "unable to reserve prepared OLS scratch I/O buffer")?;
+        if io_buffer.capacity()
+            < plan
+                .buffer
+                .len("prepared OLS scratch I/O reservation was undersized")?
+        {
             return Err(allocation(
                 "prepared OLS scratch I/O reservation was undersized",
             ));
         }
-        io_buffer.resize(buffer_bytes, 0);
 
         let directory = std::env::temp_dir();
         let process = std::process::id();
@@ -373,16 +427,41 @@ impl PreparedOlsScratch {
         block_columns: usize,
         values: &[f64],
     ) -> Result<()> {
-        self.validate_row_major_block(start_column, block_columns, values.len())?;
-        if values.iter().any(|value| !value.is_finite()) {
-            return Err(invalid(
-                "prepared OLS row-major scratch patch received a nonfinite value",
-            ));
+        self.transfer_row_major_block(start_column, block_columns, RowMajorBlock::Patch(values))
+    }
+
+    /// Extract a row-major block with the same bounded full-row traversal used
+    /// by patching. The read variant never mutates or poisons the file.
+    pub(crate) fn read_row_major_block(
+        &mut self,
+        start_column: usize,
+        block_columns: usize,
+        values: &mut [f64],
+    ) -> Result<()> {
+        self.transfer_row_major_block(start_column, block_columns, RowMajorBlock::Read(values))
+    }
+
+    fn transfer_row_major_block(
+        &mut self,
+        start_column: usize,
+        block_columns: usize,
+        mut block: RowMajorBlock<'_>,
+    ) -> Result<()> {
+        let length = match &block {
+            RowMajorBlock::Read(values) => values.len(),
+            RowMajorBlock::Patch(values) => values.len(),
+        };
+        self.validate_row_major_block(start_column, block_columns, length)?;
+        if let RowMajorBlock::Patch(values) = &block {
+            if values.iter().any(|x| !x.is_finite()) {
+                return Err(invalid(
+                    "prepared OLS row-major scratch patch received a nonfinite value",
+                ));
+            }
         }
         if self.rows == 0 || block_columns == 0 {
             return Ok(());
         }
-
         let tile_rows = self.row_major_tile_rows()?;
         let row_bytes = self.row_bytes()?;
         let mut mutation_started = false;
@@ -390,97 +469,60 @@ impl PreparedOlsScratch {
             let rows_in_tile = (self.rows - start_row).min(tile_rows);
             let byte_count = rows_in_tile
                 .checked_mul(row_bytes)
-                .ok_or_else(|| allocation("prepared OLS row-major patch tile overflows"))?;
+                .ok_or_else(|| allocation("prepared OLS row-major block tile overflows"))?;
             let element_offset = start_row
                 .checked_mul(self.columns)
-                .ok_or_else(|| allocation("prepared OLS row-major patch offset overflows"))?;
+                .ok_or_else(|| allocation("prepared OLS row-major block offset overflows"))?;
             self.read_encoded_tile(element_offset, byte_count)?;
-
             for local_row in 0..rows_in_tile {
-                let source_start = (start_row + local_row)
+                let block_start = (start_row + local_row)
                     .checked_mul(block_columns)
                     .ok_or_else(|| {
-                        allocation("prepared OLS row-major patch source offset overflows")
+                        allocation("prepared OLS row-major block value offset overflows")
                     })?;
-                let target_start = local_row
+                let byte_start = local_row
                     .checked_mul(self.columns)
                     .and_then(|offset| offset.checked_add(start_column))
                     .and_then(|offset| offset.checked_mul(8))
                     .ok_or_else(|| {
-                        allocation("prepared OLS row-major patch target offset overflows")
+                        allocation("prepared OLS row-major block encoded offset overflows")
                     })?;
-                for (local_column, value) in values[source_start..source_start + block_columns]
-                    .iter()
-                    .enumerate()
-                {
-                    let byte_start = target_start + local_column * 8;
-                    self.io_buffer[byte_start..byte_start + 8]
-                        .copy_from_slice(&value.to_le_bytes());
+                let encoded = &mut self.io_buffer[byte_start..byte_start + block_columns * 8];
+                match &mut block {
+                    RowMajorBlock::Patch(values) => {
+                        for (bytes, value) in encoded
+                            .chunks_exact_mut(8)
+                            .zip(&values[block_start..block_start + block_columns])
+                        {
+                            bytes.copy_from_slice(&value.to_le_bytes());
+                        }
+                    }
+                    RowMajorBlock::Read(values) => {
+                        for (bytes, value) in encoded
+                            .chunks_exact(8)
+                            .zip(&mut values[block_start..block_start + block_columns])
+                        {
+                            *value =
+                                f64::from_le_bytes(bytes.try_into().expect("complete f64 cell"));
+                            if !value.is_finite() {
+                                return Err(invalid(
+                                    "prepared OLS row-major scratch contains a nonfinite value",
+                                ));
+                            }
+                        }
+                    }
                 }
             }
-            if !mutation_started {
+            if matches!(block, RowMajorBlock::Patch(_)) {
+                // A failed first read leaves healthy scratch; after the first
+                // write attempt, any failure must retain poison until Drop.
                 self.poisoned = true;
                 mutation_started = true;
+                self.write_encoded_tile(element_offset, byte_count)?;
             }
-            self.write_encoded_tile(element_offset, byte_count)?;
         }
         if mutation_started {
             self.poisoned = false;
-        }
-        Ok(())
-    }
-
-    /// Extract a row-major `rows x block_columns` block into caller-owned
-    /// storage while reading contiguous full-width row tiles.
-    pub(crate) fn read_row_major_block(
-        &mut self,
-        start_column: usize,
-        block_columns: usize,
-        values: &mut [f64],
-    ) -> Result<()> {
-        self.validate_row_major_block(start_column, block_columns, values.len())?;
-        if self.rows == 0 || block_columns == 0 {
-            return Ok(());
-        }
-
-        let tile_rows = self.row_major_tile_rows()?;
-        let row_bytes = self.row_bytes()?;
-        for start_row in (0..self.rows).step_by(tile_rows) {
-            let rows_in_tile = (self.rows - start_row).min(tile_rows);
-            let byte_count = rows_in_tile
-                .checked_mul(row_bytes)
-                .ok_or_else(|| allocation("prepared OLS row-major read tile overflows"))?;
-            let element_offset = start_row
-                .checked_mul(self.columns)
-                .ok_or_else(|| allocation("prepared OLS row-major read offset overflows"))?;
-            self.read_encoded_tile(element_offset, byte_count)?;
-
-            for local_row in 0..rows_in_tile {
-                let source_start = local_row
-                    .checked_mul(self.columns)
-                    .and_then(|offset| offset.checked_add(start_column))
-                    .and_then(|offset| offset.checked_mul(8))
-                    .ok_or_else(|| {
-                        allocation("prepared OLS row-major read source offset overflows")
-                    })?;
-                let target_start = (start_row + local_row)
-                    .checked_mul(block_columns)
-                    .ok_or_else(|| {
-                        allocation("prepared OLS row-major read target offset overflows")
-                    })?;
-                for local_column in 0..block_columns {
-                    let byte_start = source_start + local_column * 8;
-                    let mut encoded = [0_u8; 8];
-                    encoded.copy_from_slice(&self.io_buffer[byte_start..byte_start + 8]);
-                    let value = f64::from_le_bytes(encoded);
-                    if !value.is_finite() {
-                        return Err(invalid(
-                            "prepared OLS row-major scratch contains a nonfinite value",
-                        ));
-                    }
-                    values[target_start + local_column] = value;
-                }
-            }
         }
         Ok(())
     }
@@ -650,31 +692,13 @@ impl PreparedOlsScratch {
     /// allocation-free seam used by parallel final-inference row adapters.
     pub(crate) fn read_linear_shared(&self, offset: usize, values: &mut [f64]) -> Result<()> {
         self.validate_linear_range(offset, values.len())?;
+        let mut reader = self.shared_reader();
         let mut element_offset = offset;
-        let mut encoded = [0_u8; SHARED_READ_BUFFER_BYTES];
-        let values_per_chunk = encoded.len() / 8;
-        for chunk in values.chunks_mut(values_per_chunk) {
-            let byte_count = chunk
-                .len()
-                .checked_mul(8)
-                .ok_or_else(|| allocation("prepared OLS shared read size overflows"))?;
-            let byte_offset = u64::try_from(element_offset)
-                .ok()
-                .and_then(|value| value.checked_mul(8))
-                .ok_or_else(|| allocation("prepared OLS shared read offset overflows u64"))?;
-            #[cfg(test)]
-            self.shared_read_chunks.fetch_add(1, Ordering::Relaxed);
-            read_exact_at(self.file_ref(), &mut encoded[..byte_count], byte_offset).map_err(
-                |error| io_error("unable to positionally read prepared OLS scratch", error),
-            )?;
-            for (value, bytes) in chunk.iter_mut().zip(encoded[..byte_count].chunks_exact(8)) {
-                let mut value_bytes = [0_u8; 8];
-                value_bytes.copy_from_slice(bytes);
-                *value = f64::from_le_bytes(value_bytes);
-                if !value.is_finite() {
-                    return Err(invalid("prepared OLS scratch contains a nonfinite value"));
-                }
-            }
+        // Direct requests retain exact span reads; scans retain aligned pages.
+        // Both use one positional transport and finite decoder.
+        for chunk in values.chunks_mut(SHARED_READ_BUFFER_BYTES / 8) {
+            reader.refill(element_offset, chunk.len())?;
+            reader.read_linear(element_offset, chunk)?;
             element_offset = element_offset
                 .checked_add(chunk.len())
                 .ok_or_else(|| allocation("prepared OLS shared read offset overflows usize"))?;

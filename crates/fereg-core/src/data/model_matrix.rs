@@ -1,4 +1,5 @@
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::memory::Capacity;
 
 /// Compact dense matrix in observation-major order.
 #[derive(Debug, Clone, PartialEq)]
@@ -10,9 +11,12 @@ pub struct DenseMatrix {
 
 impl DenseMatrix {
     pub(crate) fn from_row_major(nrows: usize, ncols: usize, data: Vec<f64>) -> Result<Self> {
-        let expected = nrows.checked_mul(ncols).ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "matrix dimensions overflow usize")
-        })?;
+        let expected = Capacity::<f64>::matrix(
+            nrows as u128,
+            ncols as u128,
+            "matrix dimensions overflow usize",
+        )?
+        .len("matrix dimensions overflow usize")?;
         if data.len() != expected {
             return Err(FeregError::new(
                 ErrorCode::InvalidArgument,
@@ -23,14 +27,14 @@ impl DenseMatrix {
     }
 
     pub fn zeros(nrows: usize, ncols: usize) -> Result<Self> {
-        let length = nrows.checked_mul(ncols).ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "matrix dimensions overflow usize")
-        })?;
-        let mut data = Vec::new();
-        data.try_reserve_exact(length).map_err(|_| {
-            FeregError::new(ErrorCode::Allocation, "unable to reserve dense matrix")
-        })?;
-        data.resize(length, 0.0);
+        let length = Capacity::<f64>::matrix(
+            nrows as u128,
+            ncols as u128,
+            "matrix dimensions overflow usize",
+        )?
+        .len("matrix dimensions overflow usize")?;
+        let data =
+            Capacity::<f64>::new(length as u128).filled(0.0, "unable to reserve dense matrix")?;
         Ok(Self { nrows, ncols, data })
     }
 
@@ -80,9 +84,12 @@ impl DenseMatrix {
         nrows: usize,
         ncols: usize,
     ) -> Result<()> {
-        let length = nrows.checked_mul(ncols).ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "matrix dimensions overflow usize")
-        })?;
+        let length = Capacity::<f64>::matrix(
+            nrows as u128,
+            ncols as u128,
+            "matrix dimensions overflow usize",
+        )?
+        .len("matrix dimensions overflow usize")?;
         if length > self.data.capacity() {
             return Err(FeregError::new(
                 ErrorCode::Allocation,

@@ -552,10 +552,15 @@ impl<'a> NumericOlsColumns<'a> {
     }
 }
 
-fn rhs_dimensions(nrows: usize, model_columns: usize) -> Result<(usize, usize, usize)> {
-    let ncols = model_columns
+pub(crate) fn retained_rhs_stride(columns: u128) -> Result<u128> {
+    columns
         .checked_add(1)
-        .ok_or_else(|| allocation("prepared OLS RHS column count overflows"))?;
+        .ok_or_else(|| allocation("prepared OLS RHS column count overflows"))
+}
+
+fn rhs_dimensions(nrows: usize, model_columns: usize) -> Result<(usize, usize, usize)> {
+    let ncols = usize::try_from(retained_rhs_stride(model_columns as u128)?)
+        .map_err(|_| allocation("prepared OLS RHS column count overflows"))?;
     let elements = nrows
         .checked_mul(ncols)
         .ok_or_else(|| allocation("prepared OLS RHS dimensions overflow usize"))?;

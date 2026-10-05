@@ -256,6 +256,37 @@ pub(crate) struct ReusableMapCapacities {
     pub(crate) topology_resident_bytes: u128,
 }
 
+impl ReusableMapCapacities {
+    pub(crate) fn element_capacities(self) -> [usize; 24] {
+        [
+            self.rhs,
+            self.max_channels,
+            self.max_level_members,
+            self.reference_norms,
+            self.residual_norms,
+            self.rhs_scales,
+            self.norm_scales,
+            self.norm_sums,
+            self.group_sums,
+            self.group_corrections,
+            self.projection_gram,
+            self.projection_rhs,
+            self.projection_workers,
+            self.certificate_columns,
+            self.certificate_basis,
+            self.certificate_geometry,
+            self.certificate_ranks,
+            self.accelerator_state,
+            self.topology_effects,
+            self.topology_codes,
+            self.topology_slope_vectors,
+            self.topology_slope_values,
+            self.topology_level_offsets,
+            self.topology_level_observations,
+        ]
+    }
+}
+
 impl ReusableMapAbsorber {
     /// Serial base owner, excluding the separately admitted design and optional
     /// geometry/solver banks. One-shot owners use the same allocation layout.
@@ -269,12 +300,7 @@ impl ReusableMapAbsorber {
             })
             .max()
             .unwrap_or(1) as u128;
-        let cells = channels
-            .checked_mul(channels)
-            .and_then(|n| n.checked_add(channels.checked_mul(rhs as u128)?))
-            .and_then(|n| n.checked_add(7 * rhs as u128))
-            .and_then(|n| n.checked_add(2 * channels * members))
-            .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "reusable MAP bytes overflow"))?;
+        let cells = super::MapCapacity::new(channels, members, rhs as u128)?.cells()?;
         cells
             .checked_mul(8)
             .and_then(|n| n.checked_add(std::mem::size_of::<Self>() as u128))
@@ -301,13 +327,13 @@ impl ReusableMapAbsorber {
             })
             .max()
             .unwrap_or(1);
-        let certificate_elements =
-            max_channels.checked_mul(max_level_members).ok_or_else(|| {
-                FeregError::new(
-                    ErrorCode::Allocation,
-                    "reusable MAP certificate dimensions overflow",
-                )
-            })?;
+        let plan = super::MapCapacity::new(
+            max_channels as u128,
+            max_level_members as u128,
+            max_rhs as u128,
+        )?;
+        plan.certificate
+            .len("reusable MAP certificate dimensions overflow")?;
         Ok(Self {
             projection: AutoProjectionWorkspace::new(&design, max_rhs, None)?,
             design,
@@ -321,16 +347,14 @@ impl ReusableMapAbsorber {
             norm_sums: reserved_zeroes(max_rhs, "reusable MAP norm sums")?,
             group_sums: reserved_zeroes(max_rhs, "reusable MAP group sums")?,
             group_corrections: reserved_zeroes(max_rhs, "reusable MAP group corrections")?,
-            certificate_columns: reserved_zeroes(
-                certificate_elements,
-                "reusable MAP certificate columns",
-            )?,
+            certificate_columns: plan
+                .certificate
+                .filled(0.0, "reusable MAP certificate columns")?,
             certificate_geometry: None,
             coefficient_solver: None,
-            certificate_basis: reserved_zeroes(
-                certificate_elements,
-                "reusable MAP certificate basis",
-            )?,
+            certificate_basis: plan
+                .certificate
+                .filled(0.0, "reusable MAP certificate basis")?,
         })
     }
 
@@ -1491,12 +1515,7 @@ fn zero_reusable_certificate() -> FeCertificate {
 }
 
 fn reserved_zeroes(elements: usize, label: &'static str) -> Result<Vec<f64>> {
-    let mut values = Vec::new();
-    values
-        .try_reserve_exact(elements)
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, label))?;
-    values.resize(elements, 0.0);
-    Ok(values)
+    crate::memory::Capacity::new(elements as u128).filled(0.0, label)
 }
 
 fn reusable_weighted_norms(

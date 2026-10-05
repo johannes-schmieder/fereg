@@ -109,8 +109,11 @@ Keep exact-copy gates separate from scientific acceptance.
 Prospective timing uses a calibrated, predeclared bounded screening/confirmation
 protocol in the existing tools, targeting unresolved workloads. Preserve every
 observation, artifact check and both parent/fixed-M26 comparisons. The unchanged
-allowance is max(5%, 1 ms); uncertainty blocks acceptance. Historical campaigns
-retain their original rule. Reserve clean periods without our builds/agents;
+allowance is max(5%, 1 ms). Johannes's M28–M30 override permits architectural
+acceptance when measured performance is inconclusive and substantial code-quality
+benefit is independently reviewed; retain uncertainty rather than claim a timing
+pass. Scientific gates and established-regression findings remain binding.
+Historical campaigns retain their original rule. Reserve clean periods without our builds/agents;
 coordinate unrelated workloads without terminating them.
 
 ## Complexity and evidence

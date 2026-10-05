@@ -8,6 +8,7 @@ mod fit;
 mod implicit_centered;
 mod linear_session;
 pub(crate) use linear_session::coefficient_accuracy_scale;
+pub(crate) use linear_session::{ppml_coefficient_lifetime_bytes, ppml_component_checkpoint_bytes};
 mod prepared;
 mod prepared_categorical_clusters;
 mod prepared_clustered;
@@ -17,6 +18,7 @@ mod prepared_dof;
 mod prepared_fit;
 mod prepared_inference_view;
 mod prepared_rhs;
+pub(crate) use prepared_rhs::retained_rhs_stride;
 mod prepared_robust;
 mod prepared_scores;
 mod prepared_scratch;
@@ -27,7 +29,7 @@ mod slope_absorber;
 mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
-pub(crate) use finite_wls_kernel::RETAINED_MOMENT_TILE_ELEMENTS;
+pub(crate) use finite_wls_kernel::retained_scratch_moment_envelope;
 pub use fit::FitStatistics;
 pub(crate) use implicit_centered::ImplicitCenteredDesign;
 #[cfg(test)]
@@ -113,6 +115,7 @@ pub use prepared_robust::{
     CertifiedPreparedOlsRobust, PreparedOlsRobustCertificate, PreparedOlsRobustConfig,
     PreparedOlsRobustCovariance,
 };
+pub(crate) use prepared_scratch::{conservative_scratch_io_bytes, ols_scratch_transpose_reserve};
 pub use prepared_unadjusted::{
     fit_prepared_categorical_ols_unadjusted_map,
     fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments,

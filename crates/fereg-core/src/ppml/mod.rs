@@ -8,6 +8,7 @@ mod bias;
 pub use bias::{PpmlBiasMethod, PpmlBiasRequest, PpmlBiasResult, PpmlBiasSupport};
 mod categorical_fwl_cmg;
 mod categorical_lsmr;
+pub(crate) use categorical_lsmr::estimate_checkpoint_lsmr_workspace_bytes;
 mod certificate;
 mod family;
 #[cfg(test)]

@@ -18,14 +18,14 @@ use super::{
 };
 use crate::data::DropReason;
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{
-    CategoricalCodeView, FeSolverKind, LevelIndex, CATEGORICAL_MAP_ACCELERATOR_MAX_RHS,
-    FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS, PARALLEL_PROJECTION_MIN_ROWS,
-};
+use crate::fe::{CategoricalCodeView, FeSolverKind, LevelIndex};
+#[cfg(test)]
+use crate::fe::{CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS};
+use crate::memory::matrix_bytes;
 use crate::metadata::CoefficientSlot;
 use crate::ols::{
     FrozenLinearBasisSlot, PreparedOlsBreadCoordinate, PreparedOlsCoefficient, PreparedOlsColumn,
-    PreparedOlsFitStatus, PreparedOlsFittedCoefficient, RETAINED_MOMENT_TILE_ELEMENTS,
+    PreparedOlsFitStatus, PreparedOlsFittedCoefficient,
 };
 use crate::options::MemoryMode;
 use crate::ppml_separation::{ExactFeLevelIdentity, SeparationDropReason, SeparationMethodReport};
@@ -33,9 +33,6 @@ use crate::ppml_separation::{ExactFeLevelIdentity, SeparationDropReason, Separat
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
 const ITERATION_VECTOR_COUNT: u128 = 8;
 const COEFFICIENT_VECTOR_COUNT: u128 = 3;
-/// Must match the bounded byte tile owned by `PreparedOlsScratch`. The Low
-/// route may exceed this ceiling only when one complete row is wider.
-const LOW_SCRATCH_IO_BUFFER_CEILING_BYTES: u128 = 1 << 20;
 /// Simultaneously retained finite-session square workspaces. This includes
 /// the moment/certificate bank plus the frozen Gram, Cholesky factor,
 /// lower-triangular inverse, and final symmetric bread. The inverse-lower
@@ -1025,27 +1022,22 @@ fn storage_contribution(
     match route {
         PpmlMemoryRoute::Fast => {
             // Compaction changes length, not the original N-by-(K+1) capacity.
-            let projection_rhs = k
-                .checked_add(1)
-                .ok_or_else(|| allocation("PPML fast retained stride overflows"))?;
+            let projection_rhs = crate::ols::retained_rhs_stride(k)?;
             Ok(PpmlStorageContribution {
-                resident_bytes: bytes_f64(checked_mul(
+                resident_bytes: matrix_bytes::<f64>(
                     n,
                     projection_rhs,
                     "PPML fast retained within design capacity",
-                )?)?,
+                )?,
                 io_buffer_bytes: 0,
                 scratch_file_bytes: 0,
                 projection_rhs,
             })
         }
         PpmlMemoryRoute::Low => {
-            let resident_bytes = bytes_f64(checked_mul(n, pool, "PPML low within-design pool")?)?;
-            let scratch_file_bytes = bytes_f64(checked_mul(n, k, "PPML low scratch cells")?)?;
-            let io_buffer_bytes = scratch_file_bytes
-                .min(LOW_SCRATCH_IO_BUFFER_CEILING_BYTES)
-                .max(bytes_f64(k)?)
-                .max(size_of::<f64>() as u128);
+            let resident_bytes = matrix_bytes::<f64>(n, pool, "PPML low within-design pool")?;
+            let scratch_file_bytes = matrix_bytes::<f64>(n, k, "PPML low scratch cells")?;
+            let io_buffer_bytes = crate::ols::conservative_scratch_io_bytes(scratch_file_bytes, k)?;
             Ok(PpmlStorageContribution {
                 resident_bytes,
                 io_buffer_bytes,
@@ -1081,9 +1073,9 @@ fn estimate_route(
     let word = size_of::<usize>() as u128;
 
     let canonical_numeric_bytes = checked_sum(&[
-        bytes_f64(checked_mul(n, loaded, "canonical numeric source cells")?)?,
+        matrix_bytes::<f64>(n, loaded, "canonical numeric source cells")?,
         // Outcome, prior weight, and canonical offset.
-        bytes_f64(checked_mul(n, 3, "canonical PPML scalar columns")?)?,
+        matrix_bytes::<f64>(n, 3, "canonical PPML scalar columns")?,
         bytes_f64(k)?,
     ])?;
     let retained_base_adjustment_bytes =
@@ -1102,7 +1094,7 @@ fn estimate_route(
             "PPML FE membership bytes",
         )?,
         checked_mul(levels, 3 * word, "PPML FE level offsets and permutations")?,
-        bytes_f64(checked_mul(fe_directions, 2, "PPML FE coefficient work")?)?,
+        matrix_bytes::<f64>(fe_directions, 2, "PPML FE coefficient work")?,
     ])?;
     let fe_solver_topology_bytes = if fe == 0 {
         0
@@ -1126,11 +1118,7 @@ fn estimate_route(
                 checked_mul(2, word, "PPML reusable FE level metadata")?,
                 "PPML reusable FE level metadata bytes",
             )?,
-            bytes_f64(checked_mul(
-                n,
-                slope_channels,
-                "PPML reusable FE slope values",
-            )?)?,
+            matrix_bytes::<f64>(n, slope_channels, "PPML reusable FE slope values")?,
         ])?;
         let construction = crate::memory::OwnedFeDesignMemoryEstimate::from_summary(
             dimensions.observations,
@@ -1345,11 +1333,7 @@ fn estimate_route(
     // The row-scaled metadata includes categorical sources that are absent
     // from the absorbed-effect count (finite factors and cluster-only sources).
     let prepared_generation_bytes = checked_sum(&[
-        bytes_f64(checked_mul(
-            n,
-            checked_sum(&[loaded, 3])?,
-            "PPML generation numerics",
-        )?)?,
+        matrix_bytes::<f64>(n, checked_sum(&[loaded, 3])?, "PPML generation numerics")?,
         checked_mul(
             loaded,
             size_of::<Vec<f64>>() as u128,
@@ -1496,22 +1480,13 @@ fn estimate_route(
     } else {
         0
     };
-    let objective_partials_cells =
-        objective_partial_cells(dimensions.observations, dimensions.threads) as u128;
+    let (iteration_cells, coefficient_cells) =
+        PpmlIterationLayout::new(dimensions).capacity_counts()?;
     let iteration_buffer_bytes = bytes_f64(checked_sum(&[
-        checked_mul(
-            n,
-            // Two immutable outcome terms live beside the eight mutable buffers.
-            ITERATION_VECTOR_COUNT + 2,
-            "PPML reusable iteration vectors",
-        )?,
-        objective_partials_cells,
+        iteration_cells,
+        checked_mul(n, 2, "PPML immutable outcome terms")?,
     ])?)?;
-    let coefficient_buffer_bytes = bytes_f64(checked_mul(
-        coefficient_slots,
-        COEFFICIENT_VECTOR_COUNT,
-        "PPML reusable coefficient vectors",
-    )?)?;
+    let coefficient_buffer_bytes = bytes_f64(coefficient_cells)?;
     let storage = storage_contribution(n, k, pool, route)?;
 
     let square = checked_mul(k, k, "PPML finite square workspace")?;
@@ -1527,88 +1502,33 @@ fn estimate_route(
     // its retained design remains on scratch and its response is separate.
     let low_categorical_map = matches!(dimensions.fe_dimensions, 1..=3)
         && dimensions.fe_total_channels == dimensions.fe_dimensions;
-    let categorical_parallel_cells = if (route == PpmlMemoryRoute::Fast || low_categorical_map)
-        && dimensions.threads > 1
-        && dimensions.observations >= PARALLEL_PROJECTION_MIN_ROWS
-    {
-        let max_levels = dimensions.fe_max_levels as u128;
-        let group_means = checked_mul(
-            max_levels,
+    let categorical_parallel_cells = if route == PpmlMemoryRoute::Fast || low_categorical_map {
+        // Fast's historical reserve also covers noncategorical designs.
+        checked_sum(&crate::fe::categorical_parallel_counts(
+            dimensions.fe_max_levels as u128,
+            n,
             projection_rhs,
-            "PPML categorical MAP parallel group means",
-        )?;
-        let dot_sums = if projection_rhs <= FUSED_PARALLEL_MAX_RHS as u128 {
-            let chunks = dimensions.observations.div_ceil(PARALLEL_DOT_CHUNK_ROWS) as u128;
-            checked_mul(
-                chunks,
-                projection_rhs,
-                "PPML categorical MAP parallel dot reductions",
-            )?
-        } else {
-            0
-        };
-        checked_sum(&[group_means, max_levels, dot_sums])?
+            threads,
+        )?)?
     } else {
         0
     };
-    let categorical_accelerator_cells = if matches!(dimensions.fe_dimensions, 2 | 3)
-        && dimensions.fe_total_channels == dimensions.fe_dimensions
-        && projection_rhs <= CATEGORICAL_MAP_ACCELERATOR_MAX_RHS as u128
-    {
-        let two_fe_graph = dimensions.fe_dimensions == 2 && dimensions.observations >= 128;
-        if two_fe_graph {
-            let left_levels = dimensions.fe_max_levels as u128;
-            let right_levels = (dimensions.fe_total_levels - dimensions.fe_max_levels) as u128;
-            checked_sum(&[
-                dimensions.fe_total_levels as u128,
-                checked_mul(right_levels, 2, "PPML two-FE component roots and scales")?,
-                checked_mul(
-                    checked_mul(left_levels, projection_rhs, "PPML two-FE PCG left state")?,
-                    2,
-                    "PPML two-FE PCG left workspaces",
-                )?,
-                checked_mul(
-                    checked_mul(right_levels, projection_rhs, "PPML two-FE PCG right state")?,
-                    4,
-                    "PPML two-FE PCG right workspaces",
-                )?,
-                checked_mul(projection_rhs, 5, "PPML categorical CG recurrence scalars")?,
-            ])?
-        } else {
-            checked_sum(&[
-                checked_mul(n, projection_rhs, "PPML categorical MAP accelerator state")?,
-                checked_mul(
-                    checked_mul(n, projection_rhs, "PPML categorical MAP accelerator state")?,
-                    2,
-                    "PPML additional categorical MAP accelerator buffers",
-                )?,
-                checked_mul(projection_rhs, 5, "PPML categorical CG recurrence scalars")?,
-            ])?
-        }
-    } else {
-        0
-    };
+    let categorical_accelerator_cells = crate::fe::CategoricalAcceleratorCapacity::new(
+        dimensions.fe_dimensions,
+        dimensions.fe_total_channels == dimensions.fe_dimensions,
+        n,
+        projection_rhs,
+        levels,
+        dimensions.fe_max_levels as u128,
+    )?
+    .cells(projection_rhs)?;
     let fe_workspace_cells = checked_sum(&[
-        checked_mul(projection_rhs, 7, "PPML reusable MAP RHS scalars")?,
-        checked_mul(
+        crate::fe::MapCapacity::new(
             effective_maximum_channels,
-            effective_maximum_channels,
-            "PPML reusable MAP projection Gram",
-        )?,
-        checked_mul(
-            effective_maximum_channels,
+            effective_maximum_level_members,
             projection_rhs,
-            "PPML reusable MAP projection RHS",
-        )?,
-        checked_mul(
-            checked_mul(
-                effective_maximum_channels,
-                effective_maximum_level_members,
-                "PPML reusable MAP certificate basis",
-            )?,
-            2,
-            "PPML reusable MAP certificate buffers",
-        )?,
+        )?
+        .cells()?,
         low_projection_block_cells,
         categorical_parallel_cells,
         categorical_accelerator_cells,
@@ -1624,39 +1544,24 @@ fn estimate_route(
     // accepted frozen-step coefficients consume six; the session row consumes
     // one. Strict's second coefficient bank is charged in its transient below.
     let linear_vector_bytes = checked_sum(&[
-        bytes_f64(checked_mul(n, 7, "PPML linear observation vectors")?)?,
-        bytes_f64(checked_mul(k, 11, "PPML linear rank vectors")?)?,
+        matrix_bytes::<f64>(n, 7, "PPML linear observation vectors")?,
+        matrix_bytes::<f64>(k, 11, "PPML linear rank vectors")?,
         checked_mul(
             coefficient_slots,
             checked_mul(4, word, "PPML linear slot bookkeeping width")?,
             "PPML linear slot bookkeeping",
         )?,
     ])?;
-    // Retained scratch moments own a bounded complete-row tile per selected
-    // Gram-column partition. Selected rank can shrink without changing stored
-    // width, and partition count is not monotone in rank (e.g. K=5 has three
-    // partitions on four workers, while rank=4 has four). Bound every possible
-    // selected rank by min(threads, K), and every stored width by this monotone
-    // tile-capacity envelope. Dense retained moments need no partial bank.
     let retained_moment_partial_cells = match route {
         PpmlMemoryRoute::Fast => 0,
-        PpmlMemoryRoute::Low if k == 0 => 0,
-        PpmlMemoryRoute::Low => {
-            let tile_cells = checked_mul(n, k, "PPML moment row-tile cells")?
-                .min(k.max(RETAINED_MOMENT_TILE_ELEMENTS as u128));
-            checked_mul(
-                threads.min(k),
-                tile_cells,
-                "PPML retained scratch moment tile workspaces",
-            )?
-        }
+        PpmlMemoryRoute::Low => crate::ols::retained_scratch_moment_envelope(n, k, threads)?,
     };
     let linear_workspace_bytes = checked_sum(&[
-        bytes_f64(checked_mul(
+        matrix_bytes::<f64>(
             square,
             LINEAR_SQUARE_WORKSPACE_COUNT,
             "PPML moment/factor/inverse-lower/bread workspaces",
-        )?)?,
+        )?,
         bytes_f64(retained_moment_partial_cells)?,
     ])?;
     let reported_coefficient_workspace_slots = if coefficient_slots == 0 {
@@ -1714,7 +1619,7 @@ fn estimate_route(
         0
     };
     let detector_certificate_bytes = if has_numerical_detector {
-        bytes_f64(checked_mul(square, 2, "PPML separation certificates")?)?
+        matrix_bytes::<f64>(square, 2, "PPML separation certificates")?
     } else {
         0
     };
@@ -1764,25 +1669,25 @@ fn estimate_route(
     };
     let sandwich_inference_workspace_bytes = checked_sum(&[
         if clusters == 0 {
-            bytes_f64(checked_mul(square, 6, "PPML sandwich square workspaces")?)?
+            matrix_bytes::<f64>(square, 6, "PPML sandwich square workspaces")?
         } else {
             super::vce::clustered_score_workspace_bound(
                 dimensions.observations,
                 dimensions.finite_columns,
             )?
-            .max(bytes_f64(checked_mul(
+            .max(matrix_bytes::<f64>(
                 square,
                 6,
                 "PPML sandwich square workspaces",
-            )?)?)
+            )?)
         },
-        bytes_f64(checked_mul(subset_groups, k, "PPML cluster subset scores")?)?,
+        matrix_bytes::<f64>(subset_groups, k, "PPML cluster subset scores")?,
         checked_mul(
             cluster_subsets,
             size_of::<crate::sandwich::ClusterSubsetReduction>() as u128,
             "PPML reducer subset reports",
         )?,
-        bytes_f64(checked_mul(k, threads.max(1), "PPML sandwich reductions")?)?,
+        matrix_bytes::<f64>(k, threads.max(1), "PPML sandwich reductions")?,
         // Retain the prior square envelope and conservatively add the complete
         // robust partial bank, including any smaller final numerical rank.
         if clusters == 0 {
@@ -1813,16 +1718,16 @@ fn estimate_route(
     // coexists with FE recovery and the private publication matrices. Count
     // each subset's dimension vector at its declared subset width ceiling.
     let inference_result_bytes = checked_sum(&[
-        bytes_f64(checked_mul(
+        matrix_bytes::<f64>(
             inference_slots,
             inference_slots,
             "PPML retained full covariance",
-        )?)?,
-        bytes_f64(checked_mul(
+        )?,
+        matrix_bytes::<f64>(
             inference_slots,
             2,
             "PPML retained standard errors and z statistics",
-        )?)?,
+        )?,
         checked_mul(k, word, "PPML retained Wald slot identities")?,
         checked_mul(clusters, word, "PPML retained declared cluster groups")?,
         checked_mul(
@@ -1838,11 +1743,11 @@ fn estimate_route(
         .requested_output_columns
         .checked_sub(usize::from(dimensions.requested_mean_output))
         .ok_or_else(|| allocation("PPML requested mean exceeds observation-output count"))?;
-    let saved_output_bytes = bytes_f64(checked_mul(
+    let saved_output_bytes = matrix_bytes::<f64>(
         n,
         separately_allocated_output_columns as u128,
         "PPML separately allocated requested observation outputs",
-    )?)?;
+    )?;
     let fe_recovery_workspace_bytes = owned_fe_recovery_workspace_bytes(dimensions)?;
     let publication_bytes = checked_sum(&[
         bytes_f64(dimensions.publication_matrix_cells as u128)?,
@@ -1853,11 +1758,11 @@ fn estimate_route(
         )?,
     ])?;
     let publication_result_bytes = checked_sum(&[
-        bytes_f64(checked_mul(
+        matrix_bytes::<f64>(
             n,
             PUBLICATION_RESULT_NUMERIC_VECTOR_COUNT,
             "PPML publication result numeric vectors",
-        )?)?,
+        )?,
         checked_mul(
             checked_mul(
                 n,
@@ -1943,11 +1848,11 @@ fn estimate_route(
     let input_preparation_peak_bytes = checked_sum(&[
         common,
         dimensions.metadata.preparation_transient_bytes,
-        bytes_f64(checked_mul(
+        matrix_bytes::<f64>(
             candidate_n,
             checked_sum(&[loaded, 3])?,
             "PPML candidate-capacity preparation staging",
-        )?)?,
+        )?,
     ])?;
     let result_metadata_bytes = checked_sum(&[
         dimensions.metadata.result_bytes,
@@ -2066,11 +1971,11 @@ fn estimate_route(
     // and candidate active positions, selected candidate positions, fit
     // kept+dropped, and canonical candidate identities. Take their maximum;
     // neither boundary may borrow storage from the accepted baseline.
-    let strict_final_vector_transient_bytes = bytes_f64(checked_mul(
+    let strict_final_vector_transient_bytes = matrix_bytes::<f64>(
         n,
         STRICT_FINAL_OVERLAP_VECTOR_COUNT,
         "PPML strict-final canonical vector overlap",
-    )?)?;
+    )?;
     let strict_installed_metadata_bytes = checked_sum(&[
         checked_mul(
             checked_mul(k, 5, "PPML strict installed rank-index banks")?,
@@ -2254,11 +2159,11 @@ fn owned_fe_recovery_workspace_bytes(shape: PpmlMemoryDimensions) -> Result<u128
     let coefficient = bytes_f64(directions)?;
     let slope_workspace = crate::fe::slope_map_workspace_bytes(shape.fe_max_channels, 1)?;
     let output = checked_sum(&[
-        bytes_f64(checked_mul(
+        matrix_bytes::<f64>(
             n,
             channels + 2,
             "PPML recovery channels, total and residual",
-        )?)?,
+        )?,
         checked_mul(
             channels,
             size_of::<Option<Vec<f64>>>() as u128,
@@ -2309,7 +2214,7 @@ fn owned_fe_recovery_workspace_bytes(shape: PpmlMemoryDimensions) -> Result<u128
     let components = checked_mul(levels, 2 * word + 2, "PPML recovery component construction")?
         .max(checked_sum(&[
             checked_mul(levels, word, "PPML recovery component labels")?,
-            bytes_f64(checked_mul(max_levels, 3, "PPML recovery component means")?)?,
+            matrix_bytes::<f64>(max_levels, 3, "PPML recovery component means")?,
         ])?);
     let normalization = checked_sum(&[coefficient, normalization_metadata, components])?;
     let row_partials = checked_mul(
@@ -2475,31 +2380,22 @@ pub struct PpmlSteadyStateAllocationObservation {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PpmlSteadyStateAllocationCertificate {
-    pub measured_iterations: usize,
-    pub allocator_events_start: u64,
-    pub allocator_events_end: u64,
+    /// Original allocator and exact-capacity evidence retained for fresh validation.
+    pub observation: PpmlSteadyStateAllocationObservation,
     pub allocation_events: u64,
-    pub allocator_current_start: u64,
-    pub allocator_current_end: u64,
-    pub allocator_growth_bytes: i128,
-    pub allocator_peak_start: u64,
-    pub allocator_peak_end: u64,
     pub allocator_peak_growth_bytes: u64,
-    pub workspace_start: PpmlWorkspaceCapacityReport,
-    pub workspace_end: PpmlWorkspaceCapacityReport,
     pub workspace_capacity_stable: bool,
-    pub linear_workspace_start: PpmlLinearWorkspaceCapacityReport,
-    pub linear_workspace_end: PpmlLinearWorkspaceCapacityReport,
     pub linear_workspace_capacity_stable: bool,
-    pub scratch_bytes_start: u64,
-    pub scratch_bytes_end: u64,
     pub scratch_stable: bool,
-    pub linear_route: FeSolverKind,
     pub route_allocation_qualified: bool,
-    pub linear_session_allocation_free: bool,
-    pub fresh_warm_equivalent: bool,
-    pub steady_iteration_median_nanoseconds: u128,
     pub passed: bool,
+}
+
+impl PpmlSteadyStateAllocationCertificate {
+    pub fn allocator_growth_bytes(&self) -> i128 {
+        i128::from(self.observation.allocator_current_end)
+            - i128::from(self.observation.allocator_current_start)
+    }
 }
 
 /// Validate (but never create) an allocation observation.  This is an
@@ -2544,35 +2440,52 @@ pub fn certify_ppml_steady_state_allocation(
         && observation.linear_session_allocation_free
         && observation.fresh_warm_equivalent;
     Ok(PpmlSteadyStateAllocationCertificate {
-        measured_iterations: observation.measured_iterations,
-        allocator_events_start: observation.allocator_events_start,
-        allocator_events_end: observation.allocator_events_end,
+        observation,
         allocation_events,
-        allocator_current_start: observation.allocator_current_start,
-        allocator_current_end: observation.allocator_current_end,
-        allocator_growth_bytes,
-        allocator_peak_start: observation.allocator_peak_start,
-        allocator_peak_end: observation.allocator_peak_end,
         allocator_peak_growth_bytes,
-        workspace_start: observation.workspace_start,
-        workspace_end: observation.workspace_end,
         workspace_capacity_stable,
-        linear_workspace_start: observation.linear_workspace_start,
-        linear_workspace_end: observation.linear_workspace_end,
         linear_workspace_capacity_stable,
-        scratch_bytes_start: observation.scratch_bytes_start,
-        scratch_bytes_end: observation.scratch_bytes_end,
         scratch_stable,
-        linear_route: observation.linear_route,
         route_allocation_qualified,
-        linear_session_allocation_free: observation.linear_session_allocation_free,
-        fresh_warm_equivalent: observation.fresh_warm_equivalent,
-        steady_iteration_median_nanoseconds: observation.steady_iteration_median_nanoseconds,
         passed,
     })
 }
 
 /// Fit-lifetime PPML state reused by every IRLS and line-search iteration.
+/// Counts owned by the mutable iteration banks. Immutable outcome terms are
+/// separate parents in the phase inventory, never part of the capacity proof.
+struct PpmlIterationLayout {
+    rows: usize,
+    slots: usize,
+    objective: usize,
+}
+impl PpmlIterationLayout {
+    fn new(dimensions: PpmlMemoryDimensions) -> Self {
+        Self {
+            rows: dimensions.observations,
+            slots: dimensions.coefficient_slots,
+            objective: objective_partial_cells(dimensions.observations, dimensions.threads),
+        }
+    }
+    fn capacity_counts(&self) -> Result<(u128, u128)> {
+        Ok((
+            checked_sum(&[
+                checked_mul(
+                    self.rows as u128,
+                    ITERATION_VECTOR_COUNT,
+                    "PPML reusable iteration vectors",
+                )?,
+                self.objective as u128,
+            ])?,
+            checked_mul(
+                self.slots as u128,
+                COEFFICIENT_VECTOR_COUNT,
+                "PPML reusable coefficient vectors",
+            )?,
+        ))
+    }
+}
+
 #[derive(Debug)]
 pub struct PpmlIterationWorkspace {
     eta: Vec<f64>,
@@ -2648,8 +2561,9 @@ impl PpmlIterationWorkspace {
                 "PPML initial predictor and coefficients must be finite",
             ));
         }
-        let n = plan.dimensions.observations;
-        let k = plan.dimensions.coefficient_slots;
+        let layout = PpmlIterationLayout::new(plan.dimensions);
+        let n = layout.rows;
+        let k = layout.slots;
         let mut workspace = Self {
             eta,
             mean: fallible_filled(n, 0.0, "PPML mean buffer")?,
@@ -2660,7 +2574,7 @@ impl PpmlIterationWorkspace {
             trial_mean: fallible_filled(n, 0.0, "PPML line-search mean buffer")?,
             score_residuals: fallible_filled(n, 0.0, "PPML score-residual buffer")?,
             objective_partials: fallible_filled(
-                objective_partial_cells(n, plan.dimensions.threads),
+                layout.objective,
                 0.0,
                 "PPML objective partial sums",
             )?,
@@ -3586,6 +3500,27 @@ impl PpmlMemoryTelemetry {
     /// certified public result.  Observations may remain unavailable where
     /// the embedding allocator cannot supply them, but present values must be
     /// internally complete and consistent.
+    /// Fresh host-boundary validation uses the same capacity and allocation
+    /// proof as core certification, with publication's mandatory fingerprint.
+    #[doc(hidden)]
+    pub fn validate_publication(&self) -> Result<()> {
+        self.validate()?;
+        if self.workspace_capacity.is_none() {
+            return Err(invalid_argument(
+                "PPML memory telemetry lacks its workspace capacity",
+            ));
+        }
+        if self
+            .steady_state_allocation_certificate
+            .is_some_and(|c| c.passed != self.whole_iteration_allocation_free)
+        {
+            return Err(invalid_argument(
+                "PPML warmed allocation certificate is inconsistent",
+            ));
+        }
+        Ok(())
+    }
+
     pub(crate) fn validate(&self) -> Result<()> {
         if self.effective_threads == 0 || self.plan.dimensions.threads != self.effective_threads {
             return Err(invalid_argument(
@@ -3697,24 +3632,12 @@ impl PpmlMemoryTelemetry {
             ));
         }
         if let Some(capacity) = self.workspace_capacity {
-            let minimum_observation_capacity = self
-                .plan
-                .dimensions
-                .observations
-                .checked_mul(ITERATION_VECTOR_COUNT as usize)
-                .and_then(|n| {
-                    n.checked_add(objective_partial_cells(
-                        self.plan.dimensions.observations,
-                        self.plan.dimensions.threads,
-                    ))
-                })
-                .ok_or_else(|| allocation("PPML workspace observation capacity overflows"))?;
-            let minimum_coefficient_capacity = self
-                .plan
-                .dimensions
-                .coefficient_slots
-                .checked_mul(COEFFICIENT_VECTOR_COUNT as usize)
-                .ok_or_else(|| allocation("PPML workspace coefficient capacity overflows"))?;
+            let (observations, coefficients) =
+                PpmlIterationLayout::new(self.plan.dimensions).capacity_counts()?;
+            let minimum_observation_capacity = usize::try_from(observations)
+                .map_err(|_| allocation("PPML workspace observation capacity overflows"))?;
+            let minimum_coefficient_capacity = usize::try_from(coefficients)
+                .map_err(|_| allocation("PPML workspace coefficient capacity overflows"))?;
             if capacity.observation_capacity_sum < minimum_observation_capacity
                 || capacity.coefficient_capacity_sum < minimum_coefficient_capacity
                 || capacity.diagnostic_capacity != 0
@@ -3728,35 +3651,13 @@ impl PpmlMemoryTelemetry {
         let certified_iteration = match self.steady_state_allocation_certificate {
             None => false,
             Some(certificate) => {
-                let recomputed =
-                    certify_ppml_steady_state_allocation(PpmlSteadyStateAllocationObservation {
-                        measured_iterations: certificate.measured_iterations,
-                        allocator_events_start: certificate.allocator_events_start,
-                        allocator_events_end: certificate.allocator_events_end,
-                        allocator_current_start: certificate.allocator_current_start,
-                        allocator_current_end: certificate.allocator_current_end,
-                        allocator_peak_start: certificate.allocator_peak_start,
-                        allocator_peak_end: certificate.allocator_peak_end,
-                        workspace_start: certificate.workspace_start,
-                        workspace_end: certificate.workspace_end,
-                        linear_workspace_start: certificate.linear_workspace_start,
-                        linear_workspace_end: certificate.linear_workspace_end,
-                        linear_workspace_capacity_stable: certificate
-                            .linear_workspace_capacity_stable,
-                        scratch_bytes_start: certificate.scratch_bytes_start,
-                        scratch_bytes_end: certificate.scratch_bytes_end,
-                        linear_route: certificate.linear_route,
-                        linear_session_allocation_free: certificate.linear_session_allocation_free,
-                        fresh_warm_equivalent: certificate.fresh_warm_equivalent,
-                        steady_iteration_median_nanoseconds: certificate
-                            .steady_iteration_median_nanoseconds,
-                    })?;
+                let recomputed = certify_ppml_steady_state_allocation(certificate.observation)?;
                 if recomputed != certificate
                     || !self
                         .plan
-                        .audit_route_matches_final(certificate.linear_route, route)
-                    || self.workspace_capacity != Some(certificate.workspace_end)
-                    || certificate.scratch_bytes_end != scratch
+                        .audit_route_matches_final(certificate.observation.linear_route, route)
+                    || self.workspace_capacity != Some(certificate.observation.workspace_end)
+                    || certificate.observation.scratch_bytes_end != scratch
                 {
                     return Err(invalid_argument(
                         "PPML warmed-iteration allocation certificate is inconsistent",
@@ -3824,12 +3725,8 @@ fn copy_equal_len(target: &mut [f64], source: &[f64], label: &str) -> Result<()>
 }
 
 fn fallible_filled(length: usize, value: f64, label: &str) -> Result<Vec<f64>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(length)
-        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
-    output.resize(length, value);
-    Ok(output)
+    crate::memory::Capacity::new(length as u128)
+        .filled_with(value, || allocation(format!("unable to reserve {label}")))
 }
 
 fn fallible_copy(values: &[f64], label: &str) -> Result<Vec<f64>> {
@@ -3872,6 +3769,9 @@ fn allocation(message: impl Into<String>) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+    // Independent witnesses for the retained compatibility envelopes.
+    const LOW_SCRATCH_IO_BUFFER_CEILING_BYTES: u128 = 1 << 20;
+    const RETAINED_MOMENT_TILE_ELEMENTS: usize = 1024;
     use crate::ppml::PpmlCertificate;
 
     static PREFLIGHT_EVENTS: std::sync::Mutex<Vec<PpmlMemoryPreflightEvent>> =

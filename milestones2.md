@@ -186,7 +186,12 @@ the simplification or broad benefit purchasing that cost must be declared
 before candidate timing. M26 checks whether measurement noise can resolve the
 envelope; unresolved results require better measurement, not a wider allowance.
 A different envelope requires Johannes's decision before the affected change;
-post-hoc waivers cannot rescue an unsuccessful candidate.
+established regressions require correction or a separate explicit decision.
+Johannes's M28–M30 architectural override permits accepting an inconclusive
+performance result when the reviewed replacement substantially improves code
+quality. Retain the original campaign, allowance and unresolved verdict; record
+architectural acceptance separately from timing qualification. Scientific gates
+remain mandatory. This does not establish final integrated performance acceptance.
 
 Apply the same envelope to matched 8→16 and 14→28 worker-budget comparisons,
 with every other input fixed. Audit the adjacent boundary counts as well.

@@ -3,7 +3,7 @@
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
 M0–M25. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The [second program](../milestones2.md) and [replacement contract](cleanup/REPLACEMENTS.md)
-define the remaining scoped retirements; M27 canonical preparation is accepted.
+define the remaining scoped retirements; M27 preparation and M28 capacity/storage ownership are accepted.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -42,20 +42,21 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The accepted M27 runtime's [versioned inventory](cleanup/complexity.md) measures
-104,479 production lines in core and 15,194 in the host.
+The accepted M28 runtime's [versioned inventory](cleanup/complexity.md) measures
+104,651 production lines in core and 15,118 in the host.
 Core has 92 functions over 150 lines and 18 files over 1,500;
 the host has 15 and 3. Its conservative dispatch inventory contains
-1,443 core and 166 host candidates, including validation conditions;
+1,443 core and 158 host candidates, including validation conditions;
 15 core chunk conditions are counted separately. These measure complexity;
 some conditions validate inputs rather than select algorithms. Local scientific,
-transaction and calibrated timing gates plus Astra high completion review pass.
-Total production is 119,673 lines, 1,723 below fixed M26 including all replacements.
+transaction gates pass; Astra high reviewed the integrated retirement. Johannes
+accepted M28 architecturally while its measured timing remains unresolved.
+Total production is 119,769 lines, 1,627 below fixed M26 including all replacements.
 
 Largest inherited files are `fe/borrowed_map.rs` (10,195 production lines),
-`ols/prepared_fit.rs` (7,075) and `ols/linear_session.rs` (6,320). The largest
-functions are PPML route-memory estimation (1,173 physical lines), PPML IRLS
-orchestration (962), and retained-rank solving (972). Fast/Low storage remains
+`ols/prepared_fit.rs` (7,075) and `ols/linear_session.rs` (6,351). The largest
+functions are PPML route-memory estimation (1,086 physical lines), PPML IRLS
+orchestration (963), and retained-rank solving (972). Fast/Low storage remains
 distinct; the preparation, inference and exclusive FE owners described below
 replace several earlier forks without changing solver policy.
 
@@ -309,12 +310,37 @@ bind the accepted integrated runtime and Astra high completion review.
 Qualification is Mac-only under Johannes's override. Prior inconclusive trials,
 interrupted calibrations and historical CI failures remain unchanged.
 
-## Preserved M28 candidate
+## Shared capacity and storage owners
 
-The [integrated capacity/storage candidate](../bench/history/2026-10-05-m28-capacity-owner-terminal.json)
-passes local science, transactions, exact inventories and native replay, but its
-bounded performance decision is terminal unresolved. Its
-[recoverable patch](../bench/history/2026-10-05-m28-capacity-owner-candidate.patch)
-retains the proposed owner map and replacement code. It adds 96 production
-lines versus M27; accepted architecture and counts remain M27. M29 and M30
-are blocked by this missing acceptance gate.
+`memory::Capacity` provides checked element/byte counts and preserves exact
+reservation where a concrete owner uses it. `fe::workspace_capacity` owns the
+projection, MAP, categorical parallel and two-FE accelerator shapes consumed
+by allocation and preflight. Concrete observed vector capacities remain the
+allocation authority. `finite_wls_kernel` owns both its concrete moment layout
+and the distinct monotone retained-scratch envelope. OLS and PPML use the
+scratch owner's named conservative reserves, preserving empty and wide rows.
+
+`PreparedOlsScratch` has one row-tile transfer operation for reads and patches
+and one immutable-reader refill operation. Direct reads retain exact spans;
+scans retain aligned pages. Patch poisoning starts with mutation, and failed
+reads revoke the reader page. Dense, scratch and implicit centered numerical
+kernels retain the operations appropriate to their storage; end-to-end finite
+orchestration is assigned to M31.
+
+PPML admission carries profile/curve layouts and optional lifetime allowances
+into installation. Constructors freshly verify those allowances against their
+owned requirements, including the coexisting coefficient/checkpoint frames.
+The allocation certificate retains its original observation once, derives
+allocator growth, and is recomputed for fresh publication validation. Linear
+fingerprints retain the nested FE owner rather than repeating its fields.
+
+Host `action_memory::Composition` assembles each stage once and supplies
+separate conservative admission, expected heap and coverage channels. Unknown
+expectations remain unknown; gaps accumulate. Old/new preparation generations,
+detector/cascade, Mu, strict rollback, recovery, inference and publication retain
+their distinct simultaneous lifetimes. These costs remain until their consumers
+are retired within the later architectural milestones.
+
+The [M28 acceptance](../bench/history/2026-10-05-m28-capacity-owner-acceptance.json)
+binds the unchanged local evidence, actual +96-line change and explicit
+architectural exception. Its terminal performance evidence remains unresolved.

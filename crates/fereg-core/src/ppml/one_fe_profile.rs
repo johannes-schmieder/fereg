@@ -112,6 +112,96 @@ impl ProfiledDesign for ProfiledColumns<'_> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct OneFeProfileLayout {
+    rows: usize,
+    columns: usize,
+    groups: usize,
+    square: usize,
+    blocks: usize,
+}
+impl OneFeProfileLayout {
+    pub(super) fn new(n: usize, k: usize, g: usize) -> Result<Self> {
+        Ok(Self {
+            rows: n,
+            columns: k,
+            groups: g,
+            square: k.checked_mul(k).ok_or_else(allocation)?,
+            blocks: g.checked_add(GROUPS_PER_BLOCK - 1).ok_or_else(allocation)? / GROUPS_PER_BLOCK,
+        })
+    }
+    pub(super) fn bytes(self, audit: bool) -> Result<u128> {
+        let Self {
+            rows: n,
+            columns: k,
+            groups: g,
+            square,
+            blocks,
+        } = self;
+        let base = std::mem::size_of::<ProfiledOneFe>() as u128
+            + 2 * std::mem::size_of::<usize>() as u128 * k as u128
+            + blocks as u128 * std::mem::size_of::<Moments>() as u128
+            + 8 * (3 * n as u128
+                + 2 * g as u128
+                + 4 * k as u128
+                + 2 * square as u128
+                + blocks as u128 * (4 * k as u128 + square as u128));
+        if !audit {
+            return Ok(base);
+        }
+        let data = n.checked_mul(k).ok_or_else(allocation)?;
+        base.checked_add(base)
+            .and_then(|v| v.checked_add(std::mem::size_of::<DenseMatrix>() as u128))
+            .and_then(|v| v.checked_add(8 * data as u128))
+            .ok_or_else(allocation)
+    }
+    pub(super) fn construct<P: PreparedOlsFitView + ?Sized>(
+        self,
+        prepared: &P,
+        active: &[usize],
+        design: &FeDesign,
+        y: &[f64],
+        q: &[f64],
+        threads: ThreadConfig,
+    ) -> Result<ProfiledOneFe> {
+        if design.effects().len() != 1
+            || !design.effects()[0].has_intercept()
+            || !design.effects()[0].slopes().is_empty()
+            || y.len() != design.nobs()
+            || q.len() != y.len()
+        {
+            return Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "one-FE profile design is inconsistent",
+            ));
+        }
+        if self.rows != y.len()
+            || self.groups != design.effects()[0].n_levels()
+            || active.len() > self.columns
+        {
+            return Err(allocation());
+        }
+        let layout = Self::new(self.rows, active.len(), self.groups)?;
+        let mut result = ProfiledOneFe::reserve_layout(layout, threads)?;
+        result.active.copy_from_slice(active);
+        for (j, &column) in active.iter().enumerate() {
+            result.slots[j] = prepared
+                .fit_model()
+                .coefficients
+                .iter()
+                .position(|c| c.generated_column_index == Some(column))
+                .ok_or_else(|| {
+                    FeregError::new(
+                        ErrorCode::Internal,
+                        "profiled column has no coefficient slot",
+                    )
+                })?;
+        }
+        result.initialize_groups(design, y, q)?;
+        Ok(result)
+    }
+}
+
 pub(super) struct ProfiledOneFe {
     team: InstalledThreadTeam,
     columns: usize,
@@ -154,31 +244,11 @@ fn filled<T: Clone>(n: usize, value: T) -> Result<Vec<T>> {
 }
 
 impl ProfiledOneFe {
-    pub(super) fn bytes(n: usize, k: usize, g: usize) -> Result<u128> {
-        let square = k.checked_mul(k).ok_or_else(allocation)?;
-        let blocks = g.checked_add(GROUPS_PER_BLOCK - 1).ok_or_else(allocation)? / GROUPS_PER_BLOCK;
-        Ok(std::mem::size_of::<Self>() as u128
-            + 2 * std::mem::size_of::<usize>() as u128 * k as u128
-            + blocks as u128 * std::mem::size_of::<Moments>() as u128
-            + 8 * (3 * n as u128
-                + 2 * g as u128
-                + 4 * k as u128
-                + 2 * square as u128
-                + blocks as u128 * (4 * k as u128 + square as u128)))
-    }
-
-    pub(super) fn audit_bytes(n: usize, k: usize, g: usize) -> Result<u128> {
-        let data = n.checked_mul(k).ok_or_else(allocation)?;
-        Self::bytes(n, k, g)?
-            .checked_add(std::mem::size_of::<DenseMatrix>() as u128)
-            .and_then(|v| v.checked_add(8 * data as u128))
-            .ok_or_else(allocation)
-    }
-
     pub(super) fn active_columns(&self) -> &[usize] {
         &self.active
     }
 
+    #[cfg(test)]
     pub(super) fn new<P: PreparedOlsFitView + ?Sized>(
         prepared: &P,
         active: &[usize],
@@ -187,43 +257,27 @@ impl ProfiledOneFe {
         q: &[f64],
         threads: ThreadConfig,
     ) -> Result<Self> {
-        if design.effects().len() != 1
-            || !design.effects()[0].has_intercept()
-            || !design.effects()[0].slopes().is_empty()
-            || y.len() != design.nobs()
-            || q.len() != y.len()
-        {
-            return Err(FeregError::new(
-                ErrorCode::InvalidArgument,
-                "one-FE profile design is inconsistent",
-            ));
-        }
-        let n = y.len();
-        let k = active.len();
-        let g = design.effects()[0].n_levels();
-        let mut result = Self::reserve(n, k, g, threads)?;
-        result.active.copy_from_slice(active);
-        for (j, &column) in active.iter().enumerate() {
-            result.slots[j] = prepared
-                .fit_model()
-                .coefficients
-                .iter()
-                .position(|c| c.generated_column_index == Some(column))
-                .ok_or_else(|| {
-                    FeregError::new(
-                        ErrorCode::Internal,
-                        "profiled column has no coefficient slot",
-                    )
-                })?;
-        }
-        result.initialize_groups(design, y, q)?;
-        Ok(result)
+        OneFeProfileLayout::new(
+            y.len(),
+            active.len(),
+            design.effects().first().map_or(0, |e| e.n_levels()),
+        )?
+        .construct(prepared, active, design, y, q, threads)
     }
 
+    #[cfg(test)]
     fn reserve(n: usize, k: usize, g: usize, threads: ThreadConfig) -> Result<Self> {
-        let _ = Self::bytes(n, k, g)?;
-        let square = k * k;
-        let blocks = g.div_ceil(GROUPS_PER_BLOCK);
+        Self::reserve_layout(OneFeProfileLayout::new(n, k, g)?, threads)
+    }
+
+    fn reserve_layout(layout: OneFeProfileLayout, threads: ThreadConfig) -> Result<Self> {
+        let OneFeProfileLayout {
+            rows: n,
+            columns: k,
+            groups: g,
+            square,
+            blocks,
+        } = layout;
         let mut partials = Vec::new();
         partials
             .try_reserve_exact(blocks)
@@ -349,7 +403,8 @@ impl ProfiledOneFe {
         config: PpmlConfig,
         tolerance: f64,
     ) -> Result<bool> {
-        let mut fresh = Self::new(prepared, &self.active, design, y, q, threads)?;
+        let mut fresh = OneFeProfileLayout::new(y.len(), self.active.len(), self.shifts.len())?
+            .construct(prepared, &self.active, design, y, q, threads)?;
         let mut data = DenseMatrix::zeros(y.len(), self.columns)?;
         for row in 0..y.len() {
             for (j, &column) in self.active.iter().enumerate() {
@@ -802,8 +857,14 @@ mod tests {
         }
         assert!(ProfiledColumns::selected(&shifted, &[3]).is_err());
         assert_eq!(
-            ProfiledOneFe::audit_bytes(n, 2, groups).unwrap()
-                - ProfiledOneFe::bytes(n, 2, groups).unwrap(),
+            OneFeProfileLayout::new(n, 2, groups)
+                .unwrap()
+                .bytes(true)
+                .unwrap()
+                - 2 * OneFeProfileLayout::new(n, 2, groups)
+                    .unwrap()
+                    .bytes(false)
+                    .unwrap(),
             (n * 2 * 8 + std::mem::size_of::<DenseMatrix>()) as u128
         );
     }
@@ -969,6 +1030,6 @@ mod tests {
                 .code,
             ErrorCode::NonConvergence
         );
-        assert!(ProfiledOneFe::bytes(usize::MAX, usize::MAX, 2).is_err());
+        assert!(OneFeProfileLayout::new(usize::MAX, usize::MAX, 2).is_err());
     }
 }

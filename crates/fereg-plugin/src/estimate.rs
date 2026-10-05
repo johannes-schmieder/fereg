@@ -457,63 +457,75 @@ fn prepare_loaded_ols<T: Send>(
 }
 
 impl EstimateAction {
-    /// Translate existing component models to one explicit action timeline.
-    /// This keeps unproven owner families visible instead of treating a
-    /// solver-only report as a complete command-memory estimate.
-    fn memory_ledger(&self, solver: Option<u64>) -> Result<crate::action_memory::Ledger> {
-        use crate::action_memory::{Estimator, Frame, Gaps, Ledger, Stage};
-        let mut ledger = Ledger::new(Estimator::Ols);
-        ledger.record(
-            Stage::Metadata,
-            Frame {
-                parents: 0,
-                workspace: self.metadata_peak_bytes,
-            },
-            Gaps::TRANSPORT_COMPILER,
-        )?;
-        ledger.record(
-            Stage::Loading,
-            Frame {
-                parents: 0,
-                workspace: self.input_peak_bytes,
-            },
-            Gaps::TRANSPORT_COMPILER.union(Gaps::WORKER_RUNTIME),
-        )?;
-        ledger.record(
-            Stage::Preparation,
-            Frame {
-                parents: self.metadata_owner_bytes,
-                workspace: self
-                    .preparation_memory
-                    .preparation_peak_bytes(self.loaded_fit_workspace_bytes)?,
-            },
-            Gaps::CONSTRUCTION.union(Gaps::WORKER_RUNTIME),
-        )?;
-        let mut fit_gaps = Gaps::NUMERICAL_FRAMES
+    /// One stage composition supplies conservative coverage and expected heap.
+    /// Admission parents are retained even when the expected finite and FE
+    /// frames are sequential and therefore have smaller overlapping parents.
+    fn memory_composition(
+        &self,
+        solver: Option<u64>,
+        expected_fit: Option<u128>,
+    ) -> Result<crate::action_memory::Composition> {
+        use crate::action_memory::{Composition, Estimator, Frame, Gaps, Stage};
+        let mut composition = Composition::new(Estimator::Ols);
+        for (stage, frame, gaps) in [
+            (
+                Stage::Metadata,
+                Frame {
+                    parents: 0,
+                    workspace: self.metadata_peak_bytes,
+                },
+                Gaps::TRANSPORT_COMPILER,
+            ),
+            (
+                Stage::Loading,
+                Frame {
+                    parents: 0,
+                    workspace: self.input_peak_bytes,
+                },
+                Gaps::TRANSPORT_COMPILER.union(Gaps::WORKER_RUNTIME),
+            ),
+            (
+                Stage::Preparation,
+                Frame {
+                    parents: self.metadata_owner_bytes,
+                    workspace: self
+                        .preparation_memory
+                        .preparation_peak_bytes(self.loaded_fit_workspace_bytes)?,
+                },
+                Gaps::CONSTRUCTION.union(Gaps::WORKER_RUNTIME),
+            ),
+        ] {
+            composition.record(stage, frame, Some(frame), gaps)?;
+        }
+        let mut gaps = Gaps::NUMERICAL_FRAMES
             .union(Gaps::RETAINED_FE_PARENT)
             .union(Gaps::WORKER_RUNTIME);
         if !self.request.absorbed_terms.is_empty() {
-            fit_gaps = fit_gaps.union(Gaps::DEPENDENCY_CONTAINERS);
+            gaps = gaps.union(Gaps::DEPENDENCY_CONTAINERS);
         }
         if solver.is_none() {
-            fit_gaps = fit_gaps.union(Gaps::SOLVER_ATTEMPT);
+            gaps = gaps.union(Gaps::SOLVER_ATTEMPT);
         }
-        // Inference projections are included in the fit's additional solver
-        // peak. Use the same conservative frame in both sequential stages.
         let fit = Frame {
             parents: self.execution_parent_bytes,
             workspace: u128::from(solver.unwrap_or(0)),
         };
-        ledger.record(Stage::Fit, fit, fit_gaps)?;
-        ledger.record(Stage::Inference, fit, fit_gaps)?;
-        let recovery = self.outputs.saved_channels.iter().any(Option::is_some);
-        ledger.record(
+        let expected = expected_fit.map(|workspace| Frame {
+            parents: 0,
+            workspace,
+        });
+        for stage in [Stage::Fit, Stage::Inference] {
+            composition.record(stage, fit, expected, gaps)?;
+        }
+        let recovery = Frame {
+            parents: self.output_parent_bytes,
+            workspace: self.publication_memory.derived_peak_bytes,
+        };
+        composition.record(
             Stage::Recovery,
-            Frame {
-                parents: self.output_parent_bytes,
-                workspace: self.publication_memory.derived_peak_bytes,
-            },
-            if recovery {
+            recovery,
+            Some(recovery),
+            if self.outputs.saved_channels.iter().any(Option::is_some) {
                 Gaps::RECOVERY
                     .union(Gaps::WORKER_RUNTIME)
                     .union(Gaps::DEPENDENCY_CONTAINERS)
@@ -521,78 +533,78 @@ impl EstimateAction {
                 Gaps::WORKER_RUNTIME
             },
         )?;
-        ledger.record(
+        let publication = Frame {
+            parents: self.output_parent_bytes,
+            workspace: self.publication_memory.peak_bytes(),
+        };
+        composition.record(
             Stage::Publication,
-            Frame {
-                parents: self.output_parent_bytes,
-                workspace: self.publication_memory.peak_bytes(),
-            },
+            publication,
+            Some(publication),
             Gaps::WORKER_RUNTIME,
         )?;
-        Ok(ledger)
+        Ok(composition)
     }
 
-    /// Expected lifetime composition; conservative admission remains unchanged.
-    /// A fast projection owns one RHS bank. Finite/inference banks are later
-    /// sequential frames and must not all become the projection's live parent.
-    fn memory_forecast(
+    #[cfg(all(test, feature = "ffi"))]
+    fn memory_ledger(&self, solver: Option<u64>) -> Result<crate::action_memory::Ledger> {
+        Ok(self.memory_composition(solver, None)?.ledger)
+    }
+
+    fn memory_evidence(
         &self,
         shadow: &OlsShadowResult<'_>,
-    ) -> Result<Option<crate::memory_forecast::Forecast>> {
+    ) -> Result<(
+        crate::action_memory::Ledger,
+        Option<crate::memory_forecast::Forecast>,
+    )> {
         use crate::memory_forecast::{ols_projection_parent, sum, Forecast};
-        let Some(solver) = shadow.solver_expected_heap_peak else {
-            return Ok(None);
-        };
-        let fast = shadow.execution.mode == PreparedOlsExecutionMode::Fast;
-        let fit = if fast {
-            let projection = sum(&[
-                ols_projection_parent(
-                    self.prepared_owner_bytes,
-                    self.metadata_owner_bytes,
-                    shadow.retained_rows.len(),
-                    self.generated_columns,
-                    self.fit.execution.poolsize,
-                    true,
-                )?,
-                u128::from(solver),
-            ])?;
-            let finite = sum(&[
-                self.prepared_owner_bytes,
-                self.metadata_owner_bytes,
-                self.preparation_memory.frame_metadata_bytes,
-                self.frame_memory.fast_bytes,
-            ])?;
-            projection.max(finite)
-        } else {
-            // Low-memory score reconstruction has different retained parents;
-            // retain its conservative composition until that case is calibrated.
-            sum(&[self.execution_parent_bytes, u128::from(solver)])?
-        };
-        let preparation = sum(&[
-            self.metadata_owner_bytes,
-            self.preparation_memory
-                .preparation_peak_bytes(self.loaded_fit_workspace_bytes)?,
-        ])?;
-        let publication = sum(&[
-            self.output_parent_bytes,
-            self.publication_memory.peak_bytes(),
-        ])?;
-        let native_peak = fit
-            .max(preparation)
-            .max(publication)
-            .max(self.metadata_peak_bytes)
-            .max(self.input_peak_bytes);
-        let matrix_cells = self.publication_memory.shadow_bytes / 8
-            + (crate::result::RUNTIME_ROWS * 2 + crate::memory_report::CELLS) as u128;
-        Ok(Some(Forecast {
-            native_peak,
-            stata_growth: Forecast::publication_growth(
-                shadow.drop_reasons.len(),
-                matrix_cells,
-                crate::memory_forecast::has_factor_stripes(&self.request.model),
-                self.memory_baseline.before_allocated,
-            )?,
-        }))
+        let expected_fit = shadow
+            .solver_expected_heap_peak
+            .map(|solver| {
+                let projection = if shadow.execution.mode == PreparedOlsExecutionMode::Fast {
+                    ols_projection_parent(
+                        self.prepared_owner_bytes,
+                        self.metadata_owner_bytes,
+                        shadow.retained_rows.len(),
+                        self.generated_columns,
+                        self.fit.execution.poolsize,
+                        true,
+                    )?
+                } else {
+                    self.execution_parent_bytes
+                };
+                let projection = sum(&[projection, u128::from(solver)])?;
+                Ok::<_, FeregError>(if shadow.execution.mode == PreparedOlsExecutionMode::Fast {
+                    projection.max(sum(&[
+                        self.prepared_owner_bytes,
+                        self.metadata_owner_bytes,
+                        self.preparation_memory.frame_metadata_bytes,
+                        self.frame_memory.fast_bytes,
+                    ])?)
+                } else {
+                    projection
+                })
+            })
+            .transpose()?;
+        let composition = self.memory_composition(shadow.solver_workspace_peak, expected_fit)?;
+        let forecast = composition
+            .expected_peak
+            .map(|native_peak| {
+                let matrix_cells = self.publication_memory.shadow_bytes / 8
+                    + (crate::result::RUNTIME_ROWS * 2 + crate::memory_report::CELLS) as u128;
+                Ok::<_, FeregError>(Forecast {
+                    native_peak,
+                    stata_growth: Forecast::publication_growth(
+                        shadow.drop_reasons.len(),
+                        matrix_cells,
+                        crate::memory_forecast::has_factor_stripes(&self.request.model),
+                        self.memory_baseline.before_allocated,
+                    )?,
+                })
+            })
+            .transpose()?;
+        Ok((composition.ledger, forecast))
     }
 
     fn metadata_capacity_bytes(&self) -> u128 {
@@ -2538,16 +2550,16 @@ fn precommit_and_store(
             "OLS publication capacities exceed preflight admission",
         ));
     }
+    let (memory_ledger, forecast) = action.memory_evidence(shadow)?;
     if std::env::var_os("FEREG_ACTION_MEMORY_AUDIT").is_some() {
         let resources = instrumentation::snapshot();
         crate::action_memory::emit(
-            &action.memory_ledger(shadow.solver_workspace_peak)?,
+            &memory_ledger,
             resources
                 .allocation_peak_bytes
                 .saturating_sub(observation.resources_start.allocation_current_bytes),
         )?;
     }
-    let forecast = action.memory_forecast(shadow)?;
     if let Some(forecast) = forecast {
         forecast.trace(
             action.memory_baseline,
@@ -2557,9 +2569,7 @@ fn precommit_and_store(
     let memory_report = MemoryReport::estimated(
         action.memory_baseline,
         instrumentation::native_live_before(),
-        action
-            .memory_ledger(shadow.solver_workspace_peak)?
-            .summary(),
+        memory_ledger.summary(),
         action.memory_plan.safety_headroom_bytes,
         forecast,
     )?;

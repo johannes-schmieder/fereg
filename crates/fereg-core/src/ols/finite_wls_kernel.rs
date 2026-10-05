@@ -231,60 +231,78 @@ pub(super) fn finite_wls_moment_layout(
     source: FixedBlockMomentSource<'_>,
 ) -> Result<FiniteWlsMomentLayout> {
     source.validate()?;
-    let dimension = source.dimension();
-    match source {
-        FixedBlockMomentSource::PreparedStandardized { .. }
-            if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS =>
-        {
+    FiniteWlsMomentLayout::plan(
+        source.rows(),
+        source.dimension(),
+        matches!(source, FixedBlockMomentSource::PreparedStandardized { .. }),
+        source.row_workspace(),
+        rayon::current_num_threads(),
+    )
+}
+
+impl FiniteWlsMomentLayout {
+    fn plan(
+        rows: usize,
+        dimension: usize,
+        prepared: bool,
+        row_workspace: usize,
+        threads: usize,
+    ) -> Result<Self> {
+        if prepared && dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
             let square = checked_square(dimension, "finite-WLS moment dimensions overflow")?;
             let partial_stride = dimension
                 .checked_add(square)
                 .ok_or_else(|| allocation("finite-WLS moment partial stride overflows"))?;
-            let partitions = source
-                .rows()
+            let partitions = rows
                 .div_ceil(FIXED_BLOCK_MOMENT_ROWS)
                 .clamp(1, FIXED_BLOCK_MOMENT_MAX_BLOCKS);
-            let partial_elements = partitions
-                .checked_mul(partial_stride)
-                .ok_or_else(|| allocation("finite-WLS moment partial allocation overflows"))?;
-            Ok(FiniteWlsMomentLayout {
+            Ok(Self {
                 mode: FiniteWlsMomentMode::PreparedFixedBlocks,
                 partitions,
                 columns_per_partition: dimension,
                 partial_stride,
-                partial_elements,
+                partial_elements: partitions
+                    .checked_mul(partial_stride)
+                    .ok_or_else(|| allocation("finite-WLS moment partial allocation overflows"))?,
             })
-        }
-        FixedBlockMomentSource::PreparedStandardized { .. }
-        | FixedBlockMomentSource::RetainedDense { .. }
-        | FixedBlockMomentSource::RetainedScratch { .. }
-        | FixedBlockMomentSource::RetainedImplicit { .. } => {
-            // A block bank of `chunks * K^2` is intentionally forbidden for
-            // reusable sessions. Disjoint left-column partitions each scan
-            // rows in canonical order and write separate Gram rows. Dense
-            // storage needs no auxiliary row buffer; scratch storage owns one
-            // bounded stored-row tile per partition.
-            let requested_partitions = rayon::current_num_threads().min(dimension).max(1);
-            let columns_per_partition = dimension.div_ceil(requested_partitions);
+        } else {
+            // Disjoint Gram rows preserve the canonical row order and avoid a
+            // chunks*K² bank. Scratch supplies a bounded stored-row tile.
+            let columns_per_partition = dimension.div_ceil(threads.min(dimension).max(1));
             let partitions = dimension.div_ceil(columns_per_partition);
-            let partial_stride = source.row_workspace();
-            let partial_elements = partitions
-                .checked_mul(partial_stride)
-                .ok_or_else(|| allocation("finite-WLS retained row workspace overflows"))?;
-            Ok(FiniteWlsMomentLayout {
-                mode: match source {
-                    FixedBlockMomentSource::PreparedStandardized { .. } => {
-                        FiniteWlsMomentMode::PreparedPartitioned
-                    }
-                    _ => FiniteWlsMomentMode::RetainedPartitioned,
+            Ok(Self {
+                mode: if prepared {
+                    FiniteWlsMomentMode::PreparedPartitioned
+                } else {
+                    FiniteWlsMomentMode::RetainedPartitioned
                 },
                 partitions,
                 columns_per_partition,
-                partial_stride,
-                partial_elements,
+                partial_stride: row_workspace,
+                partial_elements: partitions
+                    .checked_mul(row_workspace)
+                    .ok_or_else(|| allocation("finite-WLS retained row workspace overflows"))?,
             })
         }
     }
+}
+
+pub(crate) fn retained_scratch_moment_envelope(
+    rows: u128,
+    columns: u128,
+    threads: u128,
+) -> Result<u128> {
+    // Selected rank can shrink without changing stored width; its actual
+    // partition count is not monotone. Preserve the admission envelope across
+    // every rank, rather than substituting concrete whole-row tile flooring.
+    let tile = rows
+        .checked_mul(columns)
+        .ok_or_else(|| {
+            allocation("PPML memory estimate overflow while sizing PPML moment row-tile cells")
+        })?
+        .min(columns.max(RETAINED_MOMENT_TILE_ELEMENTS as u128));
+    threads.min(columns).checked_mul(tile)
+        .ok_or_else(|| allocation("PPML memory estimate overflow while sizing PPML retained scratch moment tile workspaces"))
 }
 
 /// Fill deterministic Gram and RHS moments into caller-owned storage.

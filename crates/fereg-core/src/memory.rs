@@ -2,6 +2,8 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::LsmrPreconditioner;
 use crate::options::MemoryMode;
 
+mod capacity;
+pub(crate) use capacity::{matrix_bytes, require_admitted_capacity, Capacity};
 mod categorical_schwarz;
 mod owned_fe;
 mod slope_recovery;
@@ -17,7 +19,6 @@ pub(crate) use slope_recovery::estimate_slope_recovery_memory;
 pub use workspace_peak::SolverWorkspacePeak;
 
 const MINIMUM_HEADROOM_BYTES: u128 = 512 * 1024 * 1024;
-const LOW_MODE_TRANSPOSE_BUFFER_BYTES: u128 = 1024 * 1024;
 
 /// Apply the shared native headroom policy before any construction stage.
 #[must_use]
@@ -172,24 +173,19 @@ pub fn estimate_phase2_memory(
     } else {
         0
     };
-    let fast_parallel_projection = if fe_dimensions == 0 || finite_columns == 0 {
-        0
-    } else {
-        checked_mul(
-            checked_mul(n, checked_sum(&[k, 1])?, "fast parallel FE projection")?,
-            8,
-            "fast parallel FE projection bytes",
-        )?
+    let projection_bytes = |columns| {
+        if fe_dimensions == 0 || finite_columns == 0 {
+            Ok(0)
+        } else {
+            matrix_bytes::<f64>(
+                n,
+                crate::ols::retained_rhs_stride(columns)?,
+                "parallel FE projection bytes",
+            )
+        }
     };
-    let low_parallel_projection = if fe_dimensions == 0 || finite_columns == 0 {
-        0
-    } else {
-        checked_mul(
-            checked_mul(n, checked_sum(&[pool, 1])?, "low parallel FE projection")?,
-            8,
-            "low parallel FE projection bytes",
-        )?
-    };
+    let fast_parallel_projection = projection_bytes(k)?;
+    let low_parallel_projection = projection_bytes(pool)?;
 
     let base = checked_sum(&[
         checked_mul(
@@ -232,11 +228,7 @@ pub fn estimate_phase2_memory(
             8,
             "cross-product bytes",
         )?,
-        if finite_columns == 0 {
-            0
-        } else {
-            LOW_MODE_TRANSPOSE_BUFFER_BYTES
-        },
+        crate::ols::ols_scratch_transpose_reserve(finite_columns),
         low_parallel_projection,
     ])?;
     Ok(MemoryEstimate {
@@ -797,6 +789,7 @@ fn checked_sum(values: &[u128]) -> Result<u128> {
 
 #[cfg(test)]
 mod tests {
+    const LOW_MODE_TRANSPOSE_BUFFER_BYTES: u128 = 1024 * 1024;
     use super::*;
 
     #[test]

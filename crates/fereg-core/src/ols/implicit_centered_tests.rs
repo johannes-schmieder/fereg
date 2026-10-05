@@ -275,9 +275,24 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
         )
         .unwrap();
         let other = fixture(true);
-        assert!(session.enable_group_centered_one_fe(other).is_err());
+        assert!(session
+            .enable_group_centered_one_fe(other, u128::MAX)
+            .is_err());
+        let admitted = ImplicitCenteredDesign::bytes(
+            session.fe_design().effects()[0].n_levels(),
+            prepared.fit_model().columns.len(),
+            config.execution.threads.resolved(),
+        )
+        .unwrap();
+        assert_eq!(
+            session
+                .enable_group_centered_one_fe(source.clone(), admitted - 1)
+                .unwrap_err()
+                .code,
+            ErrorCode::Allocation
+        );
         session
-            .enable_group_centered_one_fe(source.clone())
+            .enable_group_centered_one_fe(source.clone(), admitted)
             .unwrap();
         let output = session.solve_fresh().unwrap();
         assert!(output.certified());
