@@ -7752,6 +7752,15 @@
     "documentation_links": "PASS;74 existing local link targets",
     "strict_evidence_and_patch_checks": "PASS; strictJSON, no personal paths, each new file<1MB, retained patch hash exact",
     "restored_complexity_ratchet": "PASS vsHEAD; unchanged accepted M27 inventory",
-    "diff_whitespace": "PASS"
+    "diff_whitespace": "Working-tree source/documentation diff passed before staging. Raw staged check subsequently flagged 68 blank unified-diff context lines in the retained patch; commit19a5b63a occurred before the lead handled that result. No runtime source whitespace defect.",
+    "patch_whitespace_resolution": {
+      "raw_artifact_check": "FAIL: required single-space context markers in the byte-identical saved patch",
+      "context_lines_flagged": 68,
+      "all_flagged_lines_exactly_single_space": true,
+      "source_patch_application_with_whitespace_error": "PASS against exact accepted631615e9 files",
+      "all_other_checkpoint_file_whitespace": "PASS",
+      "patch_bytes_unchanged": true,
+      "action": "Preserve required patch syntax/hash; record original check failure and narrow independent source/documentation validation. No gate or historical result is hidden."
+    }
   }
 }
