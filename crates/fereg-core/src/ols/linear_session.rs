@@ -1961,8 +1961,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if self.within.is_some()
             || self.config.absorb.solver != FeSolverKind::Map
             || !self.prepared.fit_has_one_ordinary_intercept_effect()
-            || !std::ptr::eq(self.prepared.fit_sample(), source.fit_view().sample())
-            || !std::ptr::eq(self.prepared.fit_model(), source.fit_view().model())
+            || !std::ptr::eq(self.prepared.fit_sample(), source.as_ref().sample())
+            || !std::ptr::eq(self.prepared.fit_model(), source.as_ref().model())
         {
             return Err(invalid_argument(
                 "implicit prepared owner does not match the linear session",

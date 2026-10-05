@@ -1331,10 +1331,7 @@ fn final_memory_dimensions(
     allocation_audit_enabled: bool,
     metadata: super::PpmlMetadataMemory,
 ) -> Result<PpmlMemoryDimensions> {
-    let categorical = prepared
-        .prepared()
-        .categorical()
-        .ok_or_else(|| invalid_argument("prepared PPML generation lacks categorical topology"))?;
+    let categorical = prepared.prepared().as_ref();
     let actual_nested_bytes = categorical.nested_metadata_capacity_bytes()
         + prepared
             .cluster_design()
@@ -1507,10 +1504,7 @@ fn map_coefficients(
             "prepared PPML fitted coefficients do not match final model slots",
         ));
     }
-    let report_plan = model
-        .categorical()
-        .ok_or_else(|| invalid_argument("prepared PPML coefficient map lacks report plan"))?
-        .report_plan();
+    let report_plan = model.report_plan();
     let dimension = report_plan.original_coefficient_count();
     if original_omissions.len() != dimension {
         return Err(invalid_argument(
@@ -1920,13 +1914,11 @@ mod tests {
             recipes.prepared_nested_bytes - labels.prepared_nested_bytes,
             added
         );
-        let component = &request.ols.model.terms[0].components[1];
-        let cloned_component = size_of::<crate::metadata::TermComponent>() as u128
-            + component.raw_operator.len() as u128
-            + component.raw_time_series_operator.len() as u128;
+        // Finite recipes are consumed in place; adding an interaction does
+        // not recreate a transient model or clone source metadata.
         assert_eq!(
-            recipes.preparation_transient_bytes - labels.preparation_transient_bytes,
-            added + cloned_component
+            recipes.preparation_transient_bytes,
+            labels.preparation_transient_bytes
         );
         request.ols.absorbed_terms[1].saved_name = "second".into();
         assert_eq!(
@@ -1943,8 +1935,8 @@ mod tests {
                 .unwrap();
         assert_eq!(
             operators.preparation_transient_bytes - recipes.preparation_transient_bytes,
-            4096,
-            "availability compilation copies operator payloads beside the raw request"
+            0,
+            "borrowed availability metadata does not copy operator payloads"
         );
         assert_eq!(
             operators.prepared_nested_bytes,

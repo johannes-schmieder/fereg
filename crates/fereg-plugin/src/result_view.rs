@@ -7,48 +7,27 @@
 
 use fereg_core::error::Result;
 use fereg_core::{
-    PreparedCategoricalOlsClusteredData, PreparedCategoricalOlsData, PreparedNumericSample,
-    PreparedOlsClusterDesign, PreparedOlsClusteredData, PreparedOlsData, PreparedOlsModel,
+    PreparedNumericSample, PreparedOlsClusterDesign, PreparedOlsData, PreparedOlsModel,
     PreparedOlsSingletons,
 };
 use rayon::prelude::*;
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum PreparedOlsResultData<'a> {
-    Legacy(&'a PreparedOlsData),
-    Categorical(&'a PreparedCategoricalOlsData),
-}
+pub(crate) struct PreparedOlsResultData<'a>(&'a PreparedOlsData);
 
 impl<'a> PreparedOlsResultData<'a> {
-    pub(crate) const fn legacy(value: &'a PreparedOlsData) -> Self {
-        Self::Legacy(value)
+    pub(crate) const fn new(value: &'a PreparedOlsData) -> Self {
+        Self(value)
     }
-
-    pub(crate) const fn categorical(value: &'a PreparedCategoricalOlsData) -> Self {
-        Self::Categorical(value)
-    }
-
     pub(crate) const fn model(self) -> &'a PreparedOlsModel {
-        match self {
-            Self::Legacy(value) => &value.model,
-            Self::Categorical(value) => value.model(),
-        }
+        self.0.model()
     }
-
     pub(crate) const fn sample(self) -> &'a PreparedNumericSample {
-        match self {
-            Self::Legacy(value) => &value.sample,
-            Self::Categorical(value) => value.sample(),
-        }
+        self.0.sample()
     }
-
     pub(crate) fn column_value(self, column: usize, row: usize) -> Result<f64> {
-        match self {
-            Self::Legacy(value) => value.column_value(column, row),
-            Self::Categorical(value) => value.column_value(column, row),
-        }
+        self.0.column_value(column, row)
     }
-
     pub(crate) fn add_fitted_terms(self, terms: &[(usize, f64)], output: &mut [f64]) -> Result<()> {
         if !fereg_core::ols::add_numeric_ols_predictor(self.model(), self.sample(), terms, output)?
         {
@@ -64,72 +43,32 @@ impl<'a> PreparedOlsResultData<'a> {
         }
         Ok(())
     }
-
     pub(crate) const fn singletons(self) -> PreparedOlsSingletons {
-        match self {
-            Self::Legacy(value) => value.singletons,
-            Self::Categorical(value) => value.singletons(),
-        }
+        self.0.singletons()
     }
-
-    /// Physical coefficient capacity allocated by Stata before the native
-    /// final sample is known. Categorical preparation may report a smaller
-    /// logical graph after singleton deletion removes complete factor levels.
     pub(crate) fn coefficient_capacity(self) -> usize {
-        match self {
-            Self::Legacy(value) => value.model.coefficients.len(),
-            Self::Categorical(value) => value.report_plan().original_coefficient_count(),
-        }
+        self.0.report_plan().original_coefficient_count()
     }
-
-    fn is_same_legacy(self, value: &'a PreparedOlsData) -> bool {
-        match self {
-            Self::Legacy(prepared) => std::ptr::eq(prepared, value),
-            Self::Categorical(_) => false,
-        }
-    }
-
-    fn is_same_categorical(self, value: &'a PreparedCategoricalOlsData) -> bool {
-        match self {
-            Self::Legacy(_) => false,
-            Self::Categorical(prepared) => std::ptr::eq(prepared, value),
+    pub(crate) const fn categorical_data(self) -> Option<&'a PreparedOlsData> {
+        if self.0.uses_categorical_preparation() {
+            Some(self.0)
+        } else {
+            None
         }
     }
 }
 
 #[derive(Debug, Clone, Copy)]
-pub(crate) enum PreparedOlsClusteredResultData<'a> {
-    Legacy(&'a PreparedOlsClusteredData),
-    Categorical(&'a PreparedCategoricalOlsClusteredData),
-}
+pub(crate) struct PreparedOlsClusteredResultData<'a>(&'a PreparedOlsData);
 
 impl<'a> PreparedOlsClusteredResultData<'a> {
-    pub(crate) const fn legacy(value: &'a PreparedOlsClusteredData) -> Self {
-        Self::Legacy(value)
+    pub(crate) const fn new(value: &'a PreparedOlsData) -> Self {
+        Self(value)
     }
-
-    pub(crate) const fn categorical(value: &'a PreparedCategoricalOlsClusteredData) -> Self {
-        Self::Categorical(value)
+    pub(crate) fn clusters(self) -> &'a PreparedOlsClusterDesign {
+        self.0.clusters()
     }
-
-    pub(crate) const fn ols(self) -> PreparedOlsResultData<'a> {
-        match self {
-            Self::Legacy(value) => PreparedOlsResultData::Legacy(value.ols()),
-            Self::Categorical(value) => PreparedOlsResultData::Categorical(value.ols()),
-        }
-    }
-
-    pub(crate) const fn clusters(self) -> &'a PreparedOlsClusterDesign {
-        match self {
-            Self::Legacy(value) => value.clusters(),
-            Self::Categorical(value) => value.clusters(),
-        }
-    }
-
     pub(crate) fn is_bound_to(self, prepared: PreparedOlsResultData<'a>) -> bool {
-        match self.ols() {
-            PreparedOlsResultData::Legacy(value) => prepared.is_same_legacy(value),
-            PreparedOlsResultData::Categorical(value) => prepared.is_same_categorical(value),
-        }
+        std::ptr::eq(self.0, prepared.0)
     }
 }

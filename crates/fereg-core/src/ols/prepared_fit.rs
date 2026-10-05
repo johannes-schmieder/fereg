@@ -1100,7 +1100,10 @@ pub fn fit_prepared_ols_coefficients_map(
     prepared: &PreparedOlsData,
     config: PreparedOlsFitConfig,
 ) -> Result<CertifiedPreparedOlsFit> {
-    fit_prepared_ols_coefficients_view_map(prepared, config)
+    fit_prepared_ols_coefficients_view_map(
+        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
+        config,
+    )
 }
 
 pub(super) fn fit_prepared_ols_coefficients_with_loaded_rows<
@@ -10610,7 +10613,8 @@ mod tests {
                 let actual = run(&data, false);
                 assert!(expected == actual, "N={n}, threads={threads}");
             }
-            data.categorical_sources[0].encoded.codes[0] = u32::MAX;
+            let source = data.categorical_sources()[0].prepared_source_index();
+            data.sample.regressors[source][0] += 100.0;
             data.sample.outcome[0] = f64::NAN;
             let run = |disabled| {
                 fit_with_controls_internal(
@@ -10790,7 +10794,8 @@ mod tests {
                 let actual = run(&data, false);
                 assert!(expected == actual, "N={n}, threads={threads}");
             }
-            data.categorical_sources[0].encoded.codes[0] = u32::MAX;
+            let source = data.categorical_sources()[0].prepared_source_index();
+            data.sample.regressors[source][0] += 100.0;
             data.sample.outcome[0] = f64::NAN;
             let run = |disabled| {
                 fit_with_controls_internal(
@@ -10866,7 +10871,8 @@ mod tests {
                 );
                 assert!(expected == actual, "N={n}, threads={threads}");
             }
-            data.categorical_sources[0].encoded.codes[0] = u32::MAX;
+            let source = data.categorical_sources()[0].prepared_source_index();
+            data.sample.regressors[source][0] += 100.0;
             data.sample.outcome[0] = f64::NAN;
             let run = |disabled| {
                 fit_with_controls_internal(

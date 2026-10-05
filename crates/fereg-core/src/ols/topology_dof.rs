@@ -218,7 +218,7 @@ fn compute_with_reservation<R: TopologyDofReservation>(
         structural_intercept,
         cluster_dimensions,
     )?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     let source_views = source_views(topology, reservation)?;
     let effect_count = effect_specs.len();
 
@@ -418,7 +418,7 @@ fn build_report<R: TopologyDofReservation>(
     slope_values_by_source: &[Vec<f64>],
     reservation: &mut R,
 ) -> Result<CategoricalTopologyDofReport> {
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     let implicit_no_absorb = structural_intercept && effect_specs.is_empty() && nobs > 0;
     let explicit_rows = effect_specs.iter().try_fold(0_usize, |total, spec| {
         total
@@ -672,7 +672,7 @@ fn validate_inputs(
     _structural_intercept: bool,
     cluster_dimensions: &[&[u32]],
 ) -> Result<()> {
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if effect_specs.len() != topology.effect_to_topology().len() {
         return Err(invalid_argument(
             "categorical absorbed-DoF metadata and topology effect counts differ",

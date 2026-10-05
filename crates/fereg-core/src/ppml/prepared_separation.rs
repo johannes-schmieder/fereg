@@ -1354,12 +1354,7 @@ struct DetectorTopology<'a> {
 
 impl<'a> DetectorTopology<'a> {
     fn new(prepared: &'a PreparedPpmlModel) -> Result<Self> {
-        let categorical = prepared.categorical().ok_or_else(|| {
-            FeregError::new(
-                ErrorCode::Internal,
-                "prepared PPML model has no categorical fit topology",
-            )
-        })?;
+        let categorical = prepared.as_ref();
         let topology = categorical.fe_topology();
         let sources = fallible_collect(
             topology
@@ -1426,10 +1421,7 @@ fn singleton_fixed_point_owned(
     generation: &PreparedPpmlModelGeneration,
     active: Vec<bool>,
 ) -> Result<Vec<usize>> {
-    let categorical = generation
-        .prepared()
-        .categorical()
-        .ok_or_else(|| invalid_argument("prepared singleton model has no categorical topology"))?;
+    let categorical = generation.prepared().as_ref();
     let finalized = categorical.fe_topology();
     let views = fallible_collect(
         finalized
@@ -1853,12 +1845,7 @@ fn prepared_simplex_proposal(
     config: SeparationConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<DetectionProposal> {
-    let categorical = generation.prepared().categorical().ok_or_else(|| {
-        FeregError::new(
-            ErrorCode::Internal,
-            "prepared simplex has no categorical topology",
-        )
-    })?;
+    let categorical = generation.prepared().as_ref();
     // Resolve the enum-backed model exactly once before entering the dense
     // row/column construction loop. The concrete view keeps both this loop
     // and the shared linear-session loops statically dispatched.

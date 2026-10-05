@@ -197,7 +197,7 @@ fn compute_with_nesting_reservation_validated<R: PreparedDofReservation>(
         validate_prepared_topology(prepared)?;
     }
     validate_cluster_nesting_view(prepared, cluster_dimensions)?;
-    let effects = prepared.fe_topology.effects();
+    let effects = prepared.fe_effects();
 
     let mut redundant = reserved_filled(
         reservation,
@@ -367,7 +367,7 @@ fn compute_with_nesting_reservation_validated<R: PreparedDofReservation>(
             PreparedOlsAbsorbedDofEffect {
                 identity: PreparedOlsAbsorbedDofEffectIdentity::Explicit {
                     term_id: effect.term_id,
-                    source: effect.source,
+                    source: effect.sources[0],
                 },
                 label,
                 categories,
@@ -428,22 +428,17 @@ fn effect_is_nested_within_any_cluster<R: PreparedDofReservation>(
     if cluster_dimensions.is_empty() {
         return Ok(false);
     }
-    let effect = prepared
-        .fe_topology
-        .effects()
+    let _effect = prepared
+        .fe_effects()
         .get(effect_index)
         .ok_or_else(|| invalid_argument("prepared absorbed-DoF nested effect is out of range"))?;
     let topology_source = prepared
-        .fe_topology
+        .fe_topology()
+        .registry()
         .sources()
-        .get(effect.topology_source_index)
+        .get(prepared.effect_source_index(effect_index)?)
         .ok_or_else(|| invalid_argument("prepared absorbed-DoF nested source is out of range"))?;
-    let fe_codes = &prepared
-        .categorical_sources
-        .get(topology_source.categorical_source_index())
-        .ok_or_else(|| invalid_argument("prepared absorbed-DoF nested codes are out of range"))?
-        .encoded
-        .codes;
+    let fe_codes = prepared.effect_codes(effect_index)?;
     for cluster_codes in cluster_dimensions {
         let mut cluster_by_level = reserved_filled(
             reservation,
@@ -471,121 +466,24 @@ fn effect_is_nested_within_any_cluster<R: PreparedDofReservation>(
 }
 
 fn validate_prepared_topology(prepared: &PreparedOlsData) -> Result<()> {
-    let topology = &prepared.fe_topology;
-    let nobs = prepared.sample.n_active();
     if !prepared.structural_intercept {
         return Err(invalid_argument(
             "prepared absorbed-DoF intercept metadata is inconsistent with the supported surface",
         ));
     }
-    if topology.nobs() != nobs {
-        return Err(invalid_argument(
-            "prepared absorbed-DoF topology is not aligned with the final sample",
-        ));
-    }
-
-    let mut total_unique_levels = 0_usize;
-    for source in topology.sources() {
-        let categorical = prepared
-            .categorical_sources
-            .get(source.categorical_source_index())
-            .ok_or_else(|| {
-                invalid_argument("prepared absorbed-DoF categorical source is out of range")
-            })?;
-        if categorical.source != source.source()
-            || categorical.encoded.n_levels() != source.n_levels()
-            || categorical.encoded.codes.len() != nobs
-            || source.nobs() != nobs
-        {
-            return Err(invalid_argument(
-                "prepared absorbed-DoF source identity or dimensions are inconsistent",
-            ));
-        }
-        if nobs == 0 {
-            if source.n_levels() != 0 {
-                return Err(invalid_argument(
-                    "empty prepared absorbed-DoF source retains levels",
-                ));
-            }
-        } else if source.n_levels() == 0 {
-            return Err(invalid_argument(
-                "nonempty prepared absorbed-DoF source has no levels",
-            ));
-        }
-        if categorical
-            .encoded
-            .codes
-            .iter()
-            .any(|code| *code as usize >= source.n_levels())
-        {
-            return Err(invalid_data(
-                "prepared absorbed-DoF code exceeds its declared level count",
-            ));
-        }
-
-        let mut membership_count = 0_usize;
-        for level in 0..source.n_levels() {
-            let members = source.members(level)?;
-            if members.is_empty() {
-                return Err(invalid_argument(
-                    "prepared absorbed-DoF source contains an empty final level",
-                ));
-            }
-            membership_count = membership_count
-                .checked_add(members.len())
-                .ok_or_else(|| allocation("prepared absorbed-DoF membership count overflows"))?;
-            for observation in members {
-                if *observation >= nobs || categorical.encoded.codes[*observation] as usize != level
-                {
-                    return Err(invalid_argument(
-                        "prepared absorbed-DoF membership does not match its codes",
-                    ));
-                }
-            }
-        }
-        if membership_count != nobs {
-            return Err(invalid_argument(
-                "prepared absorbed-DoF membership does not cover the final sample",
-            ));
-        }
-        total_unique_levels = total_unique_levels
-            .checked_add(source.n_levels())
-            .ok_or_else(|| allocation("prepared absorbed-DoF unique-level total overflows"))?;
-    }
-    if total_unique_levels != topology.total_levels() {
-        return Err(invalid_argument(
-            "prepared absorbed-DoF topology level total is inconsistent",
-        ));
-    }
-
-    for effect in topology.effects() {
-        let source = topology
-            .sources()
-            .get(effect.topology_source_index)
-            .ok_or_else(|| {
-                invalid_argument("prepared absorbed-DoF effect source is out of range")
-            })?;
-        if source.source() != effect.source
-            || source.categorical_source_index() != effect.categorical_source_index
-        {
-            return Err(invalid_argument(
-                "prepared absorbed-DoF effect identity is inconsistent",
-            ));
-        }
-    }
-    Ok(())
+    prepared.validate_fe_bindings()
 }
 
 fn effect_level_count(prepared: &PreparedOlsData, effect_index: usize) -> Result<usize> {
-    let effect = prepared
-        .fe_topology
-        .effects()
+    let _effect = prepared
+        .fe_effects()
         .get(effect_index)
         .ok_or_else(|| invalid_argument("prepared absorbed-DoF effect is out of range"))?;
     prepared
-        .fe_topology
+        .fe_topology()
+        .registry()
         .sources()
-        .get(effect.topology_source_index)
+        .get(prepared.effect_source_index(effect_index)?)
         .map(|source| source.n_levels())
         .ok_or_else(|| invalid_argument("prepared absorbed-DoF topology source is out of range"))
 }
@@ -596,36 +494,28 @@ fn pair_components_for_effects<R: PreparedDofReservation>(
     later: usize,
     reservation: &mut R,
 ) -> Result<usize> {
-    let earlier_effect =
-        prepared.fe_topology.effects().get(earlier).ok_or_else(|| {
-            invalid_argument("earlier prepared absorbed-DoF effect is out of range")
-        })?;
-    let later_effect =
-        prepared.fe_topology.effects().get(later).ok_or_else(|| {
-            invalid_argument("later prepared absorbed-DoF effect is out of range")
-        })?;
+    let _earlier_effect = prepared
+        .fe_effects()
+        .get(earlier)
+        .ok_or_else(|| invalid_argument("earlier prepared absorbed-DoF effect is out of range"))?;
+    let _later_effect = prepared
+        .fe_effects()
+        .get(later)
+        .ok_or_else(|| invalid_argument("later prepared absorbed-DoF effect is out of range"))?;
     let earlier_source = prepared
-        .fe_topology
+        .fe_topology()
+        .registry()
         .sources()
-        .get(earlier_effect.topology_source_index)
+        .get(prepared.effect_source_index(earlier)?)
         .ok_or_else(|| invalid_argument("earlier prepared absorbed-DoF source is out of range"))?;
     let later_source = prepared
-        .fe_topology
+        .fe_topology()
+        .registry()
         .sources()
-        .get(later_effect.topology_source_index)
+        .get(prepared.effect_source_index(later)?)
         .ok_or_else(|| invalid_argument("later prepared absorbed-DoF source is out of range"))?;
-    let earlier_codes = &prepared
-        .categorical_sources
-        .get(earlier_source.categorical_source_index())
-        .ok_or_else(|| invalid_argument("earlier categorical source is out of range"))?
-        .encoded
-        .codes;
-    let later_codes = &prepared
-        .categorical_sources
-        .get(later_source.categorical_source_index())
-        .ok_or_else(|| invalid_argument("later categorical source is out of range"))?
-        .encoded
-        .codes;
+    let earlier_codes = prepared.effect_codes(earlier)?;
+    let later_codes = prepared.effect_codes(later)?;
     pair_component_count(
         earlier_codes,
         earlier_source.n_levels(),
@@ -1033,7 +923,7 @@ mod tests {
         let pairwise =
             compute_prepared_ols_absorbed_dof(&prepared, PreparedOlsAbsorbedDofPolicy::Pairwise)
                 .expect("pairwise repeated source");
-        assert_eq!(prepared.fe_topology.sources().len(), 2);
+        assert_eq!(prepared.fe_topology().registry().sources().len(), 2);
         assert_eq!(pairwise.absorbed_rank, 2);
         assert_eq!(pairwise.effects[2].redundant, 2);
         assert_eq!(pairwise.effects[2].coefficients, 0);
@@ -1131,7 +1021,7 @@ mod tests {
             &mut reservation,
         )
         .expect("level-scale absorbed-DoF workspaces");
-        assert_eq!(prepared.fe_topology.nobs(), 4096);
+        assert_eq!(prepared.fe_topology().nobs(), 4096);
         assert_eq!(reservation.max_additional, 4);
     }
 
@@ -1163,46 +1053,31 @@ mod tests {
     }
 
     #[test]
-    fn corrupted_codes_and_topology_mismatches_fail_closed() {
+    fn changed_outer_axes_fail_closed_with_immutable_topology() {
         let g = [0, 0, 1, 1];
-        let mut out_of_range = prepared_case(&[("g", &g)], TestWeights::Unit);
-        out_of_range.categorical_sources[0].encoded.codes[0] = 99;
-        assert_eq!(
-            compute_prepared_ols_absorbed_dof(
-                &out_of_range,
-                PreparedOlsAbsorbedDofPolicy::Pairwise,
-            )
-            .expect_err("out-of-range code")
-            .code,
-            ErrorCode::InvalidData
-        );
-
-        let mut membership_mismatch = prepared_case(&[("g", &g)], TestWeights::Unit);
-        membership_mismatch.categorical_sources[0]
-            .encoded
-            .codes
-            .swap(0, 2);
-        assert_eq!(
-            compute_prepared_ols_absorbed_dof(
-                &membership_mismatch,
-                PreparedOlsAbsorbedDofPolicy::Pairwise,
-            )
-            .expect_err("membership mismatch")
-            .code,
-            ErrorCode::InvalidArgument
-        );
-
-        let mut length_mismatch = prepared_case(&[("g", &g)], TestWeights::Unit);
-        length_mismatch.categorical_sources[0].encoded.codes.pop();
-        assert_eq!(
-            compute_prepared_ols_absorbed_dof(
-                &length_mismatch,
-                PreparedOlsAbsorbedDofPolicy::Pairwise,
-            )
-            .expect_err("length mismatch")
-            .code,
-            ErrorCode::InvalidArgument
-        );
+        // Code and membership corruption is rejected by the topology constructor.
+        // Its proof must never certify the still-mutable surrounding sample.
+        for corruption in 0..3 {
+            let mut prepared = prepared_case(&[("g", &g)], TestWeights::Unit);
+            match corruption {
+                0 => {
+                    prepared.sample.original_row_by_active.pop();
+                }
+                1 => {
+                    prepared.sample.regressors[0].pop();
+                }
+                _ => prepared.structural_intercept = false,
+            }
+            assert_eq!(
+                compute_prepared_ols_absorbed_dof(
+                    &prepared,
+                    PreparedOlsAbsorbedDofPolicy::Pairwise
+                )
+                .expect_err("changed outer axes")
+                .code,
+                ErrorCode::InvalidArgument,
+            );
+        }
     }
 
     #[test]

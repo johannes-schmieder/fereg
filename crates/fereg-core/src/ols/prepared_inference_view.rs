@@ -7,7 +7,7 @@
 
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
-use crate::prepared_fit_view::PreparedOlsFitView;
+use crate::prepared_fit_view::{OrdinaryPrepared, PreparedOlsFitView};
 use crate::topology_dof::{
     CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofPolicy,
     CategoricalTopologyDofReport,
@@ -65,7 +65,7 @@ pub(crate) trait PreparedOlsInferenceView: PreparedOlsFitView {
     fn inference_has_explicit_absorbed_effects(&self) -> bool;
 }
 
-impl PreparedOlsInferenceView for PreparedOlsData {
+impl PreparedOlsInferenceView for OrdinaryPrepared<'_> {
     type AbsorbedDofReport = PreparedOlsAbsorbedDofReport;
 
     fn inference_compute_absorbed_dof(
@@ -100,7 +100,7 @@ impl PreparedOlsInferenceView for PreparedOlsData {
     }
 
     fn inference_has_explicit_absorbed_effects(&self) -> bool {
-        !self.fe_topology.effects().is_empty()
+        !self.fe_effects().is_empty()
     }
 }
 
@@ -204,11 +204,10 @@ fn validate_legacy_report(
         ));
     }
     let implicit_no_absorb = prepared.fit_structural_intercept()
-        && prepared.fe_topology.effects().is_empty()
+        && prepared.fe_effects().is_empty()
         && prepared.fit_sample().n_active() > 0;
     let expected_rows = prepared
-        .fe_topology
-        .effects()
+        .fe_effects()
         .len()
         .checked_add(usize::from(implicit_no_absorb))
         .ok_or_else(|| allocation("prepared absorbed-DoF row count overflows"))?;
@@ -243,16 +242,17 @@ fn validate_legacy_report(
         rows = remaining;
     }
 
-    for (effect, row) in prepared.fe_topology.effects().iter().zip(rows) {
+    for (effect_index, (effect, row)) in prepared.fe_effects().iter().zip(rows).enumerate() {
         let source = prepared
-            .fe_topology
+            .fe_topology()
+            .registry()
             .sources()
-            .get(effect.topology_source_index)
+            .get(prepared.effect_source_index(effect_index)?)
             .ok_or_else(|| invalid("prepared absorbed-DoF FE source is out of range"))?;
         if row.identity
             != (PreparedOlsAbsorbedDofEffectIdentity::Explicit {
                 term_id: effect.term_id,
-                source: effect.source,
+                source: effect.sources[0],
             })
             || row.label != effect.label
             || row.categories != source.n_levels()

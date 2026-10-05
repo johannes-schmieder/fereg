@@ -24,6 +24,20 @@ pub struct OlsClusteredRequestV1 {
     pub clusters: Vec<OlsClusterTermV1>,
 }
 
+struct ClusterRequest<'a> {
+    ols: &'a super::OlsRequestV1,
+    clusters: &'a [OlsClusterTermV1],
+}
+
+impl OlsClusteredRequestV1 {
+    fn borrowed(&self) -> ClusterRequest<'_> {
+        ClusterRequest {
+            ols: &self.ols,
+            clusters: &self.clusters,
+        }
+    }
+}
+
 impl OlsClusteredRequestV1 {
     /// Validate the complete OLS-plus-cluster source graph before observation
     /// loading and return its executable finite-dimensional model.
@@ -135,49 +149,43 @@ impl PreparedOlsClusterDesign {
     }
 }
 
-/// Owning sample-bound OLS-plus-cluster preparation result. There is no public
-/// constructor that can combine codes from a different prepared sample.
-#[derive(Debug, PartialEq)]
-pub struct PreparedOlsClusteredData {
-    ols: PreparedOlsData,
-    clusters: PreparedOlsClusterDesign,
-}
+/// Compatibility alias: clustering adds metadata to the canonical owner.
+pub type PreparedOlsClusteredData = PreparedOlsData;
 
-impl PreparedOlsClusteredData {
+impl PreparedOlsData {
     #[must_use]
-    pub const fn ols(&self) -> &PreparedOlsData {
-        &self.ols
+    pub const fn ols(&self) -> &Self {
+        self
     }
 
     #[must_use]
-    pub const fn clusters(&self) -> &PreparedOlsClusterDesign {
-        &self.clusters
+    pub const fn cluster_design(&self) -> Option<&PreparedOlsClusterDesign> {
+        self.clusters.as_ref()
     }
 
-    /// Borrow one declared dimension on the final compact sample axis.
+    /// Empty metadata makes unsupported clustered fitting fail its existing
+    /// validation boundary; no independent wrapper can bind another sample.
+    #[must_use]
+    pub fn clusters(&self) -> &PreparedOlsClusterDesign {
+        static EMPTY: PreparedOlsClusterDesign = PreparedOlsClusterDesign {
+            dimensions: Vec::new(),
+        };
+        self.clusters.as_ref().unwrap_or(&EMPTY)
+    }
+
     pub fn cluster_codes(&self, dimension: usize) -> Result<&[u32]> {
         let dimension = self
-            .clusters
+            .clusters()
             .dimensions
             .get(dimension)
             .ok_or_else(|| invalid_argument("prepared cluster dimension is out of range"))?;
         let codes = match &dimension.codes {
             PreparedOlsClusterCodes::CategoricalSource {
                 categorical_source_index,
-            } => {
-                &self
-                    .ols
-                    .categorical_sources
-                    .get(*categorical_source_index)
-                    .ok_or_else(|| {
-                        invalid_argument("prepared simple cluster source is out of range")
-                    })?
-                    .encoded
-                    .codes
-            }
+            } => self.categorical_codes(*categorical_source_index)?,
             PreparedOlsClusterCodes::Interaction(codes) => codes,
         };
-        if codes.len() != self.ols.sample.n_active() {
+        if codes.len() != self.sample().n_active() {
             return Err(invalid_argument(
                 "prepared cluster codes are not aligned with the final sample",
             ));
@@ -252,18 +260,22 @@ pub fn prepare_ols_clustered_data_owned(
     finish_prepare_ols_clusters(request, ols)
 }
 
-fn finish_prepare_ols_clusters(
+pub(super) fn finish_prepare_ols_clusters(
     request: &OlsClusteredRequestV1,
-    ols: PreparedOlsData,
+    mut ols: PreparedOlsData,
 ) -> Result<PreparedOlsClusteredData> {
     let mut reservation = SystemClusterReservation;
-    let clusters = build_cluster_design(request, &ols, &mut reservation)?;
-    let prepared = PreparedOlsClusteredData { ols, clusters };
-    certify_prepared_clusters(&prepared)?;
-    Ok(prepared)
+    let clusters = build_cluster_design(&request.borrowed(), &ols, &mut reservation)?;
+    ols.clusters = Some(clusters);
+    certify_prepared_clusters(&ols)?;
+    Ok(ols)
 }
 
 pub(super) fn validate_request(request: &OlsClusteredRequestV1) -> Result<Vec<SourceId>> {
+    validate_cluster_request(&request.borrowed())
+}
+
+fn validate_cluster_request(request: &ClusterRequest<'_>) -> Result<Vec<SourceId>> {
     if !(1..=10).contains(&request.clusters.len()) {
         return Err(invalid_argument(
             "prepared clustered OLS requires between one and ten declared cluster dimensions",
@@ -273,7 +285,7 @@ pub(super) fn validate_request(request: &OlsClusteredRequestV1) -> Result<Vec<So
     all_sources
         .try_reserve_exact(request.ols.model.sources.len())
         .map_err(|_| allocation("unable to reserve prepared cluster source set"))?;
-    for term in &request.clusters {
+    for term in request.clusters {
         if term.label.is_empty() {
             return Err(invalid_argument("prepared cluster label cannot be empty"));
         }
@@ -311,7 +323,7 @@ pub(super) fn validate_request(request: &OlsClusteredRequestV1) -> Result<Vec<So
 }
 
 fn build_cluster_design<R: ClusterReservation>(
-    request: &OlsClusteredRequestV1,
+    request: &ClusterRequest<'_>,
     ols: &PreparedOlsData,
     reservation: &mut R,
 ) -> Result<PreparedOlsClusterDesign> {
@@ -320,7 +332,7 @@ fn build_cluster_design<R: ClusterReservation>(
         request.clusters.len(),
         "unable to reserve prepared cluster dimension table",
     )?;
-    for term in &request.clusters {
+    for term in request.clusters {
         let mut categorical_indices = reserved_empty(
             reservation,
             term.sources.len(),
@@ -328,9 +340,9 @@ fn build_cluster_design<R: ClusterReservation>(
         )?;
         for source in &term.sources {
             let index = ols
-                .categorical_sources
+                .categorical_sources()
                 .iter()
-                .position(|categorical| categorical.source == *source)
+                .position(|categorical| categorical.source() == *source)
                 .ok_or_else(|| {
                     invalid_argument("prepared cluster categorical source disappeared")
                 })?;
@@ -342,11 +354,10 @@ fn build_cluster_design<R: ClusterReservation>(
         }
         let (codes, groups) = if let [index] = categorical_indices.as_slice() {
             let groups = ols
-                .categorical_sources
+                .categorical_sources()
                 .get(*index)
                 .ok_or_else(|| invalid_argument("prepared simple cluster source disappeared"))?
-                .encoded
-                .n_levels();
+                .n_levels(ols.fe_topology())?;
             (
                 PreparedOlsClusterCodes::CategoricalSource {
                     categorical_source_index: *index,
@@ -407,13 +418,28 @@ fn factorize_interaction<R: ClusterReservation>(
             "prepared cluster interaction requires at least two sources",
         ));
     }
-    let components = categorical_indices.iter().map(|index| {
-        let encoded = &ols.categorical_sources[*index].encoded;
-        crate::fe::CategoricalCodeView::new(&encoded.codes, encoded.n_levels())
-    });
+    let mut components = reserved_empty(
+        reservation,
+        categorical_indices.len(),
+        "unable to reserve prepared cluster component views",
+    )?;
+    for index in categorical_indices {
+        let source = ols
+            .categorical_sources()
+            .get(*index)
+            .ok_or_else(|| invalid_argument("prepared cluster categorical source disappeared"))?;
+        push_reserved(
+            &mut components,
+            crate::fe::CategoricalCodeView::new(
+                source.codes(ols.fe_topology())?,
+                source.n_levels(ols.fe_topology())?,
+            ),
+            "prepared cluster component-view capacity exhausted",
+        )?;
+    }
     if let Some(encoded) = crate::fe::try_factorize_dense_code_interaction(
         nobs,
-        components,
+        components.iter().copied(),
         &mut ClusterInteractionReservation(reservation),
     )? {
         let groups = encoded.n_levels();
@@ -432,7 +458,7 @@ fn factorize_interaction<R: ClusterReservation>(
         )?;
     }
     order.sort_unstable_by(|left, right| {
-        compare_rows(ols, categorical_indices, *left, *right).then_with(|| left.cmp(right))
+        compare_rows(&components, *left, *right).then_with(|| left.cmp(right))
     });
     let mut codes = reserved_filled(
         reservation,
@@ -443,9 +469,7 @@ fn factorize_interaction<R: ClusterReservation>(
     let mut groups = 0_usize;
     let mut previous = None;
     for row in order {
-        if previous.is_none_or(|prior| {
-            compare_rows(ols, categorical_indices, prior, row) != Ordering::Equal
-        }) {
+        if previous.is_none_or(|prior| compare_rows(&components, prior, row) != Ordering::Equal) {
             groups = groups
                 .checked_add(1)
                 .ok_or_else(|| allocation("prepared cluster interaction group count overflows"))?;
@@ -478,13 +502,12 @@ impl<R: ClusterReservation> crate::fe::InteractionReservation
 }
 
 fn compare_rows(
-    ols: &PreparedOlsData,
-    categorical_indices: &[usize],
+    components: &[crate::fe::CategoricalCodeView<'_>],
     left: usize,
     right: usize,
 ) -> Ordering {
-    for source in categorical_indices {
-        let codes = &ols.categorical_sources[*source].encoded.codes;
+    for source in components {
+        let codes = source.codes();
         let ordering = codes[left].cmp(&codes[right]);
         if ordering != Ordering::Equal {
             return ordering;
@@ -494,14 +517,17 @@ fn compare_rows(
 }
 
 fn certify_prepared_clusters(prepared: &PreparedOlsClusteredData) -> Result<()> {
-    let nobs = prepared.ols.sample.n_active();
-    if !(1..=10).contains(&prepared.clusters.len()) {
+    if prepared.uses_categorical_preparation() {
+        return certify_categorical_clusters(prepared);
+    }
+    let nobs = prepared.sample.n_active();
+    if !(1..=10).contains(&prepared.clusters().len()) {
         return Err(invalid_argument(
             "prepared cluster dimension count is outside the certified range",
         ));
     }
-    for dimension in 0..prepared.clusters.len() {
-        let metadata = &prepared.clusters.dimensions[dimension];
+    for dimension in 0..prepared.clusters().len() {
+        let metadata = &prepared.clusters().dimensions[dimension];
         let codes = prepared.cluster_codes(dimension)?;
         if metadata.groups < 2
             || codes.len() != nobs
@@ -587,6 +613,167 @@ fn invalid_data(message: impl Into<String>) -> FeregError {
 
 fn allocation(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Allocation, message)
+}
+
+/// Direct host construction from borrowed grammar and optional cluster terms.
+/// The source set participates in availability before singleton finalization.
+pub fn prepare_model_owned(
+    request: &super::OlsRequestV1,
+    clusters: &[OlsClusterTermV1],
+    loaded: LoadedOlsInput,
+    categorical: bool,
+) -> Result<PreparedOlsData> {
+    let cluster_request = ClusterRequest {
+        ols: request,
+        clusters,
+    };
+    let sources = if clusters.is_empty() {
+        Vec::new()
+    } else {
+        validate_cluster_request(&cluster_request)?
+    };
+    let mut prepared = if categorical {
+        crate::prepared_categorical_data::prepare_categorical_ols_data_owned_with_cluster_sources(
+            request, loaded, &sources,
+        )?
+    } else {
+        prepare_ols_data_owned_with_cluster_sources(request, loaded, &sources)?
+    };
+    if !clusters.is_empty() {
+        prepared.clusters = Some(build_cluster_design(
+            &cluster_request,
+            &prepared,
+            &mut SystemClusterReservation,
+        )?);
+        certify_prepared_clusters(&prepared)?;
+    }
+    Ok(prepared)
+}
+
+/// Preflight the same original grammar/source roles without copied requests.
+pub fn compile_prepared_model(
+    request: &super::OlsRequestV1,
+    clusters: &[OlsClusterTermV1],
+    categorical: bool,
+) -> Result<super::PreparedOlsModel> {
+    if categorical {
+        let _plan = crate::fe::plan_categorical_absorbed_request(request)?;
+    }
+    let sources = if clusters.is_empty() {
+        Vec::new()
+    } else {
+        validate_cluster_request(&ClusterRequest {
+            ols: request,
+            clusters,
+        })?
+    };
+    request.compile_model(&sources, categorical)
+}
+
+fn certify_categorical_clusters(prepared: &PreparedOlsData) -> Result<()> {
+    prepared.validate()?;
+    let nobs = prepared.sample().n_active();
+    if !(1..=10).contains(&prepared.clusters().len()) {
+        return Err(invalid_argument(
+            "categorical cluster dimension count is outside the certified range",
+        ));
+    }
+    let mut reservation = SystemClusterReservation;
+    for (dimension_index, dimension) in prepared.clusters().dimensions.iter().enumerate() {
+        if dimension.label.is_empty() || dimension.sources.is_empty() || dimension.groups < 2 {
+            return Err(invalid_argument(
+                "categorical cluster metadata is structurally incomplete",
+            ));
+        }
+        let source_indices =
+            resolve_source_indices(prepared, &dimension.sources, &mut reservation)?;
+        let codes = prepared.cluster_codes(dimension_index)?;
+        if codes.len() != nobs || codes.iter().any(|code| *code as usize >= dimension.groups) {
+            return Err(invalid_data(
+                "categorical cluster codes or group count failed certification",
+            ));
+        }
+        match (&dimension.codes, source_indices.as_slice()) {
+            (
+                PreparedOlsClusterCodes::CategoricalSource {
+                    categorical_source_index,
+                },
+                [expected],
+            ) if categorical_source_index == expected => {
+                let source = prepared
+                    .ols()
+                    .categorical_sources()
+                    .get(*expected)
+                    .ok_or_else(|| {
+                        invalid_argument("certified simple cluster source disappeared")
+                    })?;
+                if source.n_levels(prepared.fe_topology())? != dimension.groups
+                    || !std::ptr::eq(
+                        codes.as_ptr(),
+                        source.codes(prepared.fe_topology())?.as_ptr(),
+                    )
+                {
+                    return Err(invalid_argument(
+                        "categorical simple cluster is not the authoritative zero-copy source",
+                    ));
+                }
+            }
+            (PreparedOlsClusterCodes::Interaction(_), indices) if indices.len() >= 2 => {
+                let (expected_codes, expected_groups) =
+                    factorize_interaction(prepared, indices, &mut reservation)?;
+                if expected_groups != dimension.groups || expected_codes != codes {
+                    return Err(invalid_data(
+                        "categorical cluster interaction differs from its source tuple partition",
+                    ));
+                }
+            }
+            _ => {
+                return Err(invalid_argument(
+                    "categorical cluster storage kind and source recipe disagree",
+                ));
+            }
+        }
+        let mut seen = reserved_filled(
+            &mut reservation,
+            dimension.groups,
+            false,
+            "unable to reserve categorical cluster certificate groups",
+        )?;
+        for code in codes {
+            seen[*code as usize] = true;
+        }
+        if seen.iter().any(|present| !present) {
+            return Err(invalid_data(
+                "categorical cluster codes are not contiguous on the final sample",
+            ));
+        }
+    }
+    Ok(())
+}
+
+fn resolve_source_indices<R: ClusterReservation>(
+    ols: &PreparedOlsData,
+    sources: &[SourceId],
+    reservation: &mut R,
+) -> Result<Vec<usize>> {
+    let mut indices = reserved_empty(
+        reservation,
+        sources.len(),
+        "unable to reserve prepared cluster source-index recipe",
+    )?;
+    for source in sources {
+        let index = ols
+            .categorical_sources()
+            .iter()
+            .position(|entry| entry.source() == *source)
+            .ok_or_else(|| invalid_argument("prepared cluster source disappeared"))?;
+        push_reserved(
+            &mut indices,
+            index,
+            "prepared cluster source-index capacity exhausted",
+        )?;
+    }
+    Ok(indices)
 }
 
 #[cfg(test)]
@@ -715,15 +902,15 @@ pub(super) mod tests {
             let actual = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
             assert_eq!(expected, actual);
             assert_eq!(
-                actual.ols.sample.drop_reason(0),
+                actual.sample.drop_reason(0),
                 Some(crate::DropReason::MissingCluster)
             );
             assert_eq!(
-                actual.ols.sample.drop_reason(6),
+                actual.sample.drop_reason(6),
                 Some(crate::DropReason::MissingCluster)
             );
             assert_eq!(
-                actual.ols.sample.drop_reason(1),
+                actual.sample.drop_reason(1),
                 Some(if role == Some(OlsInputRole::FrequencyWeight) {
                     crate::DropReason::Retained
                 } else {
@@ -737,8 +924,8 @@ pub(super) mod tests {
     fn interaction_factorization_is_row_order_invariant_and_collision_free() {
         let (request, loaded) = fixture();
         let prepared = prepare_ols_clustered_data(&request, &loaded).expect("prepared interaction");
-        assert_eq!(prepared.clusters.dimensions.len(), 1);
-        assert_eq!(prepared.clusters.dimensions[0].groups, 8);
+        assert_eq!(prepared.clusters().dimensions.len(), 1);
+        assert_eq!(prepared.clusters().dimensions[0].groups, 8);
         let codes = prepared.cluster_codes(0).expect("interaction codes");
         let mut mapping = (0..codes.len())
             .map(|row| {
@@ -798,20 +985,27 @@ pub(super) mod tests {
         let ols = prepare_ols_data_with_cluster_sources(&request.ols, &loaded, &sources)
             .expect("prepared OLS");
         let mut count = CountingReservation::succeeds();
-        build_cluster_design(&request, &ols, &mut count).expect("count reservations");
+        build_cluster_design(&request.borrowed(), &ols, &mut count).expect("count reservations");
         assert!(count.calls >= 6);
         for fail_at in 0..count.calls {
             let ols = prepare_ols_data_with_cluster_sources(&request.ols, &loaded, &sources)
                 .expect("prepared OLS");
-            let error =
-                build_cluster_design(&request, &ols, &mut CountingReservation::fails_at(fail_at))
-                    .expect_err("injected cluster allocation must fail");
+            let error = build_cluster_design(
+                &request.borrowed(),
+                &ols,
+                &mut CountingReservation::fails_at(fail_at),
+            )
+            .expect_err("injected cluster allocation must fail");
             assert_eq!(error.code, ErrorCode::Allocation);
         }
         let ols = prepare_ols_data_with_cluster_sources(&request.ols, &loaded, &sources)
             .expect("prepared OLS");
-        let error = build_cluster_design(&request, &ols, &mut CountingReservation::undersized())
-            .expect_err("undersized cluster allocation must fail");
+        let error = build_cluster_design(
+            &request.borrowed(),
+            &ols,
+            &mut CountingReservation::undersized(),
+        )
+        .expect_err("undersized cluster allocation must fail");
         assert_eq!(error.code, ErrorCode::Allocation);
     }
 
@@ -820,8 +1014,8 @@ pub(super) mod tests {
         let (request, loaded) = fixture();
         let mut prepared =
             prepare_ols_clustered_data(&request, &loaded).expect("prepared clusters");
-        let groups = prepared.clusters.dimensions[0].groups;
-        let codes = match &mut prepared.clusters.dimensions[0].codes {
+        let groups = prepared.clusters().dimensions[0].groups;
+        let codes = match &mut prepared.clusters.as_mut().unwrap().dimensions[0].codes {
             PreparedOlsClusterCodes::Interaction(codes) => codes,
             PreparedOlsClusterCodes::CategoricalSource { .. } => {
                 panic!("fixture must use interaction codes")
@@ -833,12 +1027,12 @@ pub(super) mod tests {
             .expect_err("out-of-domain interaction code must fail");
         assert_eq!(error.code, ErrorCode::InvalidData);
 
-        let codes = match &mut prepared.clusters.dimensions[0].codes {
+        let codes = match &mut prepared.clusters.as_mut().unwrap().dimensions[0].codes {
             PreparedOlsClusterCodes::Interaction(codes) => codes,
             PreparedOlsClusterCodes::CategoricalSource { .. } => unreachable!(),
         };
         codes[0] = original;
-        prepared.clusters.dimensions[0].groups += 1;
+        prepared.clusters.as_mut().unwrap().dimensions[0].groups += 1;
         let error = certify_prepared_clusters(&prepared)
             .expect_err("noncontiguous group metadata must fail");
         assert_eq!(error.code, ErrorCode::InvalidData);

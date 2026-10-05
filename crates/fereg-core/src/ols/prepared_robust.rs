@@ -360,6 +360,8 @@ pub fn fit_prepared_ols_robust_map_with_loaded_moments(
     config: PreparedOlsRobustConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsRobust> {
+    let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
+    let prepared = &ordinary;
     validate_config(config)?;
     let ((fit, score_scratch), outcome_tss) = fit_with_independent_outcome(
         prepared,
@@ -445,6 +447,8 @@ fn compose_internal<R: PreparedInferenceReservation>(
     score_scratch: Option<PreparedOlsScratch>,
     outcome_tss: DeferredOutcome<'_>,
 ) -> Result<CertifiedPreparedOlsRobust> {
+    let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
+    let prepared = &ordinary;
     let absorbed_summary =
         prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
     let components = compose_view_internal(
@@ -1987,7 +1991,7 @@ mod tests {
         );
         let absorbed = compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
             .expect("low-memory absorbed DoF");
-        let absorbed_summary = prepared
+        let absorbed_summary = crate::prepared_fit_view::OrdinaryPrepared(&prepared)
             .inference_absorbed_dof_summary(&absorbed, config.absorbed_dof)
             .expect("low-memory absorbed DoF summary");
         let (weights, weight_view, _) =

@@ -33,52 +33,6 @@ const MAX_PPML_CLUSTER_DIMENSIONS: usize = 5;
 
 pub(crate) use crate::prepared_fit_view::SharedPreparedOlsData as PreparedPpmlModel;
 
-impl PreparedPpmlModel {
-    pub(crate) fn model(&self) -> &PreparedOlsModel {
-        match self {
-            Self::Categorical(prepared) => prepared.model(),
-            Self::CategoricalClustered(prepared) => prepared.ols().model(),
-        }
-    }
-
-    pub(crate) fn sample(&self) -> &PreparedNumericSample {
-        match self {
-            Self::Categorical(prepared) => prepared.sample(),
-            Self::CategoricalClustered(prepared) => prepared.ols().sample(),
-        }
-    }
-
-    pub(crate) fn singletons(&self) -> PreparedOlsSingletons {
-        match self {
-            Self::Categorical(prepared) => prepared.singletons(),
-            Self::CategoricalClustered(prepared) => prepared.ols().singletons(),
-        }
-    }
-
-    pub(crate) fn categorical(&self) -> Option<&PreparedCategoricalOlsData> {
-        match self {
-            Self::Categorical(prepared) => Some(prepared),
-            Self::CategoricalClustered(prepared) => Some(prepared.ols()),
-        }
-    }
-
-    pub(crate) fn clusters(&self) -> Option<&PreparedOlsClusterDesign> {
-        match self {
-            Self::CategoricalClustered(prepared) => Some(prepared.clusters()),
-            Self::Categorical(_) => None,
-        }
-    }
-
-    pub(crate) fn cluster_codes(&self, dimension: usize) -> Result<&[u32]> {
-        match self {
-            Self::CategoricalClustered(prepared) => prepared.cluster_codes(dimension),
-            Self::Categorical(_) => Err(invalid_argument(
-                "prepared PPML model has no declared cluster dimensions",
-            )),
-        }
-    }
-}
-
 /// Final compact generation consumed by separation detectors, IRLS, and
 /// inference.  Every observation-scale vector is aligned to
 /// `original_rows()` and no vector borrows the raw SPI-loaded owner.
@@ -109,11 +63,8 @@ impl PreparedPpmlModelGeneration {
     /// All generation-owned heap capacities. The shared initial-drop-reason
     /// Arc belongs to the immutable raw owner and is counted there exactly once.
     pub(super) fn owned_buffer_bytes(&self) -> u128 {
-        let prepared = self.prepared.shared_allocation_bytes()
-            + self.fit_view().owned_buffer_bytes()
-            + self
-                .cluster_design()
-                .map_or(0, PreparedOlsClusterDesign::owned_buffer_bytes);
+        let prepared = std::mem::size_of::<(usize, usize, PreparedCategoricalOlsData)>() as u128
+            + self.fit_view().owned_buffer_bytes();
         prepared
             + crate::memory::vec_capacity_bytes(&self.offset)
             + self
@@ -140,7 +91,7 @@ impl PreparedPpmlModelGeneration {
     }
 
     pub(crate) fn fit_view(&self) -> &PreparedCategoricalOlsData {
-        self.prepared.fit_view()
+        &self.prepared
     }
 
     pub(crate) fn model(&self) -> &PreparedOlsModel {
@@ -194,7 +145,7 @@ impl PreparedPpmlModelGeneration {
     }
 
     pub(crate) fn cluster_design(&self) -> Option<&PreparedOlsClusterDesign> {
-        self.prepared.clusters()
+        self.prepared.cluster_design()
     }
 
     pub(crate) fn cluster_codes(&self, dimension: usize) -> Result<&[u32]> {
@@ -401,13 +352,16 @@ impl PreparedPpmlModelOwner {
         // categorical topology instead leaves `_cons` in the finite design,
         // while using the identical production view once effects are present.
         if self.request.clusters.is_empty() {
-            Ok(PreparedPpmlModel::Categorical(Arc::new(
-                prepare_ppml_categorical_ols_data(&self.request.ols, &self.loaded, &[])?,
-            )))
+            Ok(Arc::new(prepare_ppml_categorical_ols_data(
+                &self.request.ols,
+                &self.loaded,
+                &[],
+            )?))
         } else {
-            Ok(PreparedPpmlModel::CategoricalClustered(Arc::new(
-                prepare_ppml_categorical_ols_clustered_data(&self.request, &self.loaded)?,
-            )))
+            Ok(Arc::new(prepare_ppml_categorical_ols_clustered_data(
+                &self.request,
+                &self.loaded,
+            )?))
         }
     }
 
@@ -850,7 +804,7 @@ fn validate_prepared_generation(
             "shared preparation changed the PPML-owned retained sample",
         ));
     }
-    if let Some(clusters) = prepared.clusters() {
+    if let Some(clusters) = prepared.cluster_design() {
         for dimension in 0..clusters.len() {
             if prepared.cluster_codes(dimension)?.len() != sample.n_active() {
                 return Err(invalid_argument(
@@ -1207,10 +1161,7 @@ mod tests {
             7,
             "the owner-side offset keeps the immutable if/in candidate capacity",
         );
-        assert!(matches!(
-            initial.prepared.prepared(),
-            PreparedPpmlModel::CategoricalClustered(_)
-        ));
+        assert!(initial.prepared.prepared().cluster_design().is_some());
         assert_eq!(
             initial.prepared.prepared().singletons(),
             PreparedOlsSingletons {
@@ -1431,14 +1382,8 @@ mod tests {
         let generation = owner
             .rebuild_generation(&[0, 1, 2, 3, 4, 5, 6], 0)
             .expect("plain generation");
-        assert!(matches!(
-            generation.prepared(),
-            PreparedPpmlModel::Categorical(_)
-        ));
-        let categorical = generation
-            .prepared()
-            .categorical()
-            .expect("categorical PPML view");
+        assert!(generation.prepared().cluster_design().is_none());
+        let categorical = generation.prepared().as_ref();
         assert!(categorical.effect_specs().is_empty());
         let concrete_fit: &PreparedCategoricalOlsData = generation.fit_view();
         assert!(!concrete_fit.has_absorbed_intercept());
@@ -1458,10 +1403,7 @@ mod tests {
         assert!(generation.cluster_design().is_none());
         assert_eq!(generation.fit_view().sample().n_active(), 7);
         let fit = fit_prepared_categorical_ols_coefficients_map(
-            generation
-                .prepared()
-                .categorical()
-                .expect("categorical PPML view"),
+            generation.prepared().as_ref(),
             PreparedOlsFitConfig::default(),
         )
         .expect("no-FE finite fit");

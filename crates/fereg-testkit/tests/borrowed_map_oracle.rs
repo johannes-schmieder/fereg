@@ -194,14 +194,20 @@ fn run_case(codes: &[Vec<u32>], effects: &[usize], columns: &[Vec<f64>], case: C
         .expect("borrowed prepared design");
     assert_eq!(design.effects().len(), effects.len());
     assert_eq!(
-        prepared.fe_topology.sources().len(),
+        prepared.fe_topology().registry().sources().len(),
         unique_source_count(effects)
     );
-    for (effect, prepared_effect) in design.effects().iter().zip(prepared.fe_topology.effects()) {
-        let categorical = &prepared.categorical_sources[prepared_effect.categorical_source_index];
+    for (effect_index, effect) in design.effects().iter().enumerate() {
+        let categorical = &prepared.categorical_sources()[prepared
+            .categorical_sources()
+            .iter()
+            .position(|s| s.source() == prepared.fe_effects()[effect_index].sources[0])
+            .unwrap()];
         assert!(std::ptr::eq(
             effect.codes(),
-            categorical.encoded.codes.as_slice()
+            categorical
+                .codes(prepared.fe_topology())
+                .expect("topology-backed source")
         ));
     }
 
@@ -410,7 +416,7 @@ fn loaded_column(values: Vec<f64>) -> LoadedNumericColumn {
 }
 
 fn prepared_map_weights(prepared: &PreparedOlsData) -> BorrowedMapWeights<'_> {
-    match &prepared.sample.weights {
+    match &prepared.sample().weights {
         PreparedWeights::None => BorrowedMapWeights::Unit,
         PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
     }

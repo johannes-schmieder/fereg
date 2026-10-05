@@ -7,13 +7,9 @@
 //! calculation.
 
 use crate::error::Result;
-use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 
 use super::prepared_inference_view::PreparedOlsInferenceView;
-use super::{
-    PreparedCategoricalOlsClusteredData, PreparedOlsClusterDesign, PreparedOlsClusteredData,
-    PreparedOlsData,
-};
+use super::{PreparedOlsClusterDesign, PreparedOlsData};
 
 pub(crate) trait PreparedOlsClusteredView {
     type Ols: PreparedOlsInferenceView + ?Sized;
@@ -25,33 +21,27 @@ pub(crate) trait PreparedOlsClusteredView {
     fn clustered_codes(&self, dimension: usize) -> Result<&[u32]>;
 }
 
-impl PreparedOlsClusteredView for PreparedOlsClusteredData {
-    type Ols = PreparedOlsData;
-
-    fn clustered_ols(&self) -> &Self::Ols {
-        self.ols()
+impl PreparedOlsClusteredView for crate::prepared_fit_view::OrdinaryPrepared<'_> {
+    type Ols = Self;
+    fn clustered_ols(&self) -> &Self {
+        self
     }
-
     fn clustered_design(&self) -> &PreparedOlsClusterDesign {
         self.clusters()
     }
-
     fn clustered_codes(&self, dimension: usize) -> Result<&[u32]> {
         self.cluster_codes(dimension)
     }
 }
 
-impl PreparedOlsClusteredView for PreparedCategoricalOlsClusteredData {
-    type Ols = PreparedCategoricalOlsData;
-
-    fn clustered_ols(&self) -> &Self::Ols {
-        self.ols()
+impl PreparedOlsClusteredView for PreparedOlsData {
+    type Ols = Self;
+    fn clustered_ols(&self) -> &Self {
+        self
     }
-
     fn clustered_design(&self) -> &PreparedOlsClusterDesign {
         self.clusters()
     }
-
     fn clustered_codes(&self, dimension: usize) -> Result<&[u32]> {
         self.cluster_codes(dimension)
     }

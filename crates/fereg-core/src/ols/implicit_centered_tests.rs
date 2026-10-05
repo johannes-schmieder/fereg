@@ -118,9 +118,7 @@ fn fixture_extra_columns(
         include_intercept: true,
         keep_singletons: true,
     };
-    SharedPreparedOlsData::Categorical(Arc::new(
-        crate::prepare_categorical_ols_data(&request, &input).unwrap(),
-    ))
+    Arc::new(crate::prepare_categorical_ols_data(&request, &input).unwrap())
 }
 
 #[test]
@@ -132,7 +130,7 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
             .unwrap()
             .install(|| {
                 let source = fixture(true);
-                let prepared = source.fit_view();
+                let prepared = source.as_ref();
                 let ids: Vec<_> = (0..prepared.model().columns.len() - 1).collect();
                 let response = prepared.sample().outcome.clone();
                 let mut frame = ImplicitCenteredDesign::new(
@@ -247,7 +245,7 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
         PreparedOlsExecutionMode::Low,
     ] {
         let source = fixture(true);
-        let prepared = source.fit_view();
+        let prepared = source.as_ref();
         let y = &prepared.sample().outcome;
         let w: Vec<_> = (0..y.len()).map(|i| 0.25 + (i % 11) as f64).collect();
         let divisor = w.iter().copied().fold(0., f64::max);
@@ -321,10 +319,7 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
         }
         let products = session.into_current_products(&mut || Ok(())).unwrap();
         assert!(products.fit().residuals().iter().all(|r| r.abs() < 1e-10));
-        let SharedPreparedOlsData::Categorical(arc) = &source else {
-            unreachable!()
-        };
-        let weak = Arc::downgrade(arc);
+        let weak = Arc::downgrade(&source);
         drop(source);
         assert_eq!(
             weak.upgrade().is_some(),
@@ -351,7 +346,7 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
 #[test]
 fn implicit_interaction_partition_and_zero_controls_match_closed_form_projection() {
     let source = fixture_partition(false, true);
-    let prepared = source.fit_view();
+    let prepared = source.as_ref();
     assert!(prepared.validated_single_topology().unwrap().is_none());
     assert!(prepared.fit_has_one_ordinary_intercept_effect());
     let y = &prepared.sample().outcome;
@@ -419,7 +414,7 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
     };
     for (stored, active) in [(2, 1), (6, 6), (7, 3), (64, 64), (65, 64), (65, 65)] {
         let source = fixture_extra_columns(false, false, stored - 2);
-        let prepared = source.fit_view();
+        let prepared = source.as_ref();
         let ids: Vec<_> = (0..stored).collect();
         let selected: Vec<_> = (0..active)
             .map(|j| {

@@ -1,3 +1,7 @@
+#[path = "prepared_topology.rs"]
+mod topology;
+use topology::build_borrowed_intercept_fe_design_with_reservation;
+
 use rayon::prelude::*;
 use std::collections::{BTreeMap, BTreeSet};
 
@@ -8,13 +12,10 @@ use crate::data::{
 };
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::factorize::{factorize_f64, EncodedFactor};
-use crate::fe::{
-    prune_singletons_with_multiplicity, BorrowedInterceptFeDesign, LevelIndex,
-    SingletonMultiplicity, SingletonResult, ValidatedBorrowedInterceptSource,
-};
+use crate::fe::{BorrowedInterceptFeDesign, ValidatedBorrowedInterceptSource};
 use crate::metadata::{
-    AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState,
-    MetadataFlag, RawTermKind, SourceId, TimeSeriesState,
+    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState, MetadataFlag,
+    RawTermKind, SourceId, TimeSeriesState,
 };
 
 /// Role of one Stata plugin-varlist input in the developer OLS preparation request.
@@ -159,121 +160,10 @@ pub struct PreparedCategoricalSource {
     pub encoded: EncodedFactor<f64>,
 }
 
-/// One prepared single-source, intercept-only absorbed term.
-///
-/// Codes remain owned by the deduplicated categorical-source table. The term
-/// points to one unique topology source, which in turn points back to that
-/// categorical source. Neither layer copies the observation-scale codes.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PreparedOlsEffect {
-    pub term_id: AbsorbTermId,
-    pub label: String,
-    pub source: SourceId,
-    pub categorical_source_index: usize,
-    pub topology_source_index: usize,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-struct PreparedOlsEffectRecipe {
-    term_id: AbsorbTermId,
-    label: String,
-    source: SourceId,
-    categorical_source_index: usize,
-}
-
-#[derive(Debug, PartialEq, Eq)]
-pub struct PreparedOlsFeTopologySource {
-    source: SourceId,
-    categorical_source_index: usize,
-    n_levels: usize,
-    level_index: LevelIndex,
-}
-
-impl PreparedOlsFeTopologySource {
-    pub(crate) fn into_level_index(self) -> LevelIndex {
-        self.level_index
-    }
-
-    #[must_use]
-    pub const fn source(&self) -> SourceId {
-        self.source
-    }
-
-    #[must_use]
-    pub const fn categorical_source_index(&self) -> usize {
-        self.categorical_source_index
-    }
-
-    #[must_use]
-    pub const fn n_levels(&self) -> usize {
-        self.n_levels
-    }
-
-    #[must_use]
-    pub fn nobs(&self) -> usize {
-        self.level_index.nobs()
-    }
-
-    pub fn members(&self, level: usize) -> Result<&[usize]> {
-        self.level_index.checked_members(level)
-    }
-
-    #[must_use]
-    pub(crate) const fn level_index(&self) -> &LevelIndex {
-        &self.level_index
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PreparedOlsFeSingletonPolicy {
     VerifiedFixedPoint,
     KeptByRequest,
-}
-
-/// Structural fixed-effect topology on the final compact observation axis.
-///
-/// This is deliberately not the numerical solver `FeDesign`: it owns only
-/// small term/source mappings plus one fallibly constructed membership index
-/// per unique FE source. Final codes and level metadata remain single-owned by
-/// `PreparedOlsData::categorical_sources`.
-#[derive(Debug, PartialEq, Eq)]
-pub struct PreparedOlsFeTopology {
-    nobs: usize,
-    sources: Vec<PreparedOlsFeTopologySource>,
-    effects: Vec<PreparedOlsEffect>,
-    total_levels: usize,
-    singleton_policy: PreparedOlsFeSingletonPolicy,
-}
-
-impl PreparedOlsFeTopology {
-    pub(crate) fn into_sources(self) -> Vec<PreparedOlsFeTopologySource> {
-        self.sources
-    }
-
-    #[must_use]
-    pub const fn nobs(&self) -> usize {
-        self.nobs
-    }
-
-    #[must_use]
-    pub fn sources(&self) -> &[PreparedOlsFeTopologySource] {
-        &self.sources
-    }
-
-    #[must_use]
-    pub fn effects(&self) -> &[PreparedOlsEffect] {
-        &self.effects
-    }
-
-    #[must_use]
-    pub const fn total_levels(&self) -> usize {
-        self.total_levels
-    }
-
-    #[must_use]
-    pub const fn singleton_policy(&self) -> PreparedOlsFeSingletonPolicy {
-        self.singleton_policy
-    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -283,212 +173,48 @@ pub struct PreparedOlsSingletons {
     pub cascade_events: usize,
 }
 
-#[derive(Debug, PartialEq)]
-pub struct PreparedOlsData {
-    pub model: PreparedOlsModel,
-    pub sample: PreparedNumericSample,
-    pub categorical_sources: Vec<PreparedCategoricalSource>,
-    pub fe_topology: PreparedOlsFeTopology,
-    /// Whether the model contains a structural constant direction. With no
-    /// explicit absorb terms, the pinned reference synthesizes a virtual
-    /// one-level absorbed constant even under `noconstant`.
-    pub structural_intercept: bool,
-    /// Whether the structural constant is exposed as the `_cons` coefficient.
-    pub report_intercept: bool,
-    pub singletons: PreparedOlsSingletons,
-}
+/// Compatibility name for the single finalized preparation owner.
+pub type PreparedOlsData = crate::prepared_categorical_data::PreparedModel;
 
 impl PreparedOlsData {
-    /// Heap buffers retained by preparation beside fit/inference/recovery.
-    /// Counts each owner once, including unused capacity and nested metadata;
-    /// excludes stack storage, construction scratch and dependency workspaces.
     #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        use crate::memory::vec_capacity_bytes as bytes;
-        self.model.owned_buffer_bytes()
-            + self.sample.owned_buffer_bytes()
-            + bytes(&self.categorical_sources)
-            + self
-                .categorical_sources
-                .iter()
-                .map(|source| bytes(&source.encoded.codes) + bytes(&source.encoded.levels))
-                .sum::<u128>()
-            + bytes(&self.fe_topology.sources)
-            + self
-                .fe_topology
-                .sources
-                .iter()
-                .map(|source| source.level_index.owned_buffer_bytes())
-                .sum::<u128>()
-            + bytes(&self.fe_topology.effects)
-            + self
-                .fe_topology
-                .effects
-                .iter()
-                .map(|effect| effect.label.capacity() as u128)
-                .sum::<u128>()
+    pub fn fe_effects(&self) -> &[crate::topology_dof::CategoricalTopologyDofEffectSpec] {
+        &self.effect_specs
     }
 
-    /// Borrow the current intercept-only FE design without copying codes or
-    /// level membership. This structural adapter invokes no numerical solver.
+    #[must_use]
+    pub const fn fe_singleton_policy(&self) -> PreparedOlsFeSingletonPolicy {
+        self.singleton_policy
+    }
+
+    pub(crate) fn categorical_codes(&self, source: usize) -> Result<&[u32]> {
+        self.categorical_sources()
+            .get(source)
+            .ok_or_else(|| invalid("prepared categorical source is out of range"))?
+            .codes(self.fe_topology())
+    }
+
     pub fn borrowed_intercept_fe_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
         let mut reservation = SystemFeTopologyReservation;
         build_borrowed_intercept_fe_design_with_reservation(self, &mut reservation)
     }
 
-    /// Evaluate one prepared finite-dimensional recipe at one active row.
-    /// This is a testable preparation primitive, not an estimator dispatch.
-    pub fn column_value(&self, column: usize, active_row: usize) -> Result<f64> {
-        if active_row >= self.sample.n_active() {
-            return Err(invalid("prepared OLS active row is out of range"));
-        }
-        let column = self
-            .model
-            .columns
-            .get(column)
-            .ok_or_else(|| invalid("prepared OLS column is out of range"))?;
-        match &column.kind {
-            PreparedOlsColumnKind::Intercept => Ok(1.0),
-            PreparedOlsColumnKind::Continuous {
-                prepared_source_index,
-                ..
-            } => self
-                .sample
-                .regressors
-                .get(*prepared_source_index)
-                .and_then(|source| source.get(active_row))
-                .copied()
-                .ok_or_else(|| invalid("prepared continuous source is out of range")),
-            PreparedOlsColumnKind::Categorical {
-                categorical_source_index,
-                level_code,
-                ..
-            } => {
-                let Some(level_code) = *level_code else {
-                    return Ok(0.0);
-                };
-                let code = self
-                    .categorical_sources
-                    .get(*categorical_source_index)
-                    .and_then(|source| source.encoded.codes.get(active_row))
-                    .copied()
-                    .ok_or_else(|| invalid("prepared categorical source is out of range"))?;
-                Ok(if code == level_code { 1.0 } else { 0.0 })
-            }
-            PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                for component in components {
-                    let Some(level_code) = component.level_code else {
-                        return Ok(0.0);
-                    };
-                    let code = self
-                        .categorical_sources
-                        .get(component.categorical_source_index)
-                        .and_then(|source| source.encoded.codes.get(active_row))
-                        .copied()
-                        .ok_or_else(|| {
-                            invalid("prepared categorical interaction source is out of range")
-                        })?;
-                    if code != level_code {
-                        return Ok(0.0);
-                    }
-                }
-                Ok(1.0)
-            }
-        }
-    }
-}
-
-fn build_borrowed_intercept_fe_design_with_reservation<'a, R: FeTopologyReservation>(
-    prepared: &'a PreparedOlsData,
-    reservation: &mut R,
-) -> Result<BorrowedInterceptFeDesign<'a>> {
-    let mut validation = SystemBorrowedInterceptSourceValidation;
-    build_borrowed_intercept_fe_design_with_controls(prepared, reservation, &mut validation)
-}
-
-fn build_borrowed_intercept_fe_design_with_controls<
-    'a,
-    R: FeTopologyReservation,
-    V: BorrowedInterceptSourceValidation,
->(
-    prepared: &'a PreparedOlsData,
-    reservation: &mut R,
-    validation: &mut V,
-) -> Result<BorrowedInterceptFeDesign<'a>> {
-    if prepared.fe_topology.nobs() != prepared.sample.n_active() {
-        return Err(invalid(
-            "borrowed FE design topology is not aligned with the final sample",
-        ));
+    pub(crate) fn effect_codes(&self, effect: usize) -> Result<&[u32]> {
+        ValidatedBorrowedInterceptSource::from_finalized_source(
+            &self.fe_topology,
+            self.effect_source_index(effect)?,
+        )
+        .map(|source| source.effect().codes())
+        .ok_or_else(|| invalid("prepared intercept partition is unavailable"))
     }
 
-    let mut validated_sources = Vec::new();
-    reservation.reserve_vec(
-        &mut validated_sources,
-        prepared.fe_topology.sources().len(),
-        "unable to reserve validated borrowed FE sources",
-    )?;
-    for topology_source in prepared.fe_topology.sources() {
-        let categorical = prepared
-            .categorical_sources
-            .get(topology_source.categorical_source_index())
-            .ok_or_else(|| invalid("borrowed FE source categorical index is out of range"))?;
-        if categorical.source != topology_source.source()
-            || categorical.encoded.n_levels() != topology_source.n_levels()
-        {
-            return Err(invalid(
-                "borrowed FE source identity or level count is inconsistent",
-            ));
-        }
-        let validated = validation.validate(
-            &categorical.encoded.codes,
-            topology_source.n_levels(),
-            topology_source.level_index(),
-        )?;
-        push_reserved(
-            &mut validated_sources,
-            validated,
-            "validated borrowed FE source capacity exhausted",
-        )?;
+    pub(crate) fn effect_source_index(&self, effect: usize) -> Result<usize> {
+        self.fe_topology()
+            .effect_to_topology()
+            .get(effect)
+            .copied()
+            .ok_or_else(|| invalid("prepared FE effect index is out of range"))
     }
-
-    let mut effects = Vec::new();
-    reservation.reserve_vec(
-        &mut effects,
-        prepared.fe_topology.effects().len(),
-        "unable to reserve borrowed FE design effects",
-    )?;
-    for effect in prepared.fe_topology.effects() {
-        let topology_source = prepared
-            .fe_topology
-            .sources()
-            .get(effect.topology_source_index)
-            .ok_or_else(|| invalid("borrowed FE design topology source is out of range"))?;
-        let categorical = prepared
-            .categorical_sources
-            .get(effect.categorical_source_index)
-            .ok_or_else(|| invalid("borrowed FE design categorical source is out of range"))?;
-        let validated = validated_sources
-            .get(effect.topology_source_index)
-            .ok_or_else(|| invalid("borrowed FE validated source is out of range"))?;
-        if topology_source.categorical_source_index() != effect.categorical_source_index
-            || topology_source.source() != effect.source
-            || categorical.source != effect.source
-            || categorical.encoded.n_levels() != topology_source.n_levels()
-            || validated.n_levels() != topology_source.n_levels()
-            || !std::ptr::eq(validated.codes(), categorical.encoded.codes.as_slice())
-            || !std::ptr::eq(validated.level_index(), topology_source.level_index())
-        {
-            return Err(invalid(
-                "borrowed FE design source identities are inconsistent",
-            ));
-        }
-        push_reserved(
-            &mut effects,
-            validated.effect(),
-            "borrowed FE design effect capacity exhausted",
-        )?;
-    }
-    BorrowedInterceptFeDesign::new(prepared.sample.n_active(), effects)
 }
 
 impl OlsRequestV1 {
@@ -559,20 +285,30 @@ impl OlsRequestV1 {
         if self.absorbed_terms.is_empty() {
             return self.validate_and_compile_with_cluster_sources(cluster_sources);
         }
-        let plan = crate::fe::plan_categorical_absorbed_request(self)?;
-        plan.availability_request()
-            .validate_and_compile_with_cluster_sources(cluster_sources)
+        let _plan = crate::fe::plan_categorical_absorbed_request(self)?;
+        self.compile_model(cluster_sources, true)
     }
 
     pub(super) fn validate_and_compile_with_cluster_sources(
         &self,
         cluster_sources: &[SourceId],
     ) -> Result<PreparedOlsModel> {
+        self.compile_model(cluster_sources, false)
+    }
+
+    pub(super) fn compile_model(
+        &self,
+        cluster_sources: &[SourceId],
+        categorical: bool,
+    ) -> Result<PreparedOlsModel> {
         self.model.validate_executable_metadata()?;
-        validate_absorbed_preparation(self)?;
+        if !categorical {
+            validate_absorbed_preparation(self)?;
+        }
         validate_bindings(self, cluster_sources)?;
-        let structural_intercept =
-            self.absorbed_terms.is_empty() || self.absorbed_terms.iter().any(|term| term.intercept);
+        let structural_intercept = categorical
+            || self.absorbed_terms.is_empty()
+            || self.absorbed_terms.iter().any(|term| term.intercept);
         let report_intercept = self.include_intercept && structural_intercept;
 
         let categorical_source_indices = categorical_source_indices(self, cluster_sources)?;
@@ -598,81 +334,7 @@ impl OlsRequestV1 {
             .map_err(|_| allocation("unable to reserve prepared OLS coefficients"))?;
 
         for term in &self.model.terms {
-            let kind = match (term.raw_kind, term.components.as_slice()) {
-                (RawTermKind::Variable, [component])
-                    if component.kind == ComponentKind::Continuous
-                        && component.level_state == LevelState::Absent
-                        && component.base == MetadataFlag::False
-                        && matches!(
-                            component.time_series_state,
-                            TimeSeriesState::None | TimeSeriesState::Materialized
-                        )
-                        && matches!(component.raw_operator.as_str(), "" | "c" | "co") =>
-                {
-                    PreparedOlsColumnKind::Continuous {
-                        source: component.source,
-                        prepared_source_index: source_index(component.source)?,
-                    }
-                }
-                (RawTermKind::Factor, [component])
-                    if component.kind == ComponentKind::Categorical
-                        && component.level_state == LevelState::Present
-                        && matches!(
-                            component.time_series_state,
-                            TimeSeriesState::None | TimeSeriesState::Materialized
-                        ) =>
-                {
-                    validate_categorical_value(component.level_value, "factor metadata level")?;
-                    PreparedOlsColumnKind::Categorical {
-                        source: component.source,
-                        prepared_source_index: source_index(component.source)?,
-                        categorical_source_index: categorical_source_index(
-                            &categorical_source_indices,
-                            component.source,
-                        )?,
-                        level_bits: canonical_factor_value(component.level_value).to_bits(),
-                        level_code: None,
-                    }
-                }
-                (RawTermKind::Interaction | RawTermKind::Product, components)
-                    if components.len() >= 2
-                        && components.iter().all(|component| {
-                            component.kind == ComponentKind::Categorical
-                                && component.level_state == LevelState::Present
-                                && component.time_series_state == TimeSeriesState::None
-                        }) =>
-                {
-                    let mut prepared_components = Vec::new();
-                    prepared_components
-                        .try_reserve_exact(components.len())
-                        .map_err(|_| {
-                            allocation("unable to reserve categorical interaction recipe")
-                        })?;
-                    for component in components {
-                        validate_categorical_value(
-                            component.level_value,
-                            "categorical interaction metadata level",
-                        )?;
-                        prepared_components.push(PreparedOlsCategoricalComponent {
-                            source: component.source,
-                            categorical_source_index: categorical_source_index(
-                                &categorical_source_indices,
-                                component.source,
-                            )?,
-                            level_bits: canonical_factor_value(component.level_value).to_bits(),
-                            level_code: None,
-                        });
-                    }
-                    PreparedOlsColumnKind::CategoricalInteraction {
-                        components: prepared_components,
-                    }
-                }
-                _ => {
-                    return Err(unsupported(
-                        "prepare-ols-test supports only non-time-series continuous terms, numeric factor main effects, and numeric all-categorical interactions",
-                    ));
-                }
-            };
+            let kind = compile_column_kind(term, &categorical_source_indices)?;
 
             // Never infer whole-column omission from component metadata. Stata's
             // term flag is the sole authority for whether this recipe is emitted.
@@ -721,6 +383,85 @@ impl OlsRequestV1 {
     }
 }
 
+fn compile_column_kind(
+    term: &crate::metadata::ExpandedTerm,
+    categorical_source_indices: &BTreeMap<SourceId, usize>,
+) -> Result<PreparedOlsColumnKind> {
+    Ok(match (term.raw_kind, term.components.as_slice()) {
+        (RawTermKind::Variable, [component])
+            if component.kind == ComponentKind::Continuous
+                && component.level_state == LevelState::Absent
+                && component.base == MetadataFlag::False
+                && matches!(
+                    component.time_series_state,
+                    TimeSeriesState::None | TimeSeriesState::Materialized
+                )
+                && matches!(component.raw_operator.as_str(), "" | "c" | "co") =>
+        {
+            PreparedOlsColumnKind::Continuous {
+                source: component.source,
+                prepared_source_index: source_index(component.source)?,
+            }
+        }
+        (RawTermKind::Factor, [component])
+            if component.kind == ComponentKind::Categorical
+                && component.level_state == LevelState::Present
+                && matches!(
+                    component.time_series_state,
+                    TimeSeriesState::None | TimeSeriesState::Materialized
+                ) =>
+        {
+            validate_categorical_value(component.level_value, "factor metadata level")?;
+            PreparedOlsColumnKind::Categorical {
+                source: component.source,
+                prepared_source_index: source_index(component.source)?,
+                categorical_source_index: categorical_source_index(
+                    categorical_source_indices,
+                    component.source,
+                )?,
+                level_bits: canonical_factor_value(component.level_value).to_bits(),
+                level_code: None,
+            }
+        }
+        (RawTermKind::Interaction | RawTermKind::Product, components)
+            if components.len() >= 2
+                && components.iter().all(|component| {
+                    component.kind == ComponentKind::Categorical
+                        && component.level_state == LevelState::Present
+                        && component.time_series_state == TimeSeriesState::None
+                }) =>
+        {
+            let mut prepared_components = Vec::new();
+            prepared_components
+                .try_reserve_exact(components.len())
+                .map_err(|_| allocation("unable to reserve categorical interaction recipe"))?;
+            for component in components {
+                validate_categorical_value(
+                    component.level_value,
+                    "categorical interaction metadata level",
+                )?;
+                prepared_components.push(PreparedOlsCategoricalComponent {
+                    source: component.source,
+                    categorical_source_index: categorical_source_index(
+                        categorical_source_indices,
+                        component.source,
+                    )?,
+                    level_bits: canonical_factor_value(component.level_value).to_bits(),
+                    level_code: None,
+                });
+            }
+            PreparedOlsColumnKind::CategoricalInteraction {
+                components: prepared_components,
+            }
+        }
+        _ => {
+            return Err(unsupported(
+                        "prepare-ols-test supports only non-time-series continuous terms, numeric factor main effects, and numeric all-categorical interactions",
+                    ));
+        }
+    })
+}
+
 /// Finish the Stata-independent boundary after the SPI layer has loaded raw inputs.
 pub fn prepare_ols_data(
     request: &OlsRequestV1,
@@ -746,7 +487,16 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
 ) -> Result<PreparedOlsData> {
     let (model, sample, early_factor) =
         prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?;
-    finish_prepare_with_early_factor(request, cluster_sources, model, sample, true, early_factor)
+    crate::prepared_categorical_data::finish_prepared_model(
+        request,
+        cluster_sources,
+        model,
+        sample,
+        early_factor,
+        false,
+        false,
+        true,
+    )
 }
 
 /// Authoritative metadata and numeric-sample stage, before FE factorization.
@@ -761,7 +511,32 @@ pub(crate) fn prepare_ols_numeric_sample_owned(
     PreparedNumericSample,
     Option<Result<PreparedCategoricalSource>>,
 )> {
-    let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
+    prepare_numeric_sample_owned(request, loaded, cluster_sources, false)
+}
+
+pub(crate) fn prepare_categorical_numeric_sample_owned(
+    request: &OlsRequestV1,
+    loaded: LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<(
+    PreparedOlsModel,
+    PreparedNumericSample,
+    Option<Result<PreparedCategoricalSource>>,
+)> {
+    prepare_numeric_sample_owned(request, loaded, cluster_sources, true)
+}
+
+fn prepare_numeric_sample_owned(
+    request: &OlsRequestV1,
+    loaded: LoadedOlsInput,
+    cluster_sources: &[SourceId],
+    categorical: bool,
+) -> Result<(
+    PreparedOlsModel,
+    PreparedNumericSample,
+    Option<Result<PreparedCategoricalSource>>,
+)> {
+    let model = request.compile_model(cluster_sources, categorical)?;
     validate_loaded(request, &loaded)?;
     validate_candidate_weight_domain(&loaded)?;
     let early_source = if loaded.candidate.len() >= 16_384
@@ -771,16 +546,13 @@ pub(crate) fn prepare_ols_numeric_sample_owned(
         && loaded.analytic_weight.is_none()
         && loaded.frequency_weight.is_none()
         && loaded.probability_weight.is_none()
-        && request.absorbed_terms.len() == 1
-        && request.absorbed_terms[0].intercept
-        && request.absorbed_terms[0].categorical_sources.len() == 1
-        && request.absorbed_terms[0].slope_sources.is_empty()
+        && early_partition_source(request, categorical).is_some()
         && request.model.terms.iter().all(|term| {
             term.components
                 .iter()
                 .all(|component| component.kind == ComponentKind::Continuous)
         }) {
-        Some(request.absorbed_terms[0].categorical_sources[0])
+        early_partition_source(request, categorical)
     } else {
         None
     };
@@ -831,7 +603,24 @@ pub(crate) fn prepare_ols_numeric_sample(
     loaded: &LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
-    let model = request.validate_and_compile_with_cluster_sources(cluster_sources)?;
+    prepare_numeric_sample(request, loaded, cluster_sources, false)
+}
+
+pub(crate) fn prepare_categorical_numeric_sample(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+    cluster_sources: &[SourceId],
+) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
+    prepare_numeric_sample(request, loaded, cluster_sources, true)
+}
+
+fn prepare_numeric_sample(
+    request: &OlsRequestV1,
+    loaded: &LoadedOlsInput,
+    cluster_sources: &[SourceId],
+    categorical: bool,
+) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
+    let model = request.compile_model(cluster_sources, categorical)?;
     validate_loaded(request, loaded)?;
 
     let regressor_views = loaded
@@ -888,9 +677,19 @@ fn finish_prepare_ols_data(
     model: PreparedOlsModel,
     sample: PreparedNumericSample,
 ) -> Result<PreparedOlsData> {
-    finish_prepare_ols_data_with_membership(request, cluster_sources, model, sample, true)
+    crate::prepared_categorical_data::finish_prepared_model(
+        request,
+        cluster_sources,
+        model,
+        sample,
+        None,
+        false,
+        false,
+        true,
+    )
 }
 
+#[cfg(test)]
 fn finish_prepare_ols_data_with_membership(
     request: &OlsRequestV1,
     cluster_sources: &[SourceId],
@@ -898,224 +697,56 @@ fn finish_prepare_ols_data_with_membership(
     sample: PreparedNumericSample,
     reuse_membership: bool,
 ) -> Result<PreparedOlsData> {
-    finish_prepare_with_early_factor(
+    crate::prepared_categorical_data::finish_prepared_model(
         request,
         cluster_sources,
         model,
         sample,
-        reuse_membership,
         None,
+        false,
+        false,
+        reuse_membership,
     )
 }
 
-pub(crate) fn finish_prepare_with_early_factor(
+pub(crate) fn factorize_preparation_sources(
     request: &OlsRequestV1,
-    cluster_sources: &[SourceId],
-    mut model: PreparedOlsModel,
-    sample: PreparedNumericSample,
-    reuse_membership: bool,
+    sample: &PreparedNumericSample,
     early_factor: Option<Result<PreparedCategoricalSource>>,
-) -> Result<PreparedOlsData> {
-    // Cluster-only sources are deliberately absent from this pre-singleton
-    // factorization. They affect availability (reason 6), never FE pruning;
-    // cluster coding is created only on the final singleton fixed point below.
-    let pruning_categorical_sources = if let Some(factor) = early_factor {
-        let mut sources = Vec::new();
-        sources
+) -> Result<Vec<PreparedCategoricalSource>> {
+    let mut previous = Vec::new();
+    if let Some(factor) = early_factor {
+        previous
             .try_reserve_exact(1)
-            .map_err(|_| allocation("unable to reserve prepared categorical sources"))?;
-        sources.push(factor?);
-        sources
-    } else {
-        factorize_categorical_sources(request, &sample, &[])?
-    };
-    let pruning_fixed_effects = prepare_fixed_effects(request, &pruning_categorical_sources, &[])?;
-    let prebuilt_index = if reuse_membership {
-        one_fe_fixed_point_index(
-            request,
-            &sample,
-            &pruning_categorical_sources,
-            &pruning_fixed_effects,
-        )?
-    } else {
-        None
-    };
-    let indexed_source = prebuilt_index
-        .as_ref()
-        .map(|(index, _)| pruning_categorical_sources[*index].source);
-    let (sample, categorical_sources, fixed_effects, num_singletons, cascade_events) =
-        if prebuilt_index.is_some() {
-            let (sources, effects) = if cluster_sources.is_empty() {
-                (pruning_categorical_sources, pruning_fixed_effects)
-            } else {
-                let sources = factorize_categorical_sources_reusing(
-                    request,
-                    &sample,
-                    cluster_sources,
-                    pruning_categorical_sources,
-                )?;
-                let effects = prepare_fixed_effects(request, &sources, cluster_sources)?;
-                (sources, effects)
-            };
-            (sample, sources, effects, 0, 0)
-        } else {
-            let singleton_result = prune_prepared_singletons(
-                request,
-                &sample,
-                &pruning_categorical_sources,
-                &pruning_fixed_effects,
-            )?;
-            let num_singletons = singleton_result.dropped_observations.len();
-            let cascade_events = singleton_result.cascade_events;
-            drop(singleton_result.dropped_observations);
-
-            // With no singleton deletion, the pruning codes already live on the final
-            // compact axis. Reusing them avoids a second observation-scale
-            // factorization. Cluster-only sources are added after this fixed
-            // point, preserving canonical source order without recoding FE data.
-            let pruning_covers_final_sources = cluster_sources.iter().all(|source| {
-                pruning_categorical_sources
-                    .iter()
-                    .any(|candidate| candidate.source == *source)
-            });
-            let reusable_pruning =
-                if num_singletons == 0 && (pruning_covers_final_sources || reuse_membership) {
-                    Some((pruning_categorical_sources, pruning_fixed_effects))
-                } else {
-                    // These codes/levels no longer describe the final sample. Release them
-                    // before numeric compaction and final factorization allocate replacements.
-                    drop(pruning_categorical_sources);
-                    drop(pruning_fixed_effects);
-                    None
-                };
-            let sample = sample.compact_active_rows(
-                &singleton_result.active,
-                crate::data::DropReason::Singleton,
-            )?;
-            drop(singleton_result.active);
-            let (categorical_sources, fixed_effects) = if let Some(reusable) = reusable_pruning {
-                if pruning_covers_final_sources {
-                    reusable
-                } else {
-                    let sources = factorize_categorical_sources_reusing(
-                        request,
-                        &sample,
-                        cluster_sources,
-                        reusable.0,
-                    )?;
-                    let effects = prepare_fixed_effects(request, &sources, cluster_sources)?;
-                    (sources, effects)
-                }
-            } else {
-                let categorical_sources =
-                    factorize_categorical_sources(request, &sample, cluster_sources)?;
-                let fixed_effects =
-                    prepare_fixed_effects(request, &categorical_sources, cluster_sources)?;
-                (categorical_sources, fixed_effects)
-            };
-            (
-                sample,
-                categorical_sources,
-                fixed_effects,
-                num_singletons,
-                cascade_events,
-            )
-        };
-    // An earlier cluster-only source can move the FE within the final source
-    // table. Its membership index is unchanged, but its source slot must move.
-    let prebuilt_index = prebuilt_index
-        .map(|(_, index)| -> Result<_> {
-            let source = categorical_sources
-                .iter()
-                .position(|source| Some(source.source) == indexed_source)
-                .ok_or_else(|| invalid("reused FE membership lost its final categorical source"))?;
-            Ok((source, index))
-        })
-        .transpose()?;
-    resolve_categorical_level_codes(&mut model, &categorical_sources)?;
-    let fe_topology = build_prepared_fe_topology(
-        request,
-        &sample,
-        &categorical_sources,
-        fixed_effects,
-        prebuilt_index,
-    )?;
-    Ok(PreparedOlsData {
-        model,
-        sample,
-        categorical_sources,
-        fe_topology,
-        structural_intercept: request.absorbed_terms.is_empty()
-            || request.absorbed_terms.iter().any(|term| term.intercept),
-        report_intercept: request.include_intercept
-            && (request.absorbed_terms.is_empty()
-                || request.absorbed_terms.iter().any(|term| term.intercept)),
-        singletons: PreparedOlsSingletons {
-            kept_by_request: request.keep_singletons,
-            num_singletons,
-            cascade_events,
-        },
-    })
-}
-
-/// Availability is not an ordinary fit: its synthetic FE markers classify
-/// sources, while only membership that the true topology can consume survives.
-pub(crate) struct CategoricalAvailability {
-    pub model: PreparedOlsModel,
-    pub sample: PreparedNumericSample,
-    pub categorical_sources: Vec<PreparedCategoricalSource>,
-    pub membership: Vec<PreparedOlsFeTopologySource>,
-}
-
-pub(crate) fn finish_categorical_availability(
-    request: &OlsRequestV1,
-    cluster_sources: &[SourceId],
-    mut model: PreparedOlsModel,
-    sample: PreparedNumericSample,
-    reusable_partitions: bool,
-    early_factor: Option<Result<PreparedCategoricalSource>>,
-) -> Result<CategoricalAvailability> {
-    if reusable_partitions
-        && sample.n_active() >= 16_384
-        && matches!(sample.weights, PreparedWeights::None)
-    {
-        let prepared = finish_prepare_with_early_factor(
-            request,
-            cluster_sources,
-            model,
-            sample,
-            true,
-            early_factor,
-        )?;
-        return Ok(CategoricalAvailability {
-            model: prepared.model,
-            sample: prepared.sample,
-            categorical_sources: prepared.categorical_sources,
-            membership: prepared.fe_topology.into_sources(),
-        });
+            .map_err(|_| allocation("unable to reserve early categorical source"))?;
+        previous.push(factor?);
     }
-    let pruning_sources = if let Some(factor) = early_factor {
-        let mut sources = Vec::new();
-        sources
-            .try_reserve_exact(1)
-            .map_err(|_| allocation("unable to reserve prepared categorical sources"))?;
-        sources.push(factor?);
-        sources
+    factorize_categorical_sources_reusing(request, sample, &[], previous)
+}
+
+fn early_partition_source(request: &OlsRequestV1, categorical: bool) -> Option<SourceId> {
+    if categorical {
+        let mut sources = request
+            .absorbed_terms
+            .iter()
+            .flat_map(|term| term.categorical_sources.iter().chain(&term.slope_sources))
+            .copied();
+        let first = sources.next();
+        if sources.all(|source| Some(source) == first) {
+            first
+        } else {
+            None
+        }
     } else {
-        factorize_categorical_sources(request, &sample, &[])?
-    };
-    let categorical_sources = if cluster_sources.is_empty() {
-        pruning_sources
-    } else {
-        factorize_categorical_sources_reusing(request, &sample, cluster_sources, pruning_sources)?
-    };
-    resolve_categorical_level_codes(&mut model, &categorical_sources)?;
-    Ok(CategoricalAvailability {
-        model,
-        sample,
-        categorical_sources,
-        membership: Vec::new(),
-    })
+        let [term] = request.absorbed_terms.as_slice() else {
+            return None;
+        };
+        if term.intercept && term.categorical_sources.len() == 1 && term.slope_sources.is_empty() {
+            Some(term.categorical_sources[0])
+        } else {
+            None
+        }
+    }
 }
 
 // A one-effect unit sample is a singleton fixed point precisely when no final
@@ -1123,41 +754,6 @@ pub(crate) fn finish_categorical_availability(
 // that check. Final topology validation still independently checks every code,
 // membership and singleton invariant. A failed shortcut drops the index before
 // ordinary pruning allocates; its lifetime fits the existing topology peak.
-fn one_fe_fixed_point_index(
-    request: &OlsRequestV1,
-    sample: &PreparedNumericSample,
-    sources: &[PreparedCategoricalSource],
-    effects: &[PreparedOlsEffectRecipe],
-) -> Result<Option<(usize, LevelIndex)>> {
-    if effects.len() != 1
-        || sample.n_active() < 16_384
-        || !matches!(sample.weights, PreparedWeights::None)
-    {
-        return Ok(None);
-    }
-    let source_index = effects[0].categorical_source_index;
-    let source = sources
-        .get(source_index)
-        .ok_or_else(|| invalid("singleton fixed-effect source index is out of range"))?;
-    if source.encoded.codes.len() != sample.n_active() {
-        return Err(invalid(
-            "singleton fixed-effect source is not aligned with the numeric sample",
-        ));
-    }
-    let index =
-        match LevelIndex::try_from_ordered_codes(&source.encoded.codes, source.encoded.n_levels())?
-        {
-            Some(index) => index,
-            None => LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?,
-        };
-    for level in 0..index.n_levels() {
-        if index.checked_members(level)?.len() == 1 && !request.keep_singletons {
-            return Ok(None);
-        }
-    }
-    Ok(Some((source_index, index)))
-}
-
 /// Materialize the overwhelmingly common complete, unweighted sample without
 /// paying the per-row classification and per-column `push` cost. The scan is
 /// still authoritative: every candidate flag, missing mask, and finite-value
@@ -1415,54 +1011,6 @@ fn take_classified_sample(
     })
 }
 
-fn prune_prepared_singletons(
-    request: &OlsRequestV1,
-    sample: &PreparedNumericSample,
-    categorical_sources: &[PreparedCategoricalSource],
-    fixed_effects: &[PreparedOlsEffectRecipe],
-) -> Result<SingletonResult> {
-    let mut codes_by_effect = Vec::new();
-    codes_by_effect
-        .try_reserve_exact(fixed_effects.len())
-        .map_err(|_| allocation("unable to reserve singleton fixed-effect code table"))?;
-    let mut level_counts = Vec::new();
-    level_counts
-        .try_reserve_exact(fixed_effects.len())
-        .map_err(|_| allocation("unable to reserve singleton level-count table"))?;
-    for effect in fixed_effects {
-        let source = categorical_sources
-            .get(effect.categorical_source_index)
-            .ok_or_else(|| invalid("singleton fixed-effect source index is out of range"))?;
-        if source.encoded.codes.len() != sample.n_active() {
-            return Err(invalid(
-                "singleton fixed-effect source is not aligned with the numeric sample",
-            ));
-        }
-        codes_by_effect.push(source.encoded.codes.as_slice());
-        level_counts.push(source.encoded.n_levels());
-    }
-
-    let mut initially_active = Vec::new();
-    initially_active
-        .try_reserve_exact(sample.n_active())
-        .map_err(|_| allocation("unable to reserve singleton active mask"))?;
-    initially_active.resize(sample.n_active(), true);
-    let multiplicity = match &sample.weights {
-        PreparedWeights::Provided {
-            kind: WeightKind::Frequency,
-            values,
-        } => SingletonMultiplicity::Frequency(values),
-        PreparedWeights::None | PreparedWeights::Provided { .. } => SingletonMultiplicity::Unit,
-    };
-    prune_singletons_with_multiplicity(
-        &codes_by_effect,
-        &level_counts,
-        &initially_active,
-        multiplicity,
-        request.keep_singletons,
-    )
-}
-
 fn ordinary_categorical_sources(model: &CompiledTermGraph) -> BTreeSet<SourceId> {
     model
         .terms
@@ -1541,14 +1089,6 @@ fn canonical_factor_value(value: f64) -> f64 {
     }
 }
 
-fn factorize_categorical_sources(
-    request: &OlsRequestV1,
-    sample: &PreparedNumericSample,
-    cluster_sources: &[SourceId],
-) -> Result<Vec<PreparedCategoricalSource>> {
-    factorize_categorical_sources_reusing(request, sample, cluster_sources, Vec::new())
-}
-
 fn factorize_categorical_sources_reusing(
     request: &OlsRequestV1,
     sample: &PreparedNumericSample,
@@ -1591,35 +1131,7 @@ fn factorize_categorical_sources_reusing(
     Ok(output)
 }
 
-fn prepare_fixed_effects(
-    request: &OlsRequestV1,
-    categorical_sources: &[PreparedCategoricalSource],
-    cluster_sources: &[SourceId],
-) -> Result<Vec<PreparedOlsEffectRecipe>> {
-    let indices = categorical_source_indices(request, cluster_sources)?;
-    let mut fixed_effects = Vec::new();
-    fixed_effects
-        .try_reserve_exact(request.absorbed_terms.len())
-        .map_err(|_| allocation("unable to reserve prepared fixed-effect terms"))?;
-    for term in &request.absorbed_terms {
-        let source = term.categorical_sources[0];
-        let categorical_source_index = categorical_source_index(&indices, source)?;
-        if categorical_source_index >= categorical_sources.len() {
-            return Err(invalid(
-                "prepared fixed-effect categorical source is out of range",
-            ));
-        }
-        fixed_effects.push(PreparedOlsEffectRecipe {
-            term_id: term.id,
-            label: fallible_string_copy(&term.label, "unable to reserve fixed-effect label")?,
-            source,
-            categorical_source_index,
-        });
-    }
-    Ok(fixed_effects)
-}
-
-trait FeTopologyReservation {
+pub(crate) trait FeTopologyReservation {
     fn reserve_vec<T>(
         &mut self,
         target: &mut Vec<T>,
@@ -1628,29 +1140,7 @@ trait FeTopologyReservation {
     ) -> Result<()>;
 }
 
-trait BorrowedInterceptSourceValidation {
-    fn validate<'a>(
-        &mut self,
-        codes: &'a [u32],
-        n_levels: usize,
-        level_index: &'a LevelIndex,
-    ) -> Result<ValidatedBorrowedInterceptSource<'a>>;
-}
-
-struct SystemBorrowedInterceptSourceValidation;
-
-impl BorrowedInterceptSourceValidation for SystemBorrowedInterceptSourceValidation {
-    fn validate<'a>(
-        &mut self,
-        codes: &'a [u32],
-        n_levels: usize,
-        level_index: &'a LevelIndex,
-    ) -> Result<ValidatedBorrowedInterceptSource<'a>> {
-        ValidatedBorrowedInterceptSource::new(codes, n_levels, level_index)
-    }
-}
-
-struct SystemFeTopologyReservation;
+pub(crate) struct SystemFeTopologyReservation;
 
 impl FeTopologyReservation for SystemFeTopologyReservation {
     fn reserve_vec<T>(
@@ -1671,366 +1161,6 @@ fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Resul
     }
     target.push(value);
     Ok(())
-}
-
-fn build_prepared_fe_topology(
-    request: &OlsRequestV1,
-    sample: &PreparedNumericSample,
-    categorical_sources: &[PreparedCategoricalSource],
-    recipes: Vec<PreparedOlsEffectRecipe>,
-    prebuilt_index: Option<(usize, LevelIndex)>,
-) -> Result<PreparedOlsFeTopology> {
-    let mut reservation = SystemFeTopologyReservation;
-    build_prepared_fe_topology_with_reservation(
-        request,
-        sample,
-        categorical_sources,
-        recipes,
-        &mut reservation,
-        prebuilt_index,
-    )
-}
-
-fn build_prepared_fe_topology_with_reservation<R: FeTopologyReservation>(
-    request: &OlsRequestV1,
-    sample: &PreparedNumericSample,
-    categorical_sources: &[PreparedCategoricalSource],
-    recipes: Vec<PreparedOlsEffectRecipe>,
-    reservation: &mut R,
-    mut prebuilt_index: Option<(usize, LevelIndex)>,
-) -> Result<PreparedOlsFeTopology> {
-    let mut sources = Vec::new();
-    reservation.reserve_vec(
-        &mut sources,
-        recipes.len(),
-        "unable to reserve prepared FE topology sources",
-    )?;
-    let mut effects = Vec::new();
-    reservation.reserve_vec(
-        &mut effects,
-        recipes.len(),
-        "unable to reserve prepared FE topology effects",
-    )?;
-    let mut total_levels = 0_usize;
-
-    for recipe in recipes {
-        let topology_source_index = if let Some(index) =
-            sources
-                .iter()
-                .position(|source: &PreparedOlsFeTopologySource| {
-                    source.categorical_source_index == recipe.categorical_source_index
-                }) {
-            index
-        } else {
-            let categorical = categorical_sources
-                .get(recipe.categorical_source_index)
-                .ok_or_else(|| invalid("prepared FE topology source index is out of range"))?;
-            if categorical.source != recipe.source {
-                return Err(invalid(
-                    "prepared FE topology source identity does not match its categorical source",
-                ));
-            }
-            if categorical.encoded.codes.len() != sample.n_active() {
-                return Err(invalid(
-                    "prepared FE topology source is not aligned with the final sample",
-                ));
-            }
-            let n_levels = categorical.encoded.n_levels();
-            total_levels = total_levels
-                .checked_add(n_levels)
-                .ok_or_else(|| allocation("prepared FE topology total level count overflows"))?;
-            let level_index = if prebuilt_index
-                .as_ref()
-                .is_some_and(|(source, _)| *source == recipe.categorical_source_index)
-            {
-                prebuilt_index
-                    .take()
-                    .expect("matched prepared membership")
-                    .1
-            } else {
-                LevelIndex::from_codes(&categorical.encoded.codes, n_levels)?
-            };
-            let index = sources.len();
-            push_reserved(
-                &mut sources,
-                PreparedOlsFeTopologySource {
-                    source: recipe.source,
-                    categorical_source_index: recipe.categorical_source_index,
-                    n_levels,
-                    level_index,
-                },
-                "prepared FE topology source capacity exhausted",
-            )?;
-            index
-        };
-
-        push_reserved(
-            &mut effects,
-            PreparedOlsEffect {
-                term_id: recipe.term_id,
-                label: recipe.label,
-                source: recipe.source,
-                categorical_source_index: recipe.categorical_source_index,
-                topology_source_index,
-            },
-            "prepared FE topology effect capacity exhausted",
-        )?;
-    }
-
-    if prebuilt_index.is_some() {
-        return Err(invalid(
-            "prebuilt FE membership has no matching topology source",
-        ));
-    }
-    let topology = PreparedOlsFeTopology {
-        nobs: sample.n_active(),
-        sources,
-        effects,
-        total_levels,
-        singleton_policy: if request.keep_singletons {
-            PreparedOlsFeSingletonPolicy::KeptByRequest
-        } else {
-            PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
-        },
-    };
-    topology.validate(request, sample, categorical_sources)?;
-    Ok(topology)
-}
-
-impl PreparedOlsFeTopology {
-    /// Recheck the complete structural contract against the final prepared data.
-    pub fn validate(
-        &self,
-        request: &OlsRequestV1,
-        sample: &PreparedNumericSample,
-        categorical_sources: &[PreparedCategoricalSource],
-    ) -> Result<()> {
-        if self.nobs != sample.n_active() || self.effects.len() != request.absorbed_terms.len() {
-            return Err(invalid(
-                "prepared FE topology dimensions do not match the final sample and request",
-            ));
-        }
-        let expected_policy = if request.keep_singletons {
-            PreparedOlsFeSingletonPolicy::KeptByRequest
-        } else {
-            PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
-        };
-        if self.singleton_policy != expected_policy {
-            return Err(invalid(
-                "prepared FE topology singleton policy does not match the request",
-            ));
-        }
-
-        let mut checked_total_levels = 0_usize;
-        for (source_index, source) in self.sources.iter().enumerate() {
-            if self.sources[..source_index]
-                .iter()
-                .any(|earlier| earlier.categorical_source_index == source.categorical_source_index)
-            {
-                return Err(invalid(
-                    "prepared FE topology contains a duplicate categorical source",
-                ));
-            }
-            let categorical = categorical_sources
-                .get(source.categorical_source_index)
-                .ok_or_else(|| {
-                    invalid("prepared FE topology categorical source is out of range")
-                })?;
-            if categorical.source != source.source
-                || categorical.encoded.codes.len() != self.nobs
-                || categorical.encoded.n_levels() != source.n_levels
-                || source.level_index.nobs() != self.nobs
-                || source.level_index.n_levels() != source.n_levels
-            {
-                return Err(invalid(
-                    "prepared FE topology source is inconsistent with final categorical storage",
-                ));
-            }
-            if (self.nobs == 0) != (source.n_levels == 0) {
-                return Err(invalid(
-                    "prepared FE topology empty-sample and level counts disagree",
-                ));
-            }
-            checked_total_levels = checked_total_levels
-                .checked_add(source.n_levels)
-                .ok_or_else(|| allocation("prepared FE topology total level count overflows"))?;
-            let mut membership_count = 0_usize;
-            for level in 0..source.n_levels {
-                let members = source.level_index.checked_members(level)?;
-                if members.is_empty() {
-                    return Err(invalid(
-                        "prepared FE topology final categorical codes are not contiguous",
-                    ));
-                }
-                membership_count = membership_count
-                    .checked_add(members.len())
-                    .ok_or_else(|| allocation("prepared FE topology membership count overflows"))?;
-                for observation in members {
-                    if *observation >= self.nobs
-                        || categorical.encoded.codes[*observation] as usize != level
-                    {
-                        return Err(invalid(
-                            "prepared FE topology membership does not match final codes",
-                        ));
-                    }
-                }
-                if self.singleton_policy == PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
-                    && level_multiplicity(sample, members)? == 1
-                {
-                    return Err(invalid(
-                        "prepared FE topology contains a singleton after fixed-point pruning",
-                    ));
-                }
-            }
-            if membership_count != self.nobs {
-                return Err(invalid(
-                    "prepared FE topology membership does not cover the final sample exactly",
-                ));
-            }
-        }
-        if checked_total_levels != self.total_levels {
-            return Err(invalid(
-                "prepared FE topology cached level count is inconsistent",
-            ));
-        }
-
-        for (index, (effect, term)) in self.effects.iter().zip(&request.absorbed_terms).enumerate()
-        {
-            if effect.term_id != term.id
-                || effect.label != term.label
-                || term.categorical_sources.as_slice() != [effect.source]
-            {
-                return Err(invalid(format!(
-                    "prepared FE topology term identity changed at effect {}",
-                    index + 1
-                )));
-            }
-            let source = self
-                .sources
-                .get(effect.topology_source_index)
-                .ok_or_else(|| invalid("prepared FE topology effect source is out of range"))?;
-            if source.source != effect.source
-                || source.categorical_source_index != effect.categorical_source_index
-            {
-                return Err(invalid(
-                    "prepared FE topology effect does not reference its declared source",
-                ));
-            }
-        }
-        if self.sources.iter().any(|source| {
-            !self.effects.iter().any(|effect| {
-                effect.topology_source_index < self.sources.len()
-                    && self.sources[effect.topology_source_index].categorical_source_index
-                        == source.categorical_source_index
-            })
-        }) {
-            return Err(invalid(
-                "prepared FE topology contains an unreferenced source",
-            ));
-        }
-        Ok(())
-    }
-}
-
-fn level_multiplicity(sample: &PreparedNumericSample, members: &[usize]) -> Result<u64> {
-    match &sample.weights {
-        PreparedWeights::Provided {
-            kind: WeightKind::Frequency,
-            values,
-        } => members.iter().try_fold(0_u64, |total, observation| {
-            let value = values
-                .get(*observation)
-                .copied()
-                .ok_or_else(|| invalid("prepared FE topology frequency weights are not aligned"))?;
-            if !value.is_finite()
-                || value <= 0.0
-                || value.fract() != 0.0
-                || value > f64::from(u32::MAX)
-            {
-                return Err(invalid_data(
-                    "prepared FE topology frequency weight is outside its validated domain",
-                ));
-            }
-            total.checked_add(value as u64).ok_or_else(|| {
-                invalid_data("prepared FE topology frequency-weight multiplicity overflows")
-            })
-        }),
-        PreparedWeights::None | PreparedWeights::Provided { .. } => u64::try_from(members.len())
-            .map_err(|_| allocation("prepared FE topology physical multiplicity exceeds u64")),
-    }
-}
-
-fn fallible_string_copy(value: &str, label: &'static str) -> Result<String> {
-    let mut output = String::new();
-    output
-        .try_reserve_exact(value.len())
-        .map_err(|_| allocation(label))?;
-    output.push_str(value);
-    Ok(output)
-}
-
-fn resolve_categorical_level_codes(
-    model: &mut PreparedOlsModel,
-    categorical_sources: &[PreparedCategoricalSource],
-) -> Result<()> {
-    // Removing availability-only slope markers can move factor source slots.
-    // Source identity survives that narrowing; positional recipes must follow it.
-    let position = |id| {
-        categorical_sources
-            .iter()
-            .position(|source| source.source == id)
-            .ok_or_else(|| invalid("prepared categorical source identity is absent"))
-    };
-    for column in &mut model.columns {
-        match &mut column.kind {
-            PreparedOlsColumnKind::Categorical {
-                source,
-                categorical_source_index,
-                level_bits,
-                level_code,
-                ..
-            } => {
-                *categorical_source_index = position(*source)?;
-                *level_code = resolve_categorical_level_code(
-                    categorical_sources,
-                    *categorical_source_index,
-                    *level_bits,
-                )?;
-            }
-            PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                for component in components {
-                    component.categorical_source_index = position(component.source)?;
-                    component.level_code = resolve_categorical_level_code(
-                        categorical_sources,
-                        component.categorical_source_index,
-                        component.level_bits,
-                    )?;
-                }
-            }
-            PreparedOlsColumnKind::Intercept | PreparedOlsColumnKind::Continuous { .. } => {}
-        }
-    }
-    Ok(())
-}
-
-fn resolve_categorical_level_code(
-    categorical_sources: &[PreparedCategoricalSource],
-    categorical_source_index: usize,
-    level_bits: u64,
-) -> Result<Option<u32>> {
-    let source = categorical_sources
-        .get(categorical_source_index)
-        .ok_or_else(|| invalid("prepared categorical source plan is out of range"))?;
-    let level = f64::from_bits(level_bits);
-    source
-        .encoded
-        .levels
-        .binary_search_by(|candidate| candidate.total_cmp(&level))
-        .ok()
-        .map(|index| {
-            u32::try_from(index).map_err(|_| invalid("prepared categorical level code exceeds u32"))
-        })
-        .transpose()
 }
 
 fn source_index(source: SourceId) -> Result<usize> {
@@ -2063,7 +1193,12 @@ fn source_uses(
     let fixed_effect = request
         .absorbed_terms
         .iter()
-        .flat_map(|term| term.categorical_sources.iter().copied())
+        .flat_map(|term| {
+            term.categorical_sources
+                .iter()
+                .chain(&term.slope_sources)
+                .copied()
+        })
         .collect::<BTreeSet<_>>();
     let mut uses = Vec::new();
     uses.try_reserve_exact(request.model.sources.len())
@@ -2365,28 +1500,6 @@ mod tests {
             target
                 .try_reserve_exact(additional)
                 .map_err(|_| allocation("test prepared FE topology reservation failed"))
-        }
-    }
-
-    #[derive(Default)]
-    struct CountingBorrowedSourceValidation {
-        calls: usize,
-        inspected_rows: usize,
-    }
-
-    impl BorrowedInterceptSourceValidation for CountingBorrowedSourceValidation {
-        fn validate<'a>(
-            &mut self,
-            codes: &'a [u32],
-            n_levels: usize,
-            level_index: &'a LevelIndex,
-        ) -> Result<ValidatedBorrowedInterceptSource<'a>> {
-            self.calls = self.calls.checked_add(1).expect("small validation count");
-            self.inspected_rows = self
-                .inspected_rows
-                .checked_add(codes.len())
-                .expect("small inspected-row count");
-            ValidatedBorrowedInterceptSource::new(codes, n_levels, level_index)
         }
     }
 
@@ -2840,9 +1953,10 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: None,
             };
-            let expected = prepare_ols_data(&request, &loaded).unwrap().sample;
+            let prepared_expected = prepare_ols_data(&request, &loaded).unwrap();
+            let expected = prepared_expected.sample();
             let actual = take_classified_sample(&request, loaded, &[]).unwrap();
-            assert_eq!(actual, expected);
+            assert_eq!(&actual, expected);
             for (a, b) in actual
                 .outcome
                 .iter()
@@ -3025,12 +2139,17 @@ mod tests {
                 crate::DropReason::Retained,
             ]
         );
-        assert_eq!(prepared.categorical_sources.len(), 1);
+        assert_eq!(prepared.categorical_sources().len(), 1);
         assert_eq!(
-            prepared.categorical_sources[0].encoded.levels,
+            prepared.categorical_sources()[0].level_values(),
             vec![0.0, 1.0, 2.0]
         );
-        assert_eq!(prepared.categorical_sources[0].encoded.codes, vec![0, 1, 2]);
+        assert_eq!(
+            prepared.categorical_sources()[0]
+                .codes(prepared.fe_topology())
+                .unwrap(),
+            vec![0, 1, 2]
+        );
         assert_eq!(prepared.model.coefficients.len(), 6);
         assert_eq!(
             prepared.model.coefficients[1],
@@ -3137,7 +2256,7 @@ mod tests {
         let prepared = prepare_ols_data(&request, &loaded).expect("interaction preparation");
 
         assert_eq!(prepared.sample.retained_rows(), &[0, 1, 2]);
-        assert_eq!(prepared.categorical_sources.len(), 3);
+        assert_eq!(prepared.categorical_sources().len(), 3);
         assert_eq!(prepared.model.coefficients.len(), 7);
         assert_eq!(
             prepared.model.coefficients[0],
@@ -3296,10 +2415,10 @@ mod tests {
         assert_eq!(prepared.sample.n_candidate, 1);
         assert_eq!(prepared.sample.n_active(), 0);
         assert_eq!(prepared.model.columns.len(), 1);
-        assert_eq!(prepared.fe_topology.nobs, 0);
-        assert!(prepared.fe_topology.sources.is_empty());
-        assert!(prepared.fe_topology.effects.is_empty());
-        assert_eq!(prepared.fe_topology.total_levels, 0);
+        assert_eq!(prepared.fe_topology().nobs(), 0);
+        assert!(prepared.fe_topology().registry().sources().is_empty());
+        assert!(prepared.fe_effects().is_empty());
+        assert_eq!(prepared.fe_topology().registry().total_levels().unwrap(), 0);
         let design = prepared
             .borrowed_intercept_fe_design()
             .expect("empty no-FE design");
@@ -3782,25 +2901,24 @@ mod tests {
             ]
         );
         assert_eq!(prepared.sample.retained_rows(), &[4, 5]);
-        assert_eq!(prepared.categorical_sources.len(), 2);
-        assert_eq!(prepared.fe_topology.effects.len(), 3);
-        assert_eq!(prepared.fe_topology.sources.len(), 2);
-        assert_eq!(prepared.fe_topology.nobs, 2);
-        assert_eq!(prepared.fe_topology.total_levels, 4);
+        assert_eq!(prepared.categorical_sources().len(), 2);
+        assert_eq!(prepared.fe_effects().len(), 3);
+        assert_eq!(prepared.fe_topology().registry().sources().len(), 2);
+        assert_eq!(prepared.fe_topology().nobs(), 2);
+        assert_eq!(prepared.fe_topology().registry().total_levels().unwrap(), 4);
         assert_eq!(
-            prepared.fe_topology.singleton_policy,
+            prepared.fe_singleton_policy(),
             PreparedOlsFeSingletonPolicy::KeptByRequest
         );
         assert_eq!(
-            prepared.fe_topology.effects[0].topology_source_index,
-            prepared.fe_topology.effects[2].topology_source_index
+            prepared.effect_source_index(0).unwrap(),
+            prepared.effect_source_index(2).unwrap()
         );
-        assert_eq!(prepared.fe_topology.effects[0].label, "g");
-        assert_eq!(prepared.fe_topology.effects[1].label, "h");
-        assert_eq!(prepared.fe_topology.effects[2].label, "g_again");
+        assert_eq!(prepared.fe_effects()[0].label, "g");
+        assert_eq!(prepared.fe_effects()[1].label, "h");
+        assert_eq!(prepared.fe_effects()[2].label, "g_again");
         prepared
-            .fe_topology
-            .validate(&request, &prepared.sample, &prepared.categorical_sources)
+            .validate_fe_bindings()
             .expect("structural certificate");
         let design = prepared
             .borrowed_intercept_fe_design()
@@ -3810,7 +2928,9 @@ mod tests {
         assert_eq!(design.total_term_slots(), 6);
         assert!(std::ptr::eq(
             design.effects()[0].codes(),
-            prepared.categorical_sources[0].encoded.codes.as_slice()
+            prepared.categorical_sources()[0]
+                .codes(prepared.fe_topology())
+                .unwrap()
         ));
         assert!(std::ptr::eq(
             design.effects()[0].codes(),
@@ -3821,7 +2941,7 @@ mod tests {
             design.effects()[2].level_index()
         ));
         assert_eq!(
-            prepared.categorical_sources[1].encoded.levels,
+            prepared.categorical_sources()[1].level_values(),
             vec![-3.25, 2.5]
         );
     }
@@ -3891,45 +3011,48 @@ mod tests {
         assert_eq!(prepared.sample.regressors[0], vec![-0.8, -0.2, 0.3, 0.9]);
         assert_eq!(prepared.sample.regressors[1], vec![4.0, 4.0, 5.0, 5.0]);
         assert_eq!(prepared.sample.regressors[2], vec![4.0, 5.0, 4.0, 5.0]);
-        assert_eq!(prepared.categorical_sources.len(), 2);
-        assert_eq!(prepared.fe_topology.nobs, 4);
-        assert_eq!(prepared.fe_topology.effects.len(), 2);
-        assert_eq!(prepared.fe_topology.sources.len(), 2);
-        assert_eq!(prepared.fe_topology.total_levels, 4);
+        assert_eq!(prepared.categorical_sources().len(), 2);
+        assert_eq!(prepared.fe_topology().nobs(), 4);
+        assert_eq!(prepared.fe_effects().len(), 2);
+        assert_eq!(prepared.fe_topology().registry().sources().len(), 2);
+        assert_eq!(prepared.fe_topology().registry().total_levels().unwrap(), 4);
         assert_eq!(
-            prepared.fe_topology.singleton_policy,
+            prepared.fe_singleton_policy(),
             PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
         );
         assert_eq!(
-            prepared.fe_topology.sources[0]
+            prepared.fe_topology().registry().sources()[0]
                 .members(0)
                 .expect("worker level zero"),
             &[0, 1]
         );
         assert_eq!(
-            prepared.fe_topology.sources[1]
+            prepared.fe_topology().registry().sources()[1]
                 .members(1)
                 .expect("firm level one"),
             &[1, 3]
         );
         prepared
-            .fe_topology
-            .validate(&request, &prepared.sample, &prepared.categorical_sources)
+            .validate_fe_bindings()
             .expect("post-singleton topology certificate");
         assert_eq!(
-            prepared.categorical_sources[0].encoded.levels,
+            prepared.categorical_sources()[0].level_values(),
             vec![4.0, 5.0]
         );
         assert_eq!(
-            prepared.categorical_sources[0].encoded.codes,
+            prepared.categorical_sources()[0]
+                .codes(prepared.fe_topology())
+                .unwrap(),
             vec![0, 0, 1, 1]
         );
         assert_eq!(
-            prepared.categorical_sources[1].encoded.levels,
+            prepared.categorical_sources()[1].level_values(),
             vec![4.0, 5.0]
         );
         assert_eq!(
-            prepared.categorical_sources[1].encoded.codes,
+            prepared.categorical_sources()[1]
+                .codes(prepared.fe_topology())
+                .unwrap(),
             vec![0, 1, 0, 1]
         );
         assert_eq!(
@@ -4011,7 +3134,7 @@ mod tests {
         assert_eq!(kept.singletons.num_singletons, 0);
         assert!(kept.singletons.kept_by_request);
         assert_eq!(
-            kept.fe_topology.singleton_policy,
+            kept.fe_singleton_policy(),
             PreparedOlsFeSingletonPolicy::KeptByRequest
         );
         assert!(kept
@@ -4036,7 +3159,7 @@ mod tests {
         assert_eq!(weighted.sample.retained_rows(), &[5, 6, 7, 8]);
         assert_eq!(weighted.singletons.num_singletons, 5);
         assert_eq!(
-            weighted.fe_topology.singleton_policy,
+            weighted.fe_singleton_policy(),
             PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
         );
         assert_eq!(
@@ -4059,7 +3182,7 @@ mod tests {
         assert_eq!(probability.sample.retained_rows(), &[5, 6, 7, 8]);
         assert_eq!(probability.singletons.num_singletons, 5);
         assert_eq!(
-            probability.fe_topology.singleton_policy,
+            probability.fe_singleton_policy(),
             PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
         );
     }
@@ -4223,53 +3346,27 @@ mod tests {
             } else {
                 vec![factor]
             };
-            let mut plan = crate::fe::plan_categorical_absorbed_request(&request).unwrap();
+            let _plan = crate::fe::plan_categorical_absorbed_request(&request).unwrap();
             let (model, sample) =
-                prepare_ols_numeric_sample(plan.availability_request(), &input, &clusters).unwrap();
+                prepare_categorical_numeric_sample(&request, &input, &clusters).unwrap();
             assert_eq!(sample.drop_reasons[0], crate::DropReason::ExcludedByIfIn);
             assert_eq!(
                 sample.drop_reasons[3],
                 crate::DropReason::MissingFixedEffect
             );
-            plan.discard_classified_slope_categories().unwrap();
-            let available = finish_categorical_availability(
-                plan.availability_request(),
-                &clusters,
-                model,
-                sample,
-                true,
-                None,
-            )
-            .unwrap();
-            let expected = if cluster_first {
-                vec![first, factor, partition]
-            } else {
-                vec![factor, partition]
-            };
+            let sources = factorize_preparation_sources(&request, &sample, None).unwrap();
             assert_eq!(
-                available
-                    .categorical_sources
+                sources
                     .iter()
-                    .map(|s| s.source)
+                    .map(|source| source.source)
                     .collect::<Vec<_>>(),
-                expected
+                vec![factor, partition]
             );
-            for column in &available.model.columns {
-                if let PreparedOlsColumnKind::Categorical {
-                    source,
-                    categorical_source_index,
-                    ..
-                } = column.kind
-                {
-                    assert_eq!(
-                        available.categorical_sources[categorical_source_index].source,
-                        source
-                    );
-                }
-            }
+            let available_sample = sample;
+            assert!(!model.columns.is_empty());
             let prepared = crate::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
                 &request, &input, &clusters).unwrap();
-            assert_eq!(prepared.sample(), &available.sample);
+            assert_eq!(prepared.sample(), &available_sample);
             let interaction = prepared
                 .model()
                 .columns
@@ -4325,18 +3422,18 @@ mod tests {
             let expected = prepare_ols_data(&request, &loaded).unwrap();
             for reusable in [false, true] {
                 let (model, sample) = prepare_ols_numeric_sample(&request, &loaded, &[]).unwrap();
-                let available =
-                    finish_categorical_availability(&request, &[], model, sample, reusable, None)
-                        .unwrap();
-                assert_eq!(available.model, expected.model);
-                assert_eq!(available.sample, expected.sample);
-                assert_eq!(available.categorical_sources, expected.categorical_sources);
-                if reusable && n >= 16384 {
-                    assert_eq!(available.membership, expected.fe_topology.sources);
-                } else {
-                    assert_eq!(available.membership.capacity(), 0);
-                    assert!(!expected.fe_topology.sources.is_empty());
-                }
+                let available = crate::prepared_categorical_data::finish_prepared_model(
+                    &request,
+                    &[],
+                    model,
+                    sample,
+                    None,
+                    false,
+                    false,
+                    reusable,
+                )
+                .unwrap();
+                assert_eq!(available, expected);
             }
         }
     }
@@ -4547,7 +3644,7 @@ mod tests {
             frequency_weight: Some(column(&[2.0, 1.0], &[false; 2])),
             probability_weight: None,
         };
-        let weighted = prepare_ols_data(&request, &loaded).expect("frequency singleton");
+        let mut weighted = prepare_ols_data(&request, &loaded).expect("frequency singleton");
         assert_eq!(
             weighted,
             prepare_ols_data_owned(&request, loaded.clone()).unwrap()
@@ -4557,11 +3654,16 @@ mod tests {
             weighted.sample.drop_reasons,
             vec![crate::DropReason::Retained, crate::DropReason::Singleton]
         );
-        assert_eq!(weighted.categorical_sources[0].encoded.levels, vec![10.0]);
+        assert_eq!(weighted.categorical_sources()[0].level_values(), vec![10.0]);
         assert_eq!(weighted.singletons.num_singletons, 1);
-        assert_eq!(weighted.fe_topology.total_levels, 1);
+        assert_eq!(weighted.fe_topology().registry().total_levels().unwrap(), 1);
         assert_eq!(
-            weighted.fe_topology.singleton_policy,
+            weighted.fe_singleton_policy(),
+            PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
+        );
+        weighted.singletons.kept_by_request = true;
+        assert_eq!(
+            weighted.fe_singleton_policy(),
             PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
         );
 
@@ -4603,15 +3705,28 @@ mod tests {
         let prepared = prepare_ols_data(&request, &loaded).expect("shared factor and FE");
 
         assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
-        assert_eq!(prepared.categorical_sources[0].encoded.levels, vec![2.0]);
-        assert_eq!(prepared.categorical_sources[0].encoded.codes, vec![0, 0]);
-        assert_eq!(prepared.fe_topology.sources.len(), 1);
+        assert_eq!(prepared.categorical_sources()[0].level_values(), vec![2.0]);
         assert_eq!(
-            prepared.fe_topology.effects[0].categorical_source_index,
-            prepared.fe_topology.sources[0].categorical_source_index
+            prepared.categorical_sources()[0]
+                .codes(prepared.fe_topology())
+                .unwrap(),
+            vec![0, 0]
+        );
+        assert_eq!(prepared.fe_topology().registry().sources().len(), 1);
+        assert_eq!(
+            prepared
+                .categorical_sources()
+                .iter()
+                .position(|s| s.source() == prepared.fe_effects()[0].sources[0])
+                .unwrap(),
+            prepared.fe_topology().compacted_sources()[prepared.fe_topology().registry().sources()
+                [0]
+            .partition()
+            .categorical_source_indices()[0]]
+                .candidate_source_index()
         );
         assert_eq!(
-            prepared.fe_topology.sources[0]
+            prepared.fe_topology().registry().sources()[0]
                 .members(0)
                 .expect("shared final level"),
             &[0, 1]
@@ -4675,14 +3790,17 @@ mod tests {
             prepared.sample.drop_reasons,
             vec![crate::DropReason::Singleton; 2]
         );
-        assert!(prepared.categorical_sources[0].encoded.levels.is_empty());
-        assert!(prepared.categorical_sources[0].encoded.codes.is_empty());
-        assert_eq!(prepared.fe_topology.nobs, 0);
-        assert_eq!(prepared.fe_topology.effects.len(), 1);
-        assert_eq!(prepared.fe_topology.sources.len(), 1);
-        assert_eq!(prepared.fe_topology.sources[0].n_levels, 0);
-        assert_eq!(prepared.fe_topology.sources[0].nobs(), 0);
-        assert_eq!(prepared.fe_topology.total_levels, 0);
+        assert!(prepared.categorical_sources()[0].level_values().is_empty());
+        assert!(prepared.categorical_sources()[0]
+            .codes(prepared.fe_topology())
+            .unwrap()
+            .is_empty());
+        assert_eq!(prepared.fe_topology().nobs(), 0);
+        assert_eq!(prepared.fe_effects().len(), 1);
+        assert_eq!(prepared.fe_topology().registry().sources().len(), 1);
+        assert_eq!(prepared.fe_topology().registry().sources()[0].n_levels(), 0);
+        assert_eq!(prepared.fe_topology().registry().sources()[0].nobs(), 0);
+        assert_eq!(prepared.fe_topology().registry().total_levels().unwrap(), 0);
         let design = prepared
             .borrowed_intercept_fe_design()
             .expect("empty borrowed FE design");
@@ -4703,15 +3821,17 @@ mod tests {
         assert_eq!(design.nobs(), 4);
         assert_eq!(design.effects().len(), 2);
         assert_eq!(design.total_term_slots(), 4);
-        for (effect, prepared_effect) in design.effects().iter().zip(&prepared.fe_topology.effects)
-        {
-            let topology_source =
-                &prepared.fe_topology.sources[prepared_effect.topology_source_index];
-            let categorical =
-                &prepared.categorical_sources[prepared_effect.categorical_source_index];
+        for (effect_index, effect) in design.effects().iter().enumerate() {
+            let topology_source = &prepared.fe_topology().registry().sources()
+                [prepared.effect_source_index(effect_index).unwrap()];
+            let categorical = &prepared.categorical_sources()[prepared
+                .categorical_sources()
+                .iter()
+                .position(|s| s.source() == prepared.fe_effects()[effect_index].sources[0])
+                .unwrap()];
             assert!(std::ptr::eq(
                 effect.codes(),
-                categorical.encoded.codes.as_slice()
+                categorical.codes(prepared.fe_topology()).unwrap()
             ));
             assert!(std::ptr::eq(
                 effect.level_index(),
@@ -4738,7 +3858,7 @@ mod tests {
         let mut successful = InjectedFeTopologyReservation::default();
         build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut successful)
             .expect("record adapter reservations");
-        assert_eq!(successful.calls, 2);
+        assert_eq!(successful.calls, 1);
 
         for fail_at in 0..successful.calls {
             let mut failed = InjectedFeTopologyReservation {
@@ -4750,10 +3870,8 @@ mod tests {
             assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
         }
 
-        for skipped in [
-            "unable to reserve validated borrowed FE sources",
-            "unable to reserve borrowed FE design effects",
-        ] {
+        {
+            let skipped = "unable to reserve borrowed FE design effects";
             let mut undersized = InjectedFeTopologyReservation {
                 skip_label: Some(skipped),
                 ..InjectedFeTopologyReservation::default()
@@ -4766,7 +3884,76 @@ mod tests {
     }
 
     #[test]
-    fn repeated_fe_terms_validate_their_unique_source_once() {
+    fn shared_partition_pruning_preserves_duplicate_order_and_frequency_decisions() {
+        for order in [vec![0, 1], vec![1, 0], vec![0, 1, 0], vec![1, 1, 0, 1]] {
+            for frequency in [false, true] {
+                let mut request = two_way_singleton_request(false);
+                let original = request.absorbed_terms.clone();
+                request.absorbed_terms = order
+                    .iter()
+                    .enumerate()
+                    .map(|(index, &position)| {
+                        let mut term = original[position].clone();
+                        term.id = AbsorbTermId::new((index + 1) as u32).unwrap();
+                        term
+                    })
+                    .collect();
+                let mut loaded = two_way_singleton_input();
+                if frequency {
+                    request.bindings.push(OlsInputBinding {
+                        stata_var_position: u32::try_from(request.bindings.len() + 1).unwrap(),
+                        role: OlsInputRole::FrequencyWeight,
+                    });
+                    let mut values = vec![1.; loaded.candidate.len()];
+                    values[0] = 2.;
+                    loaded.frequency_weight = Some(column(&values, &vec![false; values.len()]));
+                }
+                let (_, sample) = prepare_ols_numeric_sample(&request, &loaded, &[]).unwrap();
+                let encoded: Vec<_> = request
+                    .absorbed_terms
+                    .iter()
+                    .map(|term| {
+                        factorize_f64(
+                            &sample.regressors[(term.categorical_sources[0].get() - 1) as usize],
+                        )
+                        .unwrap()
+                    })
+                    .collect();
+                let codes: Vec<_> = encoded
+                    .iter()
+                    .map(|source| source.codes.as_slice())
+                    .collect();
+                let levels: Vec<_> = encoded.iter().map(EncodedFactor::n_levels).collect();
+                let multiplicity = match &sample.weights {
+                    PreparedWeights::Provided {
+                        kind: WeightKind::Frequency,
+                        values,
+                    } => crate::fe::SingletonMultiplicity::Frequency(values),
+                    _ => crate::fe::SingletonMultiplicity::Unit,
+                };
+                let expected = crate::fe::prune_singletons_with_multiplicity(
+                    &codes,
+                    &levels,
+                    &vec![true; sample.n_active()],
+                    multiplicity,
+                    false,
+                )
+                .unwrap();
+                let dropped = expected.dropped_observations.len();
+                let cascade = expected.cascade_events;
+                let expected_sample = sample
+                    .compact_active_rows(&expected.active, DropReason::Singleton)
+                    .unwrap();
+                let prepared = prepare_ols_data(&request, &loaded).unwrap();
+                assert_eq!(prepared.sample(), &expected_sample, "{order:?}/{frequency}");
+                assert_eq!(prepared.singletons.num_singletons, dropped);
+                assert_eq!(prepared.singletons.cascade_events, cascade);
+            }
+        }
+    }
+
+    #[test]
+    fn repeated_fe_terms_borrow_the_immutable_unique_source() {
         const TERM_COUNT: usize = 128;
         let source = SourceId::new(1).expect("source");
         let mut request = request(1, false);
@@ -4790,219 +3977,110 @@ mod tests {
             probability_weight: None,
         };
         let prepared = prepare_ols_data(&request, &loaded).expect("repeated FE preparation");
-        assert_eq!(prepared.fe_topology.sources().len(), 1);
-        assert_eq!(prepared.fe_topology.effects().len(), TERM_COUNT);
+        assert_eq!(prepared.fe_topology().registry().sources().len(), 1);
+        assert_eq!(prepared.fe_effects().len(), TERM_COUNT);
 
         let mut reservation = SystemFeTopologyReservation;
-        let mut validation = CountingBorrowedSourceValidation::default();
-        let design = build_borrowed_intercept_fe_design_with_controls(
-            &prepared,
-            &mut reservation,
-            &mut validation,
-        )
-        .expect("borrowed repeated FE design");
-        assert_eq!(validation.calls, 1);
-        assert_eq!(validation.inspected_rows, prepared.sample.n_active());
+        let design =
+            build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut reservation)
+                .expect("borrowed repeated FE design");
         assert_eq!(design.effects().len(), TERM_COUNT);
         assert_eq!(design.total_term_slots(), TERM_COUNT * 3);
         for effect in design.effects() {
             assert!(std::ptr::eq(
                 effect.codes(),
-                prepared.categorical_sources[0].encoded.codes.as_slice()
+                prepared.categorical_sources()[0]
+                    .codes(prepared.fe_topology())
+                    .unwrap()
             ));
             assert!(std::ptr::eq(
                 effect.level_index(),
-                prepared.fe_topology.sources()[0].level_index()
+                prepared.fe_topology().registry().sources()[0].level_index()
             ));
         }
     }
 
     #[test]
-    fn borrowed_fe_design_rejects_corrupt_prepared_links_without_panicking() {
+    fn borrowed_fe_design_rejects_changed_outer_bindings_without_panicking() {
         let request = two_way_singleton_request(false);
-
-        let mut bad_effect =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
-        bad_effect.fe_topology.effects[0].topology_source_index = usize::MAX;
-        assert_eq!(
-            bad_effect
-                .borrowed_intercept_fe_design()
-                .expect_err("bad topology source")
-                .code,
-            ErrorCode::InvalidArgument
-        );
-
-        let mut short_codes =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
-        short_codes.categorical_sources[0].encoded.codes.pop();
-        assert_eq!(
-            short_codes
-                .borrowed_intercept_fe_design()
-                .expect_err("short categorical codes")
-                .code,
-            ErrorCode::InvalidArgument
-        );
-
-        let mut bad_categorical_index =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
-        bad_categorical_index.fe_topology.effects[0].categorical_source_index = usize::MAX;
-        assert_eq!(
-            bad_categorical_index
-                .borrowed_intercept_fe_design()
-                .expect_err("bad categorical source")
-                .code,
-            ErrorCode::InvalidArgument
-        );
-
-        let mut bad_levels =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
-        bad_levels.categorical_sources[0].encoded.levels.push(99.0);
-        assert_eq!(
-            bad_levels
-                .borrowed_intercept_fe_design()
-                .expect_err("level mismatch")
-                .code,
-            ErrorCode::InvalidArgument
-        );
-
-        let mut bad_membership =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
-        bad_membership.fe_topology.sources[0].level_index =
-            LevelIndex::from_codes(&[0, 1, 0, 1], 2).expect("wrong membership");
-        assert_eq!(
-            bad_membership
-                .borrowed_intercept_fe_design()
-                .expect_err("membership mismatch")
-                .code,
-            ErrorCode::InvalidArgument
-        );
+        for fault in 0..4 {
+            let mut prepared = prepare_ols_data(&request, &two_way_singleton_input()).unwrap();
+            match fault {
+                0 => prepared.effect_specs[0].intercept = false,
+                1 => {
+                    prepared.sample.original_row_by_active.pop();
+                }
+                2 => prepared.effect_specs[0].sources[0] = SourceId::new(999).unwrap(),
+                _ => {
+                    let source = prepared.categorical_sources[prepared
+                        .categorical_sources()
+                        .iter()
+                        .position(|s| s.source() == prepared.fe_effects()[0].sources[0])
+                        .unwrap()]
+                    .prepared_source_index();
+                    prepared.sample.regressors[source].pop();
+                }
+            }
+            assert_eq!(
+                prepared
+                    .borrowed_intercept_fe_design()
+                    .expect_err(&format!("fault {fault}"))
+                    .code,
+                ErrorCode::InvalidArgument,
+                "fault {fault}"
+            );
+        }
     }
 
     #[test]
-    fn every_topology_table_reservation_and_capacity_guard_fails_closed() {
+    fn final_owner_metadata_reservations_and_capacity_guards_fail_closed() {
         let request = two_way_singleton_request(true);
-        let prepared =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared source data");
-        let PreparedOlsData {
-            sample,
-            categorical_sources,
-            ..
-        } = prepared;
-
+        let metadata = |reservation: &mut InjectedFeTopologyReservation| {
+            let prepared = prepare_ols_data(&request, &two_way_singleton_input()).unwrap();
+            let sources = factorize_preparation_sources(&request, prepared.sample(), None).unwrap();
+            let required: Vec<_> = sources.iter().map(|source| source.source).collect();
+            crate::prepared_categorical_data::retain_model_sources_with_reservation(
+                sources,
+                &required,
+                prepared.fe_topology(),
+                true,
+                reservation,
+            )?;
+            crate::prepared_categorical_data::effect_specs_with_reservation(
+                &request.absorbed_terms,
+                &request.model,
+                false,
+                reservation,
+            )
+        };
         let mut successful = InjectedFeTopologyReservation::default();
-        let recipes = prepare_fixed_effects(&request, &categorical_sources, &[]).expect("recipes");
-        build_prepared_fe_topology_with_reservation(
-            &request,
-            &sample,
-            &categorical_sources,
-            recipes,
-            &mut successful,
-            None,
-        )
-        .expect("record topology reservations");
-        assert_eq!(successful.calls, 2);
-
+        metadata(&mut successful).unwrap();
+        assert_eq!(successful.calls, 6);
         for fail_at in 0..successful.calls {
-            let recipes =
-                prepare_fixed_effects(&request, &categorical_sources, &[]).expect("recipes");
-            let mut injected = InjectedFeTopologyReservation {
+            let mut failed = InjectedFeTopologyReservation {
                 fail_at: Some(fail_at),
-                ..InjectedFeTopologyReservation::default()
+                ..Default::default()
             };
-            let error = build_prepared_fe_topology_with_reservation(
-                &request,
-                &sample,
-                &categorical_sources,
-                recipes,
-                &mut injected,
-                None,
-            )
-            .expect_err("injected topology reservation must fail");
-            assert_eq!(error.code, ErrorCode::Allocation, "call {fail_at}");
+            assert_eq!(
+                metadata(&mut failed).unwrap_err().code,
+                ErrorCode::Allocation,
+                "call {fail_at}"
+            );
         }
-
-        for skipped in [
-            "unable to reserve prepared FE topology sources",
-            "unable to reserve prepared FE topology effects",
+        for label in [
+            "unable to reserve categorical absorbed DoF metadata",
+            "unable to reserve final categorical model sources",
         ] {
-            let recipes =
-                prepare_fixed_effects(&request, &categorical_sources, &[]).expect("recipes");
-            let mut undersized = InjectedFeTopologyReservation {
-                skip_label: Some(skipped),
-                ..InjectedFeTopologyReservation::default()
+            let mut failed = InjectedFeTopologyReservation {
+                skip_label: Some(label),
+                ..Default::default()
             };
-            let error = build_prepared_fe_topology_with_reservation(
-                &request,
-                &sample,
-                &categorical_sources,
-                recipes,
-                &mut undersized,
-                None,
-            )
-            .expect_err("topology capacity guard must fail");
-            assert_eq!(error.code, ErrorCode::Allocation, "{skipped}");
+            assert_eq!(
+                metadata(&mut failed).unwrap_err().code,
+                ErrorCode::Allocation,
+                "{label}"
+            );
         }
-    }
-
-    #[test]
-    fn topology_validator_rejects_corrupt_identity_membership_and_level_metadata() {
-        let request = two_way_singleton_request(false);
-
-        let mut bad_effect =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
-        bad_effect.fe_topology.effects[0].topology_source_index = usize::MAX;
-        assert_eq!(
-            bad_effect
-                .fe_topology
-                .validate(
-                    &request,
-                    &bad_effect.sample,
-                    &bad_effect.categorical_sources,
-                )
-                .expect_err("bad effect source")
-                .code,
-            ErrorCode::InvalidArgument
-        );
-
-        let mut bad_membership =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
-        bad_membership.fe_topology.sources[0].level_index =
-            LevelIndex::from_codes(&[0, 1, 0, 1], 2).expect("wrong membership");
-        assert_eq!(
-            bad_membership
-                .fe_topology
-                .validate(
-                    &request,
-                    &bad_membership.sample,
-                    &bad_membership.categorical_sources,
-                )
-                .expect_err("membership mismatch")
-                .code,
-            ErrorCode::InvalidArgument
-        );
-
-        let mut noncontiguous =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
-        noncontiguous.categorical_sources[0]
-            .encoded
-            .levels
-            .push(99.0);
-        noncontiguous.fe_topology.sources[0].n_levels = 3;
-        noncontiguous.fe_topology.sources[0].level_index =
-            LevelIndex::from_codes(&[0, 0, 1, 1], 3).expect("hole-bearing membership");
-        noncontiguous.fe_topology.total_levels += 1;
-        assert_eq!(
-            noncontiguous
-                .fe_topology
-                .validate(
-                    &request,
-                    &noncontiguous.sample,
-                    &noncontiguous.categorical_sources,
-                )
-                .expect_err("empty final level")
-                .code,
-            ErrorCode::InvalidArgument
-        );
     }
 
     #[test]

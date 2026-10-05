@@ -13923,10 +13923,11 @@ mod tests {
             let expected_left = graph.left_work.clone();
             let expected_operator = graph.operator.clone();
             let mut scratch = vec![0.0; rows * 2];
-            assert!(
-                has_repeated_schur_edges(&design.effects()[graph.left_effect], right.codes())
-                    .unwrap()
-            );
+            assert!(has_repeated_schur_edges(
+                &design.effects()[graph.left_effect],
+                right.effect().codes()
+            )
+            .unwrap());
             let unique_neighbors = (0..rows as u32).collect::<Vec<_>>();
             assert!(!has_repeated_schur_edges(
                 &design.effects()[graph.left_effect],

@@ -160,7 +160,7 @@ impl ImplicitCenteredDesign {
         generated: &[usize],
         mode: PreparedOlsExecutionMode,
     ) -> Result<Self> {
-        let prepared = source.fit_view();
+        let prepared = source.as_ref();
         if !prepared.fit_has_one_ordinary_intercept_effect() {
             return Err(invalid());
         }
@@ -189,7 +189,7 @@ impl ImplicitCenteredDesign {
         })
     }
     pub(super) fn rows(&self) -> usize {
-        self.source.fit_view().sample().n_active()
+        self.source.as_ref().sample().n_active()
     }
     pub(super) fn columns(&self) -> usize {
         self.generated.len()
@@ -207,7 +207,7 @@ impl ImplicitCenteredDesign {
         if !self.valid {
             return Err(invalid());
         }
-        let prepared = self.source.fit_view();
+        let prepared = self.source.as_ref();
         let effect = prepared.validated_single_effect().ok_or_else(invalid)?;
         Ok(ImplicitCenteredView {
             prepared,
@@ -318,7 +318,7 @@ impl ImplicitCenteredDesign {
         if !total.is_finite() || total <= 0. {
             return Err(numerical());
         }
-        let prepared = self.source.fit_view();
+        let prepared = self.source.as_ref();
         let effect = prepared.validated_single_effect().ok_or_else(invalid)?;
         let start = Instant::now();
         self.group_weights.par_iter_mut().enumerate().try_for_each(

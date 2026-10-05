@@ -1,89 +1,21 @@
-//! Request planning for native numeric categorical absorbed interactions.
-//!
-//! Existing numeric OLS preparation already implements authoritative candidate
-//! selection, missing-value accounting, model recipes, and weights, but its
-//! absorbed-effect representation is deliberately single-source. This module
-//! creates a metadata-only availability request containing one synthetic
-//! single-source absorbed term for every unique categorical source used by the
-//! requested effects. Running that request with `keep_singletons=true` preserves
-//! the existing source-missingness boundary without applying the wrong
-//! single-source singleton rule. The original effect identities and source
-//! tuples are retained separately for the later interaction-aware topology pass.
+//! Source-role planning borrows the original request. No fabricated model,
+//! input bindings or intercept partitions are constructed for availability.
 
-use crate::error::{ErrorCode, Result, FeregError};
-use crate::metadata::{
-    AbsorbTermId, AbsorbedTerm, CompiledTermGraph, ExpandedTerm, SourceEntry, SourceId,
-    TermComponent,
-};
-use crate::ols::{
-    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedCategoricalSource,
-};
-
-/// Original identity of one requested categorical absorbed term.
-///
-/// Intercept and slope identities are retained exactly as requested. Keeping
-/// slope identities here lets sample preparation borrow the already loaded
-/// numeric sources on the final row axis; no observation-scale slope copy is
-/// introduced by the topology layer.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CategoricalAbsorbEffectIdentity {
-    pub term_id: AbsorbTermId,
-    pub label: String,
-    /// Requested wire order is preserved exactly. Numerical topology code may
-    /// canonicalize only a temporary index recipe.
-    pub sources: Vec<SourceId>,
-    pub intercept: bool,
-    pub slope_sources: Vec<SourceId>,
-}
-
-/// One original effect after binding to a prepared categorical-source table.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct BoundCategoricalAbsorbEffect {
-    pub term_id: AbsorbTermId,
-    pub label: String,
-    pub sources: Vec<SourceId>,
-    pub categorical_source_indices: Vec<usize>,
-    pub intercept: bool,
-    pub slope_sources: Vec<SourceId>,
-}
+use crate::error::{ErrorCode, FeregError, Result};
+use crate::metadata::{AbsorbTermId, AbsorbedTerm, SourceId};
+use crate::ols::{OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedCategoricalSource};
 
 /// Metadata-only plan that separates source availability from true FE topology.
 #[derive(Debug, PartialEq)]
-pub struct CategoricalAbsorbRequestPlan {
-    availability_request: OlsRequestV1,
-    requested_effects: Vec<CategoricalAbsorbEffectIdentity>,
+pub struct CategoricalAbsorbRequestPlan<'a> {
+    request: &'a OlsRequestV1,
     required_sources: Vec<SourceId>,
-    requested_keep_singletons: bool,
-    model_source_count: usize,
 }
 
-impl CategoricalAbsorbRequestPlan {
-    /// Request accepted by the existing numeric sample-preparation boundary.
-    /// Its synthetic terms are source-availability markers only, and singleton
-    /// pruning is always disabled there.
+impl CategoricalAbsorbRequestPlan<'_> {
     #[must_use]
-    pub const fn availability_request(&self) -> &OlsRequestV1 {
-        &self.availability_request
-    }
-
-    /// Classification retains the complete source-use request. Afterward only
-    /// true partitions need synthetic markers; ordinary factors and clusters
-    /// retain their independent encoding roles even when also used as slopes.
-    pub(crate) fn discard_classified_slope_categories(&mut self) -> Result<()> {
-        let requested = &self.requested_effects;
-        let needed = |source: SourceId| requested.iter().any(|effect| effect.sources.contains(&source));
-        self.required_sources.retain(|source| needed(*source));
-        self.availability_request.absorbed_terms.retain(|term| needed(term.categorical_sources[0]));
-        for (index, term) in self.availability_request.absorbed_terms.iter_mut().enumerate() {
-            term.id = AbsorbTermId::new(u32::try_from(index + 1)
-                .map_err(|_| invalid("availability term count exceeds u32"))?)?;
-        }
-        Ok(())
-    }
-
-    #[must_use]
-    pub fn requested_effects(&self) -> &[CategoricalAbsorbEffectIdentity] {
-        &self.requested_effects
+    pub fn requested_effects(&self) -> &[AbsorbedTerm] {
+        &self.request.absorbed_terms
     }
 
     #[must_use]
@@ -93,7 +25,7 @@ impl CategoricalAbsorbRequestPlan {
 
     #[must_use]
     pub const fn requested_keep_singletons(&self) -> bool {
-        self.requested_keep_singletons
+        self.request.keep_singletons
     }
 
     /// Bind original requested source tuples to a prepared categorical-source
@@ -101,7 +33,7 @@ impl CategoricalAbsorbRequestPlan {
     pub fn bind_effects(
         &self,
         prepared_sources: &[PreparedCategoricalSource],
-    ) -> Result<Vec<BoundCategoricalAbsorbEffect>> {
+    ) -> Result<Vec<Vec<usize>>> {
         let mut reservation = SystemRequestPlanReservation;
         self.bind_effects_with_reservation(prepared_sources, &mut reservation)
     }
@@ -110,89 +42,82 @@ impl CategoricalAbsorbRequestPlan {
         &self,
         prepared_sources: &[PreparedCategoricalSource],
         reservation: &mut R,
-    ) -> Result<Vec<BoundCategoricalAbsorbEffect>> {
-        let mut source_positions = reserved_filled(
-            reservation,
-            self.model_source_count,
-            None,
-            "unable to reserve prepared categorical source positions",
-        )?;
-        for (prepared_index, source) in prepared_sources.iter().enumerate() {
-            let model_index = source_index(source.source, self.model_source_count)?;
-            if source.prepared_source_index != model_index {
-                return Err(invalid(
-                    "prepared categorical source index does not match its model source id",
-                ));
-            }
-            if source_positions[model_index].replace(prepared_index).is_some() {
-                return Err(invalid(
-                    "prepared categorical source table contains a duplicate source id",
-                ));
-            }
-        }
-        for source in &self.required_sources {
-            if source_positions[source_index(*source, self.model_source_count)?].is_none() {
-                return Err(invalid(
-                    "prepared categorical source table is missing a required absorbed source",
-                ));
-            }
-        }
+    ) -> Result<Vec<Vec<usize>>> {
+        bind_effect_recipes_with_reservation(self.request, prepared_sources, reservation)
+    }
+}
 
-        let mut output = Vec::new();
+pub(crate) fn bind_categorical_effect_recipes(
+    request: &OlsRequestV1,
+    prepared_sources: &[PreparedCategoricalSource],
+) -> Result<Vec<Vec<usize>>> {
+    bind_effect_recipes_with_reservation(
+        request,
+        prepared_sources,
+        &mut SystemRequestPlanReservation,
+    )
+}
+
+fn bind_effect_recipes_with_reservation<R: RequestPlanReservation>(
+    request: &OlsRequestV1,
+    prepared_sources: &[PreparedCategoricalSource],
+    reservation: &mut R,
+) -> Result<Vec<Vec<usize>>> {
+    let mut source_positions = reserved_filled(
+        reservation,
+        request.model.sources.len(),
+        None,
+        "unable to reserve prepared categorical source positions",
+    )?;
+    for (prepared_index, source) in prepared_sources.iter().enumerate() {
+        let model_index = source_index(source.source, request.model.sources.len())?;
+        if source.prepared_source_index != model_index {
+            return Err(invalid(
+                "prepared categorical source index does not match its model source id",
+            ));
+        }
+        if source_positions[model_index]
+            .replace(prepared_index)
+            .is_some()
+        {
+            return Err(invalid(
+                "prepared categorical source table contains a duplicate source id",
+            ));
+        }
+    }
+    let mut output = Vec::new();
+    reserve_vec(
+        reservation,
+        &mut output,
+        request.absorbed_terms.len(),
+        "unable to reserve bound categorical absorbed effects",
+    )?;
+    for effect in &request.absorbed_terms {
+        let mut categorical_source_indices = Vec::new();
         reserve_vec(
             reservation,
-            &mut output,
-            self.requested_effects.len(),
-            "unable to reserve bound categorical absorbed effects",
+            &mut categorical_source_indices,
+            effect.categorical_sources.len(),
+            "unable to reserve bound categorical absorbed source indices",
         )?;
-        for effect in &self.requested_effects {
-            let mut categorical_source_indices = Vec::new();
-            reserve_vec(
-                reservation,
-                &mut categorical_source_indices,
-                effect.sources.len(),
-                "unable to reserve bound categorical absorbed source indices",
-            )?;
-            for source in &effect.sources {
-                let position = source_positions[source_index(*source, self.model_source_count)?]
-                    .ok_or_else(|| {
-                        invalid(
-                            "prepared categorical source table lost a required absorbed source",
-                        )
-                    })?;
-                push_reserved(
-                    &mut categorical_source_indices,
-                    position,
-                    "bound categorical absorbed source-index capacity exhausted",
-                )?;
-            }
+        for source in &effect.categorical_sources {
+            let position = source_positions[source_index(*source, request.model.sources.len())?]
+                .ok_or_else(|| {
+                    invalid("prepared categorical source table lost a required absorbed source")
+                })?;
             push_reserved(
-                &mut output,
-                BoundCategoricalAbsorbEffect {
-                    term_id: effect.term_id,
-                    label: fallible_string_copy(
-                        &effect.label,
-                        reservation,
-                        "unable to reserve bound categorical absorbed label",
-                    )?,
-                    sources: fallible_copy_slice(
-                        &effect.sources,
-                        reservation,
-                        "unable to reserve bound categorical absorbed sources",
-                    )?,
-                    categorical_source_indices,
-                    intercept: effect.intercept,
-                    slope_sources: fallible_copy_slice(
-                        &effect.slope_sources,
-                        reservation,
-                        "unable to reserve bound categorical absorbed slope sources",
-                    )?,
-                },
-                "bound categorical absorbed effect capacity exhausted",
+                &mut categorical_source_indices,
+                position,
+                "bound categorical absorbed source-index capacity exhausted",
             )?;
         }
-        Ok(output)
+        push_reserved(
+            &mut output,
+            categorical_source_indices,
+            "bound categorical absorbed effect capacity exhausted",
+        )?;
     }
+    Ok(output)
 }
 
 /// Validate and split a numeric categorical absorbed request.
@@ -201,7 +126,7 @@ impl CategoricalAbsorbRequestPlan {
 /// categorical topology. Slope columns remain borrowed numeric sources.
 pub fn plan_categorical_absorbed_request(
     request: &OlsRequestV1,
-) -> Result<CategoricalAbsorbRequestPlan> {
+) -> Result<CategoricalAbsorbRequestPlan<'_>> {
     let mut reservation = SystemRequestPlanReservation;
     plan_categorical_absorbed_request_with_reservation(request, &mut reservation)
 }
@@ -210,13 +135,6 @@ trait RequestPlanReservation {
     fn reserve_vec<T>(
         &mut self,
         target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-
-    fn reserve_string(
-        &mut self,
-        target: &mut String,
         additional: usize,
         label: &'static str,
     ) -> Result<()>;
@@ -235,23 +153,12 @@ impl RequestPlanReservation for SystemRequestPlanReservation {
             .try_reserve_exact(additional)
             .map_err(|_| allocation(label))
     }
-
-    fn reserve_string(
-        &mut self,
-        target: &mut String,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
-fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>(
-    request: &OlsRequestV1,
+fn plan_categorical_absorbed_request_with_reservation<'a, R: RequestPlanReservation>(
+    request: &'a OlsRequestV1,
     reservation: &mut R,
-) -> Result<CategoricalAbsorbRequestPlan> {
+) -> Result<CategoricalAbsorbRequestPlan<'a>> {
     request.model.validate_executable_metadata()?;
     validate_bindings(request, reservation)?;
     if request.absorbed_terms.is_empty() {
@@ -267,13 +174,6 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
         false,
         "unable to reserve categorical absorbed source marker",
     )?;
-    let mut requested_effects = Vec::new();
-    reserve_vec(
-        reservation,
-        &mut requested_effects,
-        request.absorbed_terms.len(),
-        "unable to reserve categorical absorbed effect identities",
-    )?;
     for (term_index, term) in request.absorbed_terms.iter().enumerate() {
         let expected_id = u32::try_from(term_index + 1)
             .map_err(|_| invalid("categorical absorbed-term count exceeds u32"))?;
@@ -282,8 +182,7 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
                 "categorical absorbed-term ids must be contiguous and ordered",
             ));
         }
-        if term.categorical_sources.is_empty()
-            || (!term.intercept && term.slope_sources.is_empty())
+        if term.categorical_sources.is_empty() || (!term.intercept && term.slope_sources.is_empty())
         {
             return Err(unsupported(
                 "categorical absorbed request planning requires categorical terms containing an intercept or slope",
@@ -297,37 +196,6 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
         for source in &term.categorical_sources {
             required_marker[source_index(*source, source_count)?] = true;
         }
-        // The existing availability boundary requires every numeric source to
-        // have an explicit use.  A synthetic intercept marker for the slope
-        // source gives it authoritative missing-value handling while
-        // singleton pruning remains disabled; the final topology still treats
-        // it only as a borrowed continuous channel.
-        for source in &term.slope_sources {
-            required_marker[source_index(*source, source_count)?] = true;
-        }
-        push_reserved(
-            &mut requested_effects,
-            CategoricalAbsorbEffectIdentity {
-                term_id: term.id,
-                label: fallible_string_copy(
-                    &term.label,
-                    reservation,
-                    "unable to reserve categorical absorbed effect label",
-                )?,
-                sources: fallible_copy_slice(
-                    &term.categorical_sources,
-                    reservation,
-                    "unable to reserve categorical absorbed effect sources",
-                )?,
-                intercept: term.intercept,
-                slope_sources: fallible_copy_slice(
-                    &term.slope_sources,
-                    reservation,
-                    "unable to reserve categorical absorbed effect slope sources",
-                )?,
-            },
-            "categorical absorbed effect-identity capacity exhausted",
-        )?;
     }
 
     let required_count = required_marker.iter().filter(|required| **required).count();
@@ -338,13 +206,6 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
         required_count,
         "unable to reserve required categorical absorbed sources",
     )?;
-    let mut availability_terms = Vec::new();
-    reserve_vec(
-        reservation,
-        &mut availability_terms,
-        required_count,
-        "unable to reserve categorical source-availability terms",
-    )?;
     for (model_index, source) in request.model.sources.iter().enumerate() {
         if !required_marker[model_index] {
             continue;
@@ -354,36 +215,6 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
             source.id,
             "required categorical absorbed source capacity exhausted",
         )?;
-        let mut categorical_sources = Vec::new();
-        reserve_vec(
-            reservation,
-            &mut categorical_sources,
-            1,
-            "unable to reserve source-availability categorical source",
-        )?;
-        push_reserved(
-            &mut categorical_sources,
-            source.id,
-            "source-availability categorical source capacity exhausted",
-        )?;
-        let availability_id = u32::try_from(availability_terms.len() + 1)
-            .map_err(|_| invalid("source-availability term count exceeds u32"))?;
-        push_reserved(
-            &mut availability_terms,
-            AbsorbedTerm {
-                id: AbsorbTermId::new(availability_id)?,
-                intercept: true,
-                categorical_sources,
-                slope_sources: Vec::new(),
-                label: fallible_string_copy(
-                    &source.canonical_name,
-                    reservation,
-                    "unable to reserve source-availability label",
-                )?,
-                saved_name: String::new(),
-            },
-            "source-availability term capacity exhausted",
-        )?;
     }
     if required_sources.is_empty() {
         return Err(invalid(
@@ -391,27 +222,9 @@ fn plan_categorical_absorbed_request_with_reservation<R: RequestPlanReservation>
         ));
     }
 
-    let availability_request = OlsRequestV1 {
-        model: clone_model(&request.model, reservation)?,
-        absorbed_terms: availability_terms,
-        bindings: fallible_copy_slice(
-            &request.bindings,
-            reservation,
-            "unable to reserve source-availability input bindings",
-        )?,
-        include_intercept: request.include_intercept,
-        // True here means the existing single-source preparation path validates
-        // source availability but does not delete observations. The original
-        // choice is applied later to the true interaction topology.
-        keep_singletons: true,
-    };
-
     Ok(CategoricalAbsorbRequestPlan {
-        availability_request,
-        requested_effects,
+        request,
         required_sources,
-        requested_keep_singletons: request.keep_singletons,
-        model_source_count: source_count,
     })
 }
 
@@ -471,101 +284,6 @@ fn validate_bindings<R: RequestPlanReservation>(
     Ok(())
 }
 
-fn clone_model<R: RequestPlanReservation>(
-    model: &CompiledTermGraph,
-    reservation: &mut R,
-) -> Result<CompiledTermGraph> {
-    let mut sources = Vec::new();
-    reserve_vec(
-        reservation,
-        &mut sources,
-        model.sources.len(),
-        "unable to reserve source-availability model sources",
-    )?;
-    for source in &model.sources {
-        push_reserved(
-            &mut sources,
-            SourceEntry {
-                id: source.id,
-                canonical_name: fallible_string_copy(
-                    &source.canonical_name,
-                    reservation,
-                    "unable to reserve source-availability source name",
-                )?,
-            },
-            "source-availability model-source capacity exhausted",
-        )?;
-    }
-
-    let mut terms = Vec::new();
-    reserve_vec(
-        reservation,
-        &mut terms,
-        model.terms.len(),
-        "unable to reserve source-availability model terms",
-    )?;
-    for term in &model.terms {
-        let mut components = Vec::new();
-        reserve_vec(
-            reservation,
-            &mut components,
-            term.components.len(),
-            "unable to reserve source-availability term components",
-        )?;
-        for component in &term.components {
-            push_reserved(
-                &mut components,
-                clone_component(component, reservation)?,
-                "source-availability term-component capacity exhausted",
-            )?;
-        }
-        push_reserved(
-            &mut terms,
-            ExpandedTerm {
-                id: term.id,
-                order: term.order,
-                coefficient_slot: term.coefficient_slot,
-                raw_kind: term.raw_kind,
-                whole_column_omitted: term.whole_column_omitted,
-                canonical_token: fallible_string_copy(
-                    &term.canonical_token,
-                    reservation,
-                    "unable to reserve source-availability canonical token",
-                )?,
-                components,
-            },
-            "source-availability model-term capacity exhausted",
-        )?;
-    }
-    Ok(CompiledTermGraph { sources, terms })
-}
-
-fn clone_component<R: RequestPlanReservation>(
-    component: &TermComponent,
-    reservation: &mut R,
-) -> Result<TermComponent> {
-    Ok(TermComponent {
-        order: component.order,
-        source: component.source,
-        kind: component.kind,
-        level_state: component.level_state,
-        level_value: component.level_value,
-        base: component.base,
-        omitted: component.omitted,
-        raw_operator: fallible_string_copy(
-            &component.raw_operator,
-            reservation,
-            "unable to reserve source-availability component operator",
-        )?,
-        time_series_state: component.time_series_state,
-        raw_time_series_operator: fallible_string_copy(
-            &component.raw_time_series_operator,
-            reservation,
-            "unable to reserve source-availability time-series operator",
-        )?,
-    })
-}
-
 fn reserve_vec<T, R: RequestPlanReservation>(
     reservation: &mut R,
     target: &mut Vec<T>,
@@ -576,37 +294,6 @@ fn reserve_vec<T, R: RequestPlanReservation>(
         return Ok(());
     }
     reservation.reserve_vec(target, additional, label)
-}
-
-fn fallible_copy_slice<T: Copy, R: RequestPlanReservation>(
-    input: &[T],
-    reservation: &mut R,
-    label: &'static str,
-) -> Result<Vec<T>> {
-    if input.is_empty() {
-        return Ok(Vec::new());
-    }
-    let mut output = Vec::new();
-    reserve_vec(reservation, &mut output, input.len(), label)?;
-    extend_reserved(&mut output, input, label)?;
-    Ok(output)
-}
-
-fn fallible_string_copy<R: RequestPlanReservation>(
-    input: &str,
-    reservation: &mut R,
-    label: &'static str,
-) -> Result<String> {
-    if input.is_empty() {
-        return Ok(String::new());
-    }
-    let mut output = String::new();
-    reservation.reserve_string(&mut output, input.len(), label)?;
-    if output.capacity() < input.len() {
-        return Err(allocation(label));
-    }
-    output.push_str(input);
-    Ok(output)
 }
 
 fn reserved_filled<T: Clone, R: RequestPlanReservation>(
@@ -625,14 +312,6 @@ fn reserved_filled<T: Clone, R: RequestPlanReservation>(
     }
     output.resize(len, value);
     Ok(output)
-}
-
-fn extend_reserved<T: Copy>(target: &mut Vec<T>, values: &[T], label: &'static str) -> Result<()> {
-    if target.capacity().saturating_sub(target.len()) < values.len() {
-        return Err(allocation(label));
-    }
-    target.extend_from_slice(values);
-    Ok(())
 }
 
 fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
@@ -676,7 +355,7 @@ fn allocation(message: impl Into<String>) -> FeregError {
 mod tests {
     use super::*;
     use crate::factorize::EncodedFactor;
-    use crate::metadata::{SourceEntry, SourceId};
+    use crate::metadata::{CompiledTermGraph, SourceEntry, SourceId};
 
     #[derive(Default)]
     struct InjectedReservation {
@@ -705,27 +384,6 @@ mod tests {
             target
                 .try_reserve_exact(additional)
                 .map_err(|_| allocation("test categorical request-plan reservation failed"))
-        }
-
-        fn reserve_string(
-            &mut self,
-            target: &mut String,
-            additional: usize,
-            _label: &'static str,
-        ) -> Result<()> {
-            let call = self.calls;
-            self.calls += 1;
-            if self.fail_at == Some(call) {
-                return Err(allocation(
-                    "injected categorical request-plan string allocation failure",
-                ));
-            }
-            if self.skip_at == Some(call) {
-                return Ok(());
-            }
-            target
-                .try_reserve_exact(additional)
-                .map_err(|_| allocation("test categorical request-plan string reservation failed"))
         }
     }
 
@@ -809,32 +467,15 @@ mod tests {
     }
 
     #[test]
-    fn availability_terms_follow_model_registry_and_preserve_original_effects() {
-        let plan = plan_categorical_absorbed_request(&request()).expect("plan");
-        let availability = plan.availability_request();
-        assert!(availability.keep_singletons);
-        assert!(availability.include_intercept);
-        assert_eq!(
-            availability
-                .absorbed_terms
-                .iter()
-                .map(|term| term.categorical_sources.clone())
-                .collect::<Vec<_>>(),
-            vec![vec![source(1)], vec![source(2)], vec![source(3)]]
-        );
-        assert_eq!(
-            availability
-                .absorbed_terms
-                .iter()
-                .map(|term| term.id.get())
-                .collect::<Vec<_>>(),
-            vec![1, 2, 3]
-        );
+    fn source_plan_borrows_original_effects_and_orders_required_sources() {
+        let request = request();
+        let plan = plan_categorical_absorbed_request(&request).expect("plan");
+        assert!(std::ptr::eq(plan.request, &request));
         assert_eq!(plan.required_sources(), &[source(1), source(2), source(3)]);
         assert!(!plan.requested_keep_singletons());
         assert_eq!(plan.requested_effects()[1].label, "firm#year");
         assert_eq!(
-            plan.requested_effects()[1].sources,
+            plan.requested_effects()[1].categorical_sources,
             vec![source(2), source(3)]
         );
     }
@@ -848,19 +489,21 @@ mod tests {
             .bind_effects(&[prepared(3, 2), prepared(1, 0), prepared(2, 1)])
             .expect("bound");
         assert_eq!(bound.len(), 2);
-        assert_eq!(bound[1].sources, vec![source(3), source(2)]);
-        assert_eq!(bound[1].categorical_source_indices, vec![0, 2]);
+        assert_eq!(
+            plan.requested_effects()[1].categorical_sources,
+            vec![source(3), source(2)]
+        );
+        assert_eq!(bound[1], vec![0, 2]);
     }
 
     #[test]
     fn repeated_source_is_deduplicated_only_for_availability() {
         let mut request = request();
-        request.absorbed_terms[1].categorical_sources =
-            vec![source(2), source(3), source(2)];
+        request.absorbed_terms[1].categorical_sources = vec![source(2), source(3), source(2)];
         let plan = plan_categorical_absorbed_request(&request).expect("plan");
-        assert_eq!(plan.availability_request().absorbed_terms.len(), 3);
+        assert_eq!(plan.required_sources().len(), 3);
         assert_eq!(
-            plan.requested_effects()[1].sources,
+            plan.requested_effects()[1].categorical_sources,
             vec![source(2), source(3), source(2)]
         );
     }
@@ -895,7 +538,7 @@ mod tests {
         let mut saved = request();
         saved.absorbed_terms[0].saved_name = "alpha".to_owned();
         let saved_plan = plan_categorical_absorbed_request(&saved).expect("saved metadata");
-        assert_eq!(saved_plan.requested_effects()[0].term_id.get(), 1);
+        assert_eq!(saved_plan.requested_effects()[0].id.get(), 1);
         let mut empty_label = request();
         empty_label.absorbed_terms[0].label.clear();
         assert_eq!(
@@ -936,7 +579,8 @@ mod tests {
 
     #[test]
     fn missing_duplicate_and_misaligned_prepared_sources_fail_closed() {
-        let plan = plan_categorical_absorbed_request(&request()).expect("plan");
+        let original = request();
+        let plan = plan_categorical_absorbed_request(&original).expect("plan");
         assert_eq!(
             plan.bind_effects(&[prepared(1, 0), prepared(2, 1)])
                 .expect_err("missing year")
@@ -969,9 +613,8 @@ mod tests {
                 fail_at: Some(call),
                 ..InjectedReservation::default()
             };
-            let error =
-                plan_categorical_absorbed_request_with_reservation(&request, &mut injected)
-                    .expect_err("injected allocation failure");
+            let error = plan_categorical_absorbed_request_with_reservation(&request, &mut injected)
+                .expect_err("injected allocation failure");
             assert_eq!(error.code, ErrorCode::Allocation, "call {call}");
         }
         for call in 0..successful.calls {
@@ -988,7 +631,8 @@ mod tests {
 
     #[test]
     fn every_binding_reservation_and_capacity_guard_fails_closed() {
-        let plan = plan_categorical_absorbed_request(&request()).expect("plan");
+        let original = request();
+        let plan = plan_categorical_absorbed_request(&original).expect("plan");
         let prepared = [prepared(1, 0), prepared(2, 1), prepared(3, 2)];
         let mut successful = InjectedReservation::default();
         plan.bind_effects_with_reservation(&prepared, &mut successful)

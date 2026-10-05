@@ -380,15 +380,15 @@ fn missing_cluster_is_reason_six_before_fe_singleton_pruning_and_small_groups_ar
     cluster_source.1.missing[2] = true;
     let prepared = prepare_ols_clustered_data(&request, &loaded).expect("missing cluster prepare");
     assert_eq!(
-        prepared.ols().sample.drop_reason(2),
+        prepared.ols().sample().drop_reason(2),
         Some(fereg_core::DropReason::MissingCluster)
     );
-    assert_eq!(prepared.ols().singletons.num_singletons, 1);
+    assert_eq!(prepared.ols().singletons().num_singletons, 1);
     assert_eq!(
-        prepared.ols().sample.drop_reason(3),
+        prepared.ols().sample().drop_reason(3),
         Some(fereg_core::DropReason::Singleton)
     );
-    assert_eq!(prepared.ols().sample.n_active(), 6);
+    assert_eq!(prepared.ols().sample().n_active(), 6);
     assert!(prepared
         .clusters()
         .dimensions()

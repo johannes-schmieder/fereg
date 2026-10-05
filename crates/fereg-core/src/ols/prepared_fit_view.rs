@@ -37,37 +37,20 @@ use rayon::prelude::*;
 use super::{PreparedOlsData, PreparedOlsModel};
 use crate::ols::build_prepared_ols_rhs_with_response;
 
-/// Shared immutable prepared storage for iterative estimators whose certified
-/// products outlive the borrowed solving session. One-shot OLS has no Arc.
-#[derive(Debug, Clone, PartialEq)]
-pub(crate) enum SharedPreparedOlsData {
-    Categorical(std::sync::Arc<PreparedCategoricalOlsData>),
-    CategoricalClustered(std::sync::Arc<super::PreparedCategoricalOlsClusteredData>),
-}
+/// One-shot ordinary arithmetic borrows the canonical owner. This view has
+/// no storage and preserves the mathematically distinct DoF/report family.
+pub(crate) struct OrdinaryPrepared<'a>(pub(crate) &'a PreparedOlsData);
 
-impl SharedPreparedOlsData {
-    pub(crate) fn fit_view(&self) -> &PreparedCategoricalOlsData {
-        match self {
-            Self::Categorical(prepared) => prepared,
-            Self::CategoricalClustered(prepared) => prepared.ols(),
-        }
-    }
+impl std::ops::Deref for OrdinaryPrepared<'_> {
+    type Target = PreparedOlsData;
 
-    // Charge the Arc header and the inline object moved off the generation's
-    // stack. Its nested buffers remain charged once to the prepared generation.
-    pub(crate) const fn allocation_bytes(clustered: bool) -> u128 {
-        if clustered {
-            std::mem::size_of::<(usize, usize, super::PreparedCategoricalOlsClusteredData)>()
-                as u128
-        } else {
-            std::mem::size_of::<(usize, usize, PreparedCategoricalOlsData)>() as u128
-        }
-    }
-
-    pub(crate) fn shared_allocation_bytes(&self) -> u128 {
-        Self::allocation_bytes(matches!(self, Self::CategoricalClustered(_)))
+    fn deref(&self) -> &Self::Target {
+        self.0
     }
 }
+
+/// PPML generations retain precisely one canonical prepared owner.
+pub(crate) type SharedPreparedOlsData = std::sync::Arc<PreparedOlsData>;
 
 /// Scan an immutable prepared column in observation order. Interaction recipes
 /// resolve source slices once per bounded tile; no expanded observation bank or
@@ -292,26 +275,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
         coefficient: f64,
         residuals: &mut [f64],
     ) -> Result<()> {
-        if residuals.len() != self.fit_sample().n_active() || !coefficient.is_finite() {
-            return Err(FeregError::new(
-                ErrorCode::InvalidArgument,
-                "prepared OLS raw-residual update has an invalid shape",
-            ));
-        }
-        residuals
-            .par_iter_mut()
-            .enumerate()
-            .try_for_each(|(row, residual)| -> Result<()> {
-                *residual = (-coefficient).mul_add(self.fit_column_value(column, row)?, *residual);
-                if residual.is_finite() {
-                    Ok(())
-                } else {
-                    Err(FeregError::new(
-                        ErrorCode::InvalidData,
-                        "prepared OLS raw residual is not finite",
-                    ))
-                }
-            })
+        fit_subtract_raw_column_generic(self, column, coefficient, residuals)
     }
 
     #[allow(dead_code)]
@@ -328,24 +292,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
         response: &[f64],
         rows: Option<Vec<f64>>,
     ) -> Result<(DenseMatrix, bool)> {
-        if let Some(rows) = rows {
-            if let Some(columns) =
-                crate::ols::NumericOlsColumns::bind_loaded_rhs(self.fit_model(), self.fit_sample())?
-            {
-                if columns.matches_rhs(response, &rows) {
-                    return Ok((
-                        DenseMatrix::from_row_major(
-                            response.len(),
-                            self.fit_model().columns.len() + 1,
-                            rows,
-                        )?,
-                        true,
-                    ));
-                }
-            }
-        }
-        self.fit_build_rhs_with_response(response)
-            .map(|matrix| (matrix, false))
+        fit_build_rhs_with_loaded_rows_generic(self, response, rows)
     }
 
     /// Build a bounded contiguous block of generated columns. The outcome is
@@ -695,21 +642,13 @@ fn admit_prepared_intercept_cg(
     SolverWorkspacePeak::from_bytes(required)
 }
 
-impl PreparedOlsFitView for PreparedOlsData {
+impl PreparedOlsFitView for OrdinaryPrepared<'_> {
     fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
-        self.fe_topology.effects().len() == 1
+        self.fe_effects().len() == 1
     }
 
     fn fit_categorical_codes(&self, source: usize) -> Result<&[u32]> {
-        self.categorical_sources
-            .get(source)
-            .map(|source| source.encoded.codes.as_slice())
-            .ok_or_else(|| {
-                FeregError::new(
-                    ErrorCode::InvalidArgument,
-                    "prepared categorical source is out of range",
-                )
-            })
+        self.categorical_codes(source)
     }
 
     fn fit_model(&self) -> &PreparedOlsModel {
@@ -748,13 +687,13 @@ impl PreparedOlsFitView for PreparedOlsData {
                 "prepared OLS raw-residual update has an invalid shape",
             ));
         }
-        let column = self.model.columns.get(column).ok_or_else(|| {
+        let recipe = self.model.columns.get(column).ok_or_else(|| {
             FeregError::new(
                 ErrorCode::InvalidArgument,
                 "prepared OLS raw-residual column is out of range",
             )
         })?;
-        match &column.kind {
+        match &recipe.kind {
             super::PreparedOlsColumnKind::Intercept => {
                 for residual in residuals.iter_mut() {
                     *residual = (-coefficient).mul_add(1.0, *residual);
@@ -784,17 +723,7 @@ impl PreparedOlsFitView for PreparedOlsData {
                 ..
             } => {
                 if let Some(level_code) = level_code {
-                    let codes = &self
-                        .categorical_sources
-                        .get(*categorical_source_index)
-                        .ok_or_else(|| {
-                            FeregError::new(
-                                ErrorCode::InvalidArgument,
-                                "prepared categorical source is out of range",
-                            )
-                        })?
-                        .encoded
-                        .codes;
+                    let codes = self.categorical_codes(*categorical_source_index)?;
                     for (residual, code) in residuals.iter_mut().zip(codes) {
                         if code == level_code {
                             *residual = (-coefficient).mul_add(1.0, *residual);
@@ -802,34 +731,13 @@ impl PreparedOlsFitView for PreparedOlsData {
                     }
                 }
             }
-            super::PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                for (row, residual) in residuals.iter_mut().enumerate() {
-                    let mut present = true;
-                    for component in components {
-                        let Some(level_code) = component.level_code else {
-                            present = false;
-                            break;
-                        };
-                        let code = self
-                            .categorical_sources
-                            .get(component.categorical_source_index)
-                            .and_then(|source| source.encoded.codes.get(row))
-                            .copied()
-                            .ok_or_else(|| {
-                                FeregError::new(
-                                    ErrorCode::InvalidArgument,
-                                    "prepared categorical interaction source is out of range",
-                                )
-                            })?;
-                        if code != level_code {
-                            present = false;
-                            break;
-                        }
+            super::PreparedOlsColumnKind::CategoricalInteraction { .. } => {
+                visit_prepared_column_range(self, column, 0..residuals.len(), |row, value| {
+                    if value != 0.0 {
+                        residuals[row] = (-coefficient).mul_add(1.0, residuals[row]);
                     }
-                    if present {
-                        *residual = (-coefficient).mul_add(1.0, *residual);
-                    }
-                }
+                    Ok(())
+                })?;
             }
         }
         if residuals.iter().any(|value| !value.is_finite()) {
@@ -965,21 +873,7 @@ impl PreparedOlsFitView for PreparedOlsData {
     }
 
     fn fit_retained_fe_parent_bytes(&self) -> Result<u128> {
-        let mut directions = 0_u128;
-        for effect in self.fe_topology.effects() {
-            directions = directions
-                .checked_add(
-                    self.fe_topology.sources()[effect.topology_source_index].n_levels() as u128,
-                )
-                .ok_or_else(|| allocation("retained FE directions overflow"))?;
-        }
-        let effects = self.fe_topology.effects().len();
-        let virtual_constant = effects == 0 && self.structural_intercept;
-        retained_fe_parent_bytes(
-            if virtual_constant { 1 } else { directions },
-            effects + usize::from(virtual_constant),
-            self.model.columns.len(),
-        )
+        self.0.fit_retained_fe_parent_bytes()
     }
 
     fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
@@ -1040,6 +934,29 @@ impl PreparedOlsFitView for PreparedOlsData {
 }
 
 impl PreparedOlsFitView for PreparedCategoricalOlsData {
+    fn fit_build_rhs_with_loaded_rows(
+        &self,
+        response: &[f64],
+        rows: Option<Vec<f64>>,
+    ) -> Result<(DenseMatrix, bool)> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_build_rhs_with_loaded_rows(response, rows);
+        }
+        fit_build_rhs_with_loaded_rows_generic(self, response, rows)
+    }
+
+    fn fit_subtract_raw_column(
+        &self,
+        column: usize,
+        coefficient: f64,
+        residuals: &mut [f64],
+    ) -> Result<()> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_subtract_raw_column(column, coefficient, residuals);
+        }
+        fit_subtract_raw_column_generic(self, column, coefficient, residuals)
+    }
+
     fn fit_has_two_effects_with_slopes(&self) -> bool {
         self.effect_specs().len() == 2 && self.has_absorbed_slope()
     }
@@ -1095,6 +1012,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_absorb_initial_matrix(weights, values, config);
+        }
         if config.solver == FeSolverKind::Auto
             && !config.retain_coefficients
             && self.effect_specs().len() == 1
@@ -1129,7 +1049,11 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
     }
 
     fn fit_has_absorbed_intercept(&self) -> bool {
-        self.has_absorbed_intercept()
+        if self.uses_categorical_preparation() {
+            self.has_absorbed_intercept()
+        } else {
+            self.structural_intercept()
+        }
     }
 
     fn fit_report_intercept(&self) -> bool {
@@ -1147,6 +1071,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
     }
 
     fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_build_rhs_with_response(response);
+        }
         Ok(self.build_rhs_with_response(response)?.into_values())
     }
 
@@ -1156,6 +1083,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_absorb_map(weights, values, config);
+        }
         if self.has_absorbed_slope() {
             let effects = self.effect_views()?;
             absorb_finalized_categorical_slope_map_with_budget_certified(
@@ -1189,6 +1119,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_absorb_owned_matrix(weights, values, config);
+        }
         if self.has_absorbed_slope() {
             self.fit_absorb_owned_matrix(weights, values, config)
         } else {
@@ -1208,6 +1141,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_absorb_cg(weights, values, config);
+        }
         if self.has_absorbed_slope() {
             return self.fit_absorb_owned_matrix(weights, values, config);
         }
@@ -1246,6 +1182,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_absorb_irons_tuck(weights, values, config);
+        }
         if self.has_absorbed_slope() {
             self.fit_absorb_owned_matrix(weights, values, config)
         } else {
@@ -1265,6 +1204,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_absorb_auto(weights, values, config);
+        }
         if self.has_absorbed_slope() {
             self.fit_absorb_owned_matrix(weights, values, config)
         } else {
@@ -1286,6 +1228,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_absorb_auto_direct_lsmr(weights, values, config);
+        }
         if self.has_absorbed_slope() {
             self.fit_absorb_owned_matrix(weights, values, config)
         } else {
@@ -1330,6 +1275,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
     }
 
     fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_owned_fe_design_memory();
+        }
         let topology = self.fe_topology();
         if topology.effect_to_topology().len() != self.effect_specs().len() {
             return Err(FeregError::new(
@@ -1363,6 +1311,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
     }
 
     fn fit_owned_fe_design(&self) -> Result<FeDesign> {
+        if !self.uses_categorical_preparation() {
+            return OrdinaryPrepared(self).fit_owned_fe_design();
+        }
         let topology = self.fe_topology();
         let mut source_table = Vec::new();
         source_table
@@ -1413,6 +1364,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
     }
 
     fn fit_borrowed_intercept_map_design(&self) -> Result<Option<BorrowedInterceptFeDesign<'_>>> {
+        if !self.uses_categorical_preparation() {
+            return self.borrowed_intercept_fe_design().map(Some);
+        }
         if self.has_absorbed_slope() {
             Ok(None)
         } else {
@@ -1421,6 +1375,9 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
     }
 
     fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>> {
+        if !self.uses_categorical_preparation() {
+            return self.borrowed_intercept_fe_design();
+        }
         if self
             .effect_specs()
             .iter()
@@ -1490,6 +1447,61 @@ fn retained_fe_parent_bytes(directions: u128, effects: usize, generated: usize) 
     values
         .and_then(|bytes| bytes.checked_add(metadata?))
         .ok_or_else(|| allocation("retained FE product parent overflows"))
+}
+
+fn fit_subtract_raw_column_generic<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    column: usize,
+    coefficient: f64,
+    residuals: &mut [f64],
+) -> Result<()> {
+    if residuals.len() != prepared.fit_sample().n_active() || !coefficient.is_finite() {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "prepared OLS raw-residual update has an invalid shape",
+        ));
+    }
+    residuals
+        .par_iter_mut()
+        .enumerate()
+        .try_for_each(|(row, residual)| -> Result<()> {
+            *residual = (-coefficient).mul_add(prepared.fit_column_value(column, row)?, *residual);
+            if residual.is_finite() {
+                Ok(())
+            } else {
+                Err(FeregError::new(
+                    ErrorCode::InvalidData,
+                    "prepared OLS raw residual is not finite",
+                ))
+            }
+        })
+}
+
+fn fit_build_rhs_with_loaded_rows_generic<P: PreparedOlsFitView + ?Sized>(
+    prepared: &P,
+    response: &[f64],
+    rows: Option<Vec<f64>>,
+) -> Result<(DenseMatrix, bool)> {
+    if let Some(rows) = rows {
+        if let Some(columns) = crate::ols::NumericOlsColumns::bind_loaded_rhs(
+            prepared.fit_model(),
+            prepared.fit_sample(),
+        )? {
+            if columns.matches_rhs(response, &rows) {
+                return Ok((
+                    DenseMatrix::from_row_major(
+                        response.len(),
+                        prepared.fit_model().columns.len() + 1,
+                        rows,
+                    )?,
+                    true,
+                ));
+            }
+        }
+    }
+    prepared
+        .fit_build_rhs_with_response(response)
+        .map(|matrix| (matrix, false))
 }
 
 #[cfg(test)]

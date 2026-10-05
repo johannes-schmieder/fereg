@@ -28,7 +28,7 @@ pub(crate) fn absorb_finalized_categorical_topology_irons_tuck_certified(
     retain_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if values.nrows() != nobs {
         return Err(invalid(
             "finalized categorical topology and Irons-Tuck values have different observation counts",
@@ -70,7 +70,7 @@ pub(crate) fn absorb_finalized_categorical_topology_auto_direct_lsmr_certified(
     retain_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if values.nrows() != nobs {
         return Err(invalid(
             "finalized categorical topology and direct auto LSMR values have different observation counts",
@@ -116,7 +116,7 @@ pub(crate) fn absorb_finalized_categorical_topology_lsmr_certified(
     retain_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if values.nrows() != nobs {
         return Err(invalid(
             "finalized categorical topology and LSMR values have different observation counts",
@@ -204,7 +204,7 @@ fn absorb_finalized_categorical_topology_cg_with_retention(
     retain_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if values.nrows() != nobs {
         return Err(invalid(
             "finalized categorical topology and CG values have different observation counts",
@@ -244,7 +244,7 @@ pub fn absorb_finalized_categorical_topology_auto_certified(
     config: MapConfig,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if values.nrows() != nobs {
         return Err(invalid(
             "finalized categorical topology and auto values have different observation counts",
@@ -283,7 +283,7 @@ pub(crate) fn absorb_finalized_categorical_topology_auto_routed_certified(
     retain_coefficients: bool,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if values.nrows() != nobs {
         return Err(invalid(
             "finalized categorical topology and auto values have different observation counts",
@@ -351,7 +351,7 @@ fn absorb_finalized_categorical_topology_map_with_reservation<R: TopologyMapRese
     reservation: &mut R,
 ) -> Result<CertifiedBorrowedMap> {
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if values.nrows() != nobs {
         return Err(invalid(
             "finalized categorical topology and MAP values have different observation counts",

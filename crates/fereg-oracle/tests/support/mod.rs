@@ -11,7 +11,7 @@ pub fn legacy_fit(
     if design.effects.is_empty() {
         let prepared = prepare_ols_data(&request, &loaded)?;
         let fit = fit_prepared_ols_coefficients_map(&prepared, config)?;
-        Ok((fit, prepared.sample.original_row_by_active.clone()))
+        Ok((fit, prepared.sample().original_row_by_active.clone()))
     } else {
         let prepared = prepare_categorical_ols_data(&request, &loaded)?;
         let fit = fit_prepared_categorical_ols_coefficients_map(&prepared, config)?;

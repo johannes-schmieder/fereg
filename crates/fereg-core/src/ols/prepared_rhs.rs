@@ -1,4 +1,6 @@
-use crate::data::{DenseMatrix, PreparedAdjustment, PreparedWeights, WeightKind};
+#[cfg(test)]
+use crate::data::WeightKind;
+use crate::data::{DenseMatrix, PreparedWeights};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     absorb_borrowed_intercept_map_with_structural_constant_certified, BorrowedMapWeights,
@@ -215,13 +217,7 @@ fn fill_rhs_single_thread(
                 level_code,
                 ..
             } => {
-                let codes = prepared
-                    .categorical_sources
-                    .get(*categorical_source_index)
-                    .ok_or_else(|| invalid_argument("prepared categorical source is out of range"))?
-                    .encoded
-                    .codes
-                    .as_slice();
+                let codes = prepared.categorical_codes(*categorical_source_index)?;
                 if let Some(level_code) = level_code {
                     for (row, code) in codes.iter().copied().enumerate() {
                         data[row * ncols + rhs_column] =
@@ -229,31 +225,16 @@ fn fill_rhs_single_thread(
                     }
                 }
             }
-            PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                for row in 0..prepared.sample.n_active() {
-                    let mut present = true;
-                    for component in components {
-                        let Some(level_code) = component.level_code else {
-                            present = false;
-                            break;
-                        };
-                        let code = prepared
-                            .categorical_sources
-                            .get(component.categorical_source_index)
-                            .and_then(|source| source.encoded.codes.get(row))
-                            .copied()
-                            .ok_or_else(|| {
-                                invalid_argument(
-                                    "prepared categorical interaction source is out of range",
-                                )
-                            })?;
-                        if code != level_code {
-                            present = false;
-                            break;
-                        }
-                    }
-                    data[row * ncols + rhs_column] = if present { 1.0 } else { 0.0 };
-                }
+            PreparedOlsColumnKind::CategoricalInteraction { .. } => {
+                crate::prepared_fit_view::visit_prepared_column_range(
+                    prepared,
+                    generated,
+                    0..prepared.sample.n_active(),
+                    |row, value| {
+                        data[row * ncols + rhs_column] = value;
+                        Ok(())
+                    },
+                )?;
             }
         }
     }
@@ -582,26 +563,22 @@ fn rhs_dimensions(nrows: usize, model_columns: usize) -> Result<(usize, usize, u
 }
 
 fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData, response: &[f64]) -> Result<()> {
-    let sample = &prepared.sample;
-    let nrows = sample.n_active();
-    if sample.n_candidate > sample.n_original
-        || sample.drop_reasons.len() != sample.n_original
-        || sample.outcome.len() != nrows
-        || response.len() != nrows
-        || sample.regressors.iter().any(|source| source.len() != nrows)
-        || !matches!(sample.adjustment, PreparedAdjustment::None)
-    {
+    if response.len() != prepared.sample.n_active() {
         return Err(invalid_argument(
             "prepared OLS numeric sample is not aligned on one observation axis",
         ));
     }
-    if response.iter().any(|value| !value.is_finite()) || !numeric_sources_are_finite(sample) {
+    if response.iter().any(|value| !value.is_finite()) {
         return Err(invalid_data(
             "prepared OLS outcome and numeric sources must be finite",
         ));
     }
-    validate_row_map(prepared)?;
-    validate_weights(prepared)?;
+    validate_prepared_model_metadata(prepared)
+}
+
+/// Shared validation for the one immutable final model/source owner. The
+/// dynamic response boundary validates only its own row axis and values.
+pub(crate) fn validate_prepared_model_metadata(prepared: &PreparedOlsData) -> Result<()> {
     validate_categorical_sources(prepared)?;
     validate_coefficient_axis(prepared)?;
     for column in &prepared.model.columns {
@@ -633,7 +610,7 @@ fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData, response: &[f64]) ->
                 }
                 for component in components {
                     let categorical = prepared
-                        .categorical_sources
+                        .categorical_sources()
                         .get(component.categorical_source_index)
                         .ok_or_else(|| {
                             invalid_argument(
@@ -643,7 +620,7 @@ fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData, response: &[f64]) ->
                     validate_categorical_recipe(
                         prepared,
                         component.source,
-                        categorical.prepared_source_index,
+                        categorical.prepared_source_index(),
                         component.categorical_source_index,
                         component.level_bits,
                         component.level_code,
@@ -655,69 +632,20 @@ fn validate_prepared_rhs_inputs(prepared: &PreparedOlsData, response: &[f64]) ->
     Ok(())
 }
 
-fn validate_row_map(prepared: &PreparedOlsData) -> Result<()> {
-    let sample = &prepared.sample;
-    let mut previous = None;
-    for original_row in sample.retained_rows().iter().copied() {
-        if original_row >= sample.n_original
-            || sample.drop_reasons[original_row] != crate::data::DropReason::Retained
-            || previous.is_some_and(|prior| prior >= original_row)
-        {
-            return Err(invalid_argument(
-                "prepared OLS retained-row map is inconsistent",
-            ));
-        }
-        previous = Some(original_row);
-    }
-    if sample
-        .drop_reasons
-        .iter()
-        .filter(|reason| **reason == crate::data::DropReason::Retained)
-        .count()
-        != sample.n_active()
-    {
-        return Err(invalid_argument(
-            "prepared OLS retained-row count is inconsistent",
-        ));
-    }
-    Ok(())
-}
-
-fn validate_weights(prepared: &PreparedOlsData) -> Result<()> {
-    let nrows = prepared.sample.n_active();
-    let PreparedWeights::Provided { kind, values } = &prepared.sample.weights else {
-        return Ok(());
-    };
-    if *kind == WeightKind::Importance {
-        return Err(invalid_argument(
-            "prepared OLS importance weights are unsupported",
-        ));
-    }
-    if values.len() != nrows {
-        return Err(invalid_argument(
-            "prepared OLS weights are not aligned with the observation axis",
-        ));
-    }
-    for value in values {
-        if !value.is_finite() || *value <= 0.0 {
-            return Err(invalid_data(
-                "prepared OLS weights must be finite and positive",
-            ));
-        }
-        if *kind == WeightKind::Frequency && (value.fract() != 0.0 || *value > f64::from(u32::MAX))
-        {
-            return Err(invalid_data(
-                "prepared OLS frequency weights must be positive u32 integers",
-            ));
-        }
-    }
-    Ok(())
-}
-
 fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
     let nrows = prepared.sample.n_active();
-    for categorical in &prepared.categorical_sources {
-        if categorical.prepared_source_index != source_index(categorical.source)? {
+    for (index, categorical) in prepared.categorical_sources().iter().enumerate() {
+        if prepared.categorical_sources()[..index]
+            .iter()
+            .any(|prior| prior.source() == categorical.source())
+        {
+            return Err(invalid_argument(
+                "ordinary categorical source table contains duplicate source identities",
+            ));
+        }
+        let codes = categorical.codes(prepared.fe_topology())?;
+        let levels = categorical.level_values();
+        if categorical.prepared_source_index() != source_index(categorical.source())? {
             return Err(invalid_argument(
                 "prepared categorical source identity is inconsistent",
             ));
@@ -725,23 +653,23 @@ fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
         let raw = prepared
             .sample
             .regressors
-            .get(categorical.prepared_source_index)
+            .get(categorical.prepared_source_index())
             .ok_or_else(|| invalid_argument("prepared categorical source is out of range"))?;
-        if raw.len() != nrows || categorical.encoded.codes.len() != nrows {
+        if raw.len() != nrows || codes.len() != nrows {
             return Err(invalid_argument(
                 "prepared categorical source is not aligned with the observation axis",
             ));
         }
-        if categorical.encoded.levels.len() > u32::MAX as usize {
+        if categorical.n_levels(prepared.fe_topology())? != levels.len()
+            || levels.len() > u32::MAX as usize
+        {
             return Err(invalid_argument(
                 "prepared categorical level count exceeds u32",
             ));
         }
-        if categorical.encoded.levels.iter().any(|level| {
+        if levels.iter().any(|level| {
             !level.is_finite() || (*level == 0.0 && level.to_bits() != 0.0_f64.to_bits())
-        }) || categorical
-            .encoded
-            .levels
+        }) || levels
             .windows(2)
             .any(|levels| levels[0].total_cmp(&levels[1]).is_ge())
         {
@@ -749,12 +677,13 @@ fn validate_categorical_sources(prepared: &PreparedOlsData) -> Result<()> {
                 "prepared categorical levels are not finite, canonical, and strictly ordered",
             ));
         }
-        for (row, code) in categorical.encoded.codes.iter().copied().enumerate() {
-            let level = categorical
-                .encoded
-                .levels
-                .get(code as usize)
-                .ok_or_else(|| invalid_argument("prepared categorical code is out of range"))?;
+        for (row, code) in codes.iter().copied().enumerate() {
+            if code as usize >= categorical.n_levels(prepared.fe_topology())? {
+                return Err(invalid_argument(
+                    "prepared categorical code is out of range",
+                ));
+            }
+            let level = categorical.level_value(prepared.fe_topology(), code)?;
             if level.to_bits() != canonical_factor_value(raw[row]).to_bits() {
                 return Err(invalid_argument(
                     "prepared categorical codes do not represent their numeric source",
@@ -840,10 +769,12 @@ fn validate_categorical_recipe(
 ) -> Result<()> {
     validate_continuous_recipe(prepared, source, prepared_source_index)?;
     let categorical = prepared
-        .categorical_sources
+        .categorical_sources()
         .get(categorical_source_index)
         .ok_or_else(|| invalid_argument("prepared categorical recipe source is out of range"))?;
-    if categorical.source != source || categorical.prepared_source_index != prepared_source_index {
+    if categorical.source() != source
+        || categorical.prepared_source_index() != prepared_source_index
+    {
         return Err(invalid_argument(
             "prepared categorical recipe source identity is inconsistent",
         ));
@@ -854,12 +785,7 @@ fn validate_categorical_recipe(
             "prepared categorical recipe level is invalid",
         ));
     }
-    let resolved = categorical
-        .encoded
-        .levels
-        .binary_search_by(|candidate| candidate.total_cmp(&requested))
-        .ok()
-        .and_then(|index| u32::try_from(index).ok());
+    let resolved = categorical.resolve_level(prepared.fe_topology(), requested)?;
     if resolved != level_code {
         return Err(invalid_argument(
             "prepared categorical recipe level code is inconsistent",
@@ -1420,7 +1346,8 @@ mod tests {
             panic!("categorical recipe")
         };
         *level_code = valid_level_code;
-        prepared.categorical_sources[0].encoded.codes[0] = u32::MAX;
+        let source = prepared.categorical_sources()[0].prepared_source_index();
+        prepared.sample.regressors[source][0] += 100.0;
         assert_eq!(
             build_prepared_ols_rhs(&prepared)
                 .expect_err("corrupt categorical source code")
@@ -1815,8 +1742,9 @@ mod tests {
             values: vec![1.0; 4],
         };
         assert_eq!(
-            build_prepared_ols_rhs(&bad_weight)
-                .expect_err("importance weight")
+            bad_weight
+                .validate()
+                .expect_err("importance weight cannot enter the sealed sample owner")
                 .code,
             ErrorCode::InvalidArgument
         );

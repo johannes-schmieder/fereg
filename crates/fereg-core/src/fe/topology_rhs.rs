@@ -121,8 +121,7 @@ fn compact_categorical_rhs_with_reservation<R: TopologyRhsReservation>(
     reservation: &mut R,
 ) -> Result<CompactedCategoricalRhs> {
     topology.validate()?;
-    let retained_rows = topology.retained_rows();
-    if retained_rows.is_empty() {
+    if topology.nobs() == 0 {
         return Err(invalid_data(
             "categorical topology retains no observations for RHS compaction",
         ));
@@ -132,8 +131,36 @@ fn compact_categorical_rhs_with_reservation<R: TopologyRhsReservation>(
             "categorical RHS compaction requires at least one value column",
         ));
     }
-    validate_retained_rows(retained_rows, candidate_values.nrows())?;
+    match topology.retained_rows() {
+        Some(rows) => {
+            validate_retained_rows(rows, candidate_values.nrows())?;
+            compact_selected_rhs(
+                rows.iter().copied(),
+                candidate_values,
+                candidate_weights,
+                reservation,
+            )
+        }
+        None => {
+            if topology.nobs() > candidate_values.nrows() {
+                return Err(invalid("retained categorical row is out of range"));
+            }
+            compact_selected_rhs(
+                0..topology.nobs(),
+                candidate_values,
+                candidate_weights,
+                reservation,
+            )
+        }
+    }
+}
 
+fn compact_selected_rhs<R: TopologyRhsReservation>(
+    retained_rows: impl ExactSizeIterator<Item = usize> + Clone,
+    candidate_values: &DenseMatrix,
+    candidate_weights: CandidateCategoricalWeights<'_>,
+    reservation: &mut R,
+) -> Result<CompactedCategoricalRhs> {
     let compact_elements = retained_rows
         .len()
         .checked_mul(candidate_values.ncols())
@@ -144,7 +171,7 @@ fn compact_categorical_rhs_with_reservation<R: TopologyRhsReservation>(
         compact_elements,
         "unable to reserve compacted categorical RHS",
     )?;
-    for row in retained_rows.iter().copied() {
+    for row in retained_rows.clone() {
         let start = row
             .checked_mul(candidate_values.ncols())
             .ok_or_else(|| allocation("candidate categorical RHS row offset overflows"))?;
@@ -189,7 +216,7 @@ fn compact_categorical_rhs_with_reservation<R: TopologyRhsReservation>(
                 retained_rows.len(),
                 "unable to reserve compacted categorical weights",
             )?;
-            for row in retained_rows.iter().copied() {
+            for row in retained_rows.clone() {
                 push_reserved(
                     &mut compact,
                     candidate[row],
@@ -308,7 +335,7 @@ mod tests {
     #[test]
     fn compacts_values_and_weights_in_authoritative_row_order() {
         let topology = pruned_topology();
-        assert_eq!(topology.retained_rows(), &[0, 2, 3, 5]);
+        assert_eq!(topology.retained_rows().unwrap(), &[0, 2, 3, 5]);
         let weights = [1.0, 9.0, 2.0, 3.0, 9.0, 4.0];
         let compact = compact_categorical_rhs(
             &topology,

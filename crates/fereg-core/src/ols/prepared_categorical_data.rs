@@ -21,15 +21,13 @@ use crate::fe::{
     recover_finalized_categorical_effects_map_certified,
     recover_finalized_categorical_effects_sd_lsmr_certified,
     recover_finalized_two_effects_graph_certified, BorrowedMapWeights,
-    BoundCategoricalAbsorbEffect, CategoricalAbsorbRequestPlan, CategoricalAbsorbedEffectView,
-    CategoricalCodeView, CertifiedBorrowedMap, FeCoefficientBatch, FinalizedCategoricalTopology,
-    LsmrConfig, MapConfig, RecoveredCategoricalEffects, SingletonMultiplicity, SingletonResult,
+    CategoricalAbsorbedEffectView, CategoricalCodeView, CertifiedBorrowedMap, FeCoefficientBatch,
+    FinalizedCategoricalTopology, LsmrConfig, MapConfig, RecoveredCategoricalEffects,
+    SingletonMultiplicity, SingletonResult,
 };
 use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
 use crate::metadata::SourceId;
-use crate::prepared_categorical_rebase::{
-    rebase_categorical_model, PreparedCategoricalOlsReportPlan,
-};
+use crate::prepared_categorical_rebase::{rebase_prepared_model, PreparedCategoricalOlsReportPlan};
 use crate::topology_dof::{
     compute_categorical_topology_absorbed_dof_with_slopes, CategoricalTopologyDofEffectSpec,
     CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
@@ -37,12 +35,13 @@ use crate::topology_dof::{
 use rayon::prelude::*;
 
 use crate::ols::{
-    finish_categorical_availability, prepare_ols_data_with_cluster_sources, CategoricalAvailability,
+    factorize_preparation_sources, prepare_categorical_numeric_sample,
+    prepare_categorical_numeric_sample_owned, prepare_ols_numeric_sample,
 };
 
 use super::{
-    LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCoefficientStatus,
-    PreparedOlsColumnKind, PreparedOlsData, PreparedOlsModel, PreparedOlsSingletons,
+    LoadedOlsInput, OlsRequestV1, PreparedCategoricalSource, PreparedOlsColumnKind,
+    PreparedOlsModel, PreparedOlsSingletons,
 };
 
 const CATEGORICAL_SLOPE_MAP_TOLERANCE_CEILING: f64 = 1e-12;
@@ -51,20 +50,29 @@ const CATEGORICAL_RECOVERY_CG_ITERATION_CAP: usize = 256;
 // Keep the owned sample behind a module-private field: even the surrounding
 // preparation code cannot forge this proof or obtain mutable access. Source
 // values and row/weight metadata therefore retain their constructor checks.
-mod validated_sample {
+pub(crate) mod validated_sample {
     use super::{validate_numeric_sample, PreparedNumericSample, Result};
 
     #[derive(Debug, PartialEq)]
-    pub(super) struct ValidatedSample(PreparedNumericSample);
+    pub(crate) struct ValidatedSample(PreparedNumericSample);
 
     impl ValidatedSample {
-        pub(super) fn new(sample: PreparedNumericSample) -> Result<Self> {
+        pub(crate) fn new(sample: PreparedNumericSample) -> Result<Self> {
             validate_numeric_sample(&sample)?;
             Ok(Self(sample))
         }
 
-        pub(super) const fn get(&self) -> &PreparedNumericSample {
+        pub(crate) const fn get(&self) -> &PreparedNumericSample {
             &self.0
+        }
+    }
+
+    // Unit fixtures may poison a sealed owner to exercise downstream failures.
+    // This implementation is absent from library/plugin builds.
+    #[cfg(test)]
+    impl std::ops::DerefMut for ValidatedSample {
+        fn deref_mut(&mut self) -> &mut Self::Target {
+            &mut self.0
         }
     }
 
@@ -77,23 +85,32 @@ mod validated_sample {
     }
 }
 
-/// Complete native preparation result for numeric categorical absorbed
-/// effects, including interactions and arbitrary ordered absorbed slopes.
+/// One finalized model/sample/source owner. Grammar controls mathematical
+/// operations at cold boundaries; it never owns a parallel preparation bank.
 #[derive(Debug, PartialEq)]
-pub struct PreparedCategoricalOlsData {
-    model: PreparedOlsModel,
-    sample: validated_sample::ValidatedSample,
-    /// Ordinary categorical sources on the final sample. Sources that also
-    /// participate in an absorbed term borrow their N-row codes from
-    /// `fe_topology`; only their small candidate-level table is retained here.
-    categorical_sources: Vec<PreparedCategoricalModelSource>,
-    fe_topology: crate::fe::ValidatedFinalizedTopology,
-    effect_specs: Vec<CategoricalTopologyDofEffectSpec>,
-    structural_intercept: bool,
-    report_intercept: bool,
-    singletons: PreparedOlsSingletons,
-    report_plan: PreparedCategoricalOlsReportPlan,
+pub struct PreparedModel {
+    pub(crate) model: PreparedOlsModel,
+    pub(crate) sample: validated_sample::ValidatedSample,
+    pub(crate) categorical_sources: Vec<PreparedCategoricalModelSource>,
+    pub(crate) fe_topology: crate::fe::ValidatedFinalizedTopology,
+    pub(crate) effect_specs: Vec<CategoricalTopologyDofEffectSpec>,
+    pub(crate) structural_intercept: bool,
+    pub(crate) report_intercept: bool,
+    pub(crate) singletons: PreparedOlsSingletons,
+    pub(crate) report_plan: PreparedCategoricalOlsReportPlan,
+    pub(crate) grammar: PreparationGrammar,
+    pub(crate) singleton_policy: super::PreparedOlsFeSingletonPolicy,
+    pub(crate) clusters: Option<super::PreparedOlsClusterDesign>,
 }
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum PreparationGrammar {
+    Ordinary,
+    Categorical,
+}
+
+/// Compatibility name; all finalized preparations have the same owner.
+pub type PreparedCategoricalOlsData = PreparedModel;
 
 /// Only the allocation-free topology check may overlap fitting. The immutable
 /// owner keeps the validated sample and topology fixed until DoF creation;
@@ -122,40 +139,82 @@ impl ValidatedCategoricalDofInputs<'_> {
     }
 }
 
-impl PreparedCategoricalOlsData {
+impl PreparedModel {
+    #[allow(clippy::too_many_arguments)] // One owner publication boundary; all fields are required.
+    pub(crate) fn finish(
+        model: PreparedOlsModel,
+        sample: PreparedNumericSample,
+        categorical_sources: Vec<PreparedCategoricalModelSource>,
+        fe_topology: crate::fe::ValidatedFinalizedTopology,
+        effect_specs: Vec<CategoricalTopologyDofEffectSpec>,
+        structural_intercept: bool,
+        report_intercept: bool,
+        singletons: PreparedOlsSingletons,
+        grammar: PreparationGrammar,
+    ) -> Result<Self> {
+        let report_plan = PreparedCategoricalOlsReportPlan::new(model.coefficients.len());
+        let prepared = Self {
+            model,
+            sample: validated_sample::ValidatedSample::new(sample)?,
+            categorical_sources,
+            fe_topology,
+            effect_specs,
+            structural_intercept,
+            report_intercept,
+            singletons,
+            report_plan,
+            grammar,
+            singleton_policy: if singletons.kept_by_request {
+                super::PreparedOlsFeSingletonPolicy::KeptByRequest
+            } else {
+                super::PreparedOlsFeSingletonPolicy::VerifiedFixedPoint
+            },
+            clusters: None,
+        };
+        if prepared.uses_categorical_preparation() {
+            prepared.validate_after_topology()?;
+        } else {
+            prepared.validate_fe_bindings()?;
+            prepared.fe_topology.registry().total_levels()?;
+        }
+        Ok(prepared)
+    }
+
+    #[must_use]
+    pub const fn uses_categorical_preparation(&self) -> bool {
+        matches!(self.grammar, PreparationGrammar::Categorical)
+    }
+
     /// Retained heap buffers, with topology-backed codes counted only at their
     /// owner. Construction scratch and numerical/dependency frames are separate.
     #[must_use]
     pub fn owned_buffer_bytes(&self) -> u128 {
         use crate::memory::vec_capacity_bytes as bytes;
         self.sample.owned_buffer_bytes()
-            + bytes(&self.model.columns)
-            + bytes(&self.model.coefficients)
-            + self.nested_metadata_capacity_bytes()
+            + self.model.owned_buffer_bytes()
+            + self.effect_metadata_capacity_bytes()
             + bytes(&self.categorical_sources)
             + self
                 .categorical_sources
                 .iter()
-                .map(|source| match &source.storage {
-                    PreparedCategoricalModelSourceStorage::Topology {
-                        candidate_levels, ..
-                    } => bytes(candidate_levels),
-                    PreparedCategoricalModelSourceStorage::Owned { encoded } => {
-                        bytes(&encoded.codes) + bytes(&encoded.levels)
-                    }
-                })
+                .map(|source| source.owned_buffer_bytes())
                 .sum::<u128>()
             + self.fe_topology.owned_buffer_bytes()
-            + self.report_plan.owned_buffer_bytes()
+            + self
+                .clusters
+                .as_ref()
+                .map_or(0, super::PreparedOlsClusterDesign::owned_buffer_bytes)
     }
 
     /// Executable recipe payloads and FE metadata; excludes numeric topology
     /// and top-level finite descriptors, charged separately by the planner.
     pub(crate) fn nested_metadata_capacity_bytes(&self) -> u128 {
+        self.model.nested_recipe_capacity_bytes() + self.effect_metadata_capacity_bytes()
+    }
+
+    fn effect_metadata_capacity_bytes(&self) -> u128 {
         use std::mem::size_of;
-        self.model.nested_recipe_capacity_bytes()
-            + self.effect_specs.capacity() as u128
-                * size_of::<CategoricalTopologyDofEffectSpec>() as u128
+        self.effect_specs.capacity() as u128 * size_of::<CategoricalTopologyDofEffectSpec>() as u128
             + self
                 .effect_specs
                 .iter()
@@ -955,8 +1014,8 @@ impl PreparedCategoricalOlsData {
         Ok(validated_single)
     }
 
-    fn validate_after_topology(&self) -> Result<()> {
-        if self.fe_topology.retained_rows().len() != self.sample.n_active() {
+    pub(crate) fn validate_after_topology(&self) -> Result<()> {
+        if self.fe_topology.nobs() != self.sample.n_active() {
             return Err(invalid(
                 "prepared categorical topology is not aligned with the final sample",
             ));
@@ -972,12 +1031,7 @@ impl PreparedCategoricalOlsData {
                 "reported categorical OLS intercept lacks a structural intercept",
             ));
         }
-        validate_categorical_model_sources(
-            &self.sample,
-            &self.fe_topology,
-            &self.categorical_sources,
-        )?;
-        validate_model_recipes(&self.model, &self.categorical_sources, &self.fe_topology)?;
+        crate::ols::validate_prepared_model_metadata(self)?;
         validate_report_plan(&self.model, &self.report_plan)?;
         Ok(())
     }
@@ -1070,6 +1124,29 @@ pub struct PreparedCategoricalModelSource {
 }
 
 impl PreparedCategoricalModelSource {
+    pub(crate) fn references_topology_candidate(&self, candidate: usize) -> bool {
+        matches!(self.storage, PreparedCategoricalModelSourceStorage::Topology {candidate_source_index,..} if candidate_source_index==candidate)
+    }
+
+    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        match &self.storage {
+            PreparedCategoricalModelSourceStorage::Topology { levels, .. } => bytes(levels),
+            PreparedCategoricalModelSourceStorage::Owned { encoded } => {
+                bytes(&encoded.codes) + bytes(&encoded.levels)
+            }
+        }
+    }
+
+    /// Sorted level values on the final sample's code axis.
+    #[must_use]
+    pub fn level_values(&self) -> &[f64] {
+        match &self.storage {
+            PreparedCategoricalModelSourceStorage::Topology { levels, .. } => levels,
+            PreparedCategoricalModelSourceStorage::Owned { encoded } => &encoded.levels,
+        }
+    }
+
     #[must_use]
     pub const fn source(&self) -> SourceId {
         self.source
@@ -1114,83 +1191,38 @@ impl PreparedCategoricalModelSource {
 
     pub(crate) fn resolve_level(
         &self,
-        topology: &FinalizedCategoricalTopology,
+        _topology: &FinalizedCategoricalTopology,
         requested_level: f64,
     ) -> Result<Option<u32>> {
         let requested_level = canonical_factor_value(requested_level);
-        match &self.storage {
-            PreparedCategoricalModelSourceStorage::Topology {
-                candidate_source_index,
-                candidate_levels,
-            } => {
-                let Some(candidate_level) = candidate_levels
-                    .binary_search_by(|value| value.total_cmp(&requested_level))
-                    .ok()
-                else {
-                    return Ok(None);
-                };
-                let candidate_level = u32::try_from(candidate_level)
-                    .map_err(|_| invalid("candidate categorical level exceeds u32"))?;
-                let final_source = topology.source_for_candidate(*candidate_source_index)?;
-                final_source
-                    .original_levels()
-                    .binary_search(&candidate_level)
-                    .ok()
-                    .map(|index| {
-                        u32::try_from(index)
-                            .map_err(|_| invalid("final categorical level exceeds u32"))
-                    })
-                    .transpose()
-            }
-            PreparedCategoricalModelSourceStorage::Owned { encoded } => encoded
-                .levels
-                .binary_search_by(|value| value.total_cmp(&requested_level))
-                .ok()
-                .map(|index| {
-                    u32::try_from(index)
-                        .map_err(|_| invalid("ordinary categorical level exceeds u32"))
-                })
-                .transpose(),
-        }
+        self.level_values()
+            .binary_search_by(|value| value.total_cmp(&requested_level))
+            .ok()
+            .map(|index| {
+                u32::try_from(index).map_err(|_| invalid("ordinary categorical level exceeds u32"))
+            })
+            .transpose()
     }
 
-    fn level_value(
+    pub(crate) fn level_value(
         &self,
-        topology: &FinalizedCategoricalTopology,
+        _topology: &FinalizedCategoricalTopology,
         final_level: u32,
     ) -> Result<f64> {
-        match &self.storage {
-            PreparedCategoricalModelSourceStorage::Topology {
-                candidate_source_index,
-                candidate_levels,
-            } => {
-                let final_source = topology.source_for_candidate(*candidate_source_index)?;
-                let candidate_level = final_source
-                    .original_levels()
-                    .get(final_level as usize)
-                    .copied()
-                    .ok_or_else(|| invalid("final categorical level is out of range"))?;
-                candidate_levels
-                    .get(candidate_level as usize)
-                    .copied()
-                    .ok_or_else(|| invalid("candidate categorical level is out of range"))
-            }
-            PreparedCategoricalModelSourceStorage::Owned { encoded } => encoded
-                .levels
-                .get(final_level as usize)
-                .copied()
-                .ok_or_else(|| invalid("ordinary categorical level is out of range")),
-        }
+        self.level_values()
+            .get(final_level as usize)
+            .copied()
+            .ok_or_else(|| invalid("ordinary categorical level is out of range"))
     }
 }
 
 #[derive(Debug, PartialEq)]
 enum PreparedCategoricalModelSourceStorage {
     /// Codes and final compact level identities are owned once by the FE
-    /// topology. Candidate levels are O(number of levels), not O(N).
+    /// topology. Values use its final sorted code axis.
     Topology {
         candidate_source_index: usize,
-        candidate_levels: Vec<f64>,
+        levels: Vec<f64>,
     },
     /// An ordinary categorical source not used by any absorbed effect.
     Owned { encoded: EncodedFactor<f64> },
@@ -1240,25 +1272,19 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedCategoricalOlsData> {
-    let mut plan = plan_categorical_absorbed_request(request)?;
-    let (model, sample, early_factor) = crate::ols::prepare_ols_numeric_sample_owned(
-        plan.availability_request(),
-        loaded,
-        cluster_sources,
-    )?;
-    plan.discard_classified_slope_categories()?;
-    let availability = finish_categorical_availability(
-        plan.availability_request(),
+    let _plan = plan_categorical_absorbed_request(request)?;
+    let (model, sample, early_factor) =
+        prepare_categorical_numeric_sample_owned(request, loaded, cluster_sources)?;
+    finish_prepared_model(
+        request,
         cluster_sources,
         model,
         sample,
-        request
-            .absorbed_terms
-            .iter()
-            .all(|term| term.categorical_sources.len() == 1),
         early_factor,
-    )?;
-    finish_prepare_categorical_ols_data(request, cluster_sources, false, plan, availability)
+        true,
+        false,
+        true,
+    )
 }
 
 /// PPML preparation boundary that also admits an empty absorbed topology.
@@ -1282,50 +1308,17 @@ pub(crate) fn prepare_ppml_categorical_ols_data(
         );
     }
 
-    let availability = prepare_ols_data_with_cluster_sources(request, loaded, cluster_sources)?;
-    if availability.singletons.num_singletons != 0 || availability.singletons.cascade_events != 0 {
-        return Err(invalid(
-            "empty categorical PPML topology unexpectedly applied singleton deletion",
-        ));
-    }
-    let candidate_views = categorical_views(&availability.categorical_sources)?;
-    let active = fallible_filled_bool(availability.sample.n_active(), true)?;
-    let fe_topology = finalize_categorical_topology(&candidate_views, &[], &active)?;
-
-    let PreparedOlsData {
-        model: availability_model,
+    let (model, sample) = prepare_ols_numeric_sample(request, loaded, cluster_sources)?;
+    finish_prepared_model(
+        request,
+        cluster_sources,
+        model,
         sample,
-        categorical_sources: candidate_sources,
-        singletons,
-        ..
-    } = availability;
-    let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
-    let model_source_plans =
-        plan_model_sources(candidate_sources, &final_sources, &fe_topology, true)?;
-    let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
-    let report_intercept = request.include_intercept;
-    let rebased = rebase_categorical_model(
-        &request.model,
-        &availability_model,
-        &categorical_sources,
-        &fe_topology,
-        report_intercept,
-    )?;
-    let sample = validated_sample::ValidatedSample::new(sample)?;
-    let fe_topology = crate::fe::ValidatedFinalizedTopology::new(fe_topology)?;
-    let prepared = PreparedCategoricalOlsData {
-        model: rebased.model,
-        sample,
-        categorical_sources,
-        fe_topology,
-        effect_specs: Vec::new(),
-        structural_intercept: report_intercept,
-        report_intercept,
-        singletons,
-        report_plan: rebased.report_plan,
-    };
-    prepared.validate_with_reusable_topology(false)?;
-    Ok(prepared)
+        None,
+        true,
+        true,
+        true,
+    )
 }
 
 pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
@@ -1347,257 +1340,332 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
     cluster_sources: &[SourceId],
     ppml_structural_constant: bool,
 ) -> Result<PreparedCategoricalOlsData> {
-    let mut plan = plan_categorical_absorbed_request(request)?;
-    let (model, sample) = crate::ols::prepare_ols_numeric_sample(
-        plan.availability_request(),
-        loaded,
-        cluster_sources,
-    )?;
-    plan.discard_classified_slope_categories()?;
-    let availability = finish_categorical_availability(
-        plan.availability_request(),
+    let _plan = plan_categorical_absorbed_request(request)?;
+    let (model, sample) = prepare_categorical_numeric_sample(request, loaded, cluster_sources)?;
+    finish_prepared_model(
+        request,
         cluster_sources,
         model,
         sample,
-        request
-            .absorbed_terms
-            .iter()
-            .all(|term| term.categorical_sources.len() == 1),
         None,
-    )?;
-    finish_prepare_categorical_ols_data(
-        request,
-        cluster_sources,
+        true,
         ppml_structural_constant,
-        plan,
-        availability,
+        true,
     )
 }
 
-fn finish_prepare_categorical_ols_data(
+#[allow(clippy::too_many_arguments)] // The one shared preparation boundary carries cold grammar policies.
+pub(crate) fn finish_prepared_model(
     request: &OlsRequestV1,
     cluster_sources: &[SourceId],
-    ppml_structural_constant: bool,
-    plan: CategoricalAbsorbRequestPlan,
-    availability: CategoricalAvailability,
-) -> Result<PreparedCategoricalOlsData> {
-    let bound_effects = plan.bind_effects(&availability.categorical_sources)?;
-    let candidate_views = categorical_views(&availability.categorical_sources)?;
-    let recipe_views = effect_recipe_views(&bound_effects)?;
-    let initially_active = fallible_filled_bool(availability.sample.n_active(), true)?;
-    let multiplicity = match &availability.sample.weights {
-        PreparedWeights::Provided {
-            kind: WeightKind::Frequency,
-            values,
-        } => SingletonMultiplicity::Frequency(values.as_slice()),
-        PreparedWeights::None | PreparedWeights::Provided { .. } => SingletonMultiplicity::Unit,
-    };
-    // No initial singleton in any partition implies the pruning fixed point.
-    // Unchanged single-source partitions can then move their validated owners;
-    // interactions and weighted samples keep the generic pruning/finalization.
-    let fixed_point = if availability.sample.n_active() >= 16_384
-        && matches!(availability.sample.weights, PreparedWeights::None)
-        && !recipe_views.is_empty()
-        && recipe_views.iter().all(|recipe| recipe.len() == 1)
-    {
-        recipe_views
-            .iter()
-            .try_fold(true, |clear, recipe| -> Result<bool> {
-                let Some(source) = availability
-                    .membership
-                    .iter()
-                    .find(|source| source.categorical_source_index() == recipe[0])
-                else {
-                    return Ok(false);
-                };
-                Ok(clear
-                    && (plan.requested_keep_singletons()
-                        || (0..source.n_levels()).try_fold(
-                            true,
-                            |clear, level| -> Result<bool> {
-                                Ok(clear && source.members(level)?.len() > 1)
-                            },
-                        )?))
-            })?
-    } else {
-        false
-    };
+    model: PreparedOlsModel,
+    sample: PreparedNumericSample,
+    early_factor: Option<Result<PreparedCategoricalSource>>,
+    categorical: bool,
+    ppml_constant: bool,
+    reuse_membership: bool,
+) -> Result<PreparedModel> {
+    let candidate_sources = factorize_preparation_sources(request, &sample, early_factor)?;
+    let recipes = crate::fe::bind_categorical_effect_recipes(request, &candidate_sources)?;
+    let recipe_views: Vec<_> = recipes.iter().map(Vec::as_slice).collect();
+    let mut membership =
+        preparation_memberships(&candidate_sources, &recipe_views, &sample, reuse_membership)?;
+    let fixed_point = recipe_views.is_empty()
+        || (!membership.is_empty()
+            && (request.keep_singletons
+                || membership.iter().all(|(_, index)| {
+                    (0..index.n_levels()).all(|level| {
+                        index
+                            .checked_members(level)
+                            .is_ok_and(|rows| rows.len() > 1)
+                    })
+                })));
     let singleton = if fixed_point {
         SingletonResult {
-            active: initially_active,
+            active: Vec::new(),
             dropped_observations: Vec::new(),
             cascade_events: 0,
         }
     } else {
-        let singleton = prune_categorical_partition_singletons(
-            &candidate_views,
+        let views = categorical_views(&candidate_sources)?;
+        let active = fallible_filled_bool(sample.n_active(), true)?;
+        let multiplicity = match &sample.weights {
+            PreparedWeights::Provided {
+                kind: WeightKind::Frequency,
+                values,
+            } => SingletonMultiplicity::Frequency(values),
+            _ => SingletonMultiplicity::Unit,
+        };
+        prune_categorical_partition_singletons(
+            &views,
             &recipe_views,
-            &initially_active,
+            &active,
             multiplicity,
-            plan.requested_keep_singletons(),
+            request.keep_singletons,
         )?
         .into_parts()
-        .0;
-        drop(initially_active);
-        singleton
+        .0
     };
+    let unchanged = fixed_point || singleton.active.iter().all(|&active| active);
     let num_singletons = singleton.dropped_observations.len();
     let cascade_events = singleton.cascade_events;
     drop(singleton.dropped_observations);
-    let rebuilt_topology = if fixed_point {
-        None
-    } else {
-        Some(finalize_categorical_topology(
-            &candidate_views,
-            &recipe_views,
-            &singleton.active,
-        )?)
-    };
-    drop(candidate_views);
-
-    let CategoricalAvailability {
-        model: availability_model,
-        sample,
-        categorical_sources: mut candidate_sources,
-        membership: mut membership_sources,
-    } = availability;
-    // A fixed point preserves the availability row and level axes. Transfer
-    // their existing owners; rebuilding would copy codes and membership only
-    // to discard the originals. The new owner revalidates exact membership.
-    let fe_topology = if let Some(topology) = rebuilt_topology {
-        drop(membership_sources);
-        topology
-    } else {
-        FinalizedCategoricalTopology::from_single_source_indexes(
-            candidate_sources.len(),
-            sample.n_active(),
-            &recipe_views,
-            |source_index| {
-                let position = membership_sources
-                    .iter()
-                    .position(|source| source.categorical_source_index() == source_index)
-                    .ok_or_else(|| invalid("transferred topology source is missing"))?;
-                let index = membership_sources.swap_remove(position).into_level_index();
-                let source = candidate_sources
-                    .get_mut(source_index)
-                    .ok_or_else(|| invalid("transferred categorical source is out of range"))?;
-                Ok((
-                    std::mem::take(&mut source.encoded.codes),
-                    source.encoded.n_levels(),
-                    index,
-                ))
-            },
-        )?
-    };
-    drop(recipe_views);
-    let final_sources = final_categorical_sources(&availability_model, cluster_sources)?;
-    // Only this complete mask proves that candidate codes still use the final row axis.
-    let unchanged_axis = singleton.active.iter().all(|&active| active);
-    let model_source_plans = plan_model_sources(
+    let (topology, candidate_sources) = finalize_preparation_sources(
         candidate_sources,
-        &final_sources,
-        &fe_topology,
-        unchanged_axis,
+        &recipe_views,
+        &sample,
+        &singleton.active,
+        fixed_point,
+        &mut membership,
     )?;
-    let sample = sample.compact_active_rows(&singleton.active, DropReason::Singleton)?;
-    drop(singleton.active);
-    if fe_topology.retained_rows().len() != sample.n_active() {
-        return Err(invalid(
-            "final categorical topology retained-row count differs from compact sample",
-        ));
+    drop(membership);
+    let mut required = ordinary_categorical_sources(&model)?;
+    if !categorical {
+        required
+            .try_reserve_exact(candidate_sources.len())
+            .map_err(|_| allocation("unable to reserve final FE source identities"))?;
+        for source in &candidate_sources {
+            push_unique_source(&mut required, source.source)?;
+        }
     }
-    let categorical_sources = build_final_model_sources(model_source_plans, &sample, &fe_topology)?;
-    let structural_intercept = ppml_structural_constant
-        || request.absorbed_terms.is_empty()
-        || request.absorbed_terms.iter().any(|term| term.intercept);
+    let mut categorical_sources =
+        retain_model_sources(candidate_sources, &required, &topology, unchanged)?;
+    let sample = if unchanged {
+        sample
+    } else {
+        sample.compact_active_rows(&singleton.active, DropReason::Singleton)?
+    };
+    if !unchanged {
+        reencode_model_sources(&mut categorical_sources, &sample)?;
+    }
+    append_cluster_sources(&mut categorical_sources, cluster_sources, &sample)?;
+    let structural_intercept = if categorical && request.absorbed_terms.is_empty() {
+        request.include_intercept
+    } else {
+        ppml_constant
+            || request.absorbed_terms.is_empty()
+            || request.absorbed_terms.iter().any(|term| term.intercept)
+    };
     let report_intercept = request.include_intercept && structural_intercept;
-    let rebased = rebase_categorical_model(
+    let rebased = rebase_prepared_model(
         &request.model,
-        &availability_model,
+        model,
         &categorical_sources,
-        &fe_topology,
+        &topology,
         report_intercept,
+        categorical,
     )?;
-    let effect_specs = effect_specs(&bound_effects, &request.model)?;
-    let sample = validated_sample::ValidatedSample::new(sample)?;
-    let fe_topology = crate::fe::ValidatedFinalizedTopology::new(fe_topology)?;
-    let prepared = PreparedCategoricalOlsData {
-        model: rebased.model,
+    PreparedModel::finish(
+        rebased,
         sample,
         categorical_sources,
-        fe_topology,
-        effect_specs,
+        crate::fe::ValidatedFinalizedTopology::new(topology)?,
+        effect_specs(&request.absorbed_terms, &request.model, categorical)?,
         structural_intercept,
         report_intercept,
-        singletons: PreparedOlsSingletons {
-            kept_by_request: plan.requested_keep_singletons(),
+        PreparedOlsSingletons {
+            kept_by_request: request.keep_singletons,
             num_singletons,
             cascade_events,
         },
-        report_plan: rebased.report_plan,
+        if categorical {
+            PreparationGrammar::Categorical
+        } else {
+            PreparationGrammar::Ordinary
+        },
+    )
+}
+
+fn preparation_memberships(
+    sources: &[PreparedCategoricalSource],
+    recipes: &[&[usize]],
+    sample: &PreparedNumericSample,
+    reuse: bool,
+) -> Result<Vec<(usize, crate::fe::LevelIndex)>> {
+    let mut output = Vec::new();
+    if !reuse
+        || sample.n_active() < 16_384
+        || !matches!(sample.weights, PreparedWeights::None)
+        || !recipes.iter().all(|recipe| recipe.len() == 1)
+    {
+        return Ok(output);
+    }
+    output
+        .try_reserve_exact(recipes.len())
+        .map_err(|_| allocation("unable to reserve prepared FE membership sources"))?;
+    for recipe in recipes {
+        let index = recipe[0];
+        if output.iter().any(|(prior, _)| *prior == index) {
+            continue;
+        }
+        let source = &sources[index];
+        let membership = match crate::fe::LevelIndex::try_from_ordered_codes(
+            &source.encoded.codes,
+            source.encoded.n_levels(),
+        )? {
+            Some(index) => index,
+            None => {
+                crate::fe::LevelIndex::from_codes(&source.encoded.codes, source.encoded.n_levels())?
+            }
+        };
+        output.push((index, membership));
+    }
+    Ok(output)
+}
+
+fn finalize_preparation_sources(
+    mut sources: Vec<PreparedCategoricalSource>,
+    recipes: &[&[usize]],
+    sample: &PreparedNumericSample,
+    active: &[bool],
+    transfer: bool,
+    membership: &mut Vec<(usize, crate::fe::LevelIndex)>,
+) -> Result<(FinalizedCategoricalTopology, Vec<PreparedCategoricalSource>)> {
+    let topology = if transfer {
+        FinalizedCategoricalTopology::from_single_source_indexes(
+            sources.len(),
+            sample.n_active(),
+            recipes,
+            |index| {
+                let position = membership
+                    .iter()
+                    .position(|(i, _)| *i == index)
+                    .ok_or_else(|| invalid("transferred topology source is missing"))?;
+                let membership = membership.swap_remove(position).1;
+                let source = &mut sources[index];
+                Ok((
+                    std::mem::take(&mut source.encoded.codes),
+                    source.encoded.n_levels(),
+                    membership,
+                ))
+            },
+        )?
+    } else {
+        finalize_categorical_topology(&categorical_views(&sources)?, recipes, active)?
     };
-    prepared.validate_with_reusable_topology(false)?;
-    Ok(prepared)
+    Ok((topology, sources))
 }
 
-#[derive(Debug)]
-struct CategoricalModelSourcePlan {
-    source: SourceId,
-    prepared_source_index: usize,
-    storage: CategoricalModelSourcePlanStorage,
+fn append_cluster_sources(
+    sources: &mut Vec<PreparedCategoricalModelSource>,
+    cluster_sources: &[SourceId],
+    sample: &PreparedNumericSample,
+) -> Result<()> {
+    let additional = cluster_sources
+        .iter()
+        .filter(|id| !sources.iter().any(|source| source.source == **id))
+        .count();
+    sources
+        .try_reserve_exact(additional)
+        .map_err(|_| allocation("unable to reserve final categorical cluster sources"))?;
+    for id in cluster_sources {
+        if sources.iter().any(|source| source.source == *id) {
+            continue;
+        }
+        let prepared_source_index = usize::try_from(id.get() - 1)
+            .map_err(|_| invalid("cluster source id does not fit usize"))?;
+        let values = sample
+            .regressors
+            .get(prepared_source_index)
+            .ok_or_else(|| invalid("ordinary categorical raw source is out of range"))?;
+        sources.push(PreparedCategoricalModelSource {
+            source: *id,
+            prepared_source_index,
+            storage: PreparedCategoricalModelSourceStorage::Owned {
+                encoded: factorize_f64(values)?,
+            },
+        });
+    }
+    sources.sort_unstable_by_key(|source| source.source);
+    Ok(())
 }
 
-#[derive(Debug)]
-enum CategoricalModelSourcePlanStorage {
-    Topology {
-        candidate_source_index: usize,
-        candidate_levels: Vec<f64>,
-    },
-    Owned(Option<EncodedFactor<f64>>),
-}
-
-fn plan_model_sources(
+/// Construct the final source bank directly. A changed row axis releases old
+/// owned encodings before sample compaction; topology-backed levels survive to
+/// resolve original factor recipes against the final topology.
+pub(super) fn retain_model_sources(
     candidate_sources: Vec<PreparedCategoricalSource>,
-    ordinary_sources: &[SourceId],
+    required: &[SourceId],
     topology: &FinalizedCategoricalTopology,
     unchanged_axis: bool,
-) -> Result<Vec<CategoricalModelSourcePlan>> {
+) -> Result<Vec<PreparedCategoricalModelSource>> {
+    retain_model_sources_with_reservation(
+        candidate_sources,
+        required,
+        topology,
+        unchanged_axis,
+        &mut crate::ols::SystemFeTopologyReservation,
+    )
+}
+
+pub(crate) fn retain_model_sources_with_reservation<R: crate::ols::FeTopologyReservation>(
+    candidate_sources: Vec<PreparedCategoricalSource>,
+    required: &[SourceId],
+    topology: &FinalizedCategoricalTopology,
+    unchanged_axis: bool,
+    reservation: &mut R,
+) -> Result<Vec<PreparedCategoricalModelSource>> {
     if topology.candidate_to_compacted_source().len() != candidate_sources.len() {
         return Err(invalid(
             "categorical topology source map and candidate source table differ in length",
         ));
     }
     let mut output = Vec::new();
-    output
-        .try_reserve_exact(ordinary_sources.len())
-        .map_err(|_| allocation("unable to reserve categorical model-source plan"))?;
+    reservation.reserve_vec(
+        &mut output,
+        required.len(),
+        "unable to reserve final categorical model sources",
+    )?;
     for (candidate_source_index, candidate) in candidate_sources.into_iter().enumerate() {
-        if !ordinary_sources.contains(&candidate.source) {
+        if !required.contains(&candidate.source) {
             continue;
         }
         let storage = if topology.candidate_to_compacted_source()[candidate_source_index].is_some()
         {
-            CategoricalModelSourcePlanStorage::Topology {
+            let finalized = topology.source_for_candidate(candidate_source_index)?;
+            let mut levels = candidate.encoded.levels;
+            // Original indices are monotone and never smaller than their final
+            // positions, so this compaction cannot overwrite a later source.
+            for level in 0..finalized.n_levels() {
+                let original = finalized
+                    .original_level(level as u32)
+                    .ok_or_else(|| invalid("final categorical level is out of range"))?
+                    as usize;
+                levels[level] = *levels
+                    .get(original)
+                    .ok_or_else(|| invalid("candidate categorical level is out of range"))?;
+            }
+            levels.truncate(finalized.n_levels());
+            PreparedCategoricalModelSourceStorage::Topology {
                 candidate_source_index,
-                candidate_levels: candidate.encoded.levels,
+                levels,
             }
         } else {
-            CategoricalModelSourcePlanStorage::Owned(unchanged_axis.then_some(candidate.encoded))
+            PreparedCategoricalModelSourceStorage::Owned {
+                encoded: if unchanged_axis {
+                    candidate.encoded
+                } else {
+                    EncodedFactor {
+                        codes: Vec::new(),
+                        levels: Vec::new(),
+                    }
+                },
+            }
         };
         push_reserved(
             &mut output,
-            CategoricalModelSourcePlan {
+            PreparedCategoricalModelSource {
                 source: candidate.source,
                 prepared_source_index: candidate.prepared_source_index,
                 storage,
             },
-            "categorical model-source plan capacity exhausted",
+            "final categorical model-source capacity exhausted",
         )?;
     }
-    if output.len() != ordinary_sources.len()
-        || ordinary_sources
+    if output.len() != required.len()
+        || required
             .iter()
-            .any(|source| !output.iter().any(|plan| plan.source == *source))
+            .any(|source| !output.iter().any(|entry| entry.source == *source))
     {
         return Err(invalid(
             "candidate categorical source table is missing an ordinary model source",
@@ -1606,51 +1674,20 @@ fn plan_model_sources(
     Ok(output)
 }
 
-fn build_final_model_sources(
-    plans: Vec<CategoricalModelSourcePlan>,
+fn reencode_model_sources(
+    sources: &mut [PreparedCategoricalModelSource],
     sample: &PreparedNumericSample,
-    topology: &FinalizedCategoricalTopology,
-) -> Result<Vec<PreparedCategoricalModelSource>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(plans.len())
-        .map_err(|_| allocation("unable to reserve final categorical model sources"))?;
-    for plan in plans {
-        let storage = match plan.storage {
-            CategoricalModelSourcePlanStorage::Topology {
-                candidate_source_index,
-                candidate_levels,
-            } => {
-                topology.source_for_candidate(candidate_source_index)?;
-                PreparedCategoricalModelSourceStorage::Topology {
-                    candidate_source_index,
-                    candidate_levels,
-                }
-            }
-            CategoricalModelSourcePlanStorage::Owned(encoded) => {
-                let values = sample
-                    .regressors
-                    .get(plan.prepared_source_index)
-                    .ok_or_else(|| invalid("ordinary categorical raw source is out of range"))?;
-                PreparedCategoricalModelSourceStorage::Owned {
-                    encoded: match encoded {
-                        Some(encoded) => encoded,
-                        None => factorize_f64(values)?,
-                    },
-                }
-            }
-        };
-        push_reserved(
-            &mut output,
-            PreparedCategoricalModelSource {
-                source: plan.source,
-                prepared_source_index: plan.prepared_source_index,
-                storage,
-            },
-            "final categorical model-source capacity exhausted",
-        )?;
+) -> Result<()> {
+    for source in sources {
+        if let PreparedCategoricalModelSourceStorage::Owned { encoded } = &mut source.storage {
+            let values = sample
+                .regressors
+                .get(source.prepared_source_index)
+                .ok_or_else(|| invalid("ordinary categorical raw source is out of range"))?;
+            *encoded = factorize_f64(values)?;
+        }
     }
-    Ok(output)
+    Ok(())
 }
 
 fn ordinary_categorical_sources(model: &PreparedOlsModel) -> Result<Vec<SourceId>> {
@@ -1684,24 +1721,6 @@ fn ordinary_categorical_sources(model: &PreparedOlsModel) -> Result<Vec<SourceId
     Ok(sources)
 }
 
-fn final_categorical_sources(
-    model: &PreparedOlsModel,
-    cluster_sources: &[SourceId],
-) -> Result<Vec<SourceId>> {
-    let mut sources = ordinary_categorical_sources(model)?;
-    let additional = cluster_sources
-        .iter()
-        .filter(|source| !sources.contains(source))
-        .count();
-    sources
-        .try_reserve_exact(additional)
-        .map_err(|_| allocation("unable to reserve final categorical cluster sources"))?;
-    for source in cluster_sources {
-        push_unique_source(&mut sources, *source)?;
-    }
-    Ok(sources)
-}
-
 fn push_unique_source(sources: &mut Vec<SourceId>, source: SourceId) -> Result<()> {
     if sources.contains(&source) {
         return Ok(());
@@ -1716,19 +1735,55 @@ fn push_unique_source(sources: &mut Vec<SourceId>, source: SourceId) -> Result<(
 }
 
 fn effect_specs(
-    effects: &[BoundCategoricalAbsorbEffect],
+    effects: &[crate::metadata::AbsorbedTerm],
     model: &crate::metadata::CompiledTermGraph,
+    categorical: bool,
+) -> Result<Vec<CategoricalTopologyDofEffectSpec>> {
+    effect_specs_with_reservation(
+        effects,
+        model,
+        categorical,
+        &mut crate::ols::SystemFeTopologyReservation,
+    )
+}
+
+pub(crate) fn effect_specs_with_reservation<R: crate::ols::FeTopologyReservation>(
+    effects: &[crate::metadata::AbsorbedTerm],
+    model: &crate::metadata::CompiledTermGraph,
+    categorical: bool,
+    reservation: &mut R,
 ) -> Result<Vec<CategoricalTopologyDofEffectSpec>> {
     let mut output = Vec::new();
-    output
-        .try_reserve_exact(effects.len())
-        .map_err(|_| allocation("unable to reserve categorical absorbed DoF metadata"))?;
+    reservation.reserve_vec(
+        &mut output,
+        effects.len(),
+        "unable to reserve categorical absorbed DoF metadata",
+    )?;
     for effect in effects {
-        let categorical_label = absorbed_categorical_label(&effect.sources, model)?;
+        let categorical_label = if categorical {
+            absorbed_categorical_label(&effect.categorical_sources, model)?
+        } else {
+            fallible_string_copy(&effect.label, "unable to reserve fixed-effect label")?
+        };
         let mut slopes = Vec::new();
-        slopes
-            .try_reserve_exact(effect.slope_sources.len())
-            .map_err(|_| allocation("unable to reserve categorical absorbed-slope metadata"))?;
+        reservation.reserve_vec(
+            &mut slopes,
+            effect.slope_sources.len(),
+            "unable to reserve categorical absorbed-slope metadata",
+        )?;
+        let mut sources = Vec::new();
+        reservation.reserve_vec(
+            &mut sources,
+            effect.categorical_sources.len(),
+            "unable to reserve categorical absorbed DoF source identities",
+        )?;
+        for source in &effect.categorical_sources {
+            push_reserved(
+                &mut sources,
+                *source,
+                "categorical absorbed-source identity capacity exhausted",
+            )?;
+        }
         for source in &effect.slope_sources {
             let source_name = model
                 .sources
@@ -1748,11 +1803,8 @@ fn effect_specs(
         push_reserved(
             &mut output,
             CategoricalTopologyDofEffectSpec {
-                term_id: effect.term_id,
-                sources: fallible_copy_slice(
-                    &effect.sources,
-                    "unable to reserve categorical absorbed DoF source identities",
-                )?,
+                term_id: effect.id,
+                sources,
                 intercept: effect.intercept,
                 label: categorical_label,
                 slopes,
@@ -1834,191 +1886,12 @@ fn categorical_views(
     Ok(output)
 }
 
-fn effect_recipe_views(effects: &[BoundCategoricalAbsorbEffect]) -> Result<Vec<&[usize]>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(effects.len())
-        .map_err(|_| allocation("unable to reserve categorical effect recipe views"))?;
-    for effect in effects {
-        if effect.categorical_source_indices.is_empty() {
-            return Err(invalid(
-                "bound categorical absorbed effect has an empty source recipe",
-            ));
-        }
-        push_reserved(
-            &mut output,
-            effect.categorical_source_indices.as_slice(),
-            "categorical effect recipe-view capacity exhausted",
-        )?;
-    }
-    Ok(output)
-}
-
-fn validate_categorical_model_sources(
-    sample: &PreparedNumericSample,
-    topology: &FinalizedCategoricalTopology,
-    sources: &[PreparedCategoricalModelSource],
-) -> Result<()> {
-    let mut seen = Vec::new();
-    seen.try_reserve_exact(sources.len())
-        .map_err(|_| allocation("unable to reserve categorical source validation identities"))?;
-    for source in sources {
-        if seen.contains(&source.source) {
-            return Err(invalid(
-                "ordinary categorical source table contains duplicate source identities",
-            ));
-        }
-        push_reserved(
-            &mut seen,
-            source.source,
-            "categorical source validation identity capacity exhausted",
-        )?;
-        let expected_prepared_index = usize::try_from(source.source.get() - 1)
-            .map_err(|_| invalid("ordinary categorical source id does not fit usize"))?;
-        if source.prepared_source_index != expected_prepared_index {
-            return Err(invalid(
-                "ordinary categorical source index does not match its source id",
-            ));
-        }
-        let raw = sample
-            .regressors
-            .get(source.prepared_source_index)
-            .ok_or_else(|| invalid("ordinary categorical raw source is out of range"))?;
-        let codes = source.codes(topology)?;
-        let n_levels = source.n_levels(topology)?;
-        if codes.len() != sample.n_active() || raw.len() != sample.n_active() {
-            return Err(invalid(
-                "ordinary categorical source is not aligned with the final sample",
-            ));
-        }
-        if !codes.is_empty() && n_levels == 0 {
-            return Err(invalid(
-                "nonempty ordinary categorical source declares zero levels",
-            ));
-        }
-        for (row, code) in codes.iter().copied().enumerate() {
-            if code as usize >= n_levels {
-                return Err(invalid_data(
-                    "ordinary categorical source contains an out-of-range code",
-                ));
-            }
-            let level = source.level_value(topology, code)?;
-            if level.to_bits() != canonical_factor_value(raw[row]).to_bits() {
-                return Err(invalid(
-                    "ordinary categorical source codes do not represent their raw values",
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn validate_model_recipes(
-    model: &PreparedOlsModel,
-    sources: &[PreparedCategoricalModelSource],
-    topology: &FinalizedCategoricalTopology,
-) -> Result<()> {
-    let mut generated = 0_usize;
-    for coefficient in &model.coefficients {
-        match coefficient.status {
-            PreparedOlsCoefficientStatus::Active => {
-                if coefficient.generated_column_index != Some(generated)
-                    || model.columns.get(generated).is_none_or(|column| {
-                        column.coefficient_slot != coefficient.coefficient_slot
-                    })
-                {
-                    return Err(invalid(
-                        "categorical OLS coefficient-to-column map is inconsistent",
-                    ));
-                }
-                generated = generated.checked_add(1).ok_or_else(|| {
-                    allocation("categorical OLS generated-column count overflows")
-                })?;
-            }
-            PreparedOlsCoefficientStatus::SyntaxOmitted => {
-                if coefficient.generated_column_index.is_some() {
-                    return Err(invalid(
-                        "syntax-omitted categorical OLS coefficient has a generated column",
-                    ));
-                }
-            }
-        }
-    }
-    if generated != model.columns.len() {
-        return Err(invalid(
-            "categorical OLS generated columns are not covered exactly once",
-        ));
-    }
-    for column in &model.columns {
-        match &column.kind {
-            PreparedOlsColumnKind::Intercept => {}
-            PreparedOlsColumnKind::Continuous {
-                source,
-                prepared_source_index,
-            } => {
-                let expected = usize::try_from(source.get() - 1)
-                    .map_err(|_| invalid("continuous source id does not fit usize"))?;
-                if expected != *prepared_source_index {
-                    return Err(invalid(
-                        "categorical OLS continuous recipe identity is inconsistent",
-                    ));
-                }
-            }
-            PreparedOlsColumnKind::Categorical {
-                source,
-                prepared_source_index,
-                categorical_source_index,
-                level_bits,
-                level_code,
-            } => {
-                let categorical = sources
-                    .get(*categorical_source_index)
-                    .ok_or_else(|| invalid("categorical recipe source is out of range"))?;
-                if categorical.source != *source
-                    || categorical.prepared_source_index != *prepared_source_index
-                    || categorical.resolve_level(topology, f64::from_bits(*level_bits))?
-                        != *level_code
-                {
-                    return Err(invalid("categorical OLS factor recipe is inconsistent"));
-                }
-            }
-            PreparedOlsColumnKind::CategoricalInteraction { components } => {
-                if components.len() < 2 {
-                    return Err(invalid(
-                        "categorical ordinary interaction has fewer than two components",
-                    ));
-                }
-                for component in components {
-                    let categorical = sources
-                        .get(component.categorical_source_index)
-                        .ok_or_else(|| invalid("interaction recipe source is out of range"))?;
-                    if categorical.source != component.source
-                        || categorical
-                            .resolve_level(topology, f64::from_bits(component.level_bits))?
-                            != component.level_code
-                    {
-                        return Err(invalid(
-                            "categorical OLS interaction recipe is inconsistent",
-                        ));
-                    }
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
 fn validate_report_plan(
     model: &PreparedOlsModel,
     report_plan: &PreparedCategoricalOlsReportPlan,
 ) -> Result<()> {
     if report_plan.public_coefficient_count() != model.coefficients.len()
         || report_plan.public_coefficient_count() != report_plan.original_coefficient_count()
-        || report_plan
-            .original_slots()
-            .iter()
-            .enumerate()
-            .any(|(index, slot)| slot.get() as usize != index + 1)
     {
         return Err(invalid(
             "categorical OLS final-sample report plan is inconsistent",
@@ -2040,6 +1913,7 @@ fn validate_numeric_sample(sample: &PreparedNumericSample) -> Result<()> {
         || sample.drop_reasons.len() != sample.n_original
         || sample.outcome.len() != nrows
         || sample.regressors.iter().any(|source| source.len() != nrows)
+        || !matches!(sample.adjustment, crate::data::PreparedAdjustment::None)
     {
         return Err(invalid(
             "prepared categorical OLS numeric sample is not aligned",
@@ -2108,17 +1982,12 @@ fn fallible_filled_bool(len: usize, value: bool) -> Result<Vec<bool>> {
     Ok(output)
 }
 
-fn fallible_copy_slice<T: Copy>(input: &[T], label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
+fn fallible_string_copy(value: &str, label: &'static str) -> Result<String> {
+    let mut output = String::new();
     output
-        .try_reserve_exact(input.len())
+        .try_reserve_exact(value.len())
         .map_err(|_| allocation(label))?;
-    if output.capacity() < input.len() {
-        return Err(allocation(
-            "categorical OLS vector reservation returned insufficient capacity",
-        ));
-    }
-    output.extend_from_slice(input);
+    output.push_str(value);
     Ok(output)
 }
 
@@ -2182,7 +2051,7 @@ mod tests {
             let views = categorical_views(std::slice::from_ref(&candidate)).unwrap();
             let topology = finalize_categorical_topology(&views, &[], &keep).unwrap();
             let unchanged = keep.iter().all(|&value| value);
-            let plans = plan_model_sources(
+            let mut sources = retain_model_sources(
                 vec![candidate],
                 &[SourceId::new(1).unwrap()],
                 &topology,
@@ -2192,7 +2061,9 @@ mod tests {
             let sample = sample
                 .compact_active_rows(&keep, DropReason::Singleton)
                 .unwrap();
-            let sources = build_final_model_sources(plans, &sample, &topology).unwrap();
+            if !unchanged {
+                reencode_model_sources(&mut sources, &sample).unwrap();
+            }
             let PreparedCategoricalModelSourceStorage::Owned { encoded } = &sources[0].storage
             else {
                 panic!("non-FE source must retain an independent owner");

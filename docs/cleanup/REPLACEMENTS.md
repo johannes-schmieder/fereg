@@ -38,6 +38,13 @@ completed deletion evidence. M28 uses 460 lines of planning contingency after
 subtracting both transferred old slices and successor responsibilities from
 M31/M33/M34. The frozen inventory and all historical measurements remain intact.
 
+M27's [accepted integrated retirement](../../bench/history/2026-10-05-m27-canonical-owner-acceptance.json)
+delivers 119,673 total production lines: 1,723 below fixed M26 and 2,175 below
+its immediate qualified parent, including all fixes and adapters. This closes
+the M27 replacement allocation; the remaining table entries are design budgets.
+Its scientific/transaction and calibrated performance gates plus Astra high
+completion review pass on this Mac; remote qualification remains deferred.
+
 M28 cannot remove costs for still-executable FE/finite routes. Constructors
 must take ownership of those formulas before the M30/M31 consumers disappear;
 later simplification of those formulas remains counted within this pool.

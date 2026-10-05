@@ -296,19 +296,19 @@ fn prepare_ols_test_with_map_config(
             "fereg.prepare_ols.keep_singletons={}\n",
             "{}"
         ),
-        prepared.sample.n_original,
-        prepared.sample.n_candidate,
-        prepared.sample.n_active(),
-        prepared.model.columns.len(),
-        prepared.model.coefficients.len(),
-        prepared.categorical_sources.len(),
-        prepared.fe_topology.effects().len(),
-        prepared.fe_topology.sources().len(),
-        prepared.fe_topology.effects().len(),
-        prepared.fe_topology.sources().len(),
-        prepared.fe_topology.total_levels(),
-        prepared.singletons.num_singletons,
-        usize::from(prepared.singletons.kept_by_request),
+        prepared.sample().n_original,
+        prepared.sample().n_candidate,
+        prepared.sample().n_active(),
+        prepared.model().columns.len(),
+        prepared.model().coefficients.len(),
+        prepared.categorical_sources().len(),
+        prepared.fe_effects().len(),
+        prepared.fe_topology().registry().sources().len(),
+        prepared.fe_effects().len(),
+        prepared.fe_topology().registry().sources().len(),
+        prepared.fe_topology().registry().total_levels()?,
+        prepared.singletons().num_singletons,
+        usize::from(prepared.singletons().kept_by_request),
         map_display,
     ));
     Ok(())
@@ -657,7 +657,7 @@ fn write_diagnostics(
     // The last interruption check occurs before the first diagnostic mutation.
     // All decoding, validation, loading, and native preparation has succeeded.
     spi.check_interrupted()?;
-    for (zero_based, reason) in prepared.sample.drop_reasons.iter().copied().enumerate() {
+    for (zero_based, reason) in prepared.sample().drop_reasons.iter().copied().enumerate() {
         let observation = zero_based + 1;
         spi.store_numeric(
             bindings.original_observation,

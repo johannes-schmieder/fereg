@@ -230,10 +230,16 @@ impl<'a> ValidatedBorrowedInterceptSource<'a> {
         if topology.effect_to_topology().len() != 1 {
             return None;
         }
-        let source = topology
-            .registry()
-            .sources()
-            .get(topology.effect_to_topology()[0])?;
+        Self::from_finalized_source(owner, topology.effect_to_topology()[0])
+    }
+
+    /// Codes and membership belong to the same immutable validated owner.
+    pub(crate) fn from_finalized_source(
+        owner: &'a super::topology_finalize::ValidatedFinalizedTopology,
+        topology_index: usize,
+    ) -> Option<Self> {
+        let topology = owner.get();
+        let source = topology.registry().sources().get(topology_index)?;
         let partition = source.partition();
         let codes = if partition.is_interaction() {
             partition.owned_interaction_codes()?
@@ -340,21 +346,6 @@ impl<'a> ValidatedBorrowedInterceptSource<'a> {
             n_levels: self.n_levels,
             level_index: self.level_index,
         }
-    }
-
-    #[must_use]
-    pub(crate) const fn codes(&self) -> &'a [u32] {
-        self.codes
-    }
-
-    #[must_use]
-    pub(crate) const fn n_levels(&self) -> usize {
-        self.n_levels
-    }
-
-    #[must_use]
-    pub(crate) const fn level_index(&self) -> &'a LevelIndex {
-        self.level_index
     }
 }
 

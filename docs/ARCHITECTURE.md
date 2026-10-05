@@ -3,7 +3,7 @@
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
 M0–M25. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The [second program](../milestones2.md) and [replacement contract](cleanup/REPLACEMENTS.md)
-define the next scoped retirements without claiming a changed runtime.
+define the remaining scoped retirements; M27 canonical preparation is accepted.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -42,17 +42,20 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The [versioned inventory](cleanup/complexity.md) measures 106,083 production
-lines in core and 15,313 in the host. Core has 97 functions over 150 lines and
-19 files over 1,500; the host has 15 and 3. Its conservative dispatch inventory
-contains 1,480 core and 166 host candidates, including validation conditions;
-14 core chunk conditions are counted separately. These counts measure
-complexity; some conditions validate inputs rather than select algorithms.
+The accepted M27 runtime's [versioned inventory](cleanup/complexity.md) measures
+104,479 production lines in core and 15,194 in the host.
+Core has 92 functions over 150 lines and 18 files over 1,500;
+the host has 15 and 3. Its conservative dispatch inventory contains
+1,443 core and 166 host candidates, including validation conditions;
+15 core chunk conditions are counted separately. These measure complexity;
+some conditions validate inputs rather than select algorithms. Local scientific,
+transaction and calibrated timing gates plus Astra high completion review pass.
+Total production is 119,673 lines, 1,723 below fixed M26 including all replacements.
 
 Largest inherited files are `fe/borrowed_map.rs` (10,195 production lines),
-`ols/prepared_fit.rs` (7,075) and `ols/linear_session.rs` (6,273). The largest
+`ols/prepared_fit.rs` (7,075) and `ols/linear_session.rs` (6,320). The largest
 functions are PPML route-memory estimation (1,173 physical lines), PPML IRLS
-orchestration (962), and retained-rank solving (961). Fast/Low storage remains
+orchestration (962), and retained-rank solving (972). Fast/Low storage remains
 distinct; the preparation, inference and exclusive FE owners described below
 replace several earlier forks without changing solver policy.
 
@@ -280,3 +283,28 @@ existing row scratch is the proposed next local change. The two callers supply
 unique canonical active positions; dense, implicit and scratch readers refill the
 complete row. M24 changes no runtime. Samples identify an exercised target, not
 wall-time shares, a dominant package bottleneck or an established future speedup.
+
+The accepted M27 runtime gives OLS and PPML one finalized `PreparedModel` in
+`ols/prepared_categorical_data.rs`: sample, finite recipes, source handles,
+validated FE topology, ordered effect metadata and optional cluster metadata.
+Compatibility aliases contain no second state. Host preparation owns this
+model directly; PPML generations share one `Arc`. Ordinary/categorical DoF and
+arithmetic remain distinct non-owning adapters where mathematically required.
+
+Both grammars use the same partition/pruning/finalization sequence. Original
+request metadata are borrowed; bound recipes contain source positions only.
+Unchanged codes and ordered memberships transfer into the topology. Final
+source handles use its sorted final level axis; original factor slots and base
+flags are preserved. Cluster-only encoding occurs once after pruning. Source
+and model certification share one implementation, while dynamic responses and
+explicit artifact validation retain their required checks.
+
+The ordinary final-parts chain, owning clustered wrappers, synthetic
+availability graph/request/partition construction, second finite recipe bank,
+identity reporting vector, host owning dispatch and three compiled preparation
+scaffolds are retired in this integrated runtime. Public syntax, solver
+policies and the frozen legacy protocol are unchanged. The [scope and local evidence](../bench/history/2026-10-04-m27-canonical-owner.json)
+and [calibrated timing acceptance](../bench/history/2026-10-05-m27-canonical-owner-acceptance.json)
+bind the accepted integrated runtime and Astra high completion review.
+Qualification is Mac-only under Johannes's override. Prior inconclusive trials,
+interrupted calibrations and historical CI failures remain unchanged.

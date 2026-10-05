@@ -1170,7 +1170,7 @@ fn validate_recovery_arguments(
     target: &[f64],
     requested_channels: &[bool],
 ) -> Result<()> {
-    if target.len() != topology.retained_rows().len()
+    if target.len() != topology.nobs()
         || effects.len() != topology.effect_to_topology().len()
         || target.is_empty()
         || target.iter().any(|value| !value.is_finite())
@@ -1370,9 +1370,9 @@ fn normalize_connected_intercepts(
 ) -> Result<()> {
     let effect_offsets = channel_major_effect_offsets(topology, effects)?;
     let total_weight = if weights.values.is_none() {
-        topology.retained_rows().len() as f64
+        topology.nobs() as f64
     } else {
-        (0..topology.retained_rows().len())
+        (0..topology.nobs())
             .map(|row| weights.value(row))
             .sum::<f64>()
     };
@@ -2516,7 +2516,7 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
 ) -> Result<RecoveredCategoricalEffects> {
     validate_config(config)?;
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if target.len() != nobs || effects.len() != topology.effect_to_topology().len() {
         return Err(invalid_argument(
             "categorical effect recovery topology, basis, and target dimensions differ",
@@ -2912,7 +2912,7 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
         ));
     }
     topology.validate()?;
-    let nobs = topology.retained_rows().len();
+    let nobs = topology.nobs();
     if values.nrows() != nobs || effects.len() != topology.effect_to_topology().len() {
         return Err(invalid_argument(
             "categorical slope MAP topology, basis, and value dimensions differ",

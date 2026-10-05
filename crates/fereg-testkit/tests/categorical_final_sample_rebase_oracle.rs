@@ -157,11 +157,12 @@ fn singleton_deleted_base_preserves_original_axis_and_identified_contrasts() {
     assert_eq!(prepared.singletons().num_singletons, 2);
     assert_eq!(prepared.report_plan().original_coefficient_count(), 5);
     assert_eq!(
-        prepared
-            .report_plan()
-            .original_slots()
-            .iter()
-            .map(|slot| slot.get())
+        (1..=prepared.report_plan().public_coefficient_count())
+            .map(|index| prepared
+                .report_plan()
+                .original_slot(CoefficientSlot::new(index as u32).unwrap())
+                .unwrap()
+                .get())
             .collect::<Vec<_>>(),
         vec![1, 2, 3, 4, 5]
     );

@@ -51,15 +51,15 @@ pub use linear_session::{
     LinearSessionPhaseAllocatorProbe,
 };
 pub(crate) use prepared::{
-    finish_categorical_availability, prepare_ols_data_with_cluster_sources,
-    prepare_ols_numeric_sample, prepare_ols_numeric_sample_owned, CategoricalAvailability,
+    factorize_preparation_sources, prepare_categorical_numeric_sample,
+    prepare_categorical_numeric_sample_owned, prepare_ols_numeric_sample, FeTopologyReservation,
+    SystemFeTopologyReservation,
 };
 pub use prepared::{
     prepare_ols_data, prepare_ols_data_owned, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
     OlsInputRole, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
     PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
-    PreparedOlsData, PreparedOlsEffect, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
-    PreparedOlsFeTopologySource, PreparedOlsModel, PreparedOlsSingletons,
+    PreparedOlsData, PreparedOlsFeSingletonPolicy, PreparedOlsModel, PreparedOlsSingletons,
 };
 pub(crate) use prepared_categorical_clusters::prepare_ppml_categorical_ols_clustered_data;
 pub use prepared_categorical_clusters::{
@@ -75,9 +75,9 @@ pub use prepared_clustered::{
     PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
 };
 pub use prepared_clusters::{
-    prepare_ols_clustered_data, prepare_ols_clustered_data_owned, OlsClusterTermV1,
-    OlsClusteredRequestV1, PreparedOlsClusterDesign, PreparedOlsClusterDimension,
-    PreparedOlsClusteredData,
+    compile_prepared_model, prepare_model_owned, prepare_ols_clustered_data,
+    prepare_ols_clustered_data_owned, OlsClusterTermV1, OlsClusteredRequestV1,
+    PreparedOlsClusterDesign, PreparedOlsClusterDimension, PreparedOlsClusteredData,
 };
 pub use prepared_dof::{
     compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,
@@ -103,7 +103,8 @@ pub use prepared_rhs::{
 };
 pub(crate) use prepared_rhs::{
     build_prepared_ols_rhs_with_loaded_rows_and_reuse, build_prepared_ols_rhs_with_response,
-    numeric_sources_are_finite, NumericOlsColumns, MAX_BOUND_NUMERIC_COLUMNS,
+    numeric_sources_are_finite, validate_prepared_model_metadata, NumericOlsColumns,
+    MAX_BOUND_NUMERIC_COLUMNS,
 };
 pub use prepared_robust::{
     fit_prepared_categorical_ols_robust_map,

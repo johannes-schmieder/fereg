@@ -458,6 +458,8 @@ fn fit_with_outcome_overlap(
     rows: Option<super::LoadedOlsRows>,
     overlap: bool,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
+    let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
+    let prepared = &ordinary;
     validate_config(config)?;
     reject_probability_iid(prepared)?;
     let fit = || match rows {
@@ -470,7 +472,7 @@ fn fit_with_outcome_overlap(
     // not fitted moments. Their errors stay deferred to the original inference
     // boundaries. Width/worker guards limit contention; no heap bank is added.
     let (fit, outcome_tss, dof_topology) = if overlap
-        && !prepared.fe_topology.effects().is_empty()
+        && !prepared.fe_effects().is_empty()
         && prepared.sample.n_active() >= 16_384
         && prepared.model.columns.len() <= 64
         && config.fit.execution.mode == super::PreparedOlsExecutionMode::Fast
@@ -663,6 +665,8 @@ fn compose_internal<R: InferenceReservation>(
     perturbations: InferencePerturbations,
     outcome_tss: DeferredOutcome<'_>,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
+    let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
+    let prepared = &ordinary;
     let summary = prepared.inference_absorbed_dof_summary(&absorbed_dof, absorbed_dof.policy)?;
     let components = compose_view_internal(
         prepared,

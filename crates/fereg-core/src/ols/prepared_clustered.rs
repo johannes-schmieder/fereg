@@ -522,7 +522,12 @@ fn fit_with_loaded_reservation<R: PreparedInferenceReservation>(
     reservation: &mut R,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsClustered> {
-    let components = fit_clustered_view_with_reservation(prepared, config, reservation, rows)?;
+    let components = fit_clustered_view_with_reservation(
+        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
+        config,
+        reservation,
+        rows,
+    )?;
     Ok(components)
 }
 
@@ -566,7 +571,7 @@ fn compose<R: PreparedInferenceReservation>(
     perturbations: ClusteredPerturbations,
 ) -> Result<CertifiedPreparedOlsClustered> {
     let components = compose_clustered_view(
-        prepared,
+        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
         fit,
         config,
         reservation,

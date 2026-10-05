@@ -973,7 +973,7 @@ pub(crate) fn fit_shared_prepared_ppml_irls_interruptible(
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsFit> {
     match run_prepared_ppml_irls(
-        prepared.fit_view(),
+        prepared.as_ref(),
         Some(prepared.clone()),
         outcome,
         prior_weights,
@@ -4370,6 +4370,14 @@ mod tests {
     }
 
     fn prepared(outcome: &[f64], regressors: &[Vec<f64>]) -> PreparedOlsData {
+        prepared_with_factor_sources(outcome, regressors, 0)
+    }
+
+    fn prepared_with_factor_sources(
+        outcome: &[f64],
+        regressors: &[Vec<f64>],
+        factor_count: usize,
+    ) -> PreparedOlsData {
         let mut sources = Vec::new();
         let mut terms = Vec::new();
         let mut numeric_sources = Vec::new();
@@ -4394,14 +4402,30 @@ mod tests {
             numeric_sources.push((entry.id, loaded(values)));
             sources.push(entry);
         }
-        prepare_ols_data(
-            &OlsRequestV1 {
-                model: CompiledTermGraph { sources, terms },
-                absorbed_terms: Vec::new(),
-                bindings,
-                include_intercept: true,
-                keep_singletons: true,
-            },
+        let mut request = OlsRequestV1 {
+            model: CompiledTermGraph { sources, terms },
+            absorbed_terms: Vec::new(),
+            bindings,
+            include_intercept: true,
+            keep_singletons: true,
+        };
+        let original_model = request
+            .validate_and_compile()
+            .expect("numeric fixture model");
+        // Use the real factor grammar to create immutable source handles. The
+        // score witness then restores its original numeric recipe/slot axis.
+        for term in request.model.terms.iter_mut().take(factor_count) {
+            term.raw_kind = RawTermKind::Factor;
+            term.canonical_token = format!("1.x{}", term.id.get());
+            let component = &mut term.components[0];
+            component.kind = ComponentKind::Categorical;
+            component.level_state = LevelState::Present;
+            component.level_value = 1.;
+            component.omitted = MetadataFlag::False;
+            component.raw_operator = "1".into();
+        }
+        let mut prepared = prepare_ols_data(
+            &request,
             &LoadedOlsInput {
                 candidate: vec![true; outcome.len()],
                 outcome: loaded(outcome),
@@ -4411,7 +4435,11 @@ mod tests {
                 probability_weight: None,
             },
         )
-        .expect("prepared fixture")
+        .expect("prepared fixture");
+        if factor_count != 0 {
+            prepared.model = original_model;
+        }
+        prepared
     }
 
     fn prepared_no_fe_categorical(
@@ -4620,9 +4648,7 @@ mod tests {
 
     #[test]
     fn generated_outer_scores_preserve_fresh_certificates_across_tiles_frames_and_teams() {
-        use crate::ols::{
-            PreparedCategoricalSource, PreparedOlsCategoricalComponent, PreparedOlsColumnKind,
-        };
+        use crate::ols::{PreparedOlsCategoricalComponent, PreparedOlsColumnKind};
         for rows in [4095, 4097] {
             for width in [8, 65, 71] {
                 let y: Vec<_> = (0..rows).map(|r| (r % 13) as f64 / 3.).collect();
@@ -4639,18 +4665,7 @@ mod tests {
                             .collect()
                     })
                     .collect();
-                let mut prepared = prepared(&y, &x);
-                // Keep the legacy matrix indices and numerical traversal order explicit.
-                #[allow(clippy::needless_range_loop)]
-                for j in 0..2 {
-                    prepared
-                        .categorical_sources
-                        .push(PreparedCategoricalSource {
-                            source: SourceId::new((j + 1) as u32).unwrap(),
-                            prepared_source_index: j,
-                            encoded: crate::factorize::factorize_f64(&x[j]).unwrap(),
-                        });
-                }
+                let mut prepared = prepared_with_factor_sources(&y, &x, 2);
                 for j in 2..width {
                     let component = |source_index: usize, code| PreparedOlsCategoricalComponent {
                         source: SourceId::new((source_index + 1) as u32).unwrap(),

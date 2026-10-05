@@ -9,6 +9,7 @@
 
 use crate::error::{ErrorCode, FeregError, Result};
 
+use super::topology_axis::FinalizedAxis;
 use super::{CategoricalCodeView, CategoricalTopologyRegistry};
 
 /// One retained raw categorical source on the final observation axis.
@@ -16,7 +17,7 @@ use super::{CategoricalCodeView, CategoricalTopologyRegistry};
 pub struct CompactedCategoricalSource {
     candidate_source_index: usize,
     codes: Vec<u32>,
-    original_levels: Vec<u32>,
+    original_levels: FinalizedAxis<u32>,
 }
 
 impl CompactedCategoricalSource {
@@ -31,8 +32,13 @@ impl CompactedCategoricalSource {
     }
 
     #[must_use]
-    pub fn original_levels(&self) -> &[u32] {
-        &self.original_levels
+    pub fn original_level(&self, final_level: u32) -> Option<u32> {
+        self.original_levels.original_level(final_level)
+    }
+
+    #[must_use]
+    pub fn final_level(&self, original_level: u32) -> Option<u32> {
+        self.original_levels.final_level(original_level)
     }
 
     #[must_use]
@@ -58,7 +64,7 @@ pub struct FinalizedCategoricalTopology {
     candidate_to_compacted_source: Vec<Option<usize>>,
     remapped_effect_recipes: Vec<Vec<usize>>,
     effect_to_topology: Vec<usize>,
-    retained_rows: Vec<usize>,
+    retained_rows: FinalizedAxis<usize>,
     registry: CategoricalTopologyRegistry,
 }
 
@@ -164,10 +170,9 @@ impl FinalizedCategoricalTopology {
         mut take_source: impl FnMut(usize) -> Result<(Vec<u32>, usize, super::design::LevelIndex)>,
         reservation: &mut R,
     ) -> Result<Self> {
-        if effect_recipes.is_empty()
-            || effect_recipes
-                .iter()
-                .any(|r| r.len() != 1 || r[0] >= candidate_source_count)
+        if effect_recipes
+            .iter()
+            .any(|r| r.len() != 1 || r[0] >= candidate_source_count)
         {
             return Err(invalid(
                 "transferred effect source identity is out of range",
@@ -220,22 +225,13 @@ impl FinalizedCategoricalTopology {
                 CategoricalCodeView::new(&codes, n_levels),
                 index,
             )?;
-            let mut original_levels = reserved_filled(
-                reservation,
-                n_levels,
-                0,
-                "unable to reserve transferred level identities",
-            )?;
-            for (level, original) in original_levels.iter_mut().enumerate() {
-                *original = level as u32;
-            }
             source_map[candidate_source_index] = Some(compacted_index);
             push_reserved(
                 &mut compacted_sources,
                 CompactedCategoricalSource {
                     candidate_source_index,
                     codes,
-                    original_levels,
+                    original_levels: FinalizedAxis::Identity { len: n_levels },
                 },
                 "transferred source capacity exhausted",
             )?;
@@ -305,21 +301,12 @@ impl FinalizedCategoricalTopology {
                 "transferred effect capacity exhausted",
             )?;
         }
-        let mut retained_rows = reserved_filled(
-            reservation,
-            nobs,
-            0,
-            "unable to reserve transferred row identities",
-        )?;
-        for (row, original) in retained_rows.iter_mut().enumerate() {
-            *original = row;
-        }
         Ok(Self {
             compacted_sources,
             candidate_to_compacted_source: source_map,
             remapped_effect_recipes,
             effect_to_topology,
-            retained_rows,
+            retained_rows: FinalizedAxis::Identity { len: nobs },
             registry: CategoricalTopologyRegistry::from_transferred_sources(registry_sources),
         })
     }
@@ -330,13 +317,13 @@ impl FinalizedCategoricalTopology {
             + self
                 .compacted_sources
                 .iter()
-                .map(|source| bytes(&source.codes) + bytes(&source.original_levels))
+                .map(|source| bytes(&source.codes) + source.original_levels.owned_buffer_bytes())
                 .sum::<u128>()
             + bytes(&self.candidate_to_compacted_source)
             + bytes(&self.remapped_effect_recipes)
             + self.remapped_effect_recipes.iter().map(bytes).sum::<u128>()
             + bytes(&self.effect_to_topology)
-            + bytes(&self.retained_rows)
+            + self.retained_rows.owned_buffer_bytes()
             + self.registry.owned_buffer_bytes()
     }
 
@@ -361,8 +348,14 @@ impl FinalizedCategoricalTopology {
     }
 
     #[must_use]
-    pub fn retained_rows(&self) -> &[usize] {
-        &self.retained_rows
+    pub fn nobs(&self) -> usize {
+        self.retained_rows.len()
+    }
+
+    /// Selected candidate-row indices; `None` denotes the identity axis 0..nobs.
+    #[must_use]
+    pub fn retained_rows(&self) -> Option<&[usize]> {
+        self.retained_rows.selected()
     }
 
     #[must_use]
@@ -663,7 +656,7 @@ fn finalize_categorical_topology_with_reservation<R: TopologyFinalizeReservation
         candidate_to_compacted_source,
         remapped_effect_recipes,
         effect_to_topology,
-        retained_rows,
+        retained_rows: FinalizedAxis::Selected(retained_rows),
         registry,
     })
 }
@@ -755,7 +748,7 @@ fn compact_categorical_source_with_reservation<R: TopologyFinalizeReservation>(
     Ok(CompactedCategoricalSource {
         candidate_source_index,
         codes,
-        original_levels,
+        original_levels: FinalizedAxis::Selected(original_levels),
     })
 }
 
@@ -894,7 +887,10 @@ mod tests {
                 let mut malformed = make();
                 match fault {
                     0 => malformed.compacted_sources[0].codes[0] = u32::MAX,
-                    1 => malformed.compacted_sources[0].original_levels.clear(),
+                    1 => {
+                        malformed.compacted_sources[0].original_levels =
+                            FinalizedAxis::Selected(Vec::new())
+                    }
                     _ => malformed.effect_to_topology[0] = 1,
                 }
                 let expected = malformed.validate();
@@ -1103,7 +1099,8 @@ mod tests {
                 LevelIndex::from_codes(&[0, 1, 0, 1], 2).unwrap(),
             )
         };
-        for effects in [vec![], vec![0, 2]] {
+        {
+            let effects = [0, 2];
             let recipes: Vec<_> = effects.iter().map(std::slice::from_ref).collect();
             assert!(FinalizedCategoricalTopology::from_single_source_indexes(
                 2,
@@ -1183,6 +1180,26 @@ mod tests {
     }
 
     #[test]
+    fn transferred_empty_topology_preserves_identity_axis_without_source_access() {
+        for nobs in [0, 5] {
+            let topology =
+                FinalizedCategoricalTopology::from_single_source_indexes(2, nobs, &[], |_| {
+                    panic!("an empty FE topology must not consume factor sources")
+                })
+                .and_then(ValidatedFinalizedTopology::new)
+                .unwrap();
+            assert_eq!(topology.nobs(), nobs);
+            assert_eq!(topology.retained_rows(), None);
+            assert_eq!(topology.candidate_to_compacted_source(), &[None, None]);
+            assert!(topology.compacted_sources().is_empty());
+            assert!(topology.registry().sources().is_empty());
+            assert!(topology.remapped_effect_recipes().is_empty());
+            assert!(topology.effect_to_topology().is_empty());
+            topology.validate().unwrap();
+        }
+    }
+
+    #[test]
     fn compacts_referenced_sources_and_preserves_original_level_identity() {
         let used = [4, 4, 1, 1, 3];
         let unused = [0, 1, 2, 3, 4];
@@ -1193,11 +1210,15 @@ mod tests {
         let result =
             finalize_categorical_topology(&sources, &[&[0]], &[true, false, true, true, false])
                 .expect("finalization");
-        assert_eq!(result.retained_rows(), &[0, 2, 3]);
+        assert_eq!(result.retained_rows().unwrap(), &[0, 2, 3]);
         assert_eq!(result.compacted_sources().len(), 1);
         let compacted = result.source_for_candidate(0).expect("used source");
         assert_eq!(compacted.codes(), &[1, 0, 0]);
-        assert_eq!(compacted.original_levels(), &[1, 4]);
+        assert_eq!(compacted.original_level(0), Some(1));
+        assert_eq!(compacted.original_level(1), Some(4));
+        assert_eq!(compacted.final_level(1), Some(0));
+        assert_eq!(compacted.final_level(4), Some(1));
+        assert_eq!(compacted.final_level(3), None);
         assert_eq!(result.candidate_to_compacted_source(), &[Some(0), None]);
         assert_eq!(result.remapped_effect_recipes(), &[vec![0]]);
         assert_eq!(result.effect_to_topology(), &[0]);
@@ -1219,7 +1240,7 @@ mod tests {
             &[true, false, true, true, false, true],
         )
         .expect("interaction finalization");
-        assert_eq!(result.retained_rows(), &[0, 2, 3, 5]);
+        assert_eq!(result.retained_rows().unwrap(), &[0, 2, 3, 5]);
         assert_eq!(result.compacted_sources()[0].codes(), &[0, 1, 1, 2]);
         assert_eq!(result.compacted_sources()[1].codes(), &[0, 0, 1, 1]);
         let topology = result.registry().source(0).expect("interaction topology");
@@ -1262,7 +1283,7 @@ mod tests {
         assert!(result.compacted_sources().is_empty());
         assert!(result.registry().sources().is_empty());
         assert!(result.effect_to_topology().is_empty());
-        assert_eq!(result.retained_rows(), &[0, 2]);
+        assert_eq!(result.retained_rows().unwrap(), &[0, 2]);
         assert_eq!(result.candidate_to_compacted_source(), &[None]);
     }
 
@@ -1276,7 +1297,7 @@ mod tests {
         ];
         let result = finalize_categorical_topology(&sources, &[&[0, 1]], &[false, false])
             .expect("empty final sample");
-        assert!(result.retained_rows().is_empty());
+        assert_eq!(result.nobs(), 0);
         assert_eq!(result.compacted_sources().len(), 2);
         assert!(result.compacted_sources()[0].codes().is_empty());
         assert_eq!(result.compacted_sources()[0].n_levels(), 0);

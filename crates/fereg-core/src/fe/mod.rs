@@ -26,6 +26,7 @@ mod singleton;
 pub(crate) mod slope_coefficients;
 pub(crate) use single_slope::{SingleSlopeAbsorber, SingleSlopeAttempt};
 mod topology_adapter;
+mod topology_axis;
 mod topology_finalize;
 mod topology_map;
 mod topology_registry;
@@ -62,10 +63,8 @@ pub(crate) use borrowed_map::{
     OLS_SCHUR_MAX_ITERATIONS, OLS_SCHUR_PROBE_ITERATIONS, PARALLEL_DOT_CHUNK_ROWS,
     PARALLEL_PROJECTION_MIN_ROWS,
 };
-pub use categorical_request::{
-    plan_categorical_absorbed_request, BoundCategoricalAbsorbEffect,
-    CategoricalAbsorbEffectIdentity, CategoricalAbsorbRequestPlan,
-};
+pub(crate) use categorical_request::bind_categorical_effect_recipes;
+pub use categorical_request::{plan_categorical_absorbed_request, CategoricalAbsorbRequestPlan};
 pub use certificate::{certify_residuals, FeCertificate};
 pub(crate) use certificate::{certify_residuals_with_reference_norms, weighted_column_norms};
 pub(crate) use cmg::{

@@ -13,25 +13,27 @@ use crate::result::{
 };
 use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use fereg_core::error::{ErrorCode, FeregError, Result};
-use fereg_core::fe::{
-    plan_categorical_absorbed_request, AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner,
-};
+use fereg_core::fe::{AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner};
 use fereg_core::metadata::{
     ComponentKind, ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH,
     ABSORB_TERM_ROW_WIDTH, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
 };
+#[cfg(all(test, feature = "ffi"))]
+use fereg_core::ols::prepare_ols_data_owned;
 #[cfg(test)]
 use fereg_core::ols::{
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
+    prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
+    OlsClusteredRequestV1,
 };
 use fereg_core::ols::{
-    prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
-    prepare_ols_data_owned, CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput,
-    LoadedOlsRows, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig, PreparedOlsColumnKind,
-    PreparedOlsExecutionConfig, PreparedOlsExecutionMode, PreparedOlsFitConfig,
-    PreparedOlsFitStatus, PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
+    CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput, LoadedOlsRows, OlsClusterTermV1,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsClusteredConfig, PreparedOlsColumnKind, PreparedOlsExecutionConfig,
+    PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
+    PreparedOlsUnadjustedConfig,
 };
+#[cfg(test)]
 use fereg_core::prepare_categorical_ols_data_owned;
 use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
@@ -345,10 +347,7 @@ fn complete_ols(
     trace: Option<OlsPhaseTrace>,
 ) -> Result<()> {
     let outputs_started = Instant::now();
-    let categorical = match data {
-        PreparedOlsResultData::Legacy(_) => None,
-        PreparedOlsResultData::Categorical(data) => Some(data),
-    };
+    let categorical = data.categorical_data();
     let known_connected = match inference.absorbed_dof() {
         PreparedAbsorbedDofData::Categorical(report) => normalization_known_connected(report),
         PreparedAbsorbedDofData::Legacy(_) => false,
@@ -1051,39 +1050,8 @@ impl EstimateActionSpec {
                 || !term.slope_sources.is_empty()
                 || !term.saved_name.is_empty()
         });
-        let prepared_model = if categorical {
-            // Validate the original tuple identities and guarded categorical
-            // intercept/one-slope contract before any observation read. The
-            // availability request preserves the ordinary model and
-            // coefficient layout while replacing each tuple with one
-            // synthetic single-source availability marker, which is the
-            // only representation accepted by the legacy compiler.
-            let plan = plan_categorical_absorbed_request(&request)?;
-            if self.vce == OlsVceKind::Clustered {
-                let requested_clustered = OlsClusteredRequestV1 {
-                    ols: request.clone(),
-                    clusters: clusters.clone(),
-                };
-                validate_cluster_request_shape(&requested_clustered)?;
-                OlsClusteredRequestV1 {
-                    ols: plan.availability_request().clone(),
-                    clusters: clusters.clone(),
-                }
-                .validate_and_compile()?
-            } else {
-                plan.availability_request().validate_and_compile()?
-            }
-        } else if self.vce == OlsVceKind::Clustered {
-            let clustered_request = OlsClusteredRequestV1 {
-                ols: request.clone(),
-                clusters: clusters.clone(),
-            };
-            // This validates cluster-only sources without reading observations.
-            validate_cluster_request_shape(&clustered_request)?;
-            clustered_request.validate_and_compile()?
-        } else {
-            request.validate_and_compile()?
-        };
+        let prepared_model =
+            fereg_core::ols::compile_prepared_model(&request, &clusters, categorical)?;
         let extended_fe_rows = request
             .absorbed_terms
             .iter()
@@ -1461,33 +1429,6 @@ fn parse_bundle_decimal(bytes: &[u8], start: usize, label: &str) -> Result<(usiz
         .and_then(|value| value.parse::<usize>().ok())
         .ok_or_else(|| syntax(format!("guarded OLS bundle {label} overflows")))?;
     Ok((value, cursor + 1))
-}
-
-fn validate_cluster_request_shape(request: &OlsClusteredRequestV1) -> Result<()> {
-    if !(1..=10).contains(&request.clusters.len()) {
-        return Err(invalid(
-            "clustered prepared OLS requires between one and ten dimensions",
-        ));
-    }
-    for cluster in &request.clusters {
-        if cluster.label.is_empty() || cluster.sources.is_empty() {
-            return Err(invalid("clustered prepared OLS term is incomplete"));
-        }
-        let mut seen = BTreeSet::new();
-        for source in &cluster.sources {
-            if !seen.insert(source.get())
-                || !request
-                    .ols
-                    .model
-                    .sources
-                    .iter()
-                    .any(|entry| entry.id == *source)
-            {
-                return Err(invalid("clustered prepared OLS source is invalid"));
-            }
-        }
-    }
-    Ok(())
 }
 
 fn validate_vce(
@@ -4929,14 +4870,12 @@ mod tests {
                                 prepare_categorical_ols_clustered_data_owned(&request, loaded)
                                     .unwrap();
                             let before = crate::ffi::allocation_usage();
-                            let bytes = owner.ols().owned_buffer_bytes()
-                                + owner.clusters().owned_buffer_bytes();
+                            let bytes = owner.owned_buffer_bytes();
                             assert_eq!(crate::ffi::allocation_usage().events, before.events);
                             check_shared(owner, bytes);
                         } else {
                             let owner = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
-                            let bytes = owner.ols().owned_buffer_bytes()
-                                + owner.clusters().owned_buffer_bytes();
+                            let bytes = owner.owned_buffer_bytes();
                             check(owner, bytes);
                         }
                     } else if complex {
@@ -4945,10 +4884,9 @@ mod tests {
                         let bytes = owner.owned_buffer_bytes();
                         check_shared(owner, bytes);
                     } else {
-                        let mut owner = prepare_ols_data_owned(&action.request, loaded).unwrap();
-                        owner.sample.outcome.reserve(101);
-                        owner.model.columns.reserve(17);
-                        owner.categorical_sources[0].encoded.levels.reserve(15);
+                        let mut loaded = loaded;
+                        loaded.outcome.values.reserve(101);
+                        let owner = prepare_ols_data_owned(&action.request, loaded).unwrap();
                         let before = crate::ffi::allocation_usage();
                         let bytes = owner.owned_buffer_bytes();
                         assert_eq!(crate::ffi::allocation_usage().events, before.events);
@@ -5048,7 +4986,7 @@ mod tests {
         )
         .unwrap();
         let fit = result.fit();
-        let data = PreparedOlsResultData::categorical(&prepared);
+        let data = PreparedOlsResultData::new(&prepared);
         let terms: Vec<_> = fit
             .coefficients()
             .iter()
@@ -5884,7 +5822,7 @@ mod tests {
                 },
             )
             .unwrap();
-            let result_data = PreparedOlsResultData::categorical(&prepared);
+            let result_data = PreparedOlsResultData::new(&prepared);
             let derived = build_derived_observation_outputs(
                 result_data,
                 Some(&prepared),
@@ -6721,10 +6659,8 @@ mod tests {
                         SourceId::new(6).unwrap(),
                     ];
                 }
-                let plan = plan_categorical_absorbed_request(&request).unwrap();
-                let compiled = numeric_loaded_rhs_layout(
-                    &plan.availability_request().validate_and_compile().unwrap(),
-                );
+                let compiled =
+                    numeric_loaded_rhs_layout(&request.validate_ppml_and_compile().unwrap());
                 let reference = load_ols_input(&request, true, false, &mut spi.clone()).unwrap();
                 let mut rhs = None;
                 let mut memory = loading_memory(&request, spi.nobs, 0, 0, None).unwrap();

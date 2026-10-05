@@ -3,10 +3,11 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M27 complete canonical preparation retirement; M27.6 frozen decision inconclusive; qualified runtime M27.4; M26–M35 authorized.
+Current task: M28 complete capacity/storage retirement; M27 canonical ownership accepted; M27.6 historical decision stays inconclusive; M26–M35 authorized.
 
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
+Accepted runtime: M27 canonical owner; production119673, net vsM26 -1723; native2499b6222ed9dc9829d8e0176a5e7c2088cfe1040de266181f0633b2e5f97ed7.
 
 ## Tasks and prerequisites
 
@@ -80,7 +81,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] M27.4 Original-axis support/constant-invariant PPML Wald: local/science/exact/timing/Astra high and Linux CI37241856158 all pass.
 - [ ] M27.5 Trial not promoted: parent14within/1unresolved, fixed15within; qualified source/native restored; owning-model retirement remains open.
 - [ ] M27.6 Trial not promoted: parent15within, fixed14within/1unresolved; source/science pass; preserved for complete M27 replacement.
-- [ ] M27 Canonical prepared model and optional cluster metadata; retire duplicated owning pipelines.
+- [x] M27 Canonical owner/optional clusters; duplicated ownership/construction retired; local science/timing and Astra high completion pass.
 - [ ] M28 Common storage operations and owner-based memory admission.
 - [ ] M29 General worker-budget and kernel scheduling policy; Mac/SCC scaling qualification.
 - [ ] M30 Small structural FE portfolio and common scientific lifecycle.
@@ -100,6 +101,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [x] G-M9–M11: shared QR/PPML accounting, scheduling trial rejected, combined qualification and strategic review pass.
 - [x] G-M12–M21: ten scoped refactors, parent science, clean tranches/timings, Linux CI and separate Astra review complete.
 - [x] G-M26: contract/inventory, unchanged runtime, Mac calibration, Linux CI37217034343 and SCC tooling smoke pass; fresh Astra high accepts.
+- [x] G-M27: integrated canonical retirement, unchanged science/transactions, calibrated parent/fixed-M26 timing and Astra high; Mac-only override.
 - [ ] G-M26–M35: architectural retirements, substantial measured simplification and broad scientific/performance acceptance.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 
@@ -112,8 +114,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Blockers
 
-M27 clean calibration failed on ENOSPC during capture;1652 records retained, including one failure. The quiet heartbeat was deleted after two clear checks.
-Johannes authorizes11 infrastructure replacements; two interrupted by unrelated Stata, nine remain. M27 awaits a coordinated window; source/science stays valid.
+M28 capacity/storage replacement remains unimplemented; its disjoint design is reviewed. Historical remote failures and deferred platform gates remain recorded.
 
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
@@ -122,6 +123,9 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 M27.13 this commit: canonical ownership retired, net vsM26 -1723; all local/science/timing/Astra high pass; M28 unlocked; Mac-only scope.
+- 2026-10-05 M27 acceptance:2560 captures/eight blocks; all15 within both references/orders; review pending; [evidence](bench/history/2026-10-05-m27-canonical-owner-acceptance.json).
+- 2026-10-05 M27 calibration3:3904 captures/eight blocks pass symmetric gate; coordinated quiet window held and released; all prior attempts remain terminal.
 - 2026-10-05 M27 replacement2: intermittent competing Stata persists; captures retained, no inference; nine replacements remain; coordination permission requested.
 - 2026-10-05 M27 replacement1: unrelated Stata compromises confirmation; terminal captures retained, no inference; replacement2 frozen under authorization.
 - 2026-10-05 M27 authorization:11 infrastructure replacements; attempt1 frozen, same budgets/rules; old failures retained; [declaration](bench/history/2026-10-05-m27-retry-authorization.json).

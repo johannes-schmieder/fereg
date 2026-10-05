@@ -16,14 +16,8 @@ pub mod ppml;
 pub mod ppml_separation;
 #[path = "ols/prepared_categorical_data.rs"]
 mod prepared_categorical_data;
-#[path = "ols/prepared_categorical_effect.rs"]
-mod prepared_categorical_effect;
 #[path = "ols/prepared_categorical_rebase.rs"]
 mod prepared_categorical_rebase;
-#[path = "ols/prepared_categorical_singleton.rs"]
-mod prepared_categorical_singleton;
-#[path = "ols/prepared_categorical_topology.rs"]
-mod prepared_categorical_topology;
 #[path = "ols/prepared_fit_view.rs"]
 pub(crate) mod prepared_fit_view;
 pub mod protocol;
@@ -92,10 +86,9 @@ pub use ols::{
     PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance, PreparedOlsClusteredData,
     PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
     PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
-    PreparedOlsData, PreparedOlsEffect, PreparedOlsExecutionConfig, PreparedOlsExecutionMode,
-    PreparedOlsExecutionReport, PreparedOlsFeSingletonPolicy, PreparedOlsFeTopology,
-    PreparedOlsFeTopologySource, PreparedOlsFitConfig, PreparedOlsFitStatistics,
-    PreparedOlsFitStatus, PreparedOlsFittedCoefficient, PreparedOlsModel,
+    PreparedOlsData, PreparedOlsExecutionConfig, PreparedOlsExecutionMode,
+    PreparedOlsExecutionReport, PreparedOlsFeSingletonPolicy, PreparedOlsFitConfig,
+    PreparedOlsFitStatistics, PreparedOlsFitStatus, PreparedOlsFittedCoefficient, PreparedOlsModel,
     PreparedOlsRankCertificate, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
     PreparedOlsRhs, PreparedOlsRobustCertificate, PreparedOlsRobustConfig,
     PreparedOlsRobustCovariance, PreparedOlsScoreCertificate, PreparedOlsSingletons,
@@ -118,12 +111,7 @@ pub use prepared_categorical_data::{
     prepare_categorical_ols_data, prepare_categorical_ols_data_owned,
     PreparedCategoricalModelSource, PreparedCategoricalOlsData, PreparedCategoricalOlsRhs,
 };
-pub use prepared_categorical_effect::{
-    PreparedCategoricalEffect, PreparedCategoricalEffectRequest,
-};
 pub use prepared_categorical_rebase::PreparedCategoricalOlsReportPlan;
-pub use prepared_categorical_singleton::prune_prepared_categorical_singletons;
-pub use prepared_categorical_topology::PreparedCategoricalFeTopology;
 pub use protocol::{
     Handshake, PpmlAdjustmentV1, PpmlResultReceiptFieldV1, PpmlResultReceiptV1, PpmlResultVceV1,
     ProtocolVersion, ACTION_PROTOCOL_VERSION, ADO_VERSION, MODEL_WIRE_VERSION,

@@ -5,13 +5,10 @@ use std::mem::size_of;
 
 use super::{PpmlClusterDimensionResult, PpmlCoefficientStatus, PpmlFixedEffectResult};
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{BoundCategoricalAbsorbEffect, CategoricalAbsorbEffectIdentity};
-use crate::metadata::{
-    AbsorbedTerm, ExpandedTerm, RawTermKind, SourceEntry, SourceId, TermComponent,
-};
+
+use crate::metadata::{RawTermKind, SourceId};
 use crate::ols::{
-    OlsClusterTermV1, OlsInputBinding, OlsRequestV1, PreparedOlsCategoricalComponent,
-    PreparedOlsClusterDimension, PreparedOlsCoefficient, PreparedOlsColumn,
+    OlsClusterTermV1, OlsRequestV1, PreparedOlsCategoricalComponent, PreparedOlsClusterDimension,
     PreparedOlsFittedCoefficient,
 };
 use crate::topology_dof::{CategoricalTopologyDofEffectSpec, CategoricalTopologyDofSlopeSpec};
@@ -137,15 +134,9 @@ impl PpmlMetadataMemory {
                     .ok_or_else(overflow)?,
             )?;
         }
-        // The candidate model remains alive while the compact model and its
-        // nested interaction recipes are rebuilt. Their main descriptors
-        // are otherwise counted once in prepared_model_metadata_bytes.
-        let transient = sum(&[
-            recipes,
-            bytes::<PreparedOlsCoefficient>(slots)?,
-            bytes::<PreparedOlsColumn>(slots)?,
-            availability_request_metadata_bytes(request)?,
-        ])?;
+        // The compiled finite model moves into final storage. Only the
+        // borrowed-request source plan and bound effect recipes coexist.
+        let transient = source_plan_metadata_bytes(request)?;
         let (generation_fixed_bytes, generation_bytes_per_row) =
             generation_storage(request, clusters)?;
         Ok(Self {
@@ -217,7 +208,7 @@ fn generation_storage(
         effects.checked_mul(2).ok_or_else(overflow)?.max(4)
     };
     let mut fixed = sum(&[
-        crate::prepared_fit_view::SharedPreparedOlsData::allocation_bytes(!clusters.is_empty()),
+        std::mem::size_of::<(usize, usize, crate::PreparedCategoricalOlsData)>() as u128,
         bytes::<CompactedCategoricalSource>(compacted)?,
         bytes::<PreparedCategoricalModelSource>(ordinary)?,
         bytes::<Option<usize>>(categories)?,
@@ -249,67 +240,21 @@ fn generation_storage(
     Ok((fixed, row_bytes))
 }
 
-/// `plan_categorical_absorbed_request` keeps a fallible model copy, synthetic
-/// availability terms and requested identities alive while bound effects and
-/// the final compact model are built. Source count bounds the deduplicated
-/// synthetic terms without allocating a marker solely for reporting.
-fn availability_request_metadata_bytes(request: &OlsRequestV1) -> Result<u128> {
-    if request.absorbed_terms.is_empty() {
-        return Ok(0);
-    }
+/// Preparation borrows the original request and owns only source markers and
+/// bound positional recipes. Finite recipes are consumed in place; finalized
+/// descriptors and temporary validation frames are charged separately.
+fn source_plan_metadata_bytes(request: &OlsRequestV1) -> Result<u128> {
     let sources = request.model.sources.len();
     let mut retained = sum(&[
-        bytes::<SourceEntry>(sources)?,
-        bytes::<ExpandedTerm>(request.model.terms.len())?,
-        bytes::<OlsInputBinding>(request.bindings.len())?,
-        bytes::<AbsorbedTerm>(sources)?,
-        bytes::<SourceId>(sources)?, // required-source registry
-        bytes::<SourceId>(sources)?, // one source per synthetic term
-        bytes::<CategoricalAbsorbEffectIdentity>(request.absorbed_terms.len())?,
-        bytes::<BoundCategoricalAbsorbEffect>(request.absorbed_terms.len())?,
+        bytes::<SourceId>(sources)?,
+        bytes::<Vec<usize>>(request.absorbed_terms.len())?,
     ])?;
-    for source in &request.model.sources {
-        // Model copy and synthetic availability label have distinct owners.
-        add(
-            &mut retained,
-            sum(&[
-                source.canonical_name.len() as u128,
-                source.canonical_name.len() as u128,
-            ])?,
-        )?;
-    }
-    for term in &request.model.terms {
-        add(&mut retained, term.canonical_token.len() as u128)?;
-        add(
-            &mut retained,
-            bytes::<TermComponent>(term.components.len())?,
-        )?;
-        for component in &term.components {
-            add(
-                &mut retained,
-                sum(&[
-                    component.raw_operator.len() as u128,
-                    component.raw_time_series_operator.len() as u128,
-                ])?,
-            )?;
-        }
-    }
     for effect in &request.absorbed_terms {
-        let identity = sum(&[
-            effect.label.len() as u128,
-            bytes::<SourceId>(effect.categorical_sources.len())?,
-            bytes::<SourceId>(effect.slope_sources.len())?,
-        ])?;
         add(
             &mut retained,
-            sum(&[
-                identity,
-                identity,
-                bytes::<usize>(effect.categorical_sources.len())?,
-            ])?,
+            sum(&[bytes::<usize>(effect.categorical_sources.len())?])?,
         )?;
     }
-    // Validation, construction markers and source binding are sequential.
     let validation = sum(&[bytes::<u32>(request.bindings.len())?, bytes::<u8>(sources)?])?;
     let scratch = validation
         .max(bytes::<bool>(sources)?)

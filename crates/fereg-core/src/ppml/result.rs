@@ -554,10 +554,7 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
     model: &PreparedPpmlModel,
     requested_saved_channels: &[bool],
 ) -> Result<PreparedPpmlFixedEffectReport> {
-    let prepared = match model {
-        PreparedPpmlModel::Categorical(prepared) => prepared,
-        PreparedPpmlModel::CategoricalClustered(prepared) => prepared.ols(),
-    };
+    let prepared = model.as_ref();
     if prepared.effect_specs().is_empty() {
         if !requested_saved_channels.is_empty() {
             return Err(FeregError::new(
@@ -574,7 +571,7 @@ pub(crate) fn prepare_ppml_fixed_effect_report(
     }
 
     let mut cluster_dimensions = Vec::new();
-    if let Some(clusters) = model.clusters() {
+    if let Some(clusters) = model.cluster_design() {
         cluster_dimensions
             .try_reserve_exact(clusters.len())
             .map_err(|_| {
@@ -732,10 +729,7 @@ pub(crate) fn recover_ppml_fixed_effects(
             reconstruction_relative_infinity_norm: 0.0,
         });
     }
-    let prepared = match model {
-        PreparedPpmlModel::Categorical(prepared) => prepared,
-        PreparedPpmlModel::CategoricalClustered(prepared) => prepared.ols(),
-    };
+    let prepared = model.as_ref();
     let rows = absorbed_predictor.len();
     if rows == 0
         || prior_weights.len() != rows
