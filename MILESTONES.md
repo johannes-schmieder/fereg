@@ -4,6 +4,8 @@ Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 1
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
 Current task: M27 complete canonical preparation retirement; M27.6 frozen decision inconclusive; qualified runtime M27.4; M26–M35 authorized.
+
+Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -117,6 +119,8 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 policy: GitHub CI/testing workflows paused by Johannes; Mac-only local gates replace remote prerequisites; science, max5%/1ms and historical failures unchanged.
+- 2026-10-05 M27.8 3ca65bb4: recoverable candidate/evidence checkpoint pushed; CI37262317024 again never started due billing; candidate remains unpromoted.
 - 2026-10-05 M27 candidate: one owner/shared constructor; net vsM26 -1723; local/30/ABI/73/292/48/exact405664 pass; [scope/evidence](bench/history/2026-10-04-m27-canonical-owner.json).
 - 2026-10-05 M27 timing: bounded v2 protocol Astra-reviewed; 8 screen pairs/order/ref, prescribed32/64 confirmation; calibration pending; [rule](bench/history/2026-10-04-m27-bounded-measurement.json).
 - 2026-10-05 M27.7 CI37256192040: jobs never started, account billing/spending-limit failure; user notified; required CI and promotion remain blocked.

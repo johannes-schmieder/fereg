@@ -235,13 +235,17 @@ removals requires revising the design before starting a structural tranche.
 Runtime commits require the full local entrypoint, long independent oracles for
 core changes, actual parent-next native replay, Mac build/ABI and mapped Stata,
 allocation/rollback/Break fixtures. Deliberate changes use the declared science
-gate rather than a false bit-identity claim. Linux CI/native replay must pass
-before dependent work. At integration boundaries run five-thread science/repeats,
+gate rather than a false bit-identity claim. During Johannes's 2026-10-05
+Mac-only authorization, local acceptance replaces the GitHub CI prerequisite;
+remote/platform qualification is deferred until he resumes it. Historical CI
+failures remain failures. At integration boundaries run five-thread science/repeats,
 the licensed 46-fixture suite and the M22 strict-PPML/saved-FE witnesses; extend
 existing matrices where the changed support demands it.
 
-Parallel changes require whole-node SCC qualification before acceptance as a
-general scaling solution. Qualify Linux scratch/storage changes and Windows
+The active Mac-only period qualifies scaling and storage on this Mac and makes
+no new cross-platform claim. Outside that period, parallel changes require
+whole-node SCC qualification before acceptance as a general scaling solution.
+Qualify Linux scratch/storage changes and Windows
 build/ABI/transactions, with licensed Windows numerical/scratch fixtures where
 available. A missing required platform check remains open. Reuse unchanged
 artifact-bound evidence; repeat broad suites only for relevant changes or
@@ -446,8 +450,9 @@ passes. Any missed removal is unfinished scope, not a future-cleanup footnote.
 
 Qualify the integrated artifact against the frozen program baseline and the
 last qualified predecessor. Run the declared interaction matrix and held-out
-families, Mac and whole-node SCC ladders, required Windows qualification,
-scientific/repeat/transaction suites and final Linux CI. Use the inherited
+families, Mac ladders and scientific/repeat/transaction suites. Whole-node SCC,
+Windows qualification and final Linux CI are deferred during the authorized
+Mac-only period; report those platform gaps explicitly. Use the inherited
 single-thread comparator only where it is a scientifically valid reference.
 
 Publish compact per-family timing, worst-cell/timeout, scaling, memory, route and
@@ -464,8 +469,9 @@ This is engineering completion, not permission to publish native release assets.
 ## Execution and reporting discipline
 
 Work on main, one named retirement responsibility at a time, using reviewable
-M26–M35 commits. Push after required local checks; required CI precedes dependent
-work. Keep implementation and qualification with the lead; use bounded Astra
+M26–M35 commits. Push after required local acceptance checks; those gates precede
+dependent work during the authorized Mac-only period. Keep implementation and
+qualification with the lead; use bounded Astra
 help for difficult questions and independent acceptance at milestone completion.
 Additional reviews resolve concrete issues. Coordinate builds and pause agents
 for clean timings; coordinate unrelated workloads without terminating them. SCC work follows the existing 28-core, whole-node, at-most-22-hour rules.

@@ -50,3 +50,9 @@ Scientific authority stays with independent witnesses. The new plan governs
 future migrations; this ADR does not assert that worker semantics or algorithms
 have already changed in the current runtime. ADRs 0247/0248 otherwise remain
 active, including the ratchet, evidence gates, timebox and one status ledger.
+
+Johannes's 2026-10-05 execution override pauses GitHub testing and restricts
+qualification to the lead's Mac until resumed. Local acceptance precedes
+dependent work; no CI or remote-platform gate applies during this period.
+Preserve all scientific/performance gates and historical failures. Report
+Mac scope and deferred Linux/SCC/Windows evidence without portability claims.

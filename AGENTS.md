@@ -93,8 +93,10 @@ agent unless Johannes delegates them. No agents run during clean timings.
 Before each commit run the task's required checks. Runtime changes require
 `./scripts/run_tests.sh` plus their mapped scientific/transaction checks.
 Documentation-only changes use governance/link checks; build-tool changes use
-the relevant tooling and native build/ABI checks. CI runs the full entrypoint
-on every push; no failed required check may be hidden by this local scoping.
+the relevant tooling and native build/ABI checks. Johannes paused GitHub testing
+on 2026-10-05: the lead runs qualification only on this Mac until he resumes
+remote checks. Local acceptance gates precede dependent work; GitHub CI is not
+a prerequisite during this pause. No failed required local check may be hidden.
 The M0 replay matrix defines
 M1 qualification; add tests only for mapped gaps or concrete regressions.
 Reuse allocation, interruption and rollback fixtures. Stabilize coherent
@@ -146,6 +148,11 @@ fixtures (`./ci/run_stata_ci.sh <profile>`), plugin builds
 (`./scripts/build_macos.sh`), the benchmark `smoke` and `standard` tiers, and
 quick A/B timings. Native `threads()` may exceed Stata's processor count; for
 timing keep native threads ≤ 16.
+
+During the authorized Mac-only period, qualify the applicable scientific,
+transaction, storage and scaling responsibilities here. Report the platform
+scope explicitly; no new Linux/SCC/Windows qualification or portability claim
+is implied. Historical failures and missing platform evidence remain recorded.
 
 **SCC cluster (larger test campaigns).** Boston University SCC, project `welfgr`.
 - Use 28-core nodes only: `#$ -pe omp 28` with `#$ -l cpu_type=E5-2680v4`
