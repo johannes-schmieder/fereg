@@ -113,7 +113,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 ## Blockers
 
 M27 clean calibration failed on ENOSPC during capture;1652 records retained, including one failure. The quiet heartbeat was deleted after two clear checks.
-Frozen clean attempt forbids further retries; M27 promotion and dependent M28–M30 runtime work remain blocked. Source/local science evidence stays valid.
+Johannes authorizes11 infrastructure replacements; two interrupted by unrelated Stata, nine remain. M27 awaits a coordinated window; source/science stays valid.
 
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
@@ -122,6 +122,9 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 M27 replacement2: intermittent competing Stata persists; captures retained, no inference; nine replacements remain; coordination permission requested.
+- 2026-10-05 M27 replacement1: unrelated Stata compromises confirmation; terminal captures retained, no inference; replacement2 frozen under authorization.
+- 2026-10-05 M27 authorization:11 infrastructure replacements; attempt1 frozen, same budgets/rules; old failures retained; [declaration](bench/history/2026-10-05-m27-retry-authorization.json).
 - 2026-10-05 M27.11: clean calibration fails ENOSPC;1652 retained;36 runner checks/Astra high pass; no promotion/retry; [evidence](bench/history/2026-10-05-m27-clean-calibration.json).
 - 2026-10-05 M28 design: Astra xhigh scopes full capacity/storage/report retirement; disjoint7859 to6090 plan; [declaration](bench/history/2026-10-05-m28-capacity-design.json).
 - 2026-10-05 M27.10: CSV/cache repairs;34 tooling checks and saved verdicts identical; Astra high accepts; [interrupted calibration](bench/history/2026-10-05-m27-measurement-tools.json).
