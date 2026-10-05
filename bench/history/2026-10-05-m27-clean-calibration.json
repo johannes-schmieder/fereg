@@ -1,0 +1,161 @@
+{
+  "milestone": "M27.11",
+  "status": "Terminal infrastructure failure; incomplete calibration, acceptance blocked",
+  "quiet_window": {
+    "two_read_only_checks_seconds_apart": 30,
+    "no_competing_stata_or_builds": true,
+    "heartbeat_deleted_before_continuation": true,
+    "automation_id": "fereg-quiet-mac-window",
+    "owned_calibration_driver_pid": 70833,
+    "no_agents_or_builds_during_measurements": true
+  },
+  "frozen_plan": {
+    "path": "target/m27-canonical-owner/calibration-clean/calibration-plan.json",
+    "canonical_sha256": "4dfed65ba10ab1f3ab5df8c6dd9a588006cd9e0b0f7203a406d886c78466d0f3",
+    "file_sha256": "e8947263b79ddb7846b0ce1327fa841b411546d5660bb367efac92cc78e669f7",
+    "workloads": 15,
+    "screen_pairs": 8,
+    "confirmation_pairs": {
+      "development-ols-2fe-residual-robust|4|fereg": 32,
+      "development-ols-2fe-fe-cluster|4|fereg": 64,
+      "development-ols-2fe-combined-multiway|4|fereg": 32,
+      "development-ppml-2fe-residual-robust|4|fereg": 32,
+      "development-ppml-2fe-fe-cluster|4|fereg": 32,
+      "development-ppml-2fe-combined-multiway|4|fereg": 32,
+      "development-ols-finite-factor-combined-multiway|4|fereg": 32,
+      "development-ols-absorbed-slope-combined-multiway|4|fereg": 32,
+      "development-ppml-finite-factor-combined-multiway|4|fereg": 32,
+      "development-ppml-absorbed-slope-combined-multiway|4|fereg": 32,
+      "cover-ols-2fe-frequency|4|fereg": 32,
+      "cover-ols-2fe-probability|4|fereg": 32,
+      "cover-ppml-bias-exact|4|fereg": 32,
+      "cover-ppml-bias-randomized|4|fereg": 32,
+      "cover-ppml-separation-fe-simplex-ir|4|fereg": 32
+    },
+    "maximum_wall_seconds_per_block": 1800,
+    "allowance": "max(5%,1ms)",
+    "attempt_rule": "One separately frozen clean attempt after terminal interruption; no further extensions or retries."
+  },
+  "retained_blocks": [
+    {
+      "path": "target/m27-canonical-owner/calibration-clean/calibration-confirmation-parent-forward/results.json",
+      "sha256": "8ba2002f9798524d0a62bb0cd3474c8fc408cd0fd3cf9dbea10aef16a0c91789",
+      "commands": 452,
+      "failed_commands": 1,
+      "complete": false,
+      "identities_verified": false,
+      "wall_seconds": null
+    },
+    {
+      "path": "target/m27-canonical-owner/calibration-clean/calibration-screening-fixed_baseline-forward/results.json",
+      "sha256": "7fb3ea337cd9dd1aadb9402678faf73bab5106740b1443f87da2c7194aea573f",
+      "commands": 300,
+      "failed_commands": 0,
+      "complete": true,
+      "identities_verified": true,
+      "wall_seconds": 142.5419062501751
+    },
+    {
+      "path": "target/m27-canonical-owner/calibration-clean/calibration-screening-fixed_baseline-reverse/results.json",
+      "sha256": "6efa1df62b910c1ba211fe20a0740f64edb91e41332dff42c1a3379b171b021d",
+      "commands": 300,
+      "failed_commands": 0,
+      "complete": true,
+      "identities_verified": true,
+      "wall_seconds": 140.37341845827177
+    },
+    {
+      "path": "target/m27-canonical-owner/calibration-clean/calibration-screening-parent-forward/results.json",
+      "sha256": "2aefebe845fa512b8b10a0a442b7d92f21857ffec40f7348dd15d93dc8211ccc",
+      "commands": 300,
+      "failed_commands": 0,
+      "complete": true,
+      "identities_verified": true,
+      "wall_seconds": 145.29664845811203
+    },
+    {
+      "path": "target/m27-canonical-owner/calibration-clean/calibration-screening-parent-reverse/results.json",
+      "sha256": "59d4d9e1fc4dd25ae4ff8680f4b5213bf2daeedb701652cb7a9c2a30bc7b6366",
+      "commands": 300,
+      "failed_commands": 0,
+      "complete": true,
+      "identities_verified": true,
+      "wall_seconds": 143.07778141694143
+    }
+  ],
+  "retained_commands": 1652,
+  "successful_commands": 1651,
+  "failed_commands": 1,
+  "screening": {
+    "path": "target/m27-canonical-owner/calibration-clean/calibration-screening-verdict.json",
+    "sha256": "3ad1829a44e7f5a036dbc9b5c034777f975d436ef98a038ac5020becb06099ae",
+    "confirmation_required_workloads": 15,
+    "decision": "All fifteen need prescribed confirmation; screening uncertainty establishes no regression"
+  },
+  "failure": {
+    "cell": "development-ppml-2fe-combined-multiway",
+    "artifact_role": "parent",
+    "repetition": 22,
+    "estimation_rc": 0,
+    "clock_rc": 0,
+    "process_rc": 0,
+    "capture_status": "error",
+    "stata_error": "insufficient disk space, r(603), during outputs.csv export",
+    "missing": [
+      "outputs.csv",
+      "sample.csv",
+      "complete metadata marker"
+    ],
+    "subsequent_exception": "OSError errno28 ENOSPC during next dataset generation",
+    "raw_partial_file_sha256": {
+      "coefficients.csv": "d53d178b15b7533a828239227fc1c05a69c7ab297f0ea31af75212c5bfd1d9dc",
+      "command.do": "275da67af4beb2d76b21e10d953f4270b151ab02a489fddf86d2bdaaa76caf0c",
+      "command.log": "d76c52ac8269e2de7d29f32c525bc659f4dc6110af7ece684c6aa9274b8c5c97",
+      "config.do": "83a7063f25689ccba44bf5ddd8cbc2542d8dd8ab581d602cbd420ffb1ac3aee0",
+      "config.tsv": "976a87512b46316ebeec2cd6787eba536e36c1da5b0801c65e65079ce7345eba",
+      "metadata.tsv": "b0739d92fc87619f900dede50d9b5e57176d737b824a555c1f6ed8096c0f0d30",
+      "process.log": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "scalars.hex": "45604a690e9b808dee366ae940f9428da17f888baf949dd9c9df5f02e5717ca8",
+      "science.hex": "509a923f5b80cb9f1b38af8f159346cd8989885a543ee7154e85a27d069ef452",
+      "telemetry.tsv": "d5a04eb18988da4e291b46ef1a62e61ed1bd4f99399170cf640f7cb8cfeaa4cf"
+    },
+    "driver_log_sha256": "bfe322ff3d584c5e5f17b8b0c6226eaa54f1cd60447c19bac4185f21c056c19f",
+    "confirmation_log_sha256": "785642e1638aec41d5fc48bbb3068e66cb0dde647ee2599ff0c5ae94676f1b57"
+  },
+  "storage_diagnosis": {
+    "current_available_bytes": 551457193984,
+    "bounded_write_fsync_bytes": 1048576,
+    "bounded_write_fsync": "pass",
+    "root_cause": "Unresolved transient storage failure; later availability does not negate either recorded error",
+    "unrelated_files_removed": false
+  },
+  "diagnostics": {
+    "path": "target/m27-canonical-owner/calibration-clean/retained-diagnostics.json",
+    "interpretation": "Descriptive chronology/lag/order evidence only; incomplete calibration cannot establish stationary successful qualification. No observations dropped or merged; failed timing is never an accurate observation.",
+    "sha256": "74e8d4ab52087620944fbffdf85605b5a2ca80793f70efffe0caffa52c38a875"
+  },
+  "prospective_runner_repairs": {
+    "scope": "Stop bounded campaigns immediately after saving non-OK references or measurements; write JSON checkpoints to an exclusive temporary file and replace atomically, retaining prior checkpoint and partial temporary file on error",
+    "native_frontend_science_statistics": "unchanged",
+    "old_runner_sha256": "a2c30f3a15f7cc1b6fda9a3a6a0d1c89769ac3d5f48e8c60dd225e75ca7a38b8",
+    "new_runner_sha256": "1ec6ffc9cad4cd8bc42d27da6f9464f4780078a573794a019bbc5d5f397251d5",
+    "tests": 36,
+    "test_log_sha256": "641f83e75f056112b78817015ab4e43feaa2e04174d1e42c12227f7a3b2dbb7e",
+    "astra": {
+      "model": "Astra",
+      "effort": "high",
+      "review": "m27_bounded_protocol",
+      "decision": "Terminal failure classification and preservation approved; no blocking repair defect; no retry authorized"
+    }
+  },
+  "runtime": {
+    "qualified_commit": "b9d892a658a0506acb61366ff144d62e5abb595c",
+    "candidate_native_sha256": "2499b6222ed9dc9829d8e0176a5e7c2088cfe1040de266181f0633b2e5f97ed7",
+    "candidate_preserved_patch": "bench/history/2026-10-05-m27-canonical-owner-candidate.patch",
+    "unchanged_local_evidence": "bench/history/2026-10-04-m27-canonical-owner.json",
+    "accepted_net_production_change_against_M26": 452,
+    "current_candidate_net_production_change_against_M26": -1723,
+    "retirements_accepted": false
+  },
+  "decision": "No final calibration verdict or candidate campaign. Missing/failed confirmation blocks M27 promotion and dependent M28-M30 runtime work. Original interrupted3274 commands/final raw capture remain separate. Frozen attempt forbids further extensions/retries; ask Johannes for direction. GitHub tests remain paused; Mac-only scope."
+}

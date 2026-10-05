@@ -1,17 +1,59 @@
 """Bounded screening cannot select favorable observations or skip evidence."""
 import copy
+import errno
 import hashlib
 import json
 from pathlib import Path
 import sys
 import tempfile
+import time
+from types import SimpleNamespace
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compare import acceptance_envelopes, median_order_interval, validate_measurement_plan
+from run import execute_cell, save_campaign
 
 
 class BoundedMeasurementTests(unittest.TestCase):
+    def test_failed_capture_is_checkpointed_before_the_campaign_stops(self):
+        suite = dict(tiers={'pilot': {'threads': [4]}}, comparators={'ols': ['fereg']},
+                     protocol={'repetitions': 5})
+        args = SimpleNamespace(tier='pilot', threads_only=4, measurement_plan=Path('frozen.json'),
+                               measurement_stage='screening', measurement_started=time.monotonic(),
+                               bounded_plan={'maximum_wall_seconds_per_block': 1800})
+        # Fail either reference, warmup, or timed arm; no following command may run.
+        for failure in [0, 1, 2, 4, 5]:
+            with self.subTest(failure=failure):
+                records, saved = [], []
+                def measure(*unused, **keywords):
+                    index = len(records)
+                    return dict(status='error' if index == failure else 'ok', directory=f'capture-{index}')
+                with patch('run.measure', side_effect=measure) as launch:
+                    with self.assertRaisesRegex(ValueError, f'capture-{failure}'):
+                        execute_cell(args, [args, args], suite, dict(id='a', model='ols'), None, {},
+                                     records, lambda: saved.append(copy.deepcopy(records)))
+                self.assertEqual(launch.call_count, failure + 1)
+                self.assertEqual(saved[-1], records)
+                self.assertEqual(records[-1]['status'], 'error')
+
+    def test_out_of_space_preserves_the_previous_checkpoint_and_partial_write(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp) / 'results.json'
+            previous = {'records': [{'status': 'ok'}]}
+            save_campaign(path, previous)
+            original = path.read_bytes()
+            self.assertEqual(original, (json.dumps(previous, indent=2) + '\n').encode())
+            def partial_write(campaign, output, **keywords):
+                output.write('{"records": [')
+                raise OSError(errno.ENOSPC, 'No space left on device')
+            with patch('run.json.dump', side_effect=partial_write):
+                with self.assertRaises(OSError):
+                    save_campaign(path, {'records': [{'status': 'error'}]})
+            self.assertEqual(path.read_bytes(), original)
+            self.assertEqual(path.with_name('results.json.tmp').read_text(), '{"records": [')
+
     def test_exact_order_statistic_endpoints_and_random_allowance(self):
         for n,k in [(8,1),(40,12),(72,25)]:
             self.assertEqual(median_order_interval(list(range(n))), (k-1-1e-6,n-k+1e-6))

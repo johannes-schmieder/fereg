@@ -108,6 +108,15 @@ def read_metadata(path):
     return dict(line.rstrip("\n").split("\t", 1) for line in path.read_text().splitlines() if "\t" in line)
 
 
+def save_campaign(path, campaign):
+    # A failed write leaves the previous checkpoint and partial temporary file.
+    temporary = path.with_name(path.name + '.tmp')
+    with temporary.open('x') as output:
+        json.dump(campaign, output, indent=2)
+        output.write('\n')
+    temporary.replace(path)
+
+
 def launch(command, directory, timeout):
     start = time.monotonic()
     with (directory / "process.log").open("w") as log:
@@ -202,8 +211,14 @@ def paired_arguments(args):
 
 
 def execute_cell(args, artifacts, suite, cell, dataset, environment, records, save):
+    def retain(record):
+        records.append(record)
+        save()
+        if getattr(args, 'measurement_plan', None) and record['status'] != 'ok':
+            raise ValueError('bounded measurement failed; capture retained at ' + record['directory'])
+
     for artifact in artifacts:
-        records.append(measure(artifact, suite, cell, 'fereg', 1, 'reference', dataset, environment, reference=True))
+        retain(measure(artifact, suite, cell, 'fereg', 1, 'reference', dataset, environment, reference=True))
     threads = selected_threads(suite, args.tier, cell, args.threads_only)
     reverse = getattr(args, 'reverse_order', False)
     for workers in threads[::-1] if reverse else threads:
@@ -219,8 +234,7 @@ def execute_cell(args, artifacts, suite, cell, dataset, environment, records, sa
                 pair_reverse = reverse ^ (isinstance(repetition, int) and repetition % 2 == 0)
                 for artifact in artifacts[::-1] if pair_reverse else artifacts:
                     record = measure(artifact, suite, cell, arm, workers, repetition, dataset, environment)
-                    records.append(record)
-                    save()
+                    retain(record)
                     if record['status'] != 'ok':
                         break
                 if any(r['status'] != 'ok' for r in records[-len(artifacts):]):
@@ -348,7 +362,7 @@ def run(args):
             generate(cell, cell.get("seed", suite["seed"]), dataset)
         campaign['datasets'][cell['id']] = sha256(dataset)
         execute_cell(args, artifacts, suite, cell, dataset, environment, records,
-                     lambda: (args.root / 'results.json').write_text(json.dumps(campaign, indent=2) + '\n'))
+                     lambda: save_campaign(args.root / 'results.json', campaign))
     if any(native_identity(a.engine, getattr(a, 'source_root', None)) != a.native_identity for a in artifacts):
         raise ValueError('native binary or frontend changed during timing')
     if tooling_identity(getattr(args, 'manifest', None)) != tools:
@@ -363,7 +377,7 @@ def run(args):
     campaign['complete'] = True
     campaign["wall_seconds"] = time.monotonic()-started
     campaign["wall_budget_seconds"] = suite["tiers"][args.tier].get("wall_budget_seconds")
-    (args.root / "results.json").write_text(json.dumps(campaign, indent=2) + "\n")
+    save_campaign(args.root / 'results.json', campaign)
     from compare import summarize
     summarize(args.root / "results.json", args.summary)
 
