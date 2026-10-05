@@ -1,0 +1,50 @@
+{
+  "protocol": "bounded-median-orders-v2",
+  "status": "Prospectively frozen; fresh calibration required before candidate timing",
+  "calibration_plan_sha256": "fe5e972bbb6ed12db6c2a793023f102a6c92f5d8915ee90e1ea9eae88089ad83",
+  "screen_pairs_per_order_comparator": 8,
+  "confirmation_assignments": {
+    "development-ols-2fe-residual-robust|4|fereg": 32,
+    "development-ols-2fe-fe-cluster|4|fereg": 64,
+    "development-ols-2fe-combined-multiway|4|fereg": 32,
+    "development-ppml-2fe-residual-robust|4|fereg": 32,
+    "development-ppml-2fe-fe-cluster|4|fereg": 32,
+    "development-ppml-2fe-combined-multiway|4|fereg": 32,
+    "development-ols-finite-factor-combined-multiway|4|fereg": 32,
+    "development-ols-absorbed-slope-combined-multiway|4|fereg": 32,
+    "development-ppml-finite-factor-combined-multiway|4|fereg": 32,
+    "development-ppml-absorbed-slope-combined-multiway|4|fereg": 32,
+    "cover-ols-2fe-frequency|4|fereg": 32,
+    "cover-ols-2fe-probability|4|fereg": 32,
+    "cover-ppml-bias-exact|4|fereg": 32,
+    "cover-ppml-bias-randomized|4|fereg": 32,
+    "cover-ppml-separation-fe-simplex-ir|4|fereg": 32
+  },
+  "maximum_wall_seconds_per_block": 1800,
+  "acceptance": "All workload/order/comparator upper median slowdown bounds within max5%/1ms; exact binomial endpoints .00625 tails, outward1us; screen/final one-sided alpha .0125 each; retain all8+32or64; targeted union confirmed against both refs/orders; incomplete or unresolved blocks.",
+  "regression": "At final look require both order lower excess bounds>0, endpoint tails .025/(8*declared_workloads); otherwise unresolved.",
+  "calibration": "Three roles identical qualified b9 native/frontend/source. Same machinery; symmetric interval containment required. Every attempt retained; no retrospective old-campaign decisions.",
+  "astra": {
+    "model": "Astra",
+    "effort": "high",
+    "review": "m27_bounded_protocol",
+    "decision": "Prospective approval conditional on these rules and successful calibration"
+  },
+  "tooling_identity": {
+    "bench/run.py": "a2c30f3a15f7cc1b6fda9a3a6a0d1c89769ac3d5f48e8c60dd225e75ca7a38b8",
+    "bench/generate.py": "96f1acd83d0227bd475e590d0903e0bd1793b4f1229d60dbb549d3b1b048691b",
+    "bench/compare.py": "b2da51dda9b82c0ff345d6d98751e9600c62e0d985e7a9938353a66e8f15a3cc",
+    "bench/stata_runner.do": "b2ca5e4dc09cb8093d7c86e3b2ce1e37c10e11620a441efc0e78cebbe1b04a91",
+    "references.lock.toml": "b90c83dd767425de67304287aa2ff97c567a45f26b1dcd938dcca2b6af5197e8",
+    "bench/clock.c": "e4aa711868a1bafd0a2b07622fa1193db83c9e7dd8729ce917916efc623ed3f0",
+    "bench/build_clock.py": "7f1d371c244889f1417a3e02551051556f3af051a9e2a86ce76b785017bd0ef1",
+    "manifest": "403b42a91db8b25dcc7f60c733cbd478e9ccf973af2ec3131125f22fe862a1f9"
+  },
+  "clock_sha256": "fa7caefcd52f5dfdf41be15896991f67673d01de786f09f1a85c5b2a7b9dda50",
+  "saved_capture_equivalence": {
+    "proof_sha256": "2c7b644e8c7278e8d0e3c2a05ca9516832a943bde0d927b610079bf3f311d87f",
+    "full_frozen_v1_verdict_identical": true,
+    "bench_unit_tests": 31
+  },
+  "historical_M276": "Unpromoted: parent15within/fixed14within1unresolved under frozen v1 rule; unchanged."
+}

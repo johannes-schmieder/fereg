@@ -117,6 +117,9 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 M27 candidate: one owner/shared constructor; net vsM26 -1723; local/30/ABI/73/292/48/exact405664 pass; [scope/evidence](bench/history/2026-10-04-m27-canonical-owner.json).
+- 2026-10-05 M27 timing: bounded v2 protocol Astra-reviewed; 8 screen pairs/order/ref, prescribed32/64 confirmation; calibration pending; [rule](bench/history/2026-10-04-m27-bounded-measurement.json).
+- 2026-10-05 M27.7 CI37256192040: jobs never started, account billing/spending-limit failure; user notified; required CI and promotion remain blocked.
 - 2026-10-04 M27.7 tools:28 checks pass; four CSVs/full frozen verdict identical;66-capture accuracy19.62s to1.49s; [profile](bench/history/2026-10-04-m27-measurement-efficiency.json).
 - 2026-10-04 M27 strategy: complete retirement batches; focused development then integrated acceptance; historical frozen rules unchanged; accepted net vsM26 +452.
 - 2026-10-04 M27.6: parent15within/fixed14within1unresolved; no confirmed regression, no promotion; [recoverable trial](bench/history/2026-10-04-m27-common-topology.json).
