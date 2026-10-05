@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M28 complete capacity/storage retirement; M27 canonical ownership accepted; M27.6 historical decision stays inconclusive; M26–M35 authorized.
+Current task: M28 terminal performance blocker; candidate preserved, not promoted; M27 accepted; dependent M29/M30 blocked; M26–M35 authorized.
 
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
@@ -114,7 +114,8 @@ Accepted runtime: M27 canonical owner; production119673, net vsM26 -1723; native
 
 ## Blockers
 
-M28 capacity/storage replacement remains unimplemented; its disjoint design is reviewed. Historical remote failures and deferred platform gates remain recorded.
+M28 candidate: +96 vsM27/-1627 vsM26; full local/science/exact gates pass. Frozen timing ends unresolved for three workloads; M29/M30 blocked. Accepted net remains -1723.
+All4720 commands retained; no established regression; FE-cluster timing drifts in both roles. [Terminal evidence](bench/history/2026-10-05-m28-capacity-owner-terminal.json).
 
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
@@ -123,6 +124,7 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 M28.1: recoverable integrated candidate; local/science pass, timing unresolved; no runtime promotion or favorable retry; Astra high confirms blocker.
 - 2026-10-05 M27.13 this commit: canonical ownership retired, net vsM26 -1723; all local/science/timing/Astra high pass; M28 unlocked; Mac-only scope.
 - 2026-10-05 M27 acceptance:2560 captures/eight blocks; all15 within both references/orders; review pending; [evidence](bench/history/2026-10-05-m27-canonical-owner-acceptance.json).
 - 2026-10-05 M27 calibration3:3904 captures/eight blocks pass symmetric gate; coordinated quiet window held and released; all prior attempts remain terminal.

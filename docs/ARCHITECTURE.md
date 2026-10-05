@@ -308,3 +308,13 @@ and [calibrated timing acceptance](../bench/history/2026-10-05-m27-canonical-own
 bind the accepted integrated runtime and Astra high completion review.
 Qualification is Mac-only under Johannes's override. Prior inconclusive trials,
 interrupted calibrations and historical CI failures remain unchanged.
+
+## Preserved M28 candidate
+
+The [integrated capacity/storage candidate](../bench/history/2026-10-05-m28-capacity-owner-terminal.json)
+passes local science, transactions, exact inventories and native replay, but its
+bounded performance decision is terminal unresolved. Its
+[recoverable patch](../bench/history/2026-10-05-m28-capacity-owner-candidate.patch)
+retains the proposed owner map and replacement code. It adds 96 production
+lines versus M27; accepted architecture and counts remain M27. M29 and M30
+are blocked by this missing acceptance gate.
