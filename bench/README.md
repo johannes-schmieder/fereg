@@ -10,6 +10,58 @@ pairs. Pair order alternates; `--reverse-order` flips every pair in the second
 block. Holdout results cannot be used for tuning while retaining
 their holdout label. Pilot successes do not pass the integrated M35 matrix.
 
+New candidates may use the prospectively calibrated `bounded-median-orders-v2`
+protocol through the existing runner's `--measurement-plan`. Historical v1
+campaigns retain their original rule and remain independently readable.
+
+The frozen JSON declaration contains the complete `[cell, threads, arm]` scope,
+manifest hash, candidate/parent/fixed-baseline source and native/frontend
+identities, calibration evidence hash, an eight-pair screening budget, and a
+32- or 64-additional-pair confirmation budget assigned to every workload before
+screening. Each block has a predetermined wall budget. Failure or exhaustion
+leaves incomplete evidence and blocks acceptance. No automatic retries occur.
+
+Run both screening orders against both references with
+`--measurement-stage screening --measurement-comparator parent` or
+`fixed_baseline`. A workload unresolved in any of those four blocks receives
+its prescribed confirmation against both references and both orders; passing
+workloads stop. Confirmation uses `--measurement-stage confirmation` and
+`--screening-blocks` with the four screening results in parent-forward,
+parent-reverse, fixed-forward, fixed-reverse order. The runner derives the
+unresolved scope; it cannot add, omit or select measurements within a workload.
+The final checker receives screening then confirmation forward/reverse paths
+for each comparator. All eight screening observations remain in the final
+40- or 72-pair interval. Exactly two acceptance looks are permitted.
+
+Each look spends one-sided alpha 0.0125. Exact binomial median order-statistic
+endpoints use marginal tail probability 0.00625: positions `[1,8]`, `[12,29]`
+and `[25,48]` at n=8,40,72. Expand each median endpoint by one microsecond.
+For parent interval `[Lp,Up]` and candidate `[Lc,Uc]`, acceptance requires
+`Uc-Lp-max(0.001,0.05*Lp) <= 0` in both orders and both comparisons for every
+workload. This bounds uncertainty in the parent-dependent allowance as well as
+in the difference of command medians. The all-workload gate is an
+intersection-union test; the two looks bound false global acceptance by 0.025
+under the independent stationary fresh-process measurement model. No family
+average can override a slow workload.
+
+Screening failures are measurement uncertainty. A confirmed regression requires
+positive lower excess bounds in both orders at the final look, using marginal
+tails `0.025/(8*declared_workloads)` to conservatively cover every comparator,
+order and median endpoint. Other final failures remain unresolved and block the
+relevant gate. Diagnose time trends, order effects, serial dependence and
+competing load using retained captures; violated measurement assumptions block
+inference rather than authorize another measurement attempt.
+
+Calibrate once before candidate timing with fresh identical qualified artifacts,
+the same declared scope, order and stopping rule, and symmetric allowance
+checks. Saved captures may estimate feasibility and assign confirmation budgets
+before this calibration; they cannot replace it. Retain every calibration and
+candidate observation, identity and decision. Astra's bounded protocol review
+approved this rule subject to successful calibration. Reserve clean timing
+periods: pause our builds and agents and coordinate around unrelated workloads.
+
+The historical fixed-budget v1 invocation remains:
+
 For each reference artifact, run a forward and reverse block in separate roots:
 
 ```sh
@@ -140,3 +192,10 @@ python3 -m unittest discover -s bench/tests -v
 The abandoned rewrite's FE-only admission driver is retired. Its implementation
 and evidence remain at `legacy-comparator-v1`. The active M0–M1 plan uses actual
 plugin replay and the existing command-level benchmark runner.
+
+Sample identities use immutable packed integers for ordinary captures, retaining
+CSV field limits and exact ordered comparisons; unbounded integers retain a cold
+tuple representation. The 64 MiB reference-cache budget covers retained entries
+and actual directory allocations after each completed read; transient parsing
+and eviction rebuilds are separate. Every actual capture remains independently
+read and every reference reuse retains the artifact/stat checks.

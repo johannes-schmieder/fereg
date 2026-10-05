@@ -143,5 +143,21 @@
     "patch_sha256": "76d596abadd53e1c364336efec2bd0b1d1decac791332b6d6722df1cd9c5a87b",
     "snapshot": "Ignored target/m27-canonical-owner/candidate-source",
     "state": "Integrated candidate preserved, not promoted; frozen native2499b622 and local science pass; timing and required CI remain open. Patch includes final compiled runtime/source, tool changes and pre-freeze declarations. No historical inconclusive decision changed."
+  },
+  "terminal_mac_entrypoint": {
+    "command": "./scripts/run_tests.sh",
+    "exit_code": 0,
+    "log": "target/m27-canonical-owner/full-local-terminal.log",
+    "sha256": "a57bbdc756484aa291a0133c3fee8e67d7ff0210b2734ecd3e763dcd379c212b",
+    "scope": "Complete invocation on the unchanged frozen canonical runtime; fmt, Clippy, workspace/FFI, isolated allocation audits, ratchet, oracle limits and mock bridge passed. GNU ELF audit is explicitly outside current authorized Mac-only scope."
+  },
+  "source_acceptance_review": {
+    "reviewer": "Astra high",
+    "scope": "Read-only integrated replacement and artifact-bound local science",
+    "result": "No blocking source or local-evidence findings; timing remains required. Runtime files match frozen candidate. All nine prior local evidence hashes verified."
+  },
+  "current_qualification_authority": {
+    "evidence": "bench/history/2026-10-05-mac-only-qualification.json",
+    "scope": "Johannes explicitly superseded CI/platform prerequisites after the historical checkpoint above. Historical CI failures remain failures."
   }
 }

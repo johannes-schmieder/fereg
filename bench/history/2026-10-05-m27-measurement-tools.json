@@ -1,0 +1,118 @@
+{
+  "milestone": "M27 measurement tooling",
+  "scope": "Parser/cache optimization; no estimator, statistical rule, allowance, comparison or artifact-check change.",
+  "tooling_sha256": {
+    "bench/run.py": "a2c30f3a15f7cc1b6fda9a3a6a0d1c89769ac3d5f48e8c60dd225e75ca7a38b8",
+    "bench/compare.py": "01a33976d3e11be3405af0e1df633e3d34c967421d964456787d8419c06a558b"
+  },
+  "validation": {
+    "active_benchmark_tests": 34,
+    "active_test_log_sha256": "b5d38eb8c5f28f9f3aa97cdc1d8abd96d418c640a3595d41835d162e5a2f1130",
+    "csv_semantic_fixtures": 1500,
+    "fixture_seed": 260041,
+    "csv_field_limits_preserved": true,
+    "immutable_packed_sample_bytes_per_machine_integer": 8,
+    "wide_integer_fallback": true,
+    "every_actual_capture_read": true,
+    "reference_stat_checks_preserved": true,
+    "retained_entry_cache_bound_bytes": 67108864,
+    "bound_scope": "Entries and actual directory allocation after each completed read; transient parsing/rebuilding and total process memory are separate."
+  },
+  "saved_capture_equivalence": {
+    "entire_four_screen_verdict_identical": true,
+    "screen_verdict_sha256": "ed84a952a55cc7178872a77723c22a12c9fb529dfc7f3fc16fdf2726d380f7b2",
+    "entire_historical_M276_result_identical": true,
+    "historical_result_sha256": "cc53ff959267aff44f5c01b9ae094712f90cc715656f95f59bdf974629f8d209",
+    "historical_M276_decision": "Not promoted; fixed baseline one unresolved, unchanged."
+  },
+  "bounded_profile": {
+    "kind": "Instrumented development feedback under unrelated load; not native timing or a clean speedup claim.",
+    "four_screen_analysis_old_seconds": 59.352,
+    "four_screen_analysis_optimized_seconds": 24.882,
+    "reference_sample_reads": 120,
+    "actual_sample_reads": 1080,
+    "required_stat_checks": 2400,
+    "dominant_work": "CSV sample parsing; statistics negligible. Native capture/build/CI accounting retained in prior summary.",
+    "old_profile_sha256": "d4bac8773916c07bd1401d19fd24d627370839cab836aaaf4dc97f3a4ef3e386",
+    "optimized_profile_sha256": "c409476e15c91bf2f61ccb6d4114bcf7af5bff95a68486913e76e32d838e65ce"
+  },
+  "astra": {
+    "model": "Astra",
+    "effort": "high",
+    "review": "m27_bounded_protocol",
+    "finding": "Both concrete parser/retained-cache findings resolved; no blocker. No timing/calibration acceptance claimed."
+  },
+  "interrupted_calibration": {
+    "kind": "First frozen v2 calibration: terminal interrupted/incomplete/unresolved; no candidate measurement",
+    "event": "A separate research batch launched twelve concurrent Stata jobs during parent reverse confirmation. Our identified runner was suspended; its last Stata child completed. Earlier and contaminated observations remain retained; no allowance or acceptance rule changed.",
+    "our_runner_pid": 32464,
+    "unrelated_batch_jobs": 12,
+    "policy": "No unrelated process stopped. No candidate timing started. Await a quiet Mac window; material nonstationarity remains an unresolved calibration gate.",
+    "retained_blocks": [
+      {
+        "path": "target/m27-canonical-owner/calibration-confirmation-parent-forward/results.json",
+        "sha256": "1620e68772df741ca7c703c3cbcd52e2d1450e31fcd0325d2cd19e2f94daff32",
+        "completed": true,
+        "identities_verified": true,
+        "commands": 1084
+      },
+      {
+        "path": "target/m27-canonical-owner/calibration-confirmation-parent-reverse/results.json",
+        "sha256": "5541998f085a6f537f941fdc71cd4ab87840f95378854686a23ed69372718944",
+        "completed": false,
+        "identities_verified": false,
+        "commands": 990
+      },
+      {
+        "path": "target/m27-canonical-owner/calibration-screening-fixed_baseline-forward/results.json",
+        "sha256": "6fa80a4531a1a7e21391ca923e5b0883b7d22b49b4d9ce576b5f17aa06b16ebe",
+        "completed": true,
+        "identities_verified": true,
+        "commands": 300
+      },
+      {
+        "path": "target/m27-canonical-owner/calibration-screening-fixed_baseline-reverse/results.json",
+        "sha256": "7cc24992190ad3a0dceb1b8bb7f7874dcd890f3f6014e221672fdd28fe3e6161",
+        "completed": true,
+        "identities_verified": true,
+        "commands": 300
+      },
+      {
+        "path": "target/m27-canonical-owner/calibration-screening-parent-forward/results.json",
+        "sha256": "459e40562dfda5f294731beb75db4b50643d3e480a9186b3b6a755d2358f128a",
+        "completed": true,
+        "identities_verified": true,
+        "commands": 300
+      },
+      {
+        "path": "target/m27-canonical-owner/calibration-screening-parent-reverse/results.json",
+        "sha256": "867efe92d3c712d014513fdbd8fd893a06449daf9816274a5bb8a6cec5635638",
+        "completed": true,
+        "identities_verified": true,
+        "commands": 300
+      }
+    ],
+    "plan": {
+      "path": "target/m27-canonical-owner/calibration-plan.json",
+      "sha256": "fe5e972bbb6ed12db6c2a793023f102a6c92f5d8915ee90e1ea9eae88089ad83"
+    },
+    "decision": "Known competing twelve-job Stata batch and same-binary timing shift invalidated clean-period assumptions. Original1800s cap and every observation retained. Independent Astra high review recommended stopping remaining blocks; missing confirmation cannot pass. No candidate or estimator conclusion.",
+    "restart_condition": "Exactly one fresh separately frozen attempt after the competing batch demonstrably ends; same15-workload scope,8 screening and original32/64 confirmation budgets, stopping/statistical rules and max5%/1ms allowance. Record new tooling identity; never merge old observations into a supposedly clean period.",
+    "terminal_commands_not_yet_recorded": [
+      {
+        "directory": "target/m27-canonical-owner/calibration-confirmation-parent-reverse/commands/development-ols-2fe-fe-cluster/parent-fereg-t4-52",
+        "metadata_sha256": "d1ec0a6f0bc2c92971409f843945fbf2c6e690b6dedc949c7d79eb4e4760b4fe"
+      }
+    ]
+  },
+  "runtime": "Frozen integrated M27 candidate unchanged; all local scientific/source gates pass; clean calibration and candidate timing still required.",
+  "accepted_net_production_change_against_M26": 452,
+  "current_candidate_net_production_change_against_M26": -1723,
+  "fresh_calibration_declaration": {
+    "plan_sha256": "4dfed65ba10ab1f3ab5df8c6dd9a588006cd9e0b0f7203a406d886c78466d0f3",
+    "same_scope_budgets_rules_and_allowance": true,
+    "native_and_frontend_roles_unchanged": true,
+    "start_condition": "Start only after competing Stata batch demonstrably ends; old3274 observations and final raw capture retained separately, never merged. Tooling-only repairs have identical saved results.",
+    "path": "target/m27-canonical-owner/calibration-clean/calibration-plan.json"
+  }
+}

@@ -2,11 +2,14 @@
 """Compact summaries; missing/failed runs stay visible and cannot pass accuracy."""
 from __future__ import annotations
 import argparse
+from array import array
+from dataclasses import dataclass
 import csv
 from datetime import date
 import io
 import json
 import math
+from operator import itemgetter
 from pathlib import Path
 import statistics
 import hashlib
@@ -21,25 +24,77 @@ def coefficients(directory):
         return {row["name"]: float(row["value"]) for row in csv.DictReader(stream)}
 
 
+@dataclass(frozen=True, slots=True, eq=False)
+class SampleIds:
+    """Immutable ordered identities; common machine integers use eight bytes.
+
+    Unbounded Python integers retain the existing CSV contract through a cold
+    tuple representation. Neither representation sorts, deduplicates or hashes
+    identities in place of the required exact ordered comparison.
+    """
+    packed: bytes | None
+    wide: tuple | None = None
+
+    @classmethod
+    def from_values(cls, values):
+        values = tuple(values)
+        try:
+            return cls(array('q', values).tobytes())
+        except OverflowError:
+            return cls(None, values)
+
+    def __len__(self):
+        return len(self.packed)//8 if self.packed is not None else len(self.wide)
+
+    def __iter__(self):
+        return iter(memoryview(self.packed).cast('q') if self.packed is not None else self.wide)
+
+    def __eq__(self, other):
+        if isinstance(other, SampleIds):
+            if self.packed is not None and other.packed is not None:
+                return self.packed == other.packed
+            return tuple(self) == tuple(other)
+        if isinstance(other, tuple):
+            return tuple(self) == other
+        return NotImplemented
+
+    def storage_bytes(self):
+        if self.packed is not None:
+            return sys.getsizeof(self.packed)
+        return sys.getsizeof(self.wide) + sum(map(sys.getsizeof, self.wide))
+
+
 def sample(directory):
-    # One fixed field avoids a fresh dictionary for every observation. Keep
-    # DictReader's last-duplicate-header and blank-record semantics.
+    # The CSV reader retains field limits, quoting and blank-row semantics.
+    # The common single-column case feeds C-level maps into a compact bank.
     with (Path(directory) / "sample.csv").open() as stream:
         rows = csv.reader(stream)
         header = next(rows, None)
+        if header == ['obs_id']:
+            try:
+                values = map(int, map(itemgetter(0), filter(None, rows)))
+                return SampleIds(array('q', values).tobytes())
+            except OverflowError:
+                stream.seek(0)
+                rows = csv.reader(stream)
+                header = next(rows, None)
         if header is None:
-            return ()
-        if 'obs_id' not in header:
-            raise KeyError('obs_id')
-        column = len(header) - 1 - header[::-1].index('obs_id')
-        return tuple(int(row[column] if column < len(row) else None)
-                     for row in rows if row)
+            return SampleIds.from_values(())
+        column = len(header) - 1 - header[::-1].index('obs_id') if 'obs_id' in header else None
+        result = []
+        for row in rows:
+            if not row:
+                continue
+            if column is None:
+                raise KeyError('obs_id')
+            result.append(int(row[column] if column < len(row) else None))
+        return SampleIds.from_values(result)
 
 
 class ReferenceCache:
     """Analysis-local immutable reference bank; actual captures are always read.
 
-    Retention is bounded, including Python containers and metadata. Stat checks
+    Retained entries are bounded, including their directory and metadata. Stat checks
     surround a first read and every reuse; a changed reference is an integrity
     failure rather than a stale successful comparison. Eviction only costs I/O.
     """
@@ -49,6 +104,7 @@ class ReferenceCache:
         self.maximum_bytes = maximum_bytes
         self.retained_bytes = 0
         self.entries = OrderedDict()
+        self.payload_bytes = 0
 
     @staticmethod
     def fingerprint(path):
@@ -69,17 +125,28 @@ class ReferenceCache:
         value = reader(directory)
         if self.fingerprint(path) != before:
             raise ValueError('reference capture changed during parsing')
-        size = sys.getsizeof(key) + sys.getsizeof(before) + sys.getsizeof(value) + 512
-        if isinstance(value, dict):
+        size = (sys.getsizeof(key) + sys.getsizeof(before)
+                + sum(map(sys.getsizeof, before)) + sys.getsizeof(value)
+                + sys.getsizeof((before, value, 0)) + sys.getsizeof(0))
+        if isinstance(value, SampleIds):
+            size += value.storage_bytes()
+        elif isinstance(value, dict):
             size += sum(sys.getsizeof(k) + sys.getsizeof(v) for k,v in value.items())
         else:
             size += sum(sys.getsizeof(v) for v in value)
-        if size <= self.maximum_bytes:
-            while self.entries and self.retained_bytes + size > self.maximum_bytes:
-                _, (_, _, removed) = self.entries.popitem(last=False)
-                self.retained_bytes -= removed
+        if size + sys.getsizeof(OrderedDict()) <= self.maximum_bytes:
             self.entries[key] = (before, value, size)
-            self.retained_bytes += size
+            self.payload_bytes += size
+            # Count the actual directory allocation: deletion alone may retain
+            # its hash-table capacity, so eviction rebuilds a compact directory.
+            self.retained_bytes = self.payload_bytes + sys.getsizeof(self.entries)
+            while self.entries and self.retained_bytes > self.maximum_bytes:
+                _, (_, _, removed) = self.entries.popitem(last=False)
+                self.payload_bytes -= removed
+                self.entries = OrderedDict(self.entries)
+                self.retained_bytes = (self.payload_bytes + sys.getsizeof(self.entries)
+                                       if self.entries else 0)
+
         return value
 
 
@@ -148,8 +215,175 @@ def timing_envelope(parent, candidate, policy):
                 uncertainty_seconds=uncertainty, noise_resolves_allowance=uncertainty <= allowance)
 
 
+def median_order_interval(values, tail_probability=.00625, quantization=1e-6):
+    """Finite-sample median interval, exact under independent continuous draws.
+
+    Ties make coverage conservative. Each endpoint has the specified binomial
+    tail probability; quantization expands the interval, never subtracts time.
+    """
+    values = sorted(values)
+    n = len(values)
+    if not values or any(not math.isfinite(v) or v < 0 for v in values):
+        raise ValueError('invalid command measurements')
+    k = 0
+    probability = 0.0
+    for index in range(1, n//2+1):
+        probability += math.comb(n, index-1) / 2**n
+        if probability <= tail_probability:
+            k = index
+        else:
+            break
+    if not k:
+        return (-math.inf, math.inf)
+    return (values[k-1]-quantization, values[n-k]+quantization)
+
+
+def median_order_envelope(parent, candidate, policy, tail_probability=.00625):
+    pl, pu = median_order_interval(parent, tail_probability)
+    cl, cu = median_order_interval(candidate, tail_probability)
+    allowance = lambda value: max(policy['short_workload_allowance_seconds'], policy['slowdown_fraction']*value)
+    upper = cu-pl-allowance(pl)
+    lower = cl-pu-allowance(pu)
+    p, c = statistics.median(parent), statistics.median(candidate)
+    return dict(verdict='within' if upper <= 0 else 'unresolved',
+                delta_seconds=c-p, allowance_seconds=allowance(p),
+                parent_median_interval_seconds=[pl,pu], candidate_median_interval_seconds=[cl,cu],
+                lower_excess_seconds=lower, upper_excess_seconds=upper,
+                reverse_upper_excess_seconds=pu-cl-allowance(cl), pairs=len(parent))
+
+
+def validate_measurement_plan(plan):
+    if plan.get('mode') not in ['calibration','acceptance'] or plan.get('method') != 'bounded-median-orders-v2' or plan.get('screen_pairs') != 8:
+        raise ValueError('unsupported bounded measurement protocol')
+    scope = list(map(tuple, plan.get('scope', [])))
+    if not scope or len(set(scope)) != len(scope) or any(len(group) != 3 for group in scope):
+        raise ValueError('empty or duplicated measurement scope')
+    keys = {'|'.join(map(str, group)) for group in scope}
+    if set(plan.get('confirmation_pairs', {})) != keys or any(n not in [32,64] for n in plan['confirmation_pairs'].values()):
+        raise ValueError('confirmation budgets must be assigned to every workload before screening')
+    if plan.get('slowdown_fraction') != .05 or plan.get('short_workload_allowance_seconds') != .001:
+        raise ValueError('measurement allowance changed')
+    if plan.get('maximum_wall_seconds_per_block', 0) <= 0:
+        raise ValueError('missing bounded wall budget')
+    if set(plan.get('artifacts', {})) != {'candidate','parent','fixed_baseline'}:
+        raise ValueError('missing predeclared artifacts')
+    if not plan.get('calibration_sha256') and plan.get('mode') != 'calibration':
+        raise ValueError('candidate measurement needs prior calibrated protocol')
+    return scope
+
+
+def bounded_pair_envelopes(paths):
+    """Two screening orders and, if required, both targeted confirmation orders.
+
+    Every observation remains in the final interval. The screen and final look
+    each spend one-sided alpha .0125; requiring all cells/orders/comparators is
+    an intersection-union gate, with family false acceptance bounded by .025.
+    """
+    campaigns = [json.loads(Path(path).read_text()) for path in paths]
+    if len(campaigns) not in [2,4] or [c.get('reverse_order') for c in campaigns] != [False,True]*(len(campaigns)//2):
+        raise ValueError('bounded campaign needs opposite screening/confirmation orders')
+    first = campaigns[0]
+    plan = first['measurement']['plan']
+    scope = validate_measurement_plan(plan)
+    if hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest() != first['measurement']['plan_sha256']:
+        raise ValueError('embedded bounded plan differs from its identity')
+    comparator = first['measurement']['comparator']
+    if comparator not in ['parent','fixed_baseline']:
+        raise ValueError('invalid measurement comparator')
+    if first['timing_identity'].get('method') != 'monotonic-command-v1':
+        raise ValueError('bounded measurements require monotonic command clock')
+    if first['paired_artifacts'] != {role:plan['artifacts']['candidate' if role=='candidate' else comparator] for role in ['parent','candidate']}:
+        raise ValueError('artifacts differ from predeclared plan')
+    screen_scope = set(scope)
+    confirmations = set()
+    cache = ReferenceCache()
+    values = {}
+    for index, campaign in enumerate(campaigns):
+        stage = 'screening' if index < 2 else 'confirmation'
+        if not campaign.get('complete') or not campaign.get('identities_verified'):
+            raise ValueError('bounded campaign is incomplete')
+        for key in ['paired_artifacts','suite_sha256','tooling_identity','protocol','platform','tier','environment','timing_identity']:
+            if not campaign.get(key) or campaign[key] != first[key]:
+                raise ValueError('bounded campaign identity mismatch: '+key)
+        measurement = campaign.get('measurement', {})
+        if measurement.get('plan') != plan or measurement.get('plan_sha256') != first['measurement']['plan_sha256'] or measurement.get('comparator') != comparator or measurement.get('stage') != stage:
+            raise ValueError('bounded measurement declaration changed')
+        groups = {(c,t,a) for c,t,a,role in campaign['expected_groups']}
+        if stage == 'screening' and groups != screen_scope:
+            raise ValueError('screening omitted a declared workload')
+        if stage == 'confirmation':
+            if not groups <= screen_scope or not groups:
+                raise ValueError('confirmation outside original workload scope')
+            if index == 2:
+                confirmations = groups
+            elif groups != confirmations or measurement.get('screening_blocks') != campaigns[2]['measurement'].get('screening_blocks'):
+                raise ValueError('confirmation scope/evidence changed between orders')
+        expected = {(c,t,a,role) for c,t,a in groups for role in ['parent','candidate']}
+        actual = {(r['cell'],r['threads'],r['arm'],r['artifact_role']) for r in campaign['records'] if not r['reference']}
+        if len(campaign['expected_groups']) != len(expected) or set(map(tuple,campaign['expected_groups'])) != expected or actual != expected:
+            raise ValueError('bounded records differ from declared scope')
+        if campaign.get('wall_seconds',math.inf) > plan['maximum_wall_seconds_per_block']:
+            raise ValueError('bounded campaign exceeded wall budget')
+        for group in groups:
+            cell,threads,arm = group
+            if campaign['datasets'].get(cell) != first['datasets'].get(cell):
+                raise ValueError('bounded dataset identity changed')
+            count = 8 if stage == 'screening' else plan['confirmation_pairs']['|'.join(map(str,group))]
+            references = [r for r in campaign['records'] if r['reference'] and r['cell']==cell]
+            refs = {r['artifact_role']:r for r in references}
+            if len(references)!=2 or set(refs)!={'parent','candidate'}:
+                raise ValueError('bounded command references missing or duplicated')
+            for role, reference in refs.items():
+                native = campaign['paired_artifacts'][role]['native_identity']
+                if any(reference.get(key)!=native[key] for key in ['plugin_sha256','frontend_sha256']):
+                    raise ValueError('bounded reference artifact changed')
+            records = [r for r in campaign['records'] if not r['reference'] and (r['cell'],r['threads'],r['arm'])==group]
+            if len(records) != 2*(count+1):
+                raise ValueError('bounded pairs missing or duplicated')
+            for repetition in ['warmup',*range(1,count+1)]:
+                reverse = campaign['reverse_order'] ^ (isinstance(repetition,int) and repetition%2==0)
+                pair = [r for r in records if r['repetition']==repetition]
+                if [r['artifact_role'] for r in pair] != (['candidate','parent'] if reverse else ['parent','candidate']):
+                    raise ValueError('bounded pair order changed')
+            for record in records:
+                native = campaign['paired_artifacts'][record['artifact_role']]['native_identity']
+                if any(record[key] != native[key] for key in ['plugin_sha256','frontend_sha256']) or record.get('timing_identity') != campaign['timing_identity']:
+                    raise ValueError('bounded command artifact/clock identity changed')
+                metadata = record.get('metadata', {})
+                if metadata.get('clock_rc') != '0' or not 0<float(metadata.get('clock_resolution_seconds',math.inf))<=.0000005:
+                    raise ValueError('invalid bounded command clock')
+                if accuracy(record, refs.get(record['artifact_role']), campaign['protocol'], cache)[0] != 'pass':
+                    raise ValueError('bounded command failed coefficient/sample comparison')
+            values[(index,group)] = {role:[float(r['metadata']['seconds']) for r in records if r['artifact_role']==role and r['repetition']!='warmup'] for role in ['parent','candidate']}
+    effects = []
+    for group in sorted(scope):
+        screen, final = [], []
+        for order in range(2):
+            bank = {role:list(values[(order,group)][role]) for role in ['parent','candidate']}
+            screen.append(median_order_envelope(bank['parent'],bank['candidate'],first['protocol']))
+            if plan['mode']=='calibration' and screen[-1]['reverse_upper_excess_seconds'] > 0:
+                screen[-1]['verdict'] = 'unresolved'
+            if group in confirmations:
+                for role in bank:
+                    bank[role].extend(values[(order+2,group)][role])
+            final.append(median_order_envelope(bank['parent'],bank['candidate'],first['protocol']))
+            # Established regressions use conservative simultaneous tails over
+            # all predeclared families/comparators/orders, only at the final look.
+            regression = median_order_envelope(bank['parent'],bank['candidate'],first['protocol'],.025/(8*len(scope)))
+            final[-1]['established_regression'] = group in confirmations and regression['lower_excess_seconds'] > 0
+        verdict = 'within' if all(b['verdict']=='within' and (plan['mode']!='calibration' or b['reverse_upper_excess_seconds']<=0) for b in final) else ('outside' if all(b['established_regression'] for b in final) else 'unresolved')
+        effects.append(dict(cell=group[0],threads=group[1],arm=group[2],verdict=verdict,screening_blocks=screen,blocks=final,confirmed=group in confirmations))
+    return dict(paired_artifacts=first['paired_artifacts'],manifest_sha256=first['suite_sha256'],datasets=first['datasets'],
+        effects=effects,context={k:first[k] for k in ['protocol','tooling_identity','platform','environment','tier','timing_identity']},
+        measurement_plan=plan,measurement_plan_sha256=first['measurement']['plan_sha256'],
+        passed=all(e['verdict']=='within' for e in effects),
+        blocks=[dict(path=str(p),sha256=hashlib.sha256(Path(p).read_bytes()).hexdigest()) for p in paths])
+
+
 def paired_envelopes(paths):
     """Validate two bounded, opposite-order blocks before evaluating effects."""
+    if paths and json.loads(Path(paths[0]).read_text()).get('measurement'):
+        return bounded_pair_envelopes(paths)
     if len(paths) != 2:
         raise ValueError('exactly two paired blocks are required')
     campaigns = [json.loads(Path(path).read_text()) for path in paths]
@@ -232,12 +466,30 @@ def acceptance_envelopes(parent_paths, baseline_paths, fixed_plugin_sha256, fixe
         raise ValueError('fixed baseline frontend differs from frozen identity')
     if {(e['cell'],e['threads'],e['arm']) for e in parent['effects']} != {(e['cell'],e['threads'],e['arm']) for e in baseline['effects']}:
         raise ValueError('parent and baseline comparisons have different scope')
+    if parent.get('measurement_plan'):
+        if parent['measurement_plan'] != baseline.get('measurement_plan') or parent['measurement_plan_sha256'] != baseline.get('measurement_plan_sha256'):
+            raise ValueError('bounded comparator declarations differ')
+        unresolved = {(e['cell'],e['threads'],e['arm']) for result in [parent,baseline] for e in result['effects'] if any(b['verdict']!='within' for b in e['screening_blocks'])}
+        screening_identity = parent['blocks'][:2]+baseline['blocks'][:2]
+        for result in [parent,baseline]:
+            for block in result['blocks'][2:]:
+                campaign = json.loads(Path(block['path']).read_text())
+                if campaign['measurement'].get('screening_blocks') != screening_identity:
+                    raise ValueError('confirmation must retain the exact four screening artifacts')
+        for result in [parent,baseline]:
+            confirmed = {(e['cell'],e['threads'],e['arm']) for e in result['effects'] if e['confirmed']}
+            if confirmed and confirmed != unresolved:
+                raise ValueError('confirmation must cover exactly all unresolved screening workloads')
+            if confirmed and len(result['blocks']) != 4:
+                raise ValueError('both confirmation orders are required')
+        if any(len(result['blocks'])==4 for result in [parent,baseline]) and any(len(result['blocks'])!=4 for result in [parent,baseline]):
+            raise ValueError('confirmation must cover both comparators')
     passed=parent['passed'] and baseline['passed']
     if calibrate:
         for comparison in [parent,baseline]:
             if comparison['paired_artifacts']['parent'] != comparison['paired_artifacts']['candidate']:
                 raise ValueError('calibration requires identical source/native/frontend artifacts')
-        passed=all(b['lower_seconds'] >= -b['allowance_seconds'] and b['upper_seconds'] <= b['allowance_seconds']
+        passed=all((b['lower_seconds'] >= -b['allowance_seconds'] and b['upper_seconds'] <= b['allowance_seconds']) if 'lower_seconds' in b else (b['upper_excess_seconds'] <= 0 and b['reverse_upper_excess_seconds'] <= 0)
                    for comparison in [parent,baseline] for e in comparison['effects'] for b in e['blocks'])
     return dict(parent=parent, fixed_baseline=baseline, calibration=calibrate, passed=passed)
 
@@ -254,8 +506,11 @@ def summarize(path, destination=None):
     for (cell, threads, arm, role), records in groups.items():
         measured = [record for record in records if record["repetition"] != "warmup"]
         statuses = [record["status"] for record in records]
-        complete = (len(measured)==campaign["protocol"]["repetitions"]
-                    and {r["repetition"] for r in measured}==set(range(1,campaign["protocol"]["repetitions"]+1))
+        count = campaign['protocol']['repetitions']
+        if campaign.get('measurement',{}).get('stage')=='confirmation':
+            count = campaign['measurement']['plan']['confirmation_pairs'][f"{cell}|{threads}|{arm}"]
+        complete = (len(measured)==count
+                    and {r["repetition"] for r in measured}==set(range(1,count+1))
                     and sum(r["repetition"]=="warmup" for r in records)==1
                     and all(s=="ok" for s in statuses))
         status = "ok" if complete else ("timeout" if "timeout" in statuses else "error")
@@ -343,8 +598,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument('results', type=Path, nargs='?')
     parser.add_argument("--output", type=Path)
-    parser.add_argument('--parent-blocks', type=Path, nargs=2)
-    parser.add_argument('--baseline-blocks', type=Path, nargs=2)
+    parser.add_argument('--parent-blocks', type=Path, nargs='+')
+    parser.add_argument('--baseline-blocks', type=Path, nargs='+')
     parser.add_argument('--fixed-plugin-sha256')
     parser.add_argument('--fixed-frontend-sha256')
     parser.add_argument('--calibrate',action='store_true')

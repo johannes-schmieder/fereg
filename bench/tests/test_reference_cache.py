@@ -54,7 +54,7 @@ class ReferenceCacheTests(unittest.TestCase):
         captures = ['obs_id\n1\n\n2\n', 'other,obs_id\na,1\nb,2\n',
                     'obs_id,obs_id\n7,1\n8,2\n', 'obs_id\n1,extra\n', '',
                     'obs_id\n"2"\n', 'obs_id\ninvalid\n', 'wrong\n1\n',
-                    'other,obs_id\n1\n']
+                    'other,obs_id\n1\n', 'wrong\n', 'wrong\n\n']
         with tempfile.TemporaryDirectory() as temp:
             for capture in captures:
                 (Path(temp)/'sample.csv').write_text(capture)
@@ -65,6 +65,46 @@ class ReferenceCacheTests(unittest.TestCase):
                         sample(temp)
                 else:
                     self.assertEqual(sample(temp), expected)
+
+    def test_csv_field_limits_apply_to_header_and_integer_fields(self):
+        old_limit = csv.field_size_limit()
+        with tempfile.TemporaryDirectory() as temp:
+            try:
+                for limit, capture in [(3, 'obs_id\n1\n'),
+                                       (8, 'obs_id\n' + ' '*10 + '1\n'),
+                                       (8, 'obs_id\n"' + ' '*10 + '1"\n')]:
+                    csv.field_size_limit(limit)
+                    (Path(temp)/'sample.csv').write_text(capture)
+                    with self.assertRaises(csv.Error):
+                        tuple(int(row['obs_id']) for row in csv.DictReader(io.StringIO(capture)))
+                    with self.assertRaises(csv.Error):
+                        sample(temp)
+            finally:
+                csv.field_size_limit(old_limit)
+
+    def test_directory_capacity_is_counted_after_repeated_eviction(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            cache = ReferenceCache(8000)
+            for i in range(300):
+                directory = root/str(i)
+                directory.mkdir()
+                (directory/'sample.csv').write_text('obs_id\n1\n2\n')
+                self.assertEqual(cache.read(directory, 'sample.csv', sample), (1, 2))
+                payload = sum(size for _, _, size in cache.entries.values())
+                measured = payload + sys.getsizeof(cache.entries) if cache.entries else 0
+                self.assertEqual(cache.retained_bytes, measured)
+                self.assertLessEqual(measured, cache.maximum_bytes)
+
+    def test_compact_samples_are_immutable_and_preserve_wide_integers(self):
+        with tempfile.TemporaryDirectory() as temp:
+            (Path(temp)/'sample.csv').write_text('obs_id\n2\n-1\n2\n')
+            value = sample(temp)
+            self.assertEqual(tuple(value), (2, -1, 2))
+            with self.assertRaises((AttributeError, TypeError)):
+                value.packed = b''
+            (Path(temp)/'sample.csv').write_text('obs_id\n' + str(2**100) + '\n')
+            self.assertEqual(tuple(sample(temp)), (2**100,))
 
     def test_mutation_during_first_read_is_refused(self):
         with tempfile.TemporaryDirectory() as temp:

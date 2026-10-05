@@ -119,6 +119,7 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 M27.10: CSV/cache repairs;34 tooling checks and saved verdicts identical; Astra high accepts; [interrupted calibration](bench/history/2026-10-05-m27-measurement-tools.json).
 - 2026-10-05 policy: GitHub CI/testing workflows paused by Johannes; Mac-only local gates replace remote prerequisites; science, max5%/1ms and historical failures unchanged.
 - 2026-10-05 M27.8 3ca65bb4: recoverable candidate/evidence checkpoint pushed; CI37262317024 again never started due billing; candidate remains unpromoted.
 - 2026-10-05 M27 candidate: one owner/shared constructor; net vsM26 -1723; local/30/ABI/73/292/48/exact405664 pass; [scope/evidence](bench/history/2026-10-04-m27-canonical-owner.json).

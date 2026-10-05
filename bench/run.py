@@ -209,7 +209,12 @@ def execute_cell(args, artifacts, suite, cell, dataset, environment, records, sa
     for workers in threads[::-1] if reverse else threads:
         arms = suite['comparators'][cell['model']]
         for arm in arms[::-1] if reverse else arms:
-            for repetition in ['warmup', *range(1, suite['protocol']['repetitions']+1)]:
+            count = suite['protocol']['repetitions']
+            if getattr(args,'measurement_plan',None):
+                count = 8 if args.measurement_stage == 'screening' else args.bounded_plan['confirmation_pairs'][f"{cell['id']}|{workers}|{arm}"]
+            for repetition in ['warmup', *range(1, count+1)]:
+                if getattr(args,'measurement_plan',None) and time.monotonic()-args.measurement_started >= args.bounded_plan['maximum_wall_seconds_per_block']:
+                    raise ValueError('bounded measurement wall budget exhausted before next pair')
                 # Alternate artifact order; the confirmation block flips every pair.
                 pair_reverse = reverse ^ (isinstance(repetition, int) and repetition % 2 == 0)
                 for artifact in artifacts[::-1] if pair_reverse else artifacts:
@@ -249,6 +254,39 @@ def run(args):
         if not names <= {cell["id"] for cell in cells}:
             raise ValueError("unknown cell or cell outside this tier")
         cells = [cell for cell in cells if cell["id"] in names]
+    measurement = None
+    if getattr(args,'measurement_plan',None):
+        from compare import validate_measurement_plan, acceptance_envelopes
+        args.bounded_plan = json.loads(args.measurement_plan.read_text())
+        declared = set(validate_measurement_plan(args.bounded_plan))
+        if not args.paired_source_root or not args.fereg_only or not args.clock_plugin or not args.measurement_stage or not args.measurement_comparator:
+            raise ValueError('bounded measurement requires paired artifacts, command clock, stage and comparator')
+        if args.bounded_plan['manifest_sha256'] != sha256(args.manifest or ROOT/'bench/suite.toml'):
+            raise ValueError('bounded plan manifest changed')
+        selected = {(cell['id'],threads,arm) for cell in cells for threads in selected_threads(suite,args.tier,cell,args.threads_only) for arm in suite['comparators'][cell['model']]}
+        screening = []
+        if args.measurement_stage == 'screening':
+            if selected != declared or getattr(args,'screening_blocks',None):
+                raise ValueError('screening must cover the complete declared scope')
+        else:
+            if not args.screening_blocks:
+                raise ValueError('confirmation needs all four completed screening blocks')
+            fixed = args.bounded_plan['artifacts']['fixed_baseline']['native_identity']
+            result = acceptance_envelopes(args.screening_blocks[:2],args.screening_blocks[2:],fixed['plugin_sha256'],fixed['frontend_sha256'])
+            if result['parent']['measurement_plan'] != args.bounded_plan:
+                raise ValueError('confirmation plan differs from screening')
+            unresolved = {(e['cell'],e['threads'],e['arm']) for comparator in ['parent','fixed_baseline'] for e in result[comparator]['effects'] if any(b['verdict']!='within' for b in e['screening_blocks'])}
+            if not unresolved or not unresolved <= selected:
+                raise ValueError('confirmation has no unresolved scope or selection omitted it')
+            if len({t for _,t,_ in unresolved}) != 1 or args.threads_only != next(iter(unresolved))[1]:
+                raise ValueError('bounded targeted block requires its declared worker count')
+            cells = [cell for cell in cells if cell['id'] in {c for c,_,_ in unresolved}]
+            screening = [dict(path=str(path),sha256=sha256(path)) for path in args.screening_blocks]
+        suite['protocol'] = {**suite['protocol'],'uncertainty_method':'bounded-median-orders-v2','repetitions':8,
+            'slowdown_fraction':.05,'short_workload_allowance_seconds':.001,
+            'revision':'bounded-median-orders-v2','uncertainty':'Exact binomial median order-statistic endpoints; one-sided alpha .0125 at screen and final looks; all screening observations retained; 1microsecond endpoint expansion.'}
+        measurement = dict(plan=args.bounded_plan,plan_sha256=hashlib.sha256(json.dumps(args.bounded_plan,sort_keys=True,separators=(',',':')).encode()).hexdigest(),
+            plan_file_sha256=sha256(args.measurement_plan),stage=args.measurement_stage,comparator=args.measurement_comparator,screening_blocks=screening)
     reverse = getattr(args, "reverse_order", False)
     if reverse:
         cells.reverse()
@@ -261,6 +299,11 @@ def run(args):
     artifact_root = getattr(args, "source_root", None)
     args.native_identity = native_identity(args.engine, artifact_root)
     artifacts = paired_arguments(args)
+    if measurement:
+        actual = {a.artifact_role:{'native_identity':a.native_identity,'source_sha':a.source_sha} for a in artifacts}
+        expected = {role:args.bounded_plan['artifacts']['candidate' if role=='candidate' else args.measurement_comparator] for role in ['parent','candidate']}
+        if actual != expected:
+            raise ValueError('measured artifacts differ from predeclared bounded plan')
     clock = getattr(args,'clock_plugin',None)
     if suite.get('program') and clock is None:
         raise ValueError('program protocol requires --clock-plugin; no timing fallback')
@@ -275,6 +318,7 @@ def run(args):
         raise ValueError("run root already exists; runs never overwrite or automatically retry commands")
     args.root.mkdir(parents=True)
     started = time.monotonic()
+    args.measurement_started = started
     records = []
     source_sha, source_dirty = source_identity(artifact_root or ROOT)
     tools = tooling_identity(getattr(args, 'manifest', None))
@@ -291,6 +335,8 @@ def run(args):
                 "fereg_only": args.fereg_only, "reverse_order": reverse, "records": records,
                 "expected_groups": [[cell["id"], threads, arm, getattr(a, 'artifact_role', '')] for cell, threads in plan
                     for arm in suite["comparators"][cell["model"]] for a in artifacts]}
+    if measurement:
+        campaign['measurement'] = measurement
     for cell in cells:
         if cell["design"] == "veneto":
             if args.veneto_data is None:
@@ -309,6 +355,10 @@ def run(args):
         raise ValueError('benchmark tooling or manifest changed during timing')
     if clock is not None and sha256(clock) != args.timing_identity['plugin_sha256']:
         raise ValueError('command clock binary changed during timing')
+    if measurement and sha256(args.measurement_plan) != measurement['plan_file_sha256']:
+        raise ValueError('bounded measurement plan changed during timing')
+    if measurement and time.monotonic()-started > args.bounded_plan['maximum_wall_seconds_per_block']:
+        raise ValueError('bounded measurement wall budget exhausted')
     campaign['identities_verified'] = True
     campaign['complete'] = True
     campaign["wall_seconds"] = time.monotonic()-started
@@ -325,6 +375,10 @@ def arguments():
     parser.add_argument("--source-root", type=Path, help="identified frozen source/frontend/dist for baseline measurements")
     parser.add_argument('--paired-source-root', type=Path, help='identified parent/fixed baseline, interleaved with --source-root candidate')
     parser.add_argument('--clock-plugin',type=Path,help='built benchmark-only command stopwatch; mandatory for program protocol')
+    parser.add_argument('--measurement-plan',type=Path,help='frozen calibrated bounded measurement declaration')
+    parser.add_argument('--measurement-stage',choices=['screening','confirmation'])
+    parser.add_argument('--measurement-comparator',choices=['parent','fixed_baseline'])
+    parser.add_argument('--screening-blocks',type=Path,nargs=4,help='parent forward/reverse, fixed baseline forward/reverse')
     parser.add_argument("--root", type=Path, required=True)
     parser.add_argument("--environment", type=Path, required=True)
     parser.add_argument("--summary", type=Path)
@@ -341,7 +395,7 @@ def arguments():
     parser.add_argument("--plan-only", action="store_true")
     parser.add_argument("--reverse-order", action="store_true", help="reverse cell, thread and comparator order for the bounded confirmation block")
     args = parser.parse_args()
-    for name in ["root", "environment", "summary", "veneto_data", "manifest", "source_root", "paired_source_root", "clock_plugin"]:
+    for name in ["root", "environment", "summary", "veneto_data", "manifest", "source_root", "paired_source_root", "clock_plugin", "measurement_plan"]:
         value = getattr(args, name)
         if value is not None:
             setattr(args, name, value.expanduser().resolve())
