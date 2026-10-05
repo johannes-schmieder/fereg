@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M27.5 unpromoted-trial closeout; qualified M27.4 runtime restored; canonical-owner design continues; full M26–M35 authorized.
+Current task: M27 complete canonical preparation retirement; M27.6 frozen decision inconclusive; qualified runtime M27.4; M26–M35 authorized.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 
 ## Tasks and prerequisites
@@ -77,6 +77,7 @@ Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 - [ ] M27.3 Scaffold trial parked: source/science passes, clean timing unavailable; qualified production restored; retirement remains open.
 - [x] M27.4 Original-axis support/constant-invariant PPML Wald: local/science/exact/timing/Astra high and Linux CI37241856158 all pass.
 - [ ] M27.5 Trial not promoted: parent14within/1unresolved, fixed15within; qualified source/native restored; owning-model retirement remains open.
+- [ ] M27.6 Trial not promoted: parent15within, fixed14within/1unresolved; source/science pass; preserved for complete M27 replacement.
 - [ ] M27 Canonical prepared model and optional cluster metadata; retire duplicated owning pipelines.
 - [ ] M28 Common storage operations and owner-based memory admission.
 - [ ] M29 General worker-budget and kernel scheduling policy; Mac/SCC scaling qualification.
@@ -116,6 +117,11 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-04 M27.7 tools:28 checks pass; four CSVs/full frozen verdict identical;66-capture accuracy19.62s to1.49s; [profile](bench/history/2026-10-04-m27-measurement-efficiency.json).
+- 2026-10-04 M27 strategy: complete retirement batches; focused development then integrated acceptance; historical frozen rules unchanged; accepted net vsM26 +452.
+- 2026-10-04 M27.6: parent15within/fixed14within1unresolved; no confirmed regression, no promotion; [recoverable trial](bench/history/2026-10-04-m27-common-topology.json).
+
+- 2026-10-04 M27.6 scope: Astra xhigh common-topology design; arithmetic fixed, topology proofs narrow; [declaration](bench/history/2026-10-04-m27-common-topology.json).
 
 - 2026-10-04 M27.5 closeout: zero merged retirement; recovered trial preserved; b9d892a6 source/4d1e native exact; [evidence](bench/history/2026-10-04-m27-consumed-model.json).
 

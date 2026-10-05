@@ -42,7 +42,7 @@ M25 is reserved for the first plan's normalization-reuse proposal. Its execution
 is not assumed or required here. M26 selects the latest qualified runtime and
 incorporates any completed M25 evidence; no numbering collision or automatic
 revival of the rejected M23 adapter is intended. Implement within the working
-engine in small replacements, never by reviving the abandoned clean-core tree.
+engine in coherent retirement batches, never by reviving the abandoned clean-core tree.
 
 ## Starting evidence and what must change
 
@@ -168,8 +168,11 @@ successive small regressions must not accumulate unnoticed.
 Use clean identified binaries and frontends, one warmup and at least five
 fresh-process measurements, with paired orders and bounded confirmation of
 flagged results. Use median command time as the primary timing statistic;
-M26 freezes the order-balanced confirmation, uncertainty and maximum-follow-up
-rules before candidate measurements. Trace and profile separately. Verify actual
+Before each prospective protocol is used, calibrate and freeze its screening,
+confirmation, stopping and statistical rules; obtain one Astra protocol review.
+Concentrate bounded confirmation on unresolved workloads while retaining all
+observations and the unchanged allowance. Historical campaigns retain their
+frozen rule. Trace and profile separately. Verify actual
 owners/routes outside the timed interval. Report command time, affected stage time, numerical
 work, row passes and admitted/observed memory using existing facilities.
 Overlapping ranges alone do not prove equivalence; a geometric mean cannot
@@ -247,8 +250,11 @@ older passing binaries.
 
 ## Milestones and dependencies
 
-The sequence is deliberately architectural. Each milestone contains small
-`M<n>.<k>` commits and can first qualify a bounded vertical slice. Research may
+The sequence is deliberately architectural. Complete subsystem retirements
+are implementation/qualification batches, with reviewable `M<n>.<k>` commits
+around one responsibility. Stabilize with focused development feedback before
+freezing the integrated candidate. Small prerequisites unlock a named larger
+retirement inside the same batch. Research may
 proceed independently; integrated runtime work follows the gates below. Every
 milestone records its removed code, surviving responsibilities, science scope,
 performance tradeoffs and artifact identities in a compact bench/history summary.
@@ -296,7 +302,7 @@ Cluster dimensions attach to the finalized sample and may borrow source codes.
 DoF rules remain mathematically distinct where required; metadata variants must
 not force separate owning estimation pipelines.
 
-Migrate host and core consumers through bounded slices, then remove duplicate
+Migrate host and core consumers in a coherent replacement batch and remove duplicate
 `PreparedOlsData`/`PreparedCategoricalOlsData` ownership, clustered wrappers and
 equivalent construction sequences. Public compatibility aliases may remain if
 they contain no second state or scientific implementation.
@@ -457,11 +463,12 @@ This is engineering completion, not permission to publish native release assets.
 
 ## Execution and reporting discipline
 
-Work on main, one named implementation task at a time, using small M26–M35
-commits. Push after required local checks. Keep implementation and qualification
-with the lead; use Astra extra-high for independent reviews and difficult
-architectural/numerical questions. Coordinate builds and stop agents for clean
-timings. SCC work follows the existing 28-core, whole-node, at-most-22-hour rules.
+Work on main, one named retirement responsibility at a time, using reviewable
+M26–M35 commits. Push after required local checks; required CI precedes dependent
+work. Keep implementation and qualification with the lead; use bounded Astra
+help for difficult questions and independent acceptance at milestone completion.
+Additional reviews resolve concrete issues. Coordinate builds and pause agents
+for clean timings; coordinate unrelated workloads without terminating them. SCC work follows the existing 28-core, whole-node, at-most-22-hour rules.
 
 After ten substantive unsuccessful repairs or one working day on a blocker,
 record the reproducer, findings and attempts, then ask Johannes for direction.

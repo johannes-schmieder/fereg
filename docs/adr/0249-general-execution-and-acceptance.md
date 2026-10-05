@@ -41,6 +41,10 @@ allowance requires Johannes's decision before the affected implementation.
 
 ## Consequence
 
+Complete architectural retirements are implementation/qualification batches;
+focused development precedes frozen integrated acceptance. Predetermined,
+calibrated screening/confirmation may target unresolved workloads without
+discarding observations or widening the allowance; historical rules remain.
 Every structural milestone retires named code and counts all replacements.
 Scientific authority stays with independent witnesses. The new plan governs
 future migrations; this ADR does not assert that worker semantics or algorithms

@@ -10,6 +10,8 @@ import math
 from pathlib import Path
 import statistics
 import hashlib
+from collections import OrderedDict
+import sys
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -20,16 +22,80 @@ def coefficients(directory):
 
 
 def sample(directory):
+    # One fixed field avoids a fresh dictionary for every observation. Keep
+    # DictReader's last-duplicate-header and blank-record semantics.
     with (Path(directory) / "sample.csv").open() as stream:
-        return tuple(int(row["obs_id"]) for row in csv.DictReader(stream))
+        rows = csv.reader(stream)
+        header = next(rows, None)
+        if header is None:
+            return ()
+        if 'obs_id' not in header:
+            raise KeyError('obs_id')
+        column = len(header) - 1 - header[::-1].index('obs_id')
+        return tuple(int(row[column] if column < len(row) else None)
+                     for row in rows if row)
 
 
-def accuracy(record, reference, policy):
+class ReferenceCache:
+    """Analysis-local immutable reference bank; actual captures are always read.
+
+    Retention is bounded, including Python containers and metadata. Stat checks
+    surround a first read and every reuse; a changed reference is an integrity
+    failure rather than a stale successful comparison. Eviction only costs I/O.
+    """
+    def __init__(self, maximum_bytes=64*1024*1024):
+        if maximum_bytes < 0:
+            raise ValueError('negative reference cache budget')
+        self.maximum_bytes = maximum_bytes
+        self.retained_bytes = 0
+        self.entries = OrderedDict()
+
+    @staticmethod
+    def fingerprint(path):
+        value = path.stat()
+        return (value.st_dev, value.st_ino, value.st_size,
+                value.st_mtime_ns, value.st_ctime_ns)
+
+    def read(self, directory, filename, reader):
+        path = Path(directory) / filename
+        before = self.fingerprint(path)
+        key = str(path.absolute())
+        if key in self.entries:
+            fingerprint, value, _ = self.entries[key]
+            if fingerprint != before:
+                raise ValueError('immutable reference capture changed')
+            self.entries.move_to_end(key)
+            return value
+        value = reader(directory)
+        if self.fingerprint(path) != before:
+            raise ValueError('reference capture changed during parsing')
+        size = sys.getsizeof(key) + sys.getsizeof(before) + sys.getsizeof(value) + 512
+        if isinstance(value, dict):
+            size += sum(sys.getsizeof(k) + sys.getsizeof(v) for k,v in value.items())
+        else:
+            size += sum(sys.getsizeof(v) for v in value)
+        if size <= self.maximum_bytes:
+            while self.entries and self.retained_bytes + size > self.maximum_bytes:
+                _, (_, _, removed) = self.entries.popitem(last=False)
+                self.retained_bytes -= removed
+            self.entries[key] = (before, value, size)
+            self.retained_bytes += size
+        return value
+
+
+def accuracy(record, reference, policy, cache=None):
     if record["status"] != "ok" or reference is None or reference["status"] != "ok":
         return "unavailable", None
     try:
-        actual, expected = coefficients(record["directory"]), coefficients(reference["directory"])
-        if set(actual) != set(expected) or sample(record["directory"]) != sample(reference["directory"]):
+        actual = coefficients(record["directory"])
+        expected = (coefficients(reference["directory"]) if cache is None else
+                    cache.read(reference["directory"], 'coefficients.csv', coefficients))
+        if set(actual) != set(expected):
+            return "disagreement", None
+        observed_sample = sample(record["directory"])
+        expected_sample = (sample(reference["directory"]) if cache is None else
+                           cache.read(reference["directory"], 'sample.csv', sample))
+        if observed_sample != expected_sample:
             return "disagreement", None
         ratios = [abs(actual[key]-value)/(policy["coefficient_atol"]+policy["coefficient_rtol"]*abs(value))
                   for key, value in expected.items()]
@@ -101,6 +167,7 @@ def paired_envelopes(paths):
         if set(c['paired_artifacts']) != {'parent', 'candidate'} or set(map(tuple,c['expected_groups'])) != set(map(tuple,first['expected_groups'])):
             raise ValueError('paired block scope mismatch')
     effects = []
+    cache = ReferenceCache()
     groups = {(cell, threads, arm) for cell,threads,arm,role in first['expected_groups']}
     if not groups:
         raise ValueError('paired scope is empty')
@@ -138,7 +205,7 @@ def paired_envelopes(paths):
                             raise ValueError('invalid command clock capture')
                     except (KeyError,TypeError):
                         raise ValueError('missing command clock capture') from None
-                if accuracy(r, refs.get(r['artifact_role']), c['protocol'])[0] != 'pass':
+                if accuracy(r, refs.get(r['artifact_role']), c['protocol'], cache)[0] != 'pass':
                     raise ValueError('paired command failed coefficient/sample accuracy')
             times = {role:[float(r['metadata']['seconds']) for r in recs if r['artifact_role']==role and r['repetition']!='warmup'] for role in ['parent','candidate']}
             blocks.append(timing_envelope(times['parent'], times['candidate'], c['protocol']))
@@ -183,6 +250,7 @@ def summarize(path, destination=None):
         if not record["reference"]:
             groups.setdefault((record["cell"], record["threads"], record["arm"],record.get('artifact_role','')), []).append(record)
     rows = []
+    cache = ReferenceCache()
     for (cell, threads, arm, role), records in groups.items():
         measured = [record for record in records if record["repetition"] != "warmup"]
         statuses = [record["status"] for record in records]
@@ -191,7 +259,7 @@ def summarize(path, destination=None):
                     and sum(r["repetition"]=="warmup" for r in records)==1
                     and all(s=="ok" for s in statuses))
         status = "ok" if complete else ("timeout" if "timeout" in statuses else "error")
-        checks = [accuracy(record, refs.get((cell,role)), campaign["protocol"]) for record in measured]
+        checks = [accuracy(record, refs.get((cell,role)), campaign["protocol"], cache) for record in measured]
         verdict = "pass" if complete and all(check=="pass" for check,_ in checks) else "unavailable"
         if any(check=="disagreement" for check,_ in checks):
             verdict = "disagreement"

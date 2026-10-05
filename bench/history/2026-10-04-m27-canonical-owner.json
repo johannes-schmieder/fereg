@@ -1,0 +1,38 @@
+{
+  "milestone": "M27.8",
+  "unit": "Complete canonical preparation, source-role compilation and optional-cluster retirement batch",
+  "status": "Declared before new runtime edits; development, no acceptance claimed",
+  "parent_commit": "67cc1a2e9b1bab270e866c69dab88614d335d862",
+  "qualified_runtime": "b9d892a658a0506acb61366ff144d62e5abb595c",
+  "retirements": [
+    "Independent ordinary/categorical finalized model/sample/source/topology owners and ordinary FE metadata representation",
+    "Both clustered owning wrappers and duplicate cluster construction/borrowing paths",
+    "Synthetic categorical availability request/graph/binding/partition construction detour",
+    "Second finite coefficient/column/interaction recipe bank and identity reporting-slot vector",
+    "Host four-way prepared pipeline/result-view ownership dispatch and PPML shared prepared enum",
+    "Three obsolete compiled preparation scaffolds from preserved M27.3 trial"
+  ],
+  "replacement": "One authoritative finalized PreparedModel, immutable validated sample/topology, common ordered effect specs, scalar original coefficient count, optional cluster metadata; distinct grammar and mathematical operations survive as non-owning cold-boundary adapters. Public compatibility names contain no second state. Direct source-use classification replaces fabricated terms.",
+  "consumers": [
+    "Host OLS preparation/inference/result publication",
+    "Core ordinary/categorical fitting and DoF/inference adapters",
+    "PPML generation/IRLS shared owner and rebase",
+    "Allocation/memory admission constructors and existing grammar/transaction fixtures"
+  ],
+  "expected_net_production_change_against_M26": -1682,
+  "budget": "M26 M27 pool7382 to5700; all fixes/adapters/outside-pool replacement counted. Accepted program change currently+452; M27.6 unpromoted candidate+223. Neither is delivered retirement.",
+  "scientific_scope": "Arithmetic preserving: original slots/base/omission, raw zero-indicator update order, ordinary/categorical solver routes, virtual OLS constant versus finite PPML constant, slope/interactions/source ordering, weight/singleton/missing/domain/error precedence, DoF report identities/nesting/rank, covariance/Wald, FE recovery and outputs unchanged. Immutable-owner private Rust API and storage/admission change intentionally; removed duplicate allocation points retire, actual new capacities charged and failures atomic. No public Stata/FFI/legacy protocol changes.",
+  "qualification": [
+    "Focused grammar/source-use/slot/rebase/cluster/owner allocation and independent oracle witnesses during development",
+    "Stabilized integrated artifact: full local entrypoint/30 long oracles/actual73 parent-next replay/Mac build ABI/mapped science transactions",
+    "M27 completion integration: five-thread science/repeats, licensed46/original-axis/model-wire/M22 strictPPML/savedFE exact witnesses, owner capacity/disposition audits",
+    "Prospectively predeclared calibrated bounded timing protocol against parent and fixedM26; old M27.6 decision unchanged",
+    "Independent Astra high milestone acceptance, required all-job Linux CI before M28"
+  ],
+  "preserved_work": [
+    "M27.6 source patch and frozen inconclusive decision",
+    "M27.5 consumed-model source patch and inconclusive decision",
+    "M27.3 scaffold retirement patch and unqualified timing decision"
+  ],
+  "policy": "No individual 100\u2013200-line slice acceptance campaigns. Stabilize this coherent candidate before expensive freezing/qualification. No benchmark-cell route fences or solver-policy migration in M27."
+}

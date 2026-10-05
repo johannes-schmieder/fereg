@@ -71,7 +71,11 @@ next-specific frontend adjustment must prove legacy behavior unchanged.
 
 ## Gates, timeboxes and workflow
 
-Work on main, one named task at a time, in small `M<n>.<k>: <summary>` commits.
+Work on main, one named responsibility at a time, in reviewable
+`M<n>.<k>: <summary>` commits. Complete architectural retirements are the unit
+of implementation and qualification: migrate consumers and delete superseded
+owners/pipelines in the same batch. Small prerequisites must unlock a named
+retirement inside that batch, not an indefinite series of separate campaigns.
 Push completed tasks after their local checks pass. Never force-push or rewrite
 history. A failed or unverified gate blocks all dependent tasks; independent
 work may continue. Never mark missing evidence as a passing gate.
@@ -79,8 +83,10 @@ After ten substantive unsuccessful repairs or one working day on the same
 blocker (whichever comes first), record the reproducer, findings and attempts,
 then ask Johannes for direction. Do not silently expand a milestone.
 
-Use Astra at extra-high effort for independent reviews and help with difficult
-numerical or architectural problems. Give agents bounded tasks, coordinate
+Use bounded Astra help for difficult numerical or architectural questions and
+an independent acceptance review at milestone completion (high effort as
+Johannes requested; extra-high for difficult design). Additional reviews address
+a concrete unresolved issue. Review the prospective timing protocol once. Give agents bounded tasks, coordinate
 edits and builds, and keep implementation and qualification with the lead
 agent unless Johannes delegates them. No agents run during clean timings.
 
@@ -91,9 +97,19 @@ the relevant tooling and native build/ABI checks. CI runs the full entrypoint
 on every push; no failed required check may be hidden by this local scoping.
 The M0 replay matrix defines
 M1 qualification; add tests only for mapped gaps or concrete regressions.
-Reuse allocation, interruption and rollback fixtures. Do not build new polling
-or evidence frameworks. Re-run broader checks only for a relevant change or
-unresolved concern. Keep exact-copy gates separate from scientific acceptance.
+Reuse allocation, interruption and rollback fixtures. Stabilize coherent
+candidates with focused tests and independent witnesses before freezing and
+expensive acceptance. Do not build new polling or evidence frameworks. Re-run
+broader checks at defined integration/platform boundaries or for relevant risk
+or unresolved concerns; reuse valid evidence tied to unchanged artifacts.
+Keep exact-copy gates separate from scientific acceptance.
+
+Prospective timing uses a calibrated, predeclared bounded screening/confirmation
+protocol in the existing tools, targeting unresolved workloads. Preserve every
+observation, artifact check and both parent/fixed-M26 comparisons. The unchanged
+allowance is max(5%, 1 ms); uncertainty blocks acceptance. Historical campaigns
+retain their original rule. Reserve clean periods without our builds/agents;
+coordinate unrelated workloads without terminating them.
 
 ## Complexity and evidence
 
