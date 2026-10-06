@@ -84,26 +84,42 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     // current-weight Schur roots/scales. Both banks are live in both routes;
     // only the roots/scales overlap the separation phase.
     let workspace_increment = 4 * OBSERVATIONS as u128 * 8;
+    // M30 keeps the general numerical direction and categorical canonical
+    // projector simultaneously. Their seven scalar banks coexist; storage
+    // determines admitted RHS capacity, not the mathematical family.
+    let fast_scalar_increment = 7 * (dimensions.finite_columns + 1) as u128 * 8;
+    let low_scalar_increment = 7 * DEFAULT_POOLSIZE as u128 * 8;
     let parent_increment = 51 * 8;
     let result_increment = base.fast.result_metadata_bytes;
     assert_eq!(
         base.fast.peak_bytes,
-        47_400_233_650 + workspace_increment + parent_increment + result_increment
+        47_400_233_650
+            + workspace_increment
+            + parent_increment
+            + result_increment
+            + fast_scalar_increment
     );
     assert_eq!(
         base.fast.separation_peak_bytes,
-        47_170_268_279 + workspace_increment / 2 + parent_increment
+        47_170_268_279 + workspace_increment / 2 + parent_increment + fast_scalar_increment
     );
     // Low admits an 8-KiB complete-row tile instead of one 51-double row.
     assert_eq!(
         base.low.peak_bytes,
-        24_681_286_050 + workspace_increment + parent_increment + result_increment
+        24_681_286_050
+            + workspace_increment
+            + parent_increment
+            + result_increment
+            + low_scalar_increment
     );
     assert_eq!(
         base.low.separation_peak_bytes,
-        24_451_320_679 + workspace_increment / 2 + parent_increment
+        24_451_320_679 + workspace_increment / 2 + parent_increment + low_scalar_increment
     );
-    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 22_718_947_600);
+    assert_eq!(
+        base.fast.peak_bytes - base.low.peak_bytes,
+        22_718_947_600 + fast_scalar_increment - low_scalar_increment
+    );
 
     let numeric_vector_bytes = 53_u128 * OBSERVATIONS as u128 * 8;
     let bit_vector_bytes = 54_u128 * OBSERVATIONS as u128 / 8;
@@ -123,11 +139,19 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     .expect("embedded governing estimate");
     assert_eq!(
         embedded.fast.peak_bytes,
-        51_707_733_650 + workspace_increment + parent_increment + result_increment
+        51_707_733_650
+            + workspace_increment
+            + parent_increment
+            + result_increment
+            + fast_scalar_increment
     );
     assert_eq!(
         embedded.low.peak_bytes,
-        28_988_786_050 + workspace_increment + parent_increment + result_increment
+        28_988_786_050
+            + workspace_increment
+            + parent_increment
+            + result_increment
+            + low_scalar_increment
     );
 
     let auto = plan_ppml_memory(
@@ -170,11 +194,11 @@ fn governing_k50_shape_selects_low_and_rejects_fast_at_constrained_memory() {
     assert_eq!(auto.usable_bytes, Some(29_360_000_000));
     assert_eq!(
         auto.usable_bytes.expect("imposed usable memory") - embedded.low.peak_bytes,
-        51_213_950 - parent_increment - result_increment
+        51_213_950 - parent_increment - result_increment - low_scalar_increment
     );
     assert_eq!(
         embedded.fast.peak_bytes - auto.usable_bytes.expect("imposed usable memory"),
-        22_667_733_650 + parent_increment + result_increment
+        22_667_733_650 + parent_increment + result_increment + fast_scalar_increment
     );
 
     let low = plan_ppml_memory(
@@ -225,9 +249,15 @@ fn previous_k10_four_gigabyte_shape_still_rejects_every_route() {
     let base = estimate_ppml_memory(dimensions, PpmlMemoryConfig::default())
         .expect("previous constrained estimate");
     let increment = 4 * OBSERVATIONS as u128 * 8 + 11 * 8 + base.fast.result_metadata_bytes;
-    assert_eq!(base.fast.peak_bytes, 21_800_051_330 + increment);
-    assert_eq!(base.low.peak_bytes, 21_481_107_890 + increment);
-    assert_eq!(base.fast.peak_bytes - base.low.peak_bytes, 318_943_440);
+    assert_eq!(
+        base.fast.peak_bytes,
+        21_800_051_330 + increment + 7 * 12 * 8
+    );
+    assert_eq!(base.low.peak_bytes, 21_481_107_890 + increment + 7 * 10 * 8);
+    assert_eq!(
+        base.fast.peak_bytes - base.low.peak_bytes,
+        318_943_440 + 7 * (12 - 10) * 8
+    );
 
     // Outcome plus twelve sources and their missingness masks, plus candidate.
     let old_embedding_resident_floor_bytes =

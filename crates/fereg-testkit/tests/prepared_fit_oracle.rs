@@ -59,7 +59,7 @@ fn cmg_two_way_prepared_fit_matches_certified_cg() {
 }
 
 #[test]
-fn favorable_auto_topology_uses_cmg_without_a_map_pilot_in_fast_and_low_modes() {
+fn structural_auto_graph_and_explicit_solvers_match_dummies_in_both_storage_modes() {
     let periods = 8;
     let workers = 100;
     let firms = 10;
@@ -91,7 +91,7 @@ fn favorable_auto_topology_uses_cmg_without_a_map_pilot_in_fast_and_low_modes() 
         weights: OracleWeights::Unit,
         clusters: Vec::new(),
     })
-    .expect("explicit-dummy CMG oracle");
+    .expect("explicit-dummy graph oracle");
     let prepared = prepare_case(
         &outcome,
         &[x],
@@ -113,7 +113,7 @@ fn favorable_auto_topology_uses_cmg_without_a_map_pilot_in_fast_and_low_modes() 
             let fit = fit_prepared_ols_coefficients_map(&prepared, config)
                 .expect("supported solver oracle fit");
             let expected = if solver == FeSolverKind::Auto {
-                FeSolverKind::Cmg
+                FeSolverKind::Map
             } else {
                 solver
             };

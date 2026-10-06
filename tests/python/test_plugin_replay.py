@@ -4,8 +4,9 @@ import math
 from pathlib import Path
 import sys
 import unittest
+import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
-from replay_plugins import allowed_difference, differences, discrete_view, exact_view, expected_for_fixes
+from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes
 from replay_psd import eigensystem
 
 
@@ -76,3 +77,54 @@ class ReplayChecks(unittest.TestCase):
 
 
 if __name__ == '__main__': unittest.main()
+
+class AffectedScopeChecks(unittest.TestCase):
+    def test_input_bound_numerical_scope_cannot_exclude_scientific_decisions(self):
+        with tempfile.TemporaryDirectory() as root:
+            case = Path(root) / 'example.case'
+            case.write_text('frozen input')
+            expected = {'outputs': {'sample': 0, 'drop_reason': 1, 'residual': 2}, 'saved': [3]}
+            entry = {'input_sha256': digest(case), 'reason': 'declared algorithm change',
+                     'allowed_paths': ['/matrices/RB/bits', '/columns/2', '/columns/3', '/runtime_signature']}
+            scope = {'cases': {'example': entry}}
+            self.assertEqual(affected_prefixes(scope, case, expected), entry['allowed_paths'])
+            self.assertFalse(allowed_difference('fixed-thread-repeat/matrices/RB/bits/0', entry['allowed_paths']))
+            for path in ['/columns/0', '/columns/1', '/matrices/RDOF/bits', '/matrices/RSTATUS/bits',
+                         '/matrices/RB', '/return_code', '/matrices/RREC/bits']:
+                entry['allowed_paths'] = [path]
+                with self.assertRaises(RuntimeError): affected_prefixes(scope, case, expected)
+            entry['allowed_paths'] = ['/matrices/RB/bits']
+            case.write_text('changed input')
+            with self.assertRaises(RuntimeError): affected_prefixes(scope, case, expected)
+
+    def test_bias_scope_keeps_controls_support_and_zero_coordinates_exact(self):
+        with tempfile.TemporaryDirectory() as root:
+            case = Path(root) / 'bias.case'
+            case.write_text('frozen bias input')
+            expected = {'outputs': {'sample': 0, 'drop_reason': 1},
+                        'bias': {'method': 'exact', 'coefficient_columns': 3, 'zero_slots': [2]}}
+            entry = {'input_sha256': digest(case), 'reason': 'declared downstream contractions',
+                     'allowed_paths': []}
+            scope = {'cases': {'bias': entry}}
+            for path in ['/matrices/RBIAS/bits/3', '/matrices/RBDIAG/bits/7', '/matrices/RBSUPPORT/bits/8']:
+                entry['allowed_paths'] = [path]
+                self.assertEqual(affected_prefixes(scope, case, expected), [path])
+            for path in ['/matrices/RBIAS/bits', '/matrices/RBIAS/bits/2', '/matrices/RBIAS/bits/15',
+                         '/matrices/RBDIAG/bits/0', '/matrices/RBDIAG/bits/18', '/matrices/RBSUPPORT/bits/7']:
+                entry['allowed_paths'] = [path]
+                with self.assertRaises(RuntimeError): affected_prefixes(scope, case, expected)
+
+    def test_bias_support_and_controls_remain_in_discrete_cross_worker_view(self):
+        result = {'matrices': {'RDOF': {'bits': ['0'] * 40}, 'RSTATUS': {'bits': ['0'] * 4},
+                              'RBDIAG': {'bits': ['0'] * 21},
+                              'RBSUPPORT': {'columns': 11, 'bits': ['0'] * 22}},
+                  'columns': [['0'], ['0']]}
+        expected = {'poisson': True, 'outputs': {'sample': 0, 'drop_reason': 1}}
+        changed = copy.deepcopy(result)
+        changed['matrices']['RBDIAG']['bits'][7] = 'floating score'
+        changed['matrices']['RBSUPPORT']['bits'][8] = 'floating information'
+        self.assertEqual(discrete_view(result, expected), discrete_view(changed, expected))
+        for table, index in [('RBDIAG', 3), ('RBSUPPORT', 5), ('RBSUPPORT', 14)]:
+            bad = copy.deepcopy(changed)
+            bad['matrices'][table]['bits'][index] = 'changed decision'
+            self.assertNotEqual(discrete_view(result, expected), discrete_view(bad, expected))

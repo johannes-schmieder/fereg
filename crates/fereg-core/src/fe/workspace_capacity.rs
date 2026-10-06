@@ -1,7 +1,5 @@
 //! Shape-only plans consumed by the reusable projection owners.
-use super::borrowed_map::{
-    CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS,
-};
+use super::borrowed_map::{FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::memory::Capacity;
 
@@ -107,39 +105,30 @@ impl TwoFeCapacity {
 #[derive(Clone, Copy)]
 pub(crate) enum CategoricalAcceleratorCapacity {
     None,
-    Observation(u128),
     TwoFe(TwoFeCapacity),
 }
 impl CategoricalAcceleratorCapacity {
     pub(crate) fn new(
         effects: usize,
         categorical: bool,
-        rows: u128,
+        _rows: u128,
         rhs: u128,
         levels: u128,
         maximum_levels: u128,
     ) -> Result<Self> {
-        Ok(
-            if !categorical
-                || !matches!(effects, 2 | 3)
-                || rhs > CATEGORICAL_MAP_ACCELERATOR_MAX_RHS as u128
-            {
-                Self::None
-            } else if effects == 2 && rows >= 128 {
-                Self::TwoFe(TwoFeCapacity::new(
-                    maximum_levels,
-                    levels.checked_sub(maximum_levels).ok_or_else(overflow)?,
-                    rhs,
-                )?)
-            } else {
-                Self::Observation(product(rows, rhs)?)
-            },
-        )
+        Ok(if !categorical || effects != 2 {
+            Self::None
+        } else {
+            Self::TwoFe(TwoFeCapacity::new(
+                maximum_levels,
+                levels.checked_sub(maximum_levels).ok_or_else(overflow)?,
+                rhs,
+            )?)
+        })
     }
     pub(crate) fn cells(self, rhs: u128) -> Result<u128> {
         match self {
             Self::None => Ok(0),
-            Self::Observation(n) => sum(&[product(n, 3)?, product(rhs, 5)?]),
             Self::TwoFe(plan) => sum(&[plan.cells()?, product(rhs, 5)?]),
         }
     }

@@ -25,7 +25,6 @@ mod prepared_scratch;
 mod prepared_unadjusted;
 mod prepared_wald;
 mod rank;
-mod slope_absorber;
 mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};

@@ -246,9 +246,11 @@ forvalues row = 1/4 {
 }
 assert e(feppml_solver)[2,8] == 0
 assert e(feppml_solver)[3,8] > 0
-assert e(feppml_solver)[2,9] > 0
-* The compatibility alias identifies the accepted LSMR checkpoint.
-assert e(feppml_linear_route) == 3
+* Shared geometry may already be prepared; setup time can be zero.
+assert !missing(e(feppml_solver)[2,9]) & e(feppml_solver)[2,9] >= 0
+* The compatibility alias identifies the independently certified canonical
+* categorical checkpoint; the requested joint LSMR solve remains above.
+assert e(feppml_linear_route) == 2
 
 `feppml_test_command' y c.x, absorb(cl1 cl2 cl3) separation(none) ///
     memory(fast) threads(1) deterministic solver(lsmr)

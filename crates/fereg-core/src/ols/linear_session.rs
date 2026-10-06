@@ -12,8 +12,9 @@ use super::implicit_centered::ImplicitCenteredDesign;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSolverKind, MapGeometryGeneration,
-    ReusableCategoricalMapAbsorber, ReusableMapAbsorber, ReusableMapCapacities, SolveReport,
+    BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSession, FeSolverKind,
+    MapGeometryGeneration, ReusableCategoricalMapAbsorber, ReusableMapAbsorber,
+    ReusableMapCapacities, SolveReport,
 };
 use crate::metadata::CoefficientSlot;
 use crate::parallel::ThreadTeam;
@@ -67,22 +68,16 @@ pub(crate) struct LinearSessionGenerations {
     pub(crate) basis: u64,
 }
 
-/// The coefficient frame coexists with the prior response and optional Low
-/// categorical owner. Admission and installation consume this same envelope.
+/// Canonical projection banks belong to the base plan in either storage mode.
+/// The coefficient operation adds its numerical workspace and the second
+/// response/normalized-weight bank. Admission and installation share this bound.
 pub(crate) fn ppml_coefficient_lifetime_bytes(
     design: &FeDesign,
     rhs: usize,
     threads: usize,
-    categorical_checkpoint: bool,
 ) -> Result<u128> {
-    let checkpoint = if categorical_checkpoint {
-        ReusableCategoricalMapAbsorber::coexisting_owner_bytes(design.effects().len(), rhs)?
-    } else {
-        0
-    };
     ReusableMapAbsorber::coefficient_solver_bytes(design, rhs, threads)?
         .checked_add(8 * design.nobs() as u128)
-        .and_then(|bytes| bytes.checked_add(checkpoint))
         .ok_or_else(|| allocation("PPML coefficient workspace overlap overflows"))
 }
 
@@ -1541,9 +1536,10 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
     row_workspace: Vec<f64>,
     frozen_workspace: FrozenLinearWorkspace,
     map_weights: Vec<f64>,
+    previous_response: Vec<f64>,
     projection_block: Vec<f64>,
     fe_design: Option<FeDesign>,
-    fe_projector: Option<ReusableLinearMapProjector<'a>>,
+    fe_projector: Option<FeSession<'a>>,
     reconstruction: Option<LinearReconstructionCertificate>,
     reuse: Option<LinearSessionReuseReport>,
     pending_response_buffer_reused: bool,
@@ -1553,165 +1549,6 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
     phase_allocator_probe: Option<LinearSessionPhaseAllocatorProbe>,
     #[cfg(test)]
     fresh_rank_failure_injection: u8,
-}
-
-/// The generic variant is the unchanged reusable path used by existing
-/// callers. Only PPML's dedicated constructor may select the borrowed
-/// categorical variant; it retains the owned design solely for PPML score and
-/// final-state certificates that deliberately remain independent of the fast
-/// projection kernel.
-enum ReusableLinearMapProjector<'a> {
-    Generic(Box<ReusableMapAbsorber>),
-    PpmlCoefficients {
-        projector: Box<ReusableMapAbsorber>,
-        previous_response: Vec<f64>,
-        canonical: Option<Box<ReusableCategoricalMapAbsorber<'a>>>,
-    },
-    PpmlCategorical {
-        projector: Box<ReusableCategoricalMapAbsorber<'a>>,
-        score_design: FeDesign,
-    },
-}
-
-impl ReusableLinearMapProjector<'_> {
-    fn ppml_operator_work(&self) -> Option<u128> {
-        match self {
-            Self::PpmlCategorical { projector, .. }
-            | Self::PpmlCoefficients {
-                canonical: Some(projector),
-                ..
-            } => projector.ppml_operator_work(),
-            _ => None,
-        }
-    }
-
-    const fn design(&self) -> &FeDesign {
-        match self {
-            Self::Generic(projector) | Self::PpmlCoefficients { projector, .. } => {
-                projector.design()
-            }
-            Self::PpmlCategorical { score_design, .. } => score_design,
-        }
-    }
-
-    const fn max_rhs(&self) -> usize {
-        match self {
-            Self::Generic(projector) | Self::PpmlCoefficients { projector, .. } => {
-                projector.max_rhs()
-            }
-            Self::PpmlCategorical { projector, .. } => projector.max_rhs(),
-        }
-    }
-
-    fn capacities(&self) -> ReusableMapCapacities {
-        match self {
-            Self::Generic(projector) => projector.capacities(),
-            Self::PpmlCoefficients {
-                projector,
-                previous_response,
-                canonical,
-            } => {
-                let mut capacity = projector.capacities();
-                capacity.accelerator_state += previous_response.capacity();
-                if let Some(canonical) = canonical {
-                    let c = canonical.capacities();
-                    capacity.accelerator_state += c.reference_norms
-                        + c.residual_norms
-                        + c.rhs_scales
-                        + c.norm_scales
-                        + c.norm_sums
-                        + c.group_sums
-                        + c.group_corrections
-                        + c.projection_gram
-                        + c.projection_rhs
-                        + c.certificate_columns
-                        + c.accelerator_state;
-                }
-                capacity
-            }
-            Self::PpmlCategorical { projector, .. } => projector.capacities(),
-        }
-    }
-
-    const fn borrows_raw_weights(&self) -> bool {
-        matches!(self, Self::PpmlCategorical { .. })
-    }
-
-    const fn supports_fused_projection(&self) -> bool {
-        matches!(
-            self,
-            Self::PpmlCategorical { .. } | Self::PpmlCoefficients { .. }
-        )
-    }
-
-    #[cfg(test)]
-    const fn is_ppml_categorical(&self) -> bool {
-        matches!(self, Self::PpmlCategorical { .. })
-    }
-
-    fn enable_checkpoint_lsmr(&mut self) {
-        match self {
-            Self::PpmlCategorical { projector, .. }
-            | Self::PpmlCoefficients {
-                canonical: Some(projector),
-                ..
-            } => {
-                projector.enable_checkpoint_lsmr();
-            }
-            _ => {}
-        }
-    }
-
-    #[cfg(test)]
-    fn inject_checkpoint_lsmr_certificate_failure(&mut self) {
-        if let Self::PpmlCategorical { projector, .. } = self {
-            projector.inject_checkpoint_lsmr_certificate_failure();
-        } else {
-            panic!("checkpoint LSMR injection requires the PPML categorical projector");
-        }
-    }
-
-    #[cfg(test)]
-    fn inject_checkpoint_lsmr_fatal_failure(&mut self, code: ErrorCode) {
-        if let Self::PpmlCategorical { projector, .. } = self {
-            projector.inject_checkpoint_lsmr_fatal_failure(code);
-        } else {
-            panic!("checkpoint LSMR injection requires the PPML categorical projector");
-        }
-    }
-
-    fn absorb(
-        &mut self,
-        raw_weights: BorrowedMapWeights<'_>,
-        normalized_weights: &[f64],
-        values: DenseMatrix,
-        config: crate::fe::MapConfig,
-        structural_constant_if_empty: bool,
-        generations: LinearSessionGenerations,
-    ) -> Result<CertifiedBorrowedMap> {
-        match self {
-            Self::Generic(projector) => projector.absorb(
-                normalized_weights,
-                values,
-                config,
-                structural_constant_if_empty,
-            ),
-            Self::PpmlCoefficients {
-                canonical: Some(canonical),
-                ..
-            } => canonical.absorb(raw_weights, values, config),
-            Self::PpmlCoefficients { projector, .. } => projector.absorb_in_generation(
-                normalized_weights,
-                values,
-                config,
-                structural_constant_if_empty,
-                Some(generations.map_geometry()),
-            ),
-            Self::PpmlCategorical { projector, .. } => {
-                projector.absorb(raw_weights, values, config)
-            }
-        }
-    }
 }
 
 /// A frozen solve may fail because its reused numerical state no longer
@@ -1830,20 +1667,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         generations: LinearSessionGenerations,
         fe_design: FeDesign,
     ) -> Result<Self> {
-        Self::new_with_fe_design_mode(prepared, frame, config, generations, fe_design, false)
-    }
-
-    /// PPML-only categorical projector. Low memory projects bounded scratch
-    /// blocks; only dense storage can fuse the response with the design.
-    /// Generic session callers retain the owned-design projector.
-    pub(crate) fn new_with_ppml_fe_design(
-        prepared: &'a P,
-        frame: LinearSolveFrame<'_>,
-        config: PreparedOlsFitConfig,
-        generations: LinearSessionGenerations,
-        fe_design: FeDesign,
-    ) -> Result<Self> {
-        Self::new_with_fe_design_mode(prepared, frame, config, generations, fe_design, true)
+        Self::new_with_fe_design_mode(prepared, frame, config, generations, fe_design)
     }
 
     fn new_with_fe_design_mode(
@@ -1852,7 +1676,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         config: PreparedOlsFitConfig,
         generations: LinearSessionGenerations,
         fe_design: FeDesign,
-        admit_ppml_categorical_map: bool,
     ) -> Result<Self> {
         frame.validate_for(prepared)?;
         let response = fallible_copy(
@@ -1879,35 +1702,29 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             ));
         }
         let (fe_design, fe_projector, map_weights) = if config.absorb.solver == FeSolverKind::Map {
-            let categorical = if admit_ppml_categorical_map && !config.absorb.retain_coefficients {
-                prepared.fit_borrowed_intercept_map_design()?
-            } else {
-                None
-            };
+            let categorical = prepared.fit_borrowed_intercept_map_design()?;
             if let Some(categorical) = categorical.filter(|design| {
                 matches!(design.effects().len(), 1..=3) && design.nobs() == response.len()
             }) {
                 (
                     None,
-                    Some(ReusableLinearMapProjector::PpmlCategorical {
-                        projector: Box::new(ReusableCategoricalMapAbsorber::new_ppml(
+                    Some(FeSession::categorical(
+                        ReusableCategoricalMapAbsorber::new(
                             categorical,
                             maximum_fe_rhs,
                             config.execution.threads.resolved(),
-                        )?),
-                        score_design: fe_design,
-                    }),
-                    fallible_copy(
-                        &response,
-                        "unable to reserve weighted-linear prior response",
-                    )?,
+                        )?,
+                        ReusableMapAbsorber::new(fe_design, maximum_fe_rhs)?,
+                    )),
+                    Vec::new(),
                 )
             } else {
                 (
                     None,
-                    Some(ReusableLinearMapProjector::Generic(Box::new(
-                        ReusableMapAbsorber::new(fe_design, maximum_fe_rhs)?,
-                    ))),
+                    Some(FeSession::general(ReusableMapAbsorber::new(
+                        fe_design,
+                        maximum_fe_rhs,
+                    )?)),
                     fallible_filled(
                         response.len(),
                         0.0,
@@ -1917,6 +1734,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
         } else {
             (Some(fe_design), None, Vec::new())
+        };
+        let previous_response = if fe_projector
+            .as_ref()
+            .is_some_and(|p| p.categorical.is_some())
+        {
+            fallible_copy(&response, "unable to reserve linear response history")?
+        } else {
+            Vec::new()
         };
         Ok(Self {
             prepared,
@@ -1938,6 +1763,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             moment_workspace: Vec::new(),
             row_workspace: Vec::new(),
             frozen_workspace: FrozenLinearWorkspace::default(),
+            previous_response,
             map_weights,
             projection_block: Vec::new(),
             fe_design,
@@ -2002,7 +1828,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .all(|e| e.has_intercept() && e.slopes().is_empty())
             || !matches!(
                 self.fe_projector,
-                Some(ReusableLinearMapProjector::PpmlCategorical { .. })
+                Some(FeSession {
+                    categorical: Some(_),
+                    coefficients: false,
+                    ..
+                })
             )
         {
             return Err(invalid_argument(
@@ -2013,7 +1843,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(())
     }
 
-    pub(crate) const fn fe_design(&self) -> &FeDesign {
+    pub(crate) fn fe_design(&self) -> &FeDesign {
         match (&self.fe_projector, &self.fe_design) {
             (Some(projector), None) => projector.design(),
             (None, Some(design)) => design,
@@ -2065,7 +1895,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     pub(crate) fn uses_ppml_categorical_map_for_test(&self) -> bool {
         self.fe_projector
             .as_ref()
-            .is_some_and(ReusableLinearMapProjector::is_ppml_categorical)
+            .is_some_and(FeSession::is_ppml_categorical)
     }
 
     pub(crate) fn retained_within_memory(&self) -> Option<LinearWithinMemoryReport> {
@@ -2114,11 +1944,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     pub(crate) fn workspace_capacities(&self) -> LinearSessionWorkspaceCapacities {
         let current_step = self.frozen_step.as_ref();
-        let fe = self
+        let mut fe = self
             .fe_projector
             .as_ref()
-            .map(ReusableLinearMapProjector::capacities)
+            .map(FeSession::capacities)
             .unwrap_or_default();
+        fe.accelerator_state += self.previous_response.capacity();
         let (within_resident_elements, within_scratch_bytes, within_io_buffer_elements) = self
             .within
             .as_ref()
@@ -2222,9 +2053,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         plan: crate::fe::ParallelProjectionPlan,
     ) -> Result<()> {
         match self.fe_projector.as_mut() {
-            Some(ReusableLinearMapProjector::Generic(projector)) => {
-                projector.enable_parallel_projection(plan)
-            }
+            Some(FeSession {
+                general: Some(projector),
+                coefficients: false,
+                ..
+            }) => projector.enable_parallel_projection(plan),
             _ => Err(invalid_argument(
                 "parallel PPML projection requires the generic reusable MAP owner",
             )),
@@ -2237,13 +2070,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             allowance,
         )?;
         match self.fe_projector.as_mut() {
-            Some(ReusableLinearMapProjector::Generic(projector)) => {
-                match projector.enable_certificate_geometry() {
-                    Ok(()) => Ok(()),
-                    Err(error) if error.code == ErrorCode::Allocation => Ok(()),
-                    Err(error) => Err(error),
-                }
-            }
+            Some(FeSession {
+                general: Some(projector),
+                coefficients: false,
+                ..
+            }) => match projector.enable_certificate_geometry() {
+                Ok(()) => Ok(()),
+                Err(error) if error.code == ErrorCode::Allocation => Ok(()),
+                Err(error) => Err(error),
+            },
             _ => Err(invalid_argument(
                 "PPML certificate geometry requires the generic reusable MAP owner",
             )),
@@ -2258,59 +2093,47 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         prepared_coupling: Option<u128>,
     ) -> Result<()> {
         let rhs = self.fe_projector.as_ref().expect("MAP owner").max_rhs();
-        let categorical_checkpoint = self.config.execution.mode == PreparedOlsExecutionMode::Low
-            && self
-                .prepared
-                .fit_borrowed_intercept_map_design()?
-                .is_some_and(|d| matches!(d.effects().len(), 2 | 3));
-        let required = ppml_coefficient_lifetime_bytes(
-            self.fe_design(),
-            rhs,
-            threads,
-            categorical_checkpoint,
-        )?;
+        let required = ppml_coefficient_lifetime_bytes(self.fe_design(), rhs, threads)?;
         crate::memory::require_admitted_capacity(required, allowance)?;
-        // Joint ordinary directions do not provide a canonical within design.
-        // Keep the established categorical checkpoint projector, including its
-        // local-mean arithmetic on disconnected, unequal-mass components.
-        let canonical = if self.config.execution.mode == PreparedOlsExecutionMode::Low {
-            self.prepared
-                .fit_borrowed_intercept_map_design()?
-                .filter(|d| matches!(d.effects().len(), 2 | 3))
-                .map(|d| {
-                    ReusableCategoricalMapAbsorber::new_ppml(
-                        d,
-                        self.fe_projector.as_ref().expect("MAP owner").max_rhs(),
-                        threads,
-                    )
-                    .map(Box::new)
-                })
-                .transpose()?
-        } else {
-            None
-        };
-        let Some(ReusableLinearMapProjector::Generic(projector)) = self.fe_projector.as_mut()
+        // History must be available before enabling a numerical operation.
+        // The canonical within projector remains installed independently.
+        if self.previous_response.is_empty() {
+            self.previous_response = fallible_copy(
+                &self.response,
+                "unable to reserve coefficient response history",
+            )?;
+        }
+        if self.map_weights.is_empty() {
+            self.map_weights = fallible_filled(
+                self.response.len(),
+                0.0,
+                "unable to reserve coefficient frame weights",
+            )?;
+        }
+        let Some(FeSession {
+            general: Some(projector),
+            coefficients: false,
+            ..
+        }) = self.fe_projector.as_mut()
         else {
             return Err(invalid_argument(
                 "coefficient coordinates require the generic FE owner",
             ));
         };
         if !projector.has_certificate_geometry() {
-            return self.restore_categorical_projection(canonical);
+            return Ok(());
         }
         match projector.enable_coefficient_solver(threads) {
             Ok(()) => {}
-            Err(error) if error.code == ErrorCode::Allocation => {
-                return self.restore_categorical_projection(canonical)
-            }
+            Err(error) if error.code == ErrorCode::Allocation => return Ok(()),
             Err(error) => return Err(error),
         }
         if let Some(allowance) = parallel_certificate {
             crate::memory::require_admitted_capacity(
-                ReusableMapAbsorber::coefficient_certificate_bytes(projector.design(), rhs)?,
+                ReusableMapAbsorber::certificate_workspace_bytes(projector.design(), rhs)?,
                 allowance,
             )?;
-            match projector.enable_coefficient_certificates() {
+            match projector.enable_certificate_workspace() {
                 Ok(()) => {}
                 Err(error) if error.code == ErrorCode::Allocation => {}
                 Err(error) => return Err(error),
@@ -2328,44 +2151,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 Err(error) => return Err(error),
             }
         }
-        let previous_response =
-            match fallible_copy(&self.response, "unable to retain slope prior response") {
-                Ok(values) => values,
-                Err(error) if error.code == ErrorCode::Allocation => {
-                    return self.restore_categorical_projection(canonical)
-                }
-                Err(error) => return Err(error),
-            };
-        let Some(ReusableLinearMapProjector::Generic(projector)) = self.fe_projector.take() else {
-            unreachable!()
-        };
-        self.fe_projector = Some(ReusableLinearMapProjector::PpmlCoefficients {
-            projector,
-            previous_response,
-            canonical,
-        });
+        let session = self.fe_projector.as_mut().expect("FE binding");
+        session.coefficients = true;
         Ok(())
     }
 
-    fn restore_categorical_projection(
-        &mut self,
-        canonical: Option<Box<ReusableCategoricalMapAbsorber<'a>>>,
-    ) -> Result<()> {
-        if let Some(canonical) = canonical {
-            let Some(ReusableLinearMapProjector::Generic(projector)) = self.fe_projector.take()
-            else {
-                return Err(invalid_argument(
-                    "categorical fallback requires the generic owner",
-                ));
-            };
-            self.map_weights.copy_from_slice(&self.response);
-            self.fe_projector = Some(ReusableLinearMapProjector::PpmlCategorical {
-                projector: canonical,
-                score_design: projector.into_design(),
-            });
-        }
-        Ok(())
-    }
     pub(crate) fn enable_ppml_joint_slopes(&mut self, allowance: u128) -> Result<()> {
         crate::memory::require_admitted_capacity(
             ReusableMapAbsorber::joint_slope_bytes(
@@ -2374,8 +2164,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             )?,
             allowance,
         )?;
-        if let Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) =
-            self.fe_projector.as_mut()
+        if let Some(FeSession {
+            general: Some(projector),
+            coefficients: true,
+            ..
+        }) = self.fe_projector.as_mut()
         {
             match projector.enable_joint_slopes_for_columns(self.prepared.fit_model().columns.len())
             {
@@ -2401,8 +2194,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let rhs = self.fe_projector.as_ref().expect("MAP owner").max_rhs();
         let required = ppml_component_checkpoint_bytes(self.fe_design(), rhs, threads)?;
         crate::memory::require_admitted_capacity(required, allowance)?;
-        if let Some(ReusableLinearMapProjector::PpmlCoefficients {
-            canonical: Some(p), ..
+        if let Some(FeSession {
+            coefficients: true,
+            categorical: Some(p),
+            ..
         }) = self.fe_projector.as_mut()
         {
             p.enable_component_checkpoint_scaling();
@@ -2482,7 +2277,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.frozen_basis
             .as_ref()
             .is_some_and(|b| !b.kept_generated_columns().is_empty())
-            && matches!(self.fe_projector.as_ref(), Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) if projector.joint_slopes().is_some())
+            && matches!(self.fe_projector.as_ref(), Some(FeSession { general: Some(projector), coefficients: true, .. }) if projector.joint_slopes().is_some())
     }
 
     pub(crate) fn solve_ordinary_ppml(&mut self) -> Result<PpmlOrdinaryLinearOutput<'_>> {
@@ -2496,8 +2291,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let team = ThreadTeam::new(self.config.execution.threads);
         let result = team.install(|| self.solve_joint_ppml_internal())?;
         if let Err(error) = result {
-            if let Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) =
-                self.fe_projector.as_mut()
+            if let Some(FeSession {
+                general: Some(projector),
+                coefficients: true,
+                ..
+            }) = self.fe_projector.as_mut()
             {
                 projector.invalidate_joint_slopes();
             }
@@ -2513,8 +2311,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 error
             });
         }
-        let Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) =
-            self.fe_projector.as_ref()
+        let Some(FeSession {
+            general: Some(projector),
+            coefficients: true,
+            ..
+        }) = self.fe_projector.as_ref()
         else {
             unreachable!()
         };
@@ -2557,14 +2358,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 "joint slope retained basis identity is invalid",
             ));
         }
-        let Some(ReusableLinearMapProjector::PpmlCoefficients {
-            projector,
-            previous_response,
+        let Some(FeSession {
+            coefficients: true,
+            general: Some(projector),
             ..
         }) = self.fe_projector.as_mut()
         else {
             unreachable!()
         };
+        let previous_response = &mut self.previous_response;
         let n = self.response.len();
         if previous_response.len() != n || self.frozen_workspace.response.len() != n {
             return Err(invalid_argument(
@@ -2732,8 +2534,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             within.reference_means[position] = mean;
         }
         let mut reported = std::mem::take(&mut self.frozen_workspace.reported_coefficients);
-        let Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) =
-            self.fe_projector.as_ref()
+        let Some(FeSession {
+            general: Some(projector),
+            coefficients: true,
+            ..
+        }) = self.fe_projector.as_ref()
         else {
             unreachable!()
         };
@@ -2911,9 +2716,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             && self
                 .fe_projector
                 .as_ref()
-                .is_some_and(ReusableLinearMapProjector::supports_fused_projection)
+                .is_some_and(FeSession::supports_fused_projection)
         {
-            if self.frozen_workspace.response.len() != rows || self.map_weights.len() != rows {
+            if self.frozen_workspace.response.len() != rows || self.previous_response.len() != rows
+            {
                 return Err(invalid_argument(
                     "canonical profile rebuild response banks disagree",
                 ));
@@ -2921,12 +2727,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             self.frozen_workspace
                 .response
                 .copy_from_slice(&self.response);
-            match self.fe_projector.as_mut() {
-                Some(ReusableLinearMapProjector::PpmlCoefficients {
-                    previous_response, ..
-                }) => previous_response.copy_from_slice(&self.response),
-                _ => self.map_weights.copy_from_slice(&self.response),
-            }
+            self.previous_response.copy_from_slice(&self.response);
         }
         self.projection_refresh_required = true;
         Ok(())
@@ -3269,24 +3070,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if self
             .fe_projector
             .as_ref()
-            .is_some_and(ReusableLinearMapProjector::supports_fused_projection)
+            .is_some_and(FeSession::supports_fused_projection)
         {
-            if let Some(ReusableLinearMapProjector::PpmlCoefficients {
-                previous_response, ..
-            }) = self.fe_projector.as_mut()
-            {
-                if previous_response.len() != self.response.len() {
-                    return Err(invalid_argument("slope response history dimensions differ"));
-                }
-                previous_response.copy_from_slice(&self.response);
-            } else {
-                reused &= self.map_weights.capacity() >= self.response.len();
-                self.map_weights.clear();
-                self.map_weights
-                    .try_reserve(self.response.len())
-                    .map_err(|_| allocation("unable to refresh weighted-linear prior response"))?;
-                self.map_weights.extend_from_slice(&self.response);
-            }
+            reused &= self.previous_response.capacity() >= self.response.len();
+            self.previous_response.clear();
+            self.previous_response
+                .try_reserve(self.response.len())
+                .map_err(|_| allocation("unable to refresh linear response history"))?;
+            self.previous_response.extend_from_slice(&self.response);
         }
         self.response.clear();
         self.response
@@ -3344,8 +3135,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.refresh_response(response, generation)?;
         if identical_weights {
             self.generations.weights = generation;
-            if let Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) =
-                self.fe_projector.as_mut()
+            if let Some(FeSession {
+                general: Some(projector),
+                coefficients: true,
+                ..
+            }) = self.fe_projector.as_mut()
             {
                 projector.rebind_identical_weight_generation(
                     prior_geometry_generation,
@@ -3496,11 +3290,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             || !self.fe_projector.as_ref().is_some_and(|projector| {
                 matches!(
                     projector,
-                    ReusableLinearMapProjector::PpmlCategorical { .. }
-                        | ReusableLinearMapProjector::PpmlCoefficients {
-                            canonical: Some(_),
-                            ..
-                        }
+                    FeSession {
+                        categorical: Some(_),
+                        coefficients: false,
+                        ..
+                    } | FeSession {
+                        coefficients: true,
+                        categorical: Some(_),
+                        ..
+                    }
                 )
             })
         {
@@ -3607,7 +3405,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         // same physical frame, including after a strict candidate is rolled
         // back. Otherwise the next ordinary refresh adds an obsolete z delta.
         if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
-            self.map_weights.copy_from_slice(&self.response);
+            self.previous_response.copy_from_slice(&self.response);
         }
         Ok(Some((products.response, products.report, products.moments)))
     }
@@ -3635,7 +3433,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let operator_work_before = self
             .fe_projector
             .as_ref()
-            .and_then(ReusableLinearMapProjector::ppml_operator_work);
+            .and_then(FeSession::ppml_operator_work);
         let product_attempt = self.try_canonical_products()?;
         let mut canonical_moments = None;
         let (within_response, absorption_report) =
@@ -3682,7 +3480,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         && self
                             .fe_projector
                             .as_ref()
-                            .is_some_and(ReusableLinearMapProjector::supports_fused_projection)
+                            .is_some_and(FeSession::supports_fused_projection)
                     {
                         report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
                         let (reused, fused_report) =
@@ -3722,7 +3520,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let observed_projection_work = self
             .fe_projector
             .as_ref()
-            .and_then(ReusableLinearMapProjector::ppml_operator_work)
+            .and_then(FeSession::ppml_operator_work)
             .zip(operator_work_before)
             .and_then(|(after, before)| after.checked_sub(before))
             .filter(|&work| work > 0);
@@ -3756,6 +3554,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         // the reusable workspace on both success and every downstream rank /
         // certificate error before propagating the result.
         self.frozen_workspace.response = within_response;
+        if self
+            .fe_projector
+            .as_ref()
+            .is_some_and(FeSession::supports_fused_projection)
+        {
+            // This residual and its raw-response anchor describe the same frame,
+            // including after a fresh rank failure. A later weight refresh must
+            // not add the already incorporated response delta a second time.
+            self.previous_response.copy_from_slice(&self.response);
+        }
         let candidate = candidate?;
         drop(finite_phase);
         let finite_solve_seconds = finite_started.elapsed().as_secs_f64();
@@ -3883,7 +3691,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             values,
             self.config.absorb.map,
             self.prepared.fit_has_absorbed_intercept(),
-            self.generations,
+            self.generations.map_geometry(),
         )
     }
 
@@ -3896,17 +3704,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         norms: &mut [f64],
     ) -> Result<(CertifiedBorrowedMap, bool)> {
         match self.fe_projector.as_mut() {
-            Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) => projector
-                .absorb_with_selected_norms(
-                    self.weights.borrowed(),
-                    values,
-                    self.config.absorb.map,
-                    self.bread_weight_scale.solver_weight_divisor,
-                    0..norms.len(),
-                    norms,
-                ),
-            Some(ReusableLinearMapProjector::PpmlCoefficients {
-                canonical: Some(projector),
+            Some(FeSession {
+                categorical: Some(projector),
+                coefficients: false,
                 ..
             }) => projector.absorb_with_selected_norms(
                 self.weights.borrowed(),
@@ -3916,9 +3716,22 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 0..norms.len(),
                 norms,
             ),
-            Some(ReusableLinearMapProjector::PpmlCoefficients {
-                projector,
-                canonical: None,
+            Some(FeSession {
+                coefficients: true,
+                categorical: Some(projector),
+                ..
+            }) => projector.absorb_with_selected_norms(
+                self.weights.borrowed(),
+                values,
+                self.config.absorb.map,
+                self.bread_weight_scale.solver_weight_divisor,
+                0..norms.len(),
+                norms,
+            ),
+            Some(FeSession {
+                coefficients: true,
+                general: Some(projector),
+                categorical: None,
                 ..
             }) => Ok((
                 projector.absorb_coefficient_with_selected_norms(
@@ -3943,9 +3756,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         reference: Option<&mut [f64]>,
         residual: &mut [f64],
     ) -> Result<CertifiedBorrowedMap> {
-        let Some(ReusableLinearMapProjector::PpmlCoefficients {
-            projector,
-            canonical: None,
+        let Some(FeSession {
+            coefficients: true,
+            general: Some(projector),
+            categorical: None,
             ..
         }) = self.fe_projector.as_mut()
         else {
@@ -3967,7 +3781,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     fn reusable_map_max_rhs(&self) -> Result<usize> {
         self.fe_projector
             .as_ref()
-            .map(ReusableLinearMapProjector::max_rhs)
+            .map(FeSession::max_rhs)
             .ok_or_else(|| {
                 FeregError::new(
                     ErrorCode::Internal,
@@ -4071,7 +3885,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 && self
                     .fe_projector
                     .as_ref()
-                    .is_some_and(ReusableLinearMapProjector::supports_fused_projection)
+                    .is_some_and(FeSession::supports_fused_projection)
             {
                 let (reused, fused_report) = self
                     .reproject_retained_with_response_in_place()
@@ -5450,9 +5264,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             DenseMatrix::from_row_major(rows, 1, std::mem::take(&mut workspace.residuals))?;
         let residual_absorbed = if self.config.absorb.solver == FeSolverKind::Map {
             self.fill_reusable_map_weights()?;
-            if let Some(ReusableLinearMapProjector::PpmlCoefficients {
-                projector,
-                canonical: None,
+            if let Some(FeSession {
+                coefficients: true,
+                general: Some(projector),
+                categorical: None,
                 ..
             }) = self.fe_projector.as_mut()
             {
@@ -5592,8 +5407,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let slope_norms = self.config.absorb.solver == FeSolverKind::Map
             && matches!(
                 self.fe_projector,
-                Some(ReusableLinearMapProjector::PpmlCoefficients {
-                    canonical: None,
+                Some(FeSession {
+                    coefficients: true,
+                    categorical: None,
                     ..
                 })
             );
@@ -5668,8 +5484,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                                 Some(&mut reference_norms),
                                 &mut within_norms,
                             )?
-                        } else if let Some(ReusableLinearMapProjector::PpmlCategorical {
-                            projector,
+                        } else if let Some(FeSession {
+                            categorical: Some(projector),
                             ..
                         }) = self.fe_projector.as_mut()
                         {
@@ -6158,15 +5974,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     && matches!(
                         self.fe_projector.as_ref(),
                         Some(
-                            ReusableLinearMapProjector::PpmlCategorical { .. }
-                                | ReusableLinearMapProjector::PpmlCoefficients { .. }
+                            FeSession {
+                                categorical: Some(_),
+                                coefficients: false,
+                                ..
+                            } | FeSession {
+                                coefficients: true,
+                                ..
+                            }
                         )
                     )
                     || self.config.execution.mode == PreparedOlsExecutionMode::Fast
                         && matches!(self.fe_projector.as_ref(),
-                            Some(ReusableLinearMapProjector::PpmlCategorical { score_design, .. })
+                            Some(FeSession { categorical: Some(_), general: Some(general), coefficients: false, .. })
                                 if numeric.is_some() && column_work
-                                    || rows >= 65_536 && score_design.effects().len() == 1));
+                                    || rows >= 65_536 && general.design().effects().len() == 1));
             if parallel_columns {
                 for row in 0..rows {
                     let weight = normalized_solver_weight(weights, weight_scale, row)?;
@@ -6419,7 +6241,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if self
             .fe_projector
             .as_ref()
-            .is_some_and(ReusableLinearMapProjector::borrows_raw_weights)
+            .is_some_and(FeSession::borrows_raw_weights)
         {
             return Ok(true);
         }
@@ -6614,7 +6436,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         if !self
             .fe_projector
             .as_ref()
-            .is_some_and(ReusableLinearMapProjector::supports_fused_projection)
+            .is_some_and(FeSession::supports_fused_projection)
         {
             return Err(invalid_argument(
                 "fused weighted-linear projection requires the admitted PPML projector",
@@ -6641,7 +6463,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         };
         if rows != self.response.len()
             || self.frozen_workspace.response.len() != rows
-            || self.map_weights.len() != rows
+            || self.previous_response.len() != rows
             || reference_norms.len() != columns
             || reference_means.len() != columns
             || within_norms.len() != columns
@@ -6660,12 +6482,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .try_reserve(elements.saturating_sub(values.len()))
             .map_err(|_| allocation("unable to expand fused weighted-linear projection"))?;
         values.resize(elements, 0.0);
-        let previous_response = match self.fe_projector.as_ref() {
-            Some(ReusableLinearMapProjector::PpmlCoefficients {
-                previous_response, ..
-            }) => previous_response.as_slice(),
-            _ => self.map_weights.as_slice(),
-        };
+        let previous_response = self.previous_response.as_slice();
         if previous_response.len() != rows {
             return Err(invalid_argument("fused response history dimensions differ"));
         }
@@ -6691,15 +6508,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
         let combined = DenseMatrix::from_row_major(rows, stride, values)?;
         let (absorbed, norms_reused) = match self.fe_projector.as_mut() {
-            Some(ReusableLinearMapProjector::PpmlCategorical { projector, .. }) => projector
-                .absorb_with_trailing_norms(
-                    self.weights.borrowed(),
-                    combined,
-                    self.config.absorb.map,
-                    self.bread_weight_scale.solver_weight_divisor,
-                    &mut within_norms,
-                )?,
-            Some(ReusableLinearMapProjector::PpmlCoefficients { projector, .. }) => (
+            Some(FeSession {
+                categorical: Some(projector),
+                ..
+            }) => projector.absorb_with_trailing_norms(
+                self.weights.borrowed(),
+                combined,
+                self.config.absorb.map,
+                self.bread_weight_scale.solver_weight_divisor,
+                &mut within_norms,
+            )?,
+            Some(FeSession {
+                general: Some(projector),
+                coefficients: true,
+                ..
+            }) => (
                 projector.absorb_coefficient_with_selected_norms(
                     &self.map_weights,
                     combined,

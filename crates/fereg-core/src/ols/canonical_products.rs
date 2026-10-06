@@ -2413,7 +2413,7 @@ mod tests {
             let frame =
                 LinearSolveFrame::from_parts(&y, BorrowedMapWeights::Provided(&weights), scale)
                     .unwrap();
-            let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+            let mut session = CertifiedLinearSession::new_with_fe_design(
                 &prepared,
                 frame,
                 config,
@@ -2687,7 +2687,7 @@ mod tests {
                         scale,
                     )
                     .unwrap();
-                    let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                    let mut session = CertifiedLinearSession::new_with_fe_design(
                         &prepared,
                         frame,
                         config,
@@ -2758,7 +2758,7 @@ mod tests {
                 };
                 let frame =
                     LinearSolveFrame::from_parts(&y, BorrowedMapWeights::Unit, scale).unwrap();
-                let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                let mut session = CertifiedLinearSession::new_with_fe_design(
                     &prepared,
                     frame,
                     config,
@@ -2900,7 +2900,7 @@ mod tests {
                 };
                 let frame =
                     LinearSolveFrame::from_parts(&y, BorrowedMapWeights::Unit, scale).unwrap();
-                let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                let mut session = CertifiedLinearSession::new_with_fe_design(
                     &prepared,
                     frame,
                     config,
@@ -3043,7 +3043,7 @@ mod tests {
                 };
                 let frame =
                     LinearSolveFrame::from_parts(&y, BorrowedMapWeights::Unit, scale).unwrap();
-                let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                let mut session = CertifiedLinearSession::new_with_fe_design(
                     &prepared,
                     frame,
                     config,

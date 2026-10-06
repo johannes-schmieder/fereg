@@ -15,12 +15,7 @@ use crate::fe::{
     absorb_finalized_categorical_slope_map_certified,
     absorb_finalized_categorical_topology_map_certified, finalize_categorical_topology,
     plan_categorical_absorbed_request, prune_categorical_partition_singletons,
-    recover_finalized_categorical_effects_cg_certified,
-    recover_finalized_categorical_effects_from_coefficients_selected_certified,
-    recover_finalized_categorical_effects_lsmr_certified,
-    recover_finalized_categorical_effects_map_certified,
-    recover_finalized_categorical_effects_sd_lsmr_certified,
-    recover_finalized_two_effects_graph_certified, BorrowedMapWeights,
+    recover_finalized_categorical_effects_map_certified, BorrowedMapWeights,
     CategoricalAbsorbedEffectView, CategoricalCodeView, CertifiedBorrowedMap, FeCoefficientBatch,
     FinalizedCategoricalTopology, LsmrConfig, MapConfig, RecoveredCategoricalEffects,
     SingletonMultiplicity, SingletonResult,
@@ -45,7 +40,6 @@ use super::{
 };
 
 const CATEGORICAL_SLOPE_MAP_TOLERANCE_CEILING: f64 = 1e-12;
-const CATEGORICAL_RECOVERY_CG_ITERATION_CAP: usize = 256;
 
 // Keep the owned sample behind a module-private field: even the surrounding
 // preparation code cannot forge this proof or obtain mutable access. Source
@@ -406,10 +400,6 @@ impl PreparedModel {
         }
     }
 
-    pub(crate) fn slope_map_config(&self, config: MapConfig) -> MapConfig {
-        categorical_slope_map_config(config)
-    }
-
     /// Recover the absorbed sum and selected normalized FE channels from an
     /// observation-aligned absorbed target.
     pub fn recover_absorbed_effects_map(
@@ -575,19 +565,12 @@ impl PreparedModel {
             materialize_absorbed_sum,
             lsmr,
             map,
-            false,
-            true,
             memory_budget,
         )
     }
 
-    /// PPML saved-FE recovery boundary. Allocation failures from a preferred
-    /// recovery route are terminal r909 errors rather than reasons to attempt a
-    /// second solver whose allocator behavior could mask the original failure.
-    /// PPML also skips the pinned external LSMR implementation, whose upstream
-    /// workspaces are not yet fallibly allocated, and uses the certified
-    /// repository-owned MAP recovery fallback instead. Ordinary OLS retains
-    /// the existing LSMR-first recovery policy above.
+    /// PPML and OLS share fallible coefficient recovery and independent
+    /// reconstruction against the original target before publication.
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn recover_ppml_absorbed_effects_fast_with_weights(
         &self,
@@ -609,8 +592,6 @@ impl PreparedModel {
             materialize_absorbed_sum,
             lsmr,
             map,
-            true,
-            false,
             None,
         )
     }
@@ -626,304 +607,23 @@ impl PreparedModel {
         materialize_absorbed_sum: bool,
         lsmr: LsmrConfig,
         map: MapConfig,
-        propagate_allocation: bool,
-        allow_lsmr: bool,
         memory_budget: Option<FeSolverMemoryBudget>,
     ) -> Result<RecoveredCategoricalEffects> {
-        let validation_bytes = self.fe_topology.validation_workspace_bytes()?;
-        if memory_budget.is_some_and(|budget| !budget.fits(validation_bytes)) {
-            return Err(allocation(
-                "saved-FE topology validation exceeds the joint memory budget",
-            ));
-        }
-        let validated_single = self.validate_with_reusable_topology(true)?;
+        self.validate_with_reusable_topology(true)?;
         let effects = self.effect_views()?;
-        let recovery_memory = if !effects.is_empty()
-            && effects
-                .iter()
-                .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
-        {
-            let mut levels = Vec::new();
-            levels.try_reserve_exact(effects.len()).map_err(|_| {
-                FeregError::new(
-                    ErrorCode::Allocation,
-                    "unable to reserve recovery level counts",
-                )
-            })?;
-            for &source in self.fe_topology.effect_to_topology() {
-                levels.push(self.fe_topology.registry().source(source)?.n_levels());
-            }
-            Some(estimate_intercept_recovery_memory(
-                self.sample.n_active(),
-                &levels,
-                requested_channels
-                    .iter()
-                    .filter(|&&requested| requested)
-                    .count(),
-                rayon::current_num_threads(),
-                lsmr.local_size,
-            )?)
-        } else if allow_lsmr && !effects.is_empty() {
-            // PPML admits recovery in its parent/frame planner and disables this
-            // LSMR route. Keep its existing admission and failure policy.
-            let mut shapes = Vec::new();
-            shapes
-                .try_reserve_exact(effects.len())
-                .map_err(|_| allocation("unable to reserve slope recovery shapes"))?;
-            for (effect, &source) in effects.iter().zip(self.fe_topology.effect_to_topology()) {
-                shapes.push((
-                    self.fe_topology.registry().source(source)?.n_levels(),
-                    effect.has_intercept(),
-                    effect.slopes().len(),
-                ));
-            }
-            Some(crate::memory::estimate_slope_recovery_memory(
-                self.sample.n_active(),
-                &shapes,
-                requested_channels
-                    .iter()
-                    .filter(|&&requested| requested)
-                    .count(),
-                self.fe_topology.compacted_sources().len(),
-                validation_bytes,
-                rayon::current_num_threads(),
-                lsmr.local_size,
-            )?)
-        } else {
-            None
-        };
-        let fits = |bytes| memory_budget.is_none_or(|budget| budget.fits(bytes));
-        let mut attempted_peak = crate::memory::SolverWorkspacePeak::ZERO;
-        fn record_attempt(
-            peak: &mut crate::memory::SolverWorkspacePeak,
-            bytes: Option<u128>,
-        ) -> Result<()> {
-            *peak = peak.max(match bytes {
-                Some(bytes) => crate::memory::SolverWorkspacePeak::from_bytes(bytes)?,
-                None => crate::memory::SolverWorkspacePeak::UNMODELED,
-            });
-            Ok(())
-        }
-
-        // A budget excludes only that attempted route. In particular, a valid
-        // retained product or the bounded MAP fallback need not reserve an
-        // unused Schwarz hierarchy. Each failed attempt drops its workspace
-        // before the next admitted route starts.
-        if let Some(coefficients) = retained
-            .filter(|_| recovery_memory.is_none_or(|memory| fits(memory.retained_peak_bytes)))
-        {
-            record_attempt(
-                &mut attempted_peak,
-                recovery_memory.map(|memory| memory.retained_peak_bytes),
-            )?;
-            match recover_finalized_categorical_effects_from_coefficients_selected_certified(
-                &self.fe_topology,
-                &effects,
-                weights,
-                target,
-                requested_channels,
-                coefficients,
-                map.tolerance,
-                known_connected,
-                materialize_absorbed_sum,
-            ) {
-                Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
-                Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
-                    return Err(error);
-                }
-                Err(_) => {}
-            }
-        }
-        // OLS may solve independent slope groups directly. The common finishing
-        // certificate remains authoritative; failed attempts leave target intact.
-        if allow_lsmr
-            && effects.len() == 1
-            && !effects[0].slopes().is_empty()
-            && effects[0].channels() <= 4
-            && target.len() >= 16_384
-            && map.max_iterations > 0
-        {
-            let levels = self
-                .fe_topology
-                .registry()
-                .source(self.fe_topology.effect_to_topology()[0])?
-                .n_levels();
-            let extra = crate::fe::single_slope_recovery_extra_bytes(
-                target.len(),
-                levels,
-                effects[0].channels(),
-                rayon::current_num_threads(),
-            )?;
-            let direct_bytes = recovery_memory
-                .and_then(|memory| memory.retained_peak_bytes.checked_add(extra))
-                .ok_or_else(|| allocation("single slope recovery envelope overflows"))?;
-            for cache_geometry in [true, false] {
-                if cache_geometry && rayon::current_num_threads() != 1 {
-                    continue;
-                }
-                let bytes = if cache_geometry {
-                    direct_bytes
-                        .checked_add(crate::fe::single_slope_recovery_geometry_bytes(
-                            levels,
-                            effects[0].channels(),
-                        )?)
-                        .ok_or_else(|| allocation("cached recovery geometry envelope overflows"))?
-                } else {
-                    direct_bytes
-                };
-                if !fits(bytes) {
-                    continue;
-                }
-                record_attempt(&mut attempted_peak, Some(bytes))?;
-                match crate::fe::recover_finalized_single_slope_direct_certified(
-                    &self.fe_topology,
-                    &effects,
-                    weights,
-                    target,
-                    requested_channels,
-                    map.tolerance,
-                    materialize_absorbed_sum,
-                    cache_geometry,
-                ) {
-                    Ok(recovered) => {
-                        return Ok(recovered.with_solver_workspace_peak(attempted_peak))
-                    }
-                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
-                        return Err(error)
-                    }
-                    Err(_) => {}
-                }
-            }
-        }
-        if effects
-            .iter()
-            .all(|effect| effect.has_intercept() && effect.slopes().is_empty())
-        {
-            if allow_lsmr
-                && effects.len() == 2
-                && target.len() >= 16_384
-                && rayon::current_num_threads() >= 8
-                && recovery_memory.is_some_and(|memory| fits(memory.retained_peak_bytes))
-            {
-                record_attempt(
-                    &mut attempted_peak,
-                    recovery_memory.map(|memory| memory.retained_peak_bytes),
-                )?;
-                match recover_finalized_two_effects_graph_certified(
-                    &self.fe_topology,
-                    &effects,
-                    weights,
-                    target,
-                    requested_channels,
-                    map.tolerance,
-                    known_connected,
-                    materialize_absorbed_sum,
-                ) {
-                    Ok(recovered) => {
-                        return Ok(recovered.with_solver_workspace_peak(attempted_peak))
-                    }
-                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
-                        return Err(error)
-                    }
-                    Err(_) => {}
-                }
-            }
-            if effects.len() > 1 && recovery_memory.is_none_or(|memory| fits(memory.cg_peak_bytes))
-            {
-                record_attempt(
-                    &mut attempted_peak,
-                    recovery_memory.map(|memory| memory.cg_peak_bytes),
-                )?;
-                match recover_finalized_categorical_effects_cg_certified(
-                    &self.fe_topology,
-                    &effects,
-                    weights,
-                    target,
-                    requested_channels,
-                    MapConfig {
-                        max_iterations: map
-                            .max_iterations
-                            .min(CATEGORICAL_RECOVERY_CG_ITERATION_CAP),
-                        ..categorical_slope_map_config(map)
-                    },
-                ) {
-                    Ok(recovered) => {
-                        return Ok(recovered.with_solver_workspace_peak(attempted_peak))
-                    }
-                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
-                        return Err(error);
-                    }
-                    Err(_) => {}
-                }
-            }
-            if allow_lsmr && recovery_memory.is_none_or(|memory| fits(memory.sd_lsmr_peak_bytes)) {
-                record_attempt(
-                    &mut attempted_peak,
-                    recovery_memory.map(|memory| memory.sd_lsmr_peak_bytes),
-                )?;
-                match recover_finalized_categorical_effects_sd_lsmr_certified(
-                    &self.fe_topology,
-                    &effects,
-                    weights,
-                    target,
-                    requested_channels,
-                    lsmr,
-                    categorical_slope_map_config(map),
-                    validated_single,
-                ) {
-                    Ok(recovered) => {
-                        return Ok(recovered.with_solver_workspace_peak(attempted_peak))
-                    }
-                    Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
-                        return Err(error);
-                    }
-                    Err(_) => {}
-                }
-            }
-        }
-        if allow_lsmr && recovery_memory.is_none_or(|memory| fits(memory.lsmr_peak_bytes)) {
-            record_attempt(
-                &mut attempted_peak,
-                recovery_memory.map(|memory| memory.lsmr_peak_bytes),
-            )?;
-            match recover_finalized_categorical_effects_lsmr_certified(
-                &self.fe_topology,
-                &effects,
-                weights,
-                target,
-                requested_channels,
-                lsmr,
-                map.tolerance,
-            ) {
-                Ok(recovered) => return Ok(recovered.with_solver_workspace_peak(attempted_peak)),
-                Err(error) if propagate_allocation && error.code == ErrorCode::Allocation => {
-                    return Err(error);
-                }
-                Err(_) => {}
-            }
-        }
-        if let Some(memory) = recovery_memory.filter(|memory| !fits(memory.map_peak_bytes)) {
-            return Err(FeregError::new(
-                ErrorCode::Allocation,
-                format!(
-                    "saved-FE recovery requires at least {} incremental bytes and does not fit the joint execution/recovery memory plan",
-                    memory.map_peak_bytes,
-                ),
-            ));
-        }
-        record_attempt(
-            &mut attempted_peak,
-            recovery_memory.map(|memory| memory.map_peak_bytes),
-        )?;
-        recover_finalized_categorical_effects_map_certified(
-            &self.fe_topology,
-            &effects,
+        crate::fe::FeSession::recover(crate::fe::session::RecoveryRequest {
+            topology: &self.fe_topology,
+            effects: &effects,
             weights,
             target,
             requested_channels,
-            categorical_slope_map_config(map),
-        )
-        .map(|recovered| recovered.with_solver_workspace_peak(attempted_peak))
+            retained,
+            known_connected,
+            materialize_absorbed_sum,
+            lsmr,
+            map,
+            memory_budget,
+        })
     }
 
     /// Compute absorbed rank from the finalized interaction-aware topology.

@@ -10,7 +10,7 @@
 mod coupling;
 pub(crate) mod joint;
 use super::map::ReusableCertificateGeometry;
-use super::{FeCertificate, FeDesign, MapConfig};
+use super::{FeDesign, MapConfig};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use coupling::PreparedCoupling;
@@ -37,12 +37,17 @@ struct Worker {
     checks: usize,
 }
 
+impl AsMut<[f64]> for Worker {
+    fn as_mut(&mut self) -> &mut [f64] {
+        &mut self.observations
+    }
+}
+
 pub(super) struct SlopeCoefficientWorkspace {
     groups: Vec<Group>,
     workers: Vec<Worker>,
     columns: Vec<f64>,
     roots: Vec<f64>,
-    certificate_groups: Vec<f64>,
     coupling: Option<Box<PreparedCoupling>>,
     max_rhs: usize,
     coefficients: usize,
@@ -104,12 +109,6 @@ fn dimensions(
     }
     let columns = design.nobs().checked_mul(rhs).ok_or_else(allocation)?;
     Ok((groups, coefficients, columns, threads.max(1).min(rhs)))
-}
-
-fn certificate_elements(groups: usize, rhs: usize) -> Result<usize> {
-    rhs.checked_add(1)
-        .and_then(|width| groups.checked_mul(width))
-        .ok_or_else(allocation)
 }
 
 impl SlopeCoefficientWorkspace {
@@ -186,7 +185,6 @@ impl SlopeCoefficientWorkspace {
             workers: workspaces,
             columns: filled(column_count, 0.)?,
             roots: filled(design.nobs(), 0.)?,
-            certificate_groups: Vec::new(),
             coupling: None,
             max_rhs,
             coefficients,
@@ -198,7 +196,6 @@ impl SlopeCoefficientWorkspace {
         self.joint.as_ref().map_or(0, |j| j.elements())
             + self.columns.capacity()
             + self.roots.capacity()
-            + self.certificate_groups.capacity()
             + self.coupling.as_ref().map_or(0, |c| c.elements())
             + self
                 .workers
@@ -235,28 +232,15 @@ impl SlopeCoefficientWorkspace {
         geometry: &mut ReusableCertificateGeometry,
     ) -> Result<bool> {
         let workers = self.workers.len().min(self.groups.len());
-        if workers < 2
-            || self.groups.iter().any(|g| {
-                design.effects()[g.effect]
-                    .level_index()
-                    .members(g.level)
-                    .len()
-                    > design.nobs() / g.channels
-            })
-        {
-            // A very large local block can exceed an observation workspace.
-            // Its original serial scratch remains admitted and available.
+        if workers < 2 {
             return Ok(false);
         }
-        prepare_geometry_blocks(
+        super::map::prepare_geometry_with_scratch(
             design,
             weights,
-            &self.groups,
+            geometry,
             &mut self.workers[..workers],
-            &mut geometry.basis,
-            &mut geometry.ranks,
-        )?;
-        Ok(true)
+        )
     }
 
     #[cfg(test)]
@@ -358,79 +342,6 @@ impl SlopeCoefficientWorkspace {
         Ok(())
     }
 
-    pub(super) fn certificate_bytes(design: &FeDesign, rhs: usize) -> Result<u128> {
-        let (groups, _, _, _) = dimensions(design, rhs, 1)?;
-        Ok(certificate_elements(groups, rhs)? as u128 * 8)
-    }
-
-    pub(super) fn enable_certificate_groups(&mut self) -> Result<()> {
-        self.certificate_groups =
-            filled(certificate_elements(self.groups.len(), self.max_rhs)?, 0.)?;
-        Ok(())
-    }
-
-    pub(super) fn has_certificate_groups(&self) -> bool {
-        !self.certificate_groups.is_empty()
-    }
-
-    /// Independent fresh residual checks share row loads within each group.
-    /// Disjoint results are merged in the original group/RHS order so worker
-    /// scheduling cannot change the certificate's RMS reduction.
-    pub(super) fn certify(
-        &mut self,
-        design: &FeDesign,
-        geometry: &ReusableCertificateGeometry,
-        weights: &[f64],
-        residuals: &DenseMatrix,
-        scales: &[f64],
-        tolerance: f64,
-    ) -> FeCertificate {
-        let stride = self.max_rhs + 1;
-        let rhs = residuals.ncols();
-        self.certificate_groups
-            .par_chunks_mut(stride)
-            .zip(self.groups.par_iter())
-            .enumerate()
-            .for_each(|(index, (result, group))| {
-                let effect = &design.effects()[group.effect];
-                let members = effect.level_index().members(group.level);
-                let rank = geometry.ranks[index];
-                let basis =
-                    &geometry.basis[group.basis_start..group.basis_start + members.len() * rank];
-                super::map::certify_reusable_group(
-                    effect,
-                    members,
-                    weights,
-                    residuals,
-                    scales,
-                    basis,
-                    rank,
-                    &mut result[..rhs + 1],
-                );
-            });
-        let mut absolute = 0.0_f64;
-        let mut maximum = 0.0_f64;
-        let mut square = 0.0_f64;
-        for result in self.certificate_groups.chunks(stride) {
-            absolute = absolute.max(result[0]);
-            for &relative in &result[1..rhs + 1] {
-                maximum = maximum.max(relative);
-                square = relative.mul_add(relative, square);
-            }
-        }
-        let count = self.groups.len() * rhs;
-        FeCertificate {
-            absolute_infinity_norm: absolute,
-            relative_infinity_norm: maximum,
-            relative_two_norm: if count == 0 {
-                0.0
-            } else {
-                (square / count as f64).sqrt()
-            },
-            passed: maximum <= tolerance,
-        }
-    }
-
     // Keep the legacy workspace and ownership boundaries explicit during migration.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn solve(
@@ -521,69 +432,6 @@ impl SlopeCoefficientWorkspace {
         }
         Ok(self.workers.iter().map(|w| w.iterations).max().unwrap_or(0))
     }
-}
-
-fn prepare_geometry_blocks(
-    design: &FeDesign,
-    weights: &[f64],
-    groups: &[Group],
-    workers: &mut [Worker],
-    basis: &mut [f64],
-    ranks: &mut [usize],
-) -> Result<()> {
-    let base = groups[0].basis_start;
-    if workers.len() == 1 {
-        let scratch = &mut workers[0].observations;
-        for (group, rank) in groups.iter().zip(ranks) {
-            let effect = &design.effects()[group.effect];
-            let members = effect.level_index().members(group.level);
-            let start = group.basis_start - base;
-            let size = members.len() * group.channels;
-            *rank = super::map::prepare_reusable_group_basis(
-                effect,
-                members,
-                weights,
-                members.len(),
-                &mut scratch[..size],
-                &mut basis[start..start + size],
-            )?;
-        }
-        return Ok(());
-    }
-    let left_workers = workers.len() / 2;
-    let right_workers = workers.len() - left_workers;
-    let target = base + basis.len() / workers.len() * left_workers;
-    let middle = groups
-        .partition_point(|g| g.basis_start < target)
-        .clamp(left_workers, groups.len() - right_workers);
-    let split = groups[middle].basis_start - base;
-    let (left_basis, right_basis) = basis.split_at_mut(split);
-    let (left_ranks, right_ranks) = ranks.split_at_mut(middle);
-    let (left, right) = workers.split_at_mut(left_workers);
-    let (a, b) = rayon::join(
-        || {
-            prepare_geometry_blocks(
-                design,
-                weights,
-                &groups[..middle],
-                left,
-                left_basis,
-                left_ranks,
-            )
-        },
-        || {
-            prepare_geometry_blocks(
-                design,
-                weights,
-                &groups[middle..],
-                right,
-                right_basis,
-                right_ranks,
-            )
-        },
-    );
-    a?;
-    b
 }
 
 struct Operator<'a> {

@@ -38,6 +38,28 @@ class BoundedMeasurementTests(unittest.TestCase):
                 self.assertEqual(saved[-1], records)
                 self.assertEqual(records[-1]['status'], 'error')
 
+    def test_confirmation_measures_only_flagged_mixed_worker_groups(self):
+        suite = dict(tiers={'pilot': {'threads': [8, 16]}}, comparators={'ols': ['fereg']},
+                     protocol={'repetitions': 8})
+        for flagged in [{8}, {16}, {8, 16}]:
+            for reverse in [False, True]:
+                args = SimpleNamespace(tier='pilot', threads_only=None,
+                    measurement_plan=Path('frozen.json'), measurement_stage='confirmation',
+                    measurement_started=time.monotonic(), reverse_order=reverse,
+                    confirmation_groups={('a', w, 'fereg') for w in flagged},
+                    bounded_plan={'maximum_wall_seconds_per_block': 1800,
+                        'confirmation_pairs': {'a|8|fereg': 32, 'a|16|fereg': 64}})
+                records = []
+                with patch('run.measure', return_value={'status': 'ok', 'directory': 'capture'}) as launch:
+                    execute_cell(args, [args, args], suite, dict(id='a', model='ols'),
+                                 None, {}, records, lambda: None)
+                count = {8: 66, 16: 130}
+                self.assertEqual(launch.call_count, 2 + sum(count[w] for w in flagged))
+                observed = [c.args[4] for c in launch.call_args_list if not c.kwargs.get('reference')]
+                order = sorted(flagged, reverse=reverse)
+                self.assertEqual(observed, [w for w in order for _ in range(count[w])])
+                self.assertEqual([c.args[5] for c in launch.call_args_list[:2]], ['reference', 'reference'])
+
     def test_out_of_space_preserves_the_previous_checkpoint_and_partial_write(self):
         with tempfile.TemporaryDirectory() as temp:
             path = Path(temp) / 'results.json'

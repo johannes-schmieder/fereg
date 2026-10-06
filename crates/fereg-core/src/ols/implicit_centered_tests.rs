@@ -266,7 +266,7 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
         config.execution.mode = mode;
         config.execution.poolsize = 1;
         config.coefficient_tolerance = Some(1e-12);
-        let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+        let mut session = CertifiedLinearSession::new_with_fe_design(
             prepared,
             frame,
             config,

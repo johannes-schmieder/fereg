@@ -198,7 +198,7 @@ pub fn fit_prepared_ppml_interruptible(
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<CertifiedPpmlResult> {
     validate_request(&request, &loaded)?;
-    let mut solver_plan = PpmlSolverPlan::new(request.solver);
+    let solver_plan = PpmlSolverPlan::new(request.solver);
     request.memory.require_fast_route = matches!(
         solver_plan.selected,
         PpmlSolverFamily::Lsmr | PpmlSolverFamily::Cmg
@@ -291,12 +291,6 @@ pub fn fit_prepared_ppml_interruptible(
         request.memory,
         request.memory_preflight_probe,
     )?;
-    if request.solver == PpmlSolverFamily::Auto
-        && auto_lsmr_eligible(&request)
-        && preliminary_plan.selected == PpmlMemoryRoute::Fast
-    {
-        solver_plan.selected = PpmlSolverFamily::Lsmr;
-    }
 
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Preparation);
     let numeric = select_ppml_numeric_data(classified)?;
@@ -732,17 +726,6 @@ fn validate_request(request: &PreparedPpmlRequestV1, loaded: &LoadedPpmlInput) -
         }
     }
     Ok(())
-}
-
-fn auto_lsmr_eligible(request: &PreparedPpmlRequestV1) -> bool {
-    // The frozen calibration admitted two-/three-way categorical designs,
-    // not every topology accepted by the explicit LSMR family.
-    (2..=3).contains(&request.ols.absorbed_terms.len())
-        && request.memory.requested != MemoryMode::Low
-        && request.allocation_snapshot_probe.is_none()
-        && request.ols.absorbed_terms.iter().all(|term| {
-            term.intercept && term.slope_sources.is_empty() && !term.categorical_sources.is_empty()
-        })
 }
 
 fn validate_public_solver_request(request: &PreparedPpmlRequestV1) -> Result<()> {
@@ -2116,11 +2099,7 @@ mod tests {
                     make_finite_control_collinear_with_first_effect(&mut loaded);
                 }
                 request.solver = PpmlSolverFamily::Auto;
-                let selected = if effects >= 2 {
-                    PpmlSolverFamily::Lsmr
-                } else {
-                    PpmlSolverFamily::Map
-                };
+                let selected = PpmlSolverFamily::Map;
                 let mut explicit = request.clone();
                 explicit.solver = selected;
                 let expected = fit_prepared_ppml(explicit, loaded.clone()).expect("explicit fit");
@@ -2171,27 +2150,6 @@ mod tests {
                 assert_eq!(automatic.clusters(), expected.clusters());
             }
         }
-    }
-
-    #[test]
-    fn automatic_lsmr_admission_preserves_map_only_surfaces() {
-        let (mut request, _) = fixture(2, false, false, false, false, false);
-        assert!(auto_lsmr_eligible(&request));
-        request.memory.requested = MemoryMode::Low;
-        assert!(!auto_lsmr_eligible(&request));
-        request.memory.requested = MemoryMode::Auto;
-        request.allocation_snapshot_probe = Some(stable_allocation_probe);
-        assert!(!auto_lsmr_eligible(&request));
-        request.allocation_snapshot_probe = None;
-        request.ols.absorbed_terms[0]
-            .slope_sources
-            .push(SourceId::new(1).expect("source"));
-        assert!(!auto_lsmr_eligible(&request));
-        request.ols.absorbed_terms[0].slope_sources.clear();
-        request.ols.absorbed_terms[0].intercept = false;
-        assert!(!auto_lsmr_eligible(&request));
-        let (request, _) = fixture(4, false, false, false, false, false);
-        assert!(!auto_lsmr_eligible(&request));
     }
 
     #[test]
@@ -2460,7 +2418,7 @@ mod tests {
     }
 
     #[test]
-    fn automatic_workspace_budget_veto_selects_map_without_solver_retry() {
+    fn automatic_structural_map_uses_admitted_shared_operations() {
         let (mut request, loaded) = fixture(3, false, false, false, false, false);
         request.solver = PpmlSolverFamily::Lsmr;
         request.memory.requested = MemoryMode::Fast;
@@ -2477,12 +2435,19 @@ mod tests {
         assert_eq!(automatic.solver().requested, PpmlSolverFamily::Auto);
         assert_eq!(automatic.solver().selected, PpmlSolverFamily::Map);
         assert_eq!(automatic.solver().fallback_count, 0);
-        assert_eq!(automatic.memory().plan.solver_workspace_bytes, 0);
-        for engine in &automatic.solver().engines()[1..] {
-            assert_eq!(engine.iterations, 0);
-            assert_eq!(engine.retries, 0);
-            assert_eq!(engine.setup_seconds, 0.0);
-        }
+        assert!(automatic.memory().plan.solver_workspace_bytes > 0);
+        assert!(
+            automatic.memory().plan.selected_inventory().peak_bytes
+                + automatic.memory().plan.solver_workspace_bytes
+                <= usable
+        );
+        // Shared numerical directions/checkpoints report their actual work.
+        // Only the unselected explicit CMG implementation must remain unused.
+        let report = automatic.solver();
+        let cmg = &report.engines()[3];
+        assert_eq!(cmg.iterations, 0);
+        assert_eq!(cmg.retries, 0);
+        assert_eq!(cmg.setup_seconds, 0.0);
         assert_ppml_results_close(&automatic, &explicit);
     }
 

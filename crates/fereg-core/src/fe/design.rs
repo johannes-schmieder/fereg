@@ -417,6 +417,10 @@ impl<'a> BorrowedInterceptFeDesign<'a> {
         &self.effects
     }
 
+    pub(crate) fn descriptor_bytes(&self) -> u128 {
+        self.effects.capacity() as u128 * std::mem::size_of::<BorrowedInterceptEffect<'_>>() as u128
+    }
+
     /// Total intercept coefficient slots before identification normalization.
     #[must_use]
     pub const fn total_term_slots(&self) -> usize {

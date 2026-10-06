@@ -60,3 +60,9 @@ performance with an independently reviewed substantial code-quality benefit.
 Keep the allowance and raw verdict unchanged; uncertainty remains recorded,
 not a timing pass. Established regressions still require correction or his
 separate decision. Report Mac scope and deferred remote evidence without claims.
+
+Johannes explicitly accepts the reviewed M30 candidate on 2026-10-06 despite
+three established M26 regressions (OLS residual-robust, slope OLS and PPML
+residual-robust), and defers automatic 8/16-worker timing to a quiet Mac window.
+The [specific acceptance](../../bench/history/2026-10-06-m30-architectural-acceptance.json)
+retains failed measurements and missing evidence; other allowances remain unchanged.

@@ -144,7 +144,6 @@ fn use_initial_checkpoint_lsmr_accelerator(
             config.solver_plan.selected,
             super::PpmlSolverFamily::Lsmr | super::PpmlSolverFamily::Cmg
         )
-        && config.linear.execution.mode == PreparedOlsExecutionMode::Fast
         && use_checkpoint_lsmr_accelerator(observations, effects)
 }
 
@@ -5758,7 +5757,7 @@ mod tests {
     }
 
     #[test]
-    fn initial_checkpoint_lsmr_eligibility_is_narrow_and_route_explicit() {
+    fn initial_checkpoint_is_structural_and_preserves_explicit_solver_purpose() {
         let mut config = PreparedPpmlIrlsConfig::default();
         config.linear.execution.mode = PreparedOlsExecutionMode::Fast;
         for family in [
@@ -5811,7 +5810,7 @@ mod tests {
                 3,
             ));
             config.linear.execution.mode = PreparedOlsExecutionMode::Low;
-            assert!(!use_initial_checkpoint_lsmr_accelerator(
+            assert!(use_initial_checkpoint_lsmr_accelerator(
                 &config,
                 PreparedPpmlIrlsPurpose::Publication,
                 PARALLEL_PROJECTION_MIN_ROWS,
@@ -6909,7 +6908,7 @@ mod tests {
             )
             .expect("initial two-FE frame");
             let design = prepared.fit_owned_fe_design().expect("two-FE design");
-            let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+            let mut session = CertifiedLinearSession::new_with_fe_design(
                 &prepared,
                 initial_frame,
                 config,
@@ -7327,7 +7326,7 @@ mod tests {
         // accelerator. Its allocating canonical work is outside the audited
         // ordinary window; the separately certified LSMR alternative remains
         // an allowed final route if Schur declines.
-        assert_eq!(memory.linear_route, Some(FeSolverKind::Map));
+        assert_eq!(memory.linear_route, Some(FeSolverKind::Lsmr));
         assert!(memory
             .plan
             .audit_route_matches_final(FeSolverKind::Map, FeSolverKind::Lsmr));
@@ -7423,7 +7422,7 @@ mod tests {
         assert!(session.uses_ppml_categorical_map_for_test());
         let actual = session.solve_fresh().unwrap();
         assert!(actual.certified());
-        let mut baseline = CertifiedLinearSession::new_with_ppml_fe_design(
+        let mut baseline = CertifiedLinearSession::new_with_fe_design(
             &prepared,
             frame,
             config,
@@ -7891,7 +7890,7 @@ mod tests {
                     ppml_bread_weight_scale(&initial).unwrap(),
                 )
                 .unwrap();
-                let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+                let mut session = CertifiedLinearSession::new_with_fe_design(
                     &prepared,
                     frame,
                     config,
@@ -8020,7 +8019,7 @@ mod tests {
         )
         .expect("identical-weight initial frame");
         let design = prepared.fit_owned_fe_design().expect("two-FE design");
-        let mut session = CertifiedLinearSession::new_with_ppml_fe_design(
+        let mut session = CertifiedLinearSession::new_with_fe_design(
             &prepared,
             frame,
             config,
@@ -8081,7 +8080,7 @@ mod tests {
         let expected_design = prepared
             .fit_owned_fe_design()
             .expect("comparison FE design");
-        let mut expected_session = CertifiedLinearSession::new_with_ppml_fe_design(
+        let mut expected_session = CertifiedLinearSession::new_with_fe_design(
             &prepared,
             expected_frame,
             config,

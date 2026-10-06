@@ -1,4 +1,4 @@
-//! Current-call categorical Schur geometry for three-FE PPML checkpoints.
+//! Current-weight categorical Schur geometry for three-FE finite systems.
 //!
 //! The original input and the existing certificate remain outside this owner.
 //! Nothing here survives a change of weights or a rejected attempt.
@@ -9,24 +9,14 @@ use super::*;
 pub(crate) struct Plan {
     pub(crate) order: [usize; 3],
     pub(crate) rows: usize,
-    rhs: usize,
     pub(crate) eliminated: usize,
     pub(crate) split: usize,
     pub(crate) reduced: usize,
     pub(crate) square: usize,
     pub(crate) entries: usize,
-    outputs: usize,
-    columns_per_worker: usize,
-    worker_width: usize,
-    workspace: usize,
-    bytes: u128,
 }
 
 impl Plan {
-    fn admit(self, allowance: u128) -> Option<AllocationBudget> {
-        (self.bytes <= allowance).then(|| AllocationBudget::new(allowance))
-    }
-
     pub(crate) fn new(rows: usize, rhs: usize, levels: [usize; 3], threads: usize) -> Option<Self> {
         if rows == 0 || rhs == 0 || threads == 0 || levels.contains(&0) {
             return None;
@@ -41,6 +31,7 @@ impl Plan {
             }
         }
         let eliminated = levels[largest];
+        eliminated.checked_add(1)?;
         let split = levels[order[1]];
         let reduced = split.checked_add(levels[order[2]])?;
         let square = reduced.checked_mul(reduced)?;
@@ -51,43 +42,14 @@ impl Plan {
             return None;
         }
         let entries = rows.checked_mul(2)?;
-        let outputs = rows.checked_mul(rhs)?;
-        let workers = threads.min(rhs);
-        let columns_per_worker = rhs.div_ceil(workers);
-        let worker_width = eliminated.checked_add(reduced.checked_mul(5)?)?;
-        let workspace = worker_width.checked_mul(workers)?;
-        // Sum every allocation, including sequential construction scratch and
-        // both conversion banks. This deliberately takes no lifetime credit.
-        let doubles = [
-            rows, eliminated, square, square, reduced, reduced, workspace, outputs, outputs,
-        ]
-        .into_iter()
-        .try_fold(0_u128, |sum, v| sum.checked_add(v as u128))?;
-        let indices = (eliminated as u128)
-            .checked_add(1)?
-            .checked_add(reduced as u128)?;
-        let bytes = doubles
-            .checked_mul(8)?
-            .checked_add(indices.checked_mul(std::mem::size_of::<usize>() as u128)?)?
-            .checked_add(
-                (entries as u128).checked_mul(std::mem::size_of::<(usize, f64)>() as u128)?,
-            )?
-            .checked_add((rhs as u128).checked_mul(std::mem::size_of::<usize>() as u128)?)?
-            .checked_add(16 * std::mem::size_of::<Vec<f64>>() as u128)?;
         Some(Self {
             order,
             rows,
-            rhs,
             eliminated,
             split,
             reduced,
             square,
             entries,
-            outputs,
-            columns_per_worker,
-            worker_width,
-            workspace,
-            bytes,
         })
     }
 }
@@ -138,175 +100,6 @@ impl AllocationBudget {
     }
 }
 
-impl ReusableCategoricalMapAbsorber<'_> {
-    #[inline(never)]
-    pub(super) fn try_checkpoint_three_fe_schur(
-        &mut self,
-        weights: ValidatedWeights<'_>,
-        values: &DenseMatrix,
-        config: MapConfig,
-    ) -> Result<(Option<CertifiedBorrowedMap>, CheckpointSchurCost)> {
-        let mut cost = CheckpointSchurCost::default();
-        let levels = std::array::from_fn(|e| self.design.effects()[e].n_levels());
-        let Some(plan) = Plan::new(
-            values.nrows(),
-            values.ncols(),
-            levels,
-            rayon::current_num_threads(),
-        ) else {
-            return Ok((None, cost));
-        };
-        // This caller has already admitted checkpoint LSMR's entire transient
-        // frame. These banks replace it and are dropped before LSMR fallback.
-        let allowance = estimate_fe_solver_memory(
-            plan.rows,
-            plan.rhs,
-            &levels,
-            rayon::current_num_threads(),
-            Some(4),
-        )?
-        .lsmr_schwarz_bytes;
-        let Some(mut budget) = plan.admit(allowance) else {
-            return Ok((None, cost));
-        };
-        let cap = config.max_iterations.min(plan.reduced.saturating_mul(2));
-        #[cfg(test)]
-        let cap = self
-            .checkpoint_schur_iteration_cap
-            .take()
-            .unwrap_or(cap)
-            .min(cap);
-        let candidate = solve(
-            &self.design,
-            weights,
-            values,
-            &self.workspace.reference_norms,
-            plan,
-            cap,
-            config.tolerance,
-            &mut budget,
-            &mut cost,
-        )?;
-        if let Some(candidate) = candidate {
-            let started = Instant::now();
-            let certificate = certify(
-                &self.design,
-                weights,
-                &candidate,
-                config.tolerance,
-                &mut self.workspace,
-            )?;
-            cost.certification_seconds = started.elapsed().as_secs_f64();
-            #[cfg(not(test))]
-            let rejected = false;
-            #[cfg(test)]
-            let rejected = std::mem::take(&mut self.checkpoint_schur_certificate_failure);
-            if certificate.passed && !rejected {
-                let mut result = certified_result(
-                    candidate,
-                    SolveStopReason::Certified,
-                    cost.iterations,
-                    certificate,
-                    cost.setup_seconds,
-                    cost.solve_seconds,
-                )?;
-                result.report.requested_solver = FeSolverKind::Lsmr;
-                result.report.certification_seconds = cost.certification_seconds;
-                cost.trace(values, "three_fe_certified");
-                return Ok((Some(result), cost));
-            }
-        }
-        cost.rejected = true;
-        cost.trace(values, "three_fe_rejected");
-        Ok((None, cost))
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn solve(
-    design: &BorrowedInterceptFeDesign<'_>,
-    weights: ValidatedWeights<'_>,
-    input: &DenseMatrix,
-    norms: &[f64],
-    plan: Plan,
-    cap: usize,
-    tolerance: f64,
-    budget: &mut AllocationBudget,
-    cost: &mut CheckpointSchurCost,
-) -> Result<Option<DenseMatrix>> {
-    let setup_started = Instant::now();
-    let [a, b, c] = plan.order.map(|e| &design.effects()[e]);
-    let q = plan.reduced;
-    let mut w = budget.reserve(plan.rows, 0.)?;
-    for (row, value) in w.iter_mut().enumerate() {
-        *value = weights.normalized(row);
-    }
-    if w.iter().any(|&value| value <= 0. || !value.is_finite()) {
-        cost.setup_seconds = setup_started.elapsed().as_secs_f64();
-        return Ok(None);
-    }
-    let Some(geometry) = Geometry::prepare(design, &w, plan, budget)? else {
-        cost.setup_seconds = setup_started.elapsed().as_secs_f64();
-        return Ok(None);
-    };
-    let mut columns = budget.reserve(plan.outputs, 0.)?;
-    let mut workspace = budget.reserve(plan.workspace, 0.)?;
-    let mut steps = budget.reserve(plan.rhs, 0_usize)?;
-    cost.setup_seconds = setup_started.elapsed().as_secs_f64();
-    let started = Instant::now();
-    let width = plan.columns_per_worker;
-    // Fixed disjoint workspace slices bound live Krylov storage even with a
-    // nested Rayon caller. Each column stops independently; no converged RHS
-    // participates in another column's recurrence.
-    columns
-        .par_chunks_mut(plan.rows * width)
-        .zip(workspace.par_chunks_mut(plan.worker_width))
-        .zip(steps.par_chunks_mut(width))
-        .enumerate()
-        .try_for_each(|(block, ((outputs, work), column_steps))| -> Result<()> {
-            let (coefficients, scratch) = work.split_at_mut(plan.eliminated + q);
-            for (local, out) in outputs.chunks_mut(plan.rows).enumerate() {
-                let column = block * width + local;
-                let norm = norms[column];
-                column_steps[local] = geometry.solve_column(
-                    design,
-                    &w,
-                    |row| Ok(input[(row, column)]),
-                    norm,
-                    cap,
-                    tolerance,
-                    coefficients,
-                    scratch,
-                )?;
-                let (arhs, solution) = coefficients.split_at(plan.eliminated);
-                for row in 0..plan.rows {
-                    let fit = arhs[a.codes()[row] as usize]
-                        + solution[b.codes()[row] as usize]
-                        + solution[plan.split + c.codes()[row] as usize];
-                    out[row] = input[(row, column)] - norm * fit;
-                }
-            }
-            Ok(())
-        })?;
-    cost.iterations = steps.iter().copied().max().unwrap_or(0);
-    if columns.iter().any(|v| !v.is_finite()) {
-        cost.solve_seconds = started.elapsed().as_secs_f64();
-        return Ok(None);
-    }
-    let mut output = budget.reserve(plan.outputs, 0.)?;
-    for row in 0..plan.rows {
-        for column in 0..plan.rhs {
-            output[row * plan.rhs + column] = columns[column * plan.rows + row];
-        }
-    }
-    cost.solve_seconds = started.elapsed().as_secs_f64();
-    Ok(Some(DenseMatrix::from_row_major(
-        plan.rows, plan.rhs, output,
-    )?))
-}
-
-/// One weighted three-partition Schur system. Its coefficients are proposals;
-/// callers independently certify residuals reconstructed from original inputs.
 pub(crate) struct Geometry {
     plan: Plan,
     mass: Vec<f64>,
@@ -609,7 +402,7 @@ mod tests {
                             let fit = owner
                                 .absorb(BorrowedMapWeights::Provided(&weights), raw.clone(), config)
                                 .unwrap();
-                            assert_eq!(fit.report().used_solver, FeSolverKind::Map);
+                            assert_eq!(fit.report().used_solver, FeSolverKind::Lsmr);
                             assert_eq!(fit.report().checkpoint_retries, 0);
                             assert!(fit.report().certified());
                             // Keep the legacy matrix indices and numerical traversal order explicit.
@@ -624,12 +417,8 @@ mod tests {
                                     assert!((fit.residualized()[(r, k)] - oracle).abs() < 1e-10);
                                 }
                             }
-                            for capped in [false, true] {
-                                if capped {
-                                    owner.checkpoint_schur_iteration_cap = Some(0);
-                                } else {
-                                    owner.checkpoint_schur_certificate_failure = true;
-                                }
+                            for _ in 0..2 {
+                                owner.inject_checkpoint_lsmr_certificate_failure();
                                 let fallback = owner
                                     .absorb(
                                         BorrowedMapWeights::Provided(&weights),
@@ -638,12 +427,10 @@ mod tests {
                                     )
                                     .unwrap();
                                 assert!(fallback.report().certified());
-                                assert!(fallback.report().checkpoint_retries >= 1);
-                                assert!(fallback
-                                    .report()
-                                    .warnings
-                                    .iter()
-                                    .any(|w| w.contains("untouched authoritative inputs")));
+                                assert!(fallback.report().fallback_used);
+                                assert!(fallback.report().warnings.iter().any(
+                                    |w| w.contains("untouched authoritative checkpoint inputs")
+                                ));
                                 for (&actual, &reference) in fallback
                                     .residualized()
                                     .as_slice()
@@ -689,53 +476,32 @@ mod tests {
         let design =
             BorrowedInterceptFeDesign::new(n, sources.iter().map(|s| s.effect()).collect())
                 .unwrap();
-        let input =
-            DenseMatrix::from_columns(&[(0..n).map(|r| (r as f64).sin()).collect(), vec![0.; n]])
-                .unwrap();
-        let original = input.clone();
-        let weights = validate_weights(BorrowedMapWeights::Unit, n).unwrap();
+        let weights = vec![1.; n];
         let plan = Plan::new(n, 2, [5, 4, 3], 4).unwrap();
-        let allowance = estimate_fe_solver_memory(n, 2, &[5, 4, 3], 4, Some(4))
-            .unwrap()
-            .lsmr_schwarz_bytes;
-        assert!(plan.bytes <= allowance);
-        let norms = [10., 0.];
-        for failed in 0..13 {
-            let mut budget = AllocationBudget::new(plan.bytes);
+        let bytes = plan.geometry_bytes().unwrap();
+        for failed in 0..8 {
+            let mut budget = AllocationBudget::new(bytes);
             budget.fail_after = Some(failed);
-            let error = solve(
-                &design,
-                weights,
-                &input,
-                &norms,
-                plan,
-                100,
-                1e-12,
-                &mut budget,
-                &mut CheckpointSchurCost::default(),
-            )
-            .unwrap_err();
-            assert_eq!(error.code, ErrorCode::Allocation);
-            assert_eq!(input, original);
+            assert_eq!(
+                Geometry::prepare(&design, &weights, plan, &mut budget)
+                    .err()
+                    .unwrap()
+                    .code,
+                ErrorCode::Allocation
+            );
         }
-        let mut budget = plan.admit(plan.bytes).unwrap();
-        let result = solve(
-            &design,
-            weights,
-            &input,
-            &norms,
-            plan,
-            100,
-            1e-12,
-            &mut budget,
-            &mut CheckpointSchurCost::default(),
-        )
-        .unwrap();
-        assert!(result.is_some());
-        assert!(budget.remaining > 0);
-        // The exact boundary is admission, not a license to attempt partial
-        // construction when the declared allowance is a byte short.
-        assert!(plan.admit(plan.bytes - 1).is_none());
+        let mut budget = AllocationBudget::new(bytes);
+        assert!(Geometry::prepare(&design, &weights, plan, &mut budget)
+            .unwrap()
+            .is_some());
+        let mut short = AllocationBudget::new(bytes - 1);
+        assert_eq!(
+            Geometry::prepare(&design, &weights, plan, &mut short)
+                .err()
+                .unwrap()
+                .code,
+            ErrorCode::Allocation
+        );
         let extreme: Vec<_> = (0..n)
             .map(|r| if r == 0 { f64::MIN_POSITIVE } else { f64::MAX })
             .collect();
@@ -745,6 +511,5 @@ mod tests {
                 .code,
             ErrorCode::InvalidData
         );
-        assert_eq!(input, original);
     }
 }

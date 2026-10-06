@@ -224,6 +224,9 @@ def execute_cell(args, artifacts, suite, cell, dataset, environment, records, sa
     for workers in threads[::-1] if reverse else threads:
         arms = suite['comparators'][cell['model']]
         for arm in arms[::-1] if reverse else arms:
+            groups = getattr(args, 'confirmation_groups', None)
+            if groups is not None and (cell['id'], workers, arm) not in groups:
+                continue
             count = suite['protocol']['repetitions']
             if getattr(args,'measurement_plan',None):
                 count = 8 if args.measurement_stage == 'screening' else args.bounded_plan['confirmation_pairs'][f"{cell['id']}|{workers}|{arm}"]
@@ -292,8 +295,7 @@ def run(args):
             unresolved = {(e['cell'],e['threads'],e['arm']) for comparator in ['parent','fixed_baseline'] for e in result[comparator]['effects'] if any(b['verdict']!='within' for b in e['screening_blocks'])}
             if not unresolved or not unresolved <= selected:
                 raise ValueError('confirmation has no unresolved scope or selection omitted it')
-            if len({t for _,t,_ in unresolved}) != 1 or args.threads_only != next(iter(unresolved))[1]:
-                raise ValueError('bounded targeted block requires its declared worker count')
+            args.confirmation_groups = unresolved
             cells = [cell for cell in cells if cell['id'] in {c for c,_,_ in unresolved}]
             screening = [dict(path=str(path),sha256=sha256(path)) for path in args.screening_blocks]
         suite['protocol'] = {**suite['protocol'],'uncertainty_method':'bounded-median-orders-v2','repetitions':8,
@@ -305,6 +307,10 @@ def run(args):
     if reverse:
         cells.reverse()
     plan = [(cell, threads) for cell in cells for threads in selected_threads(suite, args.tier, cell, args.threads_only)]
+    if getattr(args, 'confirmation_groups', None) is not None:
+        plan = [(cell, workers) for cell, workers in plan
+                if any((cell['id'], workers, arm) in args.confirmation_groups
+                       for arm in suite['comparators'][cell['model']])]
     if platform.system() == "Darwin" and any(threads > 16 for _, threads in plan):
         raise ValueError("Mac timings must use at most 16 native threads; full tier belongs on SCC")
     if args.plan_only:
@@ -337,7 +343,7 @@ def run(args):
     source_sha, source_dirty = source_identity(artifact_root or ROOT)
     tools = tooling_identity(getattr(args, 'manifest', None))
     campaign = {"source_sha": source_sha, "source_dirty": source_dirty, "platform": platform.system().lower(),
-                "tier": args.tier, "comparison": "solver" if args.solver_comparison else ("engine" if args.fereg_only else "default"), "partial": bool(args.cells or args.threads_only is not None), "engine": args.engine, "solver": args.solver,
+                "tier": args.tier, "comparison": "solver" if args.solver_comparison else ("engine" if args.fereg_only else "default"), "partial": bool(args.cells or args.threads_only is not None or getattr(args, "confirmation_groups", None) is not None), "engine": args.engine, "solver": args.solver,
                 "protocol": suite["protocol"], "suite_sha256": sha256(getattr(args, "manifest", None) or ROOT / "bench/suite.toml"),
                 "environment": environment["source_hashes"], "native_identity": args.native_identity,
                 "runner_sha256": sha256(ROOT / "bench/stata_runner.do"),

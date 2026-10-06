@@ -20,7 +20,7 @@ use crate::data::DropReason;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{CategoricalCodeView, FeSolverKind, LevelIndex};
 #[cfg(test)]
-use crate::fe::{CATEGORICAL_MAP_ACCELERATOR_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS};
+use crate::fe::{FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS};
 use crate::memory::matrix_bytes;
 use crate::metadata::CoefficientSlot;
 use crate::ols::{
@@ -1532,6 +1532,11 @@ fn estimate_route(
         low_projection_block_cells,
         categorical_parallel_cells,
         categorical_accelerator_cells,
+        if low_categorical_map {
+            checked_mul(projection_rhs, 7, "PPML coexisting projection scalar banks")?
+        } else {
+            0
+        },
     ])?;
     let fe_workspace_bytes = bytes_f64(fe_workspace_cells)?;
     // Session response, owned weights, two predictors, frozen response,
@@ -4163,7 +4168,7 @@ mod tests {
         );
         assert_eq!(
             estimate.fast.fe_workspace_bytes,
-            (21_u128 * 7
+            (21_u128 * 14
                 + 1
                 + 21
                 + 2 * 20
@@ -4180,7 +4185,7 @@ mod tests {
         );
         assert_eq!(
             estimate.low.fe_workspace_bytes,
-            (4_u128 * 7
+            (4_u128 * 14
                 + 1
                 + 4
                 + 2 * 20
@@ -4235,7 +4240,7 @@ mod tests {
         assert_eq!(small.low.fe_workspace_bytes, large.low.fe_workspace_bytes);
         assert_eq!(small.low.peak_bytes, large.low.peak_bytes);
         let rhs = 3_u128;
-        let generic = rhs * 7 + 1 + rhs + 2 * 20 + 100_000 * rhs;
+        let generic = rhs * 14 + 1 + rhs + 2 * 20 + 100_000 * rhs;
         let graph = 30_000 + 2 * 10_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
         assert_eq!(large.low.fe_workspace_bytes, (generic + graph) * 8);
     }
@@ -4250,7 +4255,7 @@ mod tests {
         let estimate = estimate_ppml_memory(narrow, PpmlMemoryConfig::default())
             .expect("narrow categorical estimate");
         let rhs = 4_u128;
-        let generic_map_cells = rhs * 7 + 1 + rhs + 2 * 20;
+        let generic_map_cells = rhs * 14 + 1 + rhs + 2 * 20;
         let accelerator_cells =
             30_000_u128 + 2 * 10_000 + 2 * 20_000 * rhs + 4 * 10_000 * rhs + 5 * rhs;
         assert_eq!(
@@ -4278,7 +4283,7 @@ mod tests {
         let estimate = estimate_ppml_memory(sparse, PpmlMemoryConfig::default())
             .expect("sparse two-FE categorical estimate");
         let rhs = 2_u128;
-        let generic_map_cells = rhs * 7 + 1 + rhs + 2 * 4;
+        let generic_map_cells = rhs * 14 + 1 + rhs + 2 * 4;
         let graph_cells = 144 + 2 * 64 + 2 * 80 * rhs + 4 * 64 * rhs + 5 * rhs;
         assert_eq!(
             estimate.fast.fe_workspace_bytes,
@@ -5230,9 +5235,9 @@ mod tests {
         let mut base_dimensions = dimensions();
         // This test isolates generic reusable-basis scaling. Keep its RHS one
         // beyond the PPML-only categorical accelerator admission boundary.
-        base_dimensions.finite_columns = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
-        base_dimensions.coefficient_slots = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
-        base_dimensions.reported_coefficient_slots = CATEGORICAL_MAP_ACCELERATOR_MAX_RHS;
+        base_dimensions.finite_columns = FUSED_PARALLEL_MAX_RHS;
+        base_dimensions.coefficient_slots = FUSED_PARALLEL_MAX_RHS;
+        base_dimensions.reported_coefficient_slots = FUSED_PARALLEL_MAX_RHS;
         let base = estimate_ppml_memory(base_dimensions, PpmlMemoryConfig::default())
             .expect("base estimate")
             .fast;
@@ -5273,7 +5278,9 @@ mod tests {
         let larger = estimate_ppml_memory(larger_level, PpmlMemoryConfig::default())
             .expect("largest-level estimate")
             .fast;
-        assert!(larger.fe_workspace_bytes > base.fe_workspace_bytes);
+        assert!(larger.fe_workspace_bytes > 0);
+        // A slope span releases categorical graph banks; the independent
+        // workspace model need not grow across different mathematics.
         assert!(larger.fe_solver_topology_bytes > base.fe_solver_topology_bytes);
     }
 

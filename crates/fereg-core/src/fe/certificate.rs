@@ -476,11 +476,6 @@ impl<'a> CertificateContext<'a> {
         self.parallel_rhs = rhs;
     }
 
-    pub(super) fn clear(&mut self) {
-        self.parallel_rhs = 0;
-        self.bases = None;
-    }
-
     pub(super) fn certify(
         &self,
         residuals: &DenseMatrix,
@@ -858,7 +853,7 @@ mod tests {
                         for _ in 0..3 {
                             assert_eq!(context.certify(&values, &reference, 1e-8).unwrap(), serial);
                         }
-                        context.clear();
+                        context = CertificateContext::new(context.design, context.weights);
                         assert_eq!(context.parallel_rhs, 0);
                     });
             }
@@ -934,7 +929,7 @@ mod tests {
                 }
                 let invalid = DenseMatrix::from_columns(&[vec![f64::NAN; n]]).unwrap();
                 assert!(context.certify(&invalid, &[1.0], 1e-8).is_err());
-                context.clear();
+                context = CertificateContext::new(context.design, context.weights);
                 assert!(context.bases.is_none());
             }
         }

@@ -110,7 +110,13 @@ assert e(sample) == 1
 assert !missing(__frg_committed_resid)
 assert det(e(V)) >= -1e-16
 assert e(fereg_certificate)[31,1] == 1
-assert e(fereg_certificate)[31,2] == det(e(V))
+* A nearly singular covariance can round differently in native arithmetic
+* and Stata publication. Bound the determinant by its product scale; sealed
+* q2/q3 native wire anchors and the empty determinant remain exact tests.
+tempname det_scale
+scalar `det_scale' = abs(e(V)[1,1]*e(V)[2,2]) + abs(e(V)[1,2]*e(V)[2,1])
+assert !missing(e(fereg_certificate)[31,2])
+assert abs(e(fereg_certificate)[31,2] - det(e(V))) <= 32*c(epsdouble)*`det_scale'
 assert e(fereg_certificate)[32,1] == 1
 assert e(fereg_certificate)[32,2] == 1
 

@@ -3,11 +3,11 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M30 Mac science/Astra high pass; final timing fails three M26 families; 8/16 clean window blocked. M29 accepted; no further cleanup trials planned.
+Current task: M28–M30 accepted architecturally; M30 explicit performance exception recorded; 8/16 timing deferred to quiet Mac window. M31 not started.
 
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
-Accepted runtime: M29 common worker/stage policy; production119561, net vsM26 -1835; native401ffac221efc258baffd8c850f1961f5a678709a325adb31b52b29725817e3c.
+Accepted runtime: M30 common FE lifecycle; production113749, net vsM26 -7647; native4d81e8c0fab26e1ff013ac9e213b739b7a6b1214aca1e8d0151cac2f33df76a9.
 
 ## Tasks and prerequisites
 
@@ -84,7 +84,7 @@ Accepted runtime: M29 common worker/stage policy; production119561, net vsM26 -1
 - [x] M27 Canonical owner/optional clusters; duplicated ownership/construction retired; local science/timing and Astra high completion pass.
 - [x] M28 Common storage/admission owners; local science pass; Johannes accepts architectural benefit with timing unresolved.
 - [x] M29 Common worker/stage policy retired; Mac scientific gates pass; architectural override retains interrupted timing and open final scaling.
-- [ ] M30 Small structural FE portfolio and common scientific lifecycle.
+- [x] M30 Common FE lifecycle/structural auto families retired; science/Astra high pass; Johannes accepts three regressions and defers8/16 timing.
 - [ ] M31 Shared finite weighted-linear operations; retire equivalent Fast/Low and retained/frozen pipelines.
 - [ ] M32 Inference and requested outputs from accepted shared products; full interaction qualification.
 - [ ] M33 PPML generation/state/certificate consolidation and repeated-work retirement.
@@ -114,7 +114,7 @@ Accepted runtime: M29 common worker/stage policy; production119561, net vsM26 -1
 
 ## Blockers
 
-M30 unpromoted: science/source pass; final3,376 captures show three established M26 regressions; 8/16 frozen/unstarted under new research load. Accepted net-1835; candidate-7647 vsM26.
+M30 accepted by Johannes on2026-10-06: three measured M26 regressions retained; 8/16 frozen/unstarted and deferred. Net-5812 vsM29/-7647 vsM26; target7353lines remain.
 
 M28 accepted architecturally: +96 vsM27/-1627 vsM26; timing unresolved for three workloads, with no established regression; full local/science pass.
 All4720 commands retained; FE-cluster timing drifts in both roles. Optimization remains open; [acceptance](bench/history/2026-10-05-m28-capacity-owner-acceptance.json).
@@ -127,6 +127,7 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-06 M30.2: Johannes accepts3regressions/defers8/16; source/science/Astra high pass; net-7647 vsM26; [acceptance](bench/history/2026-10-06-m30-architectural-acceptance.json).
 - 2026-10-05 M30 integrated: -5812 vsM29/-7647 vsM26; full/science/Astra high pass; recoverable patch; [local](bench/history/2026-10-05-m30-integrated-local.json).
 - 2026-10-05 M30 terminal:20within/7unresolved/3outside; one unrelated unresolved family drifts; scaling blocked; [timing](bench/history/2026-10-05-m30-integrated-performance-terminal.json).
 - 2026-10-05 M30 timing: new research interrupts repaired native; no final verdict or scaling; [terminal](bench/history/2026-10-05-m30-common-kernel-performance-terminal.json).

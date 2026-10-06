@@ -271,8 +271,7 @@ impl LinearAdmission {
                 .max(1)
                 .min(self.plan.dimensions.finite_columns.max(1)),
         };
-        let categorical_checkpoints = config.linear.execution.mode == PreparedOlsExecutionMode::Low
-            && matches!(fe_design.effects().len(), 2 | 3)
+        let categorical_checkpoints = matches!(fe_design.effects().len(), 2 | 3)
             && fe_design
                 .effects()
                 .iter()
@@ -280,20 +279,6 @@ impl LinearAdmission {
         let coefficient_solver = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
             && config.solver_plan.selected == crate::ppml::PpmlSolverFamily::Map
             && fe_design.effects().len() > 1
-            && (fe_design
-                .effects()
-                .iter()
-                .any(|effect| !effect.slopes().is_empty())
-                || ((config.linear.execution.mode == PreparedOlsExecutionMode::Low
-                    // The categorical checkpoint/LSMR engines cover at most
-                    // three partitions. Higher-dimensional fast fits otherwise
-                    // repeat generic observation-space projection for every RHS.
-                    || fe_design.effects().len() > 3)
-                    && solver_rhs > 1
-                    && fe_design
-                        .effects()
-                        .iter()
-                        .all(|effect| effect.has_intercept())))
         {
             let mut candidate = self.plan;
             match crate::fe::ReusableMapAbsorber::certificate_geometry_bytes(fe_design).and_then(
@@ -302,7 +287,6 @@ impl LinearAdmission {
                         fe_design,
                         projection_rhs,
                         effective_threads,
-                        categorical_checkpoints,
                     )
                     .map(|workspace| (geometry, workspace))
                 },
@@ -384,7 +368,7 @@ impl LinearAdmission {
         // Preserve this order: geometry/solver, certificate, coupling,
         // joint finite bank, then the coexisting checkpoint reserve.
         let certificate = self.try_slope_estimate(
-            crate::fe::ReusableMapAbsorber::coefficient_certificate_bytes(
+            crate::fe::ReusableMapAbsorber::certificate_workspace_bytes(
                 inputs.fe_design,
                 projection_rhs,
             )
@@ -404,7 +388,7 @@ impl LinearAdmission {
             None
         };
         let component_checkpoint =
-            self.admit_low_checkpoint(inputs, categorical_checkpoints, projection_rhs)?;
+            self.admit_component_checkpoint(inputs, categorical_checkpoints, projection_rhs)?;
         Ok(ProjectionInstallation::Coefficient {
             geometry,
             workspace,
@@ -423,7 +407,7 @@ impl LinearAdmission {
         }
     }
 
-    fn admit_low_checkpoint<P: PreparedOlsFitView + Sync + ?Sized>(
+    fn admit_component_checkpoint<P: PreparedOlsFitView + Sync + ?Sized>(
         &mut self,
         inputs: &AdmissionInputs<'_, P>,
         categorical_checkpoints: bool,
@@ -535,23 +519,13 @@ impl LinearInstallation {
         purpose: PreparedPpmlIrlsPurpose,
         effective_threads: usize,
     ) -> Result<(CertifiedLinearSession<'a, P>, AdmittedProfiles, bool)> {
-        let mut session = if matches!(self.projection, ProjectionInstallation::Coefficient { .. }) {
-            CertifiedLinearSession::new_with_fe_design(
-                prepared,
-                frame,
-                initial_config,
-                LinearSessionGenerations::new(1, 1, 1, 1, 1),
-                fe_design,
-            )?
-        } else {
-            CertifiedLinearSession::new_with_ppml_fe_design(
-                prepared,
-                frame,
-                initial_config,
-                LinearSessionGenerations::new(1, 1, 1, 1, 1),
-                fe_design,
-            )?
-        };
+        let mut session = CertifiedLinearSession::new_with_fe_design(
+            prepared,
+            frame,
+            initial_config,
+            LinearSessionGenerations::new(1, 1, 1, 1, 1),
+            fe_design,
+        )?;
         // A refused centered option retains the caller's shared owner through the fit.
         if let Some(allowance) = self.centered {
             session.enable_group_centered_one_fe(

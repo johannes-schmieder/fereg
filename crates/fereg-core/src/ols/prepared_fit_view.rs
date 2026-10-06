@@ -9,28 +9,11 @@
 use crate::data::{DenseMatrix, PreparedNumericSample};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    absorb_borrowed_intercept_auto_direct_lsmr_certified,
-    absorb_borrowed_intercept_auto_initial_with_structural_constant_certified,
-    absorb_borrowed_intercept_auto_with_structural_constant_certified,
-    absorb_borrowed_intercept_cg_with_structural_constant_certified,
-    absorb_borrowed_intercept_irons_tuck_certified,
-    absorb_borrowed_intercept_map_with_structural_constant_certified,
-    absorb_finalized_categorical_slope_map_with_budget_certified,
-    absorb_finalized_categorical_topology_auto_direct_lsmr_certified,
-    absorb_finalized_categorical_topology_auto_routed_certified,
-    absorb_finalized_categorical_topology_cg_certified,
-    absorb_finalized_categorical_topology_cg_retaining_certified,
-    absorb_finalized_categorical_topology_irons_tuck_certified,
-    absorb_finalized_categorical_topology_lsmr_certified,
-    absorb_finalized_categorical_topology_map_certified,
-    absorb_finalized_categorical_topology_map_retaining_certified, absorb_fixed_effects,
     borrow_categorical_topology_design, AbsorbConfig, BorrowedInterceptFeDesign,
-    BorrowedMapWeights, CertifiedBorrowedMap, CmgAbsorber, CmgConfig, EffectTerm, FeDesign,
-    FeSolverKind,
+    BorrowedMapWeights, CertifiedBorrowedMap, EffectTerm, FeDesign,
 };
+use crate::memory::OwnedFeDesignMemoryEstimate;
 use crate::memory::SolverWorkspacePeak;
-use crate::memory::{owned_fe_matrix_bytes, OwnedFeDesignMemoryEstimate};
-use crate::options::ThreadConfig;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use rayon::prelude::*;
 
@@ -236,22 +219,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
 
     fn fit_has_absorbed_intercept(&self) -> bool;
 
-    fn fit_single_slope_view(
-        &self,
-    ) -> Result<
-        Option<(
-            crate::fe::BorrowedInterceptEffect<'_>,
-            crate::fe::CategoricalAbsorbedEffectView<'_>,
-        )>,
-    > {
-        Ok(None)
-    }
-
     fn fit_has_one_slope_effect(&self) -> bool {
-        false
-    }
-
-    fn fit_has_two_effects_with_slopes(&self) -> bool {
         false
     }
 
@@ -386,22 +354,6 @@ pub(crate) trait PreparedOlsFitView: Sync {
         DenseMatrix::from_row_major(rows, columns, values)
     }
 
-    fn fit_absorb_map(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap>;
-
-    fn fit_absorb_lsmr(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        self.fit_absorb_owned_matrix(weights, values, config)
-    }
-
     fn fit_owned_fe_design(&self) -> Result<FeDesign>;
 
     fn fit_owned_fe_design_memory(&self) -> Result<OwnedFeDesignMemoryEstimate>;
@@ -417,125 +369,7 @@ pub(crate) trait PreparedOlsFitView: Sync {
         Ok(None)
     }
 
-    fn fit_supports_cmg_auto(&self) -> bool {
-        true
-    }
-
     fn fit_borrowed_cmg_design(&self) -> Result<BorrowedInterceptFeDesign<'_>>;
-
-    fn fit_build_cmg_absorber<'a>(
-        &'a self,
-        weights: BorrowedMapWeights<'a>,
-        config: CmgConfig,
-    ) -> Result<CmgAbsorber<'a>> {
-        CmgAbsorber::build(
-            self.fit_borrowed_cmg_design()?,
-            weights,
-            config,
-            self.fit_structural_intercept(),
-        )
-    }
-
-    fn fit_absorb_cg(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        self.fit_absorb_owned_matrix(weights, values, config)
-    }
-
-    fn fit_absorb_irons_tuck(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        self.fit_absorb_owned_matrix(weights, values, config)
-    }
-
-    fn fit_absorb_auto(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        self.fit_absorb_owned_matrix(weights, values, config)
-    }
-
-    fn fit_absorb_auto_direct_lsmr(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        self.fit_absorb_auto(weights, values, config)
-    }
-
-    fn fit_absorb_owned_matrix(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        mut config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        let memory = self.fit_owned_fe_design_memory()?;
-        // With no finite controls the base has no resident-X/parallel-RHS
-        // allowance. The normalized weight frame, retained within outcome
-        // and final residual can coexist at the second owned projection.
-        let caller_outcome_bytes = if self.fit_model().columns.is_empty() {
-            owned_fe_matrix_bytes(values.nrows(), 3)?
-        } else {
-            0
-        };
-        let unit_bytes = match weights {
-            BorrowedMapWeights::Unit => owned_fe_matrix_bytes(values.nrows(), 1)?,
-            BorrowedMapWeights::Provided(_) => 0,
-        };
-        let construction = memory
-            .construction_bytes
-            .checked_add(unit_bytes)
-            .and_then(|bytes| bytes.checked_add(caller_outcome_bytes))
-            .ok_or_else(|| allocation("owned FE construction bytes overflow"))?;
-        if config
-            .solver_memory_budget
-            .is_some_and(|budget| !budget.fits(construction))
-        {
-            return Err(allocation(
-                "owned FE design construction exceeds the joint memory budget",
-            ));
-        }
-        let construction_peak = SolverWorkspacePeak::from_bytes(construction)?;
-        let retained_bytes = memory
-            .resident_bytes
-            .checked_add(unit_bytes)
-            .and_then(|bytes| bytes.checked_add(caller_outcome_bytes))
-            .ok_or_else(|| allocation("owned FE resident execution bytes overflow"))?;
-        if let Some(mut budget) = config.solver_memory_budget {
-            budget.execution_bytes = budget
-                .execution_bytes
-                .checked_add(retained_bytes)
-                .ok_or_else(|| allocation("owned FE resident execution bytes overflow"))?;
-            config.solver_memory_budget = Some(budget);
-        }
-        let design = self.fit_owned_fe_design()?;
-        let mut residualized = values;
-        let unit_weights;
-        let weights = match weights {
-            BorrowedMapWeights::Unit => {
-                unit_weights = fallible_filled(
-                    residualized.nrows(),
-                    1.0,
-                    "unable to reserve unit weights for prepared FE solver",
-                )?;
-                unit_weights.as_slice()
-            }
-            BorrowedMapWeights::Provided(values) => values,
-        };
-        let mut report = absorb_fixed_effects(&design, weights, &mut residualized, config)?;
-        report.solver_workspace_peak =
-            construction_peak.max(report.solver_workspace_peak.with_retained(retained_bytes)?);
-        CertifiedBorrowedMap::from_certified_parts(residualized, report)
-    }
 
     fn fit_absorb_matrix(
         &self,
@@ -543,55 +377,28 @@ pub(crate) trait PreparedOlsFitView: Sync {
         values: DenseMatrix,
         config: AbsorbConfig,
     ) -> Result<CertifiedBorrowedMap> {
-        if config.solver == FeSolverKind::Auto {
-            return self.fit_absorb_auto(weights, values, config);
-        }
-        if config.solver == FeSolverKind::Map {
-            return self.fit_absorb_map(weights, values, config);
-        }
-        if config.solver == FeSolverKind::Lsmr {
-            return self.fit_absorb_lsmr(weights, values, config);
-        }
-        if config.solver == FeSolverKind::Cg {
-            return self.fit_absorb_cg(weights, values, config);
-        }
-        if config.solver == FeSolverKind::IronsTuck {
-            return self.fit_absorb_irons_tuck(weights, values, config);
-        }
-        if config.solver == FeSolverKind::Cmg {
-            let batch_size = values.ncols().max(1);
-            let threads = ThreadConfig::from_requested(rayon::current_num_threads(), false)?;
-            let mut session = self.fit_build_cmg_absorber(
-                weights,
-                CmgConfig {
-                    map: config.map,
-                    threads,
-                    batch_size,
-                    retain_coefficients: config.retain_coefficients,
-                    requested_solver: FeSolverKind::Cmg,
-                    components: crate::fe::explicit_cmg_components(FeSolverKind::Cmg),
-                    solver_memory_budget: config.solver_memory_budget,
+        let mut session = crate::fe::FeSession::for_ols_rhs(
+            self,
+            weights,
+            crate::ols::PreparedOlsFitConfig {
+                absorb: config,
+                execution: crate::ols::PreparedOlsExecutionConfig {
+                    poolsize: values.ncols().max(1),
+                    threads: config.lsmr.threads,
+                    ..crate::ols::PreparedOlsExecutionConfig::default()
                 },
-            )?;
-            return session.absorb(values);
-        }
-        self.fit_absorb_owned_matrix(weights, values, config)
-    }
-
-    fn fit_absorb_initial_matrix(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        self.fit_absorb_matrix(weights, values, config)
+                ..crate::ols::PreparedOlsFitConfig::default()
+            },
+            values.ncols().max(1),
+        )?;
+        session.project_ols(weights, values, config, false, false)
     }
 }
 
 // Direct prepared dispatch can bypass the automatic LSMR/CG planner. Apply
 // that same joint bound before CG allocates, including its retained coefficient
 // recurrence. Structural-constant and slope adapters keep their separate plans.
-fn admit_prepared_intercept_cg(
+pub(crate) fn admit_prepared_intercept_cg(
     design: &BorrowedInterceptFeDesign<'_>,
     rhs_columns: usize,
     budget: Option<crate::memory::FeSolverMemoryBudget>,
@@ -763,115 +570,6 @@ impl PreparedOlsFitView for OrdinaryPrepared<'_> {
         Ok((rhs.into_values(), reused))
     }
 
-    fn fit_absorb_map(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        let design = self.borrowed_intercept_fe_design()?;
-        absorb_borrowed_intercept_map_with_structural_constant_certified(
-            &design, weights, values, config.map,
-        )
-    }
-
-    fn fit_absorb_cg(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        let design = self.borrowed_intercept_fe_design()?;
-        let peak = admit_prepared_intercept_cg(
-            &design,
-            values.ncols(),
-            config.solver_memory_budget,
-            false,
-        )?;
-        let mut result = absorb_borrowed_intercept_cg_with_structural_constant_certified(
-            &design, weights, values, config.map,
-        )?;
-        result.set_solver_workspace_peak(peak);
-        Ok(result)
-    }
-
-    fn fit_absorb_irons_tuck(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        let design = self.borrowed_intercept_fe_design()?;
-        if design.effects().is_empty() {
-            self.fit_absorb_owned_matrix(weights, values, config)
-        } else {
-            absorb_borrowed_intercept_irons_tuck_certified(
-                &design,
-                weights,
-                values,
-                config.map,
-                config.retain_coefficients,
-            )
-        }
-    }
-
-    fn fit_absorb_auto(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        let design = self.borrowed_intercept_fe_design()?;
-        absorb_borrowed_intercept_auto_with_structural_constant_certified(
-            &design,
-            weights,
-            values,
-            config.map,
-            config.lsmr,
-            config.solver_memory_budget,
-        )
-    }
-
-    fn fit_absorb_auto_direct_lsmr(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        let design = self.borrowed_intercept_fe_design()?;
-        absorb_borrowed_intercept_auto_direct_lsmr_certified(
-            &design,
-            weights,
-            values,
-            config.map,
-            config.lsmr,
-            config.solver_memory_budget,
-            true,
-            config.retain_coefficients,
-        )
-    }
-
-    fn fit_absorb_initial_matrix(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        if config.solver == FeSolverKind::Auto {
-            let design = self.borrowed_intercept_fe_design()?;
-            absorb_borrowed_intercept_auto_initial_with_structural_constant_certified(
-                &design,
-                weights,
-                values,
-                config.map,
-                config.lsmr,
-                config.solver_memory_budget,
-            )
-        } else {
-            self.fit_absorb_matrix(weights, values, config)
-        }
-    }
-
     fn fit_retained_fe_parent_bytes(&self) -> Result<u128> {
         self.0.fit_retained_fe_parent_bytes()
     }
@@ -957,36 +655,8 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         fit_subtract_raw_column_generic(self, column, coefficient, residuals)
     }
 
-    fn fit_has_two_effects_with_slopes(&self) -> bool {
-        self.effect_specs().len() == 2 && self.has_absorbed_slope()
-    }
-
     fn fit_has_one_slope_effect(&self) -> bool {
         self.effect_specs().len() == 1 && !self.effect_specs()[0].slopes.is_empty()
-    }
-
-    fn fit_single_slope_view(
-        &self,
-    ) -> Result<
-        Option<(
-            crate::fe::BorrowedInterceptEffect<'_>,
-            crate::fe::CategoricalAbsorbedEffectView<'_>,
-        )>,
-    > {
-        if self.effect_specs().len() != 1 || self.effect_specs()[0].slopes.is_empty() {
-            return Ok(None);
-        }
-        let Some(validated) = self.validated_single_topology()? else {
-            return Ok(None);
-        };
-        // This descriptor supplies only partition membership; the separate
-        // slope view defines the scientific basis used by the absorber.
-        let partition = validated.into_design(self.fit_sample().n_active())?;
-        let effect = self
-            .effect_views()?
-            .pop()
-            .ok_or_else(|| allocation("single slope effect is missing"))?;
-        Ok(Some((partition.effects()[0], effect)))
     }
 
     fn fit_has_one_ordinary_intercept_effect(&self) -> bool {
@@ -1004,36 +674,6 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
                 )
             })?
             .codes(self.fe_topology())
-    }
-
-    fn fit_absorb_initial_matrix(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_absorb_initial_matrix(weights, values, config);
-        }
-        if config.solver == FeSolverKind::Auto
-            && !config.retain_coefficients
-            && self.effect_specs().len() == 1
-            && self.fit_supports_cmg_auto()
-        {
-            let design = self.fit_borrowed_cmg_design()?;
-            // An intercept-only interaction is one projection, just like a
-            // simple FE. Only fresh RHSs may skip the useful warm certificate.
-            absorb_borrowed_intercept_auto_initial_with_structural_constant_certified(
-                &design,
-                weights,
-                values,
-                config.map,
-                config.lsmr,
-                config.solver_memory_budget,
-            )
-        } else {
-            self.fit_absorb_matrix(weights, values, config)
-        }
     }
 
     fn fit_model(&self) -> &PreparedOlsModel {
@@ -1060,12 +700,6 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
         self.report_intercept()
     }
 
-    fn fit_supports_cmg_auto(&self) -> bool {
-        self.effect_specs()
-            .iter()
-            .all(|effect| effect.intercept && effect.slopes.is_empty())
-    }
-
     fn fit_column_value(&self, column: usize, row: usize) -> Result<f64> {
         self.column_value(column, row)
     }
@@ -1075,175 +709,6 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
             return OrdinaryPrepared(self).fit_build_rhs_with_response(response);
         }
         Ok(self.build_rhs_with_response(response)?.into_values())
-    }
-
-    fn fit_absorb_map(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_absorb_map(weights, values, config);
-        }
-        if self.has_absorbed_slope() {
-            let effects = self.effect_views()?;
-            absorb_finalized_categorical_slope_map_with_budget_certified(
-                self.fe_topology(),
-                &effects,
-                weights,
-                values,
-                self.slope_map_config(config.map),
-                config.solver_memory_budget,
-            )
-        } else if config.retain_coefficients {
-            absorb_finalized_categorical_topology_map_retaining_certified(
-                self.fe_topology(),
-                weights,
-                values,
-                config.map,
-            )
-        } else {
-            absorb_finalized_categorical_topology_map_certified(
-                self.fe_topology(),
-                weights,
-                values,
-                config.map,
-            )
-        }
-    }
-
-    fn fit_absorb_lsmr(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_absorb_owned_matrix(weights, values, config);
-        }
-        if self.has_absorbed_slope() {
-            self.fit_absorb_owned_matrix(weights, values, config)
-        } else {
-            absorb_finalized_categorical_topology_lsmr_certified(
-                self.fe_topology(),
-                weights,
-                values,
-                config.lsmr,
-                config.retain_coefficients,
-            )
-        }
-    }
-
-    fn fit_absorb_cg(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_absorb_cg(weights, values, config);
-        }
-        if self.has_absorbed_slope() {
-            return self.fit_absorb_owned_matrix(weights, values, config);
-        }
-        let peak = if config.solver_memory_budget.is_some() {
-            admit_prepared_intercept_cg(
-                &self.fit_borrowed_cmg_design()?,
-                values.ncols(),
-                config.solver_memory_budget,
-                config.retain_coefficients,
-            )?
-        } else {
-            SolverWorkspacePeak::UNMODELED
-        };
-        let mut result = if config.retain_coefficients {
-            absorb_finalized_categorical_topology_cg_retaining_certified(
-                self.fe_topology(),
-                weights,
-                values,
-                config.map,
-            )
-        } else {
-            absorb_finalized_categorical_topology_cg_certified(
-                self.fe_topology(),
-                weights,
-                values,
-                config.map,
-            )
-        }?;
-        result.set_solver_workspace_peak(peak);
-        Ok(result)
-    }
-
-    fn fit_absorb_irons_tuck(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_absorb_irons_tuck(weights, values, config);
-        }
-        if self.has_absorbed_slope() {
-            self.fit_absorb_owned_matrix(weights, values, config)
-        } else {
-            absorb_finalized_categorical_topology_irons_tuck_certified(
-                self.fe_topology(),
-                weights,
-                values,
-                config.map,
-                config.retain_coefficients,
-            )
-        }
-    }
-
-    fn fit_absorb_auto(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_absorb_auto(weights, values, config);
-        }
-        if self.has_absorbed_slope() {
-            self.fit_absorb_owned_matrix(weights, values, config)
-        } else {
-            absorb_finalized_categorical_topology_auto_routed_certified(
-                self.fe_topology(),
-                weights,
-                values,
-                config.map,
-                config.lsmr,
-                config.solver_memory_budget,
-                config.retain_coefficients,
-            )
-        }
-    }
-
-    fn fit_absorb_auto_direct_lsmr(
-        &self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: AbsorbConfig,
-    ) -> Result<CertifiedBorrowedMap> {
-        if !self.uses_categorical_preparation() {
-            return OrdinaryPrepared(self).fit_absorb_auto_direct_lsmr(weights, values, config);
-        }
-        if self.has_absorbed_slope() {
-            self.fit_absorb_owned_matrix(weights, values, config)
-        } else {
-            absorb_finalized_categorical_topology_auto_direct_lsmr_certified(
-                self.fe_topology(),
-                weights,
-                values,
-                config.map,
-                config.lsmr,
-                config.solver_memory_budget,
-                config.retain_coefficients,
-            )
-        }
     }
 
     fn fit_retained_fe_parent_bytes(&self) -> Result<u128> {

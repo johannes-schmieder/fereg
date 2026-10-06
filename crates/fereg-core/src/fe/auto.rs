@@ -1,4 +1,3 @@
-use super::accelerated_map::absorb_accelerated_map_with_context;
 use super::certificate::CertificateContext;
 use super::map::absorb_map_with_context;
 use super::projection::ParallelProjectionPlan;
@@ -12,34 +11,6 @@ use crate::fe::{
 use crate::memory::SolverWorkspacePeak;
 use crate::memory::{generic_fe_solver_bytes, owned_fe_matrix_bytes, FeSolverMemoryBudget};
 
-/// Frozen automatic-routing threshold selected from the registered AKM matrix.
-///
-/// The ratio is the independently certified FE moment after four symmetric
-/// MAP sweeps divided by its initial value. Values at or above 0.8% identify
-/// the slow-mixing graphs where the bounded LSMR setup cost paid for itself.
-pub(crate) const AUTO_LSMR_MIN_PILOT_CONTRACTION: f64 = 0.008;
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum AutoLsmrRoute {
-    None,
-    Direct,
-    CgPolish,
-}
-
-pub(crate) fn auto_selects_lsmr(pilot_contraction: f64, total_fe_coefficients: usize) -> bool {
-    auto_lsmr_route(pilot_contraction, total_fe_coefficients) == AutoLsmrRoute::Direct
-}
-
-pub(crate) fn auto_lsmr_route(
-    pilot_contraction: f64,
-    _total_fe_coefficients: usize,
-) -> AutoLsmrRoute {
-    if pilot_contraction < AUTO_LSMR_MIN_PILOT_CONTRACTION {
-        AutoLsmrRoute::None
-    } else {
-        AutoLsmrRoute::Direct
-    }
-}
-
 /// Frozen safety rule selected on calibration cases: direct LSMR solves two
 /// decimal orders tighter than the requested publication tolerance, bounded
 /// at `1e-14` so ordinary requests do not chase sub-roundoff recurrence noise.
@@ -48,25 +19,6 @@ pub(crate) fn direct_lsmr_tolerance(requested_tolerance: f64) -> f64 {
         requested_tolerance
     } else {
         (requested_tolerance * 1e-2).max(1e-14)
-    }
-}
-
-/// Qualification-only comparison route: use LSMR as a bulk reducer, then let
-/// comparator-equivalent CG polish and certify the observation residual.
-///
-/// The explicit cap argument lets focused tests exercise both sides of the
-/// route on a bounded graph. Runtime callers always pass the frozen cap.
-pub(crate) fn auto_lsmr_route_at_cap(
-    pilot_contraction: f64,
-    total_fe_coefficients: usize,
-    direct_lsmr_cap: usize,
-) -> AutoLsmrRoute {
-    if pilot_contraction < AUTO_LSMR_MIN_PILOT_CONTRACTION {
-        AutoLsmrRoute::None
-    } else if total_fe_coefficients <= direct_lsmr_cap {
-        AutoLsmrRoute::Direct
-    } else {
-        AutoLsmrRoute::CgPolish
     }
 }
 
@@ -171,249 +123,131 @@ fn absorb_auto(
     values: &mut DenseMatrix,
     config: AbsorbConfig,
 ) -> Result<SolveReport> {
-    // Admit the cheap pilot first. An unused LSMR/CG workspace must not prevent
-    // a MAP certificate from closing an otherwise affordable request.
-    let mut attempted_peak =
-        admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
-    let reference_norms = weighted_column_norms(values, weights)?;
-    let cache_started = std::time::Instant::now();
-    let mut context = CertificateContext::new(design, weights);
-    let mut retained = 0;
-    // Repeated auto checks can amortize QR geometry. Categorical-only paths,
-    // empty RHSs and invalid configurations keep their original behavior.
-    if values.ncols() > 0
-        && values.nrows() == design.nobs()
-        && design
-            .effects()
-            .iter()
-            .any(|effect| !effect.slopes().is_empty())
-        && config.map.tolerance.is_finite()
-        && config.map.tolerance > 0.0
-        && config.map.max_iterations > 1
-        && config.map.check_every > 0
+    // Validate before optional geometry can index current-frame weights.
+    if values.nrows() != design.nobs()
+        || !config.map.tolerance.is_finite()
+        || config.map.tolerance <= 0.
+        || config.map.max_iterations == 0
+        || config.map.check_every == 0
     {
-        if let Ok(bytes) = context.cache_bytes() {
-            if let Ok(peak) = attempted_peak.with_retained(bytes) {
-                if config
-                    .solver_memory_budget
-                    .is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128))
-                {
-                    attempted_peak = peak;
-                    match context.cache() {
-                        Ok(()) => retained = bytes,
-                        Err(error) if error.code == ErrorCode::Allocation => {}
-                        Err(error) => return Err(error),
-                    }
-                }
-            }
-        }
-    }
-    let mut parallel_bytes = 0;
-    if let Ok(bytes) = context.parallel_workspace_bytes(values.ncols()) {
-        if bytes > 0 {
-            if let Ok(peak) = attempted_peak.with_retained(bytes) {
-                if config
-                    .solver_memory_budget
-                    .is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128))
-                {
-                    context.set_parallel_rhs(values.ncols());
-                    parallel_bytes = bytes;
-                    attempted_peak = peak;
-                }
-            }
-        }
-    }
-    let projection_plan = ParallelProjectionPlan::for_design(design, values.ncols())
-        .ok()
-        .flatten();
-    let (pilot_projection, pilot_peak) =
-        admit_parallel_projection(projection_plan, attempted_peak, config.solver_memory_budget);
-    attempted_peak = pilot_peak;
-    let cache_seconds = cache_started.elapsed().as_secs_f64();
-    let initial = context.certify(values, &reference_norms, config.map.tolerance)?;
-    let pilot_budget = config.map.max_iterations.min(4);
-    let mut pilot = absorb_map_with_context(
-        &context,
-        values,
-        MapConfig {
-            max_iterations: pilot_budget,
-            check_every: 1,
-            ..config.map
-        },
-        pilot_projection,
-    )?;
-    let contraction = if initial.relative_two_norm == 0.0 {
-        0.0
-    } else {
-        pilot.certificate.relative_two_norm / initial.relative_two_norm
-    };
-    if !contraction.is_finite() || contraction < 0.0 {
         return Err(FeregError::new(
-            ErrorCode::InvalidData,
-            "automatic MAP pilot contraction is invalid",
+            ErrorCode::InvalidArgument,
+            "general FE projection inputs are invalid",
         ));
     }
-    pilot.setup_seconds += cache_seconds;
-    pilot.solver_workspace_peak = attempted_peak;
-    pilot.requested_solver = FeSolverKind::Auto;
-    pilot.pilot_iterations = pilot.iterations;
-    pilot.pilot_contraction = contraction;
-    if pilot.certified() {
-        return Ok(pilot);
-    }
-    if pilot_budget == config.map.max_iterations {
-        return Err(FeregError::new(
-            ErrorCode::InvalidData,
-            "automatic MAP pilot exhausted the solver budget without certification",
-        ));
-    }
-
-    let mut remaining_iterations = config.map.max_iterations - pilot_budget;
-    let mut lsmr_failure = None;
-    let mut attempted_lsmr = None;
-    if auto_selects_lsmr(contraction, design.total_coefficients()) {
-        // LSMR owns different geometry. Release this optional cache before its
-        // admission so previously affordable routes and fallbacks stay valid.
-        context.clear();
-        retained = 0;
-        parallel_bytes = 0;
-        let lsmr_config = LsmrConfig {
-            tolerance: direct_lsmr_tolerance(config.map.tolerance),
-            max_iterations: config.lsmr.max_iterations.min(remaining_iterations),
-            ..config.lsmr
-        };
-        let attempt: Result<(SolveReport, DenseMatrix)> = (|| {
-            let peak = admit_generic_solver(design, values, config, FeSolverKind::Lsmr, true)?;
-            // Keep admitted work even if construction/solving errors before a
-            // report is returned. An admission rejection itself allocates none
-            // of this workspace and must not charge the rejected envelope.
-            attempted_peak = attempted_peak.max(peak);
-            let mut lsmr_values =
-                fallible_matrix_copy(values, "unable to reserve automatic LSMR fallback matrix")?;
-            let report = absorb_lsmr(design, weights, &mut lsmr_values, lsmr_config)?;
-            Ok((report, lsmr_values))
-        })();
-        match attempt {
-            Ok((mut lsmr, lsmr_values)) => {
-                lsmr.certificate = certify_residuals_with_reference_norms(
+    let norms = weighted_column_norms(values, weights)?;
+    let mut peak = SolverWorkspacePeak::ZERO;
+    let mut prior = None;
+    // A coefficient-space solve preserves the original projection identity.
+    // Reserve half the shared budget for one MAP continuation from untouched
+    // inputs; an FE moment certificate alone cannot authorize a CG handoff.
+    if design.effects().len() > 1 && config.map.max_iterations > 1 {
+        match admit_generic_solver(design, values, config, FeSolverKind::Lsmr, true) {
+            Ok(admitted) => {
+                peak = admitted;
+                let mut candidate =
+                    fallible_matrix_copy(values, "unable to reserve general FE candidate")?;
+                let policy = LsmrConfig {
+                    tolerance: direct_lsmr_tolerance(config.map.tolerance),
+                    max_iterations: config
+                        .lsmr
+                        .max_iterations
+                        .min(config.map.max_iterations / 2),
+                    ..config.lsmr
+                };
+                let mut report = absorb_lsmr(design, weights, &mut candidate, policy)?;
+                report.certificate = certify_residuals_with_reference_norms(
                     design,
                     weights,
-                    &lsmr_values,
-                    &reference_norms,
-                    lsmr_config.tolerance,
+                    &candidate,
+                    &norms,
+                    config.map.tolerance,
                 )?;
-                if lsmr.certificate.passed {
-                    lsmr.stop_reason = SolveStopReason::Certified;
+                report.requested_solver = FeSolverKind::Auto;
+                report.solver_workspace_peak = peak;
+                if report.certificate.passed {
+                    report.stop_reason = SolveStopReason::Certified;
+                    *values = candidate;
+                    return Ok(report);
                 }
-                if lsmr.certified() {
-                    lsmr.solver_workspace_peak = attempted_peak;
-                    lsmr.requested_solver = FeSolverKind::Auto;
-                    lsmr.iterations = lsmr.iterations.saturating_add(pilot.iterations);
-                    lsmr.pilot_iterations = pilot.iterations;
-                    lsmr.pilot_contraction = contraction;
-                    lsmr.setup_seconds += pilot.setup_seconds;
-                    lsmr.solve_seconds += pilot.solve_seconds;
-                    *values = lsmr_values;
-                    return Ok(lsmr);
-                }
-                remaining_iterations = remaining_iterations
-                    .checked_sub(lsmr.iterations)
-                    .filter(|remaining| *remaining > 0)
-                    .ok_or_else(|| {
-                        FeregError::new(
-                            ErrorCode::InvalidData,
-                            "automatic LSMR continuation exhausted the shared iteration budget before CG polish",
-                        )
-                    })?;
-                *values = lsmr_values;
-                attempted_lsmr = Some((
-                    lsmr.iterations,
-                    lsmr.setup_seconds,
-                    lsmr.solve_seconds,
-                    lsmr.requested_preconditioner,
-                    lsmr.used_preconditioner,
-                ));
-                lsmr_failure = Some(format!(
-                    "automatic LSMR path did not certify after {} iterations; continued CG from the LSMR candidate",
-                    lsmr.iterations
-                ));
+                prior = Some(report);
             }
-            Err(error) => {
-                lsmr_failure = Some(format!("automatic LSMR path failed ({error}); retried CG"));
+            Err(e) if e.code == ErrorCode::Allocation => {}
+            Err(e) => return Err(e),
+        }
+    }
+    let consumed = prior.as_ref().map_or(0, |r| r.iterations);
+    let remaining = config
+        .map
+        .max_iterations
+        .checked_sub(consumed)
+        .filter(|n| *n > 0)
+        .ok_or_else(|| {
+            FeregError::new(
+                ErrorCode::NonConvergence,
+                "general FE solve exhausted its shared work budget",
+            )
+        })?;
+    let admitted = admit_generic_solver(design, values, config, FeSolverKind::Map, false)?;
+    let mut context = CertificateContext::new(design, weights);
+    let mut retained = admitted;
+    if let Ok(bytes) = context.cache_bytes() {
+        if let Ok(cached) = retained.with_retained(bytes) {
+            if config
+                .solver_memory_budget
+                .is_none_or(|b| b.fits(cached.bytes().unwrap() as u128))
+            {
+                match context.cache() {
+                    Ok(()) => retained = cached,
+                    Err(e) if e.code == ErrorCode::Allocation => {}
+                    Err(e) => return Err(e),
+                }
             }
         }
     }
-
-    // A failed/rejected LSMR attempt has released its solver and transport.
-    // Recheck the actual continuation instead of charging two live solvers.
-    let continuation_peak = admit_generic_solver(design, values, config, FeSolverKind::Cg, false)?;
-    let continuation_peak = if let Some(cached_peak) = continuation_peak
-        .with_retained(retained)
-        .ok()
-        .filter(|peak| {
-            config
+    if let Ok(bytes) = context.parallel_workspace_bytes(values.ncols()) {
+        if let Ok(parallel) = retained.with_retained(bytes) {
+            if config
                 .solver_memory_budget
-                .is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128))
-        }) {
-        if let Some(parallel_peak) = cached_peak
-            .with_retained(parallel_bytes)
-            .ok()
-            .filter(|peak| {
-                config
-                    .solver_memory_budget
-                    .is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128))
-            })
-        {
-            parallel_peak
-        } else {
-            context.set_parallel_rhs(0);
-            cached_peak
+                .is_none_or(|b| b.fits(parallel.bytes().unwrap() as u128))
+            {
+                context.set_parallel_rhs(values.ncols());
+                retained = parallel;
+            }
         }
-    } else {
-        context.clear();
-        continuation_peak
-    };
-    let (cg_projection, continuation_peak) = admit_parallel_projection(
-        projection_plan,
-        continuation_peak,
-        config.solver_memory_budget,
-    );
-    attempted_peak = attempted_peak.max(continuation_peak);
-    let mut cg = absorb_accelerated_map_with_context(
+    }
+    let plan = ParallelProjectionPlan::for_design(design, values.ncols())
+        .ok()
+        .flatten();
+    let (plan, retained) = admit_parallel_projection(plan, retained, config.solver_memory_budget);
+    peak = peak.max(retained);
+    let mut report = absorb_map_with_context(
         &context,
         values,
         MapConfig {
-            max_iterations: remaining_iterations,
+            max_iterations: remaining,
             ..config.map
         },
-        FeSolverKind::Cg,
-        cg_projection,
+        plan,
     )?;
-    if !cg.certified() {
+    if !report.certified() {
         return Err(FeregError::new(
-            ErrorCode::InvalidData,
-            "automatic CG continuation exhausted the solver budget without certification",
+            ErrorCode::NonConvergence,
+            "general FE projection exhausted its iteration budget",
         ));
     }
-    cg.solver_workspace_peak = attempted_peak;
-    cg.requested_solver = FeSolverKind::Auto;
-    cg.iterations = cg.iterations.saturating_add(pilot.iterations);
-    cg.pilot_iterations = pilot.iterations;
-    cg.pilot_contraction = contraction;
-    cg.setup_seconds += pilot.setup_seconds;
-    cg.solve_seconds += pilot.solve_seconds;
-    if let Some((iterations, setup, solve, requested, used)) = attempted_lsmr {
-        cg.iterations = cg.iterations.saturating_add(iterations);
-        cg.setup_seconds += setup;
-        cg.solve_seconds += solve;
-        cg.requested_preconditioner = requested;
-        cg.used_preconditioner = used;
+    report.requested_solver = FeSolverKind::Auto;
+    report.solver_workspace_peak = peak;
+    if let Some(prior) = prior {
+        report.iterations += prior.iterations;
+        report.setup_seconds += prior.setup_seconds;
+        report.solve_seconds += prior.solve_seconds;
+        report.certification_seconds += prior.certification_seconds;
+        report.fallback_used = true;
+        report.requested_preconditioner = prior.requested_preconditioner;
+        report.used_preconditioner = prior.used_preconditioner;
     }
-    if let Some(warning) = lsmr_failure {
-        cg.fallback_used = true;
-        cg.warnings.insert(0, warning);
-    }
-    Ok(cg)
+    Ok(report)
 }
 
 /// Optional projection storage is last in admission priority: it cannot evict
@@ -477,32 +311,6 @@ mod tests {
     use crate::fe::{EffectTerm, SolveStopReason};
 
     #[test]
-    fn auto_lsmr_threshold_is_frozen_and_inclusive() {
-        assert!(!auto_selects_lsmr(
-            AUTO_LSMR_MIN_PILOT_CONTRACTION - f64::EPSILON,
-            65_536,
-        ));
-        assert!(auto_selects_lsmr(AUTO_LSMR_MIN_PILOT_CONTRACTION, 65_536,));
-        assert!(auto_selects_lsmr(1.0, 10_000_000));
-        assert_eq!(
-            auto_lsmr_route(AUTO_LSMR_MIN_PILOT_CONTRACTION - f64::EPSILON, 65_537,),
-            AutoLsmrRoute::None,
-        );
-        assert_eq!(
-            auto_lsmr_route(AUTO_LSMR_MIN_PILOT_CONTRACTION, 65_536,),
-            AutoLsmrRoute::Direct,
-        );
-        assert_eq!(
-            auto_lsmr_route(AUTO_LSMR_MIN_PILOT_CONTRACTION, 65_537,),
-            AutoLsmrRoute::Direct,
-        );
-        assert_eq!(
-            auto_lsmr_route_at_cap(AUTO_LSMR_MIN_PILOT_CONTRACTION, 65_537, 65_536,),
-            AutoLsmrRoute::CgPolish,
-        );
-    }
-
-    #[test]
     fn auto_slope_design_returns_a_certified_bounded_route() {
         let effect = EffectTerm::new(vec![0, 0, 1, 1], 2, true, vec![vec![0.0, 1.0, 0.0, 1.0]])
             .expect("effect");
@@ -520,7 +328,7 @@ mod tests {
     }
 
     #[test]
-    fn auto_fails_closed_when_the_pilot_exhausts_the_total_budget() {
+    fn auto_fails_closed_when_projection_exhausts_the_total_budget() {
         let first = EffectTerm::new(vec![0, 0, 1, 1, 2, 2], 3, true, vec![]).expect("first");
         let second = EffectTerm::new(vec![0, 1, 1, 2, 2, 0], 3, true, vec![]).expect("second");
         let design = FeDesign::new(6, vec![first, second]).expect("design");
@@ -545,7 +353,7 @@ mod tests {
             },
         )
         .expect_err("uncertified auto result must fail closed");
-        assert_eq!(error.code, ErrorCode::InvalidData);
+        assert_eq!(error.code, ErrorCode::NonConvergence);
     }
 
     #[test]
@@ -722,7 +530,7 @@ mod generic_budget_regression {
     }
 
     #[test]
-    fn optional_geometry_is_released_before_an_exact_budget_cg_continuation() {
+    fn optional_geometry_is_released_before_an_exact_budget_map_continuation() {
         let n = 480;
         let design = FeDesign::new(
             n,
@@ -759,12 +567,11 @@ mod generic_budget_regression {
             },
             ..AbsorbConfig::default()
         };
-        let map = generic_fe_solver_bytes(&design, 8, FeSolverKind::Map, config.lsmr).unwrap();
-        let cg = generic_fe_solver_bytes(&design, 8, FeSolverKind::Cg, config.lsmr).unwrap();
+        let _map = generic_fe_solver_bytes(&design, 8, FeSolverKind::Map, config.lsmr).unwrap();
+        let cg = generic_fe_solver_bytes(&design, 8, FeSolverKind::Map, config.lsmr).unwrap();
         let cache = CertificateContext::new(&design, &weights)
             .cache_bytes()
             .unwrap();
-        assert!(map + cache < cg);
         let mut reference = None;
         for budget in [cg, cg + cache - 1, cg + cache] {
             let mut values = original.clone();
@@ -781,7 +588,7 @@ mod generic_budget_regression {
                 },
             )
             .unwrap();
-            assert_eq!(report.used_solver, FeSolverKind::Cg);
+            assert_eq!(report.used_solver, FeSolverKind::Map);
             assert!(!report.fallback_used);
             assert_eq!(
                 report.solver_workspace_peak.bytes(),
@@ -801,7 +608,7 @@ mod generic_budget_regression {
     }
 
     #[test]
-    fn parallel_scratch_can_be_released_without_discarding_affordable_cg_geometry() {
+    fn parallel_scratch_can_be_released_without_discarding_affordable_map_geometry() {
         rayon::ThreadPoolBuilder::new()
             .num_threads(4)
             .build()
@@ -843,10 +650,10 @@ mod generic_budget_regression {
                     },
                     ..AbsorbConfig::default()
                 };
-                let map =
+                let _map =
                     generic_fe_solver_bytes(&design, 8, FeSolverKind::Map, config.lsmr).unwrap();
                 let cg =
-                    generic_fe_solver_bytes(&design, 8, FeSolverKind::Cg, config.lsmr).unwrap();
+                    generic_fe_solver_bytes(&design, 8, FeSolverKind::Map, config.lsmr).unwrap();
                 let cache = CertificateContext::new(&design, &weights)
                     .cache_bytes()
                     .unwrap();
@@ -859,7 +666,6 @@ mod generic_budget_regression {
                     .unwrap()
                     .bytes()
                     .unwrap();
-                assert!(map + cache + parallel + projection < cg);
                 let mut reference = None;
                 for budget in [
                     cg,
@@ -883,7 +689,7 @@ mod generic_budget_regression {
                         },
                     )
                     .unwrap();
-                    assert_eq!(report.used_solver, FeSolverKind::Cg);
+                    assert_eq!(report.used_solver, FeSolverKind::Map);
                     assert!(!report.fallback_used);
                     let continuation = if budget < cg + cache {
                         cg
@@ -1110,7 +916,7 @@ mod generic_budget_regression {
     }
 
     #[test]
-    fn generic_auto_rechecks_cg_when_slope_lsmr_does_not_fit() {
+    fn generic_auto_admits_map_when_slope_lsmr_does_not_fit() {
         let levels = 12;
         let n = levels * 4;
         let left = (0..n).map(|row| (row / 4) as u32).collect::<Vec<_>>();
@@ -1147,7 +953,7 @@ mod generic_budget_regression {
         let mut unlimited = DenseMatrix::from_columns(&[y.clone()]).unwrap();
         let baseline = absorb_fixed_effects(&design, &weights, &mut unlimited, config).unwrap();
         assert_eq!(baseline.used_solver, FeSolverKind::Lsmr);
-        let cg_bytes = generic_fe_solver_bytes(&design, 1, FeSolverKind::Cg, config.lsmr).unwrap();
+        let cg_bytes = generic_fe_solver_bytes(&design, 1, FeSolverKind::Map, config.lsmr).unwrap();
         let lsmr_bytes =
             generic_fe_solver_bytes(&design, 1, FeSolverKind::Lsmr, config.lsmr).unwrap();
         assert!(lsmr_bytes > cg_bytes);
@@ -1170,9 +976,8 @@ mod generic_budget_regression {
             } else {
                 let report = result.unwrap();
                 assert!(report.certified());
-                assert_eq!(report.used_solver, FeSolverKind::Cg);
-                assert!(report.fallback_used);
-                assert!(report.warnings[0].contains("workspace bytes"));
+                assert_eq!(report.used_solver, FeSolverKind::Map);
+                assert!(!report.fallback_used);
                 // The larger LSMR route was never allocated. Only the admitted
                 // pilot and CG continuation belong to this peak.
                 assert_eq!(report.solver_workspace_peak.bytes(), Some(cg_bytes as u64));

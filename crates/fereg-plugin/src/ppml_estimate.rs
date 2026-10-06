@@ -1728,17 +1728,10 @@ fn validate_solver_evidence(
     let expected_requested = f64::from(action.solver.code());
     let expected_selected = if action.solver == PpmlSolverFamily::Auto {
         let selected = shadow.solver[1];
-        let lsmr_eligible = (2..=3).contains(&action.request.absorbed_terms.len())
-            && action.memory.requested != MemoryMode::Low
-            && !action.allocation_audit
-            && action.request.absorbed_terms.iter().all(|term| {
-                term.intercept
-                    && term.slope_sources.is_empty()
-                    && !term.categorical_sources.is_empty()
-            });
-        if selected != f64::from(PpmlSolverFamily::Map.code())
-            && !(selected == f64::from(PpmlSolverFamily::Lsmr.code()) && lsmr_eligible)
-        {
+        // Automatic estimation uses the common structural projection family.
+        // A canonical checkpoint records its independent numerical operation;
+        // it does not change the selected ordinary solver.
+        if selected != f64::from(PpmlSolverFamily::Map.code()) {
             return Err(internal(
                 "PPML automatic solver selection is outside its admitted envelope",
             ));
@@ -1818,7 +1811,6 @@ fn validate_solver_evidence(
             && (expected_selected == f64::from(PpmlSolverFamily::Lsmr.code())
                 || expected_selected == f64::from(PpmlSolverFamily::Cmg.code())
                 || (expected_selected == f64::from(PpmlSolverFamily::Map.code())
-                    && shadow.runtime[5] == 2.0
                     && action.request.absorbed_terms.len() == 3
                     && action
                         .request
@@ -4752,7 +4744,7 @@ mod tests {
     }
 
     #[test]
-    fn low_checkpoint_publication_uses_selected_memory_including_auto() {
+    fn structural_checkpoint_publication_accepts_both_storage_modes() {
         with_unpublished_shadow(|_, shadow, _| {
             let (args, mut spi) = categorical_absorb_cluster_weight_fixture();
             let mut action = EstimatePpmlSpec::parse(&args)
@@ -4761,21 +4753,23 @@ mod tests {
                 .unwrap();
             let term = action.request.absorbed_terms[0].clone();
             action.request.absorbed_terms = vec![term; 3];
-            shadow.runtime[5] = 2.0;
             for request in [PpmlSolverFamily::Auto, PpmlSolverFamily::Map] {
                 action.solver = request;
                 for row in 0..SOLVER_ROWS {
                     shadow.solver[row * SOLVER_COLUMNS..row * SOLVER_COLUMNS + 6]
                         .copy_from_slice(&[f64::from(request.code()), 2., 1., 2., 1., 3.]);
                 }
-                for memory in [MemoryMode::Auto, MemoryMode::Low] {
-                    action.memory.requested = memory;
-                    validate_solver_evidence(&action, shadow).unwrap();
+                for selected in [1., 2.] {
+                    shadow.runtime[5] = selected;
+                    for memory in [MemoryMode::Auto, MemoryMode::Fast, MemoryMode::Low] {
+                        action.memory.requested = memory;
+                        validate_solver_evidence(&action, shadow).unwrap();
+                    }
                 }
+                shadow.solver[1] = 3.;
+                assert!(validate_solver_evidence(&action, shadow).is_err());
+                shadow.solver[1] = 2.;
             }
-            shadow.runtime[5] = 1.0;
-            assert!(validate_solver_evidence(&action, shadow).is_err());
-            shadow.runtime[5] = 2.0;
             action.request.absorbed_terms.pop();
             assert!(validate_solver_evidence(&action, shadow).is_err());
         });
