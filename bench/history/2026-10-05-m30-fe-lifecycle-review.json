@@ -1,0 +1,26 @@
+{
+  "reviewer": "Astra high; independent read-only integrated implementation and scientific review",
+  "native_sha256": "a21a0bb4b43ba3a2bba3ccfa904fbde0ab5c0de37755aecce2d952db084c08c5",
+  "conclusion": "Implementation and Mac scientific gates supported; no additional blocking code defect. Promotion remains blocked by fresh performance qualification.",
+  "net_production_lines_vs_parent": -5946,
+  "independently_verified": {
+    "linked_artifact_hashes": 23,
+    "candidate_frozen_files": 260,
+    "parent_frozen_files_matching_accepted_commit": 261
+  },
+  "safeguards": [
+    "Distinct canonical projection and coefficient-direction authority within FeSession",
+    "Generation revoked before fallible projection; restored only after certification",
+    "Checked optional-bank admission and attempted-peak accounting; affordable serial fallback",
+    "Tiled independent rank-aware certificates preserve scalar reduction order",
+    "Explicit solvers, original-axis metadata, bias/storage modes, reconstruction and transactions retained"
+  ],
+  "determinant": "Tightly scaled Decimal-supported numerical witness is defensible; it does not establish general native pivot bit identity from posted V. Exact small-wire anchors and PSD/pass checks remain.",
+  "remaining_gates": [
+    "Fresh frozen 15-workload campaign against qualified parent and fixed M26, both orders, unchanged allowance and stationarity",
+    "Frozen 8/16-worker automatic scaling scope; resolve material regression/cliff",
+    "Specifically requalify established slope-OLS regression; exact science does not clear it"
+  ],
+  "architectural_override": "Substantial quality benefit supports genuinely unresolved timing acceptance under Johannes override only when established regressions are corrected or separately authorized.",
+  "platform": "Mac-only; no new remote platform claim"
+}

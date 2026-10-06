@@ -81,6 +81,22 @@ is still unproved: its [reviewed complete-owner declaration](../../bench/history
 requires measuring genuine controller deletion and every replacement. The target
 remains 15,000; accepted delivery is 1,835, with 13,165 still required.
 
+M30's [recoverable candidate](../../bench/history/2026-10-05-m30-fe-lifecycle-candidate.json)
+measures 113,615 production lines: 5,946 below accepted M29 and 7,781 below M26,
+including the common owner, kernel migration, scientific fixes and all adapters.
+The displaced absorption/construction, automatic pilot/probe, recovery and
+coefficient-certificate owners are deleted together. This measured candidate
+exceeds the original 4,812-line allocation by 1,134; the nominal program forecast
+would become 17,507 if accepted. This remains a forecast, not delivered retirement.
+Accepted delivery remains 1,835 lines. Candidate delivery would leave 7,219 of
+the unchanged 15,000-line target. See MILESTONES for the active qualification gate.
+The prior native's established slope regression and interrupted campaign remain
+recorded; successful science and the common-kernel repair do not establish a timing pass.
+Astra high supports the unchanged source/science. Its fresh repaired-native
+[campaign](../../bench/history/2026-10-05-m30-common-kernel-performance-terminal.json)
+was interrupted by a new unrelated batch after 2,184 records; all 2,185 raw
+capture directories remain. No final verdict or 8/16 scaling gate passed.
+
 M28 cannot remove costs for still-executable FE/finite routes. Constructors
 must take ownership of those formulas before the M30/M31 consumers disappear;
 later simplification of those formulas remains counted within this pool.

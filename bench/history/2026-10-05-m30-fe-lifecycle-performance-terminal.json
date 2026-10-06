@@ -1,0 +1,65 @@
+{
+  "status": "Terminal interrupted/incomplete; parent completed verdict outside; no runtime promotion",
+  "candidate_native": "dd2a6c31a3ccd862f6e36d8630b296dbd8c57a4b931b6b8a6756daa18717a3a1",
+  "plan_sha256": "c767d199584857424280e6010e7c919112d35cfbb99ddad47a997b7e9e243e8e",
+  "records": 2364,
+  "raw_capture_directories": 2365,
+  "result_files": [
+    {
+      "path": "target/m30-fe-lifecycle/acceptance-fe-lifecycle/acceptance-confirmation-fixed_baseline-forward/results.json",
+      "sha256": "3a22b0b852438b9ef4a34604bfc6ce27e658819ccaf264ee180be14ac6f07043",
+      "records": 76,
+      "complete": false
+    },
+    {
+      "path": "target/m30-fe-lifecycle/acceptance-fe-lifecycle/acceptance-confirmation-parent-forward/results.json",
+      "sha256": "e7f560e413da5bf889d565da49341e6c01f26fb7dd336facac42d9a7adebef4d",
+      "records": 544,
+      "complete": true
+    },
+    {
+      "path": "target/m30-fe-lifecycle/acceptance-fe-lifecycle/acceptance-confirmation-parent-reverse/results.json",
+      "sha256": "6c1d89305d458fcae85daebeab1986b10abb3ae606db03f6857dbfb64d2e352c",
+      "records": 544,
+      "complete": true
+    },
+    {
+      "path": "target/m30-fe-lifecycle/acceptance-fe-lifecycle/acceptance-screening-fixed_baseline-forward/results.json",
+      "sha256": "bacd8233ec71b20f48a5ac78393d6ec1afbc3465c87d29123db57375f15c5bed",
+      "records": 300,
+      "complete": true
+    },
+    {
+      "path": "target/m30-fe-lifecycle/acceptance-fe-lifecycle/acceptance-screening-fixed_baseline-reverse/results.json",
+      "sha256": "5cb36cefadd5ee221298bb45335c308d2830282669796834e0463c87e62057bc",
+      "records": 300,
+      "complete": true
+    },
+    {
+      "path": "target/m30-fe-lifecycle/acceptance-fe-lifecycle/acceptance-screening-parent-forward/results.json",
+      "sha256": "366c527b0d7a4d73c7fc0704ee39448c25088da74b058c53e3365c7daa3269b9",
+      "records": 300,
+      "complete": true
+    },
+    {
+      "path": "target/m30-fe-lifecycle/acceptance-fe-lifecycle/acceptance-screening-parent-reverse/results.json",
+      "sha256": "f7817fe6c68af6295744fb0e5b779eea70b6ed93239f9b4bce9a75a6512b7075",
+      "records": 300,
+      "complete": true
+    }
+  ],
+  "parent_verdict": {
+    "path": "target/m30-fe-lifecycle/acceptance-fe-lifecycle/completed-parent-verdict.json",
+    "sha256": "deeac6efb7609bf6fd803540ab23697fa39aa674f0111600fb4286612e51c081",
+    "passed": false,
+    "families": {
+      "within": 12,
+      "unresolved": 2,
+      "outside": 1
+    }
+  },
+  "interruption": "Unrelated MC/common/run.py --study Main --run-id types --reps200 --jobs12 driver29936 identified with active Stata children; stopped only verified owned runner26784/29931 and child30102; unrelated work untouched. FixedM26 confirmation contaminated/incomplete, reverse unstarted. Automatic8/16 timing plan unstarted. No restart or merge of observations.",
+  "acceptance": false,
+  "allowance": "max(5%,1ms) unchanged",
+  "scope": "Mac-only; no CI/remote qualification"
+}

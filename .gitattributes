@@ -8,3 +8,6 @@ Veneto_Benchmark/results/** -text -whitespace
 vendor/rayon-core/** -text
 # Preserve the upstream design note's existing trailing blank verbatim.
 vendor/rayon-core/src/sleep/README.md -whitespace
+
+# Preserve the M30 recoverable patch blank-context prefix verbatim.
+bench/history/2026-10-05-m30-fe-lifecycle-candidate.patch -text -whitespace

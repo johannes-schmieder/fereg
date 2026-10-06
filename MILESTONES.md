@@ -3,7 +3,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M30 structural FE lifecycle/automatic-route retirement; M29 architecturally accepted under Johannes override; timing/final scaling remain open.
+Current task: M30 science/review pass; repaired timing interrupted by new research batch; slope cost diagnosis and quiet-window coordination pending; M29 accepted.
 
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
@@ -114,6 +114,8 @@ Accepted runtime: M29 common worker/stage policy; production119561, net vsM26 -1
 
 ## Blockers
 
+M30 unpromoted: prior slope timing outside;2,364 records/2,365 captures retained. Repair science/exact584 and Astra high pass; fresh timing interrupted at2,184records/2,185captures.
+
 M28 accepted architecturally: +96 vsM27/-1627 vsM26; timing unresolved for three workloads, with no established regression; full local/science pass.
 All4720 commands retained; FE-cluster timing drifts in both roles. Optimization remains open; [acceptance](bench/history/2026-10-05-m28-capacity-owner-acceptance.json).
 M29 accepted architecturally: -208 vsM28/-1835 vsM26; all local/science pass; timing interrupted by unrelated Stata;200 records/201 raw dirs retained; final scaling open.
@@ -125,6 +127,9 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-05 M30 timing: new research interrupts repaired native; no final verdict or scaling; [terminal](bench/history/2026-10-05-m30-common-kernel-performance-terminal.json).
+- 2026-10-05 M30 checkpoint: net-5946; full/30/ABI/replay/48Stata pass; timing unverified; [candidate](bench/history/2026-10-05-m30-fe-lifecycle-candidate.json).
+- 2026-10-05 M30 design: Astra xhigh binding/weight APIs; shared FE lifecycle retires all controllers together; reviewed net2000–2500; [scope](bench/history/2026-10-05-m30-fe-lifecycle-design.json).
 - 2026-10-05 M29.1 this commit: policy/outcome owners retired; Astra high accepts; local/science pass, timing/scaling open; [evidence](bench/history/2026-10-05-m29-worker-acceptance.json).
 - 2026-10-05 M29 candidate: full/30/ABI/73/eight budgets/48 Stata/exact405664 pass; -208 vsM28; timing interrupted/review pending; [evidence](bench/history/2026-10-05-m29-worker-candidate.json).
 - 2026-10-05 M29 design: Astra xhigh common stage-work policy; ceiling/recurrence/chunk/overlap retirement; [scope](bench/history/2026-10-05-m29-worker-design.json).
