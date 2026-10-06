@@ -1,0 +1,23 @@
+{
+  "milestone": "M33",
+  "model": "GPT-6 Astra",
+  "effort": "high",
+  "scope": "Bounded independent source review; acceptance evidence pending",
+  "finding": "No concrete new scientific, transaction, generation-binding or memory-admission defect found. Substantial frame/CMG ownership retirement; distinct mathematical controllers and proof strengths remain required.",
+  "retirement_count": {
+    "parent": 110928,
+    "candidate": 110527,
+    "net": -401,
+    "forecast": [
+      1000,
+      1800
+    ],
+    "miss": [
+      599,
+      1399
+    ],
+    "all_replacements_counted": true
+  },
+  "ratchet": "Nine inherited increases have narrow checked-in reasons; no new over150/1500 function/file.",
+  "qualification": "Full local02 and long30 pass; firstClippyfailure retained/repaired. Native/Stata/performance/finalreview pending; no timing pass or promotion claimed."
+}

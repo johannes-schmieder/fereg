@@ -76,9 +76,9 @@ retains the failed verdict and open evidence; future allowances remain unchanged
 Johannes accepts M32 on 2026-10-06 and authorizes comparable architectural
 acceptance prospectively: science/transactions and Astra review pass, a
 substantial retirement is delivered, every parent comparison is within, and
-only previously accepted fixed-M26 cost families remain unresolved without
-observed worsening beyond their accepted costs. Preserve all observations,
-the allowance and unresolved verdict. New established regressions require a
+only previously accepted fixed-M26 costs remain, unresolved or established,
+without observed worsening beyond their accepted costs. Preserve all observations,
+the allowance and raw verdict. New or worsened established regressions require a
 separate decision; final integrated performance remains open. The
 [M32 acceptance](../../bench/history/2026-10-06-m32-architectural-acceptance.json)
 records the identified artifact and scope.

@@ -46,6 +46,7 @@ use super::one_fe_profile::{ProfiledColumns, ProfiledOneFe, ProfiledRawColumns};
 #[cfg(test)]
 use super::plan_ppml_memory;
 use super::prepared_estimator::PpmlInterruptPoint;
+use super::prepared_model::{PpmlGenerationBinding, PreparedPpmlModelGeneration};
 use super::profiled_intercept_curve::ProfiledInterceptCurve;
 use super::{
     scheduled_inner_tolerance, strict_inner_tolerance, PoissonObjective, PpmlAllocatorSnapshot,
@@ -372,11 +373,21 @@ pub(crate) struct PreparedPpmlMuExplorationCertificate {
 /// a new full converged, strict, final-Hessian-synchronized fit.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct PreparedPpmlMuExploration {
+    binding: Option<PpmlGenerationBinding>,
     mean: Vec<f64>,
     certificate: PreparedPpmlMuExplorationCertificate,
 }
 
 impl PreparedPpmlMuExploration {
+    pub(super) fn validate_generation(
+        &self,
+        generation: &PreparedPpmlModelGeneration,
+    ) -> Result<()> {
+        self.binding
+            .as_ref()
+            .ok_or_else(|| invalid_argument("PPML artifact has no prepared-generation binding"))?
+            .validate(generation, self.mean.len())
+    }
     pub(crate) fn mean(&self) -> &[f64] {
         &self.mean
     }
@@ -388,14 +399,19 @@ impl PreparedPpmlMuExploration {
     #[cfg(test)]
     pub(crate) fn from_test_eta(
         eta: Vec<f64>,
-        outcome: &[f64],
-        prior_weights: &[f64],
+        generation: &PreparedPpmlModelGeneration,
         bounds: super::PoissonBounds,
     ) -> Result<Self> {
         let mut mean = vec![0.0; eta.len()];
         means_from_eta(&eta, bounds, &mut mean)?;
-        let _objective = poisson_objective_from_eta(outcome, &eta, &mean, prior_weights)?;
+        let _objective = poisson_objective_from_eta(
+            generation.outcome(),
+            &eta,
+            &mean,
+            generation.prior_weights(),
+        )?;
         Ok(Self {
+            binding: Some(PpmlGenerationBinding::capture(generation)?),
             mean,
             certificate: PreparedPpmlMuExplorationCertificate {
                 accepted_iterations: 1,
@@ -410,12 +426,12 @@ impl PreparedPpmlMuExploration {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
-enum PreparedPpmlIrlsPurpose {
+pub(super) enum PreparedPpmlIrlsPurpose {
     Publication,
     MuExploration { mu_tolerance: f64 },
 }
 
-enum PreparedPpmlIrlsRun {
+pub(super) enum PreparedPpmlIrlsRun {
     Publication(Box<PreparedPpmlIrlsFit>),
     MuExploration(Box<PreparedPpmlMuExploration>),
 }
@@ -458,6 +474,7 @@ pub(crate) struct PreparedPpmlIrlsDiagnostics {
 /// The owned handoff keeps either dense or scratch-backed compact within rows
 /// alive for inference without reconstructing an observation-by-slot matrix.
 pub(crate) struct PreparedPpmlIrlsFit {
+    binding: Option<PpmlGenerationBinding>,
     bias: Option<super::PpmlBiasResult>,
     linear: CertifiedLinearSessionProducts,
     coefficients: Vec<PreparedOlsFittedCoefficient>,
@@ -469,6 +486,15 @@ pub(crate) struct PreparedPpmlIrlsFit {
 }
 
 impl PreparedPpmlIrlsFit {
+    pub(super) fn validate_generation(
+        &self,
+        generation: &PreparedPpmlModelGeneration,
+    ) -> Result<()> {
+        self.binding
+            .as_ref()
+            .ok_or_else(|| invalid_argument("PPML artifact has no prepared-generation binding"))?
+            .validate(generation, self.mean.len())
+    }
     pub(crate) fn take_bias(&mut self) -> Option<super::PpmlBiasResult> {
         self.bias.take()
     }
@@ -837,22 +863,15 @@ fn summarize_linear_workspace(
         capacity.frozen_candidate_position_elements,
         capacity.frozen_candidate_identity_elements,
         capacity.frozen_candidate_scale_elements,
-        capacity.frozen_reference_mean_correction_elements,
         capacity.frozen_basis_slot_elements,
         capacity.map_weight_elements,
         capacity.projection_block_elements,
         capacity.within_resident_elements,
         capacity.within_io_buffer_elements,
     ];
-    if capacity.accepted_fit_optional_owners {
-        return Err(internal(
-            "PPML session retained unexpected inference/FE result storage",
-        ));
-    }
     let element_capacity_sum = elements
         .iter()
         .chain(capacity.fe.element_capacities().iter())
-        .chain(capacity.accepted_fit.iter())
         .chain(capacity.within_metadata.iter())
         .chain(capacity.basis_metadata.iter())
         .try_fold(0_u128, |sum, value| {
@@ -916,11 +935,14 @@ pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync 
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsFit> {
     match run_prepared_ppml_irls(
-        prepared,
-        None,
-        outcome,
-        prior_weights,
-        offset,
+        PreparedPpmlFitFrame {
+            prepared,
+            shared_prepared: None,
+            outcome,
+            prior_weights,
+            offset,
+            binding: None,
+        },
         config,
         memory_plan,
         start,
@@ -936,79 +958,44 @@ pub(crate) fn fit_prepared_ppml_irls_interruptible<P: PreparedOlsFitView + Sync 
     }
 }
 
+/// Every numerical consumer borrows the same finalized original-row axis.
+/// The model epoch is independent of changing response/weight/basis stamps.
+struct PreparedPpmlFitFrame<'a, P: ?Sized> {
+    prepared: &'a P,
+    shared_prepared: Option<crate::prepared_fit_view::SharedPreparedOlsData>,
+    outcome: &'a [f64],
+    prior_weights: &'a [f64],
+    offset: &'a [f64],
+    binding: Option<PpmlGenerationBinding>,
+}
+
 #[allow(clippy::too_many_arguments)]
-pub(crate) fn fit_shared_prepared_ppml_irls_interruptible(
-    prepared: &crate::prepared_fit_view::SharedPreparedOlsData,
-    outcome: &[f64],
-    prior_weights: &[f64],
-    offset: &[f64],
+pub(super) fn fit_generation_ppml_irls_interruptible(
+    generation: &super::prepared_model::PreparedPpmlModelGeneration,
     config: PreparedPpmlIrlsConfig,
     memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
+    purpose: PreparedPpmlIrlsPurpose,
     bias: Option<(super::PpmlBiasRequest, &[f64])>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-) -> Result<PreparedPpmlIrlsFit> {
-    match run_prepared_ppml_irls(
-        prepared.as_ref(),
-        Some(prepared.clone()),
-        outcome,
-        prior_weights,
-        offset,
-        config,
-        memory_plan,
-        start,
-        PreparedPpmlIrlsPurpose::Publication,
-        bias,
-        interrupt,
-    )? {
-        PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
-        PreparedPpmlIrlsRun::MuExploration(_) => Err(FeregError::new(
-            ErrorCode::Internal,
-            "publication PPML run returned an exploratory state",
-        )),
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-pub(crate) fn explore_prepared_ppml_mu_interruptible<P: PreparedOlsFitView + Sync + ?Sized>(
-    prepared: &P,
-    outcome: &[f64],
-    prior_weights: &[f64],
-    offset: &[f64],
-    config: PreparedPpmlIrlsConfig,
-    memory_plan: PpmlMemoryPlan,
-    start: Option<&PreparedPpmlStart>,
-    mu_tolerance: f64,
-    interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-) -> Result<PreparedPpmlMuExploration> {
-    match run_prepared_ppml_irls(
-        prepared,
-        None,
-        outcome,
-        prior_weights,
-        offset,
-        config,
-        memory_plan,
-        start,
-        PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance },
-        None,
-        interrupt,
-    )? {
-        PreparedPpmlIrlsRun::MuExploration(exploration) => Ok(*exploration),
-        PreparedPpmlIrlsRun::Publication(_) => Err(FeregError::new(
-            ErrorCode::Internal,
-            "exploratory PPML run returned a publication fit",
-        )),
-    }
+) -> Result<PreparedPpmlIrlsRun> {
+    let frame = PreparedPpmlFitFrame {
+        prepared: generation.fit_view(),
+        // Preserve exploratory storage admission: only publication may retain
+        // the shared implicit-column source beside its canonical checkpoint.
+        shared_prepared: matches!(purpose, PreparedPpmlIrlsPurpose::Publication)
+            .then(|| generation.prepared().clone()),
+        outcome: generation.outcome(),
+        prior_weights: generation.prior_weights(),
+        offset: generation.offset(),
+        binding: Some(PpmlGenerationBinding::capture(generation)?),
+    };
+    run_prepared_ppml_irls(frame, config, memory_plan, start, purpose, bias, interrupt)
 }
 
 #[allow(clippy::too_many_arguments)]
 fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
-    prepared: &P,
-    mut shared_prepared: Option<crate::prepared_fit_view::SharedPreparedOlsData>,
-    outcome: &[f64],
-    prior_weights: &[f64],
-    offset: &[f64],
+    frame: PreparedPpmlFitFrame<'_, P>,
     mut config: PreparedPpmlIrlsConfig,
     memory_plan: PpmlMemoryPlan,
     start: Option<&PreparedPpmlStart>,
@@ -1016,6 +1003,17 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     bias: Option<(super::PpmlBiasRequest, &[f64])>,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
 ) -> Result<PreparedPpmlIrlsRun> {
+    let PreparedPpmlFitFrame {
+        prepared,
+        mut shared_prepared,
+        outcome,
+        prior_weights,
+        offset,
+        binding,
+    } = frame;
+    let model_generation = binding
+        .as_ref()
+        .map_or(0, PpmlGenerationBinding::generation);
     // Direct internal callers may start from the shared FE default. Resolve
     // that default to the canonical PPML checkpoint engine before enforcing
     // the invariant; public route selection remains fixed in `solver_plan`.
@@ -1110,6 +1108,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         prepared,
         frame,
         initial_config,
+        LinearSessionGenerations::new(model_generation, model_generation, 1, 1, 1),
         fe_design,
         &mut shared_prepared,
         &config,
@@ -1271,12 +1270,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             certified_linear_subproblems = certified_linear_subproblems.saturating_add(1);
             accumulate_inner_iterations(
                 &mut total_inner_iterations,
-                output.fit().absorption_report(),
+                output.frame().absorption_report(),
             )?;
             let selected_engine = if matches!(purpose, PreparedPpmlIrlsPurpose::Publication) {
                 config
                     .solver_plan
-                    .selected_engine(output.fit().kept_generated_columns().len())
+                    .selected_engine(output.basis().kept_generated_columns().len())
             } else {
                 PpmlSolverEngine::Map
             };
@@ -1286,12 +1285,12 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 initial_solver_report.enable_lsmr_checkpoint();
                 record_checkpoint_solver_observation(
                     &mut initial_solver_report,
-                    output.fit().absorption_report(),
+                    output.frame().absorption_report(),
                     false,
                 )?;
             } else {
                 initial_solver_report.observe(map_solver_observation(
-                    output.fit().absorption_report(),
+                    output.frame().absorption_report(),
                     PpmlSolverFrameKind::Checkpoint,
                 ))?;
             }
@@ -1305,15 +1304,15 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                 || profiles.curve.is_some())
             .then(|| {
                 fallible_copy(
-                    output.fit().kept_generated_columns(),
+                    output.basis().kept_generated_columns(),
                     "unable to reserve PPML specialized active-column identity",
                 )
             })
             .transpose()?;
             let result = (
-                output.fit().finite_rank(),
+                output.frame().finite_rank(),
                 output.reuse_report(),
-                output.fit().absorption_report().used_solver,
+                output.frame().absorption_report().used_solver,
             );
             profiled_curve = direction.initialize(
                 prepared,
@@ -1532,7 +1531,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     let canonical = session.solve_fresh()?;
                     accumulate_inner_iterations(
                         &mut total_inner_iterations,
-                        canonical.fit().absorption_report(),
+                        canonical.frame().absorption_report(),
                     )?;
                     let solver = solver_report
                         .as_mut()
@@ -1540,16 +1539,16 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     if initial_checkpoint_lsmr {
                         record_checkpoint_solver_observation(
                             solver,
-                            canonical.fit().absorption_report(),
+                            canonical.frame().absorption_report(),
                             false,
                         )?;
                     } else {
                         solver.observe(map_solver_observation(
-                            canonical.fit().absorption_report(),
+                            canonical.frame().absorption_report(),
                             PpmlSolverFrameKind::Ordinary,
                         ))?;
                     }
-                    let canonical_route = canonical.fit().absorption_report().used_solver;
+                    let canonical_route = canonical.frame().absorption_report().used_solver;
                     let mut equivalent = frozen_certified
                         && frozen_route == FeSolverKind::Map
                         && (canonical_route == frozen_route
@@ -1582,7 +1581,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                             frozen_objective.log_likelihood,
                             canonical_objective.log_likelihood,
                         ) <= fresh_warm_tolerance(config.ppml, inner_tolerance);
-                    let canonical_rank = canonical.fit().finite_rank();
+                    let canonical_rank = canonical.frame().finite_rank();
                     let canonical_reuse = canonical.reuse_report();
                     let observation = allocation_audit.complete_equivalence(equivalent)?;
                     memory.observe_steady_state_allocation(observation)?;
@@ -1880,7 +1879,11 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             ));
         }
         return Ok(PreparedPpmlIrlsRun::MuExploration(Box::new(
-            PreparedPpmlMuExploration { mean, certificate },
+            PreparedPpmlMuExploration {
+                binding,
+                mean,
+                certificate,
+            },
         )));
     }
 
@@ -1897,14 +1900,14 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             solver_report
                 .as_mut()
                 .ok_or_else(|| internal("PPML final Hessian lacks solver diagnostics"))?,
-            final_output.fit().absorption_report(),
+            final_output.frame().absorption_report(),
             false,
         )?;
     }
-    let coefficients = final_coefficients(final_output.fit(), workspace.coefficients())?;
+    let coefficients = final_coefficients(&final_output, workspace.coefficients())?;
     let retained_memory = final_output.retained_within_memory();
     memory.observe_scratch(retained_memory.scratch_bytes);
-    memory.observe_linear_route(final_output.fit().absorption_report().used_solver);
+    memory.observe_linear_route(final_output.frame().absorption_report().used_solver);
     memory.observe_diagnostic_records(retained_iterations.len())?;
     memory.certify_workspace(&workspace)?;
     workspace.refresh_score_residuals(outcome)?;
@@ -1932,7 +1935,9 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         .into_current_products(&mut || interrupt(super::PpmlInterruptPoint::InferenceSubset))?;
     validate_final_hessian_frame(linear.weights(), prior_weights, &mean)?;
     let final_generations = linear.generations();
-    if final_generations.response != frame_generation
+    if final_generations.sample != model_generation
+        || final_generations.topology != model_generation
+        || final_generations.response != frame_generation
         || final_generations.weights != frame_generation
     {
         return Err(FeregError::new(
@@ -1942,6 +1947,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     Ok(PreparedPpmlIrlsRun::Publication(Box::new(
         PreparedPpmlIrlsFit {
+            binding,
             bias,
             linear,
             coefficients,
@@ -2630,7 +2636,10 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         unchanged
     };
-    accumulate_inner_iterations(total_inner_iterations, canonical.fit().absorption_report())?;
+    accumulate_inner_iterations(
+        total_inner_iterations,
+        canonical.frame().absorption_report(),
+    )?;
     fill_candidate_eta_from_linear_output(&canonical, offset, workspace.candidate_eta_mut())?;
     fill_candidate_coefficients_from_linear_output(
         &canonical,
@@ -2646,7 +2655,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         canonical.certified(),
         unchanged,
         expected_rank,
-        canonical.fit().finite_rank(),
+        canonical.frame().finite_rank(),
         workspace.eta(),
         workspace.coefficients(),
         accepted_objective,
@@ -2685,7 +2694,7 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         record_checkpoint_solver_observation(
             solver_report,
-            canonical.fit().absorption_report(),
+            canonical.frame().absorption_report(),
             false,
         )?;
         transaction.rollback();
@@ -2755,7 +2764,7 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
         absorbed_scale = absorbed_scale.max(output.absorbed_predictor()[row].abs());
         working_scale = working_scale
             .max(output.response()[row].abs())
-            .max(output.fit().residuals()[row].abs())
+            .max(output.frame().residuals()[row].abs())
             .max(output.finite_predictor()[row].abs());
         let candidate =
             offset[row] + (output.finite_predictor()[row] + output.absorbed_predictor()[row]);
@@ -2829,10 +2838,10 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     let (synchronized_certified, synchronized_rank) = {
         let synchronized = synchronized_transaction.candidate();
         let synchronized_certified = synchronized.certified();
-        let synchronized_rank = synchronized.fit().finite_rank();
+        let synchronized_rank = synchronized.frame().finite_rank();
         accumulate_inner_iterations(
             total_inner_iterations,
-            synchronized.fit().absorption_report(),
+            synchronized.frame().absorption_report(),
         )?;
         fill_candidate_eta_from_linear_output(
             &synchronized,
@@ -3526,7 +3535,7 @@ fn fill_candidate_eta_from_linear_output(
     eta: &mut [f64],
 ) -> Result<()> {
     if output.response().len() != offset.len()
-        || output.fit().residuals().len() != offset.len()
+        || output.frame().residuals().len() != offset.len()
         || output.finite_predictor().len() != offset.len()
         || output.absorbed_predictor().len() != offset.len()
         || eta.len() != offset.len()
@@ -3539,7 +3548,7 @@ fn fill_candidate_eta_from_linear_output(
     for row in 0..offset.len() {
         // The canonical response and residual already identify the total
         // predictor. Splitting and recombining its FE part adds cancellation.
-        eta[row] = offset[row] + (output.response()[row] - output.fit().residuals()[row]);
+        eta[row] = offset[row] + (output.response()[row] - output.frame().residuals()[row]);
         if !eta[row].is_finite() {
             return Err(numerical_nonconvergence(
                 "prepared PPML candidate predictor is not finite",
@@ -3553,13 +3562,13 @@ fn fill_candidate_coefficients_from_linear_output(
     output: &CertifiedLinearSessionOutput<'_>,
     coefficients: &mut [f64],
 ) -> Result<()> {
-    if coefficients.len() != output.fit().coefficients().len() {
+    if coefficients.len() != output.coefficients().len() {
         return Err(FeregError::new(
             ErrorCode::Internal,
             "prepared PPML linear coefficient output has inconsistent dimensions",
         ));
     }
-    for (target, source) in coefficients.iter_mut().zip(output.fit().coefficients()) {
+    for (target, source) in coefficients.iter_mut().zip(output.coefficients()) {
         *target = source.value.unwrap_or(0.0);
     }
     Ok(())
@@ -3688,11 +3697,11 @@ fn fresh_warm_linear_equivalent(
     inner_tolerance: f64,
 ) -> Result<bool> {
     if fresh.response().len() != offset.len()
-        || fresh.fit().residuals().len() != offset.len()
+        || fresh.frame().residuals().len() != offset.len()
         || fresh.finite_predictor().len() != offset.len()
         || fresh.absorbed_predictor().len() != offset.len()
         || frozen_eta.len() != offset.len()
-        || fresh.fit().coefficients().len() != frozen_coefficients.len()
+        || fresh.coefficients().len() != frozen_coefficients.len()
     {
         return Err(FeregError::new(
             ErrorCode::Internal,
@@ -3702,7 +3711,7 @@ fn fresh_warm_linear_equivalent(
     let tolerance = fresh_warm_tolerance(config, inner_tolerance);
     let mut predictor_difference = 0.0_f64;
     for row in 0..offset.len() {
-        let value = offset[row] + (fresh.response()[row] - fresh.fit().residuals()[row]);
+        let value = offset[row] + (fresh.response()[row] - fresh.frame().residuals()[row]);
         if !value.is_finite() || !frozen_eta[row].is_finite() {
             return Ok(false);
         }
@@ -3710,7 +3719,7 @@ fn fresh_warm_linear_equivalent(
             .max((value - frozen_eta[row]).abs() / value.abs().max(frozen_eta[row].abs()).max(1.0));
     }
     let mut coefficient_difference = 0.0_f64;
-    for (fresh, frozen) in fresh.fit().coefficients().iter().zip(frozen_coefficients) {
+    for (fresh, frozen) in fresh.coefficients().zip(frozen_coefficients) {
         let value = fresh.value.unwrap_or(0.0);
         if !value.is_finite() || !frozen.is_finite() {
             return Ok(false);
@@ -3719,7 +3728,7 @@ fn fresh_warm_linear_equivalent(
             .max((value - frozen).abs() / value.abs().max(frozen.abs()).max(1.0));
     }
     Ok(fresh.certified()
-        && fresh.fit().finite_rank() == frozen_rank
+        && fresh.frame().finite_rank() == frozen_rank
         && predictor_difference <= tolerance
         && coefficient_difference <= tolerance)
 }
@@ -3905,7 +3914,7 @@ fn relative_scalar_difference(left: f64, right: f64) -> f64 {
 }
 
 fn final_coefficients(
-    fit: &crate::ols::CertifiedPreparedOlsFit,
+    fit: &CertifiedLinearSessionOutput<'_>,
     values: &[f64],
 ) -> Result<Vec<PreparedOlsFittedCoefficient>> {
     if fit.coefficients().len() != values.len() {
@@ -3918,7 +3927,7 @@ fn final_coefficients(
     result
         .try_reserve_exact(values.len())
         .map_err(|_| allocation("unable to reserve prepared PPML final coefficients"))?;
-    for (coefficient, value) in fit.coefficients().iter().zip(values) {
+    for (coefficient, value) in fit.coefficients().zip(values) {
         result.push(PreparedOlsFittedCoefficient {
             coefficient_slot: coefficient.coefficient_slot,
             generated_column_index: coefficient.generated_column_index,
@@ -6992,7 +7001,7 @@ mod tests {
             let mut actual_coefficients = vec![0.0; prepared.fit_model().coefficients.len()];
             fill_candidate_coefficients_from_linear_output(&actual, &mut actual_coefficients)
                 .expect("fused strict coefficients");
-            let actual_bread = actual.fit().bread().values().to_vec();
+            let actual_bread = actual.frame().bread().to_vec();
             transaction.commit();
             assert_eq!(session.retained_scratch_identity(), scratch.as_deref());
 
@@ -7026,10 +7035,7 @@ mod tests {
             assert!(
                 relative_infinity_difference(&actual_coefficients, &expected_coefficients) <= 1e-11
             );
-            assert!(
-                relative_infinity_difference(&actual_bread, expected.fit().bread().values())
-                    <= 1e-10
-            );
+            assert!(relative_infinity_difference(&actual_bread, expected.frame().bread()) <= 1e-10);
         }
     }
 
@@ -7431,11 +7437,8 @@ mod tests {
         )
         .unwrap();
         let expected = baseline.solve_fresh().unwrap();
-        assert_eq!(actual.fit().residuals(), expected.fit().residuals());
-        assert_eq!(
-            actual.fit().bread().values(),
-            expected.fit().bread().values()
-        );
+        assert_eq!(actual.frame().residuals(), expected.frame().residuals());
+        assert_eq!(actual.frame().bread(), expected.frame().bread());
     }
 
     #[test]
@@ -7951,11 +7954,9 @@ mod tests {
                         relative_infinity_difference(
                             &actual_beta,
                             &expected
-                                .fit()
                                 .coefficients()
-                                .iter()
                                 .filter(|c| c.generated_column_index.is_some_and(|g| expected
-                                    .fit()
+                                    .basis()
                                     .kept_generated_columns()
                                     .contains(&g)))
                                 .map(|c| c.value.unwrap())
@@ -7963,10 +7964,12 @@ mod tests {
                         ) <= 1e-10
                     );
                     assert!(
-                        relative_infinity_difference(&actual_residuals, expected.fit().residuals())
-                            <= 1e-10
+                        relative_infinity_difference(
+                            &actual_residuals,
+                            expected.frame().residuals()
+                        ) <= 1e-10
                     );
-                    let expected_bread = expected.fit().bread().values().to_vec();
+                    let expected_bread = expected.frame().bread().to_vec();
                     // A speculative strict frame may rebuild the canonical within
                     // design, but rollback must leave a valid representative for
                     // another ordinary direction under this frame and the next.
@@ -7974,7 +7977,7 @@ mod tests {
                     assert!(transaction.candidate().certified());
                     assert!(
                         relative_infinity_difference(
-                            transaction.candidate().fit().bread().values(),
+                            transaction.candidate().frame().bread(),
                             &expected_bread
                         ) <= 1e-10
                     );
@@ -8142,7 +8145,7 @@ mod tests {
             .expect("full-rank no-FE constant outcome has a unique finite optimum");
             assert!(fit.diagnostics().converged && fit.diagnostics().final_score.passed);
             assert!(fit.diagnostics().iterations < 40);
-            assert_eq!(fit.linear().fit().finite_rank(), 11);
+            assert_eq!(fit.linear().frame().finite_rank(), 11);
             for (slot, coefficient) in fit.coefficients().iter().enumerate() {
                 let expected = if slot == 10 { 2.0_f64.ln() } else { 0.0 };
                 assert!(
@@ -8700,8 +8703,8 @@ mod tests {
             )
             .expect("strict caller session");
             let initial = session.solve_fresh().expect("strict caller initial fit");
-            let original_kept = initial.fit().kept_generated_columns().to_vec();
-            let original_dropped = initial.fit().dropped_generated_columns().to_vec();
+            let original_kept = initial.basis().kept_generated_columns().to_vec();
+            let original_dropped = initial.basis().dropped_generated_columns().to_vec();
             let original_dense_identity = session.retained_dense_identity();
             let original_scratch_identity = session
                 .retained_scratch_identity()
@@ -8734,8 +8737,11 @@ mod tests {
             let restored = session
                 .output()
                 .expect("error rollback restores prior output");
-            assert_eq!(restored.fit().kept_generated_columns(), original_kept);
-            assert_eq!(restored.fit().dropped_generated_columns(), original_dropped);
+            assert_eq!(restored.basis().kept_generated_columns(), original_kept);
+            assert_eq!(
+                restored.basis().dropped_generated_columns(),
+                original_dropped
+            );
             assert!(session
                 .solve_frozen()
                 .expect("error rollback supports the next frozen solve")
@@ -8743,9 +8749,9 @@ mod tests {
             let fresh_prior = session
                 .solve_fresh()
                 .expect("establish a certified fresh state before unwind");
-            assert_eq!(fresh_prior.fit().kept_generated_columns(), original_kept);
+            assert_eq!(fresh_prior.basis().kept_generated_columns(), original_kept);
             assert_eq!(
-                fresh_prior.fit().dropped_generated_columns(),
+                fresh_prior.basis().dropped_generated_columns(),
                 original_dropped
             );
 
@@ -8775,8 +8781,11 @@ mod tests {
             let restored = session
                 .output()
                 .expect("unwind rollback restores prior output");
-            assert_eq!(restored.fit().kept_generated_columns(), original_kept);
-            assert_eq!(restored.fit().dropped_generated_columns(), original_dropped);
+            assert_eq!(restored.basis().kept_generated_columns(), original_kept);
+            assert_eq!(
+                restored.basis().dropped_generated_columns(),
+                original_dropped
+            );
             assert!(session
                 .solve_frozen()
                 .expect("unwind rollback supports the next frozen solve")

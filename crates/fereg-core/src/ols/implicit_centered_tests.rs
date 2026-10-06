@@ -158,6 +158,7 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
                                 &mut norms,
                                 &mut means,
                                 &mut within,
+                                Vec::new(),
                             )
                             .unwrap();
                         assert!(report.certified());
@@ -202,7 +203,8 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
                         1e-14,
                         &mut norms,
                         &mut means,
-                        &mut within
+                        &mut within,
+                        Vec::new(),
                     )
                     .is_err());
                 assert!(frame.view().is_err());
@@ -219,6 +221,7 @@ fn implicit_refresh_matches_independent_group_sums_and_revokes_failed_frames() {
                         &mut norms,
                         &mut means,
                         &mut within,
+                        Vec::new(),
                     )
                     .unwrap();
                 let expected = {
@@ -296,12 +299,10 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
             .unwrap();
         let output = session.solve_fresh().unwrap();
         assert!(output.certified());
-        assert_eq!(output.fit().kept_generated_columns().len(), 2);
+        assert_eq!(output.basis().kept_generated_columns().len(), 2);
         assert_eq!(
             output
-                .fit()
                 .coefficients()
-                .iter()
                 .filter(|c| {
                     c.generated_column_index.is_some_and(|i| i < 3)
                         && c.status == PreparedOlsFitStatus::NumericallyRankDeficient
@@ -329,11 +330,11 @@ fn implicit_rank_fallback_and_owned_final_inference_preserve_the_linear_solution
                 .unwrap();
             let strict = session.strictify().unwrap();
             assert!(strict.certified());
-            assert_eq!(strict.fit().kept_generated_columns().len(), 2);
-            assert!(strict.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+            assert_eq!(strict.basis().kept_generated_columns().len(), 2);
+            assert!(strict.frame().residuals().iter().all(|r| r.abs() < 1e-10));
         }
         let products = session.into_current_products(&mut || Ok(())).unwrap();
-        assert!(products.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+        assert!(products.frame().residuals().iter().all(|r| r.abs() < 1e-10));
         let weak = Arc::downgrade(&source);
         drop(source);
         assert_eq!(
@@ -382,6 +383,7 @@ fn implicit_interaction_partition_and_zero_controls_match_closed_form_projection
                 &mut raw,
                 &mut means,
                 &mut within,
+                Vec::new(),
             )
             .unwrap();
         assert!(report.certified());
@@ -464,6 +466,7 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
                     &mut raw,
                     &mut means,
                     &mut norms,
+                    Vec::new(),
                 )
                 .unwrap();
             assert!(report.certified());

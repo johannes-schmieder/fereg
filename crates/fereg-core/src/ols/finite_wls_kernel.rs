@@ -7,8 +7,10 @@
 //! are no trait objects or callbacks in the row loops.
 
 mod axis;
+mod direction;
 mod workspace;
 pub(super) use axis::{FiniteDenseRows, FiniteResponse};
+pub(crate) use direction::{solve_finite_direction, FiniteDirectionWorkspace};
 pub(super) use workspace::FiniteWorkspace;
 
 use rayon::prelude::*;
@@ -3230,7 +3232,7 @@ mod tests {
                     rows: within.nrows(),
                     stored_columns: within.ncols() - 1,
                     selected_columns: Some(&candidates),
-                    response: FiniteResponse::FirstColumn(&within),
+                    response: FiniteResponse::Column(&within, 0),
                     weights: BorrowedMapWeights::Unit,
                     solver_weight_divisor: 1.0,
                     column_scales: None,
@@ -3279,7 +3281,7 @@ mod tests {
                     rows: invalid.nrows(),
                     stored_columns: invalid.ncols() - 1,
                     selected_columns: Some(&candidates),
-                    response: FiniteResponse::FirstColumn(&invalid),
+                    response: FiniteResponse::Column(&invalid, 0),
                     weights: BorrowedMapWeights::Unit,
                     solver_weight_divisor: 1.0,
                     column_scales: None,

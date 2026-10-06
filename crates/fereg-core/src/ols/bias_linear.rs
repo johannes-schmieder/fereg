@@ -56,14 +56,9 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'_, P> {
         }
         let rank = basis.kept_generated_columns().len();
         let levels = design.effects().iter().map(|e| e.n_levels()).sum::<usize>();
-        let mut bread = Vec::new();
-        fill_identified_bread(
-            self.fit
-                .as_ref()
-                .ok_or_else(|| invalid_argument("bias accepted fit absent"))?,
-            basis,
-            &mut bread,
-        )?;
+        let frame = self.output()?.frame();
+        let mut bread = fallible_empty(rank * rank, "bias accepted information inverse")?;
+        bread.extend_from_slice(frame.bread());
         let dense = dense::DenseInformation::prepare(self)?;
         let mut fixed = FixedPpmlInformation {
             route: if dense.is_some() { 2 } else { 1 },
@@ -287,22 +282,16 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'_, P> {
         // is large. The accepted PPML predictor retains the accurate fitted
         // mean; remove its offset and unchanged finite contribution directly.
         for row in 0..eta.len() {
-            fixed.target[row] = (eta[row] - offset[row]) - self.finite_predictor[row];
+            fixed.target[row] = (eta[row] - offset[row]) - self.output()?.finite_predictor()[row];
         }
         // The canonical reported constant is allocated into absorbed effects.
-        let fit = self
-            .fit
-            .as_ref()
-            .ok_or_else(|| invalid_argument("bias raw fit absent"))?;
-        for (j, &column) in kept.iter().enumerate() {
-            let coefficient = fit
-                .coefficients()
-                .iter()
-                .find(|b| b.generated_column_index == Some(column))
-                .and_then(|b| b.value)
-                .ok_or_else(|| invalid_argument("bias raw finite coordinate absent"))?;
-            output[levels + j] = coefficient;
+        let frame = self.output()?.frame();
+        if frame.finite_rank() != kept.len() {
+            return Err(invalid_argument(
+                "bias raw finite coordinates differ from the accepted basis",
+            ));
         }
+        output[levels..].copy_from_slice(&frame.coefficients);
         self.bias_recover_coefficients(fixed, &mut output[..levels])
     }
 

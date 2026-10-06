@@ -2422,11 +2422,11 @@ mod tests {
             )
             .unwrap();
             let fit = session.solve_fresh().unwrap();
-            assert_eq!(fit.fit().absorption_report().iterations, 1);
-            for (coefficient, expected) in fit.fit().coefficients().iter().zip(&truth) {
+            assert_eq!(fit.frame().absorption_report().iterations, 1);
+            for (coefficient, expected) in fit.coefficients().zip(&truth) {
                 assert!((coefficient.value.unwrap() - expected).abs() < 1e-10);
             }
-            assert!(fit.fit().residuals().iter().all(|r| r.abs() < 1e-10));
+            assert!(fit.frame().residuals().iter().all(|r| r.abs() < 1e-10));
         }
     }
 
@@ -2696,13 +2696,12 @@ mod tests {
                     )
                     .unwrap();
                     let result = session.solve_fresh().unwrap();
-                    assert_eq!(result.fit().absorption_report().iterations, 1);
-                    assert!(result.fit().score_certificate().passed);
-                    for (actual, expected) in result.fit().coefficients().iter().take(k).zip(&truth)
-                    {
+                    assert_eq!(result.frame().absorption_report().iterations, 1);
+                    assert!(result.frame().score_certificate().passed);
+                    for (actual, expected) in result.coefficients().take(k).zip(&truth) {
                         assert!((actual.value.unwrap() - expected).abs() < 1e-9);
                     }
-                    for (actual, expected) in result.fit().residuals().iter().zip(&errors) {
+                    for (actual, expected) in result.frame().residuals().iter().zip(&errors) {
                         assert!((actual - expected).abs() < 1e-9);
                     }
                 }
@@ -2767,10 +2766,8 @@ mod tests {
                 )
                 .unwrap();
                 let cold = session.solve_fresh().unwrap();
-                assert!(cold.fit().absorption_report().iterations > 1);
-                for (coefficient, expected) in
-                    cold.fit().coefficients().iter().take(2).zip([0.25, -0.4])
-                {
+                assert!(cold.frame().absorption_report().iterations > 1);
+                for (coefficient, expected) in cold.coefficients().take(2).zip([0.25, -0.4]) {
                     assert!((coefficient.value.unwrap() - expected).abs() < 1e-9);
                 }
                 let observed = session.canonical_projection_work_hint_for_test();
@@ -2827,14 +2824,12 @@ mod tests {
                         .unwrap();
                     let candidate = session.strict_candidate().unwrap();
                     let fit = candidate.candidate();
-                    assert_eq!(fit.fit().absorption_report().iterations, 1);
-                    assert!(fit.fit().score_certificate().passed);
-                    for (coefficient, expected) in
-                        fit.fit().coefficients().iter().take(2).zip([0.25, -0.4])
-                    {
+                    assert_eq!(fit.frame().absorption_report().iterations, 1);
+                    assert!(fit.frame().score_certificate().passed);
+                    for (coefficient, expected) in fit.coefficients().take(2).zip([0.25, -0.4]) {
                         assert!((coefficient.value.unwrap() - expected).abs() < 1e-9);
                     }
-                    assert!(fit.fit().residuals().iter().all(|r| r.abs() < 1e-9));
+                    assert!(fit.frame().residuals().iter().all(|r| r.abs() < 1e-9));
                     if commit {
                         candidate.commit();
                     }
@@ -2921,15 +2916,10 @@ mod tests {
                 // A direct certified solve reports one solve, proving that
                 // this test reaches the fused handoff rather than its fallback.
                 if admitted {
-                    assert_eq!(original.fit().absorption_report().iterations, 1);
+                    assert_eq!(original.frame().absorption_report().iterations, 1);
                 }
-                assert!(original.fit().residuals().iter().all(|r| r.abs() < 1e-10));
-                let statuses: Vec<_> = original
-                    .fit()
-                    .coefficients()
-                    .iter()
-                    .map(|c| c.status)
-                    .collect();
+                assert!(original.frame().residuals().iter().all(|r| r.abs() < 1e-10));
+                let statuses: Vec<_> = original.coefficients().map(|c| c.status).collect();
                 let changed: Vec<_> = (0..n).map(|i| 0.2 + (i % 17) as f64 / 7.).collect();
                 scale.solver_weight_divisor = changed.iter().copied().fold(0_f64, f64::max);
                 scale.reference_weight_multiplier = scale.solver_weight_divisor;
@@ -2949,7 +2939,7 @@ mod tests {
                     let candidate = session.strict_candidate().unwrap();
                     assert!(candidate
                         .candidate()
-                        .fit()
+                        .frame()
                         .residuals()
                         .iter()
                         .all(|r| r.abs() < 1e-10));
@@ -2958,26 +2948,22 @@ mod tests {
                 assert_eq!(
                     candidate
                         .candidate()
-                        .fit()
                         .coefficients()
-                        .iter()
                         .map(|c| c.status)
                         .collect::<Vec<_>>(),
                     statuses
                 );
                 candidate.commit();
-                assert!(session.output().unwrap().fit().score_certificate().passed);
+                assert!(session.output().unwrap().frame().score_certificate().passed);
                 // Same-weight response-only solving bypasses direct products;
                 // this protects the handoff back to the existing projector.
                 session.refresh_response(&y, 2).unwrap();
                 let recovered = session.solve_fresh().unwrap();
-                assert!(recovered.fit().score_certificate().passed);
-                assert!(recovered.fit().residuals().iter().all(|r| r.abs() < 1e-9));
+                assert!(recovered.frame().score_certificate().passed);
+                assert!(recovered.frame().residuals().iter().all(|r| r.abs() < 1e-9));
                 assert_eq!(
                     recovered
-                        .fit()
                         .coefficients()
-                        .iter()
                         .map(|c| c.status)
                         .collect::<Vec<_>>(),
                     statuses
@@ -3063,14 +3049,9 @@ mod tests {
                 let original = session.solve_fresh().unwrap();
                 // Independent product tests establish the direct route. This
                 // test checks publication authority across speculative writes.
-                assert!(original.fit().absorption_report().certified());
-                assert!(original.fit().residuals().iter().all(|r| r.abs() < 1e-10));
-                let statuses: Vec<_> = original
-                    .fit()
-                    .coefficients()
-                    .iter()
-                    .map(|c| c.status)
-                    .collect();
+                assert!(original.frame().absorption_report().certified());
+                assert!(original.frame().residuals().iter().all(|r| r.abs() < 1e-10));
+                let statuses: Vec<_> = original.coefficients().map(|c| c.status).collect();
                 let changed: Vec<_> = (0..n).map(|i| 0.2 + (i % 17) as f64 / 7.).collect();
                 scale.solver_weight_divisor = changed.iter().copied().fold(0_f64, f64::max);
                 scale.reference_weight_multiplier = scale.solver_weight_divisor;
@@ -3090,7 +3071,7 @@ mod tests {
                     let candidate = session.strict_candidate().unwrap();
                     assert!(candidate
                         .candidate()
-                        .fit()
+                        .frame()
                         .residuals()
                         .iter()
                         .all(|r| r.abs() < 1e-10));
@@ -3099,26 +3080,22 @@ mod tests {
                 assert_eq!(
                     candidate
                         .candidate()
-                        .fit()
                         .coefficients()
-                        .iter()
                         .map(|c| c.status)
                         .collect::<Vec<_>>(),
                     statuses
                 );
                 candidate.commit();
-                assert!(session.output().unwrap().fit().score_certificate().passed);
+                assert!(session.output().unwrap().frame().score_certificate().passed);
                 // Same-weight response-only solving bypasses direct products;
                 // this protects the handoff back to the existing projector.
                 session.refresh_response(&y, 2).unwrap();
                 let recovered = session.solve_fresh().unwrap();
-                assert!(recovered.fit().score_certificate().passed);
-                assert!(recovered.fit().residuals().iter().all(|r| r.abs() < 1e-9));
+                assert!(recovered.frame().score_certificate().passed);
+                assert!(recovered.frame().residuals().iter().all(|r| r.abs() < 1e-9));
                 assert_eq!(
                     recovered
-                        .fit()
                         .coefficients()
-                        .iter()
                         .map(|c| c.status)
                         .collect::<Vec<_>>(),
                     statuses

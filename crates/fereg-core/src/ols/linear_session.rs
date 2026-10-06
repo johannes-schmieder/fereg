@@ -30,6 +30,12 @@ use std::time::Instant;
 mod linear_constant;
 pub(crate) use linear_constant::LinearConstantRepresentation;
 
+#[path = "linear_frame.rs"]
+mod linear_frame;
+pub(crate) use linear_frame::{
+    CanonicalLinearProof, CertifiedLinearFrame, LinearFrameProof, LinearPredictors,
+};
+
 #[path = "bias_linear.rs"]
 mod bias_linear;
 
@@ -47,14 +53,16 @@ use super::finite_wls_kernel::{
 #[cfg(test)]
 use super::prepared_fit::PreparedOlsFastScoreCache;
 use super::prepared_fit::{
-    assemble_retained_weighted_linear_fit, build_finite_score_draft, merge_solve_report,
+    assemble_retained_linear_frame, build_finite_score_draft, merge_solve_report,
     CurrentFrameColumnMeans, FiniteBreadDraft, FiniteFit, LinearSolveFrame, RetainedFitContext,
 };
 use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
 use super::{
-    CertifiedPreparedOlsFit, PreparedOlsBreadCoordinateKind, PreparedOlsColumnKind,
-    PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    PreparedOlsColumnKind, PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
 };
+
+#[path = "linear_statistics.rs"]
+mod linear_statistics;
 
 /// Monotone identities for every input class that can invalidate a solve.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -365,8 +373,6 @@ pub(crate) struct LinearWithinMemoryReport {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) struct LinearSessionWorkspaceCapacities {
     pub(crate) fe: ReusableMapCapacities,
-    pub(crate) accepted_fit: [usize; 6],
-    pub(crate) accepted_fit_optional_owners: bool,
     pub(crate) constant_recipe_elements: usize,
     pub(crate) within_metadata: [usize; 5],
     pub(crate) basis_metadata: [usize; 3],
@@ -394,7 +400,6 @@ pub(crate) struct LinearSessionWorkspaceCapacities {
     pub(crate) frozen_candidate_position_elements: usize,
     pub(crate) frozen_candidate_identity_elements: usize,
     pub(crate) frozen_candidate_scale_elements: usize,
-    pub(crate) frozen_reference_mean_correction_elements: usize,
     pub(crate) frozen_basis_slot_elements: usize,
     pub(crate) map_weight_elements: usize,
     pub(crate) projection_block_elements: usize,
@@ -437,11 +442,8 @@ struct StrictLinearRollbackState {
     basis_generation: u64,
     active_positions: Vec<usize>,
     within_certificate: LinearWithinDesignCertificate,
-    fit: Option<CertifiedPreparedOlsFit>,
+    frame: Option<CertifiedLinearFrame>,
     constant: Option<LinearConstantRepresentation>,
-    frozen_step: Option<CertifiedFrozenLinearStep>,
-    finite_predictor: Vec<f64>,
-    absorbed_predictor: Vec<f64>,
     reconstruction: Option<LinearReconstructionCertificate>,
     reuse: Option<LinearSessionReuseReport>,
     projection_refresh_required: bool,
@@ -501,16 +503,10 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictLinearCandidateTransaction<'_,
 
     #[cfg(test)]
     pub(crate) fn rollback_residual_capacity(&self) -> usize {
-        self.rollback.as_ref().map_or(0, |rollback| {
-            rollback
-                .fit
-                .as_ref()
-                .map_or(0, |fit| fit.session_capacity_inventory().0[5])
-                + rollback
-                    .frozen_step
-                    .as_ref()
-                    .map_or(0, |step| step.within_residuals.capacity())
-        })
+        self.rollback
+            .as_ref()
+            .and_then(|rollback| rollback.frame.as_ref())
+            .map_or(0, |frame| frame.within_residuals.capacity())
     }
 }
 
@@ -530,14 +526,22 @@ impl FrozenLinearBasis {
     pub(crate) fn kept_generated_columns(&self) -> &[usize] {
         &self.kept_generated_columns
     }
+    #[cfg(test)]
+    pub(crate) fn dropped_generated_columns(&self) -> &[usize] {
+        &self.dropped_generated_columns
+    }
 
-    fn from_fit(fit: &CertifiedPreparedOlsFit) -> Result<Self> {
+    pub(super) fn from_slots(
+        coefficients: &[super::PreparedOlsFittedCoefficient],
+        kept_generated_columns: Vec<usize>,
+        dropped_generated_columns: Vec<usize>,
+    ) -> Result<Self> {
         let mut slots = fallible_empty(
-            fit.coefficients().len(),
+            coefficients.len(),
             "unable to reserve frozen weighted-linear basis slots",
         )?;
         slots.extend(
-            fit.coefficients()
+            coefficients
                 .iter()
                 .map(|coefficient| FrozenLinearBasisSlot {
                     coefficient_slot: coefficient.coefficient_slot,
@@ -547,30 +551,9 @@ impl FrozenLinearBasis {
         );
         Ok(Self {
             slots,
-            kept_generated_columns: fallible_copy(
-                fit.kept_generated_columns(),
-                "unable to reserve frozen weighted-linear kept basis",
-            )?,
-            dropped_generated_columns: fallible_copy(
-                fit.dropped_generated_columns(),
-                "unable to reserve frozen weighted-linear dropped basis",
-            )?,
+            kept_generated_columns,
+            dropped_generated_columns,
         })
-    }
-
-    fn matches(&self, fit: &CertifiedPreparedOlsFit) -> bool {
-        self.kept_generated_columns == fit.kept_generated_columns()
-            && self.dropped_generated_columns == fit.dropped_generated_columns()
-            && self.slots.len() == fit.coefficients().len()
-            && self
-                .slots
-                .iter()
-                .zip(fit.coefficients())
-                .all(|(frozen, current)| {
-                    frozen.coefficient_slot == current.coefficient_slot
-                        && frozen.generated_column_index == current.generated_column_index
-                        && frozen.status == current.status
-                })
     }
 }
 
@@ -869,13 +852,6 @@ impl RetainedWithinStorage {
         }
     }
 
-    fn scratch_bytes(&self) -> u64 {
-        match self {
-            Self::Dense(_) | Self::Implicit(_) => 0,
-            Self::Scratch(values) => values.bytes(),
-        }
-    }
-
     fn memory_report(&self) -> LinearWithinMemoryReport {
         let (resident_bytes, scratch_bytes, mode) = match self {
             // Compaction preserves the original strided allocation; report its
@@ -1138,30 +1114,46 @@ impl SandwichDesign for CertifiedLinearWithinDesign<'_> {
 /// Borrowed certified products exposed to an iterative estimator and its
 /// final inference stage.  Nothing here is exported from `fereg-core`.
 pub(crate) struct CertifiedLinearSessionOutput<'a> {
-    fit: &'a CertifiedPreparedOlsFit,
+    frame: &'a CertifiedLinearFrame,
+    basis: &'a FrozenLinearBasis,
     response: &'a [f64],
-    finite_predictor: &'a [f64],
-    absorbed_predictor: &'a [f64],
     within: &'a RetainedWithinDesign,
     reconstruction: LinearReconstructionCertificate,
     reuse: LinearSessionReuseReport,
 }
 
 impl<'a> CertifiedLinearSessionOutput<'a> {
-    pub(crate) const fn fit(&self) -> &'a CertifiedPreparedOlsFit {
-        self.fit
+    pub(crate) const fn frame(&self) -> &'a CertifiedLinearFrame {
+        self.frame
+    }
+    pub(crate) const fn basis(&self) -> &'a FrozenLinearBasis {
+        self.basis
+    }
+    pub(crate) fn coefficients(
+        &self,
+    ) -> impl ExactSizeIterator<Item = super::PreparedOlsFittedCoefficient> + 'a {
+        self.basis
+            .slots
+            .iter()
+            .zip(&self.frame.reported_coefficients)
+            .map(|(slot, &value)| super::PreparedOlsFittedCoefficient {
+                coefficient_slot: slot.coefficient_slot,
+                generated_column_index: slot.generated_column_index,
+                status: slot.status,
+                value,
+            })
     }
 
     pub(crate) const fn response(&self) -> &'a [f64] {
         self.response
     }
 
-    pub(crate) const fn finite_predictor(&self) -> &'a [f64] {
-        self.finite_predictor
+    pub(crate) fn finite_predictor(&self) -> &'a [f64] {
+        &self.frame.predictors().finite
     }
 
-    pub(crate) const fn absorbed_predictor(&self) -> &'a [f64] {
-        self.absorbed_predictor
+    pub(crate) fn absorbed_predictor(&self) -> &'a [f64] {
+        &self.frame.predictors().absorbed
     }
 
     pub(crate) const fn reuse_report(&self) -> LinearSessionReuseReport {
@@ -1173,32 +1165,18 @@ impl<'a> CertifiedLinearSessionOutput<'a> {
     }
 
     pub(crate) fn certified(&self) -> bool {
-        self.fit.rank_certificate().passed
-            && self.fit.score_certificate().passed
-            && self.fit.bread().certificate().passed
-            && self.fit.absorption_report().certified()
-            && self.fit.residual_absorption_report().certified()
+        self.frame.canonical_proof().is_some()
+            && self.frame.certified()
             && self.within.certificate.passed
             && self.reconstruction.passed
     }
-}
-
-#[derive(Debug)]
-struct CertifiedFrozenLinearStep {
-    coefficients: Vec<f64>,
-    reported_coefficients: Vec<Option<f64>>,
-    bread: Vec<f64>,
-    within_residuals: Vec<f64>,
-    response_absorption_report: SolveReport,
-    certificate: FrozenLinearSolveCertificate,
-    generations: LinearSessionGenerations,
 }
 
 /// Borrowed products from the no-N-by-K-rebuild iteration path. Coefficients
 /// and bread follow `basis().kept_generated_columns()` order.
 #[cfg(test)]
 pub(crate) struct CertifiedFrozenLinearOutput<'a> {
-    step: &'a CertifiedFrozenLinearStep,
+    step: &'a CertifiedLinearFrame,
     basis: &'a FrozenLinearBasis,
     within: &'a RetainedWithinDesign,
     reconstruction: LinearReconstructionCertificate,
@@ -1248,7 +1226,10 @@ impl<'a> CertifiedFrozenLinearOutput<'a> {
 
     pub(crate) fn certified(&self) -> bool {
         self.step.response_absorption_report.certified()
-            && self.step.certificate.passed
+            && self
+                .step
+                .frozen_certificate()
+                .is_some_and(|proof| proof.passed)
             && self.within.certificate.passed
             && self.reconstruction.passed
     }
@@ -1263,7 +1244,7 @@ impl<'a> CertifiedFrozenLinearOutput<'a> {
 /// callers that need the OLS decomposition and its certificate must continue
 /// to use `solve_frozen`.
 pub(crate) struct CertifiedFrozenPpmlLinearOutput<'a> {
-    step: &'a CertifiedFrozenLinearStep,
+    step: &'a CertifiedLinearFrame,
     basis: &'a FrozenLinearBasis,
     response: &'a [f64],
     within: &'a RetainedWithinDesign,
@@ -1302,7 +1283,10 @@ impl<'a> CertifiedFrozenPpmlLinearOutput<'a> {
 
     pub(crate) fn certified(&self) -> bool {
         self.step.response_absorption_report.certified()
-            && self.step.certificate.passed
+            && self
+                .step
+                .frozen_certificate()
+                .is_some_and(|proof| proof.passed)
             && self.within.certificate.passed
             && self.reconstruction.passed
     }
@@ -1411,7 +1395,6 @@ impl FrozenLinearWorkspace {
             && self.candidate_positions.capacity() >= rank
             && self.candidate_ids.capacity() >= rank
             && self.candidate_scales.capacity() >= rank
-            && self.reference_mean_corrections.capacity() >= stored_columns
     }
 }
 
@@ -1469,14 +1452,10 @@ fn merge_canonical_projection_reports(
 /// Owned handoff after a final strict solve. This keeps dense or scratch
 /// within-design row access alive after the iterative session is consumed.
 pub(crate) struct CertifiedLinearSessionProducts {
-    fit: CertifiedPreparedOlsFit,
+    frame: CertifiedLinearFrame,
     constant: Option<LinearConstantRepresentation>,
-    identified_bread: Vec<f64>,
-    generations: LinearSessionGenerations,
     basis: FrozenLinearBasis,
     weights: OwnedLinearWeights,
-    finite_predictor: Vec<f64>,
-    absorbed_predictor: Vec<f64>,
     within: RetainedWithinDesign,
     reconstruction: LinearReconstructionCertificate,
 }
@@ -1486,19 +1465,19 @@ impl CertifiedLinearSessionProducts {
         self.constant.as_ref()
     }
 
-    pub(crate) const fn fit(&self) -> &CertifiedPreparedOlsFit {
-        &self.fit
+    pub(crate) const fn frame(&self) -> &CertifiedLinearFrame {
+        &self.frame
     }
 
     /// Compact inverse cross product aligned exactly to
     /// `basis().kept_generated_columns()`. A normalized absorbed intercept is
     /// a reported coordinate and is deliberately excluded.
     pub(crate) fn identified_bread(&self) -> &[f64] {
-        &self.identified_bread
+        self.frame.bread()
     }
 
     pub(crate) const fn generations(&self) -> LinearSessionGenerations {
-        self.generations
+        self.frame.generations
     }
 
     pub(crate) const fn basis(&self) -> &FrozenLinearBasis {
@@ -1510,11 +1489,11 @@ impl CertifiedLinearSessionProducts {
     }
 
     pub(crate) fn finite_predictor(&self) -> &[f64] {
-        &self.finite_predictor
+        &self.frame.predictors().finite
     }
 
     pub(crate) fn absorbed_predictor(&self) -> &[f64] {
-        &self.absorbed_predictor
+        &self.frame.predictors().absorbed
     }
 
     pub(crate) const fn within_certificate(&self) -> LinearWithinDesignCertificate {
@@ -1538,6 +1517,7 @@ impl CertifiedLinearSessionProducts {
 pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Sized> {
     prepared: &'a P,
     group_centered_source: Option<SharedPreparedOlsData>,
+    centered_projection: Option<ImplicitCenteredDesign>,
     fast_canonical_products_allowance: u128,
     config: PreparedOlsFitConfig,
     response: Vec<f64>,
@@ -1547,11 +1527,9 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
     prepared_alignment_valid: bool,
     frozen_basis: Option<FrozenLinearBasis>,
     within: Option<RetainedWithinDesign>,
-    fit: Option<CertifiedPreparedOlsFit>,
+    frame: Option<CertifiedLinearFrame>,
+    predictors: LinearPredictors,
     constant: Option<LinearConstantRepresentation>,
-    frozen_step: Option<CertifiedFrozenLinearStep>,
-    finite_predictor: Vec<f64>,
-    absorbed_predictor: Vec<f64>,
     moment_workspace: Vec<f64>,
     row_workspace: Vec<f64>,
     frozen_workspace: FrozenLinearWorkspace,
@@ -1766,6 +1744,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(Self {
             prepared,
             group_centered_source: None,
+            centered_projection: None,
             fast_canonical_products_allowance: 0,
             config,
             response,
@@ -1775,11 +1754,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             prepared_alignment_valid: true,
             frozen_basis: None,
             within: None,
-            fit: None,
+            frame: None,
             constant: None,
-            frozen_step: None,
-            finite_predictor: Vec::new(),
-            absorbed_predictor: Vec::new(),
+            predictors: LinearPredictors::default(),
             moment_workspace: Vec::new(),
             row_workspace: Vec::new(),
             frozen_workspace: FrozenLinearWorkspace::default(),
@@ -1889,8 +1866,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             self.projection_refresh_required = true;
         }
         self.config = config;
-        self.fit = None;
-        self.recycle_frozen_step();
+        self.recycle_frame();
         self.reconstruction = None;
         self.reuse = None;
     }
@@ -1963,7 +1939,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     pub(crate) fn workspace_capacities(&self) -> LinearSessionWorkspaceCapacities {
-        let current_step = self.frozen_step.as_ref();
+        let current_step = self.frame.as_ref();
         let mut fe = self
             .fe_projector
             .as_ref()
@@ -1982,18 +1958,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     (0, scratch.bytes(), scratch.io_buffer_capacity())
                 }
             });
-        let (accepted_fit, accepted_fit_optional_owners) = self.fit.as_ref().map_or(
-            ([0; 6], false),
-            CertifiedPreparedOlsFit::session_capacity_inventory,
-        );
         LinearSessionWorkspaceCapacities {
             fe,
             constant_recipe_elements: self
                 .constant
                 .as_ref()
                 .map_or(0, |constant| constant.capacity_elements()),
-            accepted_fit,
-            accepted_fit_optional_owners,
             within_metadata: self.within.as_ref().map_or([0; 5], |within| {
                 [
                     within.stored_generated_columns.capacity(),
@@ -2012,8 +1982,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }),
             response_elements: self.response.capacity(),
             weight_elements: self.weights.capacity(),
-            finite_predictor_elements: self.finite_predictor.capacity(),
-            absorbed_predictor_elements: self.absorbed_predictor.capacity(),
+            finite_predictor_elements: self.predictors.finite.capacity()
+                + current_step
+                    .and_then(|step| step.decomposition.as_ref())
+                    .map_or(0, |p| p.finite.capacity()),
+            absorbed_predictor_elements: self.predictors.absorbed.capacity()
+                + current_step
+                    .and_then(|step| step.decomposition.as_ref())
+                    .map_or(0, |p| p.absorbed.capacity()),
             moment_elements: self.moment_workspace.capacity(),
             row_elements: self.row_workspace.capacity(),
             frozen_response_elements: self.frozen_workspace.response.capacity(),
@@ -2044,14 +2020,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 .capacity(),
             frozen_candidate_identity_elements: self.frozen_workspace.candidate_ids.capacity(),
             frozen_candidate_scale_elements: self.frozen_workspace.candidate_scales.capacity(),
-            frozen_reference_mean_correction_elements: self
-                .frozen_workspace
-                .reference_mean_corrections
-                .capacity(),
             frozen_basis_slot_elements: self.frozen_workspace.basis_slots.capacity(),
             map_weight_elements: self.map_weights.capacity(),
             projection_block_elements: self.projection_block.capacity(),
-            within_resident_elements,
+            within_resident_elements: within_resident_elements
+                + self
+                    .centered_projection
+                    .as_ref()
+                    .map_or(0, |p| (p.resident_bytes() / 8) as usize),
             within_scratch_bytes,
             within_io_buffer_elements,
         }
@@ -2353,7 +2329,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     fn solve_joint_ppml_internal(&mut self) -> Result<()> {
         self.ensure_bound()?;
-        self.recycle_frozen_step();
+        self.recycle_frame();
         self.fill_reusable_map_weights()?;
         let basis = self
             .frozen_basis
@@ -2573,7 +2549,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         );
         self.frozen_workspace.reported_coefficients = reported;
         reporting?;
-        self.fit = None;
+        self.frame = None;
         self.reconstruction = Some(reconstruction);
         let mut reuse = LinearSessionReuseReport::ppml_specialized(
             solving_seconds,
@@ -2635,8 +2611,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// frozen basis.  A subsequent `solve_fresh` must independently rebuild
     /// and certify the current frame.
     pub(crate) fn discard_invalid_frozen_state(&mut self) {
-        self.fit = None;
-        self.recycle_frozen_step();
+        self.recycle_frame();
         self.reconstruction = None;
         self.reuse = None;
         if let Some(within) = self.within.as_mut() {
@@ -2813,7 +2788,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .frozen_basis
             .as_ref()
             .expect("frozen basis was validated before strict staging")
-            .matches(&stage.candidate.fit);
+            .eq(&stage.candidate.basis);
 
         // The retained physical design was refreshed in place during
         // staging.  Make the still-authoritative active view publishable under
@@ -2832,11 +2807,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             basis_generation,
             active_positions,
             within_certificate: prior_certificate,
-            fit: self.fit.take(),
+            frame: self.frame.take(),
             constant: self.constant.take(),
-            frozen_step: self.frozen_step.take(),
-            finite_predictor: std::mem::take(&mut self.finite_predictor),
-            absorbed_predictor: std::mem::take(&mut self.absorbed_predictor),
             reconstruction: self.reconstruction.take(),
             reuse: self.reuse.take(),
             projection_refresh_required: self.projection_refresh_required,
@@ -2856,11 +2828,20 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         transaction.session.install_retained_stage(stage)?;
         transaction.session.output()?;
         transaction.session.generations.basis = candidate_basis_generation;
+        transaction
+            .session
+            .frame
+            .as_mut()
+            .expect("validated candidate frame")
+            .generations
+            .basis = candidate_basis_generation;
         Ok(transaction)
     }
 
     fn restore_strict_rollback(&mut self, rollback: StrictLinearRollbackState) {
-        self.recycle_frozen_step();
+        // The speculative frame is discarded; recycling it would retain a second
+        // bank beside the restored authority and grow every rollback footprint.
+        self.frame = None;
         self.generations.basis = rollback.basis_generation;
         self.frozen_basis = Some(rollback.basis);
         if let Some(within) = self.within.as_mut() {
@@ -2868,11 +2849,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             within.certificate = rollback.within_certificate;
             within.generations = WithinGenerations::from_session(self.generations);
         }
-        self.fit = rollback.fit;
+        self.frame = rollback.frame;
         self.constant = rollback.constant;
-        self.frozen_step = rollback.frozen_step;
-        self.finite_predictor = rollback.finite_predictor;
-        self.absorbed_predictor = rollback.absorbed_predictor;
         self.reconstruction = rollback.reconstruction;
         self.reuse = rollback.reuse;
         self.projection_refresh_required = rollback.projection_refresh_required;
@@ -2899,10 +2877,23 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.generations.basis
     }
 
+    #[cfg(test)]
+    pub(crate) fn bread_weight_scale_for_test(&self) -> super::PreparedOlsBreadWeightScale {
+        self.bread_weight_scale
+    }
+
     pub(crate) fn output(&self) -> Result<CertifiedLinearSessionOutput<'_>> {
-        let fit = self.fit.as_ref().ok_or_else(|| {
+        let fit = self.frame.as_ref().ok_or_else(|| {
             invalid_argument("weighted-linear session has no current certified solve")
         })?;
+        if fit.canonical_proof().is_none()
+            || fit.decomposition.is_none()
+            || fit.generations != self.generations
+        {
+            return Err(invalid_argument(
+                "weighted-linear session has no current canonical proof",
+            ));
+        }
         self.frozen_basis.as_ref().ok_or_else(|| {
             invalid_argument("weighted-linear session has no frozen canonical basis")
         })?;
@@ -2915,10 +2906,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             ));
         }
         Ok(CertifiedLinearSessionOutput {
-            fit,
+            basis: self
+                .frozen_basis
+                .as_ref()
+                .expect("canonical basis was validated"),
+            frame: fit,
             response: &self.response,
-            finite_predictor: &self.finite_predictor,
-            absorbed_predictor: &self.absorbed_predictor,
             within,
             reconstruction: self.reconstruction.ok_or_else(|| {
                 invalid_argument("weighted-linear session reconstruction is not certified")
@@ -2999,13 +2992,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     fn validated_output(&self) -> CertifiedLinearSessionOutput<'_> {
         CertifiedLinearSessionOutput {
-            fit: self
-                .fit
+            basis: self
+                .frozen_basis
+                .as_ref()
+                .expect("canonical basis was validated"),
+            frame: self
+                .frame
                 .as_ref()
                 .expect("strict candidate output was prevalidated"),
             response: &self.response,
-            finite_predictor: &self.finite_predictor,
-            absorbed_predictor: &self.absorbed_predictor,
             within: self
                 .within
                 .as_ref()
@@ -3039,16 +3034,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 interrupt,
             )?;
         }
-        fill_identified_bread(
-            self.fit.as_ref().ok_or_else(|| {
-                invalid_argument("weighted-linear session has no final fit to hand off")
-            })?,
-            self.frozen_basis.as_ref().ok_or_else(|| {
-                invalid_argument("weighted-linear session has no final basis to hand off")
-            })?,
-            &mut self.frozen_workspace.bread,
-        )?;
-        let identified_bread = std::mem::take(&mut self.frozen_workspace.bread);
         let within = self
             .within
             .take()
@@ -3058,17 +3043,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .compact_for_inference()?;
         Ok(CertifiedLinearSessionProducts {
             constant: self.constant,
-            fit: self.fit.ok_or_else(|| {
+            frame: self.frame.ok_or_else(|| {
                 invalid_argument("weighted-linear session has no final fit to hand off")
             })?,
-            identified_bread,
-            generations: self.generations,
             basis: self.frozen_basis.ok_or_else(|| {
                 invalid_argument("weighted-linear session has no final basis to hand off")
             })?,
             weights: self.weights,
-            finite_predictor: self.finite_predictor,
-            absorbed_predictor: self.absorbed_predictor,
             within,
             reconstruction: self.reconstruction.ok_or_else(|| {
                 invalid_argument("weighted-linear session has no final reconstruction")
@@ -3105,8 +3086,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             .map_err(|_| allocation("unable to refresh weighted-linear session response"))?;
         self.response.extend_from_slice(response);
         self.generations.response = response_generation;
-        self.fit = None;
-        self.recycle_frozen_step();
+        self.recycle_frame();
         self.reconstruction = None;
         self.reuse = None;
         self.pending_response_buffer_reused = reused;
@@ -3128,8 +3108,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.pending_weight_buffer_reused = self.weights.replace(weights)?;
         self.bread_weight_scale = bread_weight_scale;
         self.generations.weights = weight_generation;
-        self.fit = None;
-        self.recycle_frozen_step();
+        self.recycle_frame();
         self.reconstruction = None;
         self.reuse = None;
         Ok(())
@@ -3222,8 +3201,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.frozen_basis = None;
         self.within = None;
         self.canonical_projection_work_hint = 0;
-        self.fit = None;
-        self.recycle_frozen_step();
+        self.recycle_frame();
         self.reconstruction = None;
         self.reuse = None;
         Ok(())
@@ -3254,8 +3232,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         self.canonical_projection_work_hint = 0;
         self.frozen_basis = None;
         self.within = None;
-        self.fit = None;
-        self.recycle_frozen_step();
+        self.recycle_frame();
         self.reconstruction = None;
         self.reuse = None;
     }
@@ -3270,12 +3247,15 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
     }
 
-    fn recycle_frozen_step(&mut self) {
-        if let Some(step) = self.frozen_step.take() {
+    fn recycle_frame(&mut self) {
+        if let Some(step) = self.frame.take() {
             self.frozen_workspace.coefficients = step.coefficients;
             self.frozen_workspace.reported_coefficients = step.reported_coefficients;
             self.frozen_workspace.bread = step.bread;
             self.frozen_workspace.residuals = step.within_residuals;
+            if let Some(predictors) = step.decomposition {
+                self.predictors = predictors;
+            }
         }
     }
 
@@ -3291,7 +3271,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         kind: LinearSessionSolveKind,
         prior_active_positions: Option<&[usize]>,
     ) -> Result<Option<LinearWithinDesignCertificate>> {
-        self.recycle_frozen_step();
+        self.recycle_frame();
         let stage = self.prepare_retained_solve(kind, prior_active_positions)?;
         self.install_retained_stage(stage)
     }
@@ -3503,10 +3483,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             .is_some_and(FeSession::supports_fused_projection)
                     {
                         report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
-                        let (reused, fused_report) =
-                            self.reproject_retained_with_response_in_place()?;
+                        let (reused, fused_report) = self.reproject_retained_in_place(true)?;
                         report.fe_projection_workspace_reused &= reused;
-                        fused_response_report = Some(fused_report);
+                        fused_response_report = fused_report;
                         #[cfg(test)]
                         {
                             response_fused_with_design = true;
@@ -3514,9 +3493,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     } else if self.config.absorb.solver == FeSolverKind::Map {
                         report.fe_projection_workspace_reused = self.fill_reusable_map_weights()?;
                         report.fe_projection_workspace_reused &=
-                            self.reproject_retained_within_in_place()?;
+                            self.reproject_retained_in_place(false)?.0;
                     } else {
-                        self.reproject_retained_within_in_place()?;
+                        self.reproject_retained_in_place(false)?;
                     }
                     self.refresh_retained_norms()?;
                     report.warm_projection_certified = true;
@@ -3589,19 +3568,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let finite_solve_seconds = finite_started.elapsed().as_secs_f64();
         if kind != LinearSessionSolveKind::Strict {
             if let Some(basis) = &self.frozen_basis {
-                if !basis.matches(&candidate.fit) {
+                if *basis != candidate.basis {
                     return Err(invalid_data(
                         "weighted-linear solve changed the frozen canonical rank basis",
                     ));
                 }
             }
         }
-        let candidate_basis =
-            if kind == LinearSessionSolveKind::Strict || self.frozen_basis.is_none() {
-                Some(FrozenLinearBasis::from_fit(&candidate.fit)?)
-            } else {
-                None
-            };
         report.phase_timing = LinearSessionPhaseTiming {
             projection_seconds: Some(projection_seconds),
             finite_solve_seconds: Some(finite_solve_seconds),
@@ -3615,7 +3588,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         Ok(RetainedSolveStage {
             candidate,
-            candidate_basis,
             report,
             #[cfg(test)]
             response_fused_with_design,
@@ -3627,13 +3599,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         stage: RetainedSolveStage,
     ) -> Result<Option<LinearWithinDesignCertificate>> {
         let RetainedSolveStage {
-            candidate,
-            candidate_basis,
+            mut candidate,
             mut report,
             ..
         } = stage;
         if let Some(basis) = &self.frozen_basis {
-            if !basis.matches(&candidate.fit) {
+            if *basis != candidate.basis {
                 return Err(invalid_data(
                     "weighted-linear solve changed the frozen canonical rank basis",
                 ));
@@ -3643,9 +3614,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         // the intercept check. Move it through publication instead of scanning
         // every original column a second time. Strict rollback owns the prior
         // predictor separately; no speculative product mutates that state.
-        self.finite_predictor = candidate.finite_predictor;
+        self.predictors.finite = candidate.finite_predictor;
         let predictor_workspace_reused = false;
-        let reconstruction = self.rebuild_predictors(&candidate.fit)?;
+        let reconstruction = self.rebuild_predictors(&candidate.frame)?;
         let within = self
             .within
             .as_mut()
@@ -3655,10 +3626,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         report.predictor_workspace_reused = predictor_workspace_reused;
         report.certificate_workspace_reused = true;
         self.constant = candidate.constant;
-        self.fit = Some(candidate.fit);
-        if let Some(basis) = candidate_basis {
-            self.frozen_basis = Some(basis);
-        }
+        candidate.frame.decomposition = Some(std::mem::take(&mut self.predictors));
+        self.frame = Some(candidate.frame);
+        self.frozen_basis = Some(candidate.basis);
         self.reconstruction = Some(reconstruction);
         self.reuse = Some(report);
         self.pending_response_buffer_reused = false;
@@ -3721,31 +3691,19 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     fn absorb_reusable_map_with_norms(
         &mut self,
         values: DenseMatrix,
+        positions: std::ops::Range<usize>,
         norms: &mut [f64],
     ) -> Result<(CertifiedBorrowedMap, bool)> {
         match self.fe_projector.as_mut() {
             Some(FeSession {
                 categorical: Some(projector),
-                coefficients: false,
                 ..
             }) => projector.absorb_with_selected_norms(
                 self.weights.borrowed(),
                 values,
                 self.config.absorb.map,
                 self.bread_weight_scale.solver_weight_divisor,
-                0..norms.len(),
-                norms,
-            ),
-            Some(FeSession {
-                coefficients: true,
-                categorical: Some(projector),
-                ..
-            }) => projector.absorb_with_selected_norms(
-                self.weights.borrowed(),
-                values,
-                self.config.absorb.map,
-                self.bread_weight_scale.solver_weight_divisor,
-                0..norms.len(),
+                positions,
                 norms,
             ),
             Some(FeSession {
@@ -3759,7 +3717,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     values,
                     self.config.absorb.map,
                     self.generations.map_geometry(),
-                    0..norms.len(),
+                    positions,
                     None,
                     norms,
                 )?,
@@ -3812,14 +3770,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     fn solve_frozen_internal(&mut self, output_kind: FrozenLinearOutputKind) -> Result<()> {
         self.ensure_bound()?;
-        self.recycle_frozen_step();
-        if let Some(fit) = self.fit.take() {
-            let mut residual_storage = fit.into_session_residual_storage();
-            residual_storage.clear();
-            if residual_storage.capacity() >= self.frozen_workspace.residuals.capacity() {
-                self.frozen_workspace.residuals = residual_storage;
-            }
-        }
+        self.recycle_frame();
         let basis = self.frozen_basis.as_ref().ok_or_else(|| {
             invalid_argument("frozen weighted-linear solve requires an initial fresh solve")
         })?;
@@ -3908,7 +3859,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     .is_some_and(FeSession::supports_fused_projection)
             {
                 let (reused, fused_report) = self
-                    .reproject_retained_with_response_in_place()
+                    .reproject_retained_in_place(true)
                     .map_err(|error| {
                         FeregError::new(
                             error.code,
@@ -3919,10 +3870,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         )
                     })?;
                 projection_workspace_reused &= reused;
-                fused_response_report = Some(fused_report);
+                fused_response_report = fused_report;
             } else if reusable_map {
                 projection_workspace_reused &=
-                    self.reproject_retained_within_in_place().map_err(|error| {
+                    self.reproject_retained_in_place(false).map(|result| result.0).map_err(|error| {
                         FeregError::new(
                             error.code,
                             format!(
@@ -3932,7 +3883,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         )
                     })?;
             } else {
-                self.reproject_retained_within_in_place().map_err(|error| {
+                self.reproject_retained_in_place(false).map(|result| result.0).map_err(|error| {
                     FeregError::new(
                         error.code,
                         format!(
@@ -4058,8 +4009,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         let (predictor_workspace_reused, reconstruction) = match output_kind {
             #[cfg(test)]
             FrozenLinearOutputKind::FullOlsDecomposition => (
-                self.finite_predictor.capacity() >= self.response.len()
-                    && self.absorbed_predictor.capacity() >= self.response.len(),
+                self.predictors.finite.capacity() >= self.response.len()
+                    && self.predictors.absorbed.capacity() >= self.response.len(),
                 self.rebuild_frozen_predictors(
                     &kept,
                     &frozen.coefficients,
@@ -4115,15 +4066,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             finite_solve_seconds: Some(finite_solve_seconds),
         };
         report.phase_allocation = phase_allocation;
-        self.fit = None;
-        self.frozen_step = Some(CertifiedFrozenLinearStep {
+        self.frame = Some(CertifiedLinearFrame {
             coefficients: frozen.coefficients,
             reported_coefficients,
             bread: frozen.bread,
             within_residuals: frozen.within_residuals,
             response_absorption_report,
-            certificate: frozen.certificate,
+            proof: LinearFrameProof::Frozen(frozen.certificate),
             generations: self.generations,
+            decomposition: match output_kind {
+                #[cfg(test)]
+                FrozenLinearOutputKind::FullOlsDecomposition => {
+                    Some(std::mem::take(&mut self.predictors))
+                }
+                FrozenLinearOutputKind::PpmlCombinedPredictor => None,
+            },
         });
         self.reconstruction = Some(reconstruction);
         self.reuse = Some(report);
@@ -4135,7 +4092,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
 
     #[cfg(test)]
     fn frozen_output(&self) -> Result<CertifiedFrozenLinearOutput<'_>> {
-        let step = self.frozen_step.as_ref().ok_or_else(|| {
+        let step = self.frame.as_ref().ok_or_else(|| {
             invalid_argument("weighted-linear session has no current frozen solve")
         })?;
         if step.generations != self.generations {
@@ -4162,7 +4119,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn frozen_ppml_output(&self) -> Result<CertifiedFrozenPpmlLinearOutput<'_>> {
-        let step = self.frozen_step.as_ref().ok_or_else(|| {
+        let step = self.frame.as_ref().ok_or_else(|| {
             invalid_argument("weighted-linear session has no current PPML frozen solve")
         })?;
         if step.generations != self.generations {
@@ -4201,31 +4158,31 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             ));
         }
         resize_zeroed(
-            &mut self.finite_predictor,
+            &mut self.predictors.finite,
             self.response.len(),
             "unable to reserve frozen weighted-linear finite predictor",
         )?;
         resize_zeroed(
-            &mut self.absorbed_predictor,
+            &mut self.predictors.absorbed,
             self.response.len(),
             "unable to reserve frozen weighted-linear absorbed predictor",
         )?;
         for (generated, coefficient) in kept.iter().copied().zip(coefficients.iter().copied()) {
             for row in 0..self.response.len() {
-                self.finite_predictor[row] = coefficient.mul_add(
+                self.predictors.finite[row] = coefficient.mul_add(
                     self.prepared.fit_column_value(generated, row)?,
-                    self.finite_predictor[row],
+                    self.predictors.finite[row],
                 );
             }
         }
         let mut certificate = LinearReconstructionCertificate::new();
         for (row, within_residual) in within_residuals.iter().copied().enumerate() {
-            self.absorbed_predictor[row] =
-                (self.response[row] - within_residual) - self.finite_predictor[row];
+            self.predictors.absorbed[row] =
+                (self.response[row] - within_residual) - self.predictors.finite[row];
             certificate.observe(
                 self.response[row],
-                self.finite_predictor[row],
-                self.absorbed_predictor[row],
+                self.predictors.finite[row],
+                self.predictors.absorbed[row],
                 within_residual,
             )?;
         }
@@ -4258,7 +4215,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     row,
                 )?;
                 numerator =
-                    weight.mul_add(self.response[row] - self.finite_predictor[row], numerator);
+                    weight.mul_add(self.response[row] - self.predictors.finite[row], numerator);
                 denominator += weight;
             }
             let value = numerator / denominator;
@@ -4807,61 +4764,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 }
             }
         }
-        let mut retained_reader = retained.storage.reader();
         let within_outcome_norm = stable_weighted_norm(rows, |row| {
             Ok((
                 within_response[row],
                 normalized_solver_weight(self.weights.borrowed(), self.bread_weight_scale, row)?,
             ))
         })?;
-        let uncentered_initial_sum_of_squares =
-            within_outcome_norm.mul_add(within_outcome_norm, 0.0);
-        let normalized_initial_within_sum_of_squares = if self.prepared.fit_report_intercept()
-            && !self.prepared.fit_has_absorbed_intercept()
-        {
-            let intercept = self
-                .prepared
-                .fit_model()
-                .columns
-                .iter()
-                .position(|column| matches!(column.kind, PreparedOlsColumnKind::Intercept))
-                .ok_or_else(|| {
-                    invalid_argument("retained weighted-linear ordinary intercept is absent")
-                })?;
-            let candidate = workspace
-                .candidate_ids
-                .iter()
-                .position(|generated| *generated == intercept)
-                .ok_or_else(|| {
-                    invalid_data("retained weighted-linear ordinary intercept is not eligible")
-                })?;
-            let storage_position = workspace.candidate_positions[candidate];
-            let standardized_diagonal = workspace.gram[candidate * candidate_count + candidate];
-            let standardized_mean = workspace.rhs[candidate] / standardized_diagonal;
-            let raw_mean = standardized_mean / retained.reference_norms[storage_position];
-            if !standardized_diagonal.is_finite()
-                || standardized_diagonal <= 0.0
-                || !raw_mean.is_finite()
-            {
-                return Err(invalid_data(
-                    "retained weighted-linear centered outcome mean is invalid",
-                ));
-            }
-            let centered_norm = stable_weighted_norm(rows, |row| {
-                retained_reader.fill_row(row, &mut workspace.row)?;
-                Ok((
-                    (-raw_mean).mul_add(workspace.row[storage_position], within_response[row]),
-                    normalized_solver_weight(
-                        self.weights.borrowed(),
-                        self.bread_weight_scale,
-                        row,
-                    )?,
-                ))
-            })?;
-            centered_norm * centered_norm
-        } else {
-            uncentered_initial_sum_of_squares
-        };
         let mut reference_norms = fallible_filled(
             generated_count,
             0.0_f64,
@@ -5046,7 +4954,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             right_inverse_relative_infinity_norm: right_inverse_error,
             passed: true,
         };
-        let scratch_bytes = retained.storage.scratch_bytes();
         let kept = fallible_copy(&workspace.kept, "unable to copy retained kept identities")?;
         let finite_bread_generated_columns =
             fallible_copy(&workspace.kept, "unable to copy retained bread identities")?;
@@ -5132,12 +5039,10 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             reference_norms,
             score_norms,
             within_outcome_norm,
-            normalized_initial_within_sum_of_squares,
             residual_absorption_report,
             absorption_report,
-            scratch_bytes,
         };
-        let (fit, finite_predictor) = assemble_retained_weighted_linear_fit(
+        let (frame, basis, finite_predictor) = assemble_retained_linear_frame(
             self.prepared,
             LinearSolveFrame::from_parts(
                 &self.response,
@@ -5147,10 +5052,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             self.config,
             finite,
             draft,
+            self.generations,
         )?;
         Ok(RetainedRankSolveDraft {
             constant,
-            fit,
+            frame,
+            basis,
             finite_predictor,
             active_positions,
             within_certificate,
@@ -5234,10 +5141,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 &mut reference_norms,
                 &mut reference_means,
                 &mut within_norms,
+                std::mem::take(&mut self.frozen_workspace.response),
             )?;
             let storage = if self.config.execution.mode == PreparedOlsExecutionMode::Fast {
                 let mut dense = DenseMatrix::zeros(rows, stored_columns)?;
                 values.write_dense(&mut dense)?;
+                self.centered_projection = Some(values);
                 RetainedWithinStorage::Dense(dense)
             } else {
                 RetainedWithinStorage::Implicit(values)
@@ -5261,22 +5170,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                             "weighted-linear combined retained design is inconsistent",
                         ));
                     }
-                    let raw_norms = if slope_norms {
-                        None
+                    if slope_norms {
+                        self.fill_dense_statistics::<false, true>(
+                            &raw,
+                            |column| stored_generated_columns[column] + 1,
+                            &mut [],
+                            &mut reference_means,
+                        )?;
                     } else {
-                        Some(self.weighted_dense_column_norms(&raw)?)
-                    };
-                    let raw_means = self.weighted_dense_column_means(&raw)?;
-                    for (position, generated) in
-                        stored_generated_columns.iter().copied().enumerate()
-                    {
-                        if let Some(raw_norms) = &raw_norms {
-                            reference_norms[position] = raw_norms[generated + 1];
-                        }
-                        reference_means[position] = raw_means[generated + 1];
+                        self.fill_dense_statistics::<true, true>(
+                            &raw,
+                            |column| stored_generated_columns[column] + 1,
+                            &mut reference_norms,
+                            &mut reference_means,
+                        )?;
                     }
-                    drop(raw_norms);
-                    drop(raw_means);
                     let mut norms_reused = false;
                     let absorbed = if self.config.absorb.solver == FeSolverKind::Map {
                         self.fill_reusable_map_weights()?;
@@ -5321,17 +5229,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     let (within, report) = absorbed.into_parts();
                     let stride = within.ncols();
                     let mut values = within.into_row_major();
-                    let norm_workspace_columns = if norms_reused { 0 } else { stored_columns };
-                    let mut norm_scales = fallible_filled(
-                        norm_workspace_columns,
-                        0.0_f64,
-                        "unable to reserve weighted-linear retained norm scales",
-                    )?;
-                    let mut norm_sums = fallible_filled(
-                        norm_workspace_columns,
-                        1.0_f64,
-                        "unable to reserve weighted-linear retained norm sums",
-                    )?;
                     let mut response = fallible_filled(
                         rows,
                         0.0_f64,
@@ -5345,46 +5242,23 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         let target_start = row.checked_mul(stored_columns).ok_or_else(|| {
                             allocation("weighted-linear retained compact offset overflows")
                         })?;
-                        if norms_reused {
-                            for (target, generated) in
-                                stored_generated_columns.iter().copied().enumerate()
-                            {
-                                values[target_start + target] =
-                                    values[source_start + generated + 1];
-                            }
-                        } else {
-                            let root = normalized_solver_weight(
-                                self.weights.borrowed(),
-                                self.bread_weight_scale,
-                                row,
-                            )?
-                            .sqrt();
-                            for (target, generated) in
-                                stored_generated_columns.iter().copied().enumerate()
-                            {
-                                let value = values[source_start + generated + 1];
-                                update_scaled_square(
-                                    root * value,
-                                    &mut norm_scales[target],
-                                    &mut norm_sums[target],
-                                )?;
-                                values[target_start + target] = value;
-                            }
+                        for (target, generated) in
+                            stored_generated_columns.iter().copied().enumerate()
+                        {
+                            values[target_start + target] = values[source_start + generated + 1];
                         }
                     }
-                    for column in 0..norm_workspace_columns {
-                        within_norms[column] = stable_norm(norm_scales[column], norm_sums[column])?;
-                    }
                     values.truncate(checked_elements(rows, stored_columns)?);
-                    (
-                        RetainedWithinStorage::Dense(DenseMatrix::from_row_major(
-                            rows,
-                            stored_columns,
-                            values,
-                        )?),
-                        response,
-                        report,
-                    )
+                    let compact = DenseMatrix::from_row_major(rows, stored_columns, values)?;
+                    if !norms_reused {
+                        self.fill_dense_statistics::<true, false>(
+                            &compact,
+                            |column| column,
+                            &mut within_norms,
+                            &mut [],
+                        )?;
+                    }
+                    (RetainedWithinStorage::Dense(compact), response, report)
                 }
                 PreparedOlsExecutionMode::Low => {
                     let raw_response = DenseMatrix::from_row_major(
@@ -5446,13 +5320,21 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                                 Ok(())
                             })?;
                         let raw = DenseMatrix::from_row_major(rows, block, raw_values)?;
-                        if !slope_norms {
-                            let norms = self.weighted_dense_column_norms(&raw)?;
-                            reference_norms[start..end].copy_from_slice(&norms);
+                        if slope_norms {
+                            self.fill_dense_statistics::<false, true>(
+                                &raw,
+                                |column| column,
+                                &mut [],
+                                &mut reference_means[start..end],
+                            )?;
+                        } else {
+                            self.fill_dense_statistics::<true, true>(
+                                &raw,
+                                |column| column,
+                                &mut reference_norms[start..end],
+                                &mut reference_means[start..end],
+                            )?;
                         }
-                        let means = self.weighted_dense_column_means(&raw)?;
-                        reference_means[start..end].copy_from_slice(&means);
-                        drop(means);
                         let (absorbed, norms_reused) = if slope_norms {
                             (
                                 self.absorb_slope_with_selected_norms(
@@ -5464,7 +5346,11 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                                 true,
                             )
                         } else if self.config.absorb.solver == FeSolverKind::Map {
-                            self.absorb_reusable_map_with_norms(raw, &mut within_norms[start..end])?
+                            self.absorb_reusable_map_with_norms(
+                                raw,
+                                0..end - start,
+                                &mut within_norms[start..end],
+                            )?
                         } else {
                             (
                                 self.prepared.fit_absorb_matrix(
@@ -5483,8 +5369,12 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         let (within, block_report) = absorbed.into_parts();
                         merge_canonical_projection_reports(&mut report, block_report)?;
                         if !norms_reused {
-                            let norms = self.weighted_dense_column_norms(&within)?;
-                            within_norms[start..end].copy_from_slice(&norms);
+                            self.fill_dense_statistics::<true, false>(
+                                &within,
+                                |column| column,
+                                &mut within_norms[start..end],
+                                &mut [],
+                            )?;
                         }
                         scratch.patch_row_major_block(start, block, within.as_slice())?;
                     }
@@ -5542,17 +5432,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 &mut retained.reference_norms,
                 &mut retained.reference_means,
                 &mut retained.within_norms,
+                std::mem::take(&mut self.frozen_workspace.response),
             )?,
             RetainedWithinStorage::Dense(dense) => {
-                let source = self
-                    .group_centered_source
-                    .as_ref()
-                    .ok_or_else(|| invalid_argument("centered preparation source is absent"))?;
-                let mut values = ImplicitCenteredDesign::new(
-                    source.clone(),
-                    &retained.stored_generated_columns,
-                    self.config.execution.mode,
-                )?;
+                let values = self
+                    .centered_projection
+                    .as_mut()
+                    .ok_or_else(|| invalid_argument("centered projection owner is absent"))?;
                 let refreshed = values.refresh(
                     &self.response,
                     self.weights.borrowed(),
@@ -5561,6 +5447,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     &mut retained.reference_norms,
                     &mut retained.reference_means,
                     &mut retained.within_norms,
+                    std::mem::take(&mut self.frozen_workspace.response),
                 )?;
                 values.write_dense(dense)?;
                 refreshed
@@ -5575,317 +5462,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         retained.certificate.passed = false;
         self.within = Some(retained);
         Ok(refreshed)
-    }
-
-    fn weighted_dense_column_norms(&self, values: &DenseMatrix) -> Result<Vec<f64>> {
-        if values.nrows() != self.response.len() {
-            return Err(invalid_argument(
-                "weighted-linear norm matrix is not aligned on observations",
-            ));
-        }
-        let columns = values.ncols();
-        let mut scales = fallible_filled(
-            columns,
-            0.0_f64,
-            "unable to reserve weighted-linear matrix norm scales",
-        )?;
-        let mut sums = fallible_filled(
-            columns,
-            1.0_f64,
-            "unable to reserve weighted-linear matrix norm sums",
-        )?;
-        for row in 0..values.nrows() {
-            let root =
-                normalized_solver_weight(self.weights.borrowed(), self.bread_weight_scale, row)?
-                    .sqrt();
-            for column in 0..columns {
-                update_scaled_square(
-                    root * values[(row, column)],
-                    &mut scales[column],
-                    &mut sums[column],
-                )?;
-            }
-        }
-        for column in 0..columns {
-            scales[column] = stable_norm(scales[column], sums[column])?;
-        }
-        Ok(scales)
-    }
-
-    fn weighted_dense_column_means(&self, values: &DenseMatrix) -> Result<Vec<f64>> {
-        if values.nrows() != self.response.len() {
-            return Err(invalid_argument(
-                "weighted-linear mean matrix is not aligned on observations",
-            ));
-        }
-        let columns = values.ncols();
-        let mut sums = fallible_filled(
-            columns,
-            0.0_f64,
-            "unable to reserve weighted-linear matrix mean sums",
-        )?;
-        let mut corrections = fallible_filled(
-            columns,
-            0.0_f64,
-            "unable to reserve weighted-linear matrix mean corrections",
-        )?;
-        let mut weight_sum = 0.0_f64;
-        let mut weight_correction = 0.0_f64;
-        let weights = self.weights.borrowed();
-        let weight_scale = self.bread_weight_scale;
-        for row in 0..values.nrows() {
-            let weight = normalized_solver_weight(weights, weight_scale, row)?;
-            compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
-            for column in 0..columns {
-                compensated_add(
-                    weight * values[(row, column)],
-                    &mut sums[column],
-                    &mut corrections[column],
-                )?;
-            }
-        }
-        let denominator = weight_sum + weight_correction;
-        if !denominator.is_finite() || denominator <= 0.0 {
-            return Err(invalid_data(
-                "weighted-linear matrix mean denominator is invalid",
-            ));
-        }
-        for column in 0..columns {
-            sums[column] = (sums[column] + corrections[column]) / denominator;
-            if !sums[column].is_finite() {
-                return Err(invalid_data("weighted-linear matrix mean is not finite"));
-            }
-        }
-        Ok(sums)
-    }
-
-    fn fill_weighted_dense_column_norms_reusing(
-        &mut self,
-        values: &DenseMatrix,
-        output: &mut [f64],
-    ) -> Result<bool> {
-        if values.nrows() != self.response.len() || values.ncols() != output.len() {
-            return Err(invalid_argument(
-                "weighted-linear reusable norm matrix is not aligned",
-            ));
-        }
-        let columns = output.len();
-        let reused = self.frozen_workspace.scores.capacity() >= columns
-            && self.frozen_workspace.solve.capacity() >= columns;
-        resize_zeroed(
-            &mut self.frozen_workspace.scores,
-            columns,
-            "unable to reserve weighted-linear reusable norm scales",
-        )?;
-        resize_zeroed(
-            &mut self.frozen_workspace.solve,
-            columns,
-            "unable to reserve weighted-linear reusable norm sums",
-        )?;
-        self.frozen_workspace.solve.fill(1.0);
-        let weights = self.weights.borrowed();
-        let weight_scale = self.bread_weight_scale;
-        for row in 0..values.nrows() {
-            let root = normalized_solver_weight(weights, weight_scale, row)?.sqrt();
-            for column in 0..columns {
-                update_scaled_square(
-                    root * values[(row, column)],
-                    &mut self.frozen_workspace.scores[column],
-                    &mut self.frozen_workspace.solve[column],
-                )?;
-            }
-        }
-        for (column, destination) in output.iter_mut().enumerate().take(columns) {
-            *destination = stable_norm(
-                self.frozen_workspace.scores[column],
-                self.frozen_workspace.solve[column],
-            )?;
-        }
-        Ok(reused)
-    }
-
-    fn refresh_retained_norms(&mut self) -> Result<()> {
-        if self.group_centered_source.is_some() {
-            let retained = self
-                .within
-                .as_ref()
-                .ok_or_else(|| invalid_argument("implicit norms are absent"))?;
-            if !retained.generations.same_design(self.generations) {
-                return Err(invalid_argument("implicit norms are stale"));
-            }
-            return Ok(());
-        }
-        let mut retained = self
-            .within
-            .take()
-            .ok_or_else(|| invalid_argument("weighted-linear retained design disappeared"))?;
-        let result = (|| -> Result<()> {
-            let columns = retained.stored_generated_columns.len();
-            if retained.reference_norms.len() != columns
-                || retained.reference_means.len() != columns
-                || retained.within_norms.len() != columns
-            {
-                return Err(invalid_argument(
-                    "weighted-linear refreshed reference workspaces are absent",
-                ));
-            }
-            let reused = self.frozen_workspace.scores.capacity() >= columns
-                && self.frozen_workspace.solve.capacity() >= columns
-                && self.frozen_workspace.reference_mean_corrections.capacity() >= columns;
-            resize_zeroed(
-                &mut self.frozen_workspace.scores,
-                columns,
-                "unable to reserve weighted-linear refreshed reference scales",
-            )?;
-            resize_zeroed(
-                &mut self.frozen_workspace.solve,
-                columns,
-                "unable to reserve weighted-linear refreshed reference sums",
-            )?;
-            resize_zeroed(
-                &mut self.frozen_workspace.reference_mean_corrections,
-                columns,
-                "unable to reserve weighted-linear refreshed mean corrections",
-            )?;
-            self.frozen_workspace.solve.fill(1.0);
-            retained.reference_means.fill(0.0);
-            let weights = self.weights.borrowed();
-            let weight_scale = self.bread_weight_scale;
-            let mut weight_sum = 0.0_f64;
-            let mut weight_correction = 0.0_f64;
-            let rows = self.response.len();
-            let numeric = super::prepared_rhs::NumericOlsColumns::bind(
-                self.prepared.fit_model(),
-                self.prepared.fit_sample(),
-            )?;
-            // Raw numeric sources are immutable for this sample/topology.
-            // Bind them once, but recompute every statistic with this frame's
-            // weights. Column ownership preserves row order and needs no new
-            // bank; its work depends on N*K, not the number of absorbed effects.
-            let column_work = rows >= 16_384 && rows.saturating_mul(columns) >= 65_536 * 8;
-            let generated_work = column_work
-                && self.prepared.fit_model().columns.iter().any(|c| {
-                    matches!(
-                        c.kind,
-                        super::PreparedOlsColumnKind::Categorical { .. }
-                            | super::PreparedOlsColumnKind::CategoricalInteraction { .. }
-                    )
-                });
-            let parallel_columns = columns >= 8
-                && rayon::current_thread_index().is_some()
-                && rayon::current_num_threads() > 1
-                && (generated_work
-                    && matches!(
-                        self.fe_projector.as_ref(),
-                        Some(
-                            FeSession {
-                                categorical: Some(_),
-                                coefficients: false,
-                                ..
-                            } | FeSession {
-                                coefficients: true,
-                                ..
-                            }
-                        )
-                    )
-                    || self.config.execution.mode == PreparedOlsExecutionMode::Fast
-                        && matches!(self.fe_projector.as_ref(),
-                            Some(FeSession { categorical: Some(_), general: Some(general), coefficients: false, .. })
-                                if numeric.is_some() && column_work
-                                    || rows >= 65_536 && general.design().effects().len() == 1));
-            if parallel_columns {
-                for row in 0..rows {
-                    let weight = normalized_solver_weight(weights, weight_scale, row)?;
-                    compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
-                }
-                let prepared = self.prepared;
-                let generated_columns = &retained.stored_generated_columns;
-                // Each worker retains the original row order and stable accumulators.
-                // Column ownership avoids a row-sized cache or a floating reduction.
-                self.frozen_workspace
-                    .scores
-                    .par_iter_mut()
-                    .zip(self.frozen_workspace.solve.par_iter_mut())
-                    .zip(retained.reference_means.par_iter_mut())
-                    .zip(
-                        self.frozen_workspace
-                            .reference_mean_corrections
-                            .par_iter_mut(),
-                    )
-                    .enumerate()
-                    .try_for_each(
-                        |(column, (((scale, sum), mean), correction))| -> Result<()> {
-                            let generated = generated_columns[column];
-                            crate::prepared_fit_view::visit_prepared_column_range(
-                                prepared,
-                                generated,
-                                0..rows,
-                                |row, raw_value| {
-                                    let weight =
-                                        normalized_solver_weight(weights, weight_scale, row)?;
-                                    update_scaled_square(weight.sqrt() * raw_value, scale, sum)?;
-                                    compensated_add(weight * raw_value, mean, correction)?;
-                                    Ok(())
-                                },
-                            )?;
-                            Ok(())
-                        },
-                    )?;
-            } else {
-                for row in 0..self.response.len() {
-                    let weight = normalized_solver_weight(weights, weight_scale, row)?;
-                    compensated_add(weight, &mut weight_sum, &mut weight_correction)?;
-                    let root = weight.sqrt();
-                    for (column, generated) in retained
-                        .stored_generated_columns
-                        .iter()
-                        .copied()
-                        .enumerate()
-                    {
-                        let raw_value = if let Some(numeric) = numeric.as_ref() {
-                            numeric.raw_columns()[generated].map_or(1.0, |values| values[row])
-                        } else {
-                            self.prepared.fit_column_value(generated, row)?
-                        };
-                        update_scaled_square(
-                            root * raw_value,
-                            &mut self.frozen_workspace.scores[column],
-                            &mut self.frozen_workspace.solve[column],
-                        )?;
-                        compensated_add(
-                            weight * raw_value,
-                            &mut retained.reference_means[column],
-                            &mut self.frozen_workspace.reference_mean_corrections[column],
-                        )?;
-                    }
-                }
-            }
-            let denominator = weight_sum + weight_correction;
-            if !denominator.is_finite() || denominator <= 0.0 {
-                return Err(invalid_data(
-                    "weighted-linear refreshed mean denominator is invalid",
-                ));
-            }
-            for column in 0..columns {
-                retained.reference_norms[column] = stable_norm(
-                    self.frozen_workspace.scores[column],
-                    self.frozen_workspace.solve[column],
-                )?;
-                retained.reference_means[column] = (retained.reference_means[column]
-                    + self.frozen_workspace.reference_mean_corrections[column])
-                    / denominator;
-                if !retained.reference_means[column].is_finite() {
-                    return Err(invalid_data("weighted-linear refreshed mean is not finite"));
-                }
-            }
-            retained.generations = WithinGenerations::from_session(self.generations);
-            if let Some(report) = self.reuse.as_mut() {
-                report.kernel_solver_workspace_reused |= reused;
-            }
-            Ok(())
-        })();
-        self.within = Some(retained);
-        result
     }
 
     #[cfg(test)]
@@ -6055,82 +5631,107 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(reused)
     }
 
-    /// Re-project the retained equivalence-class representative in place.
-    /// Since `M_new D = 0`, projecting the prior `M_old X` under new weights
-    /// yields exactly the same within coordinate as projecting raw `X`, while
-    /// preserving the already-owned dense buffer or scratch-file identity.
-    fn reproject_retained_within_in_place(&mut self) -> Result<bool> {
+    /// Weight refresh preserves each physical bank and its raw-response anchor.
+    /// The optional leading RHS uses M_new(r_old + z_new - z_old) = M_new z_new.
+    fn reproject_retained_in_place(
+        &mut self,
+        with_response: bool,
+    ) -> Result<(bool, Option<SolveReport>)> {
         if self.group_centered_source.is_some() {
-            self.refresh_group_centered_design()?;
-            // Refresh allocates a response and may rebuild temporary group state.
-            return Ok(false);
+            let (response, report) = self.refresh_group_centered_design()?;
+            if with_response {
+                self.frozen_workspace.response = response;
+            }
+            return Ok((false, with_response.then_some(report)));
         }
-        let prior = self.within.take().ok_or_else(|| {
-            invalid_argument("weighted-linear reusable MAP projection has no retained design")
-        })?;
-        let rows = prior.storage.rows();
-        let columns = prior.storage.columns();
-        let RetainedWithinDesign {
-            storage: prior_storage,
-            stored_generated_columns,
-            active_positions,
-            reference_norms,
-            reference_means,
-            mut within_norms,
-            ..
-        } = prior;
-        if rows != self.response.len() {
-            return Err(invalid_argument(
-                "weighted-linear reusable MAP projection exceeds its fixed workspace",
-            ));
-        }
-        let mut workspace_reused = true;
-        if reference_norms.len() != columns
-            || reference_means.len() != columns
-            || within_norms.len() != columns
+        if with_response
+            && !self
+                .fe_projector
+                .as_ref()
+                .is_some_and(FeSession::supports_fused_projection)
         {
             return Err(invalid_argument(
-                "weighted-linear reusable norm workspaces are inconsistent",
+                "fused weighted-linear projection requires the admitted PPML projector",
             ));
         }
-        within_norms.fill(0.0);
-        let storage = match prior_storage {
+        let mut prior = self
+            .within
+            .take()
+            .ok_or_else(|| invalid_argument("weighted-linear projection has no retained design"))?;
+        let rows = prior.storage.rows();
+        let columns = prior.storage.columns();
+        if rows != self.response.len()
+            || prior.reference_norms.len() != columns
+            || prior.reference_means.len() != columns
+            || prior.within_norms.len() != columns
+            || with_response
+                && (self.frozen_workspace.response.len() != rows
+                    || self.previous_response.len() != rows)
+        {
+            return Err(invalid_argument(
+                "weighted-linear response/design state is not aligned",
+            ));
+        }
+        prior.within_norms.fill(0.0);
+        let mut workspace_reused = true;
+        let mut response_report = None;
+        prior.storage = match prior.storage {
             RetainedWithinStorage::Implicit(_) => unreachable!("implicit refresh handled above"),
-            RetainedWithinStorage::Dense(values) => {
-                if columns == 0 {
-                    RetainedWithinStorage::Dense(values)
+            RetainedWithinStorage::Dense(matrix) => {
+                if columns == 0 && !with_response {
+                    RetainedWithinStorage::Dense(matrix)
                 } else {
+                    let matrix = if with_response {
+                        let (matrix, reused) = self.expand_retained_response(matrix)?;
+                        workspace_reused &= reused;
+                        matrix
+                    } else {
+                        matrix
+                    };
+                    let first = usize::from(with_response);
                     if self.config.absorb.solver == FeSolverKind::Map
-                        && columns > self.reusable_map_max_rhs()?
+                        && matrix.ncols() > self.reusable_map_max_rhs()?
                     {
-                        return Err(invalid_argument(
-                            "weighted-linear reusable dense MAP projection exceeds its fixed workspace",
-                        ));
+                        return Err(invalid_argument("weighted-linear reusable dense MAP projection exceeds its fixed workspace"));
                     }
                     let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map
                     {
-                        self.absorb_reusable_map_with_norms(values, &mut within_norms)?
+                        self.absorb_reusable_map_with_norms(
+                            matrix,
+                            first..first + columns,
+                            &mut prior.within_norms,
+                        )?
                     } else {
                         (
                             self.prepared.fit_absorb_matrix(
                                 self.weights.borrowed(),
-                                values,
+                                matrix,
                                 self.config.absorb,
                             )?,
                             false,
                         )
                     };
-                    let (values, report) = absorbed.into_parts();
+                    let (matrix, report) = absorbed.into_parts();
                     if !report.certified() {
                         return Err(invalid_data(
-                            "weighted-linear reusable dense projection did not certify",
+                            "weighted-linear response/design projection did not certify",
                         ));
                     }
+                    let matrix = if with_response {
+                        response_report = Some(report);
+                        self.compact_retained_response(matrix)?
+                    } else {
+                        matrix
+                    };
                     if !norms_reused {
-                        workspace_reused &= self
-                            .fill_weighted_dense_column_norms_reusing(&values, &mut within_norms)?;
+                        self.fill_dense_statistics::<true, false>(
+                            &matrix,
+                            |column| column,
+                            &mut prior.within_norms,
+                            &mut [],
+                        )?;
                     }
-                    RetainedWithinStorage::Dense(values)
+                    RetainedWithinStorage::Dense(matrix)
                 }
             }
             RetainedWithinStorage::Scratch(mut scratch) => {
@@ -6158,119 +5759,68 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         block,
                         std::mem::take(&mut self.projection_block),
                     )?;
-                    let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map
-                    {
-                        self.absorb_reusable_map_with_norms(raw, &mut within_norms[start..end])?
-                    } else {
-                        (
-                            self.prepared.fit_absorb_matrix(
-                                self.weights.borrowed(),
-                                raw,
-                                self.config.absorb,
-                            )?,
-                            false,
-                        )
-                    };
-                    let (values, report) = absorbed.into_parts();
-                    if !report.certified() {
-                        return Err(invalid_data(
-                            "weighted-linear reusable scratch projection did not certify",
-                        ));
-                    }
-                    if !norms_reused {
-                        workspace_reused &= self.fill_weighted_dense_column_norms_reusing(
-                            &values,
-                            &mut within_norms[start..end],
-                        )?;
-                    }
+                    let (values, _, reused) =
+                        self.project_retained_block(raw, &mut prior.within_norms[start..end])?;
+                    workspace_reused &= reused;
                     self.projection_block = values.into_row_major();
                     scratch.patch_row_major_block(start, block, &self.projection_block)?;
                 }
                 RetainedWithinStorage::Scratch(scratch)
             }
         };
-        self.within = Some(RetainedWithinDesign {
-            storage,
-            stored_generated_columns,
-            active_positions,
-            reference_norms,
-            reference_means,
-            within_norms,
-            generations: WithinGenerations::from_session(self.generations),
-            certificate: LinearWithinDesignCertificate {
-                left_inverse_relative_infinity_norm: f64::INFINITY,
-                right_inverse_relative_infinity_norm: f64::INFINITY,
-                passed: false,
-            },
-        });
-        Ok(workspace_reused)
+        prior.generations = WithinGenerations::from_session(self.generations);
+        prior.certificate = LinearWithinDesignCertificate {
+            left_inverse_relative_infinity_norm: f64::INFINITY,
+            right_inverse_relative_infinity_norm: f64::INFINITY,
+            passed: false,
+        };
+        self.within = Some(prior);
+        Ok((workspace_reused, response_report))
     }
 
-    /// Re-project the prior within controls and the exact response-delta warm
-    /// start as one categorical MAP block. If `r_old = M_old z_old`, then
-    /// `M_new(r_old + z_new - z_old) = M_new z_new`; no approximation enters
-    /// the changing-weight solve. The retained dense allocation is expanded
-    /// and compacted in place, so warmed PPML iterations need no second
-    /// observation-sized projection matrix.
-    fn reproject_retained_with_response_in_place(&mut self) -> Result<(bool, SolveReport)> {
-        if self.group_centered_source.is_some() {
-            let (response, report) = self.refresh_group_centered_design()?;
-            self.frozen_workspace.response = response;
-            return Ok((false, report));
-        }
-        if !self
-            .fe_projector
-            .as_ref()
-            .is_some_and(FeSession::supports_fused_projection)
-        {
-            return Err(invalid_argument(
-                "fused weighted-linear projection requires the admitted PPML projector",
-            ));
-        }
-        let prior = self.within.take().ok_or_else(|| {
-            invalid_argument("fused weighted-linear projection has no retained design")
-        })?;
-        let rows = prior.storage.rows();
-        let columns = prior.storage.columns();
-        let RetainedWithinDesign {
-            storage,
-            stored_generated_columns,
-            active_positions,
-            reference_norms,
-            reference_means,
-            mut within_norms,
-            ..
-        } = prior;
-        let RetainedWithinStorage::Dense(matrix) = storage else {
-            return Err(invalid_argument(
-                "fused weighted-linear projection requires fast dense storage",
-            ));
+    fn project_retained_block(
+        &mut self,
+        matrix: DenseMatrix,
+        norms: &mut [f64],
+    ) -> Result<(DenseMatrix, SolveReport, bool)> {
+        let (absorbed, norms_reused) = if self.config.absorb.solver == FeSolverKind::Map {
+            self.absorb_reusable_map_with_norms(matrix, 0..norms.len(), norms)?
+        } else {
+            (
+                self.prepared.fit_absorb_matrix(
+                    self.weights.borrowed(),
+                    matrix,
+                    self.config.absorb,
+                )?,
+                false,
+            )
         };
-        if rows != self.response.len()
-            || self.frozen_workspace.response.len() != rows
-            || self.previous_response.len() != rows
-            || reference_norms.len() != columns
-            || reference_means.len() != columns
-            || within_norms.len() != columns
-        {
-            return Err(invalid_argument(
-                "fused weighted-linear response/design state is not aligned",
+        let (matrix, report) = absorbed.into_parts();
+        if !report.certified() {
+            return Err(invalid_data(
+                "weighted-linear reusable projection did not certify",
             ));
         }
+        if !norms_reused {
+            self.fill_dense_statistics::<true, false>(&matrix, |column| column, norms, &mut [])?;
+        }
+        Ok((matrix, report, true))
+    }
+
+    fn expand_retained_response(&self, matrix: DenseMatrix) -> Result<(DenseMatrix, bool)> {
+        let rows = matrix.nrows();
+        let columns = matrix.ncols();
         let stride = columns
             .checked_add(1)
             .ok_or_else(|| allocation("fused weighted-linear stride overflows"))?;
         let elements = checked_elements(rows, stride)?;
         let mut values = matrix.into_row_major();
-        let mut workspace_reused = values.capacity() >= elements;
+        let workspace_reused = values.capacity() >= elements;
         values
             .try_reserve(elements.saturating_sub(values.len()))
             .map_err(|_| allocation("unable to expand fused weighted-linear projection"))?;
         values.resize(elements, 0.0);
         let previous_response = self.previous_response.as_slice();
-        if previous_response.len() != rows {
-            return Err(invalid_argument("fused response history dimensions differ"));
-        }
         for row in (0..rows).rev() {
             let source = row
                 .checked_mul(columns)
@@ -6291,47 +5841,17 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             values[target] = response;
         }
 
-        let combined = DenseMatrix::from_row_major(rows, stride, values)?;
-        let (absorbed, norms_reused) = match self.fe_projector.as_mut() {
-            Some(FeSession {
-                categorical: Some(projector),
-                ..
-            }) => projector.absorb_with_trailing_norms(
-                self.weights.borrowed(),
-                combined,
-                self.config.absorb.map,
-                self.bread_weight_scale.solver_weight_divisor,
-                &mut within_norms,
-            )?,
-            Some(FeSession {
-                general: Some(projector),
-                coefficients: true,
-                ..
-            }) => (
-                projector.absorb_coefficient_with_selected_norms(
-                    &self.map_weights,
-                    combined,
-                    self.config.absorb.map,
-                    self.generations.map_geometry(),
-                    1..stride,
-                    None,
-                    &mut within_norms,
-                )?,
-                true,
-            ),
-            _ => {
-                return Err(invalid_argument(
-                    "fused projection requires an admitted PPML projector",
-                ))
-            }
-        };
-        if !absorbed.report().certified() {
-            return Err(invalid_data(
-                "fused weighted-linear response/design projection did not certify",
-            ));
-        }
-        let (combined, report) = absorbed.into_parts();
-        let mut values = combined.into_row_major();
+        Ok((
+            DenseMatrix::from_row_major(rows, stride, values)?,
+            workspace_reused,
+        ))
+    }
+
+    fn compact_retained_response(&mut self, matrix: DenseMatrix) -> Result<DenseMatrix> {
+        let rows = matrix.nrows();
+        let stride = matrix.ncols();
+        let columns = stride - 1;
+        let mut values = matrix.into_row_major();
         resize_zeroed(
             &mut self.frozen_workspace.response,
             rows,
@@ -6350,51 +5870,30 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             }
         }
         values.truncate(checked_elements(rows, columns)?);
-        let within = DenseMatrix::from_row_major(rows, columns, values)?;
-        // Strict rank and score checks consume these norms under the current
-        // weight frame, even when a frozen solve did not need them itself.
-        if !norms_reused {
-            workspace_reused &=
-                self.fill_weighted_dense_column_norms_reusing(&within, &mut within_norms)?;
-        }
-        self.within = Some(RetainedWithinDesign {
-            storage: RetainedWithinStorage::Dense(within),
-            stored_generated_columns,
-            active_positions,
-            reference_norms,
-            reference_means,
-            within_norms,
-            generations: WithinGenerations::from_session(self.generations),
-            certificate: LinearWithinDesignCertificate {
-                left_inverse_relative_infinity_norm: f64::INFINITY,
-                right_inverse_relative_infinity_norm: f64::INFINITY,
-                passed: false,
-            },
-        });
-        Ok((workspace_reused, report))
+        DenseMatrix::from_row_major(rows, columns, values)
     }
 
     fn rebuild_predictors(
         &mut self,
-        fit: &CertifiedPreparedOlsFit,
+        fit: &CertifiedLinearFrame,
     ) -> Result<LinearReconstructionCertificate> {
         let rows = self.response.len();
-        if self.finite_predictor.len() != rows {
+        if self.predictors.finite.len() != rows {
             return Err(invalid_argument("canonical finite predictor is misaligned"));
         }
         resize_zeroed(
-            &mut self.absorbed_predictor,
+            &mut self.predictors.absorbed,
             rows,
             "unable to reserve weighted-linear absorbed predictor",
         )?;
         let mut certificate = LinearReconstructionCertificate::new();
         for row in 0..rows {
-            self.absorbed_predictor[row] =
-                (self.response[row] - fit.residuals()[row]) - self.finite_predictor[row];
+            self.predictors.absorbed[row] =
+                (self.response[row] - fit.residuals()[row]) - self.predictors.finite[row];
             certificate.observe(
                 self.response[row],
-                self.finite_predictor[row],
-                self.absorbed_predictor[row],
+                self.predictors.finite[row],
+                self.predictors.absorbed[row],
                 fit.residuals()[row],
             )?;
         }
@@ -6411,7 +5910,8 @@ struct FrozenSolveDraft {
 
 struct RetainedRankSolveDraft {
     constant: Option<LinearConstantRepresentation>,
-    fit: CertifiedPreparedOlsFit,
+    frame: CertifiedLinearFrame,
+    basis: FrozenLinearBasis,
     finite_predictor: Vec<f64>,
     active_positions: Vec<usize>,
     within_certificate: LinearWithinDesignCertificate,
@@ -6420,7 +5920,6 @@ struct RetainedRankSolveDraft {
 
 struct RetainedSolveStage {
     candidate: RetainedRankSolveDraft,
-    candidate_basis: Option<FrozenLinearBasis>,
     report: LinearSessionReuseReport,
     #[cfg(test)]
     response_fused_with_design: bool,
@@ -6812,54 +6311,6 @@ fn certify_frozen_combined_predictor(
         certificate.observe(response, 0.0, response - residual, residual)?;
     }
     Ok(certificate)
-}
-
-fn fill_identified_bread(
-    fit: &CertifiedPreparedOlsFit,
-    basis: &FrozenLinearBasis,
-    output: &mut Vec<f64>,
-) -> Result<()> {
-    let kept = basis.kept_generated_columns();
-    if fit.kept_generated_columns() != kept {
-        return Err(invalid_argument(
-            "weighted-linear final bread basis differs from the frozen basis",
-        ));
-    }
-    let rank = kept.len();
-    let square = checked_elements(rank, rank)?;
-    resize_zeroed(
-        output,
-        square,
-        "unable to reserve weighted-linear compact identified bread",
-    )?;
-    let coordinates = fit.bread().coordinates();
-    let values = fit.bread().values();
-    let dimension = fit.bread().dimension();
-    for (target_row, generated_row) in kept.iter().copied().enumerate() {
-        let source_row = coordinates
-            .iter()
-            .position(|coordinate| {
-                coordinate.generated_column_index == generated_row
-                    && coordinate.kind == PreparedOlsBreadCoordinateKind::FiniteRegressor
-            })
-            .ok_or_else(|| {
-                invalid_argument("weighted-linear final bread is missing an identified row")
-            })?;
-        for (target_column, generated_column) in kept.iter().copied().enumerate() {
-            let source_column = coordinates
-                .iter()
-                .position(|coordinate| {
-                    coordinate.generated_column_index == generated_column
-                        && coordinate.kind == PreparedOlsBreadCoordinateKind::FiniteRegressor
-                })
-                .ok_or_else(|| {
-                    invalid_argument("weighted-linear final bread is missing an identified column")
-                })?;
-            output[target_row * rank + target_column] =
-                values[source_row * dimension + source_column];
-        }
-    }
-    Ok(())
 }
 
 fn require_newer(current: u64, next: u64, label: &'static str) -> Result<()> {

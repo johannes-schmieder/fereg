@@ -26,7 +26,7 @@ impl ProjectedFiniteRows<'_> {
                 rows: values.nrows(),
                 stored_columns: values.ncols() - 1,
                 selected_columns: Some(selected),
-                response: FiniteResponse::FirstColumn(values),
+                response: FiniteResponse::Column(values, 0),
                 weights: weights.borrowed(),
                 solver_weight_divisor: weight_scale.solver_weight_divisor,
                 column_scales: Some(scales),

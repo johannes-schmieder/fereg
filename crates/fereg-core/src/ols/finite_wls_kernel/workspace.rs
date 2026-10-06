@@ -19,7 +19,6 @@ pub(crate) struct FiniteWorkspace<Slot = ()> {
     pub(crate) candidate_positions: Vec<usize>,
     pub(crate) candidate_ids: Vec<usize>,
     pub(crate) candidate_scales: Vec<f64>,
-    pub(crate) reference_mean_corrections: Vec<f64>,
     pub(crate) basis_slots: Vec<Slot>,
 }
 impl<Slot> Default for FiniteWorkspace<Slot> {
@@ -43,7 +42,6 @@ impl<Slot> Default for FiniteWorkspace<Slot> {
             candidate_positions: Vec::new(),
             candidate_ids: Vec::new(),
             candidate_scales: Vec::new(),
-            reference_mean_corrections: Vec::new(),
             basis_slots: Vec::new(),
         }
     }

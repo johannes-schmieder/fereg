@@ -59,6 +59,44 @@ pub(crate) struct PreparedPpmlModelGeneration {
     adjustment_report: PreparedPpmlAdjustmentReport,
 }
 
+/// Retain the exact immutable owner, including its original-row axis, beside
+/// numerical artifacts. Equal-shaped or stale generations cannot substitute.
+#[derive(Debug, Clone, PartialEq)]
+pub(super) struct PpmlGenerationBinding {
+    generation: u64,
+    prepared: PreparedPpmlModel,
+}
+
+impl PpmlGenerationBinding {
+    pub(super) fn capture(generation: &PreparedPpmlModelGeneration) -> Result<Self> {
+        Ok(Self {
+            generation: u64::try_from(generation.generation())
+                .map_err(|_| invalid_argument("PPML model generation is not representable"))?,
+            prepared: generation.prepared().clone(),
+        })
+    }
+    pub(super) const fn generation(&self) -> u64 {
+        self.generation
+    }
+    pub(super) fn validate(
+        &self,
+        generation: &PreparedPpmlModelGeneration,
+        rows: usize,
+    ) -> Result<()> {
+        if self.generation
+            != u64::try_from(generation.generation())
+                .map_err(|_| invalid_argument("PPML model generation is not representable"))?
+            || !Arc::ptr_eq(&self.prepared, generation.prepared())
+            || rows != generation.original_rows().len()
+        {
+            return Err(invalid_argument(
+                "PPML numerical artifact belongs to another prepared generation",
+            ));
+        }
+        Ok(())
+    }
+}
+
 impl PreparedPpmlModelGeneration {
     /// All generation-owned heap capacities. The shared initial-drop-reason
     /// Arc belongs to the immutable raw owner and is counted there exactly once.
@@ -1142,6 +1180,28 @@ mod tests {
         assert_eq!(restored.original_rows(), initial.original_rows());
         assert_eq!(restored.prior_weights(), initial.prior_weights());
         assert_eq!(restored.fit_view().sample(), initial.fit_view().sample());
+    }
+
+    #[test]
+    fn numerical_artifact_binding_rejects_substitution_and_rebase() {
+        let fixture = categorical_clustered_fixture();
+        let numeric = fixture.prepare_numeric();
+        let mut owner = fixture.into_owner(numeric);
+        let first = owner.rebuild_generation(&[0, 1, 2, 3, 4, 5, 6], 0).unwrap();
+        let binding = PpmlGenerationBinding::capture(&first).unwrap();
+        assert_eq!(binding.generation(), 0);
+        binding.validate(&first, 7).unwrap();
+        assert!(binding.validate(&first, 6).is_err());
+        let equivalent = owner.rebuild_generation(first.original_rows(), 0).unwrap();
+        assert_eq!(first.original_rows(), equivalent.original_rows());
+        assert_eq!(first.fit_view(), equivalent.fit_view());
+        assert!(binding.validate(&equivalent, 7).is_err());
+        let rebased = owner.rebuild_generation(&[0, 2, 3, 5, 6], 1).unwrap();
+        assert!(binding.validate(&rebased, 5).is_err());
+        PpmlGenerationBinding::capture(&rebased)
+            .unwrap()
+            .validate(&rebased, 5)
+            .unwrap();
     }
 
     #[test]

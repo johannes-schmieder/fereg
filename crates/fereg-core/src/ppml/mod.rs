@@ -26,6 +26,7 @@ mod psd;
 mod residuals;
 mod result;
 mod solver;
+mod topology_identity;
 mod vce;
 
 pub use certificate::PpmlCertificate;

@@ -513,6 +513,7 @@ impl LinearInstallation {
         prepared: &'a P,
         frame: LinearSolveFrame<'_>,
         initial_config: PreparedOlsFitConfig,
+        generations: LinearSessionGenerations,
         fe_design: FeDesign,
         shared_prepared: &mut Option<crate::prepared_fit_view::SharedPreparedOlsData>,
         config: &PreparedPpmlIrlsConfig,
@@ -523,7 +524,7 @@ impl LinearInstallation {
             prepared,
             frame,
             initial_config,
-            LinearSessionGenerations::new(1, 1, 1, 1, 1),
+            generations,
             fe_design,
         )?;
         // A refused centered option retains the caller's shared owner through the fit.

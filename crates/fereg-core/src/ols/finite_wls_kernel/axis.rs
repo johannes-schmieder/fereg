@@ -4,13 +4,13 @@ use crate::data::DenseMatrix;
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum FiniteResponse<'a> {
     Slice(&'a [f64]),
-    FirstColumn(&'a DenseMatrix),
+    Column(&'a DenseMatrix, usize),
 }
 impl FiniteResponse<'_> {
     pub(crate) fn len(self) -> usize {
         match self {
             Self::Slice(values) => values.len(),
-            Self::FirstColumn(values) => values.nrows(),
+            Self::Column(values, _) => values.nrows(),
         }
     }
     pub(crate) fn iter(&self) -> impl Iterator<Item = &f64> {
@@ -22,7 +22,7 @@ impl std::ops::Index<usize> for FiniteResponse<'_> {
     fn index(&self, row: usize) -> &f64 {
         match self {
             Self::Slice(values) => &values[row],
-            Self::FirstColumn(values) => &values[(row, 0)],
+            Self::Column(values, column) => &values[(row, *column)],
         }
     }
 }
@@ -64,6 +64,14 @@ impl<'a> FiniteDenseRows<'a> {
             stride: values.ncols(),
             offset: 1,
             columns: values.ncols().saturating_sub(1),
+        }
+    }
+    pub(crate) fn prefix(values: &'a DenseMatrix, columns: usize) -> Self {
+        Self {
+            values: values.as_slice(),
+            stride: values.ncols(),
+            offset: 0,
+            columns,
         }
     }
     pub(crate) fn valid_for(self, rows: usize, columns: usize) -> bool {

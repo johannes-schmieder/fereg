@@ -196,8 +196,8 @@ remain mandatory. This does not establish final integrated performance acceptanc
 Johannes's 2026-10-06 M32 successor authorization permits comparable architectural
 acceptance: scientific/transaction gates and Astra review pass, substantial
 retirement is delivered, every immediate-parent comparison is within, and only
-previously accepted fixed-M26 cost families remain unresolved without observed
-worsening beyond their accepted costs. Retain all evidence and raw verdicts.
+previously accepted fixed-M26 costs remain, unresolved or established, without
+observed worsening beyond their accepted costs. Retain all evidence and raw verdicts.
 New established regressions require correction or a separate decision; the
 allowance and final integrated performance requirements remain unchanged.
 

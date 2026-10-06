@@ -44,12 +44,15 @@ pub(super) fn canonical_retry<P: PreparedOlsFitView + Sync + ?Sized>(
         return Err(numerical_nonconvergence(failure_message));
     }
     *certified_subproblems = certified_subproblems.saturating_add(1);
-    accumulate_inner_iterations(total_inner_iterations, canonical.fit().absorption_report())?;
+    accumulate_inner_iterations(
+        total_inner_iterations,
+        canonical.frame().absorption_report(),
+    )?;
     solver_report
         .as_mut()
         .ok_or_else(|| internal("PPML MAP fallback lacks solver diagnostics"))?
         .observe(map_solver_observation(
-            canonical.fit().absorption_report(),
+            canonical.frame().absorption_report(),
             PpmlSolverFrameKind::Ordinary,
         ))?;
     fill_candidate_eta_from_linear_output(&canonical, offset, workspace.candidate_eta_mut())?;
@@ -62,8 +65,8 @@ pub(super) fn canonical_retry<P: PreparedOlsFitView + Sync + ?Sized>(
         memory.observe_steady_state_allocation(observation)?;
     }
     Ok((
-        canonical.fit().finite_rank(),
+        canonical.frame().finite_rank(),
         canonical.reuse_report(),
-        canonical.fit().absorption_report().used_solver,
+        canonical.frame().absorption_report().used_solver,
     ))
 }

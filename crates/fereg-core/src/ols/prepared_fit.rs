@@ -626,22 +626,6 @@ impl CertifiedPreparedOlsFit {
         self.initial_absorbed_outcome_sum_of_squares
     }
 
-    /// Capacity inventory of the six retained finite-result banks. PPML's
-    /// session forbids the separately owned inference cache and FE products.
-    pub(crate) fn session_capacity_inventory(&self) -> ([usize; 6], bool) {
-        (
-            [
-                self.coefficients.capacity(),
-                self.kept_generated_columns.capacity(),
-                self.dropped_generated_columns.capacity(),
-                self.bread.coordinates.capacity(),
-                self.bread.values.capacity(),
-                self.residuals.storage_capacity(),
-            ],
-            self.recovered_fe_coefficients.is_some() || self.fast_score_cache.is_some(),
-        )
-    }
-
     /// Final FE-orthogonal regression residuals on the compact prepared axis.
     #[must_use]
     pub fn residuals(&self) -> &[f64] {
@@ -679,10 +663,6 @@ impl CertifiedPreparedOlsFit {
 
     pub(super) fn record_additional_scratch_peak(&mut self, bytes: u64) {
         self.execution.scratch_bytes = self.execution.scratch_bytes.max(bytes);
-    }
-
-    pub(super) fn into_session_residual_storage(self) -> Vec<f64> {
-        self.residuals.into_row_major()
     }
 }
 
@@ -1034,10 +1014,8 @@ pub(super) struct RetainedFitContext<'a> {
     pub(super) reference_norms: Vec<f64>,
     pub(super) score_norms: Vec<f64>,
     pub(super) within_outcome_norm: f64,
-    pub(super) normalized_initial_within_sum_of_squares: f64,
     pub(super) residual_absorption_report: SolveReport,
     pub(super) absorption_report: SolveReport,
-    pub(super) scratch_bytes: u64,
 }
 
 #[derive(Debug)]
@@ -1301,13 +1279,18 @@ pub(crate) fn fit_prepared_weighted_linear_once<'a, P: PreparedOlsFitView + Sync
     })?
 }
 
-pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + Sync + ?Sized>(
+pub(super) fn assemble_retained_linear_frame<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     prepared: &'a P,
     frame: LinearSolveFrame<'a>,
     config: PreparedOlsFitConfig,
     mut qr: FiniteFit,
     draft: RetainedFitContext<'_>,
-) -> Result<(CertifiedPreparedOlsFit, Vec<f64>)> {
+    generations: super::linear_session::LinearSessionGenerations,
+) -> Result<(
+    crate::ols::linear_session::CertifiedLinearFrame,
+    super::linear_session::FrozenLinearBasis,
+    Vec<f64>,
+)> {
     frame.validate_for(prepared)?;
     validate_config(prepared, config)?;
     qr.validate_axes(
@@ -1323,6 +1306,161 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
     }
     let mut coefficients = build_coefficient_slots(prepared, &qr, &mut SystemFitReservation)?;
     let weights = frame.weights();
+    let finite_predictor = retained_finite_predictor(prepared, &qr, &coefficients)?;
+    let bread = finalize_reported_bread_and_intercept(
+        prepared,
+        frame.response(),
+        &mut qr,
+        None,
+        weights,
+        config.bread_tolerance,
+        &mut SystemFitReservation,
+        FitPerturbations::default(),
+        None,
+        None,
+        None,
+        Some(draft.raw_column_means),
+        Some(&finite_predictor),
+    )?;
+    let within_residuals = qr.within_residuals.take().ok_or_else(|| {
+        invalid_argument("retained weighted-linear fit did not retain its within residual")
+    })?;
+    if !draft.residual_absorption_report.certified() {
+        return Err(invalid_data(
+            "retained weighted-linear residual absorption did not certify",
+        ));
+    }
+    let mut residual_absorption_report = draft.residual_absorption_report;
+    // A retained PPML session may own the accepted fit beside one speculative
+    // strict candidate. Solver warnings are diagnostic strings with no
+    // scientific authority and no finite heap bound, so they cannot become
+    // persistent session state. Drop both warning banks here, without
+    // changing the public one-shot fereg result path.
+    residual_absorption_report.warnings = Vec::new();
+    let mut absorption_report = draft.absorption_report;
+    absorption_report.warnings = Vec::new();
+    let score_certificate = certify_scores(
+        prepared,
+        &within_residuals,
+        weights,
+        &draft.reference_norms,
+        &draft.score_norms,
+        qr.finite_score,
+        &qr.generated_statuses,
+        draft.within_outcome_norm,
+        config.score_tolerance,
+    )?;
+    if !score_certificate.passed {
+        return Err(invalid_data(
+            "retained weighted-linear score certificate did not pass",
+        ));
+    }
+    // Bread installs only the deferred absorbed-intercept normalization.
+    // Preserve the already-built slot owner and refresh its reported fields.
+    for coefficient in &mut coefficients {
+        if let Some(generated) = coefficient.generated_column_index {
+            coefficient.status = qr.generated_statuses[generated];
+            coefficient.value = qr.generated_coefficients[generated];
+        }
+    }
+    qr.kept.sort_unstable();
+    qr.dropped.sort_unstable();
+    let (bread, bread_certificate) = compact_linear_bread(bread, &qr.kept)?;
+    let mut reported = reserved_empty(
+        &mut SystemFitReservation,
+        coefficients.len(),
+        "unable to reserve linear reported values",
+    )?;
+    for coefficient in &coefficients {
+        push_reserved(
+            &mut reported,
+            coefficient.value,
+            "linear reported capacity was underestimated",
+        )?;
+    }
+    let mut compact = reserved_empty(
+        &mut SystemFitReservation,
+        qr.kept.len(),
+        "unable to reserve linear finite values",
+    )?;
+    for &generated in &qr.kept {
+        push_reserved(
+            &mut compact,
+            qr.generated_coefficients[generated]
+                .ok_or_else(|| invalid_data("linear kept coefficient is absent"))?,
+            "linear finite capacity was underestimated",
+        )?;
+    }
+    let basis =
+        super::linear_session::FrozenLinearBasis::from_slots(&coefficients, qr.kept, qr.dropped)?;
+    Ok((
+        crate::ols::linear_session::CertifiedLinearFrame {
+            coefficients: compact,
+            reported_coefficients: reported,
+            bread,
+            within_residuals,
+            response_absorption_report: absorption_report,
+            generations,
+            decomposition: None,
+            proof: super::linear_session::LinearFrameProof::Canonical(
+                super::linear_session::CanonicalLinearProof {
+                    rank: qr.certificate,
+                    score: score_certificate,
+                    bread: bread_certificate,
+                    residual_absorption: residual_absorption_report,
+                },
+            ),
+        },
+        basis,
+        finite_predictor,
+    ))
+}
+
+fn compact_linear_bread(
+    mut bread: PreparedOlsBread,
+    kept: &[usize],
+) -> Result<(Vec<f64>, PreparedOlsBreadCertificate)> {
+    let rank = kept.len();
+    let dimension = bread.dimension();
+    if dimension < rank
+        || dimension > rank + 1
+        || !bread.certificate.passed
+        || bread
+            .coordinates
+            .iter()
+            .take(rank)
+            .zip(kept)
+            .any(|(coordinate, generated)| {
+                coordinate.kind != PreparedOlsBreadCoordinateKind::FiniteRegressor
+                    || coordinate.generated_column_index != *generated
+            })
+        || bread.coordinates.iter().skip(rank).any(|coordinate| {
+            coordinate.kind != PreparedOlsBreadCoordinateKind::NormalizedAbsorbedIntercept
+        })
+        || bread.values.len()
+            != dimension
+                .checked_mul(dimension)
+                .ok_or_else(|| allocation("linear bread dimensions overflow"))?
+    {
+        return Err(invalid_argument(
+            "linear bread coordinates do not match the canonical basis",
+        ));
+    }
+    for row in 0..rank {
+        bread
+            .values
+            .copy_within(row * dimension..row * dimension + rank, row * rank);
+    }
+    // Truncation preserves the admitted expanded-bread capacity.
+    bread.values.truncate(rank * rank);
+    Ok((bread.values, bread.certificate))
+}
+
+fn retained_finite_predictor<P: PreparedOlsFitView + Sync + ?Sized>(
+    prepared: &P,
+    qr: &FiniteFit,
+    coefficients: &[PreparedOlsFittedCoefficient],
+) -> Result<Vec<f64>> {
     let mut finite_predictor = reserved_filled(
         &mut SystemFitReservation,
         prepared.fit_sample().n_active(),
@@ -1345,7 +1483,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
         numeric.add_selected_columns(&selected[..count], &mut finite_predictor)?;
     } else if !crate::prepared_fit_view::add_generated_predictor(
         prepared,
-        &coefficients,
+        coefficients,
         &mut finite_predictor,
     )? {
         crate::parallel::stage_try_for_each(
@@ -1367,90 +1505,7 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
             },
         )?;
     }
-    let bread = finalize_reported_bread_and_intercept(
-        prepared,
-        frame.response(),
-        &mut qr,
-        None,
-        weights,
-        config.bread_tolerance,
-        &mut SystemFitReservation,
-        FitPerturbations::default(),
-        None,
-        None,
-        None,
-        Some(draft.raw_column_means),
-        Some(&finite_predictor),
-    )?;
-    let initial_absorbed_outcome_sum_of_squares = draft.normalized_initial_within_sum_of_squares
-        * frame.bread_weight_scale().reference_weight_multiplier;
-    if !initial_absorbed_outcome_sum_of_squares.is_finite()
-        || initial_absorbed_outcome_sum_of_squares < 0.0
-    {
-        return Err(invalid_data(
-            "retained weighted-linear initial absorbed outcome sum of squares is invalid",
-        ));
-    }
-    let within_residuals = qr.within_residuals.take().ok_or_else(|| {
-        invalid_argument("retained weighted-linear fit did not retain its within residual")
-    })?;
-    if !draft.residual_absorption_report.certified() {
-        return Err(invalid_data(
-            "retained weighted-linear residual absorption did not certify",
-        ));
-    }
-    let residuals =
-        DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, within_residuals)?;
-    let mut residual_absorption_report = draft.residual_absorption_report;
-    // A retained PPML session may own the accepted fit beside one speculative
-    // strict candidate. Solver warnings are diagnostic strings with no
-    // scientific authority and no finite heap bound, so they cannot become
-    // persistent session state. Drop both warning banks here, without
-    // changing the public one-shot fereg result path.
-    residual_absorption_report.warnings = Vec::new();
-    let mut absorption_report = draft.absorption_report;
-    absorption_report.warnings = Vec::new();
-    let score_certificate = certify_scores(
-        prepared,
-        residuals.as_slice(),
-        weights,
-        &draft.reference_norms,
-        &draft.score_norms,
-        qr.finite_score,
-        &qr.generated_statuses,
-        draft.within_outcome_norm,
-        config.score_tolerance,
-    )?;
-    if !score_certificate.passed {
-        return Err(invalid_data(
-            "retained weighted-linear score certificate did not pass",
-        ));
-    }
-    // Bread installs only the deferred absorbed-intercept normalization.
-    // Preserve the already-built slot owner and refresh its reported fields.
-    for coefficient in &mut coefficients {
-        if let Some(generated) = coefficient.generated_column_index {
-            coefficient.status = qr.generated_statuses[generated];
-            coefficient.value = qr.generated_coefficients[generated];
-        }
-    }
-    Ok((
-        qr.publish(
-            coefficients,
-            FitPublication {
-                score_certificate,
-                bread,
-                absorption_report,
-                residual_absorption_report,
-                initial_absorbed_outcome_sum_of_squares,
-                residuals,
-                recovered_fe_coefficients: None,
-                fast_score_cache: None,
-                execution: PreparedOlsExecutionReport::from_config(config, draft.scratch_bytes),
-            },
-        ),
-        finite_predictor,
-    ))
+    Ok(finite_predictor)
 }
 
 /// Canonical finite-plus-FE projection without covariance/report publication.
@@ -4772,9 +4827,10 @@ mod tests {
     };
     use crate::ols::{
         begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation,
-        prepare_ols_data, CertifiedLinearSession, CertifiedLinearWithinDesign,
-        LinearSessionAllocationPhase, LinearSessionGenerations, LinearSessionPhaseAllocationEvent,
-        LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1,
+        prepare_ols_data, CertifiedLinearSession, CertifiedLinearSessionOutput,
+        CertifiedLinearSessionProducts, CertifiedLinearWithinDesign, LinearSessionAllocationPhase,
+        LinearSessionGenerations, LinearSessionPhaseAllocationEvent, LoadedNumericColumn,
+        LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1,
     };
     use crate::sandwich::SandwichDesign;
     use std::sync::atomic::{AtomicUsize, Ordering};
@@ -6964,19 +7020,19 @@ mod tests {
         let actual = lsmr.solve_fresh().expect("LSMR initial solve");
         assert!(actual.certified());
         assert_eq!(
-            actual.fit().absorption_report().requested_solver,
+            actual.frame().absorption_report().requested_solver,
             FeSolverKind::Lsmr,
             "initial projection report: {:?}",
-            actual.fit().absorption_report(),
+            actual.frame().absorption_report(),
         );
-        let used_solver = actual.fit().absorption_report().used_solver;
+        let used_solver = actual.frame().absorption_report().used_solver;
         assert!(matches!(
             used_solver,
             FeSolverKind::Lsmr | FeSolverKind::Map
         ));
         // Bounded two/three-FE Schur checkpoints report Map on success without
         // a failed LSMR attempt. Only a true fallback must report Map.
-        if actual.fit().absorption_report().fallback_used {
+        if actual.frame().absorption_report().fallback_used {
             assert_eq!(used_solver, FeSolverKind::Map);
         } else if used_solver == FeSolverKind::Map {
             assert!(matches!(
@@ -6984,53 +7040,38 @@ mod tests {
                 2 | 3
             ));
         }
-        assert_eq!(actual.fit().finite_rank(), expected.fit().finite_rank());
+        assert_eq!(actual.frame().finite_rank(), expected.frame().finite_rank());
         assert_eq!(
-            actual.fit().kept_generated_columns(),
-            expected.fit().kept_generated_columns()
+            actual.basis().kept_generated_columns(),
+            expected.basis().kept_generated_columns()
         );
         assert_eq!(
-            actual.fit().dropped_generated_columns(),
-            expected.fit().dropped_generated_columns()
+            actual.basis().dropped_generated_columns(),
+            expected.basis().dropped_generated_columns()
         );
         assert_eq!(
             actual
-                .fit()
                 .coefficients()
-                .iter()
                 .map(|coefficient| coefficient.status)
                 .collect::<Vec<_>>(),
             expected
-                .fit()
                 .coefficients()
-                .iter()
                 .map(|coefficient| coefficient.status)
                 .collect::<Vec<_>>()
         );
-        for (actual, expected) in actual
-            .fit()
-            .coefficients()
-            .iter()
-            .zip(expected.fit().coefficients())
-        {
+        for (actual, expected) in actual.coefficients().zip(expected.coefficients()) {
             match (actual.value, expected.value) {
                 (Some(actual), Some(expected)) => assert_close(actual, expected, 2e-6),
                 (None, None) => {}
                 _ => panic!("initial checkpoint coefficient presence differs"),
             }
         }
-        for (&actual, &expected) in actual
-            .fit()
-            .bread()
-            .values()
-            .iter()
-            .zip(expected.fit().bread().values())
-        {
+        for (&actual, &expected) in actual.frame().bread().iter().zip(expected.frame().bread()) {
             assert_close(actual, expected, 2e-6);
         }
-        assert!(actual.fit().rank_certificate().passed);
-        assert!(actual.fit().score_certificate().passed);
-        assert!(actual.fit().bread().certificate().passed);
+        assert!(actual.frame().rank_certificate().passed);
+        assert!(actual.frame().score_certificate().passed);
+        assert!(actual.frame().canonical_proof().unwrap().bread.passed);
         used_solver
     }
 
@@ -7226,7 +7267,7 @@ mod tests {
             rows: within.nrows(),
             stored_columns: within.ncols() - 1,
             selected_columns: Some(candidates),
-            response: FiniteResponse::FirstColumn(within),
+            response: FiniteResponse::Column(within, 0),
             weights: BorrowedMapWeights::Unit,
             solver_weight_divisor: 1.0,
             column_scales: None,
@@ -10677,32 +10718,30 @@ mod tests {
             .solve_fresh()
             .expect("independently certified MAP fallback");
         assert_eq!(
-            fallback.fit().absorption_report().requested_solver,
+            fallback.frame().absorption_report().requested_solver,
             FeSolverKind::Lsmr
         );
         assert_eq!(
-            fallback.fit().absorption_report().used_solver,
+            fallback.frame().absorption_report().used_solver,
             FeSolverKind::Map,
             "design={:?}, residual={:?}",
-            fallback.fit().absorption_report(),
-            fallback.fit().residual_absorption_report(),
+            fallback.frame().absorption_report(),
+            fallback.frame().residual_absorption_report(),
         );
-        assert!(fallback.fit().absorption_report().fallback_used);
-        assert_eq!(fallback.fit().finite_rank(), expected.fit().finite_rank());
+        assert!(fallback.frame().absorption_report().fallback_used);
         assert_eq!(
-            fallback.fit().kept_generated_columns(),
-            expected.fit().kept_generated_columns()
+            fallback.frame().finite_rank(),
+            expected.frame().finite_rank()
         );
         assert_eq!(
-            fallback.fit().dropped_generated_columns(),
-            expected.fit().dropped_generated_columns()
+            fallback.basis().kept_generated_columns(),
+            expected.basis().kept_generated_columns()
         );
-        for (fallback, expected) in fallback
-            .fit()
-            .coefficients()
-            .iter()
-            .zip(expected.fit().coefficients())
-        {
+        assert_eq!(
+            fallback.basis().dropped_generated_columns(),
+            expected.basis().dropped_generated_columns()
+        );
+        for (fallback, expected) in fallback.coefficients().zip(expected.coefficients()) {
             assert_eq!(fallback.status, expected.status);
             match (fallback.value, expected.value) {
                 (Some(fallback), Some(expected)) => assert_close(fallback, expected, 2e-12),
@@ -10732,16 +10771,16 @@ mod tests {
                 .solve_fresh()
                 .expect("fatal injection must leave the session reusable");
             assert_eq!(
-                retry.fit().absorption_report().requested_solver,
+                retry.frame().absorption_report().requested_solver,
                 FeSolverKind::Lsmr
             );
             // With the fault consumed, the admitted two-FE Schur accelerator
             // can again certify the requested checkpoint before LSMR runs.
             assert_eq!(
-                retry.fit().absorption_report().used_solver,
+                retry.frame().absorption_report().used_solver,
                 FeSolverKind::Map
             );
-            assert!(!retry.fit().absorption_report().fallback_used);
+            assert!(!retry.frame().absorption_report().fallback_used);
             assert!(retry.certified());
         }
 
@@ -10765,7 +10804,7 @@ mod tests {
             let retry = session
                 .solve_fresh()
                 .expect("rank failure must leave the private session reusable");
-            assert_eq!(retry.fit().finite_rank(), expected.fit().finite_rank());
+            assert_eq!(retry.frame().finite_rank(), expected.frame().finite_rank());
             assert!(retry.certified());
         }
     }
@@ -10996,12 +11035,12 @@ mod tests {
             assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 1);
             assert_eq!(LINEAR_FINITE_ENDS.load(Ordering::SeqCst), 1);
             assert_eq!(
-                fresh.fit().finite_rank(),
+                fresh.frame().finite_rank(),
                 2,
                 "retained coefficients: {:?}",
-                fresh.fit().coefficients()
+                fresh.coefficients().collect::<Vec<_>>()
             );
-            assert!(fresh.fit().coefficients().iter().any(|coefficient| {
+            assert!(fresh.coefficients().any(|coefficient| {
                 coefficient.status == PreparedOlsFitStatus::Kept
                     && coefficient.generated_column_index.is_some_and(|generated| {
                         matches!(
@@ -11064,8 +11103,8 @@ mod tests {
             assert_eq!(LINEAR_PROJECTION_ENDS.load(Ordering::SeqCst), 3);
             assert_eq!(LINEAR_FINITE_ENDS.load(Ordering::SeqCst), 3);
             assert_eq!(ACTIVE_LINEAR_ALLOCATION_PHASE.load(Ordering::SeqCst), 0);
-            assert_fit_science_equal(strict.fit(), &expected);
-            assert_eq!(strict.fit().finite_rank(), 2);
+            assert_fit_science_equal(&strict, &expected);
+            assert_eq!(strict.frame().finite_rank(), 2);
         }
     }
 
@@ -11153,11 +11192,8 @@ mod tests {
             )
             .expect("slope-only retained session");
             let fresh = session.solve_fresh().expect("slope-only fresh");
-            assert_fit_science_equal(fresh.fit(), &expected);
-            assert_fit_science_equal(
-                session.strictify().expect("slope-only strict").fit(),
-                &expected,
-            );
+            assert_fit_science_equal(&fresh, &expected);
+            assert_fit_science_equal(&session.strictify().expect("slope-only strict"), &expected);
         }
     }
 
@@ -11315,9 +11351,157 @@ mod tests {
         assert!(frozen.reconstruction_certificate().passed);
     }
 
+    trait LinearScienceWitness {
+        fn coefficients(&self) -> Vec<PreparedOlsFittedCoefficient>;
+        fn kept(&self) -> &[usize];
+        fn dropped(&self) -> &[usize];
+        fn rank(&self) -> PreparedOlsRankCertificate;
+        fn score(&self) -> PreparedOlsScoreCertificate;
+        fn bread(&self) -> Vec<f64>;
+        fn bread_passed(&self) -> bool;
+        fn residuals(&self) -> &[f64];
+        fn absorption(&self) -> &SolveReport;
+        fn residual_absorption(&self) -> &SolveReport;
+    }
+
+    impl LinearScienceWitness for CertifiedPreparedOlsFit {
+        fn coefficients(&self) -> Vec<PreparedOlsFittedCoefficient> {
+            self.coefficients().to_vec()
+        }
+        fn kept(&self) -> &[usize] {
+            self.kept_generated_columns()
+        }
+        fn dropped(&self) -> &[usize] {
+            self.dropped_generated_columns()
+        }
+        fn rank(&self) -> PreparedOlsRankCertificate {
+            self.rank_certificate()
+        }
+        fn score(&self) -> PreparedOlsScoreCertificate {
+            self.score_certificate()
+        }
+        fn bread(&self) -> Vec<f64> {
+            let dimension = self.bread().coordinates().len();
+            self.kept_generated_columns()
+                .iter()
+                .flat_map(|left| {
+                    let i = self
+                        .bread()
+                        .coordinates()
+                        .iter()
+                        .position(|c| {
+                            c.kind == PreparedOlsBreadCoordinateKind::FiniteRegressor
+                                && c.generated_column_index == *left
+                        })
+                        .unwrap();
+                    self.kept_generated_columns().iter().map(move |right| {
+                        let j = self
+                            .bread()
+                            .coordinates()
+                            .iter()
+                            .position(|c| {
+                                c.kind == PreparedOlsBreadCoordinateKind::FiniteRegressor
+                                    && c.generated_column_index == *right
+                            })
+                            .unwrap();
+                        self.bread().values()[i * dimension + j]
+                    })
+                })
+                .collect()
+        }
+        fn bread_passed(&self) -> bool {
+            self.bread().certificate().passed
+        }
+        fn residuals(&self) -> &[f64] {
+            self.residuals()
+        }
+        fn absorption(&self) -> &SolveReport {
+            self.absorption_report()
+        }
+        fn residual_absorption(&self) -> &SolveReport {
+            self.residual_absorption_report()
+        }
+    }
+
+    impl LinearScienceWitness for CertifiedLinearSessionOutput<'_> {
+        fn coefficients(&self) -> Vec<PreparedOlsFittedCoefficient> {
+            self.coefficients().collect()
+        }
+        fn kept(&self) -> &[usize] {
+            self.basis().kept_generated_columns()
+        }
+        fn dropped(&self) -> &[usize] {
+            self.basis().dropped_generated_columns()
+        }
+        fn rank(&self) -> PreparedOlsRankCertificate {
+            *self.frame().rank_certificate()
+        }
+        fn score(&self) -> PreparedOlsScoreCertificate {
+            *self.frame().score_certificate()
+        }
+        fn bread(&self) -> Vec<f64> {
+            self.frame().bread().to_vec()
+        }
+        fn bread_passed(&self) -> bool {
+            self.frame().canonical_proof().unwrap().bread.passed
+        }
+        fn residuals(&self) -> &[f64] {
+            self.frame().residuals()
+        }
+        fn absorption(&self) -> &SolveReport {
+            self.frame().absorption_report()
+        }
+        fn residual_absorption(&self) -> &SolveReport {
+            self.frame().residual_absorption_report()
+        }
+    }
+
+    impl LinearScienceWitness for CertifiedLinearSessionProducts {
+        fn coefficients(&self) -> Vec<PreparedOlsFittedCoefficient> {
+            self.basis()
+                .slots()
+                .iter()
+                .zip(&self.frame().reported_coefficients)
+                .map(|(slot, &value)| PreparedOlsFittedCoefficient {
+                    coefficient_slot: slot.coefficient_slot,
+                    generated_column_index: slot.generated_column_index,
+                    status: slot.status,
+                    value,
+                })
+                .collect()
+        }
+        fn kept(&self) -> &[usize] {
+            self.basis().kept_generated_columns()
+        }
+        fn dropped(&self) -> &[usize] {
+            self.basis().dropped_generated_columns()
+        }
+        fn rank(&self) -> PreparedOlsRankCertificate {
+            *self.frame().rank_certificate()
+        }
+        fn score(&self) -> PreparedOlsScoreCertificate {
+            *self.frame().score_certificate()
+        }
+        fn bread(&self) -> Vec<f64> {
+            self.frame().bread().to_vec()
+        }
+        fn bread_passed(&self) -> bool {
+            self.frame().canonical_proof().unwrap().bread.passed
+        }
+        fn residuals(&self) -> &[f64] {
+            self.frame().residuals()
+        }
+        fn absorption(&self) -> &SolveReport {
+            self.frame().absorption_report()
+        }
+        fn residual_absorption(&self) -> &SolveReport {
+            self.frame().residual_absorption_report()
+        }
+    }
+
     fn assert_fit_science_equal(
-        actual: &CertifiedPreparedOlsFit,
-        expected: &CertifiedPreparedOlsFit,
+        actual: &impl LinearScienceWitness,
+        expected: &impl LinearScienceWitness,
     ) {
         assert_eq!(actual.coefficients().len(), expected.coefficients().len());
         for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients()) {
@@ -11333,18 +11517,12 @@ mod tests {
                 _ => panic!("prepared fit coefficient presence differs"),
             }
         }
+        assert_eq!(actual.kept(), expected.kept());
+        assert_eq!(actual.dropped(), expected.dropped());
+        assert_eq!(actual.kept().len(), expected.kept().len());
         assert_eq!(
-            actual.kept_generated_columns(),
-            expected.kept_generated_columns()
-        );
-        assert_eq!(
-            actual.dropped_generated_columns(),
-            expected.dropped_generated_columns()
-        );
-        assert_eq!(actual.finite_rank(), expected.finite_rank());
-        assert_eq!(
-            actual.rank_certificate().relative_threshold,
-            expected.rank_certificate().relative_threshold
+            actual.rank().relative_threshold,
+            expected.rank().relative_threshold
         );
         // The retained observation-space reduction compresses rows through a
         // streaming Givens factor before CPQR; one-shot fallback applies CPQR
@@ -11352,14 +11530,11 @@ mod tests {
         // remain exact, while this descriptive trailing-residual magnitude can
         // differ by final-rounding noise.
         assert_close(
-            actual.rank_certificate().maximum_dropped_trailing_norm,
-            expected.rank_certificate().maximum_dropped_trailing_norm,
+            actual.rank().maximum_dropped_trailing_norm,
+            expected.rank().maximum_dropped_trailing_norm,
             512.0 * f64::EPSILON,
         );
-        assert_eq!(
-            actual.rank_certificate().passed,
-            expected.rank_certificate().passed
-        );
+        assert_eq!(actual.rank().passed, expected.rank().passed);
         // Retained rank revelation may compress rows through Givens before
         // CPQR while the one-shot fallback factors N rows directly. Basis and
         // rank decisions remain exact above. The descriptive diagonal-ratio
@@ -11367,90 +11542,44 @@ mod tests {
         // full-rank designs, so its machine-precision comparison scales by
         // sqrt(kappa); no certificate threshold or publication value does.
         let condition_scale = actual
-            .rank_certificate()
+            .rank()
             .condition_proxy
-            .max(expected.rank_certificate().condition_proxy)
+            .max(expected.rank().condition_proxy)
             .max(1.0)
             .sqrt();
         assert_close(
-            actual.rank_certificate().condition_proxy,
-            expected.rank_certificate().condition_proxy,
+            actual.rank().condition_proxy,
+            expected.rank().condition_proxy,
             512.0 * f64::EPSILON * condition_scale,
         );
-        assert_eq!(
-            actual.score_certificate().passed,
-            expected.score_certificate().passed
-        );
-        assert_eq!(
-            actual.score_certificate().moments,
-            expected.score_certificate().moments
-        );
+        assert_eq!(actual.score().passed, expected.score().passed);
+        assert_eq!(actual.score().moments, expected.score().moments);
         assert_close(
-            actual.score_certificate().relative_infinity_norm,
-            expected.score_certificate().relative_infinity_norm,
+            actual.score().relative_infinity_norm,
+            expected.score().relative_infinity_norm,
             2e-11,
         );
         assert_close(
-            actual.score_certificate().relative_two_norm,
-            expected.score_certificate().relative_two_norm,
+            actual.score().relative_two_norm,
+            expected.score().relative_two_norm,
             2e-11,
         );
-        assert_eq!(actual.bread().coordinates(), expected.bread().coordinates());
-        assert_eq!(
-            actual.bread().weight_scale(),
-            expected.bread().weight_scale()
-        );
-        assert_eq!(
-            actual.bread().values().len(),
-            expected.bread().values().len()
-        );
-        for (actual, expected) in actual
-            .bread()
-            .values()
-            .iter()
-            .zip(expected.bread().values())
-        {
-            assert_close(*actual, *expected, 2e-12);
+        let actual_bread = actual.bread();
+        let expected_bread = expected.bread();
+        assert_eq!(actual_bread.len(), expected_bread.len());
+        for (&actual, &expected) in actual_bread.iter().zip(&expected_bread) {
+            assert_close(actual, expected, 2e-12);
         }
-        assert!(actual.bread().certificate().passed);
-        assert!(expected.bread().certificate().passed);
-        assert_solve_report_science_equal(actual.absorption_report(), expected.absorption_report());
+        assert!(actual.bread_passed() && expected.bread_passed());
+        assert_solve_report_science_equal(actual.absorption(), expected.absorption());
         assert_solve_report_science_equal(
-            actual.residual_absorption_report(),
-            expected.residual_absorption_report(),
-        );
-        assert_close(
-            actual.initial_absorbed_outcome_sum_of_squares(),
-            expected.initial_absorbed_outcome_sum_of_squares(),
-            2e-12,
+            actual.residual_absorption(),
+            expected.residual_absorption(),
         );
         assert_eq!(actual.residuals().len(), expected.residuals().len());
-        for (actual, expected) in actual.residuals().iter().zip(expected.residuals()) {
-            assert_close(*actual, *expected, 2e-12);
+        for (&actual, &expected) in actual.residuals().iter().zip(expected.residuals()) {
+            assert_close(actual, expected, 2e-12);
         }
-        assert_eq!(
-            actual.recovered_fe_coefficients().is_some(),
-            expected.recovered_fe_coefficients().is_some()
-        );
-        assert_eq!(actual.execution().mode, expected.execution().mode);
-        assert_eq!(actual.execution().poolsize, expected.execution().poolsize);
-        assert_eq!(
-            actual.execution().requested_threads,
-            expected.execution().requested_threads
-        );
-        assert_eq!(
-            actual.execution().effective_threads,
-            expected.execution().effective_threads
-        );
-        assert_eq!(
-            actual.execution().deterministic,
-            expected.execution().deterministic
-        );
-        // Low retained execution owns only the final row-major N-by-rank
-        // inference artifact; the one-shot reference also reports its
-        // response-bearing N-by-(K+1) scratch. This is the intended lower
-        // retained footprint, not a scientific-result difference.
-        assert!(actual.execution().scratch_bytes <= expected.execution().scratch_bytes);
     }
 
     fn assert_solve_report_science_equal(actual: &SolveReport, expected: &SolveReport) {
@@ -11532,7 +11661,9 @@ mod tests {
         assert_eq!(report.warnings.capacity(), 0);
     }
 
-    fn assert_retained_fit_has_no_warning_storage(fit: &CertifiedPreparedOlsFit) {
+    fn assert_retained_fit_has_no_warning_storage(
+        fit: &crate::ols::linear_session::CertifiedLinearFrame,
+    ) {
         assert_retained_report_has_no_warning_storage(fit.absorption_report());
         assert_retained_report_has_no_warning_storage(fit.residual_absorption_report());
     }
@@ -11628,7 +11759,7 @@ mod tests {
                 let candidate = session
                     .strict_candidate()
                     .expect("observed strict candidate");
-                assert!(candidate.candidate().fit().rank_certificate().passed);
+                assert!(candidate.candidate().frame().rank_certificate().passed);
                 let observed = finish_retained_moment_worker_observation();
                 assert_retained_moment_team(observed, requested);
                 candidate.commit();
@@ -11796,10 +11927,11 @@ mod tests {
                         LinearSessionGenerations::new(0, 0, 0, 0, 0),
                     )
                     .unwrap();
-                    let check = |fit: &CertifiedPreparedOlsFit| {
+                    let check = |output: CertifiedLinearSessionOutput<'_>| {
+                        let fit = output.frame();
                         assert_eq!(fit.finite_rank(), width);
-                        assert_eq!(fit.dropped_generated_columns(), &[width]);
-                        for coefficient in fit.coefficients().iter().filter(|c| c.value.is_some()) {
+                        assert_eq!(output.basis().dropped_generated_columns(), &[width]);
+                        for coefficient in output.coefficients().filter(|c| c.value.is_some()) {
                             assert_close(
                                 coefficient.value.unwrap(),
                                 (coefficient.generated_column_index.unwrap() + 1) as f64 / 67.0,
@@ -11812,7 +11944,7 @@ mod tests {
                         assert!(fit.rank_certificate().passed);
                         assert!(fit.score_certificate().passed);
                     };
-                    check(session.solve_fresh().unwrap().fit());
+                    check(session.solve_fresh().unwrap());
                     session
                         .refresh_weights(
                             next_frame.raw_weights(),
@@ -11821,7 +11953,7 @@ mod tests {
                         )
                         .unwrap();
                     let strict = session.strict_candidate().unwrap();
-                    check(strict.candidate().fit());
+                    check(strict.candidate());
                     strict.commit();
                 }
             }
@@ -11890,7 +12022,7 @@ mod tests {
             )
             .expect("wide retained session");
             let fresh = session.solve_fresh().expect("wide retained fresh solve");
-            assert_fit_science_equal(fresh.fit(), &expected);
+            assert_fit_science_equal(&fresh, &expected);
             session
                 .refresh_response(&response, 1)
                 .expect("wide response refresh");
@@ -11900,7 +12032,7 @@ mod tests {
                 .strict_candidate()
                 .expect("wide retained strict solve");
             assert!(strict.basis_unchanged());
-            assert_fit_science_equal(strict.candidate().fit(), &expected);
+            assert_fit_science_equal(&strict.candidate(), &expected);
             strict.commit();
         }
     }
@@ -11960,14 +12092,11 @@ mod tests {
             )
             .expect("exact-combination retained session");
             assert_fit_science_equal(
-                session
-                    .solve_fresh()
-                    .expect("exact-combination fresh")
-                    .fit(),
+                &session.solve_fresh().expect("exact-combination fresh"),
                 &expected,
             );
             assert_fit_science_equal(
-                session.strictify().expect("exact-combination strict").fit(),
+                &session.strictify().expect("exact-combination strict"),
                 &expected,
             );
         }
@@ -12020,7 +12149,7 @@ mod tests {
                 )
                 .expect("rank edge retained session");
                 assert_fit_science_equal(
-                    session.solve_fresh().expect("rank edge fresh").fit(),
+                    &session.solve_fresh().expect("rank edge fresh"),
                     &expected,
                 );
                 session
@@ -12031,13 +12160,13 @@ mod tests {
                     &expected,
                 );
                 assert_fit_science_equal(
-                    session.strictify().expect("rank edge strict").fit(),
+                    &session.strictify().expect("rank edge strict"),
                     &expected,
                 );
                 let products = session
                     .into_current_products(&mut || Ok(()))
                     .expect("rank edge final products");
-                assert_eq!(products.fit().finite_rank(), finite_columns);
+                assert_eq!(products.frame().finite_rank(), finite_columns);
                 assert_eq!(products.finite_within_design().dimension(), finite_columns);
             }
         }
@@ -12093,10 +12222,7 @@ mod tests {
                 LinearSessionGenerations::new(0, 0, 0, 0, 0),
             )
             .expect("weak-rank retained session");
-            assert_fit_science_equal(
-                session.solve_fresh().expect("weak-rank fresh").fit(),
-                &expected,
-            );
+            assert_fit_science_equal(&session.solve_fresh().expect("weak-rank fresh"), &expected);
             session
                 .strict_candidate()
                 .expect("weak-rank initial strict")
@@ -12112,13 +12238,13 @@ mod tests {
             );
             assert_frozen_matches_fit(&frozen, &expected);
             assert_fit_science_equal(
-                session.strictify().expect("weak-rank final strict").fit(),
+                &session.strictify().expect("weak-rank final strict"),
                 &expected,
             );
             let products = session
                 .into_current_products(&mut || Ok(()))
                 .expect("weak-rank final products");
-            assert_eq!(products.fit().finite_rank(), 2);
+            assert_eq!(products.frame().finite_rank(), 2);
         }
     }
 
@@ -12166,8 +12292,8 @@ mod tests {
             )
             .unwrap();
             let expected_output = generic.solve_fresh().unwrap();
-            let expected = expected_output.fit();
-            assert_eq!(expected.finite_rank(), 2);
+            let expected = &expected_output;
+            assert_eq!(expected.frame().finite_rank(), 2);
             for factor in [1.0, 8.0] {
                 if canonical.weights().values.is_none() && factor != 1.0 {
                     continue;
@@ -12189,24 +12315,24 @@ mod tests {
                     data.fit_owned_fe_design().unwrap(),
                 )
                 .unwrap();
+                assert_eq!(session.bread_weight_scale_for_test(), scale);
                 let actual_output = session.solve_fresh().unwrap();
-                let actual = actual_output.fit();
+                let actual = &actual_output;
                 // The generic and categorical projectors have different raw
                 // FE-certificate rounding, also on unchanged production code.
                 // Compare scientific products and each current-frame certificate;
                 // an explicit divisor need not preserve diagnostic magnitudes.
-                assert_eq!(actual.finite_rank(), expected.finite_rank());
+                assert_eq!(actual.frame().finite_rank(), expected.frame().finite_rank());
                 assert_eq!(
-                    actual.kept_generated_columns(),
-                    expected.kept_generated_columns()
+                    actual.basis().kept_generated_columns(),
+                    expected.basis().kept_generated_columns()
                 );
                 assert_eq!(
-                    actual.dropped_generated_columns(),
-                    expected.dropped_generated_columns()
+                    actual.basis().dropped_generated_columns(),
+                    expected.basis().dropped_generated_columns()
                 );
                 assert_eq!(actual.coefficients().len(), expected.coefficients().len());
-                for (actual, expected) in actual.coefficients().iter().zip(expected.coefficients())
-                {
+                for (actual, expected) in actual.coefficients().zip(expected.coefficients()) {
                     assert_eq!(actual.coefficient_slot, expected.coefficient_slot);
                     assert_eq!(
                         actual.generated_column_index,
@@ -12218,29 +12344,29 @@ mod tests {
                         (actual, expected) => assert_eq!(actual, expected),
                     }
                 }
-                assert_eq!(actual.bread().coordinates(), expected.bread().coordinates());
-                assert_eq!(actual.bread().weight_scale(), scale);
+                assert_eq!(actual.frame().bread().len(), expected.frame().bread().len());
+                for (&actual, &expected) in
+                    actual.frame().bread().iter().zip(expected.frame().bread())
+                {
+                    assert_close(actual, expected, 2e-12);
+                }
                 assert_eq!(
-                    actual.bread().values().len(),
-                    expected.bread().values().len()
+                    actual.frame().residuals().len(),
+                    expected.frame().residuals().len()
                 );
                 for (actual, expected) in actual
-                    .bread()
-                    .values()
+                    .frame()
+                    .residuals()
                     .iter()
-                    .zip(expected.bread().values())
+                    .zip(expected.frame().residuals())
                 {
                     assert_close(*actual, *expected, 2e-12);
                 }
-                assert_eq!(actual.residuals().len(), expected.residuals().len());
-                for (actual, expected) in actual.residuals().iter().zip(expected.residuals()) {
-                    assert_close(*actual, *expected, 2e-12);
-                }
-                assert!(actual.rank_certificate().passed);
-                assert!(actual.score_certificate().passed);
-                assert!(actual.bread().certificate().passed);
-                assert!(actual.absorption_report().certified());
-                assert!(actual.residual_absorption_report().certified());
+                assert!(actual.frame().rank_certificate().passed);
+                assert!(actual.frame().score_certificate().passed);
+                assert!(actual.frame().canonical_proof().unwrap().bread.passed);
+                assert!(actual.frame().absorption_report().certified());
+                assert!(actual.frame().residual_absorption_report().certified());
             }
         }
     }
@@ -12302,8 +12428,8 @@ mod tests {
             )
             .unwrap();
             let fresh_output = fresh.solve_fresh().unwrap();
-            let expected = fresh_output.fit();
-            assert_eq!(expected.finite_rank(), 0);
+            let expected = &fresh_output;
+            assert_eq!(expected.frame().finite_rank(), 0);
             let mut reused = CertifiedLinearSession::new_with_fe_design(
                 &initial,
                 LinearSolveFrame::from_prepared_ols(&initial).unwrap(),
@@ -12312,7 +12438,7 @@ mod tests {
                 initial.fit_owned_fe_design().unwrap(),
             )
             .unwrap();
-            assert_eq!(reused.solve_fresh().unwrap().fit().finite_rank(), 1);
+            assert_eq!(reused.solve_fresh().unwrap().frame().finite_rank(), 1);
             reused.refresh_response(&y, 1).unwrap();
             reused
                 .refresh_weights(
@@ -12347,7 +12473,7 @@ mod tests {
             assert!(reused.output().is_err());
             reused.refresh_basis(1).unwrap();
             let actual = reused.solve_fresh().unwrap();
-            assert_fit_science_equal(actual.fit(), expected);
+            assert_fit_science_equal(&actual, expected);
         }
     }
 
@@ -12417,8 +12543,8 @@ mod tests {
                     )
                     .expect("session");
                     let initial = session.solve_fresh().expect("fresh session fit");
-                    assert_fit_science_equal(initial.fit(), &initial_expected);
-                    assert_retained_fit_has_no_warning_storage(initial.fit());
+                    assert_fit_science_equal(&initial, &initial_expected);
+                    assert_retained_fit_has_no_warning_storage(initial.frame());
 
                     session
                         .refresh_response(&refreshed_y, 1)
@@ -12436,7 +12562,7 @@ mod tests {
                     )
                     .expect("response reference");
                     let response_warm = session.solve_warm().expect("response warm solve");
-                    assert_fit_science_equal(response_warm.fit(), &response_expected);
+                    assert_fit_science_equal(&response_warm, &response_expected);
                     let response_frozen = session.solve_frozen().expect("response frozen solve");
                     assert_frozen_matches_fit(&response_frozen, &response_expected);
                     assert_retained_report_has_no_warning_storage(
@@ -12475,10 +12601,9 @@ mod tests {
                     let weighted_frozen = session.solve_frozen().expect("weighted frozen solve");
                     assert_frozen_matches_fit(&weighted_frozen, &weighted_expected);
                     let warmed_capacities = session.workspace_capacities();
-                    assert!(!warmed_capacities.accepted_fit_optional_owners);
-                    assert_eq!(
-                        warmed_capacities.accepted_fit, [0; 6],
-                        "frozen solve consumes the accepted finite fit"
+                    assert!(
+                        session.output().is_err(),
+                        "frozen proof cannot publish canonical products"
                     );
                     assert!(warmed_capacities.frozen_residual_elements >= y.len());
                     assert!(warmed_capacities.within_metadata[2] > 0);
@@ -12553,14 +12678,19 @@ mod tests {
                     }
 
                     let strict_transaction = session.strict_candidate().expect("strict candidate");
-                    assert!(strict_transaction.workspace_capacities().accepted_fit[5] >= y.len());
+                    assert!(
+                        strict_transaction
+                            .workspace_capacities()
+                            .frozen_residual_elements
+                            >= y.len()
+                    );
                     assert!(
                         strict_transaction.rollback_residual_capacity() >= y.len(),
                         "the candidate residual overlaps the rollback residual until commit"
                     );
                     strict_transaction.commit();
                     let strict = session.output().expect("strict session fit");
-                    assert_retained_fit_has_no_warning_storage(strict.fit());
+                    assert_retained_fit_has_no_warning_storage(strict.frame());
                     let final_weights = if weight_case == 2 {
                         TestWeights::Frequency(&frequency_refresh)
                     } else {
@@ -12587,27 +12717,28 @@ mod tests {
                         config,
                     )
                     .expect("final strict reference");
-                    assert_fit_science_equal(strict.fit(), &final_expected);
+                    assert_fit_science_equal(&strict, &final_expected);
                     let memory = strict.retained_within_memory();
                     assert_eq!(memory.rows, y.len());
-                    assert_eq!(memory.columns, strict.fit().finite_rank());
+                    assert_eq!(memory.columns, strict.frame().finite_rank());
                     assert_eq!(memory.mode, mode);
                     let final_capacities = session.workspace_capacities();
-                    assert!(final_capacities.accepted_fit[5] >= y.len());
+                    assert!(final_capacities.frozen_residual_elements >= y.len());
                     assert_eq!(
-                        final_capacities.frozen_residual_elements, 0,
-                        "canonical solve transfers its workspace residual into the accepted fit"
+                        final_capacities.frozen_residual_elements,
+                        y.len(),
+                        "canonical frame owns the one residual allocation"
                     );
                     let products = session
                         .into_current_products(&mut || Ok(()))
                         .expect("owned final products");
-                    assert_fit_science_equal(products.fit(), &final_expected);
+                    assert_fit_science_equal(&products, &final_expected);
                     let design = products.finite_within_design();
                     assert_eq!(design.nrows(), y.len());
-                    assert_eq!(design.dimension(), products.fit().finite_rank());
+                    assert_eq!(design.dimension(), products.frame().finite_rank());
                     assert_eq!(
                         products.identified_bread().len(),
-                        products.fit().finite_rank() * products.fit().finite_rank()
+                        products.frame().finite_rank() * products.frame().finite_rank()
                     );
                     let mut within_row = vec![0.0; design.dimension()];
                     design
@@ -12671,16 +12802,16 @@ mod tests {
         // reports zero cleanup iterations.  Both are independent, passing
         // certificates at the roundoff floor.
         assert_eq!(expected.residual_absorption_report().iterations, 1);
-        assert_eq!(retained.fit().residual_absorption_report().iterations, 0);
+        assert_eq!(retained.frame().residual_absorption_report().iterations, 0);
         for report in [
             expected.residual_absorption_report(),
-            retained.fit().residual_absorption_report(),
+            retained.frame().residual_absorption_report(),
         ] {
             assert!(report.certified());
             assert!(report.certificate.relative_two_norm <= 64.0 * f64::EPSILON);
             assert!(report.normal_equation_residual <= 64.0 * f64::EPSILON);
         }
-        assert_fit_science_equal(retained.fit(), &expected);
+        assert_fit_science_equal(&retained, &expected);
     }
 
     #[test]
@@ -12761,18 +12892,18 @@ mod tests {
             .expect("session");
             let initial = session.solve_fresh().expect("initial canonical fit");
             assert!(
-                initial.fit().fast_score_cache.is_none(),
+                initial.frame().canonical_proof().is_some(),
                 "session solves must not retain a duplicate N-by-K score cache"
             );
-            let original_kept = initial.fit().kept_generated_columns().to_vec();
-            let original_dropped = initial.fit().dropped_generated_columns().to_vec();
+            let original_kept = initial.basis().kept_generated_columns().to_vec();
+            let original_dropped = initial.basis().dropped_generated_columns().to_vec();
             assert!(!original_dropped.is_empty());
 
             let mut strict = session.strict_candidate().expect("speculative strict fit");
             // Model the caller's uncertified strict-output branch: candidate
             // values are inspected but are not accepted as estimator state.
-            assert!(strict.candidate().fit().finite_rank() > 0);
-            assert!(strict.candidate().fit().fast_score_cache.is_none());
+            assert!(strict.candidate().frame().finite_rank() > 0);
+            assert!(strict.candidate().frame().canonical_proof().is_some());
             assert!(strict.inject_same_rank_basis_pivot());
             assert_eq!(strict.basis_generation_for_test(), 8);
             strict.rollback();
@@ -12786,8 +12917,11 @@ mod tests {
             let rebuilt = session
                 .solve_fresh()
                 .expect("canonical solve after rejected strict candidate");
-            assert_eq!(rebuilt.fit().kept_generated_columns(), original_kept);
-            assert_eq!(rebuilt.fit().dropped_generated_columns(), original_dropped);
+            assert_eq!(rebuilt.basis().kept_generated_columns(), original_kept);
+            assert_eq!(
+                rebuilt.basis().dropped_generated_columns(),
+                original_dropped
+            );
         }
     }
 
@@ -12829,7 +12963,7 @@ mod tests {
                 .retained_scratch_identity()
                 .map(std::path::Path::to_path_buf);
             let mut strict = session.strict_candidate().expect("speculative strict fit");
-            assert!(strict.candidate().fit().finite_rank() > 0);
+            assert!(strict.candidate().frame().finite_rank() > 0);
             assert!(strict.inject_same_rank_basis_pivot());
             let before_rollback = strict.workspace_capacities();
             strict.rollback();

@@ -32,6 +32,7 @@ mod vce;
 
 pub use dof::{compute_dof, DofConfig, DofMethod, DofReport};
 pub(crate) use finite_wls_kernel::retained_scratch_moment_envelope;
+pub(crate) use finite_wls_kernel::{solve_finite_direction, FiniteDirectionWorkspace};
 pub use fit::FitStatistics;
 pub(crate) use implicit_centered::ImplicitCenteredDesign;
 #[cfg(test)]

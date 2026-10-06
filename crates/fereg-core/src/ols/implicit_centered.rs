@@ -272,7 +272,6 @@ impl ImplicitCenteredDesign {
     }
     /// All statistics and acceptance are recomputed under this exact frame.
     /// Publication authority is revoked before any fallible operation.
-    // Keep the legacy workspace and ownership boundaries explicit during migration.
     #[allow(clippy::too_many_arguments)]
     pub(super) fn refresh(
         &mut self,
@@ -283,6 +282,7 @@ impl ImplicitCenteredDesign {
         raw_norms: &mut [f64],
         means: &mut [f64],
         within_norms: &mut [f64],
+        mut projected: Vec<f64>,
     ) -> Result<(Vec<f64>, SolveReport)> {
         self.valid = false;
         let rows = self.rows();
@@ -389,7 +389,10 @@ impl ImplicitCenteredDesign {
                 }
                 Ok(())
             })?;
-        let mut projected = filled(rows, 0.)?;
+        projected
+            .try_reserve(rows.saturating_sub(projected.len()))
+            .map_err(|_| allocation())?;
+        projected.resize(rows, 0.);
         for (row, value) in projected.iter_mut().enumerate() {
             *value = response[row] - self.centers[columns * groups + effect.codes()[row] as usize];
         }

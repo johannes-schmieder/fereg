@@ -27,8 +27,8 @@ use super::prepared::{
     PpmlNumericPreparationInput, PreparedPpmlAdjustmentKind,
 };
 use super::prepared_irls::{
-    explore_prepared_ppml_mu_interruptible, fit_shared_prepared_ppml_irls_interruptible,
-    PreparedPpmlIrlsConfig, PreparedPpmlIrlsFit,
+    fit_generation_ppml_irls_interruptible, PreparedPpmlIrlsConfig, PreparedPpmlIrlsFit,
+    PreparedPpmlIrlsPurpose, PreparedPpmlIrlsRun,
 };
 use super::prepared_model::{
     PreparedPpmlModel, PreparedPpmlModelGeneration, PreparedPpmlModelOwner,
@@ -371,11 +371,8 @@ pub fn fit_prepared_ppml_interruptible(
                 preliminary_plan.preflight_dimensions.metadata,
             )?;
             let final_plan = (*preliminary_plan).with_final_dimensions(dimensions)?;
-            explore_prepared_ppml_mu_interruptible(
-                generation.fit_view(),
-                generation.outcome(),
-                generation.prior_weights(),
-                generation.offset(),
+            match fit_generation_ppml_irls_interruptible(
+                generation,
                 PreparedPpmlIrlsConfig {
                     ppml,
                     linear: resolved_linear,
@@ -390,9 +387,17 @@ pub fn fit_prepared_ppml_interruptible(
                 },
                 final_plan,
                 None,
-                separation.mu_tolerance,
+                PreparedPpmlIrlsPurpose::MuExploration {
+                    mu_tolerance: separation.mu_tolerance,
+                },
+                None,
                 interrupt,
-            )
+            )? {
+                PreparedPpmlIrlsRun::MuExploration(exploration) => Ok(*exploration),
+                _ => Err(invalid_argument(
+                    "PPML exploration returned publication products",
+                )),
+            }
         },
         |generation, preliminary_plan, resolved_linear, interrupt| {
             let cluster_codes = cluster_code_views(generation)?;
@@ -421,11 +426,8 @@ pub fn fit_prepared_ppml_interruptible(
                     bias_units.push(units.values[row]);
                 }
             }
-            let fit = fit_shared_prepared_ppml_irls_interruptible(
-                generation.prepared(),
-                generation.outcome(),
-                generation.prior_weights(),
-                generation.offset(),
+            match fit_generation_ppml_irls_interruptible(
+                generation,
                 PreparedPpmlIrlsConfig {
                     ppml,
                     linear: resolved_linear,
@@ -437,12 +439,18 @@ pub fn fit_prepared_ppml_interruptible(
                 },
                 final_plan,
                 None,
+                PreparedPpmlIrlsPurpose::Publication,
                 request.bias.map(|b| (b, bias_units.as_slice())),
                 interrupt,
-            )?;
-            Ok(fit)
+            )? {
+                PreparedPpmlIrlsRun::Publication(fit) => Ok(*fit),
+                _ => Err(invalid_argument(
+                    "PPML publication returned exploratory products",
+                )),
+            }
         },
     )?;
+    fit.validate_generation(&separation_outcome.prepared)?;
     if request.bias.is_some() && separation_outcome.separation.separated_count > 0 {
         return Err(invalid_argument(
             "bias correction is unavailable after outcome-dependent separation deletions",
@@ -1633,7 +1641,7 @@ fn recover_saved_effects(
             prior_weights,
             fit.mean(),
             fit.linear().absorbed_predictor(),
-            fit.linear().fit().recovered_fe_coefficients(),
+            None,
             lsmr,
             map,
             inject_allocation_failure,
@@ -1669,9 +1677,10 @@ fn convergence_report(fit: &PreparedPpmlIrlsFit) -> Result<PpmlConvergenceReport
         inner_iterations: diagnostics.total_inner_iterations,
         step_halvings: diagnostics.total_step_halvings,
         strict_profile_rejections: diagnostics.strict_profile_rejections,
-        strict_final_solve_passed: linear.fit().rank_certificate().passed
-            && linear.fit().score_certificate().passed
-            && linear.fit().bread().certificate().passed,
+        strict_final_solve_passed: linear
+            .frame()
+            .canonical_proof()
+            .is_some_and(|proof| proof.rank.passed && proof.score.passed && proof.bread.passed),
         linear_within_relative_infinity_norm: linear
             .within_certificate()
             .left_inverse_relative_infinity_norm
@@ -3417,8 +3426,7 @@ mod tests {
                     .collect();
                 super::super::prepared_irls::PreparedPpmlMuExploration::from_test_eta(
                     eta,
-                    generation.outcome(),
-                    generation.prior_weights(),
+                    generation,
                     ppml.bounds,
                 )
             },

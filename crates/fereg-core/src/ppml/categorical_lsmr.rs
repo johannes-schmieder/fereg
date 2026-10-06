@@ -69,62 +69,7 @@ fn largest_retained_core_pair(design: &FeDesign) -> Result<[usize; 2]> {
     Ok([order[0], order[1]])
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct EffectTopologyIdentity {
-    codes_address: usize,
-    membership_address: usize,
-    observations: usize,
-    levels: usize,
-}
-
-/// Identity of the immutable categorical topology captured by a reusable
-/// Newton engine. Pointer identity is intentional: accepting an equal-
-/// shaped replacement would let cached offsets or factors operate on different
-/// memberships. `FeDesign` exposes no mutation of these backing allocations.
-#[derive(Debug, PartialEq, Eq)]
-pub(super) struct FeTopologyIdentity {
-    observations: usize,
-    total_coefficients: usize,
-    effects: Vec<EffectTopologyIdentity>,
-}
-
-impl FeTopologyIdentity {
-    pub(super) fn capture(design: &FeDesign) -> Result<Self> {
-        let mut effects = Vec::new();
-        effects
-            .try_reserve_exact(design.effects().len())
-            .map_err(|_| allocation("unable to reserve PPML LSMR topology identity"))?;
-        for effect in design.effects() {
-            effects.push(EffectTopologyIdentity {
-                codes_address: effect.codes().as_ptr() as usize,
-                membership_address: effect.level_index() as *const _ as usize,
-                observations: effect.codes().len(),
-                levels: effect.n_levels(),
-            });
-        }
-        Ok(Self {
-            observations: design.nobs(),
-            total_coefficients: design.total_coefficients(),
-            effects,
-        })
-    }
-
-    pub(super) fn matches(&self, design: &FeDesign) -> bool {
-        self.observations == design.nobs()
-            && self.total_coefficients == design.total_coefficients()
-            && self.effects.len() == design.effects().len()
-            && self
-                .effects
-                .iter()
-                .zip(design.effects())
-                .all(|(identity, effect)| {
-                    identity.codes_address == effect.codes().as_ptr() as usize
-                        && identity.membership_address == effect.level_index() as *const _ as usize
-                        && identity.observations == effect.codes().len()
-                        && identity.levels == effect.n_levels()
-                })
-    }
-}
+use super::topology_identity::FeTopologyIdentity;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct JointLsmrCertificate {
@@ -387,7 +332,7 @@ impl ReusableCategoricalJointLsmr {
             ));
         }
 
-        let topology = FeTopologyIdentity::capture(fe_design)?;
+        let topology = FeTopologyIdentity::capture(fe_design);
         let team = ThreadTeam::new(threads).acquire()?;
         let active_design = team.install(|| build_active_design(prepared, active_generated))?;
         let mut active_slots = Vec::new();
@@ -2087,7 +2032,6 @@ pub(crate) fn estimate_joint_lsmr_workspace_bytes(
     let retained_indices = checked_sum_memory(&[
         k,
         checked_add_memory(shape.effects, 1, "joint PPML retained effect-offset count")?,
-        checked_mul_memory(shape.effects, 4, "joint PPML topology identity words")?,
     ])?;
     let retained_engine = checked_sum_memory(&[
         bytes_for_memory::<f64>(retained_values, "joint PPML retained values")?,
@@ -3103,7 +3047,7 @@ mod tests {
             vec![EffectTerm::new(vec![0, 1, 0, 1], 2, true, Vec::new()).expect("replacement")],
         )
         .expect("replacement design");
-        let identity = FeTopologyIdentity::capture(&first).expect("identity");
+        let identity = FeTopologyIdentity::capture(&first);
         assert!(identity.matches(&first));
         assert!(!identity.matches(&replacement));
 
@@ -3169,7 +3113,7 @@ mod tests {
         )
         .expect("replacement design");
         assert_eq!(first.total_coefficients(), replacement.total_coefficients());
-        let identity = FeTopologyIdentity::capture(&first).expect("identity");
+        let identity = FeTopologyIdentity::capture(&first);
         assert!(!identity.matches(&replacement));
     }
 
@@ -3205,7 +3149,7 @@ mod tests {
                 team: test_team(2),
                 active_design,
                 active_slots: vec![0],
-                topology: FeTopologyIdentity::capture(&design).expect("topology"),
+                topology: FeTopologyIdentity::capture(&design),
                 effect_offsets: vec![0, 4, 6],
                 core_effects: None,
                 sqrt_weights: vec![0.0; 12],
@@ -3360,7 +3304,7 @@ mod tests {
                 active_design: DenseMatrix::from_row_major(12, 1, active_values.clone())
                     .expect("active design"),
                 active_slots: vec![0],
-                topology: FeTopologyIdentity::capture(&design).expect("topology"),
+                topology: FeTopologyIdentity::capture(&design),
                 effect_offsets: vec![0, 4, 6],
                 core_effects: None,
                 sqrt_weights: vec![0.0; 12],
@@ -3425,7 +3369,7 @@ mod tests {
             active_design: DenseMatrix::from_row_major(rows, 0, Vec::new())
                 .expect("empty active design"),
             active_slots: Vec::new(),
-            topology: FeTopologyIdentity::capture(&design).expect("topology"),
+            topology: FeTopologyIdentity::capture(&design),
             effect_offsets: vec![0, 5, 9, 12],
             core_effects: Some([0, 1]),
             sqrt_weights: vec![0.0; rows],

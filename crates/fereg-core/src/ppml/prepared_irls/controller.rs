@@ -202,10 +202,10 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         let basis_unchanged = basis_unchanged && !take_strict_basis_change(1);
         let strict = transaction.candidate();
         let certified = strict.certified();
-        let rank = strict.fit().finite_rank();
+        let rank = strict.frame().finite_rank();
         let active_columns = if !basis_unchanged && specialized.is_some() {
             Some(fallible_copy(
-                strict.fit().kept_generated_columns(),
+                strict.basis().kept_generated_columns(),
                 "unable to reserve PPML strict active-column identity",
             )?)
         } else {
@@ -213,13 +213,13 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         };
         accumulate_inner_iterations(
             self.total_inner_iterations,
-            strict.fit().absorption_report(),
+            strict.frame().absorption_report(),
         )?;
         record_checkpoint_solver_observation(
             solver_report
                 .as_mut()
                 .ok_or_else(|| internal("PPML strict solve lacks solver diagnostics"))?,
-            strict.fit().absorption_report(),
+            strict.frame().absorption_report(),
             refinement,
         )?;
         fill_candidate_eta_from_linear_output(
@@ -356,7 +356,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
             "FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration={iteration}|seconds={:.6}|original_row={}|failing_rows={failing_rows}|tolerance={tolerance:.17e}|accepted_eta={:.17e}|candidate_eta={:.17e}|working_response={:.17e}|residual={:.17e}|finite_predictor={:.17e}|absorbed_predictor={:.17e}|outcome={:.17e}|mean={:.17e}|hessian_weight={:.17e}|deviance_change={:.17e}|ll_change={:.17e}",
             clock.elapsed().as_secs_f64(), self.prepared.fit_sample().retained_rows()[row] + 1,
             self.workspace.eta()[row], self.workspace.candidate_eta()[row], strict.response()[row],
-            strict.fit().residuals()[row], strict.finite_predictor()[row], strict.absorbed_predictor()[row],
+            strict.frame().residuals()[row], strict.finite_predictor()[row], strict.absorbed_predictor()[row],
             self.outcome[row], self.workspace.mean()[row], self.workspace.hessian_weights()[row],
             objective.map_or(f64::INFINITY, |candidate| relative_scalar_difference(self.objective.deviance, candidate.deviance)),
             objective.map_or(f64::INFINITY, |candidate| relative_scalar_difference(self.objective.log_likelihood, candidate.log_likelihood)),

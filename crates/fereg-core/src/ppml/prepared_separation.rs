@@ -376,12 +376,7 @@ pub(crate) fn detect_prepared_ppml_separation(
                 .iter()
                 .map(|row| fitted_start.linear_predictor[*row])
                 .collect();
-            PreparedPpmlMuExploration::from_test_eta(
-                eta,
-                generation.outcome(),
-                generation.prior_weights(),
-                ppml.bounds,
-            )
+            PreparedPpmlMuExploration::from_test_eta(eta, generation, ppml.bounds)
         },
         |_, _| Ok(()),
     )?;
@@ -1015,6 +1010,7 @@ where
                 }
                 let started = Instant::now();
                 let exploration = explore_generation(coordinator.view().prepared, interrupt)?;
+                exploration.validate_generation(coordinator.view().prepared)?;
                 if !exploration.certificate().passed {
                     return Err(FeregError::new(
                         ErrorCode::NonConvergence,
@@ -2448,6 +2444,7 @@ fn replay_numerical_no_drop(
                             "prepared Mu certification replay omitted its fitted generation state",
                         )
                     })?;
+                    exploration.validate_generation(generation)?;
                     prepared_mu_from_mean(
                         generation,
                         ppml,
@@ -3891,8 +3888,7 @@ mod tests {
                 std::thread::sleep(std::time::Duration::from_millis(5));
                 PreparedPpmlMuExploration::from_test_eta(
                     vec![0.0; generation.original_rows().len()],
-                    generation.outcome(),
-                    generation.prior_weights(),
+                    generation,
                     ppml.bounds,
                 )
             },

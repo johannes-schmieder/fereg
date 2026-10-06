@@ -397,3 +397,25 @@ Independent reconstruction and composite objective replay remain authoritative.
 The host consumes the immutable certified result, checking Stata representability
 and wire cells without repeating certified DoF, cluster lattice and weight science.
 The declared replacement and active qualification are linked from MILESTONES.
+
+## M33 generation-bound linear frames
+
+`ols/linear_frame.rs` owns retained coefficients, compact finite bread,
+residuals and optional decomposition. Canonical and frozen proofs remain
+distinct; frozen proof alone cannot publish canonical final products. Strict
+transactions retain accepted and speculative frames simultaneously and restore
+accepted authority without allocation. Public one-shot OLS results retain their
+own statistics and metadata; PPML no longer constructs that publication owner.
+
+Retained dense, scratch and implicit projections share their response/column
+refresh operations. `ols/linear_statistics.rs` computes requested norms and
+means with scalar per-column accumulators. One-FE refresh retains its centered
+workspace and reuses the response buffer; admission counts persistent capacity.
+Cold and frozen solve controllers remain distinct where rank authority differs.
+
+PPML artifacts bind the immutable prepared owner and actual sample/topology
+generation. Weight, response and basis stamps remain separate dependencies;
+specialized direction engines still create canonical checkpoints lazily.
+`ppml/topology_identity.rs` checks the original FE owner retained throughout the
+fit. CMG uses the common finite moment/factor/solve service, with independently
+required raw FWL and projection certificates and declared numerical scope.

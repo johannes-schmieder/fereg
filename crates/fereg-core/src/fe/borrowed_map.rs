@@ -1622,33 +1622,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
     }
 
-    /// Copy trailing-column norms from this successful projection into retained
-    /// caller storage. One-FE returns certify the exact returned values in this
-    /// workspace; multi-FE solver handoffs need not leave the same norms here.
-    pub(crate) fn absorb_with_trailing_norms(
-        &mut self,
-        weights: BorrowedMapWeights<'_>,
-        values: DenseMatrix,
-        config: MapConfig,
-        norm_weight_scale: f64,
-        output: &mut [f64],
-    ) -> Result<(CertifiedBorrowedMap, bool)> {
-        if output.len() > values.ncols() {
-            return Err(invalid_argument(
-                "reusable categorical MAP norm output exceeds the RHS count",
-            ));
-        }
-        let rhs_positions = values.ncols() - output.len()..values.ncols();
-        self.absorb_with_selected_norms(
-            weights,
-            values,
-            config,
-            norm_weight_scale,
-            rhs_positions,
-            output,
-        )
-    }
-
     /// Select norms in caller column order without allocating an index buffer.
     /// Validate the selection before projection or any write to caller norms.
     pub(crate) fn absorb_with_selected_norms(
@@ -8921,11 +8894,12 @@ mod tests {
             for width in [3, 1, 2, 3] {
                 let norms = &mut output[..width - 1];
                 let (actual, reused) = reusable
-                    .absorb_with_trailing_norms(
+                    .absorb_with_selected_norms(
                         weights,
                         DenseMatrix::from_columns(&columns[..width]).unwrap(),
                         config(),
                         scale,
+                        1..width,
                         norms,
                     )
                     .unwrap();
@@ -8947,7 +8921,7 @@ mod tests {
                 let saved = norms.to_vec();
                 norms.fill(-1.0);
                 let (warm, reused) = reusable
-                    .absorb_with_trailing_norms(weights, values, config(), scale, norms)
+                    .absorb_with_selected_norms(weights, values, config(), scale, 1..width, norms)
                     .unwrap();
                 assert!(reused);
                 assert_eq!(warm.report().iterations, 0);
@@ -8987,11 +8961,12 @@ mod tests {
             for scale in [8.0, 4.0] {
                 let saved = norms;
                 let (_, reused) = reusable
-                    .absorb_with_trailing_norms(
+                    .absorb_with_selected_norms(
                         BorrowedMapWeights::Provided(&weights),
                         values(),
                         config(),
                         scale,
+                        1..2,
                         &mut norms,
                     )
                     .unwrap();
@@ -9004,22 +8979,24 @@ mod tests {
             let mut invalid = values();
             invalid[(0, 0)] = f64::NAN;
             assert!(reusable
-                .absorb_with_trailing_norms(
+                .absorb_with_selected_norms(
                     BorrowedMapWeights::Unit,
                     invalid,
                     config(),
                     1.0,
+                    1..2,
                     &mut norms,
                 )
                 .is_err());
             assert_eq!(norms, saved);
             let mut oversized = [-1.0; 3];
             assert!(reusable
-                .absorb_with_trailing_norms(
+                .absorb_with_selected_norms(
                     BorrowedMapWeights::Unit,
                     values(),
                     config(),
                     1.0,
+                    0..3,
                     &mut oversized,
                 )
                 .is_err());

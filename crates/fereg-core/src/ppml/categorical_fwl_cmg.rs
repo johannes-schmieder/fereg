@@ -29,16 +29,6 @@ use crate::prepared_fit_view::PreparedOlsFitView;
 use super::categorical_lsmr::{emit_solver_trace_line, JointLsmrCertificate};
 use super::PpmlIterationWorkspace;
 
-// Fixed partitions preserve reduction order across thread counts. The wider
-// ordinary frames need more than two tasks at N=50,000 to use the admitted team.
-// Cap partial K-by-K matrices so very large N cannot multiply retained storage.
-const MOMENT_BLOCK_ROWS: usize = 4_096;
-const MOMENT_MAX_BLOCKS: usize = 64;
-
-fn moment_block_rows(rows: usize) -> usize {
-    MOMENT_BLOCK_ROWS.max(rows.div_ceil(MOMENT_MAX_BLOCKS))
-}
-
 pub(crate) fn fused_cmg_batch_size(poolsize: usize, rhs: usize, nuisance: usize) -> usize {
     // Nuisance Schur columns are independent current-weight graph solves too.
     // Capping their batch at K+1 serializes setup on narrow finite designs.
@@ -273,7 +263,7 @@ pub(crate) struct ReusableCategoricalFwlCmg {
     expected_parent_bytes: u128,
     rows: usize,
     active_columns: usize,
-    certificate_topology: FusedCmgCertificateTopology,
+    certificate_topology: FeTopologyIdentity,
     prepared_topology: PreparedCmgTopology,
     control_seed: CmgControlSeed,
     redundant_nuisance: Option<usize>,
@@ -291,7 +281,6 @@ pub(crate) struct ReusableCategoricalFwlCmg {
     scales: Vec<f64>,
     coefficients: Vec<f64>,
     permutation: Vec<usize>,
-    moment_partials: Vec<f64>,
     residual: Vec<f64>,
     fitted_without_offset: Vec<f64>,
     team: InstalledThreadTeam,
@@ -302,70 +291,7 @@ pub(crate) struct ReusableCategoricalFwlCmg {
     projection_tolerance_scale: f64,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct FusedCmgCertificateTopology {
-    rows: usize,
-    effect_count: usize,
-    effects: [FusedCmgCertificateEffect; 3],
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct FusedCmgCertificateEffect {
-    codes_address: usize,
-    codes_len: usize,
-    levels: usize,
-}
-
-impl FusedCmgCertificateTopology {
-    const EMPTY_EFFECT: FusedCmgCertificateEffect = FusedCmgCertificateEffect {
-        codes_address: 0,
-        codes_len: 0,
-        levels: 0,
-    };
-
-    fn bind(design: &FeDesign) -> Result<Self> {
-        if !(2..=3).contains(&design.effects().len()) {
-            return Err(unsupported(
-                "fused PPML CMG certificate topology requires two or three effects",
-            ));
-        }
-        let mut effects = [Self::EMPTY_EFFECT; 3];
-        for (slot, effect) in effects.iter_mut().zip(design.effects()) {
-            if !effect.has_intercept() || !effect.slopes().is_empty() {
-                return Err(unsupported(
-                    "fused PPML CMG certificate topology requires categorical intercept-only effects",
-                ));
-            }
-            let codes = effect.codes();
-            *slot = FusedCmgCertificateEffect {
-                codes_address: codes.as_ptr() as usize,
-                codes_len: codes.len(),
-                levels: effect.n_levels(),
-            };
-        }
-        Ok(Self {
-            rows: design.nobs(),
-            effect_count: design.effects().len(),
-            effects,
-        })
-    }
-
-    fn matches(self, design: &FeDesign) -> bool {
-        self.rows == design.nobs()
-            && self.effect_count == design.effects().len()
-            && self.effects[..self.effect_count]
-                .iter()
-                .zip(design.effects())
-                .all(|(identity, effect)| {
-                    let codes = effect.codes();
-                    effect.has_intercept()
-                        && effect.slopes().is_empty()
-                        && identity.codes_address == codes.as_ptr() as usize
-                        && identity.codes_len == codes.len()
-                        && identity.levels == effect.n_levels()
-                })
-    }
-}
+use super::topology_identity::FeTopologyIdentity;
 
 impl ReusableCategoricalFwlCmg {
     /// The persistent prepared/fused parent also remains live during canonical
@@ -394,7 +320,15 @@ impl ReusableCategoricalFwlCmg {
                 "fused PPML CMG batch size must be positive",
             ));
         }
-        let certificate_topology = FusedCmgCertificateTopology::bind(fe_design)?;
+        if !(2..=3).contains(&fe_design.effects().len())
+            || fe_design
+                .effects()
+                .iter()
+                .any(|effect| !effect.has_intercept() || !effect.slopes().is_empty())
+        {
+            return Err(unsupported("fused PPML CMG certificate topology requires two or three categorical intercept-only effects"));
+        }
+        let certificate_topology = FeTopologyIdentity::capture(fe_design);
         let borrowed = prepared.fit_borrowed_cmg_design()?;
         let profile = CmgTopologyProfile::analyze(&borrowed)?;
         if profile.nuisance_columns() > CMG_MAX_NUISANCE_COLUMNS {
@@ -464,13 +398,6 @@ impl ReusableCategoricalFwlCmg {
         let square = active_columns
             .checked_mul(active_columns)
             .ok_or_else(|| allocation("fused PPML CMG finite dimensions overflow"))?;
-        let moment_stride = square
-            .checked_add(active_columns)
-            .ok_or_else(|| allocation("fused PPML CMG moment dimensions overflow"))?;
-        let moment_blocks = rows.div_ceil(moment_block_rows(rows));
-        let moment_elements = moment_blocks
-            .checked_mul(moment_stride)
-            .ok_or_else(|| allocation("fused PPML CMG moment workspace overflows"))?;
 
         let mut active_values = fallible_filled(
             active_elements,
@@ -550,11 +477,6 @@ impl ReusableCategoricalFwlCmg {
                 "fused PPML CMG finite coefficients",
             )?,
             permutation: fallible_filled(active_columns, 0, "fused PPML CMG finite permutation")?,
-            moment_partials: fallible_filled(
-                moment_elements,
-                0.0,
-                "fused PPML CMG finite moment partials",
-            )?,
             residual: fallible_filled(rows, 0.0, "fused PPML CMG residual")?,
             fitted_without_offset: fallible_filled(rows, 0.0, "fused PPML CMG fitted predictor")?,
             team,
@@ -1070,113 +992,34 @@ impl ReusableCategoricalFwlCmg {
     }
 
     fn solve_finite_system(&mut self, weights: &[f64], tolerance: f64) -> Result<()> {
-        let columns = self.active_columns;
-        if columns == 0 {
-            return Ok(());
-        }
-        let square = columns * columns;
-        let stride = square + columns;
-        self.moment_partials.fill(0.0);
-        let projected = &self.projected;
-        let block_rows = moment_block_rows(weights.len());
-        self.team.install(|| {
-            self.moment_partials
-                .par_chunks_mut(stride)
-                .enumerate()
-                .for_each(|(block, partial)| {
-                    let start = block * block_rows;
-                    let end = start.saturating_add(block_rows).min(weights.len());
-                    for row in start..end {
-                        let weight = weights[row];
-                        let response = projected[(row, columns)];
-                        for left in 0..columns {
-                            let left_value = projected[(row, left)];
-                            partial[square + left] =
-                                (weight * left_value).mul_add(response, partial[square + left]);
-                            for right in left..columns {
-                                partial[left * columns + right] = (weight * left_value).mul_add(
-                                    projected[(row, right)],
-                                    partial[left * columns + right],
-                                );
-                            }
-                        }
-                    }
-                });
-        });
-        self.gram.fill(0.0);
-        self.rhs.fill(0.0);
-        self.factor.fill(0.0);
-        self.forward.fill(0.0);
-        for partial in self.moment_partials.chunks(stride) {
-            for left in 0..columns {
-                add_compensated_scalar(
-                    &mut self.rhs[left],
-                    &mut self.forward[left],
-                    partial[square + left],
-                )?;
-                for right in left..columns {
-                    let slot = left * columns + right;
-                    add_compensated_scalar(
-                        &mut self.gram[slot],
-                        &mut self.factor[slot],
-                        partial[slot],
-                    )?;
+        self.team
+            .install(|| {
+                crate::ols::solve_finite_direction(
+                    &self.projected,
+                    weights,
+                    tolerance,
+                    crate::ols::FiniteDirectionWorkspace {
+                        gram: &mut self.gram,
+                        rhs: &mut self.rhs,
+                        factor: &mut self.factor,
+                        forward: &mut self.forward,
+                        solution: &mut self.standardized_solution,
+                        scales: &mut self.scales,
+                        coefficients: &mut self.coefficients,
+                        permutation: &mut self.permutation,
+                    },
+                )
+            })
+            .map_err(|error| {
+                if error.code == ErrorCode::InvalidData {
+                    nonconvergence(format!(
+                        "fused PPML CMG finite direction: {}",
+                        error.message
+                    ))
+                } else {
+                    error
                 }
-            }
-        }
-        for left in 0..columns {
-            self.rhs[left] += self.forward[left];
-            if !self.rhs[left].is_finite() {
-                return Err(nonconvergence(
-                    "fused PPML CMG finite RHS accumulation is nonfinite",
-                ));
-            }
-            for right in left..columns {
-                let slot = left * columns + right;
-                self.gram[slot] += self.factor[slot];
-                if !self.gram[slot].is_finite() {
-                    return Err(nonconvergence(
-                        "fused PPML CMG finite Gram accumulation is nonfinite",
-                    ));
-                }
-            }
-            for right in (left + 1)..columns {
-                self.gram[right * columns + left] = self.gram[left * columns + right];
-            }
-            self.scales[left] = self.gram[left * columns + left].sqrt();
-            if !self.scales[left].is_finite() || self.scales[left] <= 0.0 {
-                return Err(nonconvergence(
-                    "fused PPML CMG active finite basis lost positive weighted norm",
-                ));
-            }
-        }
-        for row in 0..columns {
-            self.rhs[row] /= self.scales[row];
-            for column in 0..columns {
-                self.gram[row * columns + column] /= self.scales[row] * self.scales[column];
-            }
-        }
-        pivoted_cholesky_solve(
-            &mut self.gram,
-            &mut self.rhs,
-            &mut self.factor,
-            &mut self.forward,
-            &mut self.standardized_solution,
-            &mut self.permutation,
-            tolerance.max(64.0 * f64::EPSILON).powi(2),
-        )?;
-        self.coefficients.fill(0.0);
-        for position in 0..columns {
-            let original = self.permutation[position];
-            self.coefficients[original] =
-                self.standardized_solution[position] / self.scales[original];
-        }
-        if self.coefficients.iter().any(|value| !value.is_finite()) {
-            return Err(nonconvergence(
-                "fused PPML CMG finite coefficients are nonfinite",
-            ));
-        }
-        Ok(())
+            })
     }
 
     fn certify_fwl(
@@ -1348,18 +1191,8 @@ pub(crate) fn estimate_fused_cmg_workspace_bytes(
             )
         })
         .ok_or_else(|| allocation("fused PPML CMG small workspace bytes overflow"))?;
-    let blocks = rows.div_ceil(moment_block_rows(rows)) as u128;
-    let partials = blocks
-        .checked_mul(
-            square
-                .checked_add(k)
-                .ok_or_else(|| allocation("fused PPML CMG moment stride overflows"))?,
-        )
-        .and_then(|value| value.checked_mul(8))
-        .ok_or_else(|| allocation("fused PPML CMG moment partial bytes overflow"))?;
     observation_values
         .checked_add(small_values)
-        .and_then(|value| value.checked_add(partials))
         .and_then(|value| value.checked_add((threads as u128).checked_mul(256)?))
         .ok_or_else(|| allocation("fused PPML CMG total workspace bytes overflow"))
 }
@@ -1484,23 +1317,6 @@ fn add_relative(
     *count = count.saturating_add(1);
 }
 
-fn add_compensated_scalar(sum: &mut f64, correction: &mut f64, value: f64) -> Result<()> {
-    let updated = *sum + value;
-    *correction += if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *sum = updated;
-    if sum.is_finite() && correction.is_finite() {
-        Ok(())
-    } else {
-        Err(nonconvergence(
-            "fused PPML CMG finite moment accumulation is nonfinite",
-        ))
-    }
-}
-
 #[derive(Default)]
 struct CompensatedSum {
     sum: f64,
@@ -1570,99 +1386,6 @@ impl ScaledSquareSum {
 }
 
 #[allow(clippy::too_many_arguments)]
-fn pivoted_cholesky_solve(
-    gram: &mut [f64],
-    rhs: &mut [f64],
-    factor: &mut [f64],
-    forward: &mut [f64],
-    solution: &mut [f64],
-    permutation: &mut [usize],
-    pivot_guard: f64,
-) -> Result<()> {
-    let dimension = rhs.len();
-    if gram.len() != dimension.saturating_mul(dimension)
-        || factor.len() != gram.len()
-        || forward.len() != dimension
-        || solution.len() != dimension
-        || permutation.len() != dimension
-    {
-        return Err(invalid_argument(
-            "fused PPML CMG finite workspace dimensions are inconsistent",
-        ));
-    }
-    factor.fill(0.0);
-    for (position, value) in permutation.iter_mut().enumerate() {
-        *value = position;
-    }
-    for step in 0..dimension {
-        let mut pivot = step;
-        for candidate in (step + 1)..dimension {
-            if gram[candidate * dimension + candidate] > gram[pivot * dimension + pivot] {
-                pivot = candidate;
-            }
-        }
-        if pivot != step {
-            for column in 0..dimension {
-                gram.swap(step * dimension + column, pivot * dimension + column);
-            }
-            for row in 0..dimension {
-                gram.swap(row * dimension + step, row * dimension + pivot);
-            }
-            rhs.swap(step, pivot);
-            permutation.swap(step, pivot);
-            for column in 0..step {
-                factor.swap(step * dimension + column, pivot * dimension + column);
-            }
-        }
-        let pivot_value = gram[step * dimension + step];
-        if !pivot_value.is_finite() || pivot_value <= pivot_guard {
-            return Err(nonconvergence(
-                "fused PPML CMG active finite basis lost rank",
-            ));
-        }
-        let diagonal = pivot_value.sqrt();
-        factor[step * dimension + step] = diagonal;
-        for row in (step + 1)..dimension {
-            factor[row * dimension + step] = gram[row * dimension + step] / diagonal;
-        }
-        for row in (step + 1)..dimension {
-            for column in row..dimension {
-                let value = gram[column * dimension + row]
-                    - factor[row * dimension + step] * factor[column * dimension + step];
-                if !value.is_finite() {
-                    return Err(nonconvergence(
-                        "fused PPML CMG Cholesky update is nonfinite",
-                    ));
-                }
-                gram[column * dimension + row] = value;
-                gram[row * dimension + column] = value;
-            }
-        }
-    }
-    for row in 0..dimension {
-        let mut value = rhs[row];
-        for column in 0..row {
-            value -= factor[row * dimension + column] * forward[column];
-        }
-        forward[row] = value / factor[row * dimension + row];
-    }
-    for row in (0..dimension).rev() {
-        let mut value = forward[row];
-        for column in (row + 1)..dimension {
-            value -= factor[column * dimension + row] * solution[column];
-        }
-        solution[row] = value / factor[row * dimension + row];
-    }
-    if forward
-        .iter()
-        .chain(solution.iter())
-        .any(|value| !value.is_finite())
-    {
-        return Err(nonconvergence("fused PPML CMG Cholesky solve is nonfinite"));
-    }
-    Ok(())
-}
-
 fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
     let mut output = Vec::new();
     output
@@ -1792,29 +1515,36 @@ mod tests {
     }
 
     #[test]
-    fn pivoted_cholesky_recovers_a_permuted_spd_system() {
-        let mut gram = vec![1.0, 0.5, 0.5, 4.0];
-        let mut rhs = vec![2.0, 9.0];
-        let mut factor = vec![0.0; 4];
-        let mut forward = vec![0.0; 2];
-        let mut solution = vec![0.0; 2];
-        let mut permutation = vec![0; 2];
-        pivoted_cholesky_solve(
-            &mut gram,
-            &mut rhs,
-            &mut factor,
-            &mut forward,
-            &mut solution,
-            &mut permutation,
-            1e-14,
+    fn shared_finite_direction_recovers_explicit_spd_system() {
+        let root = 3.75_f64.sqrt();
+        let projected =
+            DenseMatrix::from_row_major(2, 3, vec![1., 0.5, 2., 0., root, 8. / root]).unwrap();
+        let mut gram = [0.; 4];
+        let mut rhs = [0.; 2];
+        let mut factor = [0.; 4];
+        let mut forward = [0.; 2];
+        let mut solution = [0.; 2];
+        let mut permutation = [0; 2];
+        let mut scales = [0.; 2];
+        let mut coefficients = [0.; 2];
+        crate::ols::solve_finite_direction(
+            &projected,
+            &[1., 1.],
+            1e-7,
+            crate::ols::FiniteDirectionWorkspace {
+                gram: &mut gram,
+                rhs: &mut rhs,
+                factor: &mut factor,
+                forward: &mut forward,
+                solution: &mut solution,
+                scales: &mut scales,
+                coefficients: &mut coefficients,
+                permutation: &mut permutation,
+            },
         )
-        .expect("solve");
-        let mut canonical = [0.0; 2];
-        for position in 0..2 {
-            canonical[permutation[position]] = solution[position];
-        }
-        assert!((canonical[0] - 14.0 / 15.0).abs() <= 1e-12);
-        assert!((canonical[1] - 32.0 / 15.0).abs() <= 1e-12);
+        .expect("shared finite solve");
+        assert!((coefficients[0] - 14.0 / 15.0).abs() <= 1e-12);
+        assert!((coefficients[1] - 32.0 / 15.0).abs() <= 1e-12);
     }
 
     fn certificate_design(first: &[u32], second: &[u32]) -> FeDesign {
@@ -1835,13 +1565,10 @@ mod tests {
         let long = estimate_fused_cmg_workspace_bytes(1_000, 2, 1).expect("long estimate");
         assert!(wide > narrow);
         assert!(long > narrow);
-        let before = estimate_fused_cmg_workspace_bytes(MOMENT_BLOCK_ROWS - 1, 50, 7).unwrap();
-        let at = estimate_fused_cmg_workspace_bytes(MOMENT_BLOCK_ROWS, 50, 7).unwrap();
-        let after = estimate_fused_cmg_workspace_bytes(MOMENT_BLOCK_ROWS + 1, 50, 7).unwrap();
-        assert_eq!(after - at - (at - before), (50 * 50 + 50) * 8);
-        for rows in [0, 1, 4_096, 50_000, 262_144, 262_145, 1_000_000, usize::MAX] {
-            assert!(rows.div_ceil(moment_block_rows(rows)) <= MOMENT_MAX_BLOCKS);
-        }
+        let before = estimate_fused_cmg_workspace_bytes(4_096 - 1, 50, 7).unwrap();
+        let at = estimate_fused_cmg_workspace_bytes(4_096, 50, 7).unwrap();
+        let after = estimate_fused_cmg_workspace_bytes(4_096 + 1, 50, 7).unwrap();
+        assert_eq!(after - at, at - before);
     }
 
     #[test]
@@ -1904,7 +1631,7 @@ mod tests {
         let first = [0, 0, 1, 1];
         let second = [0, 1, 0, 1];
         let design = certificate_design(&first, &second);
-        let identity = FusedCmgCertificateTopology::bind(&design).expect("topology identity");
+        let identity = FeTopologyIdentity::capture(&design);
         assert!(identity.matches(&design));
 
         let same_values_in_distinct_storage = certificate_design(&first, &second);
