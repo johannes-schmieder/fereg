@@ -269,7 +269,68 @@ def validate_measurement_plan(plan):
         raise ValueError('missing predeclared artifacts')
     if not plan.get('calibration_sha256') and plan.get('mode') != 'calibration':
         raise ValueError('candidate measurement needs prior calibrated protocol')
+    edges = list(map(tuple, plan.get('scaling_edges', [])))
+    if len(set(edges)) != len(edges) or any(len(edge) != 4 for edge in edges):
+        raise ValueError('invalid or duplicated scaling edges')
+    for cell, low, high, arm in edges:
+        if type(low) is not int or type(high) is not int or not 0 < low < high:
+            raise ValueError('scaling edges require increasing worker budgets')
+        if (cell, low, arm) not in scope or (cell, high, arm) not in scope:
+            raise ValueError('scaling edge endpoints outside measurement scope')
+    if edges and plan['mode'] == 'calibration':
+        raise ValueError('symmetric artifact calibration cannot impose thread scaling')
     return scope
+
+
+def scaling_effects(plan, values, confirmations, policy):
+    """Assess declared candidate worker edges from original opposite-order captures."""
+    effects = []
+    edges = plan.get('scaling_edges', [])
+    tail = .025 / (8 * (len(plan['scope']) + len(edges)))
+    for cell, low, high, arm in edges:
+        endpoints = [(cell, low, arm), (cell, high, arm)]
+        confirmed = all(group in confirmations for group in endpoints)
+        if any(group in confirmations for group in endpoints) and not confirmed:
+            raise ValueError('scaling confirmation omitted one endpoint')
+        screen, final = [], []
+        for order in range(2):
+            banks = [list(values[(order, group)]['candidate']) for group in endpoints]
+            screen.append(median_order_envelope(*banks, policy))
+            if confirmed:
+                for bank, group in zip(banks, endpoints):
+                    bank.extend(values[(order + 2, group)]['candidate'])
+            final.append(median_order_envelope(*banks, policy))
+            regression = median_order_envelope(*banks, policy, tail)
+            final[-1]['established_regression'] = confirmed and regression['lower_excess_seconds'] > 0
+        verdict = ('within' if all(b['verdict'] == 'within' for b in final) else
+                   ('outside' if all(b['established_regression'] for b in final) else 'unresolved'))
+        effects.append(dict(cell=cell, low_threads=low, high_threads=high, arm=arm,
+                            verdict=verdict, screening_blocks=screen, blocks=final, confirmed=confirmed))
+    return effects
+
+
+def confirmation_scope(comparisons):
+    """Confirm the full unresolved union, including both ends of worker edges."""
+    groups = {(e['cell'], e['threads'], e['arm']) for result in comparisons
+              for e in result['effects'] if any(b['verdict'] != 'within' for b in e['screening_blocks'])}
+    for result in comparisons:
+        for effect in result.get('scaling_effects', []):
+            if any(b['verdict'] != 'within' for b in effect['screening_blocks']):
+                groups.update((effect['cell'], t, effect['arm'])
+                              for t in [effect['low_threads'], effect['high_threads']])
+    # Artifact confirmation can also select one endpoint of an otherwise settled
+    # edge. Retain both so its final look never mixes unequal stage histories.
+    changed = True
+    while changed:
+        before = len(groups)
+        for result in comparisons:
+            for effect in result.get('scaling_effects', []):
+                endpoints = {(effect['cell'], t, effect['arm'])
+                             for t in [effect['low_threads'], effect['high_threads']]}
+                if groups & endpoints:
+                    groups.update(endpoints)
+        changed = len(groups) != before
+    return groups
 
 
 def bounded_pair_envelopes(paths):
@@ -369,15 +430,20 @@ def bounded_pair_envelopes(paths):
             final.append(median_order_envelope(bank['parent'],bank['candidate'],first['protocol']))
             # Established regressions use conservative simultaneous tails over
             # all predeclared families/comparators/orders, only at the final look.
-            regression = median_order_envelope(bank['parent'],bank['candidate'],first['protocol'],.025/(8*len(scope)))
+            hypotheses = len(scope) + len(plan.get('scaling_edges', []))
+            regression = median_order_envelope(bank['parent'],bank['candidate'],first['protocol'],.025/(8*hypotheses))
             final[-1]['established_regression'] = group in confirmations and regression['lower_excess_seconds'] > 0
         verdict = 'within' if all(b['verdict']=='within' and (plan['mode']!='calibration' or b['reverse_upper_excess_seconds']<=0) for b in final) else ('outside' if all(b['established_regression'] for b in final) else 'unresolved')
         effects.append(dict(cell=group[0],threads=group[1],arm=group[2],verdict=verdict,screening_blocks=screen,blocks=final,confirmed=group in confirmations))
-    return dict(paired_artifacts=first['paired_artifacts'],manifest_sha256=first['suite_sha256'],datasets=first['datasets'],
+    result = dict(paired_artifacts=first['paired_artifacts'],manifest_sha256=first['suite_sha256'],datasets=first['datasets'],
         effects=effects,context={k:first[k] for k in ['protocol','tooling_identity','platform','environment','tier','timing_identity']},
         measurement_plan=plan,measurement_plan_sha256=first['measurement']['plan_sha256'],
         passed=all(e['verdict']=='within' for e in effects),
         blocks=[dict(path=str(p),sha256=hashlib.sha256(Path(p).read_bytes()).hexdigest()) for p in paths])
+    if plan.get('scaling_edges'):
+        result['scaling_effects'] = scaling_effects(plan, values, confirmations, first['protocol'])
+        result['passed'] = result['passed'] and all(e['verdict'] == 'within' for e in result['scaling_effects'])
+    return result
 
 
 def paired_envelopes(paths):
@@ -469,7 +535,7 @@ def acceptance_envelopes(parent_paths, baseline_paths, fixed_plugin_sha256, fixe
     if parent.get('measurement_plan'):
         if parent['measurement_plan'] != baseline.get('measurement_plan') or parent['measurement_plan_sha256'] != baseline.get('measurement_plan_sha256'):
             raise ValueError('bounded comparator declarations differ')
-        unresolved = {(e['cell'],e['threads'],e['arm']) for result in [parent,baseline] for e in result['effects'] if any(b['verdict']!='within' for b in e['screening_blocks'])}
+        unresolved = confirmation_scope([parent, baseline])
         screening_identity = parent['blocks'][:2]+baseline['blocks'][:2]
         for result in [parent,baseline]:
             for block in result['blocks'][2:]:
@@ -491,7 +557,10 @@ def acceptance_envelopes(parent_paths, baseline_paths, fixed_plugin_sha256, fixe
                 raise ValueError('calibration requires identical source/native/frontend artifacts')
         passed=all((b['lower_seconds'] >= -b['allowance_seconds'] and b['upper_seconds'] <= b['allowance_seconds']) if 'lower_seconds' in b else (b['upper_excess_seconds'] <= 0 and b['reverse_upper_excess_seconds'] <= 0)
                    for comparison in [parent,baseline] for e in comparison['effects'] for b in e['blocks'])
-    return dict(parent=parent, fixed_baseline=baseline, calibration=calibrate, passed=passed)
+    result = dict(parent=parent, fixed_baseline=baseline, calibration=calibrate, passed=passed)
+    if parent.get('measurement_plan', {}).get('scaling_edges'):
+        result['confirmation_scope'] = [list(group) for group in sorted(unresolved)]
+    return result
 
 
 def summarize(path, destination=None):

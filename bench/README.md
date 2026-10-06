@@ -20,6 +20,9 @@ identities, calibration evidence hash, an eight-pair screening budget, and a
 32- or 64-additional-pair confirmation budget assigned to every workload before
 screening. Each block has a predetermined wall budget. Failure or exhaustion
 leaves incomplete evidence and blocks acceptance. No automatic retries occur.
+Reference and timed commands use the lesser of their command timeout and the
+remaining block budget. Timeout cleanup and capture checkpointing may extend
+wall time; an exceeded block budget cannot pass.
 
 Run both screening orders against both references with
 `--measurement-stage screening --measurement-comparator parent` or
@@ -32,6 +35,12 @@ unresolved scope; it cannot add, omit or select measurements within a workload.
 The final checker receives screening then confirmation forward/reverse paths
 for each comparator. All eight screening observations remain in the final
 40- or 72-pair interval. Exactly two acceptance looks are permitted.
+
+Optional declared `[cell, lower_workers, higher_workers, arm]` scaling edges
+apply the same allowance to the candidate's captured worker counts. An
+unresolved edge confirms both endpoints. Confirmation of either endpoint also
+closes connected declared edges, so final comparisons use both complete stage
+histories. These groups join the exact unresolved union across both comparators.
 
 Each look spends one-sided alpha 0.0125. Exact binomial median order-statistic
 endpoints use marginal tail probability 0.00625: positions `[1,8]`, `[12,29]`
@@ -47,14 +56,22 @@ average can override a slow workload.
 Screening failures are measurement uncertainty. A confirmed regression requires
 positive lower excess bounds in both orders at the final look, using marginal
 tails `0.025/(8*declared_workloads)` to conservatively cover every comparator,
-order and median endpoint. Other final failures remain unresolved and block the
+order and median endpoint. With worker edges, replace `declared_workloads` by the sum of
+declared workloads and edges; their simultaneous regression claims use the same
+endpoint rule. Other final failures remain unresolved and block the
 relevant gate. Diagnose time trends, order effects, serial dependence and
 competing load using retained captures; violated measurement assumptions block
 inference rather than authorize another measurement attempt.
 
 Calibrate once before candidate timing with fresh identical qualified artifacts,
-the same declared scope, order and stopping rule, and symmetric allowance
-checks. Saved captures may estimate feasibility and assign confirmation budgets
+the declared order and stopping rule, and symmetric allowance checks. Ordinarily
+use the same workload scope. A broad integration may prospectively declare
+representative calibration classes with a reviewed mapping to every timing
+class and worker boundary, plus retained drift/dependence diagnostics. This
+calibrates measurement resolution; candidate comparisons still cover their
+entire separately frozen scope. A null drift test does not prove independent
+stationary draws. Saved captures may estimate feasibility and assign
+confirmation budgets
 before this calibration; they cannot replace it. Retain every calibration and
 candidate observation, identity and decision. Astra's bounded protocol review
 approved this rule subject to successful calibration. Reserve clean timing

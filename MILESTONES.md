@@ -108,6 +108,7 @@ Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-wi
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 ## Log
+- 2026-10-06 M35.1: bounded worker edges/time limits;41tests/saved4448equivalence/Astra high pass; native unchanged; [tools](bench/history/2026-10-06-m35-scaling-tool-qualification.json).
 - 2026-10-06 M31.1 accepted: net-1502/M30,-9149/M26; largeFast M26 cost accepted; broad/scaling deferred; [record](bench/history/2026-10-06-m31-architectural-acceptance.json).
 - 2026-10-06 M31 design: initial+488 extraction preserved; immutable finite owner declared; exact retainedPPML/stable public decisions bind; [scope](bench/history/2026-10-06-m31-finite-design.json).
 - 2026-10-06 M31 checkpoint: candidate−1490/M30,−9137/M26; timing failed/unresolved, new largeFast loss; Astra high supports science; [record](bench/history/2026-10-06-m31-finite-checkpoint.json).

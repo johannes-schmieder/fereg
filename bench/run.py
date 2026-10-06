@@ -169,7 +169,13 @@ def measure(args, suite, cell, arm, threads, repetition, dataset, environment, r
     else:
         (directory / "command.do").write_text(f'do "{ROOT / "bench/stata_runner.do"}" "{directory / "config.do"}"\n')
         command = [args.stata, "-b", "do", str(directory / "command.do")]
-    result = launch(command, directory, suite["tiers"][args.tier]["timeout_seconds"])
+    timeout = suite["tiers"][args.tier]["timeout_seconds"]
+    if getattr(args, 'measurement_plan', None):
+        remaining = args.bounded_plan['maximum_wall_seconds_per_block'] - (time.monotonic() - args.measurement_started)
+        if remaining <= 0:
+            raise ValueError('bounded measurement wall budget exhausted before command')
+        timeout = min(timeout, remaining)
+    result = launch(command, directory, timeout)
     metadata = read_metadata(directory / "metadata.tsv")
     result.update({"cell": cell["id"], "arm": arm, "threads": threads, "repetition": repetition,
                    "reference": reference, "directory": str(directory), "metadata": metadata,
@@ -273,7 +279,7 @@ def run(args):
         cells = [cell for cell in cells if cell["id"] in names]
     measurement = None
     if getattr(args,'measurement_plan',None):
-        from compare import validate_measurement_plan, acceptance_envelopes
+        from compare import validate_measurement_plan, acceptance_envelopes, confirmation_scope
         args.bounded_plan = json.loads(args.measurement_plan.read_text())
         declared = set(validate_measurement_plan(args.bounded_plan))
         if not args.paired_source_root or not args.fereg_only or not args.clock_plugin or not args.measurement_stage or not args.measurement_comparator:
@@ -292,7 +298,7 @@ def run(args):
             result = acceptance_envelopes(args.screening_blocks[:2],args.screening_blocks[2:],fixed['plugin_sha256'],fixed['frontend_sha256'])
             if result['parent']['measurement_plan'] != args.bounded_plan:
                 raise ValueError('confirmation plan differs from screening')
-            unresolved = {(e['cell'],e['threads'],e['arm']) for comparator in ['parent','fixed_baseline'] for e in result[comparator]['effects'] if any(b['verdict']!='within' for b in e['screening_blocks'])}
+            unresolved = confirmation_scope([result['parent'], result['fixed_baseline']])
             if not unresolved or not unresolved <= selected:
                 raise ValueError('confirmation has no unresolved scope or selection omitted it')
             args.confirmation_groups = unresolved
@@ -339,6 +345,8 @@ def run(args):
     args.root.mkdir(parents=True)
     started = time.monotonic()
     args.measurement_started = started
+    for artifact in artifacts:
+        artifact.measurement_started = started
     records = []
     source_sha, source_dirty = source_identity(artifact_root or ROOT)
     tools = tooling_identity(getattr(args, 'manifest', None))

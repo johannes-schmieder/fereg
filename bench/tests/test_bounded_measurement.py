@@ -12,11 +12,34 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from compare import acceptance_envelopes, median_order_interval, validate_measurement_plan
-from run import execute_cell, save_campaign
+from compare import acceptance_envelopes, confirmation_scope, median_order_interval, validate_measurement_plan
+from run import execute_cell, measure, save_campaign
 
 
 class BoundedMeasurementTests(unittest.TestCase):
+    def test_reference_and_timed_commands_cannot_run_past_remaining_block_budget(self):
+        with tempfile.TemporaryDirectory() as temp:
+            args = SimpleNamespace(root=Path(temp), tier='pilot', engine='next', stata='fake-stata',
+                stata_processors=4, fereg_only=True, solver='auto', measurement_plan=Path('frozen.json'),
+                measurement_started=100., bounded_plan={'maximum_wall_seconds_per_block': 60.},
+                native_identity={'plugin_filename': 'plugin', 'plugin_sha256': 'p',
+                                 'build_source_commit': 's', 'frontend_sha256': 'f'})
+            suite = dict(tiers={'pilot': {'timeout_seconds': 1800}}, engine_option=True,
+                         protocol={'reference_tolerance': 1e-10})
+            cell = dict(id='a', model='ols', regressors=1, effects=0, outputs=False,
+                        weights='none', vce='robust')
+            environment = {'references': temp, 'r_library': temp}
+            timeout = dict(process_status='timeout', process_rc=None, wall_seconds=10.)
+            with patch('run.time.monotonic', return_value=150.), patch('run.launch', return_value=timeout) as launched:
+                for reference in [True, False]:
+                    result = measure(args, suite, cell, 'fereg', 8, 1, Path(temp) / 'data.dta', environment, reference)
+                    self.assertEqual(result['status'], 'timeout')
+                    self.assertEqual(launched.call_args.args[2], 10.)
+            with patch('run.time.monotonic', return_value=161.), patch('run.launch') as launched:
+                with self.assertRaisesRegex(ValueError, 'wall budget exhausted'):
+                    measure(args, suite, cell, 'fereg', 8, 2, Path(temp) / 'data.dta', environment)
+                launched.assert_not_called()
+
     def test_failed_capture_is_checkpointed_before_the_campaign_stops(self):
         suite = dict(tiers={'pilot': {'threads': [4]}}, comparators={'ols': ['fereg']},
                      protocol={'repetitions': 5})
@@ -167,6 +190,72 @@ class BoundedMeasurementTests(unittest.TestCase):
             self.assertFalse(result['passed']);self.assertTrue(all(e['verdict']=='outside' for e in result['parent']['effects']))
             for e in result['parent']['effects']:
                 self.assertEqual(e['blocks'][0]['pairs'],40 if e['cell']=='a' else 72)
+
+    def test_same_thread_artifact_pass_cannot_hide_worker_regression(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            (root / 'coefficients.csv').write_text('name,value\nx,1\n')
+            (root / 'sample.csv').write_text('obs_id\n1\n')
+
+            def worker_captures(stage, prefix, screening=None):
+                paths = self.captures(root, stage, prefix, screening=screening)
+                for path in paths:
+                    data = json.loads(path.read_text())
+                    plan = data['measurement']['plan']
+                    plan.update(scope=[['a', 8, 'fereg'], ['a', 16, 'fereg']],
+                                confirmation_pairs={'a|8|fereg': 32, 'a|16|fereg': 64},
+                                scaling_edges=[['a', 8, 16, 'fereg']])
+                    data['measurement']['plan_sha256'] = hashlib.sha256(
+                        json.dumps(plan, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+                    data['datasets'] = {'a': 'data'}
+                    data['records'] = [r for r in data['records'] if not (r['reference'] and r['cell'] == 'b')]
+                    for record in data['records']:
+                        if not record['reference']:
+                            record['threads'] = 8 if record['cell'] == 'a' else 16
+                            record['cell'] = 'a'
+                            record['metadata']['seconds'] = str(.1 if record['threads'] == 8 else .13)
+                    data['expected_groups'] = [['a', t, 'fereg', role]
+                                               for t in [8, 16] for role in ['parent', 'candidate']]
+                    path.write_text(json.dumps(data))
+                return paths
+
+            screen = worker_captures('screening', 'workers-screen')
+            result = self.evaluate(screen)
+            self.assertFalse(result['passed'])
+            self.assertTrue(all(e['verdict'] == 'within' for e in result['parent']['effects']))
+            self.assertEqual(confirmation_scope([result['parent'], result['fixed_baseline']]),
+                             {('a', 8, 'fereg'), ('a', 16, 'fereg')})
+            identity = result['parent']['blocks'] + result['fixed_baseline']['blocks']
+            confirm = worker_captures('confirmation', 'workers-confirm', identity)
+            result = self.evaluate(screen[:2] + confirm[:2] + screen[2:] + confirm[2:])
+            for comparison in ['parent', 'fixed_baseline']:
+                self.assertTrue(all(e['verdict'] == 'within' for e in result[comparison]['effects']))
+                self.assertEqual(result[comparison]['scaling_effects'][0]['verdict'], 'outside')
+            for path in confirm[:2]:
+                data = json.loads(path.read_text())
+                data['records'] = [r for r in data['records'] if r['reference'] or r['threads'] == 8]
+                data['expected_groups'] = [g for g in data['expected_groups'] if g[1] == 8]
+                path.write_text(json.dumps(data))
+            with self.assertRaisesRegex(ValueError, 'endpoint'):
+                self.evaluate(screen[:2] + confirm[:2] + screen[2:] + confirm[2:])
+
+    def test_scaling_edges_cannot_change_cell_or_escape_frozen_scope(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            plan = json.loads(self.captures(root)[0].read_text())['measurement']['plan']
+            for edges in [[['a', 4, 16, 'fereg']], [['a', 4, 4, 'fereg']],
+                          [['a', 16, 4, 'fereg']], [['a', 4, 16, 'fereg']] * 2]:
+                with self.subTest(edges=edges), self.assertRaises(ValueError):
+                    validate_measurement_plan({**plan, 'scaling_edges': edges})
+
+    def test_artifact_flag_closes_connected_otherwise_settled_worker_edges(self):
+        comparison = dict(effects=[dict(cell='a', threads=7, arm='fereg',
+                                       screening_blocks=[{'verdict': 'unresolved'}])],
+            scaling_effects=[dict(cell=cell, low_threads=low, high_threads=high, arm='fereg',
+                                 screening_blocks=[{'verdict': 'within'}])
+                            for cell, low, high in [('a', 7, 8), ('a', 8, 9), ('b', 8, 16)]])
+        self.assertEqual(confirmation_scope([comparison]),
+                         {('a', threads, 'fereg') for threads in [7, 8, 9]})
 
 
 if __name__=='__main__':unittest.main()
