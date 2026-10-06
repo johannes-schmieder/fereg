@@ -3,9 +3,8 @@
 //! Public OLS remains deliberately one-shot.  This session is the iterative
 //! estimator boundary: it owns changing response/weight buffers, freezes one
 //! canonical rank basis, and retains the certified within design needed by
-//! PPML inference. Canonical fresh/strict solves keep the unchanged prepared
-//! OLS kernel; frozen-basis iterations use session-owned streaming moments and
-//! factorization workspaces. Reuse is reported per route and never inferred.
+//! PPML inference. Canonical fresh/strict and frozen operations borrow
+//! the stateless finite service and its physical moment/factor kernels. Reuse is reported per route and never inferred.
 
 use super::canonical_products::CanonicalMoments;
 use super::implicit_centered::ImplicitCenteredDesign;
@@ -37,20 +36,19 @@ mod bias_linear;
 #[path = "retained_refinement.rs"]
 mod retained_refinement;
 pub(crate) use retained_refinement::coefficient_accuracy_scale;
-use retained_refinement::{refine_retained_coefficients, RefinementFrame, RefinementWorkspace};
+use retained_refinement::{refine_workspace, RefinementFrame};
 
 use super::finite_wls_kernel::{
-    certify_normal_equations, certify_retained_qr_dropped_span, factor_guarded_cholesky_in_place,
-    factor_rank_revealing_retained_qr, fill_finite_wls_moments, finite_wls_moment_layout,
-    inverse_relative_infinity_norm, invert_guarded_cholesky, invert_rank_revealing_qr_leading,
-    solve_guarded_cholesky, solve_rank_revealing_qr_leading, CholeskyPivotPolicy,
-    FixedBlockMomentSource, NormalEquationScale,
+    certify_finite_inverse, certify_normal_equations, factor_guarded_cholesky_in_place,
+    fill_finite_wls_moments, finite_wls_moment_layout, inverse_relative_infinity_norm,
+    invert_guarded_cholesky, solve_guarded_cholesky, CholeskyPivotPolicy, FixedBlockMomentSource,
+    NormalEquationScale,
 };
 #[cfg(test)]
 use super::prepared_fit::PreparedOlsFastScoreCache;
 use super::prepared_fit::{
-    assemble_retained_weighted_linear_fit, merge_solve_report, CurrentFrameColumnMeans,
-    LinearSolveFrame, RetainedFiniteFitDraft,
+    assemble_retained_weighted_linear_fit, build_finite_score_draft, merge_solve_report,
+    CurrentFrameColumnMeans, FiniteBreadDraft, FiniteFit, LinearSolveFrame, RetainedFitContext,
 };
 use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
 use super::{
@@ -793,6 +791,50 @@ impl RetainedWithinStorage {
         }
     }
 
+    fn moment_source<'a>(
+        &'a self,
+        selected: &'a [usize],
+        response: &'a [f64],
+        weights: BorrowedMapWeights<'a>,
+        scale: super::PreparedOlsBreadWeightScale,
+        norms: &'a [f64],
+    ) -> Result<FixedBlockMomentSource<'a>> {
+        let selected_columns = Some(selected);
+        let column_scales = Some(norms);
+        let solver_weight_divisor = scale.solver_weight_divisor;
+        Ok(match self {
+            Self::Implicit(values) => FixedBlockMomentSource::Implicit {
+                values: values.view()?,
+                selected_columns,
+                response: (response).into(),
+                weights,
+                solver_weight_divisor,
+                column_scales,
+            },
+            Self::Dense(values) => FixedBlockMomentSource::Dense {
+                values: super::finite_wls_kernel::FiniteDenseRows::packed(
+                    values.as_slice(),
+                    self.columns(),
+                ),
+                rows: self.rows(),
+                stored_columns: self.columns(),
+                selected_columns,
+                response: (response).into(),
+                weights,
+                solver_weight_divisor,
+                column_scales,
+            },
+            Self::Scratch(values) => FixedBlockMomentSource::Scratch {
+                values,
+                selected_columns,
+                response: response.into(),
+                weights,
+                solver_weight_divisor,
+                column_scales,
+            },
+        })
+    }
+
     fn columns(&self) -> usize {
         match self {
             Self::Dense(values) => values.ncols(),
@@ -1339,29 +1381,7 @@ impl<'a> PpmlOrdinaryLinearOutput<'a> {
         }
     }
 }
-#[derive(Debug, Default)]
-struct FrozenLinearWorkspace {
-    response: Vec<f64>,
-    gram: Vec<f64>,
-    factor: Vec<f64>,
-    inverse_lower: Vec<f64>,
-    rhs: Vec<f64>,
-    moment_partials: Vec<f64>,
-    row: Vec<f64>,
-    solve: Vec<f64>,
-    permutation: Vec<usize>,
-    scores: Vec<f64>,
-    coefficients: Vec<f64>,
-    bread: Vec<f64>,
-    residuals: Vec<f64>,
-    reported_coefficients: Vec<Option<f64>>,
-    kept: Vec<usize>,
-    candidate_positions: Vec<usize>,
-    candidate_ids: Vec<usize>,
-    candidate_scales: Vec<f64>,
-    reference_mean_corrections: Vec<f64>,
-    basis_slots: Vec<FrozenLinearBasisSlot>,
-}
+type FrozenLinearWorkspace = super::finite_wls_kernel::FiniteWorkspace<FrozenLinearBasisSlot>;
 
 impl FrozenLinearWorkspace {
     fn can_reuse(
@@ -1912,7 +1932,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     ) -> Result<(LinearWithinMemoryReport, bool, Vec<f64>)> {
         let source_pointer = match &cache {
             PreparedOlsFastScoreCache::Packed { within, .. }
-            | PreparedOlsFastScoreCache::Strided { within, .. } => within.as_slice().as_ptr(),
+            | PreparedOlsFastScoreCache::Selected { within, .. } => within.as_slice().as_ptr(),
         };
         let storage = self.dense_from_fast_cache(cache, kept)?;
         let pointer_preserved = match &storage {
@@ -4493,36 +4513,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             workspace.kept.clear();
             (0, 0.0, 1.0)
         } else {
-            let source = match &retained.storage {
-                RetainedWithinStorage::Implicit(values) => {
-                    FixedBlockMomentSource::RetainedImplicit {
-                        values: values.view()?,
-                        selected_columns: Some(&workspace.candidate_positions),
-                        response: within_response,
-                        weights: self.weights.borrowed(),
-                        solver_weight_divisor: self.bread_weight_scale.solver_weight_divisor,
-                        column_scales: Some(&workspace.candidate_scales),
-                    }
-                }
-                RetainedWithinStorage::Dense(values) => FixedBlockMomentSource::RetainedDense {
-                    values: values.as_slice(),
-                    rows,
-                    stored_columns,
-                    selected_columns: Some(&workspace.candidate_positions),
-                    response: within_response,
-                    weights: self.weights.borrowed(),
-                    solver_weight_divisor: self.bread_weight_scale.solver_weight_divisor,
-                    column_scales: Some(&workspace.candidate_scales),
-                },
-                RetainedWithinStorage::Scratch(values) => FixedBlockMomentSource::RetainedScratch {
-                    values,
-                    selected_columns: Some(&workspace.candidate_positions),
-                    response: within_response,
-                    weights: self.weights.borrowed(),
-                    solver_weight_divisor: self.bread_weight_scale.solver_weight_divisor,
-                    column_scales: Some(&workspace.candidate_scales),
-                },
-            };
+            let source = retained.storage.moment_source(
+                &workspace.candidate_positions,
+                within_response,
+                self.weights.borrowed(),
+                self.bread_weight_scale,
+                &workspace.candidate_scales,
+            )?;
             let layout = finite_wls_moment_layout(source)?;
             resize_zeroed(
                 &mut workspace.moment_partials,
@@ -4564,232 +4561,44 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     &mut workspace.gram,
                 )?;
             }
-            resize_zeroed(
-                &mut workspace.factor,
-                candidate_square,
-                "unable to reserve retained rank QR factor",
+            let result = super::finite_operations::solve_factor(
+                source,
+                &workspace.candidate_ids,
+                relative_threshold,
+                super::finite_operations::RankRequest::RetainedDiscover,
+                true,
+                super::finite_operations::FactorBanks {
+                    gram: &workspace.gram,
+                    rhs: &workspace.rhs,
+                    factor: &mut workspace.factor,
+                    auxiliary: &mut workspace.inverse_lower,
+                    solve: &mut workspace.solve,
+                    scores: &mut workspace.scores,
+                    row: &mut workspace.row,
+                    permutation: &mut workspace.permutation,
+                    coefficients: &mut workspace.coefficients,
+                    inverse: &mut workspace.bread,
+                    selected: &mut workspace.kept,
+                },
+                &mut super::prepared_fit::SystemFitReservation,
+                |relations, rank, initial_norm| {
+                    constant = LinearConstantRepresentation::capture(
+                        self.prepared.fit_model(),
+                        retained,
+                        relations,
+                        rank,
+                        initial_norm,
+                        relative_threshold,
+                        self.generations,
+                    )?;
+                    Ok(())
+                },
             )?;
-            resize_zeroed(
-                &mut workspace.solve,
-                candidate_count,
-                "unable to reserve retained transformed RHS",
-            )?;
-            resize_zeroed(
-                &mut workspace.scores,
-                candidate_count,
-                "unable to reserve retained QR trailing norms",
-            )?;
-            resize_zeroed(
-                &mut workspace.row,
-                stored_columns,
-                "unable to reserve retained QR row workspace",
-            )?;
-            workspace.permutation.clear();
-            workspace
-                .permutation
-                .try_reserve(candidate_count)
-                .map_err(|_| allocation("unable to reserve retained rank permutation"))?;
-            workspace.permutation.resize(candidate_count, 0);
-            resize_zeroed(
-                &mut workspace.inverse_lower,
-                candidate_square,
-                "unable to reserve retained guarded-Cholesky Gram",
-            )?;
-            workspace.inverse_lower.copy_from_slice(&workspace.gram);
-            workspace.solve.copy_from_slice(&workspace.rhs);
-            let maximum_diagonal = (0..candidate_count)
-                .map(|position| workspace.gram[position * candidate_count + position])
-                .fold(0.0_f64, f64::max);
-            let strong_pivot_guard = maximum_diagonal * relative_threshold.sqrt();
-            let fast_factor = if maximum_diagonal.is_finite()
-                && maximum_diagonal > 0.0
-                && strong_pivot_guard.is_finite()
-                && strong_pivot_guard > 0.0
-            {
-                factor_guarded_cholesky_in_place(
-                    &mut workspace.inverse_lower,
-                    &mut workspace.solve,
-                    &mut workspace.factor,
-                    &mut workspace.permutation,
-                    CholeskyPivotPolicy::MaximumDiagonal,
-                    strong_pivot_guard,
-                )?
-            } else {
-                None
-            };
-            if let Some(factor_report) = fast_factor {
-                resize_zeroed(
-                    &mut workspace.scores,
-                    candidate_count,
-                    "unable to reserve retained Cholesky forward solve",
-                )?;
-                resize_zeroed(
-                    &mut workspace.coefficients,
-                    candidate_count,
-                    "unable to reserve retained Cholesky coefficients",
-                )?;
-                if !solve_guarded_cholesky(
-                    &workspace.factor,
-                    &workspace.solve,
-                    &mut workspace.scores,
-                    &mut workspace.coefficients,
-                )? {
-                    return Err(invalid_data(
-                        "retained weighted-linear Cholesky solution is not finite",
-                    ));
-                }
-                workspace.row[..candidate_count].fill(0.0);
-                for position in 0..candidate_count {
-                    workspace.row[workspace.permutation[position]] =
-                        workspace.coefficients[position];
-                }
-                workspace
-                    .coefficients
-                    .copy_from_slice(&workspace.row[..candidate_count]);
-                workspace.kept.clear();
-                workspace.kept.extend_from_slice(&workspace.candidate_ids);
-                resize_zeroed(
-                    &mut workspace.bread,
-                    candidate_square,
-                    "unable to reserve retained Cholesky inverse",
-                )?;
-                if !invert_guarded_cholesky(
-                    &workspace.factor,
-                    &workspace.permutation,
-                    &mut workspace.inverse_lower,
-                    &mut workspace.bread,
-                )? {
-                    return Err(invalid_data(
-                        "retained weighted-linear Cholesky inverse is not finite",
-                    ));
-                }
-                (
-                    candidate_count,
-                    0.0,
-                    factor_report.maximum_diagonal / factor_report.minimum_diagonal,
-                )
-            } else {
-                let report = factor_rank_revealing_retained_qr(
-                    source,
-                    &workspace.candidate_ids,
-                    relative_threshold,
-                    &mut workspace.row,
-                    &mut workspace.factor,
-                    &mut workspace.solve,
-                    &mut workspace.scores,
-                    &mut workspace.permutation,
-                )?;
-                if report.ambiguous {
-                    return Err(invalid_data(
-                        "retained weighted-linear rank decision is numerically ambiguous",
-                    ));
-                }
-                let rank = report.rank;
-                resize_zeroed(
-                    &mut workspace.scores,
-                    rank,
-                    "unable to reserve retained rank pivot solution",
-                )?;
-                resize_zeroed(
-                    &mut workspace.coefficients,
-                    rank,
-                    "unable to reserve retained rank coefficients",
-                )?;
-                workspace.kept.clear();
-                workspace
-                    .kept
-                    .try_reserve(rank)
-                    .map_err(|_| allocation("unable to reserve retained rank identities"))?;
-                workspace.kept.resize(rank, 0);
-                if !solve_rank_revealing_qr_leading(
-                    &workspace.factor,
-                    &workspace.solve,
-                    &workspace.permutation,
-                    &workspace.candidate_ids,
-                    rank,
-                    &mut workspace.scores,
-                    &mut workspace.kept,
-                    &mut workspace.coefficients,
-                )? {
-                    return Err(invalid_data(
-                        "retained weighted-linear rank solution is not finite",
-                    ));
-                }
-                let dropped_count = candidate_count - rank;
-                let projection_elements = checked_elements(rank, dropped_count)?;
-                resize_zeroed(
-                    &mut workspace.inverse_lower,
-                    projection_elements,
-                    "unable to reserve retained dropped-span projection",
-                )?;
-                resize_zeroed(
-                    &mut workspace.scores,
-                    candidate_count,
-                    "unable to reserve retained dropped-span row",
-                )?;
-                resize_zeroed(
-                    &mut workspace.solve,
-                    dropped_count,
-                    "unable to reserve retained dropped-span norms",
-                )?;
-                let dropped_span = certify_retained_qr_dropped_span(
-                    source,
-                    &workspace.factor,
-                    &workspace.permutation,
-                    rank,
-                    report.initial_norm,
-                    relative_threshold,
-                    &mut workspace.row,
-                    &mut workspace.scores,
-                    &mut workspace.inverse_lower,
-                    &mut workspace.solve,
-                )?;
-                if !dropped_span.passed {
-                    return Err(invalid_data(
-                        "retained weighted-linear direct dropped-span certificate did not pass",
-                    ));
-                }
-                constant = LinearConstantRepresentation::capture(
-                    self.prepared.fit_model(),
-                    retained,
-                    workspace,
-                    rank,
-                    report.initial_norm,
-                    relative_threshold,
-                    self.generations,
-                )?;
-                let rank_square = checked_elements(rank, rank)?;
-                resize_zeroed(
-                    &mut workspace.inverse_lower,
-                    rank_square,
-                    "unable to reserve retained inverse-R workspace",
-                )?;
-                resize_zeroed(
-                    &mut workspace.bread,
-                    rank_square,
-                    "unable to reserve retained rank inverse",
-                )?;
-                if !invert_rank_revealing_qr_leading(
-                    &workspace.factor,
-                    &workspace.permutation,
-                    &workspace.candidate_ids,
-                    rank,
-                    &mut workspace.inverse_lower,
-                    &mut workspace.kept,
-                    &mut workspace.bread,
-                )? {
-                    return Err(invalid_data(
-                        "retained weighted-linear rank inverse is not finite",
-                    ));
-                }
-                (
-                    rank,
-                    report
-                        .maximum_dropped_relative_norm
-                        .max(dropped_span.maximum_dropped_relative_norm),
-                    report.condition_proxy,
-                )
-            }
+            (
+                result.report.rank,
+                result.report.maximum_dropped_relative_norm,
+                result.report.condition_proxy,
+            )
         };
 
         let mut active_positions =
@@ -4837,7 +4646,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 rank,
                 "unable to reserve retained refinement corrections",
             )?;
-            refine_retained_coefficients(
+            refine_workspace(
                 RefinementFrame {
                     storage: &retained.storage,
                     active_positions: &active_positions,
@@ -4846,13 +4655,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     weights: self.weights.borrowed(),
                     weight_scale: self.bread_weight_scale,
                 },
-                RefinementWorkspace {
-                    coefficients: &mut workspace.coefficients,
-                    bread: &workspace.bread,
-                    row: &mut workspace.row,
-                    scores: &mut workspace.scores,
-                    corrections: &mut workspace.solve,
-                },
+                workspace,
                 tolerance,
             )?;
             for (selected, &generated) in workspace.kept.iter().enumerate() {
@@ -4862,25 +4665,16 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 );
             }
         }
-        let left_inverse_error = inverse_relative_infinity_norm(
+        let inverse = certify_finite_inverse(
             &workspace.gram,
             candidate_count,
             &selected_candidate_positions,
             &workspace.bread,
             rank,
-            false,
         )?;
-        let right_inverse_error = inverse_relative_infinity_norm(
-            &workspace.gram,
-            candidate_count,
-            &selected_candidate_positions,
-            &workspace.bread,
-            rank,
-            true,
-        )?;
-        if left_inverse_error > self.config.bread_tolerance
-            || right_inverse_error > self.config.bread_tolerance
-        {
+        let left_inverse_error = inverse.left;
+        let right_inverse_error = inverse.right;
+        if !inverse.passed(self.config.bread_tolerance) {
             return Err(invalid_data(
                 "retained weighted-linear inverse certificate did not pass",
             ));
@@ -5254,10 +5048,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         };
         let scratch_bytes = retained.storage.scratch_bytes();
         let kept = fallible_copy(&workspace.kept, "unable to copy retained kept identities")?;
-        let canonical_candidates = fallible_copy(
-            &workspace.candidate_ids,
-            "unable to copy retained canonical candidates",
-        )?;
         let finite_bread_generated_columns =
             fallible_copy(&workspace.kept, "unable to copy retained bread identities")?;
         let residual_matrix =
@@ -5302,34 +5092,47 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 "current-frame means have stale design generations",
             ));
         }
-        let draft = RetainedFiniteFitDraft {
-            raw_column_means: CurrentFrameColumnMeans {
-                generated_columns: &retained.stored_generated_columns,
-                values: &retained.reference_means,
-            },
+        let finite_score = build_finite_score_draft(
+            &self.frozen_workspace.candidate_ids,
+            &self.frozen_workspace.gram,
+            &self.frozen_workspace.rhs,
+            &generated_coefficients,
+            &generated_statuses,
+            &reference_norms,
+            &score_norms,
+        )?;
+        let finite = FiniteFit {
             generated_coefficients,
             generated_statuses,
+            rank: kept.len(),
             kept,
             dropped,
-            rank_certificate: super::PreparedOlsRankCertificate {
+            certificate: super::PreparedOlsRankCertificate {
                 relative_threshold,
                 maximum_dropped_trailing_norm: maximum_dropped_relative_norm,
                 condition_proxy,
                 passed: true,
             },
-            canonical_candidates,
-            standardized_gram: &self.frozen_workspace.gram,
-            standardized_rhs: &self.frozen_workspace.rhs,
-            finite_bread_generated_columns,
-            finite_bread_values: finite_bread,
-            finite_reference_crossproduct: reference_crossproduct,
-            left_inverse_relative_infinity_norm: left_inverse_error,
-            right_inverse_relative_infinity_norm: right_inverse_error,
+            finite_score,
+            bread: Some(FiniteBreadDraft {
+                generated_columns: finite_bread_generated_columns,
+                values: finite_bread,
+                reference_crossproduct,
+                weight_scale: self.bread_weight_scale,
+                left_inverse_relative_infinity_norm: left_inverse_error,
+                right_inverse_relative_infinity_norm: right_inverse_error,
+            }),
+            within_residuals: Some(residuals.into_row_major()),
+        };
+        let draft = RetainedFitContext {
+            raw_column_means: CurrentFrameColumnMeans {
+                generated_columns: &retained.stored_generated_columns,
+                values: &retained.reference_means,
+            },
             reference_norms,
             score_norms,
             within_outcome_norm,
             normalized_initial_within_sum_of_squares,
-            residuals: residuals.into_row_major(),
             residual_absorption_report,
             absorption_report,
             scratch_bytes,
@@ -5342,6 +5145,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 self.bread_weight_scale,
             )?,
             self.config,
+            finite,
             draft,
         )?;
         Ok(RetainedRankSolveDraft {
@@ -6107,7 +5911,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             columns,
             "unable to reserve weighted-linear retained cache coordinates",
         )?;
-        let (mut values, source_stride, scales) = match cache {
+        let (mut values, source_stride) = match cache {
             PreparedOlsFastScoreCache::Packed {
                 generated_columns,
                 within,
@@ -6135,16 +5939,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         })?;
                     sources.push(source);
                 }
-                (within.into_row_major(), generated_columns.len(), None)
+                (within.into_row_major(), generated_columns.len())
             }
-            PreparedOlsFastScoreCache::Strided {
+            PreparedOlsFastScoreCache::Selected {
                 generated_columns,
                 within,
-                reference_norms,
                 means,
             } => {
                 if within.nrows() != rows
-                    || reference_norms.len() != generated_columns.len()
                     || means.len() != generated_columns.len()
                     || columns > generated_columns.len()
                     || generated_columns.windows(2).any(|pair| pair[0] >= pair[1])
@@ -6166,10 +5968,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                         "weighted-linear strided cache dimensions are inconsistent",
                     ));
                 }
-                let mut scales = fallible_empty(
-                    columns,
-                    "unable to reserve weighted-linear retained cache scales",
-                )?;
                 for generated in kept.iter().copied() {
                     let source = generated_columns
                         .iter()
@@ -6179,19 +5977,13 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                                 "weighted-linear strided cache is missing a kept column",
                             )
                         })?;
-                    let norm = reference_norms[source];
-                    if !norm.is_finite() || norm <= 0.0 {
-                        return Err(invalid_data(
-                            "weighted-linear strided cache scale is not finite and positive",
-                        ));
-                    }
+                    let _ = source;
                     sources.push(generated.checked_add(1).ok_or_else(|| {
                         allocation("weighted-linear strided cache coordinate overflows")
                     })?);
-                    scales.push(norm);
                 }
                 let stride = within.ncols();
-                (within.into_row_major(), stride, Some(scales))
+                (within.into_row_major(), stride)
             }
         };
         if columns == 0 {
@@ -6210,16 +6002,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             let source_start = row
                 .checked_mul(source_stride)
                 .ok_or_else(|| allocation("weighted-linear retained cache offset overflows"))?;
-            let root_weight = if scales.is_some() {
-                self.root_solver_weight(row)?
-            } else {
-                1.0
-            };
             for (target, source) in sources.iter().copied().enumerate() {
                 let value = values[source_start + source];
-                row_values[target] = scales
-                    .as_ref()
-                    .map_or(value, |scales| value * scales[target] / root_weight);
+                row_values[target] = value;
                 if !row_values[target].is_finite() {
                     return Err(invalid_data(
                         "weighted-linear retained cache contains a nonfinite value",
@@ -6615,20 +6400,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         }
         Ok(certificate)
     }
-
-    #[cfg(test)]
-    fn root_solver_weight(&self, row: usize) -> Result<f64> {
-        let weight =
-            normalized_solver_weight(self.weights.borrowed(), self.bread_weight_scale, row)?;
-        let root = weight.sqrt();
-        if root.is_finite() && root > 0.0 {
-            Ok(root)
-        } else {
-            Err(invalid_data(
-                "weighted-linear normalized root weight is invalid",
-            ))
-        }
-    }
 }
 
 struct FrozenSolveDraft {
@@ -6730,34 +6501,13 @@ fn stream_frozen_solve(
         }
         workspace.candidate_scales.push(scale);
     }
-    let source = match storage {
-        RetainedWithinStorage::Implicit(values) => FixedBlockMomentSource::RetainedImplicit {
-            values: values.view()?,
-            selected_columns: Some(active_positions),
-            response: within_response,
-            weights,
-            solver_weight_divisor: bread_weight_scale.solver_weight_divisor,
-            column_scales: Some(&workspace.candidate_scales),
-        },
-        RetainedWithinStorage::Dense(values) => FixedBlockMomentSource::RetainedDense {
-            values: values.as_slice(),
-            rows,
-            stored_columns,
-            selected_columns: Some(active_positions),
-            response: within_response,
-            weights,
-            solver_weight_divisor: bread_weight_scale.solver_weight_divisor,
-            column_scales: Some(&workspace.candidate_scales),
-        },
-        RetainedWithinStorage::Scratch(values) => FixedBlockMomentSource::RetainedScratch {
-            values,
-            selected_columns: Some(active_positions),
-            response: within_response,
-            weights,
-            solver_weight_divisor: bread_weight_scale.solver_weight_divisor,
-            column_scales: Some(&workspace.candidate_scales),
-        },
-    };
+    let source = storage.moment_source(
+        active_positions,
+        within_response,
+        weights,
+        bread_weight_scale,
+        &workspace.candidate_scales,
+    )?;
     let moment_layout = finite_wls_moment_layout(source)?;
     resize_zeroed(
         &mut workspace.moment_partials,
@@ -6781,186 +6531,53 @@ fn stream_frozen_solve(
         &mut workspace.rhs,
         &mut workspace.gram,
     )?;
-    resize_zeroed(
-        &mut workspace.row,
-        stored_columns,
-        "unable to reserve frozen weighted-linear row buffer",
-    )?;
-    resize_zeroed(
-        &mut workspace.factor,
-        square,
-        "unable to reserve frozen weighted-linear Cholesky factor",
-    )?;
-    resize_zeroed(
-        &mut workspace.inverse_lower,
-        square,
-        "unable to reserve frozen weighted-linear factor workspace",
-    )?;
-    workspace.inverse_lower.copy_from_slice(&workspace.gram);
-    resize_zeroed(
-        &mut workspace.solve,
-        rank,
-        "unable to reserve frozen weighted-linear factor RHS",
-    )?;
-    workspace.solve.copy_from_slice(&workspace.rhs);
-    workspace.permutation.clear();
-    workspace
-        .permutation
-        .try_reserve(rank)
-        .map_err(|_| allocation("unable to reserve frozen weighted-linear permutation"))?;
-    workspace.permutation.extend(0..rank);
-    let maximum_diagonal = (0..rank)
-        .map(|index| workspace.gram[index * rank + index])
-        .fold(0.0_f64, f64::max);
     let relative_threshold =
         config.rank_tolerance_multiplier * f64::EPSILON * rows.max(stored_columns).max(1) as f64;
-    let strong_pivot_guard = maximum_diagonal * relative_threshold.sqrt();
-    let fast_factor = if maximum_diagonal.is_finite()
-        && maximum_diagonal > 0.0
-        && strong_pivot_guard.is_finite()
-        && strong_pivot_guard > 0.0
-    {
-        factor_guarded_cholesky_in_place(
-            &mut workspace.inverse_lower,
-            &mut workspace.solve,
-            &mut workspace.factor,
-            &mut workspace.permutation,
-            CholeskyPivotPolicy::MaximumDiagonal,
-            strong_pivot_guard,
-        )?
-    } else {
-        None
-    };
-    resize_zeroed(
-        &mut workspace.bread,
-        square,
-        "unable to reserve frozen weighted-linear inverse",
+    let result = super::finite_operations::solve_factor(
+        source,
+        active_positions,
+        relative_threshold,
+        super::finite_operations::RankRequest::Frozen,
+        true,
+        super::finite_operations::FactorBanks {
+            gram: &workspace.gram,
+            rhs: &workspace.rhs,
+            factor: &mut workspace.factor,
+            auxiliary: &mut workspace.inverse_lower,
+            solve: &mut workspace.solve,
+            scores: &mut workspace.scores,
+            row: &mut workspace.row,
+            permutation: &mut workspace.permutation,
+            coefficients: &mut workspace.coefficients,
+            inverse: &mut workspace.bread,
+            selected: &mut workspace.candidate_positions,
+        },
+        &mut super::prepared_fit::SystemFitReservation,
+        |_, _, _| Ok(()),
     )?;
-    resize_zeroed(
-        &mut workspace.scores,
-        rank,
-        "unable to reserve frozen weighted-linear solve scratch",
-    )?;
-    resize_zeroed(
-        &mut workspace.coefficients,
-        rank,
-        "unable to reserve frozen weighted-linear coefficients",
-    )?;
-    // The caller holds workspace.kept as the authoritative active identities.
-    // QR identity scratch and the inverse-certificate positions have disjoint
-    // lifetimes, so reuse that bank instead of allocating into the moved slot.
-    workspace.candidate_positions.clear();
-    workspace
-        .candidate_positions
-        .try_reserve(rank)
-        .map_err(|_| allocation("unable to reserve frozen weighted-linear identities"))?;
-    workspace.candidate_positions.resize(rank, 0);
-    let condition_proxy = if let Some(factor_report) = fast_factor {
-        if !solve_guarded_cholesky(
-            &workspace.factor,
-            &workspace.solve,
-            &mut workspace.scores,
-            &mut workspace.coefficients,
-        )? {
-            return Err(invalid_data(
-                "frozen weighted-linear Cholesky solution is not finite",
-            ));
-        }
-        workspace.row[..rank].fill(0.0);
-        for position in 0..rank {
-            workspace.row[workspace.permutation[position]] = workspace.coefficients[position];
-        }
-        workspace
-            .coefficients
-            .copy_from_slice(&workspace.row[..rank]);
-        if !invert_guarded_cholesky(
-            &workspace.factor,
-            &workspace.permutation,
-            &mut workspace.inverse_lower,
-            &mut workspace.bread,
-        )? {
-            return Err(invalid_data(
-                "frozen weighted-linear Cholesky inverse is not finite",
-            ));
-        }
-        factor_report.maximum_diagonal / factor_report.minimum_diagonal
-    } else {
-        #[cfg(test)]
+    #[cfg(test)]
+    if result.used_qr {
         FROZEN_QR_FALLBACK_OBSERVED.store(true, Ordering::SeqCst);
-        let report = factor_rank_revealing_retained_qr(
-            source,
-            active_positions,
-            relative_threshold,
-            &mut workspace.row,
-            &mut workspace.factor,
-            &mut workspace.solve,
-            &mut workspace.scores,
-            &mut workspace.permutation,
-        )?;
-        if report.ambiguous || report.rank != rank {
-            return Err(invalid_data(
-                "frozen weighted-linear basis lost certified full rank",
-            ));
-        }
-        if !solve_rank_revealing_qr_leading(
-            &workspace.factor,
-            &workspace.solve,
-            &workspace.permutation,
-            active_positions,
-            rank,
-            &mut workspace.scores,
-            &mut workspace.candidate_positions,
-            &mut workspace.coefficients,
-        )? {
-            return Err(invalid_data(
-                "frozen weighted-linear QR solution is not finite",
-            ));
-        }
-        if !invert_rank_revealing_qr_leading(
-            &workspace.factor,
-            &workspace.permutation,
-            active_positions,
-            rank,
-            &mut workspace.inverse_lower,
-            &mut workspace.candidate_positions,
-            &mut workspace.bread,
-        )? {
-            return Err(invalid_data(
-                "frozen weighted-linear QR inverse is not finite",
-            ));
-        }
-        report.condition_proxy
-    };
-    if !condition_proxy.is_finite() {
-        return Err(invalid_data(
-            "frozen weighted-linear condition proxy is not finite",
-        ));
     }
+    let condition_proxy = result.report.condition_proxy;
     workspace.candidate_positions.clear();
     workspace
         .candidate_positions
         .try_reserve(rank)
         .map_err(|_| allocation("unable to reserve frozen inverse certificate positions"))?;
     workspace.candidate_positions.extend(0..rank);
-    let left_inverse_error = inverse_relative_infinity_norm(
+    let inverse = certify_finite_inverse(
         &workspace.gram,
         rank,
         &workspace.candidate_positions,
         &workspace.bread,
         rank,
-        false,
     )?;
-    let right_inverse_error = inverse_relative_infinity_norm(
-        &workspace.gram,
-        rank,
-        &workspace.candidate_positions,
-        &workspace.bread,
-        rank,
-        true,
-    )?;
+    let left_inverse_error = inverse.left;
+    let right_inverse_error = inverse.right;
 
     if let Some(tolerance) = config.coefficient_tolerance {
-        refine_retained_coefficients(
+        refine_workspace(
             RefinementFrame {
                 storage,
                 active_positions,
@@ -6969,13 +6586,7 @@ fn stream_frozen_solve(
                 weights,
                 weight_scale: bread_weight_scale,
             },
-            RefinementWorkspace {
-                coefficients: &mut workspace.coefficients,
-                bread: &workspace.bread,
-                row: &mut workspace.row,
-                scores: &mut workspace.scores,
-                corrections: &mut workspace.solve,
-            },
+            workspace,
             tolerance,
         )?;
     }

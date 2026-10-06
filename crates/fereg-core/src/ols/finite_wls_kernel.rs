@@ -6,11 +6,17 @@
 //! certificates. All observation sources are concrete enum variants; there
 //! are no trait objects or callbacks in the row loops.
 
+mod axis;
+mod workspace;
+pub(super) use axis::{FiniteDenseRows, FiniteResponse};
+pub(super) use workspace::FiniteWorkspace;
+
 use rayon::prelude::*;
 
 #[cfg(test)]
 use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 
+#[cfg(test)]
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::BorrowedMapWeights;
@@ -23,43 +29,36 @@ use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
 pub(crate) const RETAINED_MOMENT_TILE_ELEMENTS: usize = 1024;
 
 pub(super) const FIXED_BLOCK_MOMENT_ROWS: usize = 16_384;
-pub(super) const FIXED_BLOCK_MOMENT_MAX_BLOCKS: usize = 64;
 pub(super) const FIXED_BLOCK_MOMENT_MAX_COLUMNS: usize = 64;
 
 #[derive(Debug, Clone, Copy)]
 pub(super) enum FixedBlockMomentSource<'a> {
-    /// The accepted one-shot representation: response in column zero and
-    /// already root-weighted/reference-standardized candidates thereafter.
-    PreparedStandardized {
-        within: &'a DenseMatrix,
-        canonical_candidates: &'a [usize],
-    },
     /// Reusable dense representation: unscaled response and design with an
     /// explicit current solver-weight divisor.
-    RetainedDense {
-        values: &'a [f64],
+    Dense {
+        values: FiniteDenseRows<'a>,
         rows: usize,
         stored_columns: usize,
         selected_columns: Option<&'a [usize]>,
-        response: &'a [f64],
+        response: FiniteResponse<'a>,
         weights: BorrowedMapWeights<'a>,
         solver_weight_divisor: f64,
         column_scales: Option<&'a [f64]>,
     },
     /// Row-major reusable scratch representation. Each fixed block owns one
     /// bounded complete-row tile inside its caller-provided partial workspace.
-    RetainedScratch {
+    Scratch {
         values: &'a PreparedOlsScratch,
         selected_columns: Option<&'a [usize]>,
-        response: &'a [f64],
+        response: FiniteResponse<'a>,
         weights: BorrowedMapWeights<'a>,
         solver_weight_divisor: f64,
         column_scales: Option<&'a [f64]>,
     },
-    RetainedImplicit {
+    Implicit {
         values: ImplicitCenteredView<'a>,
         selected_columns: Option<&'a [usize]>,
-        response: &'a [f64],
+        response: FiniteResponse<'a>,
         weights: BorrowedMapWeights<'a>,
         solver_weight_divisor: f64,
         column_scales: Option<&'a [f64]>,
@@ -69,30 +68,25 @@ pub(super) enum FixedBlockMomentSource<'a> {
 impl FixedBlockMomentSource<'_> {
     pub(super) fn rows(self) -> usize {
         match self {
-            Self::PreparedStandardized { within, .. } => within.nrows(),
-            Self::RetainedDense { rows, .. } => rows,
-            Self::RetainedScratch { values, .. } => values.rows(),
-            Self::RetainedImplicit { values, .. } => values.rows(),
+            Self::Dense { rows, .. } => rows,
+            Self::Scratch { values, .. } => values.rows(),
+            Self::Implicit { values, .. } => values.rows(),
         }
     }
 
     pub(super) fn dimension(self) -> usize {
         match self {
-            Self::PreparedStandardized {
-                canonical_candidates,
-                ..
-            } => canonical_candidates.len(),
-            Self::RetainedDense {
+            Self::Dense {
                 stored_columns,
                 selected_columns,
                 ..
             } => selected_columns.map_or(stored_columns, <[usize]>::len),
-            Self::RetainedScratch {
+            Self::Scratch {
                 values,
                 selected_columns,
                 ..
             } => selected_columns.map_or(values.columns(), <[usize]>::len),
-            Self::RetainedImplicit {
+            Self::Implicit {
                 values,
                 selected_columns,
                 ..
@@ -102,7 +96,7 @@ impl FixedBlockMomentSource<'_> {
 
     fn row_workspace(self) -> usize {
         match self {
-            Self::RetainedScratch { values, .. } => {
+            Self::Scratch { values, .. } => {
                 let columns = values.columns();
                 if columns == 0 {
                     0
@@ -114,8 +108,8 @@ impl FixedBlockMomentSource<'_> {
                             .min((RETAINED_MOMENT_TILE_ELEMENTS / columns).max(1))
                 }
             }
-            Self::RetainedImplicit { values, .. } => values.columns(),
-            Self::PreparedStandardized { .. } | Self::RetainedDense { .. } => 0,
+            Self::Implicit { values, .. } => values.columns(),
+            Self::Dense { .. } => 0,
         }
     }
 
@@ -128,23 +122,7 @@ impl FixedBlockMomentSource<'_> {
             ));
         }
         match self {
-            Self::PreparedStandardized {
-                within,
-                canonical_candidates,
-            } => {
-                if within.ncols() == 0
-                    || canonical_candidates.iter().any(|column| {
-                        column
-                            .checked_add(1)
-                            .is_none_or(|value| value >= within.ncols())
-                    })
-                {
-                    return Err(invalid_argument(
-                        "prepared finite-WLS moment columns are out of range",
-                    ));
-                }
-            }
-            Self::RetainedDense {
+            Self::Dense {
                 values,
                 rows,
                 stored_columns,
@@ -153,17 +131,24 @@ impl FixedBlockMomentSource<'_> {
                 weights,
                 solver_weight_divisor,
                 column_scales,
-            } => validate_retained_source(
-                values.len(),
-                rows,
-                stored_columns,
-                selected_columns,
-                response,
-                weights,
-                solver_weight_divisor,
-                column_scales,
-            )?,
-            Self::RetainedScratch {
+            } => {
+                if !values.valid_for(rows, stored_columns) {
+                    return Err(invalid_argument(
+                        "finite-WLS dense physical axis is inconsistent",
+                    ));
+                }
+                validate_retained_source(
+                    values.len(),
+                    rows,
+                    stored_columns,
+                    selected_columns,
+                    response,
+                    weights,
+                    solver_weight_divisor,
+                    column_scales,
+                )?;
+            }
+            Self::Scratch {
                 values,
                 selected_columns,
                 response,
@@ -183,7 +168,7 @@ impl FixedBlockMomentSource<'_> {
                 solver_weight_divisor,
                 column_scales,
             )?,
-            Self::RetainedImplicit {
+            Self::Implicit {
                 values,
                 selected_columns,
                 response,
@@ -209,18 +194,7 @@ impl FixedBlockMomentSource<'_> {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(super) enum FiniteWlsMomentMode {
-    /// Preserve the accepted one-shot <= 64-column arithmetic exactly.
-    PreparedFixedBlocks,
-    /// Wide one-shot moments own disjoint Gram rows without a block bank.
-    PreparedPartitioned,
-    /// Bound reusable-session scratch by partitioning disjoint Gram rows.
-    RetainedPartitioned,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) struct FiniteWlsMomentLayout {
-    pub(super) mode: FiniteWlsMomentMode,
     pub(super) partitions: usize,
     pub(super) columns_per_partition: usize,
     pub(super) partial_stride: usize,
@@ -232,69 +206,34 @@ pub(super) fn finite_wls_moment_layout(
 ) -> Result<FiniteWlsMomentLayout> {
     source.validate()?;
     FiniteWlsMomentLayout::plan(
-        source.rows(),
         source.dimension(),
-        matches!(source, FixedBlockMomentSource::PreparedStandardized { .. }),
         source.row_workspace(),
         rayon::current_num_threads(),
     )
 }
 
 impl FiniteWlsMomentLayout {
-    fn plan(
-        rows: usize,
-        dimension: usize,
-        prepared: bool,
-        row_workspace: usize,
-        threads: usize,
-    ) -> Result<Self> {
-        if prepared && dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
-            let square = checked_square(dimension, "finite-WLS moment dimensions overflow")?;
-            let partial_stride = dimension
-                .checked_add(square)
-                .ok_or_else(|| allocation("finite-WLS moment partial stride overflows"))?;
-            let partitions = rows
-                .div_ceil(FIXED_BLOCK_MOMENT_ROWS)
-                .clamp(1, FIXED_BLOCK_MOMENT_MAX_BLOCKS);
-            Ok(Self {
-                mode: FiniteWlsMomentMode::PreparedFixedBlocks,
-                partitions,
-                columns_per_partition: dimension,
-                partial_stride,
-                partial_elements: partitions
-                    .checked_mul(partial_stride)
-                    .ok_or_else(|| allocation("finite-WLS moment partial allocation overflows"))?,
-            })
-        } else {
-            // Disjoint Gram rows preserve the canonical row order and avoid a
-            // chunks*K² bank. Scratch supplies a bounded stored-row tile.
-            // Physical leaves also select the accepted scratch reduction order.
-            // Bound their execution separately; fewer lanes must not change sums.
-            let columns_per_partition = dimension.div_ceil(threads.min(dimension).max(1));
-            let partitions = dimension.div_ceil(columns_per_partition);
-            Ok(Self {
-                mode: if prepared {
-                    FiniteWlsMomentMode::PreparedPartitioned
-                } else {
-                    FiniteWlsMomentMode::RetainedPartitioned
-                },
-                partitions,
-                columns_per_partition,
-                partial_stride: row_workspace,
-                partial_elements: partitions
-                    .checked_mul(row_workspace)
-                    .ok_or_else(|| allocation("finite-WLS retained row workspace overflows"))?,
-            })
-        }
+    fn plan(dimension: usize, row_workspace: usize, threads: usize) -> Result<Self> {
+        // Physical leaves preserve the retained scratch reduction order; the
+        // general stage policy separately bounds how many leaves run at once.
+        let columns_per_partition = dimension.div_ceil(threads.min(dimension).max(1));
+        let partitions = dimension.div_ceil(columns_per_partition);
+        Ok(Self {
+            partitions,
+            columns_per_partition,
+            partial_stride: row_workspace,
+            partial_elements: partitions
+                .checked_mul(row_workspace)
+                .ok_or_else(|| allocation("finite-WLS retained row workspace overflows"))?,
+        })
     }
 }
 
-fn moment_lane_grain(rows: usize, dimension: usize, leaves: usize) -> usize {
-    let work = (rows as u128)
+fn moment_lane_work(rows: usize, dimension: usize) -> u128 {
+    (rows as u128)
         .saturating_mul(dimension as u128)
         .saturating_mul(dimension as u128 + 1)
-        / 2;
-    crate::parallel::StagePlan::current(work, leaves).chunk(leaves)
+        / 2
 }
 
 pub(crate) fn retained_scratch_moment_envelope(
@@ -326,7 +265,6 @@ pub(super) fn fill_finite_wls_moments(
     gram: &mut [f64],
 ) -> Result<()> {
     source.validate()?;
-    let rows = source.rows();
     let dimension = source.dimension();
     let square = checked_square(dimension, "finite-WLS Gram dimensions overflow")?;
     if layout != finite_wls_moment_layout(source)?
@@ -342,51 +280,7 @@ pub(super) fn fill_finite_wls_moments(
     rhs.fill(0.0);
     gram.fill(0.0);
 
-    match layout.mode {
-        FiniteWlsMomentMode::PreparedFixedBlocks => {
-            let FixedBlockMomentSource::PreparedStandardized {
-                within,
-                canonical_candidates,
-            } = source
-            else {
-                return Err(invalid_argument(
-                    "finite-WLS fixed-block mode requires a prepared source",
-                ));
-            };
-            partials
-                .par_chunks_mut(layout.partial_stride)
-                .with_min_len(moment_lane_grain(rows, dimension, layout.partitions))
-                .enumerate()
-                .try_for_each(|(chunk, partial)| -> Result<()> {
-                    let rows_per_chunk = rows / layout.partitions;
-                    let remainder = rows % layout.partitions;
-                    let start = chunk * rows_per_chunk + chunk.min(remainder);
-                    let end = start + rows_per_chunk + usize::from(chunk < remainder);
-                    fill_prepared_partial(within, canonical_candidates, start, end, partial)?;
-                    if partial.iter().all(|value| value.is_finite()) {
-                        Ok(())
-                    } else {
-                        Err(invalid_data("finite-WLS moment partial is not finite"))
-                    }
-                })?;
-            merge_fixed_block_partials(layout, partials, rhs, gram)
-        }
-        FiniteWlsMomentMode::PreparedPartitioned => {
-            let FixedBlockMomentSource::PreparedStandardized {
-                within,
-                canonical_candidates,
-            } = source
-            else {
-                return Err(invalid_argument(
-                    "finite-WLS partitioned mode requires a prepared source",
-                ));
-            };
-            fill_prepared_partitioned(within, canonical_candidates, layout, rhs, gram)
-        }
-        FiniteWlsMomentMode::RetainedPartitioned => {
-            fill_retained_partitioned(source, layout, partials, rhs, gram)
-        }
-    }
+    fill_retained_partitioned(source, layout, partials, rhs, gram)
 }
 
 /// Stable retained-design rank revelation without a second N-by-K design.
@@ -414,12 +308,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
     source.validate()?;
     let dimension = source.dimension();
     let square = checked_square(dimension, "retained finite-WLS QR dimensions overflow")?;
-    if !matches!(
-        source,
-        FixedBlockMomentSource::RetainedDense { .. }
-            | FixedBlockMomentSource::RetainedScratch { .. }
-            | FixedBlockMomentSource::RetainedImplicit { .. }
-    ) || canonical_generated_ids.len() != dimension
+    if canonical_generated_ids.len() != dimension
         || qr.len() != square
         || transformed_rhs.len() != dimension
         || trailing_norms.len() != dimension
@@ -434,10 +323,9 @@ pub(super) fn factor_rank_revealing_retained_qr(
         ));
     }
     let stored_columns = match source {
-        FixedBlockMomentSource::RetainedDense { stored_columns, .. } => stored_columns,
-        FixedBlockMomentSource::RetainedScratch { values, .. } => values.columns(),
-        FixedBlockMomentSource::RetainedImplicit { values, .. } => values.columns(),
-        FixedBlockMomentSource::PreparedStandardized { .. } => unreachable!(),
+        FixedBlockMomentSource::Dense { stored_columns, .. } => stored_columns,
+        FixedBlockMomentSource::Scratch { values, .. } => values.columns(),
+        FixedBlockMomentSource::Implicit { values, .. } => values.columns(),
     };
     if stored_row.len() != stored_columns {
         return Err(invalid_argument(
@@ -455,7 +343,7 @@ pub(super) fn factor_rank_revealing_retained_qr(
     // `trailing_norms` is the selected/standardized incoming row during the
     // streaming reduction. It is overwritten by actual trailing norms below.
     let mut scratch_reader = match source {
-        FixedBlockMomentSource::RetainedScratch { values, .. } => Some(values.shared_reader()),
+        FixedBlockMomentSource::Scratch { values, .. } => Some(values.shared_reader()),
         _ => None,
     };
     for observation in 0..source.rows() {
@@ -664,10 +552,9 @@ pub(super) fn certify_retained_qr_dropped_span(
         || relative_threshold >= 1.0
         || stored_row.len()
             != match source {
-                FixedBlockMomentSource::RetainedDense { stored_columns, .. } => stored_columns,
-                FixedBlockMomentSource::RetainedScratch { values, .. } => values.columns(),
-                FixedBlockMomentSource::RetainedImplicit { values, .. } => values.columns(),
-                FixedBlockMomentSource::PreparedStandardized { .. } => 0,
+                FixedBlockMomentSource::Dense { stored_columns, .. } => stored_columns,
+                FixedBlockMomentSource::Scratch { values, .. } => values.columns(),
+                FixedBlockMomentSource::Implicit { values, .. } => values.columns(),
             }
         || standardized_row.len() != dimension
         || projection_coefficients.len()
@@ -717,7 +604,7 @@ pub(super) fn certify_retained_qr_dropped_span(
 
     residual_norms.fill(0.0);
     let mut scratch_reader = match source {
-        FixedBlockMomentSource::RetainedScratch { values, .. } => Some(values.shared_reader()),
+        FixedBlockMomentSource::Scratch { values, .. } => Some(values.shared_reader()),
         _ => None,
     };
     for observation in 0..source.rows() {
@@ -894,9 +781,9 @@ fn fill_retained_qr_row(
     scratch_reader: Option<&mut PreparedOlsScratchReader<'_>>,
 ) -> Result<f64> {
     let (selected_columns, response, weights, divisor, scales) = match source {
-        FixedBlockMomentSource::RetainedDense {
+        FixedBlockMomentSource::Dense {
             values,
-            stored_columns,
+            stored_columns: _,
             selected_columns,
             response,
             weights,
@@ -904,9 +791,7 @@ fn fill_retained_qr_row(
             column_scales,
             ..
         } => {
-            stored_row.copy_from_slice(
-                &values[observation * stored_columns..(observation + 1) * stored_columns],
-            );
+            stored_row.copy_from_slice(values.row(observation));
             (
                 selected_columns,
                 response,
@@ -915,7 +800,7 @@ fn fill_retained_qr_row(
                 column_scales,
             )
         }
-        FixedBlockMomentSource::RetainedScratch {
+        FixedBlockMomentSource::Scratch {
             values,
             selected_columns,
             response,
@@ -934,7 +819,7 @@ fn fill_retained_qr_row(
                 column_scales,
             )
         }
-        FixedBlockMomentSource::RetainedImplicit {
+        FixedBlockMomentSource::Implicit {
             values,
             selected_columns,
             response,
@@ -950,11 +835,6 @@ fn fill_retained_qr_row(
                 solver_weight_divisor,
                 column_scales,
             )
-        }
-        FixedBlockMomentSource::PreparedStandardized { .. } => {
-            return Err(invalid_argument(
-                "retained finite-WLS QR requires retained storage",
-            ));
         }
     };
     let root_weight = normalized_weight(weights, divisor, observation)?.sqrt();
@@ -1250,6 +1130,65 @@ pub(super) fn certify_rank_revealing_dropped_span(
 }
 
 pub(super) const RANK_REVEALING_GUARD_EPSILONS: f64 = 64.0;
+
+/// Guard normal-equation use before invoking the destructive physical kernel.
+/// The unchanged stronger guard keeps weak designs under QR rank authority.
+pub(super) fn factor_finite_cholesky(
+    gram: &mut [f64],
+    rhs: &mut [f64],
+    factor: &mut [f64],
+    permutation: &mut [usize],
+    relative_threshold: f64,
+) -> Result<Option<GuardedCholeskyReport>> {
+    let dimension = rhs.len();
+    if gram.len() != checked_square(dimension, "finite-WLS Cholesky dimensions overflow")? {
+        return Err(invalid_argument(
+            "finite-WLS Cholesky Gram dimensions are inconsistent",
+        ));
+    }
+    let maximum = (0..dimension)
+        .map(|index| gram[index * dimension + index])
+        .fold(0.0_f64, f64::max);
+    let guard = maximum * relative_threshold.sqrt();
+    if !maximum.is_finite() || maximum <= 0.0 || !guard.is_finite() || guard <= 0.0 {
+        return Ok(None);
+    }
+    factor_guarded_cholesky_in_place(
+        gram,
+        rhs,
+        factor,
+        permutation,
+        CholeskyPivotPolicy::MaximumDiagonal,
+        guard,
+    )
+}
+
+/// Solve in pivot order and return canonical coefficients in a disjoint bank.
+pub(super) fn solve_finite_cholesky(
+    factor: &[f64],
+    rhs: &[f64],
+    permutation: &[usize],
+    forward: &mut [f64],
+    pivot: &mut [f64],
+    canonical: &mut [f64],
+) -> Result<bool> {
+    if canonical.len() != rhs.len()
+        || permutation.len() != rhs.len()
+        || permutation.iter().any(|&position| position >= rhs.len())
+    {
+        return Err(invalid_argument(
+            "finite-WLS canonical solution axis is inconsistent",
+        ));
+    }
+    if !solve_guarded_cholesky(factor, rhs, forward, pivot)? {
+        return Ok(false);
+    }
+    canonical.fill(0.0);
+    for (position, &target) in permutation.iter().enumerate() {
+        canonical[target] = pivot[position];
+    }
+    Ok(true)
+}
 
 /// Destructively factor a caller-owned Gram/RHS copy. A numerical guard miss
 /// returns `Ok(None)` so one-shot policy can retain its canonical QR fallback.
@@ -1810,6 +1749,30 @@ pub(super) fn invert_guarded_cholesky(
     Ok(true)
 }
 
+#[derive(Clone, Copy)]
+pub(super) struct FiniteInverseCertificate {
+    pub left: f64,
+    pub right: f64,
+}
+impl FiniteInverseCertificate {
+    pub fn passed(self, tolerance: f64) -> bool {
+        self.left <= tolerance && self.right <= tolerance
+    }
+}
+
+pub(super) fn certify_finite_inverse(
+    gram: &[f64],
+    dimension: usize,
+    positions: &[usize],
+    inverse: &[f64],
+    rank: usize,
+) -> Result<FiniteInverseCertificate> {
+    Ok(FiniteInverseCertificate {
+        left: inverse_relative_infinity_norm(gram, dimension, positions, inverse, rank, false)?,
+        right: inverse_relative_infinity_norm(gram, dimension, positions, inverse, rank, true)?,
+    })
+}
+
 pub(super) fn inverse_relative_infinity_norm(
     gram: &[f64],
     gram_dimension: usize,
@@ -2052,64 +2015,6 @@ fn merge_fixed_block_partials(
     Ok(())
 }
 
-fn fill_prepared_partitioned(
-    within: &DenseMatrix,
-    canonical_candidates: &[usize],
-    layout: FiniteWlsMomentLayout,
-    rhs: &mut [f64],
-    gram: &mut [f64],
-) -> Result<()> {
-    let dimension = canonical_candidates.len();
-    let contiguous = canonical_candidates
-        .windows(2)
-        .all(|pair| pair[1] == pair[0] + 1);
-    rhs.par_chunks_mut(layout.columns_per_partition)
-        .with_min_len(moment_lane_grain(
-            within.nrows(),
-            dimension,
-            layout.partitions,
-        ))
-        .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
-        .enumerate()
-        .for_each(|(partition, (rhs_part, gram_part))| {
-            let left_start = partition * layout.columns_per_partition;
-            for values in within.as_slice().chunks_exact(within.ncols()) {
-                for (local_left, destination) in rhs_part.iter_mut().enumerate() {
-                    let left = left_start + local_left;
-                    let left_value = values[canonical_candidates[left] + 1];
-                    *destination += left_value * values[0];
-                    let gram_row =
-                        &mut gram_part[local_left * dimension..(local_left + 1) * dimension];
-                    // Avoid repeated indexing on the ordinary contiguous design.
-                    // Plain multiply/add also avoids software FMA on portable x86.
-                    if contiguous {
-                        let start = canonical_candidates[left] + 1;
-                        for (entry, right_value) in gram_row[left..]
-                            .iter_mut()
-                            .zip(&values[start..start + dimension - left])
-                        {
-                            *entry += left_value * right_value;
-                        }
-                    } else {
-                        for right in left..dimension {
-                            gram_row[right] += left_value * values[canonical_candidates[right] + 1];
-                        }
-                    }
-                }
-            }
-        });
-    for left in 0..dimension {
-        for right in (left + 1)..dimension {
-            gram[right * dimension + left] = gram[left * dimension + right];
-        }
-    }
-    if rhs.iter().chain(gram.iter()).all(|value| value.is_finite()) {
-        Ok(())
-    } else {
-        Err(invalid_data("finite-WLS prepared moments are not finite"))
-    }
-}
-
 fn fill_retained_partitioned(
     source: FixedBlockMomentSource<'_>,
     layout: FiniteWlsMomentLayout,
@@ -2118,7 +2023,7 @@ fn fill_retained_partitioned(
     gram: &mut [f64],
 ) -> Result<()> {
     match source {
-        FixedBlockMomentSource::RetainedDense {
+        FixedBlockMomentSource::Dense {
             values,
             stored_columns,
             selected_columns,
@@ -2139,7 +2044,7 @@ fn fill_retained_partitioned(
             rhs,
             gram,
         ),
-        FixedBlockMomentSource::RetainedScratch {
+        FixedBlockMomentSource::Scratch {
             values,
             selected_columns,
             response,
@@ -2158,7 +2063,7 @@ fn fill_retained_partitioned(
             rhs,
             gram,
         ),
-        FixedBlockMomentSource::RetainedImplicit {
+        FixedBlockMomentSource::Implicit {
             values,
             selected_columns,
             response,
@@ -2168,16 +2073,13 @@ fn fill_retained_partitioned(
         } => {
             let bound = values.bind_columns()?;
             let dimension = rhs.len();
-            gram.par_chunks_mut(dimension * layout.columns_per_partition)
-                .with_min_len(moment_lane_grain(
-                    values.rows(),
-                    dimension,
-                    layout.partitions,
-                ))
-                .zip(rhs.par_chunks_mut(layout.columns_per_partition))
-                .zip(partials.par_chunks_mut(layout.partial_stride))
-                .enumerate()
-                .try_for_each(|(part, ((gram_rows, rhs_rows), row))| -> Result<()> {
+            crate::parallel::stage_try_for_each(
+                gram.par_chunks_mut(dimension * layout.columns_per_partition)
+                    .zip(rhs.par_chunks_mut(layout.columns_per_partition))
+                    .zip(partials.par_chunks_mut(layout.partial_stride))
+                    .enumerate(),
+                moment_lane_work(values.rows(), dimension),
+                |(part, ((gram_rows, rhs_rows), row))| -> Result<()> {
                     let first = part * layout.columns_per_partition;
                     let fill = |rhs: &mut [f64], gram: &mut [f64], row: &mut [f64]| -> Result<()> {
                         // Keep the legacy matrix indices and numerical traversal order explicit.
@@ -2212,11 +2114,9 @@ fn fill_retained_partitioned(
                     } else {
                         fill(rhs_rows, gram_rows, row)
                     }
-                })
+                },
+            )
         }
-        FixedBlockMomentSource::PreparedStandardized { .. } => Err(invalid_argument(
-            "finite-WLS retained partition mode requires a retained source",
-        )),
     }?;
     let dimension = rhs.len();
     for left in 0..dimension {
@@ -2233,10 +2133,10 @@ fn fill_retained_partitioned(
 
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_partitioned(
-    values: &[f64],
+    values: FiniteDenseRows<'_>,
     stored_columns: usize,
     selected_columns: Option<&[usize]>,
-    response: &[f64],
+    response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: Option<&[f64]>,
@@ -2275,19 +2175,16 @@ fn fill_retained_dense_partitioned(
             );
         }
     }
-    rhs.par_chunks_mut(layout.columns_per_partition)
-        .with_min_len(moment_lane_grain(
-            response.len(),
-            dimension,
-            layout.partitions,
-        ))
-        .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
-        .enumerate()
-        .try_for_each(|(partition, (rhs_rows, gram_rows))| -> Result<()> {
+    crate::parallel::stage_try_for_each(
+        rhs.par_chunks_mut(layout.columns_per_partition)
+            .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
+            .enumerate(),
+        moment_lane_work(response.len(), dimension),
+        |(partition, (rhs_rows, gram_rows))| -> Result<()> {
             record_retained_moment_worker();
             let left_start = partition * layout.columns_per_partition;
             for row in 0..response.len() {
-                let source = &values[row * stored_columns..(row + 1) * stored_columns];
+                let source = values.row(row);
                 let weight = normalized_weight(weights, divisor, row)?;
                 for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
                     let left = left_start + local_left;
@@ -2306,7 +2203,8 @@ fn fill_retained_dense_partitioned(
                 }
             }
             Ok(())
-        })
+        },
+    )
 }
 
 // Isolate the bounded stack frame from wide/scratch calls. The closure is
@@ -2332,10 +2230,10 @@ fn with_private_retained_moments(
 
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_standardized_rows(
-    values: &[f64],
-    stored_columns: usize,
+    values: FiniteDenseRows<'_>,
+    _stored_columns: usize,
     selected_columns: Option<&[usize]>,
-    response: &[f64],
+    response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: &[f64],
@@ -2344,20 +2242,17 @@ fn fill_retained_dense_standardized_rows(
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
-    rhs.par_chunks_mut(layout.columns_per_partition)
-        .with_min_len(moment_lane_grain(
-            response.len(),
-            dimension,
-            layout.partitions,
-        ))
-        .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
-        .enumerate()
-        .try_for_each(|(partition, (rhs_rows, gram_rows))| -> Result<()> {
+    crate::parallel::stage_try_for_each(
+        rhs.par_chunks_mut(layout.columns_per_partition)
+            .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
+            .enumerate(),
+        moment_lane_work(response.len(), dimension),
+        |(partition, (rhs_rows, gram_rows))| -> Result<()> {
             record_retained_moment_worker();
             let left_start = partition * layout.columns_per_partition;
             with_private_retained_moments(rhs_rows, gram_rows, |rhs, gram, standardized| {
                 for (row, &response_value) in response.iter().enumerate() {
-                    let source = &values[row * stored_columns..(row + 1) * stored_columns];
+                    let source = values.row(row);
                     let weight = normalized_weight(weights, divisor, row)?;
                     for column in left_start..dimension {
                         let source_column =
@@ -2381,7 +2276,8 @@ fn fill_retained_dense_standardized_rows(
                 }
                 Ok(())
             })
-        })
+        },
+    )
 }
 
 // Two fixed column tiles bound local storage at every width. Each Gram entry
@@ -2389,10 +2285,10 @@ fn fill_retained_dense_standardized_rows(
 #[inline(never)]
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_standardized_tiles(
-    values: &[f64],
-    stored_columns: usize,
+    values: FiniteDenseRows<'_>,
+    _stored_columns: usize,
     selected_columns: Option<&[usize]>,
-    response: &[f64],
+    response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: &[f64],
@@ -2401,21 +2297,18 @@ fn fill_retained_dense_standardized_tiles(
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
-    rhs.par_chunks_mut(layout.columns_per_partition)
-        .with_min_len(moment_lane_grain(
-            response.len(),
-            dimension,
-            layout.partitions,
-        ))
-        .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
-        .enumerate()
-        .try_for_each(|(partition, (rhs_rows, gram_rows))| -> Result<()> {
+    crate::parallel::stage_try_for_each(
+        rhs.par_chunks_mut(layout.columns_per_partition)
+            .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
+            .enumerate(),
+        moment_lane_work(response.len(), dimension),
+        |(partition, (rhs_rows, gram_rows))| -> Result<()> {
             record_retained_moment_worker();
             let left_start = partition * layout.columns_per_partition;
             let mut weighted_left_tile = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
             let mut right_tile = [0.0_f64; FIXED_BLOCK_MOMENT_MAX_COLUMNS];
             for (row, &response_value) in response.iter().enumerate() {
-                let source = &values[row * stored_columns..(row + 1) * stored_columns];
+                let source = values.row(row);
                 let weight = normalized_weight(weights, divisor, row)?;
                 for local_start in (0..rhs_rows.len()).step_by(FIXED_BLOCK_MOMENT_MAX_COLUMNS) {
                     let left_base = left_start + local_start;
@@ -2461,7 +2354,8 @@ fn fill_retained_dense_standardized_tiles(
                 }
             }
             Ok(())
-        })
+        },
+    )
 }
 
 // Repartition only the already admitted row-tile bank. Each observation is
@@ -2504,7 +2398,7 @@ fn scratch_row_partition_plan(
 fn fill_retained_scratch_row_partitions(
     values: &PreparedOlsScratch,
     selected: Option<&[usize]>,
-    response: &[f64],
+    response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: Option<&[f64]>,
@@ -2520,10 +2414,10 @@ fn fill_retained_scratch_row_partitions(
         return Ok(false);
     };
     let used = &mut partials[..partitions * stride];
-    used.par_chunks_mut(stride)
-        .with_min_len(moment_lane_grain(response.len(), dimension, partitions))
-        .enumerate()
-        .try_for_each(|(part, bank)| -> Result<()> {
+    crate::parallel::stage_try_for_each(
+        used.par_chunks_mut(stride).enumerate(),
+        moment_lane_work(response.len(), dimension),
+        |(part, bank)| -> Result<()> {
             record_retained_moment_worker();
             let (out_rhs, rest) = bank.split_at_mut(dimension);
             let (out_gram, row) = rest.split_at_mut(dimension * dimension);
@@ -2560,7 +2454,8 @@ fn fill_retained_scratch_row_partitions(
                     "finite-WLS row-partition moment is not finite",
                 ))
             }
-        })?;
+        },
+    )?;
     merge_fixed_block_partials(
         FiniteWlsMomentLayout {
             partitions,
@@ -2579,7 +2474,7 @@ fn fill_retained_scratch_row_partitions(
 fn fill_retained_scratch_partitioned(
     values: &PreparedOlsScratch,
     selected_columns: Option<&[usize]>,
-    response: &[f64],
+    response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: Option<&[f64]>,
@@ -2604,60 +2499,54 @@ fn fill_retained_scratch_partitioned(
     }
     let dimension = rhs.len();
     let stored_columns = values.columns();
-    partials
-        .par_chunks_mut(layout.partial_stride)
-        .with_min_len(moment_lane_grain(
-            response.len(),
-            dimension,
-            layout.partitions,
-        ))
-        .zip(rhs.par_chunks_mut(layout.columns_per_partition))
-        .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
-        .enumerate()
-        .try_for_each(
-            |(partition, ((row_workspace, rhs_rows), gram_rows))| -> Result<()> {
-                record_retained_moment_worker();
-                let left_start = partition * layout.columns_per_partition;
-                let tile_rows = row_workspace.len() / stored_columns;
-                for start_row in (0..response.len()).step_by(tile_rows) {
-                    let rows = (response.len() - start_row).min(tile_rows);
-                    let tile = &mut row_workspace[..rows * stored_columns];
-                    values.read_linear_shared(start_row * stored_columns, tile)?;
-                    // Preserve every observation and FMA in canonical order;
-                    // only the positional I/O granularity changes.
-                    for (local_row, stored_row) in tile.chunks_exact_mut(stored_columns).enumerate()
-                    {
-                        let row = start_row + local_row;
-                        let response_value = response[row];
-                        let weight = normalized_weight(weights, divisor, row)?;
-                        // The validated selection is strictly increasing, so
-                        // selected[j] >= j. Compact and standardize forward
-                        // in this private tile without overwriting a later
-                        // source. Every Gram coordinate keeps its original
-                        // row/FMA order; scratch bytes are never changed.
-                        for column in left_start..dimension {
-                            let source =
-                                selected_columns.map_or(column, |selected| selected[column]);
-                            stored_row[column] = scaled_column(stored_row[source], scales, column)?;
-                        }
-                        for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
-                            let left = left_start + local_left;
-                            let weighted_left = weight * stored_row[left];
-                            *destination = weighted_left.mul_add(response_value, *destination);
-                            let gram_row = &mut gram_rows
-                                [local_left * dimension..(local_left + 1) * dimension];
-                            for (entry, &right_value) in gram_row[left..]
-                                .iter_mut()
-                                .zip(&stored_row[left..dimension])
-                            {
-                                *entry = weighted_left.mul_add(right_value, *entry);
-                            }
+    crate::parallel::stage_try_for_each(
+        partials
+            .par_chunks_mut(layout.partial_stride)
+            .zip(rhs.par_chunks_mut(layout.columns_per_partition))
+            .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
+            .enumerate(),
+        moment_lane_work(response.len(), dimension),
+        |(partition, ((row_workspace, rhs_rows), gram_rows))| -> Result<()> {
+            record_retained_moment_worker();
+            let left_start = partition * layout.columns_per_partition;
+            let tile_rows = row_workspace.len() / stored_columns;
+            for start_row in (0..response.len()).step_by(tile_rows) {
+                let rows = (response.len() - start_row).min(tile_rows);
+                let tile = &mut row_workspace[..rows * stored_columns];
+                values.read_linear_shared(start_row * stored_columns, tile)?;
+                // Preserve every observation and FMA in canonical order;
+                // only the positional I/O granularity changes.
+                for (local_row, stored_row) in tile.chunks_exact_mut(stored_columns).enumerate() {
+                    let row = start_row + local_row;
+                    let response_value = response[row];
+                    let weight = normalized_weight(weights, divisor, row)?;
+                    // The validated selection is strictly increasing, so
+                    // selected[j] >= j. Compact and standardize forward
+                    // in this private tile without overwriting a later
+                    // source. Every Gram coordinate keeps its original
+                    // row/FMA order; scratch bytes are never changed.
+                    for column in left_start..dimension {
+                        let source = selected_columns.map_or(column, |selected| selected[column]);
+                        stored_row[column] = scaled_column(stored_row[source], scales, column)?;
+                    }
+                    for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
+                        let left = left_start + local_left;
+                        let weighted_left = weight * stored_row[left];
+                        *destination = weighted_left.mul_add(response_value, *destination);
+                        let gram_row =
+                            &mut gram_rows[local_left * dimension..(local_left + 1) * dimension];
+                        for (entry, &right_value) in gram_row[left..]
+                            .iter_mut()
+                            .zip(&stored_row[left..dimension])
+                        {
+                            *entry = weighted_left.mul_add(right_value, *entry);
                         }
                     }
                 }
-                Ok(())
-            },
-        )
+            }
+            Ok(())
+        },
+    )
 }
 
 #[cfg(test)]
@@ -2697,65 +2586,14 @@ fn record_retained_moment_worker() {
     }
 }
 
-fn fill_prepared_partial(
-    within: &DenseMatrix,
-    canonical_candidates: &[usize],
-    start: usize,
-    end: usize,
-    partial: &mut [f64],
-) -> Result<()> {
-    let dimension = canonical_candidates.len();
-    let ncols = within.ncols();
-    let contiguous_start = canonical_candidates
-        .first()
-        .copied()
-        .filter(|first| {
-            canonical_candidates
-                .iter()
-                .copied()
-                .enumerate()
-                .all(|(offset, column)| first.checked_add(offset) == Some(column))
-        })
-        .and_then(|first| first.checked_add(1));
-    for row in start..end {
-        let values = &within.as_slice()[row * ncols..(row + 1) * ncols];
-        let outcome = values[0];
-        if let Some(matrix_start) = contiguous_start {
-            let candidates = &values[matrix_start..matrix_start + dimension];
-            accumulate_moment_row(candidates, outcome, 1.0, partial);
-        } else {
-            for (left, generated) in canonical_candidates.iter().copied().enumerate() {
-                let left_value = values[generated + 1];
-                partial[left] += left_value * outcome;
-                for (right, other) in canonical_candidates.iter().copied().enumerate().skip(left) {
-                    partial[dimension + left * dimension + right] += left_value * values[other + 1];
-                }
-            }
-        }
-    }
-    Ok(())
-}
-
 #[inline]
-fn accumulate_moment_row(values: &[f64], response: f64, weight: f64, partial: &mut [f64]) {
-    let dimension = values.len();
-    for left in 0..dimension {
-        let left_value = values[left];
-        partial[left] += weight * left_value * response;
-        for (offset, right_value) in values[left..].iter().copied().enumerate() {
-            let right = left + offset;
-            partial[dimension + left * dimension + right] += weight * left_value * right_value;
-        }
-    }
-}
-
 #[allow(clippy::too_many_arguments)]
 fn validate_retained_source(
     elements: usize,
     rows: usize,
     stored_columns: usize,
     selected_columns: Option<&[usize]>,
-    response: &[f64],
+    response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
     scales: Option<&[f64]>,
@@ -2937,18 +2775,24 @@ mod tests {
             .build()
             .unwrap()
             .install(|| {
-                let layout = super::FiniteWlsMomentLayout::plan(6, 2, false, 12, 4).unwrap();
+                let layout = super::FiniteWlsMomentLayout::plan(2, 12, 4).unwrap();
                 assert_eq!(layout.partitions, 2);
-                assert_eq!(super::moment_lane_grain(6, 2, layout.partitions), 2);
+                assert_eq!(
+                    crate::parallel::StagePlan::current(
+                        super::moment_lane_work(6, 2),
+                        layout.partitions,
+                    )
+                    .lanes,
+                    1,
+                );
                 assert!(super::scratch_row_partition_plan(6, 2, 2, layout).is_some());
             });
     }
 
     #[test]
     fn extreme_schedule_shapes_fail_capacity_without_panicking() {
-        let error =
-            super::FiniteWlsMomentLayout::plan(usize::MAX, usize::MAX, false, usize::MAX, 16)
-                .expect_err("unaddressable scratch must fail checked capacity");
+        let error = super::FiniteWlsMomentLayout::plan(usize::MAX, usize::MAX, 16)
+            .expect_err("unaddressable scratch must fail checked capacity");
         assert_eq!(error.code, crate::ErrorCode::Allocation);
     }
 
@@ -2994,7 +2838,6 @@ mod tests {
                 let width = dimension.div_ceil(threads.min(dimension));
                 let parts = dimension.div_ceil(width);
                 let layout = FiniteWlsMomentLayout {
-                    mode: FiniteWlsMomentMode::RetainedPartitioned,
                     partitions: parts,
                     columns_per_partition: width,
                     partial_stride: 1024,
@@ -3084,10 +2927,10 @@ mod tests {
                         .build()
                         .unwrap()
                         .install(|| {
-                            let source = FixedBlockMomentSource::RetainedScratch {
+                            let source = FixedBlockMomentSource::Scratch {
                                 values: &scratch,
                                 selected_columns: Some(&selected),
-                                response: &response,
+                                response: (&response).into(),
                                 weights: if provided {
                                     BorrowedMapWeights::Provided(&weights)
                                 } else {
@@ -3210,12 +3053,12 @@ mod tests {
                         (((row * 17 + column * 13) % 31) as f64 - 15.0) / 16.0 * scales[column];
                 }
             }
-            let source = FixedBlockMomentSource::RetainedDense {
-                values: &values,
+            let source = FixedBlockMomentSource::Dense {
+                values: FiniteDenseRows::packed(&values, stored),
                 rows,
                 stored_columns: stored,
                 selected_columns: if spaced { Some(&selected) } else { None },
-                response: &response,
+                response: (&response).into(),
                 weights: if provided {
                     BorrowedMapWeights::Provided(&weights)
                 } else {
@@ -3254,7 +3097,6 @@ mod tests {
                     .unwrap()
                     .install(|| {
                         let layout = finite_wls_moment_layout(source).unwrap();
-                        assert_eq!(layout.mode, FiniteWlsMomentMode::RetainedPartitioned);
                         assert_eq!(layout.partial_elements, 0);
                         let mut rhs = vec![0.0; columns];
                         let mut gram = vec![0.0; columns * columns];
@@ -3273,10 +3115,10 @@ mod tests {
                     .map(|&value| if value.is_nan() { 0.0 } else { value })
                     .collect::<Vec<_>>();
                 scratch.write_linear(0, &scratch_values).unwrap();
-                let source = FixedBlockMomentSource::RetainedScratch {
+                let source = FixedBlockMomentSource::Scratch {
                     values: &scratch,
                     selected_columns: Some(&selected),
-                    response: &response,
+                    response: (&response).into(),
                     weights: if provided {
                         BorrowedMapWeights::Provided(&weights)
                     } else {
@@ -3340,12 +3182,12 @@ mod tests {
         for bad in [f64::NAN, f64::INFINITY] {
             let mut values = [1.0; 32];
             values[17] = bad;
-            let source = FixedBlockMomentSource::RetainedDense {
-                values: &values,
+            let source = FixedBlockMomentSource::Dense {
+                values: FiniteDenseRows::packed(&values, 8),
                 rows: 4,
                 stored_columns: 8,
                 selected_columns: None,
-                response: &response,
+                response: (&response).into(),
                 weights: BorrowedMapWeights::Unit,
                 solver_weight_divisor: 1.0,
                 column_scales: Some(&scales),
@@ -3370,7 +3212,7 @@ mod tests {
     }
 
     #[test]
-    fn wide_prepared_moments_are_bounded_deterministic_and_match_direct_sums() {
+    fn wide_projected_moments_are_bounded_deterministic_and_match_direct_sums() {
         for columns in [65_usize, 128] {
             for spaced in [false, true] {
                 let candidates = (0..columns)
@@ -3383,9 +3225,15 @@ mod tests {
                     .collect();
                 let within =
                     DenseMatrix::from_row_major(rows, stored, values).expect("wide matrix");
-                let source = FixedBlockMomentSource::PreparedStandardized {
-                    within: &within,
-                    canonical_candidates: &candidates,
+                let source = FixedBlockMomentSource::Dense {
+                    values: FiniteDenseRows::projected(&within),
+                    rows: within.nrows(),
+                    stored_columns: within.ncols() - 1,
+                    selected_columns: Some(&candidates),
+                    response: FiniteResponse::FirstColumn(&within),
+                    weights: BorrowedMapWeights::Unit,
+                    solver_weight_divisor: 1.0,
+                    column_scales: None,
                 };
                 let mut reference = None;
                 for threads in [1, 7] {
@@ -3395,7 +3243,6 @@ mod tests {
                         .expect("test pool")
                         .install(|| {
                             let layout = finite_wls_moment_layout(source).expect("wide layout");
-                            assert_eq!(layout.mode, FiniteWlsMomentMode::PreparedPartitioned);
                             assert_eq!(layout.partial_elements, 0);
                             let mut rhs = vec![0.0; columns];
                             let mut gram = vec![0.0; columns * columns];
@@ -3427,9 +3274,15 @@ mod tests {
                 }
                 let mut invalid = within.clone();
                 invalid[(0, 1)] = f64::MAX;
-                let invalid_source = FixedBlockMomentSource::PreparedStandardized {
-                    within: &invalid,
-                    canonical_candidates: &candidates,
+                let invalid_source = FixedBlockMomentSource::Dense {
+                    values: FiniteDenseRows::projected(&invalid),
+                    rows: invalid.nrows(),
+                    stored_columns: invalid.ncols() - 1,
+                    selected_columns: Some(&candidates),
+                    response: FiniteResponse::FirstColumn(&invalid),
+                    weights: BorrowedMapWeights::Unit,
+                    solver_weight_divisor: 1.0,
+                    column_scales: None,
                 };
                 let layout = finite_wls_moment_layout(invalid_source)
                     .expect("invalid values retain valid layout");
@@ -3458,12 +3311,12 @@ mod tests {
     ) -> Result<(RankRevealingQrReport, Vec<usize>)> {
         let response = vec![0.0_f64; rows];
         let ids = (0..columns).collect::<Vec<_>>();
-        let source = FixedBlockMomentSource::RetainedDense {
-            values,
+        let source = FixedBlockMomentSource::Dense {
+            values: FiniteDenseRows::packed(values, columns),
             rows,
             stored_columns: columns,
             selected_columns: None,
-            response: &response,
+            response: (&response).into(),
             weights: BorrowedMapWeights::Unit,
             solver_weight_divisor: 1.0,
             column_scales: Some(scales),
@@ -3496,12 +3349,12 @@ mod tests {
         ids: &[usize],
         relative_threshold: f64,
     ) -> Result<(RankRevealingQrReport, Vec<usize>, Vec<f64>)> {
-        let source = FixedBlockMomentSource::RetainedDense {
-            values,
+        let source = FixedBlockMomentSource::Dense {
+            values: FiniteDenseRows::packed(values, columns),
             rows,
             stored_columns: columns,
             selected_columns: None,
-            response,
+            response: (response).into(),
             weights: BorrowedMapWeights::Unit,
             solver_weight_divisor: 1.0,
             column_scales: Some(scales),
@@ -3549,12 +3402,12 @@ mod tests {
     ) -> Result<(RankRevealingQrReport, DroppedSpanCertificate)> {
         let response = vec![0.0_f64; rows];
         let ids = (0..columns).collect::<Vec<_>>();
-        let factor_source = FixedBlockMomentSource::RetainedDense {
-            values: factor_values,
+        let factor_source = FixedBlockMomentSource::Dense {
+            values: FiniteDenseRows::packed(factor_values, columns),
             rows,
             stored_columns: columns,
             selected_columns: None,
-            response: &response,
+            response: (&response).into(),
             weights: BorrowedMapWeights::Unit,
             solver_weight_divisor: 1.0,
             column_scales: Some(scales),
@@ -3577,12 +3430,12 @@ mod tests {
         let dropped = columns - report.rank;
         let mut projection = vec![0.0_f64; report.rank * dropped];
         let mut residual_norms = vec![0.0_f64; dropped];
-        let certificate_source = FixedBlockMomentSource::RetainedDense {
-            values: certificate_values,
+        let certificate_source = FixedBlockMomentSource::Dense {
+            values: FiniteDenseRows::packed(certificate_values, columns),
             rows,
             stored_columns: columns,
             selected_columns: None,
-            response: &response,
+            response: (&response).into(),
             weights: BorrowedMapWeights::Unit,
             solver_weight_divisor: 1.0,
             column_scales: Some(scales),
@@ -3627,20 +3480,20 @@ mod tests {
             let mut scratch = PreparedOlsScratch::create_row_major(rows, stored).unwrap();
             scratch.write_linear(0, &values).unwrap();
             let sources = [
-                FixedBlockMomentSource::RetainedDense {
-                    values: &values,
+                FixedBlockMomentSource::Dense {
+                    values: FiniteDenseRows::packed(&values, stored),
                     rows,
                     stored_columns: stored,
                     selected_columns: Some(&selected),
-                    response: &response,
+                    response: (&response).into(),
                     weights: BorrowedMapWeights::Provided(&weights),
                     solver_weight_divisor: 7.0,
                     column_scales: Some(&scales),
                 },
-                FixedBlockMomentSource::RetainedScratch {
+                FixedBlockMomentSource::Scratch {
                     values: &scratch,
                     selected_columns: Some(&selected),
-                    response: &response,
+                    response: (&response).into(),
                     weights: BorrowedMapWeights::Provided(&weights),
                     solver_weight_divisor: 7.0,
                     column_scales: Some(&scales),

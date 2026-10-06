@@ -2,14 +2,13 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M31 reviewed finite retirement+lane repair; science passes, new largeFast M26 loss blocks acceptance. M30 remains accepted; M32–M35 await M31 gate.
+Current task: M31 accepted by Johannes; M32 shared inference/output products next. Historical costs and deferred timing remain recorded; Mac-only qualification.
 
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
-Accepted runtime: M30 common FE lifecycle; production113749, net vsM26 -7647; native4d81e8c0fab26e1ff013ac9e213b739b7a6b1214aca1e8d0151cac2f33df76a9.
+Accepted runtime: M31 shared finite operations; production112247, net vsM26 -9149; native6ab9059c75f762f1627fda90bcc0f5c22b7f6c4b025082628b0bd0d3b45b2ea2.
 
 ## Tasks and prerequisites
-
 - [x] M0.1 Governance, ADR dispositions, resolved covariance decision and new ledger.
 - [x] M0.2 Frozen/tagged baseline; all three canonical platforms built/stored; Mac 34 Stata fixtures pass.
 - [x] M0.2a Immutable tag, build/fetch/registration tooling and platform factory.
@@ -84,7 +83,7 @@ Accepted runtime: M30 common FE lifecycle; production113749, net vsM26 -7647; na
 - [x] M28 Common storage/admission owners; local science pass; Johannes accepts architectural benefit with timing unresolved.
 - [x] M29 Common worker/stage policy retired; Mac scientific gates pass; architectural override retains interrupted timing and open final scaling.
 - [x] M30 Common FE lifecycle/structural auto families retired; science/Astra high pass; Johannes accepts three regressions and defers8/16 timing.
-- [ ] M31 Shared finite weighted-linear operations; retire equivalent Fast/Low and retained/frozen pipelines.
+- [x] M31 Shared finite operations retired; science/Astra high pass; Johannes accepts largeFast M26 cost and defers remaining timing.
 - [ ] M32 Inference and requested outputs from accepted shared products; full interaction qualification.
 - [ ] M33 PPML generation/state/certificate consolidation and repeated-work retirement.
 - [ ] M34 Whole-call integration, outstanding retirements and architecture/coverage refresh.
@@ -113,7 +112,7 @@ Accepted runtime: M30 common FE lifecycle; production113749, net vsM26 -7647; na
 
 ## Blockers
 
-M30 accepted by Johannes on2026-10-06: three measured M26 regressions retained; 8/16 frozen/unstarted and deferred. Net-5812 vsM29/-7647 vsM26; target7353lines remain.
+M30 accepted by Johannes on2026-10-06: three measured M26 regressions retained; 8/16 frozen/unstarted and deferred. Net-5812 vsM29/-7647 vsM26; M31 subsequently removes1502lines; target5851 remain.
 
 M28 accepted architecturally: +96 vsM27/-1627 vsM26; timing unresolved for three workloads, with no established regression; full local/science pass.
 All4720 commands retained; FE-cluster timing drifts in both roles. Optimization remains open; [acceptance](bench/history/2026-10-05-m28-capacity-owner-acceptance.json).
@@ -126,6 +125,7 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-06 M31.1 accepted: net-1502/M30,-9149/M26; largeFast M26 cost accepted; broad/scaling deferred; [record](bench/history/2026-10-06-m31-architectural-acceptance.json).
 - 2026-10-06 M31 design: initial+488 extraction preserved; immutable finite owner declared; exact retainedPPML/stable public decisions bind; [scope](bench/history/2026-10-06-m31-finite-design.json).
 - 2026-10-06 M31 checkpoint: candidate−1490/M30,−9137/M26; timing failed/unresolved, new largeFast loss; Astra high supports science; [record](bench/history/2026-10-06-m31-finite-checkpoint.json).
 - 2026-10-06 M31 repair: candidate−1502/M30,−9149/M26; science/exact/Astra high pass; largeFast M26+8.2–8.6%, broad/scaling open; [record](bench/history/2026-10-06-m31-scheduler-checkpoint.json).

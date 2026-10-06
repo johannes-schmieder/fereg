@@ -310,6 +310,23 @@ struct WaldFCalculation {
     solve_relative_infinity_norm: f64,
 }
 
+#[cfg(test)]
+impl<'a> ReferenceWeightView<'a> {
+    pub(super) fn from_test_parts(
+        values: Option<&'a [f64]>,
+        kind: Option<WeightKind>,
+        divisor: f64,
+        multiplier: f64,
+    ) -> Self {
+        Self {
+            values,
+            kind,
+            divisor,
+            multiplier,
+        }
+    }
+}
+
 impl ReferenceWeightView<'_> {
     pub(super) fn value(self, row: usize) -> Result<f64> {
         let value = match (self.kind, self.values) {
@@ -336,26 +353,6 @@ impl ReferenceWeightView<'_> {
                 "prepared iid reference weight is not finite and positive",
             ))
         }
-    }
-
-    pub(super) fn solver_root(self, row: usize) -> Result<f64> {
-        let value = if self.kind.is_none() {
-            1.0
-        } else {
-            self.value(row)? / self.multiplier
-        };
-        let root = value.sqrt();
-        if root.is_finite() && root > 0.0 {
-            Ok(root)
-        } else {
-            Err(invalid_data(
-                "prepared inference solver weight is not finite and positive",
-            ))
-        }
-    }
-
-    pub(super) const fn multiplier(self) -> f64 {
-        self.multiplier
     }
 }
 

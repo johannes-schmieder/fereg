@@ -979,45 +979,43 @@ fn build_dense_certificate_meat<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared robust dense certificate meat partials",
     )?;
-    crate::parallel::stage_rows_mut(
-        &mut partials,
-        partial_stride,
+    crate::parallel::stage_try_for_each(
+        partials.par_chunks_mut(partial_stride).enumerate(),
         scores.nrows() as u128 * square as u128,
-    )
-    .enumerate()
-    .try_for_each(|(chunk, partial)| -> Result<()> {
-        let (meat, score) = partial.split_at_mut(square);
-        let rows_per_chunk = scores.nrows() / chunks;
-        let remainder = scores.nrows() % chunks;
-        let start = chunk * rows_per_chunk + chunk.min(remainder);
-        let end = start + rows_per_chunk + usize::from(chunk < remainder);
-        for row in start..end {
-            let scale =
-                meat_root_multiplier(weight_kind, weight_view.value(row)?)? * fit.residuals()[row];
-            scores.fill_reported_row(row, score)?;
-            for score_value in score.iter_mut() {
-                *score_value *= scale;
-                if !score_value.is_finite() {
-                    return Err(invalid_data(
-                        "prepared robust dense certificate score is not finite",
-                    ));
+        |(chunk, partial)| -> Result<()> {
+            let (meat, score) = partial.split_at_mut(square);
+            let rows_per_chunk = scores.nrows() / chunks;
+            let remainder = scores.nrows() % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                let scale = meat_root_multiplier(weight_kind, weight_view.value(row)?)?
+                    * fit.residuals()[row];
+                scores.fill_reported_row(row, score)?;
+                for score_value in score.iter_mut() {
+                    *score_value *= scale;
+                    if !score_value.is_finite() {
+                        return Err(invalid_data(
+                            "prepared robust dense certificate score is not finite",
+                        ));
+                    }
+                }
+                for left in 0..dimension {
+                    let left_value = score[left];
+                    for right in left..dimension {
+                        meat[left * dimension + right] += left_value * score[right];
+                    }
                 }
             }
-            for left in 0..dimension {
-                let left_value = score[left];
-                for right in left..dimension {
-                    meat[left * dimension + right] += left_value * score[right];
-                }
+            if meat.iter().all(|value| value.is_finite()) {
+                Ok(())
+            } else {
+                Err(invalid_data(
+                    "prepared robust dense certificate meat partial is not finite",
+                ))
             }
-        }
-        if meat.iter().all(|value| value.is_finite()) {
-            Ok(())
-        } else {
-            Err(invalid_data(
-                "prepared robust dense certificate meat partial is not finite",
-            ))
-        }
-    })?;
+        },
+    )?;
     let mut meat = reserved_filled(
         reservation,
         square,
@@ -1550,7 +1548,7 @@ mod tests {
             assert_eq!(fit.finite_rank(), 2);
             let scratch = scratch.expect("original low-memory columns retained");
             assert!(scratch.columns() > fit.finite_rank());
-            assert_eq!(fit.execution().scratch_bytes, 2 * scratch.bytes());
+            assert_eq!(fit.execution().scratch_bytes, scratch.bytes());
             let absorbed =
                 compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
             let cached = compose_internal(
@@ -1593,7 +1591,9 @@ mod tests {
                     .unwrap();
             let selected = fit.kept_generated_columns()[0];
             let mut scratch = scratch.unwrap();
-            scratch.write_column(selected, &vec![0.0; n]).unwrap();
+            scratch
+                .patch_row_major_block(selected, 1, &vec![0.0; n])
+                .unwrap();
             let absorbed =
                 compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
             let error = compose_internal(

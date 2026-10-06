@@ -50,15 +50,14 @@ pub(super) struct CertifiedPreparedOlsScoreDesign<'a> {
 #[derive(Debug)]
 enum PreparedOlsScoreStorage<'a> {
     Dense(DenseMatrix),
-    Strided(PreparedOlsStridedScoreStorage<'a>),
+    Selected(PreparedOlsSelectedScoreStorage<'a>),
     Scratch(PreparedOlsScratchScoreStorage),
 }
 
 #[derive(Debug)]
-struct PreparedOlsStridedScoreStorage<'a> {
+struct PreparedOlsSelectedScoreStorage<'a> {
     within: DenseMatrix,
     generated_columns: Vec<usize>,
-    reference_norms: Vec<f64>,
     weights: ReferenceWeightView<'a>,
 }
 
@@ -96,7 +95,7 @@ impl CertifiedPreparedOlsScoreDesign<'_> {
                     *value = within[(row, column)];
                 }
             }
-            PreparedOlsScoreStorage::Strided(strided) => {
+            PreparedOlsScoreStorage::Selected(strided) => {
                 strided.fill_row(row, output)?;
             }
             PreparedOlsScoreStorage::Scratch(scratch) => {
@@ -155,13 +154,11 @@ impl CertifiedPreparedOlsScoreDesign<'_> {
                 reported_to_finite: &self.reported_to_finite,
                 normalized_intercept_position: self.normalized_intercept_position,
             }),
-            PreparedOlsScoreStorage::Strided(strided) => Some(PreparedOlsDenseScoreView {
-                storage: PreparedOlsDenseScoreStorageView::Strided {
+            PreparedOlsScoreStorage::Selected(strided) => Some(PreparedOlsDenseScoreView {
+                storage: PreparedOlsDenseScoreStorageView::Selected {
                     values: strided.within.as_slice(),
                     matrix_columns: strided.within.ncols(),
                     generated_columns: &strided.generated_columns,
-                    reference_norms: &strided.reference_norms,
-                    weights: strided.weights,
                 },
                 nrows: self.nrows,
                 means: &self.means,
@@ -173,28 +170,18 @@ impl CertifiedPreparedOlsScoreDesign<'_> {
     }
 }
 
-impl PreparedOlsStridedScoreStorage<'_> {
+impl PreparedOlsSelectedScoreStorage<'_> {
     fn fill_row(&self, row: usize, output: &mut [f64]) -> Result<()> {
-        if row >= self.within.nrows()
-            || output.len() != self.generated_columns.len()
-            || self.reference_norms.len() != self.generated_columns.len()
-        {
+        if row >= self.within.nrows() || output.len() != self.generated_columns.len() {
             return Err(invalid_argument(
-                "prepared robust strided score row dimensions are inconsistent",
+                "prepared selected score row dimensions are inconsistent",
             ));
         }
-        let root = self.weights.solver_root(row)?;
-        let matrix_columns = self.within.ncols();
-        let values = &self.within.as_slice()[row * matrix_columns..(row + 1) * matrix_columns];
-        for ((value, generated), norm) in output
-            .iter_mut()
-            .zip(self.generated_columns.iter().copied())
-            .zip(self.reference_norms.iter().copied())
-        {
-            *value = values[generated + 1] * norm / root;
+        for (value, &generated) in output.iter_mut().zip(&self.generated_columns) {
+            *value = self.within[(row, generated + 1)];
             if !value.is_finite() {
                 return Err(invalid_data(
-                    "prepared robust strided score coordinate is not finite",
+                    "prepared selected score coordinate is not finite",
                 ));
             }
         }
@@ -208,12 +195,10 @@ enum PreparedOlsDenseScoreStorageView<'a> {
         values: &'a [f64],
         finite_rank: usize,
     },
-    Strided {
+    Selected {
         values: &'a [f64],
         matrix_columns: usize,
         generated_columns: &'a [usize],
-        reference_norms: &'a [f64],
-        weights: ReferenceWeightView<'a>,
     },
 }
 
@@ -241,12 +226,6 @@ impl PreparedOlsDenseScoreView<'_> {
                 "prepared robust dense reported score row dimensions are inconsistent",
             ));
         }
-        let strided_root = match self.storage {
-            PreparedOlsDenseScoreStorageView::Packed { .. } => None,
-            PreparedOlsDenseScoreStorageView::Strided { weights, .. } => {
-                Some(weights.solver_root(row)?)
-            }
-        };
         for (position, value) in output.iter_mut().enumerate() {
             if self.normalized_intercept_position == Some(position) {
                 *value = 1.0;
@@ -267,23 +246,15 @@ impl PreparedOlsDenseScoreView<'_> {
                     })?;
                     values[start + finite_position]
                 }
-                PreparedOlsDenseScoreStorageView::Strided {
+                PreparedOlsDenseScoreStorageView::Selected {
                     values,
                     matrix_columns,
                     generated_columns,
-                    reference_norms,
-                    ..
                 } => {
                     let generated = *generated_columns.get(finite_position).ok_or_else(|| {
-                        invalid_argument("prepared robust strided score coordinate is absent")
+                        invalid_argument("prepared selected score coordinate is absent")
                     })?;
-                    let norm = *reference_norms.get(finite_position).ok_or_else(|| {
-                        invalid_argument("prepared robust strided score norm is absent")
-                    })?;
-                    let root = strided_root.ok_or_else(|| {
-                        invalid_argument("prepared robust strided score root is absent")
-                    })?;
-                    values[row * matrix_columns + generated + 1] * norm / root
+                    values[row * matrix_columns + generated + 1]
                 }
             };
             *value = finite_value
@@ -511,7 +482,7 @@ pub(super) fn build_prepared_ols_score_design<
     };
     let setup_seconds = phase_started.elapsed().as_secs_f64();
     let phase_started = Instant::now();
-    let used_strided_cache = matches!(&cached, Some(PreparedOlsFastScoreCache::Strided { .. }));
+    let used_strided_cache = matches!(&cached, Some(PreparedOlsFastScoreCache::Selected { .. }));
     let reabsorbed_fast_scores =
         fit.execution().mode == PreparedOlsExecutionMode::Fast && cached.is_none();
     let (storage, means, scratch_peak_bytes) = match (fit.execution().mode, cached) {
@@ -521,17 +492,15 @@ pub(super) fn build_prepared_ols_score_design<
         ) => (PreparedOlsScoreStorage::Dense(within), means, 0),
         (
             PreparedOlsExecutionMode::Fast,
-            Some(PreparedOlsFastScoreCache::Strided {
+            Some(PreparedOlsFastScoreCache::Selected {
                 generated_columns,
                 within,
-                reference_norms,
                 means,
             }),
         ) => (
-            PreparedOlsScoreStorage::Strided(PreparedOlsStridedScoreStorage {
+            PreparedOlsScoreStorage::Selected(PreparedOlsSelectedScoreStorage {
                 within,
                 generated_columns,
-                reference_norms,
                 weights,
             }),
             means,
@@ -684,14 +653,8 @@ fn build_scratch_score_storage<
             }
             columns
         }
-        None => PreparedOlsScratch::create(nrows, rank)?,
+        None => PreparedOlsScratch::create_row_major(nrows, rank)?,
     };
-    let mut column = reserved_filled(
-        reservation,
-        if reused { 0 } else { nrows },
-        0.0_f64,
-        "unable to reserve prepared robust scratch score column",
-    )?;
     for start in (0..rank).step_by(block_width) {
         let end = start.saturating_add(block_width).min(rank);
         let block_rank = end - start;
@@ -714,24 +677,20 @@ fn build_scratch_score_storage<
         }
         let raw = DenseMatrix::from_row_major(nrows, block_rank, raw_values)?;
         let within = absorb_score_block(prepared, raw, absorb, cmg, solver_peak)?;
-        for local in 0..block_rank {
-            for row in 0..nrows {
-                column[row] = within[(row, local)];
-            }
-            columns.write_column(start + local, &column)?;
-        }
+        columns.patch_row_major_block(start, block_rank, within.as_slice())?;
     }
-    let (rows, cache_values) = transpose_score_scratch(
-        &mut columns,
-        nrows,
-        rank,
+    if reused {
+        columns.compact_row_major_columns_forward(generated_columns)?;
+    }
+    let tile_rows = ((TRANSPOSE_BUFFER_BYTES / 8) / rank).max(1).min(nrows);
+    let cache_values = reserved_filled(
         reservation,
-        reused.then_some(generated_columns),
+        tile_rows * rank,
+        0.0_f64,
+        "unable to reserve prepared robust scratch row cache",
     )?;
-    let scratch_peak_bytes = columns
-        .bytes()
-        .checked_add(rows.bytes())
-        .ok_or_else(|| allocation("prepared robust scratch peak bytes overflow"))?;
+    let rows = columns;
+    let scratch_peak_bytes = rows.bytes();
     Ok((
         PreparedOlsScoreStorage::Scratch(PreparedOlsScratchScoreStorage {
             scratch: RefCell::new(rows),
@@ -819,51 +778,6 @@ fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
     Ok(absorbed.into_parts().0)
 }
 
-fn transpose_score_scratch<R: PreparedInferenceReservation>(
-    columns: &mut PreparedOlsScratch,
-    nrows: usize,
-    rank: usize,
-    reservation: &mut R,
-    selected_columns: Option<&[usize]>,
-) -> Result<(PreparedOlsScratch, Vec<f64>)> {
-    if selected_columns.is_some_and(|selected| selected.len() != rank) {
-        return Err(invalid_argument(
-            "retained score selection differs from finite rank",
-        ));
-    }
-    let mut rows = PreparedOlsScratch::create(nrows, rank)?;
-    let target_elements = (TRANSPOSE_BUFFER_BYTES / 8).max(rank);
-    let tile_rows = (target_elements / rank).max(1).min(nrows);
-    let tile_elements = tile_rows
-        .checked_mul(rank)
-        .ok_or_else(|| allocation("prepared robust scratch transpose tile overflows"))?;
-    let mut tile = reserved_filled(
-        reservation,
-        tile_elements,
-        0.0_f64,
-        "unable to reserve prepared robust scratch transpose tile",
-    )?;
-    let mut column = reserved_filled(
-        reservation,
-        tile_rows,
-        0.0_f64,
-        "unable to reserve prepared robust scratch transpose column",
-    )?;
-    for start_row in (0..nrows).step_by(tile_rows) {
-        let rows_in_tile = (nrows - start_row).min(tile_rows);
-        for finite in 0..rank {
-            let stored = selected_columns.map_or(finite, |selected| selected[finite]);
-            columns.read_column_range(stored, start_row, &mut column[..rows_in_tile])?;
-            for row in 0..rows_in_tile {
-                tile[row * rank + finite] = column[row];
-            }
-        }
-        let elements = rows_in_tile * rank;
-        rows.write_linear(start_row * rank, &tile[..elements])?;
-    }
-    Ok((rows, tile))
-}
-
 struct ScoreCertificateInputs<'storage, 'weights> {
     storage: &'storage PreparedOlsScoreStorage<'weights>,
     nrows: usize,
@@ -899,8 +813,8 @@ fn certify_score_design<R: PreparedInferenceReservation>(
         PreparedOlsScoreStorage::Dense(within) => {
             certify_dense_score_gram(within.as_slice(), nrows, rank, weights, reservation)?
         }
-        PreparedOlsScoreStorage::Strided(strided) => {
-            certify_strided_score_gram(strided, nrows, rank, reservation)?
+        PreparedOlsScoreStorage::Selected(strided) => {
+            certify_selected_score_gram(strided, nrows, rank, reservation)?
         }
         PreparedOlsScoreStorage::Scratch(_) => {
             certify_scratch_score_gram(storage, nrows, rank, weights, reservation)?
@@ -1007,8 +921,8 @@ fn certify_score_design<R: PreparedInferenceReservation>(
     })
 }
 
-fn certify_strided_score_gram<R: PreparedInferenceReservation>(
-    storage: &PreparedOlsStridedScoreStorage<'_>,
+fn certify_selected_score_gram<R: PreparedInferenceReservation>(
+    storage: &PreparedOlsSelectedScoreStorage<'_>,
     nrows: usize,
     rank: usize,
     reservation: &mut R,
@@ -1019,7 +933,6 @@ fn certify_strided_score_gram<R: PreparedInferenceReservation>(
     let matrix_columns = storage.within.ncols();
     if storage.within.nrows() != nrows
         || storage.generated_columns.len() != rank
-        || storage.reference_norms.len() != rank
         || storage
             .generated_columns
             .iter()
@@ -1049,12 +962,6 @@ fn certify_strided_score_gram<R: PreparedInferenceReservation>(
         0.0_f64,
         "unable to reserve prepared robust strided score Gram partials",
     )?;
-    let multiplier = storage.weights.multiplier();
-    if !multiplier.is_finite() || multiplier <= 0.0 {
-        return Err(invalid_data(
-            "prepared robust strided score weight multiplier is invalid",
-        ));
-    }
     partials
         .par_chunks_mut(square)
         .enumerate()
@@ -1063,14 +970,14 @@ fn certify_strided_score_gram<R: PreparedInferenceReservation>(
             let remainder = nrows % chunks;
             let start = chunk * rows_per_chunk + chunk.min(remainder);
             let end = start + rows_per_chunk + usize::from(chunk < remainder);
-            accumulate_strided_score_gram_rows(
+            accumulate_selected_score_gram_rows(
                 &storage.within.as_slice()[start * matrix_columns..end * matrix_columns],
                 matrix_columns,
                 &storage.generated_columns,
-                &storage.reference_norms,
-                multiplier,
+                storage.weights,
+                start,
                 partial,
-            );
+            )?;
             if partial.iter().all(|value| value.is_finite()) {
                 Ok(())
             } else {
@@ -1118,49 +1025,26 @@ fn certify_strided_score_gram<R: PreparedInferenceReservation>(
     Ok(gram)
 }
 
-fn accumulate_strided_score_gram_rows(
+fn accumulate_selected_score_gram_rows(
     rows: &[f64],
     matrix_columns: usize,
     generated_columns: &[usize],
-    reference_norms: &[f64],
-    multiplier: f64,
+    weights: ReferenceWeightView<'_>,
+    first_row: usize,
     partial: &mut [f64],
-) {
+) -> Result<()> {
     let rank = generated_columns.len();
-    let mut reconstructed = [0.0_f64; 64];
-    for values in rows.chunks_exact(matrix_columns) {
-        // Each selected value has one fixed reconstruction scale. Reuse
-        // that product across the Gram row without changing any entry's
-        // observation order, multiplication order, or reduction tree.
-        if (8..=reconstructed.len()).contains(&rank) {
-            let reconstructed = &mut reconstructed[..rank];
-            for ((value, &generated), &norm) in reconstructed
-                .iter_mut()
-                .zip(generated_columns)
-                .zip(reference_norms)
-            {
-                *value = values[generated + 1] * norm;
-            }
-            for left in 0..rank {
-                let scaled_left = multiplier * reconstructed[left];
-                for (destination, &right_value) in partial[left * rank + left..(left + 1) * rank]
-                    .iter_mut()
-                    .zip(&reconstructed[left..])
-                {
-                    *destination += scaled_left * right_value;
-                }
-            }
-            continue;
-        }
+    for (row, values) in rows.chunks_exact(matrix_columns).enumerate() {
+        let weight = weights.value(first_row + row)?;
         for left in 0..rank {
-            let left_value = values[generated_columns[left] + 1] * reference_norms[left];
-            let scaled_left = multiplier * left_value;
+            let weighted_left = weight * values[generated_columns[left] + 1];
             for right in left..rank {
-                let right_value = values[generated_columns[right] + 1] * reference_norms[right];
-                partial[left * rank + right] += scaled_left * right_value;
+                partial[left * rank + right] +=
+                    weighted_left * values[generated_columns[right] + 1];
             }
         }
     }
+    Ok(())
 }
 
 fn certify_dense_score_gram<R: PreparedInferenceReservation>(
@@ -1337,7 +1221,7 @@ fn fill_score_storage_row(
                 *value = within[(row, column)];
             }
         }
-        PreparedOlsScoreStorage::Strided(strided) => strided.fill_row(row, output)?,
+        PreparedOlsScoreStorage::Selected(strided) => strided.fill_row(row, output)?,
         PreparedOlsScoreStorage::Scratch(scratch) => {
             scratch.fill_row(nrows, rank, row, output)?;
         }
@@ -1431,7 +1315,7 @@ mod tests {
                     _ => (i as f64 * 0.17).sin(),
                 })
                 .collect();
-            let mut scratch = PreparedOlsScratch::create(nrows, rank).unwrap();
+            let mut scratch = PreparedOlsScratch::create_row_major(nrows, rank).unwrap();
             scratch.write_linear(0, &values).unwrap();
             let cache_rows = (TRANSPOSE_BUFFER_BYTES / 8 / rank).min(nrows);
             let storage = PreparedOlsScratchScoreStorage {
@@ -1475,36 +1359,40 @@ mod tests {
     }
 
     #[test]
-    fn strided_gram_row_cache_preserves_products_and_nonfinite_rejection() {
+    fn selected_gram_row_cache_preserves_products_and_nonfinite_rejection() {
         for rank in [1, 7, 8, 10, 50, 64, 65] {
             let columns = 2 * rank + 1;
             let generated: Vec<_> = (0..rank).rev().map(|column| 2 * column).collect();
-            let norms: Vec<_> = (0..rank)
-                .map(|column| 10.0_f64.powi(column as i32 % 9 - 4))
-                .collect();
             let mut rows: Vec<_> = (0..257 * columns)
                 .map(|index| ((index * 37 % 101) as f64 - 50.0) / 17.0)
                 .collect();
             for multiplier in [1.0, 0.17, 3.7, 1e-120, 1e120] {
+                let explicit = vec![multiplier; 257];
+                let weights = ReferenceWeightView::from_test_parts(
+                    Some(&explicit),
+                    Some(crate::data::WeightKind::Analytic),
+                    1.0,
+                    1.0,
+                );
                 let mut expected = vec![0.0; rank * rank];
                 for values in rows.chunks_exact(columns) {
                     for left in 0..rank {
-                        let scaled = multiplier * (values[generated[left] + 1] * norms[left]);
+                        let scaled = multiplier * values[generated[left] + 1];
                         for right in left..rank {
-                            expected[left * rank + right] +=
-                                scaled * (values[generated[right] + 1] * norms[right]);
+                            expected[left * rank + right] += scaled * values[generated[right] + 1];
                         }
                     }
                 }
                 let mut actual = vec![0.0; rank * rank];
-                accumulate_strided_score_gram_rows(
+                accumulate_selected_score_gram_rows(
                     &rows,
                     columns,
                     &generated,
-                    &norms,
-                    multiplier,
+                    weights,
+                    0,
                     &mut actual,
-                );
+                )
+                .expect("finite weights");
                 assert_eq!(
                     actual.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
                     expected.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
@@ -1514,14 +1402,15 @@ mod tests {
             for nonfinite in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, f64::MAX] {
                 rows[generated[0] + 1] = nonfinite;
                 let mut partial = vec![0.0; rank * rank];
-                accumulate_strided_score_gram_rows(
+                accumulate_selected_score_gram_rows(
                     &rows,
                     columns,
                     &generated,
-                    &norms,
-                    1.0,
+                    ReferenceWeightView::from_test_parts(None, None, 1.0, 1.0),
+                    0,
                     &mut partial,
-                );
+                )
+                .expect("unit weights");
                 assert!(partial.iter().any(|value| !value.is_finite()));
             }
         }

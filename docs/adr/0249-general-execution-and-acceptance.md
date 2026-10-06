@@ -66,3 +66,9 @@ three established M26 regressions (OLS residual-robust, slope OLS and PPML
 residual-robust), and defers automatic 8/16-worker timing to a quiet Mac window.
 The [specific acceptance](../../bench/history/2026-10-06-m30-architectural-acceptance.json)
 retains failed measurements and missing evidence; other allowances remain unchanged.
+
+Johannes separately accepts the reviewed M31 candidate on 2026-10-06 despite
+large Fast OLS being 8.2–8.6% slower than fixed M26, defers its remaining broad
+and scaling timing, and authorizes dependent M32–M35 work. The
+[specific acceptance](../../bench/history/2026-10-06-m31-architectural-acceptance.json)
+retains the failed verdict and open evidence; future allowances remain unchanged.

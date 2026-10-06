@@ -499,10 +499,10 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
                         .build()
                         .unwrap()
                         .install(|| {
-                            let source = FixedBlockMomentSource::RetainedImplicit {
+                            let source = FixedBlockMomentSource::Implicit {
                                 values: view,
                                 selected_columns: Some(&selected),
-                                response: &response,
+                                response: (&response).into(),
                                 weights: BorrowedMapWeights::Provided(&weights),
                                 solver_weight_divisor: divisor,
                                 column_scales: scaled.then_some(scales.as_slice()),

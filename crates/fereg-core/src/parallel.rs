@@ -79,23 +79,64 @@ pub(crate) fn reduction_blocks(
         .min((target_bytes / bytes.max(1)).max(1)))
 }
 
-/// Bound executable tasks while retaining each caller's arithmetic leaves.
-pub(crate) fn stage_items_mut<T: Send>(
-    values: &mut [T],
-    work: u128,
-) -> impl IndexedParallelIterator<Item = &mut T> {
-    let grain = StagePlan::current(work, values.len()).chunk(values.len());
-    values.par_iter_mut().with_min_len(grain)
+/// Partition indexed work into the planned lanes. Rayon's minimum-length hint
+/// is not a partition: binary splitting can leave half the planned lanes idle.
+/// Kernels retain their item indices, arithmetic leaves and ordered merges.
+pub(crate) fn stage_try_for_each<I, F>(iterator: I, work: u128, function: F) -> Result<()>
+where
+    I: IndexedParallelIterator,
+    F: Fn(I::Item) -> Result<()> + Sync,
+{
+    let items = iterator.len();
+    let lanes = StagePlan::current(work, items).lanes;
+    iterator.with_producer(StageCallback {
+        items,
+        lanes,
+        function,
+    })
 }
 
-pub(crate) fn stage_rows_mut<T: Send>(
-    values: &mut [T],
-    width: usize,
-    work: u128,
-) -> impl IndexedParallelIterator<Item = &mut [T]> {
-    let grain =
-        StagePlan::current(work, values.len().div_ceil(width)).chunk(values.len().div_ceil(width));
-    values.par_chunks_mut(width).with_min_len(grain)
+struct StageCallback<F> {
+    items: usize,
+    lanes: usize,
+    function: F,
+}
+
+impl<T, F> rayon::iter::plumbing::ProducerCallback<T> for StageCallback<F>
+where
+    F: Fn(T) -> Result<()> + Sync,
+{
+    type Output = Result<()>;
+
+    fn callback<P>(self, producer: P) -> Result<()>
+    where
+        P: rayon::iter::plumbing::Producer<Item = T>,
+    {
+        stage_producer(producer, self.items, self.lanes, &self.function)
+    }
+}
+
+fn stage_producer<P, F>(producer: P, items: usize, lanes: usize, function: &F) -> Result<()>
+where
+    P: rayon::iter::plumbing::Producer,
+    F: Fn(P::Item) -> Result<()> + Sync,
+{
+    if items == 0 {
+        return Ok(());
+    }
+    if lanes <= 1 || items <= 1 {
+        return producer.into_iter().try_for_each(function);
+    }
+    let left_lanes = lanes / 2;
+    let middle = ((items as u128 * left_lanes as u128) / lanes as u128) as usize;
+    let (left, right) = producer.split_at(middle);
+    let (first, second) = rayon::join(
+        || stage_producer(left, middle, left_lanes, function),
+        || stage_producer(right, items - middle, lanes - left_lanes, function),
+    );
+    // PPML objective evaluation requires the first error in physical item order.
+    first?;
+    second
 }
 
 /// Two disjoint output banks and one already admitted scratch owner per lane.
@@ -443,6 +484,117 @@ impl ThreadTeam {
 
 #[cfg(test)]
 mod tests {
+    struct CountingProducer {
+        range: std::ops::Range<usize>,
+        leaves: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    }
+
+    impl rayon::iter::plumbing::Producer for CountingProducer {
+        type Item = usize;
+        type IntoIter = std::ops::Range<usize>;
+
+        fn into_iter(self) -> Self::IntoIter {
+            self.leaves
+                .fetch_add(1, std::sync::atomic::Ordering::SeqCst);
+            self.range
+        }
+
+        fn split_at(self, index: usize) -> (Self, Self) {
+            let middle = self.range.start + index;
+            (
+                Self {
+                    range: self.range.start..middle,
+                    leaves: std::sync::Arc::clone(&self.leaves),
+                },
+                Self {
+                    range: middle..self.range.end,
+                    leaves: self.leaves,
+                },
+            )
+        }
+    }
+
+    #[test]
+    fn explicit_partitions_expose_all_planned_lanes_and_visit_once() {
+        use std::sync::atomic::{AtomicUsize, Ordering};
+        for items in [0, 1, 5, 9, 10, 17, 137] {
+            for budget in [1, 2, 4, 7, 8, 9, 15, 16] {
+                let leaves = std::sync::Arc::new(AtomicUsize::new(0));
+                let visits: Vec<_> = (0..items).map(|_| AtomicUsize::new(0)).collect();
+                let lanes = super::StagePlan::new(u128::MAX, items, budget).lanes;
+                super::stage_producer(
+                    CountingProducer {
+                        range: 0..items,
+                        leaves: std::sync::Arc::clone(&leaves),
+                    },
+                    items,
+                    lanes,
+                    &|index| {
+                        visits[index].fetch_add(1, Ordering::SeqCst);
+                        Ok(())
+                    },
+                )
+                .unwrap();
+                assert_eq!(
+                    leaves.load(Ordering::SeqCst),
+                    if items == 0 { 0 } else { lanes }
+                );
+                assert!(visits.iter().all(|value| value.load(Ordering::SeqCst) == 1));
+            }
+        }
+    }
+
+    #[test]
+    fn indexed_stage_preserves_zip_indices_first_error_and_unwinds() {
+        use rayon::prelude::*;
+        let pool = rayon::ThreadPoolBuilder::new()
+            .num_threads(4)
+            .build()
+            .unwrap();
+        let mut output = [0_usize; 10];
+        pool.install(|| {
+            super::stage_try_for_each(
+                output
+                    .par_iter_mut()
+                    .zip((0..9).into_par_iter())
+                    .enumerate(),
+                u128::MAX,
+                |(index, (target, source))| {
+                    assert_eq!(index, source);
+                    *target = index + 1;
+                    Ok(())
+                },
+            )
+            .unwrap();
+        });
+        assert_eq!(output, [1, 2, 3, 4, 5, 6, 7, 8, 9, 0]);
+        let error = pool
+            .install(|| {
+                super::stage_try_for_each((0..10).into_par_iter(), u128::MAX, |index| {
+                    if index == 2 || index == 7 {
+                        Err(super::FeregError::new(
+                            super::ErrorCode::InvalidData,
+                            index.to_string(),
+                        ))
+                    } else {
+                        Ok(())
+                    }
+                })
+            })
+            .unwrap_err();
+        assert_eq!(error.code, super::ErrorCode::InvalidData);
+        assert_eq!(error.message, "2");
+        assert!(
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| pool.install(|| {
+                super::stage_try_for_each((0..10).into_par_iter(), u128::MAX, |index| {
+                    assert_ne!(index, 7, "injected stage panic");
+                    Ok(())
+                })
+            })))
+            .is_err()
+        );
+    }
+
     #[test]
     fn stage_limits_follow_work_tasks_and_budget() {
         for budget in [1, 2, 4, 7, 8, 9, 15, 16] {

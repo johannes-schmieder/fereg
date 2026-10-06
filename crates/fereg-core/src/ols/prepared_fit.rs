@@ -1,5 +1,5 @@
-mod qr_factorization;
-use qr_factorization::{factor_pivoted_qr, DenseQr, ScratchQr};
+mod finite;
+mod one_shot;
 
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{ErrorCode, FeregError, Result};
@@ -16,11 +16,9 @@ use rayon::prelude::*;
 use std::time::Instant;
 
 use super::finite_wls_kernel::{
-    certify_normal_equations, factor_guarded_cholesky_in_place, fill_finite_wls_moments,
-    finite_wls_moment_layout,
+    certify_normal_equations, finite_wls_moment_layout,
     inverse_relative_infinity_norm as kernel_inverse_relative_infinity_norm,
-    invert_guarded_cholesky, solve_guarded_cholesky, CholeskyPivotPolicy, FixedBlockMomentSource,
-    NormalEquationScale,
+    FixedBlockMomentSource, NormalEquationScale,
 };
 use super::linear_session::{
     LinearSessionAllocationPhase, LinearSessionPhaseAllocationGuard,
@@ -92,6 +90,19 @@ pub struct PreparedOlsExecutionReport {
     pub requested_threads: usize,
     pub effective_threads: usize,
     pub deterministic: bool,
+}
+
+impl PreparedOlsExecutionReport {
+    fn from_config(config: PreparedOlsFitConfig, scratch_bytes: u64) -> Self {
+        Self {
+            mode: config.execution.mode,
+            poolsize: config.execution.poolsize,
+            scratch_bytes,
+            requested_threads: config.execution.threads.requested.map_or(0, |v| v.get()),
+            effective_threads: config.execution.threads.resolved(),
+            deterministic: config.execution.threads.deterministic,
+        }
+    }
 }
 
 impl Default for PreparedOlsFitConfig {
@@ -399,10 +410,9 @@ pub(super) enum PreparedOlsFastScoreCache {
         within: DenseMatrix,
         means: Vec<f64>,
     },
-    Strided {
+    Selected {
         generated_columns: Vec<usize>,
         within: DenseMatrix,
-        reference_norms: Vec<f64>,
         means: Vec<f64>,
     },
 }
@@ -415,7 +425,7 @@ impl PreparedOlsFastScoreCache {
                 means,
                 ..
             }
-            | Self::Strided {
+            | Self::Selected {
                 generated_columns,
                 means,
                 ..
@@ -438,15 +448,13 @@ impl PreparedOlsFastScoreCache {
                     && within.ncols() == generated_columns.len()
                     && means.len() == generated_columns.len()
             }
-            Self::Strided {
+            Self::Selected {
                 generated_columns: cached,
                 within,
-                reference_norms,
                 means,
             } => {
                 cached == generated_columns
                     && within.ncols() > generated_columns.len()
-                    && reference_norms.len() == generated_columns.len()
                     && means.len() == generated_columns.len()
             }
         }
@@ -483,16 +491,12 @@ impl CertifiedPreparedOlsFit {
                 } => {
                     bytes(generated_columns) + within.storage_capacity() as u128 * 8 + bytes(means)
                 }
-                PreparedOlsFastScoreCache::Strided {
+                PreparedOlsFastScoreCache::Selected {
                     generated_columns,
                     within,
-                    reference_norms,
                     means,
                 } => {
-                    bytes(generated_columns)
-                        + within.storage_capacity() as u128 * 8
-                        + bytes(reference_norms)
-                        + bytes(means)
+                    bytes(generated_columns) + within.storage_capacity() as u128 * 8 + bytes(means)
                 }
             });
         bytes(&self.coefficients)
@@ -632,7 +636,7 @@ impl CertifiedPreparedOlsFit {
     }
 }
 
-trait FitReservation {
+pub(super) trait FitReservation {
     fn reserve<T>(
         &mut self,
         target: &mut Vec<T>,
@@ -641,12 +645,11 @@ trait FitReservation {
     ) -> Result<()>;
 }
 
-struct SystemFitReservation;
+pub(super) struct SystemFitReservation;
 
 // Above this length, a single naive reduction can consume a material share
 // of the default bread-certificate error budget. Keep short checkpoint
 // arithmetic consistent with the established retained-session path.
-const COMPENSATED_QR_MIN_ROWS: usize = 65_536;
 const PARALLEL_REDUCTION_CHUNK_ROWS: usize = 16_384;
 const FUSED_MOMENT_MAX_COLUMNS: usize = 64;
 const FUSED_MOMENT_MAX_BLOCKS: usize = 64;
@@ -852,54 +855,99 @@ impl<'a> LinearSolveFrame<'a> {
 }
 
 #[derive(Debug, Clone, Copy, Default)]
-struct FiniteScoreDraft {
+pub(super) struct FiniteScoreDraft {
     /// Largest finite-coordinate score after dividing out the within-X norm.
     /// The final response scale is applied only after the returned residual is
     /// independently certified against the FE span.
-    infinity_scale: f64,
-    square_sum_scale: f64,
-    moments: usize,
+    pub(super) infinity_scale: f64,
+    pub(super) square_sum_scale: f64,
+    pub(super) moments: usize,
 }
 
 #[derive(Debug)]
-struct FiniteBreadDraft {
-    generated_columns: Vec<usize>,
-    values: Vec<f64>,
-    reference_crossproduct: Vec<f64>,
-    weight_scale: PreparedOlsBreadWeightScale,
-    left_inverse_relative_infinity_norm: f64,
-    right_inverse_relative_infinity_norm: f64,
-}
-
-struct FiniteBreadInputs<'a> {
-    qr: &'a DenseMatrix,
-    pivot_columns: &'a [usize],
-    canonical_candidates: &'a [usize],
-    standardized_gram: &'a [f64],
-    rank: usize,
-    reference_norms: &'a [f64],
-    bread_weight_scale: PreparedOlsBreadWeightScale,
+pub(super) struct FiniteBreadDraft {
+    pub(super) generated_columns: Vec<usize>,
+    pub(super) values: Vec<f64>,
+    pub(super) reference_crossproduct: Vec<f64>,
+    pub(super) weight_scale: PreparedOlsBreadWeightScale,
+    pub(super) left_inverse_relative_infinity_norm: f64,
+    pub(super) right_inverse_relative_infinity_norm: f64,
 }
 
 #[derive(Debug)]
-struct QrFit {
-    generated_coefficients: Vec<Option<f64>>,
-    generated_statuses: Vec<PreparedOlsFitStatus>,
-    kept: Vec<usize>,
-    dropped: Vec<usize>,
-    rank: usize,
-    certificate: PreparedOlsRankCertificate,
-    finite_score: FiniteScoreDraft,
-    bread: Option<FiniteBreadDraft>,
-    within_residuals: Option<Vec<f64>>,
-    standardized_within_is_reusable: bool,
+pub(super) struct FiniteFit {
+    pub(super) generated_coefficients: Vec<Option<f64>>,
+    pub(super) generated_statuses: Vec<PreparedOlsFitStatus>,
+    pub(super) kept: Vec<usize>,
+    pub(super) dropped: Vec<usize>,
+    pub(super) rank: usize,
+    pub(super) certificate: PreparedOlsRankCertificate,
+    pub(super) finite_score: FiniteScoreDraft,
+    pub(super) bread: Option<FiniteBreadDraft>,
+    pub(super) within_residuals: Option<Vec<f64>>,
 }
 
-/// Complete retained-design solve products assembled by the reusable PPML
-/// session. The session owns projection/rank workspaces; this adapter keeps
-/// all OLS-compatible slot, intercept, residual, score, and bread publication
-/// policy in one place without reconstructing another observation-by-column
-/// design.
+/// Published fit products belong to one owner after independent certificates.
+struct FitPublication {
+    score_certificate: PreparedOlsScoreCertificate,
+    bread: PreparedOlsBread,
+    absorption_report: SolveReport,
+    residual_absorption_report: SolveReport,
+    initial_absorbed_outcome_sum_of_squares: f64,
+    residuals: DenseMatrix,
+    recovered_fe_coefficients: Option<FeCoefficientBatch>,
+    fast_score_cache: Option<PreparedOlsFastScoreCache>,
+    execution: PreparedOlsExecutionReport,
+}
+
+impl FiniteFit {
+    fn validate_axes(&self, columns: usize, rows: usize) -> Result<()> {
+        if self.generated_coefficients.len() != columns
+            || self.generated_statuses.len() != columns
+            || self.rank != self.kept.len()
+            || self
+                .within_residuals
+                .as_ref()
+                .is_some_and(|values| values.len() != rows)
+            || self.bread.as_ref().is_some_and(|bread| {
+                bread.generated_columns != self.kept
+                    || bread.values.len() != self.rank * self.rank
+                    || bread.reference_crossproduct.len() != self.rank * self.rank
+            })
+        {
+            return Err(invalid_argument("finite fit product axes are inconsistent"));
+        }
+        Ok(())
+    }
+
+    fn publish(
+        mut self,
+        coefficients: Vec<PreparedOlsFittedCoefficient>,
+        products: FitPublication,
+    ) -> CertifiedPreparedOlsFit {
+        self.kept.sort_unstable();
+        self.dropped.sort_unstable();
+        CertifiedPreparedOlsFit {
+            additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
+            coefficients,
+            kept_generated_columns: self.kept,
+            dropped_generated_columns: self.dropped,
+            finite_rank: self.rank,
+            rank_certificate: self.certificate,
+            score_certificate: products.score_certificate,
+            bread: products.bread,
+            absorption_report: products.absorption_report,
+            residual_absorption_report: products.residual_absorption_report,
+            initial_absorbed_outcome_sum_of_squares: products
+                .initial_absorbed_outcome_sum_of_squares,
+            residuals: products.residuals,
+            recovered_fe_coefficients: products.recovered_fe_coefficients,
+            fast_score_cache: products.fast_score_cache,
+            execution: products.execution,
+        }
+    }
+}
+
 /// Borrowed only during one canonical solve, after its session has checked the
 /// sample/topology/weight generation. These are raw, current-weight means.
 #[derive(Clone, Copy)]
@@ -932,26 +980,12 @@ impl CurrentFrameColumnMeans<'_> {
     }
 }
 
-pub(super) struct RetainedFiniteFitDraft<'a> {
+pub(super) struct RetainedFitContext<'a> {
     pub(super) raw_column_means: CurrentFrameColumnMeans<'a>,
-    pub(super) generated_coefficients: Vec<Option<f64>>,
-    pub(super) generated_statuses: Vec<PreparedOlsFitStatus>,
-    pub(super) kept: Vec<usize>,
-    pub(super) dropped: Vec<usize>,
-    pub(super) rank_certificate: PreparedOlsRankCertificate,
-    pub(super) canonical_candidates: Vec<usize>,
-    pub(super) standardized_gram: &'a [f64],
-    pub(super) standardized_rhs: &'a [f64],
-    pub(super) finite_bread_generated_columns: Vec<usize>,
-    pub(super) finite_bread_values: Vec<f64>,
-    pub(super) finite_reference_crossproduct: Vec<f64>,
-    pub(super) left_inverse_relative_infinity_norm: f64,
-    pub(super) right_inverse_relative_infinity_norm: f64,
     pub(super) reference_norms: Vec<f64>,
     pub(super) score_norms: Vec<f64>,
     pub(super) within_outcome_norm: f64,
     pub(super) normalized_initial_within_sum_of_squares: f64,
-    pub(super) residuals: Vec<f64>,
     pub(super) residual_absorption_report: SolveReport,
     pub(super) absorption_report: SolveReport,
     pub(super) scratch_bytes: u64,
@@ -1222,68 +1256,22 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
     prepared: &'a P,
     frame: LinearSolveFrame<'a>,
     config: PreparedOlsFitConfig,
-    draft: RetainedFiniteFitDraft<'_>,
+    mut qr: FiniteFit,
+    draft: RetainedFitContext<'_>,
 ) -> Result<(CertifiedPreparedOlsFit, Vec<f64>)> {
     frame.validate_for(prepared)?;
     validate_config(prepared, config)?;
-    let generated_columns = prepared.fit_model().columns.len();
-    if draft.generated_coefficients.len() != generated_columns
-        || draft.generated_statuses.len() != generated_columns
-        || draft.reference_norms.len() != generated_columns
-        || draft.score_norms.len() != generated_columns
-        || draft.residuals.len() != prepared.fit_sample().n_active()
-        || draft.finite_bread_generated_columns.len() != draft.kept.len()
+    qr.validate_axes(
+        prepared.fit_model().columns.len(),
+        prepared.fit_sample().n_active(),
+    )?;
+    if draft.reference_norms.len() != qr.generated_coefficients.len()
+        || draft.score_norms.len() != qr.generated_coefficients.len()
     {
         return Err(invalid_argument(
             "retained weighted-linear fit draft dimensions are inconsistent",
         ));
     }
-    let rank = draft.kept.len();
-    let rank_square = checked_square(
-        rank,
-        "retained weighted-linear bread dimensions overflow usize",
-    )?;
-    if draft.finite_bread_values.len() != rank_square
-        || draft.finite_reference_crossproduct.len() != rank_square
-        || draft.standardized_rhs.len() != draft.canonical_candidates.len()
-        || draft.standardized_gram.len()
-            != checked_square(
-                draft.canonical_candidates.len(),
-                "retained weighted-linear Gram dimensions overflow usize",
-            )?
-    {
-        return Err(invalid_argument(
-            "retained weighted-linear fit draft moments are inconsistent",
-        ));
-    }
-    let finite_score = build_finite_score_draft(
-        &draft.canonical_candidates,
-        draft.standardized_gram,
-        draft.standardized_rhs,
-        &draft.generated_coefficients,
-        &draft.generated_statuses,
-        &draft.reference_norms,
-        &draft.score_norms,
-    )?;
-    let mut qr = QrFit {
-        generated_coefficients: draft.generated_coefficients,
-        generated_statuses: draft.generated_statuses,
-        kept: draft.kept,
-        dropped: draft.dropped,
-        rank,
-        certificate: draft.rank_certificate,
-        finite_score,
-        bread: Some(FiniteBreadDraft {
-            generated_columns: draft.finite_bread_generated_columns,
-            values: draft.finite_bread_values,
-            reference_crossproduct: draft.finite_reference_crossproduct,
-            weight_scale: frame.bread_weight_scale(),
-            left_inverse_relative_infinity_norm: draft.left_inverse_relative_infinity_norm,
-            right_inverse_relative_infinity_norm: draft.right_inverse_relative_infinity_norm,
-        }),
-        within_residuals: Some(draft.residuals),
-        standardized_within_is_reusable: false,
-    };
     let mut coefficients = build_coefficient_slots(prepared, &qr, &mut SystemFitReservation)?;
     let weights = frame.weights();
     let mut finite_predictor = reserved_filled(
@@ -1311,24 +1299,24 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
         &coefficients,
         &mut finite_predictor,
     )? {
-        crate::parallel::stage_items_mut(
-            &mut finite_predictor,
+        crate::parallel::stage_try_for_each(
+            finite_predictor.par_iter_mut().enumerate(),
             prepared.fit_sample().n_active() as u128 * qr.generated_coefficients.len() as u128,
-        )
-        .enumerate()
-        .try_for_each(|(row, target)| -> Result<()> {
-            let mut value = 0.;
-            for (generated, coefficient) in qr.generated_coefficients.iter().enumerate() {
-                if let Some(coefficient) = coefficient {
-                    value = coefficient.mul_add(prepared.fit_column_value(generated, row)?, value);
+            |(row, target)| -> Result<()> {
+                let mut value = 0.;
+                for (generated, coefficient) in qr.generated_coefficients.iter().enumerate() {
+                    if let Some(coefficient) = coefficient {
+                        value =
+                            coefficient.mul_add(prepared.fit_column_value(generated, row)?, value);
+                    }
                 }
-            }
-            if !value.is_finite() {
-                return Err(invalid_data("retained finite predictor is not finite"));
-            }
-            *target = value;
-            Ok(())
-        })?;
+                if !value.is_finite() {
+                    return Err(invalid_data("retained finite predictor is not finite"));
+                }
+                *target = value;
+                Ok(())
+            },
+        )?;
     }
     let bread = finalize_reported_bread_and_intercept(
         prepared,
@@ -1397,37 +1385,21 @@ pub(super) fn assemble_retained_weighted_linear_fit<'a, P: PreparedOlsFitView + 
             coefficient.value = qr.generated_coefficients[generated];
         }
     }
-    qr.kept.sort_unstable();
-    qr.dropped.sort_unstable();
     Ok((
-        CertifiedPreparedOlsFit {
-            additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
+        qr.publish(
             coefficients,
-            kept_generated_columns: qr.kept,
-            dropped_generated_columns: qr.dropped,
-            finite_rank: qr.rank,
-            rank_certificate: qr.certificate,
-            score_certificate,
-            bread,
-            absorption_report,
-            residual_absorption_report,
-            initial_absorbed_outcome_sum_of_squares,
-            residuals,
-            recovered_fe_coefficients: None,
-            fast_score_cache: None,
-            execution: PreparedOlsExecutionReport {
-                mode: config.execution.mode,
-                poolsize: config.execution.poolsize,
-                scratch_bytes: draft.scratch_bytes,
-                requested_threads: config
-                    .execution
-                    .threads
-                    .requested
-                    .map_or(0, |value| value.get()),
-                effective_threads: config.execution.threads.resolved(),
-                deterministic: config.execution.threads.deterministic,
+            FitPublication {
+                score_certificate,
+                bread,
+                absorption_report,
+                residual_absorption_report,
+                initial_absorbed_outcome_sum_of_squares,
+                residuals,
+                recovered_fe_coefficients: None,
+                fast_score_cache: None,
+                execution: PreparedOlsExecutionReport::from_config(config, draft.scratch_bytes),
             },
-        },
+        ),
         finite_predictor,
     ))
 }
@@ -1485,7 +1457,7 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
             "prepared projection initial absorption did not certify",
         ));
     }
-    let (mut within, absorption_report, _) = absorbed.into_full_parts();
+    let (within, absorption_report, _) = absorbed.into_full_parts();
     let mut within_norms = reserved_filled(
         reservation,
         generated_columns + 1,
@@ -1495,21 +1467,20 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     if rayon::current_num_threads() == 1 {
         fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
     } else {
-        crate::parallel::stage_items_mut(
-            &mut within_norms,
+        crate::parallel::stage_try_for_each(
+            within_norms.par_iter_mut().enumerate(),
             within.nrows() as u128 * within.ncols() as u128,
-        )
-        .enumerate()
-        .try_for_each(|(column, norm)| -> Result<()> {
-            *norm = weighted_matrix_column_norm(&within, column, weights)?;
-            Ok(())
-        })?;
+            |(column, norm)| -> Result<()> {
+                *norm = weighted_matrix_column_norm(&within, column, weights)?;
+                Ok(())
+            },
+        )?;
     }
     let within_outcome_norm = within_norms[0];
     let score_norms = &within_norms[1..];
-    let mut qr = fit_scaled_pivoted_qr(
+    let mut qr = finite::solve_one_shot(
         prepared,
-        &mut within,
+        finite::ProjectedFiniteRows::Dense(&within),
         weights,
         frame.bread_weight_scale(),
         &reference_norms,
@@ -1670,8 +1641,8 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
 ) -> Result<CertifiedPreparedOlsFit> {
     let team = ThreadTeam::new(config.execution.threads);
     // Inference needs the projected columns again. Prefer a packed cache when
-    // its caller's bound admits it; larger Cholesky fits reuse the standardized
-    // solve allocation through a strided view. The established score builder
+    // its caller's bound admits it; larger fits retain immutable projected
+    // rows through a selected-column view. The established score builder
     // handles QR fits whose mutated solve matrix cannot be retained.
     let retain_fast_score_cache = true;
     team.install(|| {
@@ -1888,410 +1859,28 @@ fn fit_with_controls_internal_mode_with_frame<
     retain_fast_score_cache: bool,
     max_fast_score_cache_bytes: usize,
     phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
-    mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
+    phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
     loaded_rows: Option<LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsFit> {
-    let mut trace = PhaseTrace::new();
-    frame.validate_for(prepared)?;
-    let weights = frame.weights();
-    // Certified FE norms use max-normalized weights. An explicit finite frame
-    // can select another divisor and retains its own norm calculation.
-    let reuse_absorption_norms = weights
-        .values
-        .is_none_or(|values| values.iter().copied().fold(0.0_f64, f64::max) == weights.raw_scale);
-
-    let mut config = config;
-    if !perturbations.one_fe_final_recovery_disabled
-        && config.allow_final_fe_recovery
-        && config.absorb.retain_coefficients
-        && config.absorb.solver == FeSolverKind::Auto
-        && config.execution.mode == PreparedOlsExecutionMode::Fast
-        && (prepared.fit_has_one_ordinary_intercept_effect() || prepared.fit_has_one_slope_effect())
-    {
-        // Automatic one-partition absorption already omits coefficient
-        // products. Clear the unused request so fresh absorption can use its
-        // direct path; publication keeps the existing certified final-target
-        // recovery and memory admission. Other callers retain their policy.
-        config.absorb.retain_coefficients = false;
-    }
-    // Admit retained products before constructing any retained solver session,
-    // so its captured budget covers the later residual call as well. The
-    // execution parent excludes FE storage; sequential solver calls share the
-    // reserve, while the initial and combined products may coexist.
-    let retained_fe_parent = if config.absorb.retain_coefficients {
-        prepared.fit_retained_fe_parent_bytes()?
-    } else {
-        0
-    };
-    if let Some(budget) = config.absorb.solver_memory_budget.as_mut() {
-        budget.execution_bytes = budget
-            .execution_bytes
-            .checked_add(retained_fe_parent)
-            .ok_or_else(|| allocation("retained FE parent budget overflows"))?;
-        if !budget.fits(0) {
-            return Err(allocation("retained FE products exceed usable memory"));
-        }
-    }
-    let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
-
-    let projection_phase = LinearSessionPhaseAllocationGuard::new(
-        phase_probe,
-        phase_observation.as_deref_mut(),
-        LinearSessionAllocationPhase::Projection,
-    );
-    let (rows, pending_moments) =
-        loaded_rows.map_or((None, None), |loaded| (Some(loaded.rows), loaded.moments));
-    let (raw, reused_rows) = prepared.fit_build_rhs_with_loaded_rows(frame.response(), rows)?;
-    let pending_moments = if reused_rows && weights.values.is_none() {
-        pending_moments
-    } else {
-        None
-    };
-    let rhs_seconds = trace.lap();
-    let generated_columns = prepared.fit_model().columns.len();
-    let use_strided_fast_score_cache =
-        retain_fast_score_cache && !fast_score_cache_fits(prepared, max_fast_score_cache_bytes)?;
-    let mut reference_norms = reserved_filled(
-        reservation,
-        generated_columns,
-        0.0_f64,
-        "unable to reserve prepared OLS reference norms",
-    )?;
-    let mut reference_mean_scales = if retain_fast_score_cache {
-        reserved_filled(
-            reservation,
-            generated_columns,
-            0.0_f64,
-            "unable to reserve prepared OLS fast score mean scales",
-        )?
-    } else {
-        Vec::new()
-    };
-    // IID already uses the deterministic row-major raw-moment cache for an
-    // absorbed intercept.  Reuse that same primitive when an inference fit is
-    // too large for the accepted packed score cache: it supplies norms,
-    // scales, and means in two fused passes rather than walking the row-major
-    // matrix once per generated column and then scanning it again for score
-    // means.  The packed path remains unchanged.
-    let raw_moments = if (prepared.fit_has_absorbed_intercept() && !retain_fast_score_cache)
-        || use_strided_fast_score_cache
-    {
-        let cache = match pending_moments {
-            Some(result) => result?,
-            None => build_raw_moment_cache(&raw, weights, reservation)?,
-        };
-        for (column, norm) in reference_norms.iter_mut().enumerate() {
-            *norm = cache.norms[column + 1];
-        }
-        for (column, scale) in reference_mean_scales.iter_mut().enumerate() {
-            *scale = cache.scales[column + 1];
-        }
-        Some(cache)
-    } else {
-        None
-    };
-    if retain_fast_score_cache && raw_moments.is_none() {
-        crate::parallel::stage_items_mut(
-            &mut reference_norms,
-            raw.nrows() as u128 * generated_columns as u128,
-        )
-        .zip(reference_mean_scales.par_iter_mut())
-        .enumerate()
-        .try_for_each(|(column, (norm, mean_scale))| -> Result<()> {
-            *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
-            for row in 0..raw.nrows() {
-                *mean_scale = mean_scale.max(raw[(row, column + 1)].abs());
-            }
-            Ok(())
-        })?;
-    } else if raw_moments.is_none() {
-        crate::parallel::stage_items_mut(
-            &mut reference_norms,
-            raw.nrows() as u128 * generated_columns as u128,
-        )
-        .enumerate()
-        .try_for_each(|(column, norm)| -> Result<()> {
-            *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
-            Ok(())
-        })?;
-    }
-    let strided_score_means = if use_strided_fast_score_cache {
-        let cache = raw_moments
-            .as_ref()
-            .ok_or_else(|| invalid_argument("prepared OLS strided score raw moments are absent"))?;
-        let mut means = reserved_empty(
-            reservation,
-            generated_columns,
-            "unable to reserve prepared OLS strided score means",
-        )?;
-        means.extend_from_slice(&cache.means[1..]);
-        Some(means)
-    } else {
-        None
-    };
-    let raw_moments_seconds = trace.lap();
-    let mut absorbed = absorb_fit_matrix(
-        raw_moments.as_ref().map(|cache| cache.norms.as_slice()),
+    one_shot::fit(
         prepared,
-        weights.borrowed(),
-        raw,
-        config.absorb,
-        &mut cmg,
-        true,
-        false,
-    )?;
-    if !absorbed.report().certified() {
-        return Err(invalid_data(
-            "prepared OLS initial absorption returned an uncertified result",
-        ));
-    }
-    let cached_norms = if reuse_absorption_norms {
-        absorbed.take_residual_norms()
-    } else {
-        Vec::new()
-    };
-    let (mut within, mut absorption_report, initial_fe_coefficients) = absorbed.into_full_parts();
-    if config.allow_final_fe_recovery && initial_fe_coefficients.is_none() {
-        // Without initial products, a residual-only coefficient product cannot
-        // form saved effects. The final-target recovery remains authoritative.
-        config.absorb.retain_coefficients = false;
-    }
-    check_retained_fe_initial_capacity(initial_fe_coefficients.as_ref(), retained_fe_parent)?;
-    absorption_report.solver_workspace_peak = absorption_report
-        .solver_workspace_peak
-        .with_retained(retained_fe_parent)?;
-    let initial_absorb_seconds = trace.lap();
-    drop(projection_phase);
-    let finite_phase = LinearSessionPhaseAllocationGuard::new(
-        phase_probe,
-        phase_observation.as_deref_mut(),
-        LinearSessionAllocationPhase::FiniteSolve,
-    );
-    let mut fast_score_cache = if retain_fast_score_cache {
-        build_fast_score_cache(
-            prepared,
-            &within,
-            &reference_mean_scales,
-            weights,
-            reservation,
-            max_fast_score_cache_bytes,
-            false,
-        )?
-    } else {
-        None
-    };
-    let has_cached_norms = !cached_norms.is_empty();
-    let mut within_norms = if has_cached_norms {
-        cached_norms
-    } else {
-        reserved_filled(
-            reservation,
-            generated_columns + 1,
-            0.0_f64,
-            "unable to reserve prepared OLS fused within norms",
-        )?
-    };
-    if !has_cached_norms {
-        if rayon::current_num_threads() == 1 {
-            fill_weighted_matrix_norms_fused(&within, weights, &mut within_norms, reservation)?;
-        } else if within.ncols().div_ceil(8) >= rayon::current_num_threads() {
-            // Keep enough independent blocks to occupy the existing worker team.
-            fill_weighted_matrix_norms_blocked::<8>(&within, weights, &mut within_norms)?;
-        } else {
-            crate::parallel::stage_items_mut(
-                &mut within_norms,
-                within.nrows() as u128 * within.ncols() as u128,
-            )
-            .enumerate()
-            .try_for_each(|(column, norm)| -> Result<()> {
-                *norm = weighted_matrix_column_norm(&within, column, weights)?;
-                Ok(())
-            })?;
-        }
-    }
-    let within_outcome_norm = within_norms[0];
-    let normalized_initial_within_sum_of_squares =
-        initial_within_sum_of_squares(prepared, &within, weights, within_outcome_norm)?;
-    let score_norms = &within_norms[1..];
-    let within_norm_seconds = trace.lap();
-    let mut qr = fit_scaled_pivoted_qr(
-        prepared,
-        &mut within,
-        weights,
-        frame.bread_weight_scale(),
-        &reference_norms,
-        score_norms,
+        frame,
         config,
         reservation,
-        perturbations.first_coefficient,
-        perturbations.finite_bread,
-        true,
-    )?;
-    let finite_solve_seconds = trace.lap();
-    if retain_fast_score_cache && fast_score_cache.is_none() && qr.standardized_within_is_reusable {
-        fast_score_cache = Some(build_strided_fast_score_cache(
-            prepared,
-            within,
-            &qr,
-            &reference_norms,
-            strided_score_means.as_deref(),
-            reservation,
-        )?);
-    }
-    let score_cache_seconds = trace.lap();
-    let needs_raw_residuals = prepared.fit_has_absorbed_intercept()
-        && raw_moments.is_some()
-        && qr.generated_coefficients.iter().any(Option::is_some);
-    let mut independent_raw_residuals = if needs_raw_residuals {
-        Some(build_independent_raw_residuals(
-            prepared,
-            frame.response(),
-            &qr,
-            reservation,
-        )?)
-    } else {
-        None
-    };
-    let bread = finalize_reported_bread_and_intercept(
-        prepared,
-        frame.response(),
-        &mut qr,
-        independent_raw_residuals.as_deref_mut(),
-        weights,
-        config.bread_tolerance,
-        reservation,
         perturbations,
-        fast_score_cache.as_ref(),
-        raw_moments.as_ref(),
-        retain_fast_score_cache.then_some(reference_mean_scales.as_slice()),
-        None,
-        None,
-    )?;
-    let bread_residual_seconds = trace.lap();
-    drop(finite_phase);
-    let initial_absorbed_outcome_sum_of_squares =
-        normalized_initial_within_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
-    if !initial_absorbed_outcome_sum_of_squares.is_finite()
-        || initial_absorbed_outcome_sum_of_squares < 0.0
-    {
-        return Err(invalid_data(
-            "prepared OLS initial absorbed outcome sum of squares is invalid",
-        ));
-    }
-    let residual_projection_phase = LinearSessionPhaseAllocationGuard::new(
+        retain_fast_score_cache,
+        max_fast_score_cache_bytes,
         phase_probe,
         phase_observation,
-        LinearSessionAllocationPhase::Projection,
-    );
-    let mut final_residuals = qr.within_residuals.take().ok_or_else(|| {
-        invalid_argument("fast prepared OLS QR did not retain its within residual")
-    })?;
-    if perturbations.reconstructed_within_residual_constant {
-        for residual in &mut final_residuals {
-            *residual += 0.25;
-        }
-    }
-    let matrix = DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, final_residuals)?;
-    let residual_absorbed = absorb_fit_matrix(
+        loaded_rows,
         None,
-        prepared,
-        weights.borrowed(),
-        matrix,
-        config.final_absorb_config(),
-        &mut cmg,
-        false,
-        true,
-    )?;
-    if !residual_absorbed.report().certified() {
-        return Err(invalid_data(
-            "prepared OLS residual absorption returned an uncertified result",
-        ));
-    }
-    let (mut residuals, mut residual_absorption_report, residual_fe_coefficients) =
-        residual_absorbed.into_full_parts();
-    residual_absorption_report.solver_workspace_peak = residual_absorption_report
-        .solver_workspace_peak
-        .with_retained(retained_fe_parent)?;
-    let residual_absorb_seconds = trace.lap();
-    drop(residual_projection_phase);
-    if perturbations.final_residual_constant {
-        for row in 0..residuals.nrows() {
-            residuals[(row, 0)] += 0.25;
-        }
-    }
-    let score = || {
-        certify_scores(
-            prepared,
-            residuals.as_slice(),
-            weights,
-            &reference_norms,
-            score_norms,
-            qr.finite_score,
-            &qr.generated_statuses,
-            within_outcome_norm,
-            config.score_tolerance,
-        )
-    };
-    let score_certificate = score()?;
-    if !score_certificate.passed {
-        return Err(invalid_data(
-            "prepared OLS finite score certificate did not pass",
-        ));
-    }
-    let score_seconds = trace.lap();
-
-    let recovered_fe_coefficients = combine_recovered_fe_coefficients(
-        initial_fe_coefficients,
-        residual_fe_coefficients,
-        residual_absorption_report.iterations,
-        &qr.generated_coefficients,
-        retained_fe_parent,
-        reservation,
-    )?;
-    let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
-    qr.kept.sort_unstable();
-    qr.dropped.sort_unstable();
-    let finalize_seconds = trace.lap();
-    if trace.enabled {
-        eprintln!(
-            "FEREG_PHASE|fit|rhs={rhs_seconds:.9}|raw_moments={raw_moments_seconds:.9}|initial_absorb={initial_absorb_seconds:.9}|within_norms={within_norm_seconds:.9}|finite_solve={finite_solve_seconds:.9}|score_cache={score_cache_seconds:.9}|bread_raw_residual={bread_residual_seconds:.9}|residual_absorb={residual_absorb_seconds:.9}|residual_overlap={}|score={score_seconds:.9}|finalize={finalize_seconds:.9}|total={:.9}",
-            0, trace.total()
-        );
-    }
-    Ok(CertifiedPreparedOlsFit {
-        additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-        coefficients,
-        kept_generated_columns: qr.kept,
-        dropped_generated_columns: qr.dropped,
-        finite_rank: qr.rank,
-        rank_certificate: qr.certificate,
-        score_certificate,
-        bread,
-        absorption_report,
-        residual_absorption_report,
-        initial_absorbed_outcome_sum_of_squares,
-        residuals,
-        recovered_fe_coefficients,
-        fast_score_cache,
-        execution: PreparedOlsExecutionReport {
-            mode: PreparedOlsExecutionMode::Fast,
-            poolsize: config.execution.poolsize,
-            scratch_bytes: 0,
-            requested_threads: config
-                .execution
-                .threads
-                .requested
-                .map_or(0, |value| value.get()),
-            effective_threads: config.execution.threads.resolved(),
-            deterministic: config.execution.threads.deterministic,
-        },
-    })
+    )
 }
 
 fn build_independent_raw_residuals<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     response: &[f64],
-    qr: &QrFit,
+    qr: &FiniteFit,
     reservation: &mut R,
 ) -> Result<Vec<f64>> {
     let rows = prepared.fit_sample().n_active();
@@ -2322,7 +1911,7 @@ fn build_independent_raw_residuals<P: PreparedOlsFitView + ?Sized, R: FitReserva
 
 // Shared upper bound for one-shot weighted-linear callers. Ordinary OLS
 // inference selects a lower packed-cache limit at its entry point; larger
-// Cholesky fits reuse their solve allocation through a strided view.
+// Larger fits retain their immutable projected rows through a selected view.
 // Explicit cache-limit callers retain their own policy.
 const MAX_FAST_SCORE_CACHE_BYTES: usize = 512 * 1024 * 1024;
 
@@ -2526,11 +2115,10 @@ fn build_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     }))
 }
 
-fn build_strided_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
+fn build_selected_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     within: DenseMatrix,
-    qr: &QrFit,
-    all_reference_norms: &[f64],
+    qr: &FiniteFit,
     all_means: Option<&[f64]>,
     reservation: &mut R,
 ) -> Result<PreparedOlsFastScoreCache> {
@@ -2547,7 +2135,6 @@ fn build_strided_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservat
         .ok_or_else(|| allocation("prepared OLS strided score column count overflows"))?;
     if within.nrows() != nrows
         || within.ncols() != expected_columns
-        || all_reference_norms.len() != prepared.fit_model().columns.len()
         || all_means.is_none_or(|means| means.len() != prepared.fit_model().columns.len())
     {
         return Err(invalid_argument(
@@ -2560,26 +2147,6 @@ fn build_strided_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservat
         "unable to reserve prepared OLS strided score identities",
     )?;
     generated_columns.extend_from_slice(&bread.generated_columns);
-    let mut reference_norms = reserved_filled(
-        reservation,
-        generated_columns.len(),
-        0.0_f64,
-        "unable to reserve prepared OLS strided score norms",
-    )?;
-    for (target, generated) in reference_norms
-        .iter_mut()
-        .zip(generated_columns.iter().copied())
-    {
-        let norm = *all_reference_norms
-            .get(generated)
-            .ok_or_else(|| invalid_argument("prepared OLS strided score norm is absent"))?;
-        if !norm.is_finite() || norm <= 0.0 {
-            return Err(invalid_data(
-                "prepared OLS strided score norm is not finite and positive",
-            ));
-        }
-        *target = norm;
-    }
     let all_means =
         all_means.ok_or_else(|| invalid_argument("prepared OLS strided score means are absent"))?;
     let mut means = reserved_filled(
@@ -2596,10 +2163,9 @@ fn build_strided_fast_score_cache<P: PreparedOlsFitView + ?Sized, R: FitReservat
             ));
         }
     }
-    Ok(PreparedOlsFastScoreCache::Strided {
+    Ok(PreparedOlsFastScoreCache::Selected {
         generated_columns,
         within,
-        reference_norms,
         means,
     })
 }
@@ -2638,332 +2204,22 @@ fn fit_with_controls_low_internal_with_frame<
     reservation: &mut R,
     perturbations: FitPerturbations,
     phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
-    mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
+    phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
     retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
 ) -> Result<CertifiedPreparedOlsFit> {
-    frame.validate_for(prepared)?;
-    let weights = frame.weights();
-    // Borrowed absorption norms use max-normalized weights. Explicit linear
-    // frames may choose another divisor; keep their original norm calculation.
-    let reuse_absorption_norms = weights
-        .values
-        .is_none_or(|values| values.iter().copied().fold(0.0_f64, f64::max) == weights.raw_scale);
-    let mut cmg = crate::fe::FeSession::for_ols(prepared, weights.borrowed(), config)?;
-    let rows = prepared.fit_sample().n_active();
-    let generated_columns = prepared.fit_model().columns.len();
-
-    let projection_phase = LinearSessionPhaseAllocationGuard::new(
-        phase_probe,
-        phase_observation.as_deref_mut(),
-        LinearSessionAllocationPhase::Projection,
-    );
-    let raw_outcome = prepared.fit_build_rhs_block_with_response(0, 0, true, frame.response())?;
-    let mut absorbed_outcome = absorb_fit_matrix(
-        None,
+    one_shot::fit(
         prepared,
-        weights.borrowed(),
-        raw_outcome,
-        config.absorb,
-        &mut cmg,
-        true,
-        false,
-    )?;
-    if !absorbed_outcome.report().certified() {
-        return Err(invalid_data(
-            "prepared OLS low-memory outcome absorption was not certified",
-        ));
-    }
-    let outcome_norm = reuse_absorption_norms
-        .then(|| absorbed_outcome.take_residual_norms().first().copied())
-        .flatten();
-    let (within_outcome_matrix, mut absorption_report) = absorbed_outcome.into_parts();
-    let mut within_outcome = within_outcome_matrix.into_row_major();
-    let within_outcome_norm = match outcome_norm {
-        Some(norm) => norm,
-        None => weighted_slice_norm(&within_outcome, weights)?,
-    };
-
-    let mut reference_norms = reserved_filled(
-        reservation,
-        generated_columns,
-        0.0_f64,
-        "unable to reserve low-memory prepared OLS reference norms",
-    )?;
-    let mut score_norms = reserved_filled(
-        reservation,
-        generated_columns,
-        0.0_f64,
-        "unable to reserve low-memory prepared OLS within score norms",
-    )?;
-    let mut scratch = PreparedOlsScratch::create(rows, generated_columns)?;
-    // Keep original within columns outside the numerical fit result. The copy
-    // borrows this file's I/O bank while QR still needs the working columns.
-    // Optional file creation failure leaves the established uncached route.
-    let mut score_scratch = if retained_scratch.is_some() && generated_columns > 0 {
-        PreparedOlsScratch::create_unbuffered(rows, generated_columns).ok()
-    } else {
-        None
-    };
-    let trace_copy = std::env::var_os("FEREG_PHASE_TIMING").is_some();
-    let mut copy_failures =
-        usize::from(retained_scratch.is_some() && generated_columns > 0 && score_scratch.is_none());
-    let mut copy_columns = 0_usize;
-    let mut copy_seconds = 0.0_f64;
-    let scratch_bytes = scratch
-        .bytes()
-        .checked_mul(if score_scratch.is_some() { 2 } else { 1 })
-        .ok_or_else(|| allocation("retained low-memory scratch capacity overflows"))?;
-
-    let mut column_buffer = reserved_filled(
-        reservation,
-        rows,
-        0.0_f64,
-        "unable to reserve low-memory prepared OLS column buffer",
-    )?;
-    let block_width = config.execution.poolsize.min(generated_columns.max(1));
-    let mut intercept_cross = None;
-    for start in (0..generated_columns).step_by(block_width) {
-        let end = start.saturating_add(block_width).min(generated_columns);
-        let raw_block =
-            prepared.fit_build_rhs_block_with_response(start, end, false, frame.response())?;
-        for (generated, reference_norm) in
-            reference_norms.iter_mut().enumerate().take(end).skip(start)
-        {
-            let block_column = generated - start;
-            for row in 0..rows {
-                column_buffer[row] = raw_block[(row, block_column)];
-            }
-            *reference_norm = weighted_slice_norm(&column_buffer, weights)?;
-        }
-        let mut absorbed_block = absorb_fit_matrix(
-            None,
-            prepared,
-            weights.borrowed(),
-            raw_block,
-            config.absorb,
-            &mut cmg,
-            true,
-            false,
-        )?;
-        if !absorbed_block.report().certified() {
-            return Err(invalid_data(
-                "prepared OLS low-memory regressor-block absorption was not certified",
-            ));
-        }
-        let block_norms = if reuse_absorption_norms {
-            absorbed_block.take_residual_norms()
-        } else {
-            Vec::new()
-        };
-        let (within_block, block_report) = absorbed_block.into_parts();
-        merge_solve_report(&mut absorption_report, block_report)?;
-        for (generated, score_norm) in score_norms.iter_mut().enumerate().take(end).skip(start) {
-            let block_column = generated - start;
-            for row in 0..rows {
-                column_buffer[row] = within_block[(row, block_column)];
-            }
-            *score_norm = match block_norms.get(block_column) {
-                Some(norm) => *norm,
-                None => weighted_slice_norm(&column_buffer, weights)?,
-            };
-            if prepared.fit_report_intercept()
-                && !prepared.fit_has_absorbed_intercept()
-                && matches!(
-                    prepared.fit_model().columns[generated].kind,
-                    PreparedOlsColumnKind::Intercept
-                )
-            {
-                intercept_cross = Some((
-                    weighted_slice_cross(&within_outcome, &column_buffer, weights)?,
-                    *score_norm,
-                ));
-            }
-            scratch.write_column(generated, &column_buffer)?;
-            if let Some(original) = score_scratch.as_mut() {
-                let started = trace_copy.then(std::time::Instant::now);
-                copy_columns += 1;
-                let copied = original
-                    .write_column_with_borrowed_buffer(generated, &column_buffer, &mut scratch)
-                    .is_ok();
-                if let Some(started) = started {
-                    copy_seconds += started.elapsed().as_secs_f64();
-                }
-                if !copied {
-                    // The working QR column and its buffer survive an optional
-                    // copy failure. Dropping the partial copy removes its file.
-                    copy_failures += 1;
-                    score_scratch = None;
-                }
-            }
-        }
-    }
-    // Retained setup belongs only to projection. Do not overlap it with QR,
-    // covariance, or a later independent residual-certification workspace.
-    if let Some(lsmr) = cmg.lsmr.take() {
-        cmg.binding = Some(lsmr.into_design());
-    }
-    drop(projection_phase);
-
-    let finite_phase = LinearSessionPhaseAllocationGuard::new(
-        phase_probe,
-        phase_observation.as_deref_mut(),
-        LinearSessionAllocationPhase::FiniteSolve,
-    );
-    let normalized_initial_within_sum_of_squares =
-        initial_within_sum_of_squares_low(prepared, within_outcome_norm, intercept_cross)?;
-    let mut qr = fit_scaled_pivoted_qr_low(
-        prepared,
-        &mut scratch,
-        &mut within_outcome,
-        weights,
-        frame.bread_weight_scale(),
-        &reference_norms,
-        &score_norms,
+        frame,
         config,
         reservation,
-        perturbations.first_coefficient,
-        perturbations.finite_bread,
-    )?;
-
-    let mut raw_residuals = reserved_filled(
-        reservation,
-        rows,
-        0.0_f64,
-        "unable to reserve low-memory prepared OLS final residual",
-    )?;
-    crate::parallel::stage_items_mut(
-        &mut raw_residuals,
-        rows as u128 * qr.generated_coefficients.len() as u128,
-    )
-    .enumerate()
-    .try_for_each(|(row, residual)| -> Result<()> {
-        let mut value = frame.response()[row];
-        for (column, coefficient) in qr.generated_coefficients.iter().enumerate() {
-            if let Some(coefficient) = coefficient {
-                value = (-*coefficient).mul_add(prepared.fit_column_value(column, row)?, value);
-            }
-        }
-        if !value.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS low-memory raw residual is not finite",
-            ));
-        }
-        *residual = value;
-        Ok(())
-    })?;
-    let bread = finalize_reported_bread_and_intercept(
-        prepared,
-        frame.response(),
-        &mut qr,
-        Some(&mut raw_residuals),
-        weights,
-        config.bread_tolerance,
-        reservation,
         perturbations,
-        None,
-        None,
-        None,
-        None,
-        None,
-    )?;
-    let initial_absorbed_outcome_sum_of_squares =
-        normalized_initial_within_sum_of_squares * bread.weight_scale().reference_weight_multiplier;
-    if !initial_absorbed_outcome_sum_of_squares.is_finite()
-        || initial_absorbed_outcome_sum_of_squares < 0.0
-    {
-        return Err(invalid_data(
-            "prepared OLS low-memory initial absorbed outcome sum of squares is invalid",
-        ));
-    }
-    drop(finite_phase);
-    let residual_projection_phase = LinearSessionPhaseAllocationGuard::new(
+        false,
+        MAX_FAST_SCORE_CACHE_BYTES,
         phase_probe,
         phase_observation,
-        LinearSessionAllocationPhase::Projection,
-    );
-    let residual_matrix = DenseMatrix::from_row_major(rows, 1, raw_residuals)?;
-    // Low storage reconstructs y - Xb from the original columns. It still
-    // contains the full FE contribution, unlike the Fast within residual.
-    // Project it with CMG itself; the near-orthogonal final-residual polish
-    // is not a substitute for this projection.
-    let residual_absorbed = cmg.project_ols(
-        weights.borrowed(),
-        residual_matrix,
-        config.final_absorb_config(),
-        true,
-        true,
-    )?;
-    drop(cmg);
-    if !residual_absorbed.report().certified() {
-        return Err(invalid_data(
-            "prepared OLS low-memory residual absorption was not certified",
-        ));
-    }
-    let (mut residuals, residual_absorption_report) = residual_absorbed.into_parts();
-    drop(residual_projection_phase);
-    if perturbations.final_residual_constant {
-        for row in 0..residuals.nrows() {
-            residuals[(row, 0)] += 0.25;
-        }
-    }
-    let score_certificate = certify_scores(
-        prepared,
-        residuals.as_slice(),
-        weights,
-        &reference_norms,
-        &score_norms,
-        qr.finite_score,
-        &qr.generated_statuses,
-        within_outcome_norm,
-        config.score_tolerance,
-    )?;
-    if !score_certificate.passed {
-        return Err(invalid_data(
-            "prepared OLS low-memory finite score certificate did not pass",
-        ));
-    }
-
-    let coefficients = build_coefficient_slots(prepared, &qr, reservation)?;
-    qr.kept.sort_unstable();
-    qr.dropped.sort_unstable();
-    if trace_copy {
-        eprintln!(
-            "FEREG_PHASE|low_score_retention|retained={}|scratch_peak_bytes={scratch_bytes}|copy_columns={copy_columns}|copy_failures={copy_failures}|copy_seconds={copy_seconds:.9}",
-            usize::from(score_scratch.is_some())
-        );
-    }
-    if let (Some(destination), Some(mut original)) = (retained_scratch, score_scratch) {
-        original.take_io_buffer_from(&mut scratch)?;
-        *destination = Some(original);
-    }
-    Ok(CertifiedPreparedOlsFit {
-        additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
-        coefficients,
-        kept_generated_columns: qr.kept,
-        dropped_generated_columns: qr.dropped,
-        finite_rank: qr.rank,
-        rank_certificate: qr.certificate,
-        score_certificate,
-        bread,
-        absorption_report,
-        residual_absorption_report,
-        initial_absorbed_outcome_sum_of_squares,
-        residuals,
-        recovered_fe_coefficients: None,
-        fast_score_cache: None,
-        execution: PreparedOlsExecutionReport {
-            mode: PreparedOlsExecutionMode::Low,
-            poolsize: config.execution.poolsize,
-            scratch_bytes,
-            requested_threads: config
-                .execution
-                .threads
-                .requested
-                .map_or(0, |value| value.get()),
-            effective_threads: config.execution.threads.resolved(),
-            deterministic: config.execution.threads.deterministic,
-        },
-    })
+        None,
+        retained_scratch,
+    )
 }
 
 pub(super) fn merge_solve_report(target: &mut SolveReport, source: SolveReport) -> Result<()> {
@@ -3214,62 +2470,6 @@ fn validate_config<P: PreparedOlsFitView + ?Sized>(
     Ok(())
 }
 
-fn build_standardized_moments<R: FitReservation>(
-    within: &DenseMatrix,
-    canonical_candidates: &[usize],
-    reservation: &mut R,
-) -> Result<(Vec<f64>, Vec<f64>)> {
-    // Keep the row-block accumulations as ordinary multiply/add operations.
-    // `f64::mul_add` becomes a software libm call on the portable x86-64
-    // release target when FMA is unavailable at compile time; at moderate K
-    // that turns hundreds of millions of moments into function calls. The
-    // fixed block order and compensated merge remain deterministic, while the
-    // independent score and bread certificates continue to fail closed.
-    let candidate_count = canonical_candidates.len();
-    if candidate_count == 0 {
-        return Ok((Vec::new(), Vec::new()));
-    }
-    let gram_elements = checked_square(
-        candidate_count,
-        "prepared OLS standardized Gram dimensions overflow usize",
-    )?;
-    let source = FixedBlockMomentSource::PreparedStandardized {
-        within,
-        canonical_candidates,
-    };
-    let layout = finite_wls_moment_layout(source)?;
-    let mut partials = if layout.partial_elements == 0 {
-        Vec::new()
-    } else {
-        reserved_filled(
-            reservation,
-            layout.partial_elements,
-            0.0_f64,
-            "unable to reserve prepared OLS moment partials",
-        )?
-    };
-    let mut standardized_rhs = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve prepared OLS standardized RHS cross-products",
-    )?;
-    let mut standardized_gram = reserved_filled(
-        reservation,
-        gram_elements,
-        0.0_f64,
-        "unable to reserve prepared OLS standardized Gram",
-    )?;
-    fill_finite_wls_moments(
-        source,
-        layout,
-        &mut partials,
-        &mut standardized_rhs,
-        &mut standardized_gram,
-    )?;
-    Ok((standardized_rhs, standardized_gram))
-}
-
 /// Scalar reference retained only by the regression test for the shared
 /// production moment dispatcher.
 #[cfg(test)]
@@ -3352,283 +2552,6 @@ fn build_standardized_moments_columnwise<R: FitReservation>(
         }
     }
     Ok((standardized_rhs, standardized_gram))
-}
-
-#[allow(clippy::too_many_arguments)]
-fn try_fit_scaled_pivoted_cholesky<R: FitReservation>(
-    within: Option<&DenseMatrix>,
-    weights: NormalizedWeights<'_>,
-    bread_weight_scale: PreparedOlsBreadWeightScale,
-    reference_norms: &[f64],
-    score_norms: &[f64],
-    canonical_candidates: &[usize],
-    initial_statuses: &[PreparedOlsFitStatus],
-    standardized_gram: &[f64],
-    standardized_rhs: &[f64],
-    relative_threshold: f64,
-    config: PreparedOlsFitConfig,
-    reservation: &mut R,
-    perturb_first_coefficient: bool,
-    perturb_bread: bool,
-    build_bread: bool,
-) -> Result<Option<QrFit>> {
-    let candidate_count = canonical_candidates.len();
-    if candidate_count == 0 {
-        return Ok(None);
-    }
-    let square = checked_square(
-        candidate_count,
-        "prepared OLS Cholesky dimensions overflow usize",
-    )?;
-    if standardized_gram.len() != square
-        || standardized_rhs.len() != candidate_count
-        || initial_statuses.len() != reference_norms.len()
-        || score_norms.len() != reference_norms.len()
-    {
-        return Err(invalid_argument(
-            "prepared OLS Cholesky inputs have inconsistent dimensions",
-        ));
-    }
-
-    let mut gram = reserved_empty(
-        reservation,
-        square,
-        "unable to reserve prepared OLS Cholesky Gram",
-    )?;
-    gram.extend_from_slice(standardized_gram);
-    let mut rhs = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve prepared OLS Cholesky RHS",
-    )?;
-    rhs.extend_from_slice(standardized_rhs);
-    let mut permutation = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve prepared OLS Cholesky permutation",
-    )?;
-    permutation.extend(0..candidate_count);
-    let mut factor = reserved_filled(
-        reservation,
-        square,
-        0.0_f64,
-        "unable to reserve prepared OLS Cholesky factor",
-    )?;
-    let initial_pivot = (0..candidate_count)
-        .map(|index| gram[index * candidate_count + index])
-        .fold(0.0_f64, f64::max);
-    if !initial_pivot.is_finite() || initial_pivot <= 0.0 {
-        return Ok(None);
-    }
-    // Normal equations square the finite-design condition number. Only use
-    // this route when every Schur pivot clears a deliberately stronger guard
-    // than the QR rank threshold; weak or rank-deficient designs retain the
-    // existing column-pivoted QR decision and certificates.
-    let pivot_guard = initial_pivot * relative_threshold.sqrt();
-    if !pivot_guard.is_finite() || pivot_guard <= 0.0 {
-        return Ok(None);
-    }
-    let Some(factor_report) = factor_guarded_cholesky_in_place(
-        &mut gram,
-        &mut rhs,
-        &mut factor,
-        &mut permutation,
-        CholeskyPivotPolicy::MaximumDiagonal,
-        pivot_guard,
-    )?
-    else {
-        return Ok(None);
-    };
-
-    let mut forward = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve prepared OLS Cholesky forward solve",
-    )?;
-    let mut pivot_coefficients = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve prepared OLS Cholesky coefficients",
-    )?;
-    if !solve_guarded_cholesky(&factor, &rhs, &mut forward, &mut pivot_coefficients)? {
-        return Ok(None);
-    }
-    let mut standardized_coefficients = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve prepared OLS canonical Cholesky coefficients",
-    )?;
-    for position in 0..candidate_count {
-        standardized_coefficients[permutation[position]] = pivot_coefficients[position];
-    }
-
-    let canonical_inverse = if build_bread {
-        let mut inverse_lower = reserved_filled(
-            reservation,
-            square,
-            0.0_f64,
-            "unable to reserve prepared OLS inverse Cholesky factor",
-        )?;
-        let mut canonical_inverse = reserved_filled(
-            reservation,
-            square,
-            0.0_f64,
-            "unable to reserve prepared OLS canonical Cholesky inverse",
-        )?;
-        if !invert_guarded_cholesky(
-            &factor,
-            &permutation,
-            &mut inverse_lower,
-            &mut canonical_inverse,
-        )? {
-            return Ok(None);
-        }
-        canonical_inverse
-    } else {
-        Vec::new()
-    };
-
-    let mut generated_coefficients = reserved_filled(
-        reservation,
-        reference_norms.len(),
-        None,
-        "unable to reserve prepared OLS Cholesky generated coefficients",
-    )?;
-    let mut generated_statuses = reserved_empty(
-        reservation,
-        initial_statuses.len(),
-        "unable to reserve prepared OLS Cholesky generated statuses",
-    )?;
-    generated_statuses.extend_from_slice(initial_statuses);
-    for (position, generated) in canonical_candidates.iter().copied().enumerate() {
-        let coefficient = standardized_coefficients[position] / reference_norms[generated];
-        if !coefficient.is_finite() {
-            return Ok(None);
-        }
-        generated_coefficients[generated] = Some(coefficient);
-        generated_statuses[generated] = PreparedOlsFitStatus::Kept;
-    }
-    // Scratch fits reconstruct and project residuals from original columns in
-    // their caller. Only dense fits can reuse a standardized within residual.
-    let residuals = if let Some(within) = within {
-        let mut residuals = reserved_filled(
-            reservation,
-            within.nrows(),
-            0.0_f64,
-            "unable to reserve prepared OLS Cholesky residual",
-        )?;
-        residuals
-            .par_iter_mut()
-            .enumerate()
-            .try_for_each(|(row, residual)| -> Result<()> {
-                let values = &within.as_slice()[row * within.ncols()..(row + 1) * within.ncols()];
-                let mut value = values[0];
-                for (position, generated) in canonical_candidates.iter().copied().enumerate() {
-                    value = (-standardized_coefficients[position])
-                        .mul_add(values[generated + 1], value);
-                }
-                *residual = value / weights.root(row)?;
-                if residual.is_finite() {
-                    Ok(())
-                } else {
-                    Err(invalid_data("prepared OLS Cholesky residual is not finite"))
-                }
-            })?;
-        Some(residuals)
-    } else {
-        None
-    };
-    if perturb_first_coefficient {
-        let coefficient = generated_coefficients
-            .iter_mut()
-            .flatten()
-            .next()
-            .ok_or_else(|| invalid_argument("injected perturbation requires a kept coefficient"))?;
-        *coefficient += 0.25;
-    }
-    let finite_score = build_finite_score_draft(
-        canonical_candidates,
-        standardized_gram,
-        standardized_rhs,
-        &generated_coefficients,
-        &generated_statuses,
-        reference_norms,
-        score_norms,
-    )?;
-    let bread = if build_bread {
-        let mut generated_columns = reserved_empty(
-            reservation,
-            candidate_count,
-            "unable to reserve prepared OLS Cholesky bread coordinates",
-        )?;
-        generated_columns.extend_from_slice(canonical_candidates);
-        let mut canonical_candidate_positions = reserved_empty(
-            reservation,
-            candidate_count,
-            "unable to reserve prepared OLS Cholesky candidate positions",
-        )?;
-        canonical_candidate_positions.extend(0..candidate_count);
-        match finalize_finite_bread_draft(
-            canonical_candidates,
-            standardized_gram,
-            generated_columns,
-            canonical_candidate_positions,
-            canonical_inverse,
-            reference_norms,
-            bread_weight_scale,
-            config.bread_tolerance,
-            reservation,
-            perturb_bread,
-        ) {
-            Ok(bread) => Some(bread),
-            Err(error) if error.code == ErrorCode::InvalidData && !perturb_bread => {
-                return Ok(None)
-            }
-            Err(error) => return Err(error),
-        }
-    } else {
-        None
-    };
-    let mut kept = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve prepared OLS Cholesky kept columns",
-    )?;
-    kept.extend_from_slice(canonical_candidates);
-    let mut dropped = reserved_empty(
-        reservation,
-        initial_statuses.len(),
-        "unable to reserve prepared OLS Cholesky dropped columns",
-    )?;
-    for (generated, status) in generated_statuses.iter().copied().enumerate() {
-        if status != PreparedOlsFitStatus::Kept {
-            push_reserved(
-                &mut dropped,
-                generated,
-                "prepared OLS Cholesky dropped-column capacity exhausted",
-            )?;
-        }
-    }
-    Ok(Some(QrFit {
-        generated_coefficients,
-        generated_statuses,
-        kept,
-        dropped,
-        rank: candidate_count,
-        certificate: PreparedOlsRankCertificate {
-            relative_threshold,
-            maximum_dropped_trailing_norm: 0.0,
-            condition_proxy: factor_report.maximum_diagonal / factor_report.minimum_diagonal,
-            passed: true,
-        },
-        finite_score,
-        bread,
-        within_residuals: residuals,
-        standardized_within_is_reusable: within.is_some(),
-    }))
 }
 
 const fn valid_unit_tolerance(value: f64) -> bool {
@@ -3752,838 +2675,7 @@ fn classify_qr_candidates<P: PreparedOlsFitView + ?Sized>(
     Ok(())
 }
 
-fn solve_qr_triangle(
-    qr: &DenseMatrix,
-    candidates: &[usize],
-    coefficients: &mut [f64],
-    threshold: f64,
-) -> Result<()> {
-    for position in (0..coefficients.len()).rev() {
-        let diagonal = qr[(position, candidates[position] + 1)];
-        if !diagonal.is_finite() || diagonal.abs() <= threshold {
-            return Err(invalid_data(
-                "prepared OLS QR triangular diagonal is invalid",
-            ));
-        }
-        let mut value = qr[(position, 0)];
-        for later in (position + 1)..coefficients.len() {
-            value = (-qr[(position, candidates[later] + 1)]).mul_add(coefficients[later], value);
-        }
-        let scaled = value / diagonal;
-        if !scaled.is_finite() {
-            return Err(invalid_data("prepared OLS QR coefficient is not finite"));
-        }
-        coefficients[position] = scaled;
-    }
-    Ok(())
-}
-
-struct QrColumnOutput<'a> {
-    coefficients: &'a mut [Option<f64>],
-    statuses: &'a mut [PreparedOlsFitStatus],
-    kept: &'a mut Vec<usize>,
-    dropped: &'a mut Vec<usize>,
-}
-
-impl QrColumnOutput<'_> {
-    fn finish(
-        self,
-        candidates: &[usize],
-        scaled: &[f64],
-        reference_norms: &[f64],
-        perturb_first: bool,
-    ) -> Result<()> {
-        for (position, value) in scaled.iter().copied().enumerate() {
-            let column = candidates[position];
-            let coefficient = value / reference_norms[column];
-            if !coefficient.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS QR coefficient rescaling is not finite",
-                ));
-            }
-            self.coefficients[column] = Some(coefficient);
-            self.statuses[column] = PreparedOlsFitStatus::Kept;
-            push_reserved(
-                self.kept,
-                column,
-                "prepared OLS QR kept-column capacity exhausted",
-            )?;
-        }
-        for &column in &candidates[scaled.len()..] {
-            self.statuses[column] = PreparedOlsFitStatus::NumericallyRankDeficient;
-        }
-        if perturb_first {
-            let coefficient = self
-                .coefficients
-                .iter_mut()
-                .flatten()
-                .next()
-                .ok_or_else(|| {
-                    invalid_argument("injected perturbation requires a kept coefficient")
-                })?;
-            *coefficient += 0.25;
-        }
-        for (column, status) in self.statuses.iter().copied().enumerate() {
-            if status != PreparedOlsFitStatus::Kept {
-                push_reserved(
-                    self.dropped,
-                    column,
-                    "prepared OLS QR dropped-column capacity exhausted",
-                )?;
-            }
-        }
-        Ok(())
-    }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn fit_scaled_pivoted_qr<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
-    prepared: &P,
-    within: &mut DenseMatrix,
-    weights: NormalizedWeights<'_>,
-    bread_weight_scale: PreparedOlsBreadWeightScale,
-    reference_norms: &[f64],
-    score_norms: &[f64],
-    config: PreparedOlsFitConfig,
-    reservation: &mut R,
-    perturb_first_coefficient: bool,
-    perturb_bread: bool,
-    build_bread: bool,
-) -> Result<QrFit> {
-    let nrows = within.nrows();
-    let generated_columns = prepared.fit_model().columns.len();
-    let expected_columns = generated_columns
-        .checked_add(1)
-        .ok_or_else(|| allocation("prepared OLS absorbed RHS column count overflows"))?;
-    if within.ncols() != expected_columns
-        || reference_norms.len() != generated_columns
-        || score_norms.len() != generated_columns
-    {
-        return Err(invalid_argument(
-            "prepared OLS absorbed RHS dimensions are inconsistent",
-        ));
-    }
-
-    let mut generated_coefficients = reserved_filled(
-        reservation,
-        generated_columns,
-        None,
-        "unable to reserve prepared OLS generated coefficients",
-    )?;
-    let mut generated_statuses = reserved_filled(
-        reservation,
-        generated_columns,
-        PreparedOlsFitStatus::NumericallyRankDeficient,
-        "unable to reserve prepared OLS generated statuses",
-    )?;
-    let mut candidate_columns = reserved_empty(
-        reservation,
-        generated_columns,
-        "unable to reserve prepared OLS QR candidate columns",
-    )?;
-    classify_qr_candidates(
-        prepared,
-        &mut generated_statuses,
-        &mut candidate_columns,
-        config.fixed_effect_collinearity_tolerance,
-        "prepared OLS QR candidate capacity exhausted",
-        |column| fast_qr_norms(reference_norms[column], score_norms[column]),
-    )?;
-
-    let candidate_count = candidate_columns.len();
-    let mut canonical_candidates = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve prepared OLS canonical bread candidates",
-    )?;
-    for column in candidate_columns.iter().copied() {
-        push_reserved(
-            &mut canonical_candidates,
-            column,
-            "prepared OLS canonical bread-candidate capacity exhausted",
-        )?;
-    }
-    let mut trailing_norms = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve prepared OLS QR trailing norms",
-    )?;
-    let mut pivot_coefficients = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve prepared OLS QR coefficients",
-    )?;
-    let mut kept = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve prepared OLS kept-column table",
-    )?;
-    let mut dropped = reserved_empty(
-        reservation,
-        generated_columns,
-        "unable to reserve prepared OLS dropped-column table",
-    )?;
-    let relative_threshold = config.rank_tolerance_multiplier
-        * f64::EPSILON
-        * nrows.max(generated_columns).max(1) as f64;
-    if candidate_count == 0 {
-        if perturb_first_coefficient {
-            return Err(invalid_argument(
-                "injected perturbation requires a kept coefficient",
-            ));
-        }
-        for (column, status) in generated_statuses.iter().copied().enumerate() {
-            if status != PreparedOlsFitStatus::Kept {
-                push_reserved(
-                    &mut dropped,
-                    column,
-                    "prepared OLS dropped-column capacity exhausted",
-                )?;
-            }
-        }
-        let standardized_rhs = Vec::new();
-        let standardized_gram = Vec::new();
-        let finite_score = build_finite_score_draft(
-            &canonical_candidates,
-            &standardized_gram,
-            &standardized_rhs,
-            &generated_coefficients,
-            &generated_statuses,
-            reference_norms,
-            score_norms,
-        )?;
-        let mut within_residuals = reserved_filled(
-            reservation,
-            nrows,
-            0.0_f64,
-            "unable to reserve prepared OLS rank-zero within residual",
-        )?;
-        crate::parallel::stage_items_mut(&mut within_residuals, nrows as u128)
-            .enumerate()
-            .try_for_each(|(row, residual)| -> Result<()> {
-                *residual = within[(row, 0)];
-                if residual.is_finite() {
-                    Ok(())
-                } else {
-                    Err(invalid_data(
-                        "prepared OLS rank-zero within residual is not finite",
-                    ))
-                }
-            })?;
-        let bread = if build_bread {
-            Some(build_finite_bread_draft(
-                prepared,
-                FiniteBreadInputs {
-                    qr: within,
-                    pivot_columns: &candidate_columns,
-                    canonical_candidates: &canonical_candidates,
-                    standardized_gram: &standardized_gram,
-                    rank: 0,
-                    reference_norms,
-                    bread_weight_scale,
-                },
-                config.bread_tolerance,
-                reservation,
-                perturb_bread,
-            )?)
-        } else {
-            None
-        };
-        return Ok(QrFit {
-            generated_coefficients,
-            generated_statuses,
-            kept,
-            dropped,
-            rank: 0,
-            certificate: PreparedOlsRankCertificate {
-                relative_threshold,
-                maximum_dropped_trailing_norm: 0.0,
-                condition_proxy: 1.0,
-                passed: true,
-            },
-            finite_score,
-            bread,
-            within_residuals: Some(within_residuals),
-            standardized_within_is_reusable: false,
-        });
-    }
-    crate::parallel::stage_rows_mut(
-        within.as_mut_slice(),
-        expected_columns,
-        nrows as u128 * expected_columns as u128,
-    )
-    .enumerate()
-    .try_for_each(|(row, values)| -> Result<()> {
-        let root_weight = weights.root(row)?;
-        let outcome = root_weight * values[0];
-        if !outcome.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS weighted within outcome is not finite",
-            ));
-        }
-        values[0] = outcome;
-        for &column in &candidate_columns {
-            let scaled = root_weight * values[column + 1] / reference_norms[column];
-            if !scaled.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS standardized within regressor is not finite",
-                ));
-            }
-            values[column + 1] = scaled;
-        }
-        Ok(())
-    })?;
-    let (standardized_rhs, standardized_gram) =
-        build_standardized_moments(within, &canonical_candidates, reservation)?;
-    if let Some(fit) = try_fit_scaled_pivoted_cholesky(
-        Some(within),
-        weights,
-        bread_weight_scale,
-        reference_norms,
-        score_norms,
-        &canonical_candidates,
-        &generated_statuses,
-        &standardized_gram,
-        &standardized_rhs,
-        relative_threshold,
-        config,
-        reservation,
-        perturb_first_coefficient,
-        perturb_bread,
-        build_bread,
-    )? {
-        return Ok(fit);
-    }
-    let factor = factor_pivoted_qr(
-        DenseQr(within),
-        nrows,
-        &mut candidate_columns,
-        &mut trailing_norms,
-        relative_threshold,
-    )?;
-    let rank = factor.rank;
-
-    solve_qr_triangle(
-        within,
-        &candidate_columns,
-        &mut pivot_coefficients[..rank],
-        factor.absolute_threshold,
-    )?;
-    QrColumnOutput {
-        coefficients: &mut generated_coefficients,
-        statuses: &mut generated_statuses,
-        kept: &mut kept,
-        dropped: &mut dropped,
-    }
-    .finish(
-        &candidate_columns,
-        &pivot_coefficients[..rank],
-        reference_norms,
-        perturb_first_coefficient,
-    )?;
-
-    let certificate = factor.certificate()?;
-    let finite_score = build_finite_score_draft(
-        &canonical_candidates,
-        &standardized_gram,
-        &standardized_rhs,
-        &generated_coefficients,
-        &generated_statuses,
-        reference_norms,
-        score_norms,
-    )?;
-    let within_residuals = Some(reconstruct_within_residuals(
-        within,
-        &candidate_columns,
-        rank,
-        weights,
-        reservation,
-    )?);
-    let bread = if build_bread {
-        Some(build_finite_bread_draft(
-            prepared,
-            FiniteBreadInputs {
-                qr: within,
-                pivot_columns: &candidate_columns,
-                canonical_candidates: &canonical_candidates,
-                standardized_gram: &standardized_gram,
-                rank,
-                reference_norms,
-                bread_weight_scale,
-            },
-            config.bread_tolerance,
-            reservation,
-            perturb_bread,
-        )?)
-    } else {
-        None
-    };
-    Ok(QrFit {
-        generated_coefficients,
-        generated_statuses,
-        kept,
-        dropped,
-        rank,
-        certificate,
-        finite_score,
-        bread,
-        within_residuals,
-        standardized_within_is_reusable: false,
-    })
-}
-
-#[allow(clippy::too_many_arguments)]
-fn fit_scaled_pivoted_qr_low<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
-    prepared: &P,
-    scratch: &mut PreparedOlsScratch,
-    within_outcome: &mut [f64],
-    weights: NormalizedWeights<'_>,
-    bread_weight_scale: PreparedOlsBreadWeightScale,
-    reference_norms: &[f64],
-    score_norms: &[f64],
-    config: PreparedOlsFitConfig,
-    reservation: &mut R,
-    perturb_first_coefficient: bool,
-    perturb_bread: bool,
-) -> Result<QrFit> {
-    let nrows = prepared.fit_sample().n_active();
-    let generated_columns = prepared.fit_model().columns.len();
-    if scratch.rows() != nrows
-        || scratch.columns() != generated_columns
-        || within_outcome.len() != nrows
-        || reference_norms.len() != generated_columns
-        || score_norms.len() != generated_columns
-    {
-        return Err(invalid_argument(
-            "prepared OLS low-memory QR dimensions are inconsistent",
-        ));
-    }
-
-    let mut generated_coefficients = reserved_filled(
-        reservation,
-        generated_columns,
-        None,
-        "unable to reserve low-memory OLS generated coefficients",
-    )?;
-    let mut generated_statuses = reserved_filled(
-        reservation,
-        generated_columns,
-        PreparedOlsFitStatus::NumericallyRankDeficient,
-        "unable to reserve low-memory OLS generated statuses",
-    )?;
-    let mut candidate_columns = reserved_empty(
-        reservation,
-        generated_columns,
-        "unable to reserve low-memory OLS QR candidates",
-    )?;
-    classify_qr_candidates(
-        prepared,
-        &mut generated_statuses,
-        &mut candidate_columns,
-        config.fixed_effect_collinearity_tolerance,
-        "prepared OLS low-memory QR candidate capacity exhausted",
-        |column| low_qr_norms(reference_norms[column], score_norms[column]),
-    )?;
-
-    let candidate_count = candidate_columns.len();
-    let mut canonical_candidates = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve low-memory OLS canonical candidates",
-    )?;
-    for generated in candidate_columns.iter().copied() {
-        push_reserved(
-            &mut canonical_candidates,
-            generated,
-            "prepared OLS low-memory canonical-candidate capacity exhausted",
-        )?;
-    }
-    let mut trailing_norms = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve low-memory OLS trailing norms",
-    )?;
-    let mut pivot_coefficients = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve low-memory OLS pivot coefficients",
-    )?;
-    let mut kept = reserved_empty(
-        reservation,
-        candidate_count,
-        "unable to reserve low-memory OLS kept columns",
-    )?;
-    let mut dropped = reserved_empty(
-        reservation,
-        generated_columns,
-        "unable to reserve low-memory OLS dropped columns",
-    )?;
-    let mut reflector = reserved_filled(
-        reservation,
-        nrows,
-        0.0_f64,
-        "unable to reserve low-memory OLS reflector buffer",
-    )?;
-    let mut target = reserved_filled(
-        reservation,
-        nrows,
-        0.0_f64,
-        "unable to reserve low-memory OLS target buffer",
-    )?;
-
-    for (row, value) in within_outcome.iter_mut().enumerate() {
-        *value *= weights.root(row)?;
-        if !value.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS low-memory weighted outcome is not finite",
-            ));
-        }
-    }
-    for generated in candidate_columns.iter().copied() {
-        scratch.read_column(generated, &mut reflector)?;
-        for (row, value) in reflector.iter_mut().enumerate() {
-            *value *= weights.root(row)? / reference_norms[generated];
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS low-memory standardized regressor is not finite",
-                ));
-            }
-        }
-        scratch.write_column(generated, &reflector)?;
-    }
-
-    let mut standardized_rhs = reserved_filled(
-        reservation,
-        candidate_count,
-        0.0_f64,
-        "unable to reserve low-memory OLS standardized RHS",
-    )?;
-    let gram_elements = checked_square(
-        candidate_count,
-        "prepared OLS low-memory Gram dimensions overflow",
-    )?;
-    let mut standardized_gram = reserved_filled(
-        reservation,
-        gram_elements,
-        0.0_f64,
-        "unable to reserve low-memory OLS standardized Gram",
-    )?;
-    for (left, generated) in canonical_candidates.iter().copied().enumerate() {
-        scratch.read_column(generated, &mut reflector)?;
-        let mut rhs_sum = 0.0_f64;
-        let mut rhs_correction = 0.0_f64;
-        for row in 0..nrows {
-            compensated_add(
-                reflector[row] * within_outcome[row],
-                &mut rhs_sum,
-                &mut rhs_correction,
-            )?;
-        }
-        standardized_rhs[left] = rhs_sum + rhs_correction;
-        if !standardized_rhs[left].is_finite() {
-            return Err(invalid_data(
-                "prepared OLS low-memory standardized RHS is not finite",
-            ));
-        }
-        for right in left..candidate_count {
-            if right == left {
-                target.copy_from_slice(&reflector);
-            } else {
-                scratch.read_column(canonical_candidates[right], &mut target)?;
-            }
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for row in 0..nrows {
-                compensated_add(reflector[row] * target[row], &mut sum, &mut correction)?;
-            }
-            let value = sum + correction;
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS low-memory standardized Gram is not finite",
-                ));
-            }
-            standardized_gram[left * candidate_count + right] = value;
-            standardized_gram[right * candidate_count + left] = value;
-        }
-    }
-
-    let relative_threshold = config.rank_tolerance_multiplier
-        * f64::EPSILON
-        * nrows.max(generated_columns).max(1) as f64;
-    // The compensated scratch moments admit the same full-rank trial as the
-    // dense path. It does not mutate scratch or the response; rejected trials
-    // drop their owners before the unchanged rank-revealing QR fallback.
-    if let Some(fit) = try_fit_scaled_pivoted_cholesky(
-        None,
-        weights,
-        bread_weight_scale,
-        reference_norms,
-        score_norms,
-        &canonical_candidates,
-        &generated_statuses,
-        &standardized_gram,
-        &standardized_rhs,
-        relative_threshold,
-        config,
-        reservation,
-        perturb_first_coefficient,
-        perturb_bread,
-        true,
-    )? {
-        return Ok(fit);
-    }
-
-    let factor = factor_pivoted_qr(
-        ScratchQr {
-            scratch,
-            reflector: &mut reflector,
-            target: &mut target,
-            outcome: within_outcome,
-        },
-        nrows,
-        &mut candidate_columns,
-        &mut trailing_norms,
-        relative_threshold,
-    )?;
-    let rank = factor.rank;
-
-    let compact_columns = generated_columns
-        .checked_add(1)
-        .ok_or_else(|| allocation("prepared OLS low-memory compact QR width overflows"))?;
-    let compact_elements = rank
-        .checked_mul(compact_columns)
-        .ok_or_else(|| allocation("prepared OLS low-memory compact QR dimensions overflow"))?;
-    let mut compact_values = reserved_filled(
-        reservation,
-        compact_elements,
-        0.0_f64,
-        "unable to reserve low-memory OLS compact R",
-    )?;
-    for row in 0..rank {
-        compact_values[row * compact_columns] = within_outcome[row];
-    }
-    for generated in candidate_columns.iter().copied() {
-        scratch.read_column(generated, &mut target)?;
-        for row in 0..rank {
-            compact_values[row * compact_columns + generated + 1] = target[row];
-        }
-    }
-    let compact_qr = DenseMatrix::from_row_major(rank, compact_columns, compact_values)?;
-
-    solve_qr_triangle(
-        &compact_qr,
-        &candidate_columns,
-        &mut pivot_coefficients[..rank],
-        factor.absolute_threshold,
-    )?;
-    QrColumnOutput {
-        coefficients: &mut generated_coefficients,
-        statuses: &mut generated_statuses,
-        kept: &mut kept,
-        dropped: &mut dropped,
-    }
-    .finish(
-        &candidate_columns,
-        &pivot_coefficients[..rank],
-        reference_norms,
-        perturb_first_coefficient,
-    )?;
-
-    let certificate = factor.certificate()?;
-    let finite_score = build_finite_score_draft(
-        &canonical_candidates,
-        &standardized_gram,
-        &standardized_rhs,
-        &generated_coefficients,
-        &generated_statuses,
-        reference_norms,
-        score_norms,
-    )?;
-    let bread = build_finite_bread_draft(
-        prepared,
-        FiniteBreadInputs {
-            qr: &compact_qr,
-            pivot_columns: &candidate_columns,
-            canonical_candidates: &canonical_candidates,
-            standardized_gram: &standardized_gram,
-            rank,
-            reference_norms,
-            bread_weight_scale,
-        },
-        config.bread_tolerance,
-        reservation,
-        perturb_bread,
-    )?;
-    Ok(QrFit {
-        generated_coefficients,
-        generated_statuses,
-        kept,
-        dropped,
-        rank,
-        certificate,
-        finite_score,
-        bread: Some(bread),
-        within_residuals: None,
-        standardized_within_is_reusable: false,
-    })
-}
-
-fn reconstruct_within_residuals<R: FitReservation>(
-    qr: &DenseMatrix,
-    pivot_columns: &[usize],
-    rank: usize,
-    weights: NormalizedWeights<'_>,
-    reservation: &mut R,
-) -> Result<Vec<f64>> {
-    if rank > pivot_columns.len() || rank > qr.nrows() {
-        return Err(invalid_argument(
-            "prepared OLS residual reconstruction dimensions are inconsistent",
-        ));
-    }
-    let mut residuals = reserved_filled(
-        reservation,
-        qr.nrows(),
-        0.0_f64,
-        "unable to reserve prepared OLS reconstructed within residual",
-    )?;
-    if crate::parallel::StagePlan::current(qr.nrows() as u128, qr.nrows()).lanes > 1 {
-        crate::parallel::stage_items_mut(&mut residuals[rank..], (qr.nrows() - rank) as u128)
-            .enumerate()
-            .for_each(|(offset, residual)| *residual = qr[(rank + offset, 0)]);
-    } else {
-        for (row, residual) in residuals.iter_mut().enumerate().skip(rank) {
-            *residual = qr[(row, 0)];
-        }
-    }
-    for position in (0..rank).rev() {
-        let column = pivot_columns[position]
-            .checked_add(1)
-            .ok_or_else(|| allocation("prepared OLS residual reflector column overflows"))?;
-        if column >= qr.ncols() {
-            return Err(invalid_argument(
-                "prepared OLS residual reflector column is out of range",
-            ));
-        }
-        let mut norm_square = 1.0_f64;
-        let mut norm_correction = 0.0_f64;
-        let mut dot = residuals[position];
-        let mut dot_correction = 0.0_f64;
-        if crate::parallel::StagePlan::current(qr.nrows() as u128, qr.nrows()).lanes > 1 {
-            let (tail_norm_square, tail_dot) =
-                parallel_reflector_moments(qr, &residuals, column, position + 1)?;
-            compensated_add(tail_norm_square, &mut norm_square, &mut norm_correction)?;
-            compensated_add(tail_dot, &mut dot, &mut dot_correction)?;
-        } else {
-            for row in (position + 1)..qr.nrows() {
-                let reflector = qr[(row, column)];
-                compensated_add(
-                    reflector * reflector,
-                    &mut norm_square,
-                    &mut norm_correction,
-                )?;
-                compensated_add(reflector * residuals[row], &mut dot, &mut dot_correction)?;
-            }
-        }
-        let tau = 2.0 / (norm_square + norm_correction);
-        let projection = tau * (dot + dot_correction);
-        if !tau.is_finite() || !projection.is_finite() {
-            return Err(invalid_data(
-                "prepared OLS residual reflector reconstruction is not finite",
-            ));
-        }
-        residuals[position] -= projection;
-        if crate::parallel::StagePlan::current(qr.nrows() as u128, qr.nrows()).lanes > 1 {
-            crate::parallel::stage_items_mut(&mut residuals, qr.nrows() as u128)
-                .enumerate()
-                .skip(position + 1)
-                .for_each(|(row, residual)| {
-                    *residual = (-projection).mul_add(qr[(row, column)], *residual);
-                });
-        } else {
-            for row in (position + 1)..qr.nrows() {
-                residuals[row] = (-projection).mul_add(qr[(row, column)], residuals[row]);
-            }
-        }
-    }
-    crate::parallel::stage_items_mut(&mut residuals, qr.nrows() as u128)
-        .enumerate()
-        .try_for_each(|(row, residual)| -> Result<()> {
-            *residual /= weights.root(row)?;
-            if residual.is_finite() {
-                Ok(())
-            } else {
-                Err(invalid_data(
-                    "prepared OLS reconstructed within residual is not finite",
-                ))
-            }
-        })?;
-    Ok(residuals)
-}
-
-fn stable_slice_segment_norm(values: &[f64], start: usize) -> Result<f64> {
-    if start > values.len() {
-        return Err(invalid_argument(
-            "prepared OLS low-memory norm segment is out of range",
-        ));
-    }
-    stable_qr_segment_norm(values.iter().copied().skip(start))
-}
-
-fn apply_householder_slices(
-    reflector: &[f64],
-    target: &mut [f64],
-    start: usize,
-    tau: f64,
-) -> Result<()> {
-    if reflector.len() != target.len() || start >= target.len() {
-        return Err(invalid_argument(
-            "prepared OLS low-memory Householder axes are inconsistent",
-        ));
-    }
-    let mut projection = target[start];
-    if target.len() - start >= COMPENSATED_QR_MIN_ROWS {
-        let mut correction = 0.0;
-        for row in (start + 1)..target.len() {
-            compensated_add(
-                reflector[row] * target[row],
-                &mut projection,
-                &mut correction,
-            )?;
-        }
-        projection += correction;
-    } else {
-        for row in (start + 1)..target.len() {
-            projection = reflector[row].mul_add(target[row], projection);
-        }
-    }
-    projection *= tau;
-    if !projection.is_finite() {
-        return Err(invalid_data(
-            "prepared OLS low-memory Householder projection is not finite",
-        ));
-    }
-    target[start] -= projection;
-    if !target[start].is_finite() {
-        return Err(invalid_data(
-            "prepared OLS low-memory transformed value is not finite",
-        ));
-    }
-    for row in (start + 1)..target.len() {
-        target[row] = (-reflector[row]).mul_add(projection, target[row]);
-        if !target[row].is_finite() {
-            return Err(invalid_data(
-                "prepared OLS low-memory transformed value is not finite",
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn build_finite_score_draft(
+pub(super) fn build_finite_score_draft(
     canonical_candidates: &[usize],
     standardized_gram: &[f64],
     standardized_rhs: &[f64],
@@ -4645,174 +2737,6 @@ fn build_finite_score_draft(
         square_sum_scale: certificate.relative_square_sum,
         moments: certificate.moments,
     })
-}
-
-fn build_finite_bread_draft<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
-    prepared: &P,
-    inputs: FiniteBreadInputs<'_>,
-    tolerance: f64,
-    reservation: &mut R,
-    perturb_bread: bool,
-) -> Result<FiniteBreadDraft> {
-    let FiniteBreadInputs {
-        qr,
-        pivot_columns,
-        canonical_candidates,
-        standardized_gram,
-        rank,
-        reference_norms,
-        bread_weight_scale,
-    } = inputs;
-    let candidate_count = canonical_candidates.len();
-    let candidate_square = checked_square(
-        candidate_count,
-        "prepared OLS standardized Gram dimensions overflow usize",
-    )?;
-    if rank > candidate_count
-        || pivot_columns.len() != candidate_count
-        || standardized_gram.len() != candidate_square
-        || reference_norms.len() != prepared.fit_model().columns.len()
-    {
-        return Err(invalid_argument(
-            "prepared OLS bread inputs have inconsistent dimensions",
-        ));
-    }
-    let rank_square = checked_square(rank, "prepared OLS bread dimensions overflow usize")?;
-    let mut inverse_r = reserved_filled(
-        reservation,
-        rank_square,
-        0.0_f64,
-        "unable to reserve prepared OLS inverse R",
-    )?;
-    for right_hand_side in 0..rank {
-        for row in (0..rank).rev() {
-            let generated = pivot_columns[row];
-            let matrix_column = generated
-                .checked_add(1)
-                .ok_or_else(|| allocation("prepared OLS bread column index overflows"))?;
-            let diagonal = qr[(row, matrix_column)];
-            if !diagonal.is_finite() || diagonal == 0.0 {
-                return Err(invalid_data(
-                    "prepared OLS bread triangular diagonal is invalid",
-                ));
-            }
-            let mut value = f64::from(row == right_hand_side);
-            let mut correction = 0.0_f64;
-            for inner in (row + 1)..rank {
-                let inner_column = pivot_columns[inner]
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("prepared OLS bread column index overflows"))?;
-                let term = -qr[(row, inner_column)] * inverse_r[inner * rank + right_hand_side];
-                compensated_add(term, &mut value, &mut correction)?;
-            }
-            let solved = (value + correction) / diagonal;
-            if !solved.is_finite() {
-                return Err(invalid_data("prepared OLS inverse R is not finite"));
-            }
-            inverse_r[row * rank + right_hand_side] = solved;
-        }
-    }
-
-    let mut pivot_inverse = reserved_filled(
-        reservation,
-        rank_square,
-        0.0_f64,
-        "unable to reserve prepared OLS standardized inverse",
-    )?;
-    for left in 0..rank {
-        for right in left..rank {
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for inner in 0..rank {
-                let term = inverse_r[left * rank + inner] * inverse_r[right * rank + inner];
-                compensated_add(term, &mut sum, &mut correction)?;
-            }
-            let value = sum + correction;
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS standardized inverse is not finite",
-                ));
-            }
-            pivot_inverse[left * rank + right] = value;
-            pivot_inverse[right * rank + left] = value;
-        }
-    }
-
-    let mut generated_columns = reserved_empty(
-        reservation,
-        rank,
-        "unable to reserve prepared OLS bread coordinates",
-    )?;
-    for generated in canonical_candidates.iter().copied() {
-        if pivot_columns[..rank].contains(&generated) {
-            push_reserved(
-                &mut generated_columns,
-                generated,
-                "prepared OLS bread-coordinate capacity exhausted",
-            )?;
-        }
-    }
-    if generated_columns.len() != rank {
-        return Err(invalid_argument(
-            "prepared OLS bread rank and coordinate count disagree",
-        ));
-    }
-
-    let mut canonical_candidate_positions = reserved_empty(
-        reservation,
-        rank,
-        "unable to reserve prepared OLS bread candidate positions",
-    )?;
-    let mut canonical_pivot_positions = reserved_empty(
-        reservation,
-        rank,
-        "unable to reserve prepared OLS bread pivot positions",
-    )?;
-    for generated in generated_columns.iter().copied() {
-        let candidate = canonical_candidates
-            .iter()
-            .position(|column| *column == generated)
-            .ok_or_else(|| invalid_argument("prepared OLS bread candidate is missing"))?;
-        let pivot = pivot_columns[..rank]
-            .iter()
-            .position(|column| *column == generated)
-            .ok_or_else(|| invalid_argument("prepared OLS bread pivot is missing"))?;
-        push_reserved(
-            &mut canonical_candidate_positions,
-            candidate,
-            "prepared OLS bread candidate-position capacity exhausted",
-        )?;
-        push_reserved(
-            &mut canonical_pivot_positions,
-            pivot,
-            "prepared OLS bread pivot-position capacity exhausted",
-        )?;
-    }
-
-    let mut canonical_inverse = reserved_filled(
-        reservation,
-        rank_square,
-        0.0_f64,
-        "unable to reserve prepared OLS canonical standardized inverse",
-    )?;
-    for left in 0..rank {
-        for right in 0..rank {
-            canonical_inverse[left * rank + right] = pivot_inverse
-                [canonical_pivot_positions[left] * rank + canonical_pivot_positions[right]];
-        }
-    }
-    finalize_finite_bread_draft(
-        canonical_candidates,
-        standardized_gram,
-        generated_columns,
-        canonical_candidate_positions,
-        canonical_inverse,
-        reference_norms,
-        bread_weight_scale,
-        tolerance,
-        reservation,
-        perturb_bread,
-    )
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -5046,7 +2970,7 @@ fn exact_nonnegative_integer_as_f64(value: u128) -> Result<f64> {
 fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     response: &[f64],
-    qr: &mut QrFit,
+    qr: &mut FiniteFit,
     raw_residuals: Option<&mut [f64]>,
     weights: NormalizedWeights<'_>,
     tolerance: f64,
@@ -5615,12 +3539,14 @@ fn fill_bound_weighted_column_means(
             .lanes
             > 1
     {
-        crate::parallel::stage_items_mut(means, nrows as u128 * generated_columns.len() as u128)
-            .zip(generated_columns.par_iter())
-            .try_for_each(|(target, &generated)| {
+        crate::parallel::stage_try_for_each(
+            means.par_iter_mut().zip(generated_columns.par_iter()),
+            nrows as u128 * generated_columns.len() as u128,
+            |(target, &generated)| {
                 *target = mean(generated)?;
                 Ok(())
-            })
+            },
+        )
     } else {
         for (target, &generated) in means.iter_mut().zip(generated_columns) {
             *target = mean(generated)?;
@@ -5752,38 +3678,36 @@ fn fill_raw_moment_cache_fused<R: FitReservation>(
         0.0_f64,
         "unable to reserve prepared OLS raw-moment partials",
     )?;
-    crate::parallel::stage_rows_mut(
-        &mut partials,
-        partial_stride,
+    crate::parallel::stage_try_for_each(
+        partials.par_chunks_mut(partial_stride).enumerate(),
         raw.nrows() as u128 * columns as u128,
-    )
-    .enumerate()
-    .try_for_each(|(chunk, partial)| -> Result<()> {
-        let (partial_raw_scales, remainder) = partial.split_at_mut(columns);
-        let (partial_norm_scales, partial_norm_sums) = remainder.split_at_mut(columns);
-        partial_norm_sums.fill(1.0);
-        let rows_per_chunk = raw.nrows() / chunks;
-        let remainder = raw.nrows() % chunks;
-        let start = chunk * rows_per_chunk + chunk.min(remainder);
-        let end = start + rows_per_chunk + usize::from(chunk < remainder);
-        for row in start..end {
-            let root_weight = weights.root(row)?;
-            let values = &raw.as_slice()[row * columns..(row + 1) * columns];
-            for column in 0..columns {
-                let value = values[column];
-                if !value.is_finite() {
-                    return Err(invalid_data("prepared OLS raw-moment value is not finite"));
+        |(chunk, partial)| -> Result<()> {
+            let (partial_raw_scales, remainder) = partial.split_at_mut(columns);
+            let (partial_norm_scales, partial_norm_sums) = remainder.split_at_mut(columns);
+            partial_norm_sums.fill(1.0);
+            let rows_per_chunk = raw.nrows() / chunks;
+            let remainder = raw.nrows() % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                let root_weight = weights.root(row)?;
+                let values = &raw.as_slice()[row * columns..(row + 1) * columns];
+                for column in 0..columns {
+                    let value = values[column];
+                    if !value.is_finite() {
+                        return Err(invalid_data("prepared OLS raw-moment value is not finite"));
+                    }
+                    partial_raw_scales[column] = partial_raw_scales[column].max(value.abs());
+                    update_scaled_sum_of_squares(
+                        root_weight * value,
+                        &mut partial_norm_scales[column],
+                        &mut partial_norm_sums[column],
+                    )?;
                 }
-                partial_raw_scales[column] = partial_raw_scales[column].max(value.abs());
-                update_scaled_sum_of_squares(
-                    root_weight * value,
-                    &mut partial_norm_scales[column],
-                    &mut partial_norm_sums[column],
-                )?;
             }
-        }
-        Ok(())
-    })?;
+            Ok(())
+        },
+    )?;
     for column in 0..columns {
         let mut norm_scale = 0.0_f64;
         let mut norm_sum = 1.0_f64;
@@ -5802,33 +3726,31 @@ fn fill_raw_moment_cache_fused<R: FitReservation>(
     }
 
     partials.fill(0.0);
-    crate::parallel::stage_rows_mut(
-        &mut partials,
-        partial_stride,
+    crate::parallel::stage_try_for_each(
+        partials.par_chunks_mut(partial_stride).enumerate(),
         raw.nrows() as u128 * columns as u128,
-    )
-    .enumerate()
-    .try_for_each(|(chunk, partial)| -> Result<()> {
-        let (partial_means, partial_corrections) = partial.split_at_mut(columns);
-        let rows_per_chunk = raw.nrows() / chunks;
-        let remainder = raw.nrows() % chunks;
-        let start = chunk * rows_per_chunk + chunk.min(remainder);
-        let end = start + rows_per_chunk + usize::from(chunk < remainder);
-        for row in start..end {
-            let weight = weights.value(row)?;
-            let values = &raw.as_slice()[row * columns..(row + 1) * columns];
-            for column in 0..columns {
-                if scales[column] != 0.0 {
-                    compensated_add(
-                        weight * (values[column] / scales[column]),
-                        &mut partial_means[column],
-                        &mut partial_corrections[column],
-                    )?;
+        |(chunk, partial)| -> Result<()> {
+            let (partial_means, partial_corrections) = partial.split_at_mut(columns);
+            let rows_per_chunk = raw.nrows() / chunks;
+            let remainder = raw.nrows() % chunks;
+            let start = chunk * rows_per_chunk + chunk.min(remainder);
+            let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            for row in start..end {
+                let weight = weights.value(row)?;
+                let values = &raw.as_slice()[row * columns..(row + 1) * columns];
+                for column in 0..columns {
+                    if scales[column] != 0.0 {
+                        compensated_add(
+                            weight * (values[column] / scales[column]),
+                            &mut partial_means[column],
+                            &mut partial_corrections[column],
+                        )?;
+                    }
                 }
             }
-        }
-        Ok(())
-    })?;
+            Ok(())
+        },
+    )?;
     for column in 0..columns {
         let mut sum = 0.0_f64;
         let mut correction = 0.0_f64;
@@ -5874,11 +3796,14 @@ fn fill_raw_moment_cache_blocked<const BLOCK: usize>(
             "prepared OLS blocked raw-moment dimensions are inconsistent",
         ));
     }
-    crate::parallel::stage_rows_mut(scales, BLOCK, raw.nrows() as u128 * raw.ncols() as u128)
-        .zip(means.par_chunks_mut(BLOCK))
-        .zip(norms.par_chunks_mut(BLOCK))
-        .enumerate()
-        .try_for_each(|(block, ((scales, means), norms))| -> Result<()> {
+    crate::parallel::stage_try_for_each(
+        scales
+            .par_chunks_mut(BLOCK)
+            .zip(means.par_chunks_mut(BLOCK))
+            .zip(norms.par_chunks_mut(BLOCK))
+            .enumerate(),
+        raw.nrows() as u128 * raw.ncols() as u128,
+        |(block, ((scales, means), norms))| -> Result<()> {
             let width = scales.len();
             let start = block * BLOCK;
             let mut raw_scales = [0.0_f64; BLOCK];
@@ -5927,7 +3852,8 @@ fn fill_raw_moment_cache_blocked<const BLOCK: usize>(
                 norms[column] = checked_norm(norm_scales[column], norm_sums[column])?;
             }
             Ok(())
-        })
+        },
+    )
 }
 
 fn fill_raw_moment_cache_columnwise(
@@ -5948,11 +3874,14 @@ fn fill_raw_moment_cache_columnwise(
             "prepared OLS columnwise raw-moment dimensions are inconsistent",
         ));
     }
-    crate::parallel::stage_items_mut(scales, raw.nrows() as u128 * raw.ncols() as u128)
-        .zip(means.par_iter_mut())
-        .zip(norms.par_iter_mut())
-        .enumerate()
-        .try_for_each(|(column, ((scale, mean), norm))| -> Result<()> {
+    crate::parallel::stage_try_for_each(
+        scales
+            .par_iter_mut()
+            .zip(means.par_iter_mut())
+            .zip(norms.par_iter_mut())
+            .enumerate(),
+        raw.nrows() as u128 * raw.ncols() as u128,
+        |(column, ((scale, mean), norm))| -> Result<()> {
             let mut norm_scale = 0.0_f64;
             let mut norm_sum = 1.0_f64;
             for row in 0..raw.nrows() {
@@ -5988,12 +3917,13 @@ fn fill_raw_moment_cache_columnwise(
             }
             *norm = checked_norm(norm_scale, norm_sum)?;
             Ok(())
-        })
+        },
+    )
 }
 
 fn cached_raw_residual_mean<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
-    qr: &QrFit,
+    qr: &FiniteFit,
     weights: NormalizedWeights<'_>,
     cache: &RawMomentCache,
 ) -> Result<f64> {
@@ -6041,7 +3971,7 @@ fn cached_raw_residual_mean<P: PreparedOlsFitView + ?Sized>(
 
 fn raw_residual_at<P: PreparedOlsFitView + ?Sized>(
     prepared: &P,
-    qr: &QrFit,
+    qr: &FiniteFit,
     row: usize,
 ) -> Result<f64> {
     let mut value = *prepared
@@ -6208,207 +4138,9 @@ fn symmetry_relative_infinity_norm(values: &[f64], dimension: usize) -> Result<f
     Ok(maximum)
 }
 
-fn stable_matrix_segment_norm(
-    matrix: &DenseMatrix,
-    column: usize,
-    start_row: usize,
-) -> Result<f64> {
-    if column >= matrix.ncols() || start_row > matrix.nrows() {
-        return Err(invalid_argument(
-            "prepared OLS matrix norm segment is out of range",
-        ));
-    }
-    stable_qr_segment_norm((start_row..matrix.nrows()).map(|row| matrix[(row, column)]))
-}
-
 /// QR reflector norms need accurate tail energy even when each squared term is
 /// below one ulp of a large leading term. A fixed scale and compensated sum
 /// avoid N-dependent loss; the pre-absorption reference-norm policy is separate.
-fn stable_qr_segment_norm(values: impl ExactSizeIterator<Item = f64> + Clone) -> Result<f64> {
-    if values.len() < COMPENSATED_QR_MIN_ROWS {
-        let mut scale = 0.0;
-        let mut sum = 1.0;
-        for value in values {
-            update_scaled_sum_of_squares(value, &mut scale, &mut sum)?;
-        }
-        return checked_norm(scale, sum);
-    }
-    let scale = values.clone().try_fold(0.0_f64, |scale, value| {
-        if !value.is_finite() {
-            return Err(invalid_data("prepared OLS QR norm value is not finite"));
-        }
-        Ok(scale.max(value.abs()))
-    })?;
-    if scale == 0.0 {
-        return Ok(0.0);
-    }
-    let mut sum = 0.0;
-    let mut correction = 0.0;
-    for value in values {
-        let scaled = value / scale;
-        compensated_add(scaled * scaled, &mut sum, &mut correction)?;
-    }
-    checked_norm(scale, sum + correction)
-}
-
-fn apply_householder(
-    matrix: &mut DenseMatrix,
-    start_row: usize,
-    reflector_column: usize,
-    target_column: usize,
-    tau: f64,
-) -> Result<()> {
-    let mut projection = matrix[(start_row, target_column)];
-    if crate::parallel::StagePlan::current(matrix.nrows() as u128, matrix.nrows()).lanes > 1 {
-        let tail =
-            parallel_matrix_column_dot(matrix, reflector_column, target_column, start_row + 1)?;
-        projection += tail;
-    } else if matrix.nrows() - start_row >= COMPENSATED_QR_MIN_ROWS {
-        let mut correction = 0.0;
-        for row in (start_row + 1)..matrix.nrows() {
-            compensated_add(
-                matrix[(row, reflector_column)] * matrix[(row, target_column)],
-                &mut projection,
-                &mut correction,
-            )?;
-        }
-        projection += correction;
-    } else {
-        for row in (start_row + 1)..matrix.nrows() {
-            projection =
-                matrix[(row, reflector_column)].mul_add(matrix[(row, target_column)], projection);
-        }
-    }
-    projection *= tau;
-    if !projection.is_finite() {
-        return Err(invalid_data("prepared OLS QR projection is not finite"));
-    }
-    matrix[(start_row, target_column)] -= projection;
-    if !matrix[(start_row, target_column)].is_finite() {
-        return Err(invalid_data(
-            "prepared OLS QR transformed value is not finite",
-        ));
-    }
-    if crate::parallel::StagePlan::current(matrix.nrows() as u128, matrix.nrows()).lanes > 1 {
-        let ncols = matrix.ncols();
-        let nrows = matrix.nrows();
-        crate::parallel::stage_rows_mut(matrix.as_mut_slice(), ncols, (nrows - start_row) as u128)
-            .skip(start_row + 1)
-            .try_for_each(|row| -> Result<()> {
-                let updated = (-row[reflector_column]).mul_add(projection, row[target_column]);
-                if !updated.is_finite() {
-                    return Err(invalid_data(
-                        "prepared OLS QR transformed value is not finite",
-                    ));
-                }
-                row[target_column] = updated;
-                Ok(())
-            })?;
-    } else {
-        for row in (start_row + 1)..matrix.nrows() {
-            let updated = (-matrix[(row, reflector_column)])
-                .mul_add(projection, matrix[(row, target_column)]);
-            if !updated.is_finite() {
-                return Err(invalid_data(
-                    "prepared OLS QR transformed value is not finite",
-                ));
-            }
-            matrix[(row, target_column)] = updated;
-        }
-    }
-    Ok(())
-}
-
-fn parallel_matrix_column_dot(
-    matrix: &DenseMatrix,
-    left_column: usize,
-    right_column: usize,
-    start_row: usize,
-) -> Result<f64> {
-    if left_column >= matrix.ncols() || right_column >= matrix.ncols() || start_row > matrix.nrows()
-    {
-        return Err(invalid_argument(
-            "prepared OLS parallel dot dimensions are inconsistent",
-        ));
-    }
-    let rows = matrix.nrows() - start_row;
-    let chunks = rows.div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS);
-    let mut partials = Vec::new();
-    partials
-        .try_reserve_exact(chunks)
-        .map_err(|_| allocation("unable to reserve parallel QR dot partials"))?;
-    partials.resize(chunks, 0.0_f64);
-    crate::parallel::stage_items_mut(&mut partials, rows as u128)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let start = start_row + chunk * PARALLEL_REDUCTION_CHUNK_ROWS;
-            let end = (start + PARALLEL_REDUCTION_CHUNK_ROWS).min(matrix.nrows());
-            let mut sum = 0.0_f64;
-            let mut correction = 0.0_f64;
-            for row in start..end {
-                compensated_add(
-                    matrix[(row, left_column)] * matrix[(row, right_column)],
-                    &mut sum,
-                    &mut correction,
-                )?;
-            }
-            *partial = sum + correction;
-            Ok(())
-        })?;
-    let mut sum = 0.0_f64;
-    let mut correction = 0.0_f64;
-    for partial in partials {
-        compensated_add(partial, &mut sum, &mut correction)?;
-    }
-    Ok(sum + correction)
-}
-
-fn parallel_reflector_moments(
-    qr: &DenseMatrix,
-    residuals: &[f64],
-    reflector_column: usize,
-    start_row: usize,
-) -> Result<(f64, f64)> {
-    if reflector_column >= qr.ncols() || residuals.len() != qr.nrows() || start_row > qr.nrows() {
-        return Err(invalid_argument(
-            "prepared OLS parallel reflector dimensions are inconsistent",
-        ));
-    }
-    let rows = qr.nrows() - start_row;
-    let chunks = rows.div_ceil(PARALLEL_REDUCTION_CHUNK_ROWS);
-    let mut partials = Vec::new();
-    partials
-        .try_reserve_exact(chunks)
-        .map_err(|_| allocation("unable to reserve parallel reflector partials"))?;
-    partials.resize(chunks, (0.0_f64, 0.0_f64));
-    crate::parallel::stage_items_mut(&mut partials, rows as u128)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
-            let start = start_row + chunk * PARALLEL_REDUCTION_CHUNK_ROWS;
-            let end = (start + PARALLEL_REDUCTION_CHUNK_ROWS).min(qr.nrows());
-            let mut norm = 0.0_f64;
-            let mut norm_correction = 0.0_f64;
-            let mut dot = 0.0_f64;
-            let mut dot_correction = 0.0_f64;
-            for row in start..end {
-                let reflector = qr[(row, reflector_column)];
-                compensated_add(reflector * reflector, &mut norm, &mut norm_correction)?;
-                compensated_add(reflector * residuals[row], &mut dot, &mut dot_correction)?;
-            }
-            *partial = (norm + norm_correction, dot + dot_correction);
-            Ok(())
-        })?;
-    let mut norm = 0.0_f64;
-    let mut norm_correction = 0.0_f64;
-    let mut dot = 0.0_f64;
-    let mut dot_correction = 0.0_f64;
-    for (partial_norm, partial_dot) in partials {
-        compensated_add(partial_norm, &mut norm, &mut norm_correction)?;
-        compensated_add(partial_dot, &mut dot, &mut dot_correction)?;
-    }
-    Ok((norm + norm_correction, dot + dot_correction))
-}
-
 fn weighted_matrix_column_norm(
     matrix: &DenseMatrix,
     column: usize,
@@ -6481,33 +4213,31 @@ fn fill_weighted_matrix_norms_blocked<const BLOCK: usize>(
             "prepared OLS blocked weighted norm output has the wrong width",
         ));
     }
-    crate::parallel::stage_rows_mut(
-        output,
-        BLOCK,
+    crate::parallel::stage_try_for_each(
+        output.par_chunks_mut(BLOCK).enumerate(),
         matrix.nrows() as u128 * matrix.ncols() as u128,
-    )
-    .enumerate()
-    .try_for_each(|(block, norms)| -> Result<()> {
-        // Output chunks need not be cache-line aligned. Accumulate locally
-        // so adjacent workers do not repeatedly write a shared cache line.
-        let mut scales = [0.0_f64; BLOCK];
-        let mut square_sums = [1.0_f64; BLOCK];
-        let start = block * BLOCK;
-        for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
-            let root = weights.root(row)?;
-            for (column, scale) in scales.iter_mut().enumerate().take(norms.len()) {
-                update_scaled_sum_of_squares(
-                    root * values[start + column],
-                    scale,
-                    &mut square_sums[column],
-                )?;
+        |(block, norms)| -> Result<()> {
+            // Output chunks need not be cache-line aligned. Accumulate locally
+            // so adjacent workers do not repeatedly write a shared cache line.
+            let mut scales = [0.0_f64; BLOCK];
+            let mut square_sums = [1.0_f64; BLOCK];
+            let start = block * BLOCK;
+            for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
+                let root = weights.root(row)?;
+                for (column, scale) in scales.iter_mut().enumerate().take(norms.len()) {
+                    update_scaled_sum_of_squares(
+                        root * values[start + column],
+                        scale,
+                        &mut square_sums[column],
+                    )?;
+                }
             }
-        }
-        for ((norm, scale), square_sum) in norms.iter_mut().zip(scales).zip(square_sums) {
-            *norm = checked_norm(scale, square_sum)?;
-        }
-        Ok(())
-    })
+            for ((norm, scale), square_sum) in norms.iter_mut().zip(scales).zip(square_sums) {
+                *norm = checked_norm(scale, square_sum)?;
+            }
+            Ok(())
+        },
+    )
 }
 
 fn initial_within_sum_of_squares<P: PreparedOlsFitView + ?Sized>(
@@ -6582,10 +4312,10 @@ fn weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> Result
         sums.try_reserve_exact(chunks)
             .map_err(|_| allocation("unable to reserve parallel norm sums"))?;
         sums.resize(chunks, 1.0_f64);
-        crate::parallel::stage_items_mut(&mut scales, values.len() as u128)
-            .zip(sums.par_iter_mut())
-            .enumerate()
-            .try_for_each(|(chunk, (scale, sum))| -> Result<()> {
+        crate::parallel::stage_try_for_each(
+            scales.par_iter_mut().zip(sums.par_iter_mut()).enumerate(),
+            values.len() as u128,
+            |(chunk, (scale, sum))| -> Result<()> {
                 let start = chunk * PARALLEL_REDUCTION_CHUNK_ROWS;
                 let end = (start + PARALLEL_REDUCTION_CHUNK_ROWS).min(values.len());
                 for (offset, value) in values[start..end].iter().copied().enumerate() {
@@ -6596,7 +4326,8 @@ fn weighted_slice_norm(values: &[f64], weights: NormalizedWeights<'_>) -> Result
                     )?;
                 }
                 Ok(())
-            })?;
+            },
+        )?;
         let mut scale = 0.0_f64;
         let mut scaled_square_sum = 1.0_f64;
         for (chunk_scale, chunk_sum) in scales.into_iter().zip(sums) {
@@ -6865,7 +4596,7 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
 
 fn build_coefficient_slots<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
-    qr: &QrFit,
+    qr: &FiniteFit,
     reservation: &mut R,
 ) -> Result<Vec<PreparedOlsFittedCoefficient>> {
     let mut output = reserved_empty(
@@ -6993,27 +4724,6 @@ mod tests {
     use std::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
-    fn qr_triangle_keeps_pivot_order_and_rejects_invalid_values() {
-        let qr = DenseMatrix::from_row_major(2, 3, vec![7.0, 1.0, 2.0, 3.0, 3.0, 0.0]).unwrap();
-        let mut coefficients = [0.0; 2];
-        solve_qr_triangle(&qr, &[1, 0], &mut coefficients, 1e-12).unwrap();
-        assert_eq!(coefficients, [3.0, 1.0]);
-        for diagonal in [0.0, f64::NAN, f64::INFINITY] {
-            let qr = DenseMatrix::from_row_major(1, 2, vec![1.0, diagonal]).unwrap();
-            let error = solve_qr_triangle(&qr, &[0], &mut [0.0], 1e-12).unwrap_err();
-            assert_eq!(error.code, ErrorCode::InvalidData);
-            assert_eq!(
-                error.message,
-                "prepared OLS QR triangular diagonal is invalid"
-            );
-        }
-        let qr = DenseMatrix::from_row_major(1, 2, vec![f64::MAX, 0.5]).unwrap();
-        let error = solve_qr_triangle(&qr, &[0], &mut [0.0], 0.0).unwrap_err();
-        assert_eq!(error.code, ErrorCode::InvalidData);
-        assert_eq!(error.message, "prepared OLS QR coefficient is not finite");
-    }
-
-    #[test]
     fn qr_classification_preserves_norm_errors_and_deferred_intercept_order() {
         let y = [0.0; 6];
         let groups = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
@@ -7023,10 +4733,12 @@ mod tests {
             let frame = LinearSolveFrame::from_prepared_ols(data).unwrap();
             let config = PreparedOlsFitConfig::default();
             if low {
-                fit_scaled_pivoted_qr_low(
+                finite::solve_one_shot(
                     data,
-                    &mut PreparedOlsScratch::create(6, 1).unwrap(),
-                    &mut [0.0; 6],
+                    finite::ProjectedFiniteRows::Scratch {
+                        scratch: &PreparedOlsScratch::create_row_major(6, 1).unwrap(),
+                        outcome: &[0.0; 6],
+                    },
                     frame.weights(),
                     frame.bread_weight_scale(),
                     &[reference],
@@ -7035,11 +4747,12 @@ mod tests {
                     &mut SystemFitReservation,
                     false,
                     false,
+                    true,
                 )
             } else {
-                fit_scaled_pivoted_qr(
+                finite::solve_one_shot(
                     data,
-                    &mut DenseMatrix::zeros(6, 2).unwrap(),
+                    finite::ProjectedFiniteRows::Dense(&DenseMatrix::zeros(6, 2).unwrap()),
                     frame.weights(),
                     frame.bread_weight_scale(),
                     &[reference],
@@ -7406,91 +5119,6 @@ mod tests {
             },
         )
         .expect("prepared data")
-    }
-
-    #[test]
-    fn qr_reduction_rejects_an_unrepresentable_transformed_head() {
-        // v=(1,1/2,1/2), tau=4/3 is an orthogonal reflector. The first
-        // transformed entry is 1.02*MAX while both trailing entries are finite.
-        let reflector = [1.0, 0.5, 0.5];
-        let values = [0.9 * f64::MAX, -0.99 * f64::MAX, -0.99 * f64::MAX];
-        let mut target = values;
-        let error = apply_householder_slices(&reflector, &mut target, 0, 4.0 / 3.0)
-            .expect_err("unrepresentable leading entry must fail immediately");
-        assert_eq!(error.code, ErrorCode::InvalidData);
-        let mut matrix = DenseMatrix::zeros(3, 2).unwrap();
-        for row in 0..3 {
-            matrix[(row, 0)] = reflector[row];
-            matrix[(row, 1)] = values[row];
-        }
-        assert_eq!(
-            apply_householder(&mut matrix, 0, 0, 1, 4.0 / 3.0)
-                .expect_err("same finite-output boundary in both layouts")
-                .code,
-            ErrorCode::InvalidData
-        );
-    }
-
-    #[test]
-    fn qr_reduction_norm_retains_small_tail_energy_in_both_layouts() {
-        let n = 65_536;
-        let tiny = 2.0_f64.powi(-27);
-        let expected_unit = (1.0 + 2.0_f64.powi(-38)).sqrt();
-        for scale in [1.0, 1e150, 1e-150] {
-            let mut values = vec![tiny * scale; n + 4];
-            values[..3].fill(f64::NAN);
-            values[3] = scale;
-            let expected = scale * expected_unit;
-            let observed = stable_slice_segment_norm(&values, 3).unwrap();
-            assert!(
-                (observed / expected - 1.0).abs() <= 4.0 * f64::EPSILON,
-                "slice scale={scale}: observed={observed:e}, oracle={expected:e}"
-            );
-            let mut matrix = DenseMatrix::zeros(n + 4, 2).unwrap();
-            for row in 0..values.len() {
-                matrix[(row, 1)] = values[row];
-            }
-            let observed = stable_matrix_segment_norm(&matrix, 1, 3).unwrap();
-            assert!(
-                (observed / expected - 1.0).abs() <= 4.0 * f64::EPSILON,
-                "matrix scale={scale}: observed={observed:e}, oracle={expected:e}"
-            );
-        }
-    }
-
-    #[test]
-    fn qr_reduction_householder_maps_its_own_vector_to_its_negative() {
-        // v=(1, 2^-27, ..., 2^-27), with exactly 2^16 tail entries.
-        // Its squared norm is exactly 1+2^-38. H=I-2vv'/v'v maps v to -v.
-        let n = 65_536;
-        let tiny = 2.0_f64.powi(-27);
-        let tau = 2.0 / (1.0 + 2.0_f64.powi(-38));
-        let mut reflector = vec![tiny; n + 1];
-        reflector[0] = 1.0;
-        let mut target = reflector.clone();
-        apply_householder_slices(&reflector, &mut target, 0, tau).unwrap();
-        assert!(
-            (target[0] + 1.0).abs() <= 4.0 * f64::EPSILON,
-            "slice Householder leading error {}",
-            target[0] + 1.0
-        );
-        assert!(target[1..]
-            .iter()
-            .all(|&v| (v / tiny + 1.0).abs() <= 4.0 * f64::EPSILON));
-        let team = rayon::ThreadPoolBuilder::new()
-            .num_threads(1)
-            .build()
-            .unwrap();
-        team.install(|| {
-            let mut matrix = DenseMatrix::zeros(n + 1, 2).unwrap();
-            for row in 0..=n {
-                matrix[(row, 0)] = reflector[row];
-                matrix[(row, 1)] = reflector[row];
-            }
-            apply_householder(&mut matrix, 0, 0, 1, tau).unwrap();
-            assert!((matrix[(0, 1)] + 1.0).abs() <= 4.0 * f64::EPSILON);
-            assert!((1..=n).all(|row| (matrix[(row, 1)] / tiny + 1.0).abs() <= 4.0 * f64::EPSILON));
-        });
     }
 
     #[test]
@@ -9529,6 +7157,42 @@ mod tests {
         }
     }
 
+    fn test_projected_moments<R: FitReservation>(
+        within: &DenseMatrix,
+        candidates: &[usize],
+        reservation: &mut R,
+    ) -> Result<(Vec<f64>, Vec<f64>)> {
+        use crate::ols::finite_wls_kernel::{
+            fill_finite_wls_moments, FiniteDenseRows, FiniteResponse,
+        };
+        let source = FixedBlockMomentSource::Dense {
+            values: FiniteDenseRows::projected(within),
+            rows: within.nrows(),
+            stored_columns: within.ncols() - 1,
+            selected_columns: Some(candidates),
+            response: FiniteResponse::FirstColumn(within),
+            weights: BorrowedMapWeights::Unit,
+            solver_weight_divisor: 1.0,
+            column_scales: None,
+        };
+        let layout = finite_wls_moment_layout(source)?;
+        let mut partials = reserved_filled(
+            reservation,
+            layout.partial_elements,
+            0.0,
+            "test finite partials",
+        )?;
+        let mut rhs = reserved_filled(reservation, candidates.len(), 0.0, "test finite RHS")?;
+        let mut gram = reserved_filled(
+            reservation,
+            candidates.len() * candidates.len(),
+            0.0,
+            "test finite Gram",
+        )?;
+        fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram)?;
+        Ok((rhs, gram))
+    }
+
     fn assert_packed_and_strided_score_caches_match(prepared: &PreparedOlsData) {
         let mut packed_reservation = InjectedReservation::default();
         let packed_fit = fit_with_controls_internal_mode(
@@ -9561,10 +7225,9 @@ mod tests {
         else {
             panic!("expected packed score cache");
         };
-        let PreparedOlsFastScoreCache::Strided {
+        let PreparedOlsFastScoreCache::Selected {
             generated_columns: strided_columns,
             within: strided,
-            reference_norms,
             means: strided_means,
         } = strided_fit.fast_score_cache.expect("strided score cache")
         else {
@@ -9575,11 +7238,9 @@ mod tests {
         for (actual, expected) in strided_means.iter().zip(&packed_means) {
             assert_close(*actual, *expected, 2e-12);
         }
-        let weights = normalized_weights(prepared).expect("normalized weights");
         for row in 0..packed.nrows() {
-            let root = weights.root(row).expect("solver root weight");
             for (finite, generated) in strided_columns.iter().copied().enumerate() {
-                let actual = strided[(row, generated + 1)] * reference_norms[finite] / root;
+                let actual = strided[(row, generated + 1)];
                 assert_close(actual, packed[(row, finite)], 2e-12);
             }
         }
@@ -10722,7 +8383,7 @@ mod tests {
         let matrix = DenseMatrix::from_row_major(rows, columns, values).expect("moment matrix");
         let candidates = [0_usize, 1, 2, 3];
         let mut reservation = SystemFitReservation;
-        let (rhs, gram) = build_standardized_moments(&matrix, &candidates, &mut reservation)
+        let (rhs, gram) = test_projected_moments(&matrix, &candidates, &mut reservation)
             .expect("fused standardized moments");
         for (left, generated) in candidates.iter().copied().enumerate() {
             let mut expected_rhs = 0.0_f64;
@@ -10980,7 +8641,7 @@ mod tests {
         let matrix = DenseMatrix::from_row_major(rows, columns, values).expect("moment matrix");
         let candidates = [0_usize, 2, 4];
         let mut fused_reservation = SystemFitReservation;
-        let (rhs, gram) = build_standardized_moments(&matrix, &candidates, &mut fused_reservation)
+        let (rhs, gram) = test_projected_moments(&matrix, &candidates, &mut fused_reservation)
             .expect("noncontiguous fused standardized moments");
         let mut reference_reservation = SystemFitReservation;
         let (reference_rhs, reference_gram) =
@@ -11537,14 +9198,14 @@ mod tests {
         }
         let matrix = DenseMatrix::from_row_major(rows, 2, values).expect("moment matrix");
         let mut reservation = SystemFitReservation;
-        let (rhs, gram) = build_standardized_moments(&matrix, &[0], &mut reservation)
+        let (rhs, gram) = test_projected_moments(&matrix, &[0], &mut reservation)
             .expect("capped fused standardized moments");
         assert_eq!(rhs, vec![102.0]);
         assert_eq!(gram, vec![153.0]);
     }
 
     #[test]
-    fn guarded_cholesky_accepts_well_conditioned_wide_finite_design() {
+    fn shared_finite_accepts_known_wide_design() {
         for (rows, columns) in [(32_768_usize, 12_usize), (1_024, 65), (1_024, 128)] {
             let mut regressors = vec![vec![0.0_f64; rows]; columns];
             let mut state = 0x9e37_79b9_7f4a_7c15_u64;
@@ -11559,12 +9220,12 @@ mod tests {
             }
             let outcome = (0..rows)
                 .map(|row| {
-                    regressors.iter().enumerate().fold(
-                        0.02 * (row as f64 * 0.13).cos(),
-                        |value, (column, regressor)| {
+                    regressors
+                        .iter()
+                        .enumerate()
+                        .fold(0.0_f64, |value, (column, regressor)| {
                             ((column + 1) as f64 / columns as f64).mul_add(regressor[row], value)
-                        },
-                    )
+                        })
                 })
                 .collect::<Vec<_>>();
             let prepared = prepared(
@@ -11575,133 +9236,33 @@ mod tests {
                 false,
                 TestWeights::Unit,
             );
-            let mut within_values = Vec::with_capacity(rows * (columns + 1));
-            for row in 0..rows {
-                within_values.push(outcome[row]);
-                for regressor in &regressors {
-                    within_values.push(regressor[row]);
+            for mode in [
+                PreparedOlsExecutionMode::Fast,
+                PreparedOlsExecutionMode::Low,
+            ] {
+                let fit = fit_prepared_ols_coefficients_map(
+                    &prepared,
+                    PreparedOlsFitConfig {
+                        execution: PreparedOlsExecutionConfig {
+                            mode,
+                            poolsize: 8,
+                            ..PreparedOlsExecutionConfig::default()
+                        },
+                        ..PreparedOlsFitConfig::default()
+                    },
+                )
+                .expect("shared finite known wide fit");
+                assert_eq!(fit.finite_rank(), columns);
+                assert!(fit.rank_certificate().passed);
+                assert!(fit.score_certificate().passed);
+                for (column, coefficient) in fit.coefficients().iter().enumerate() {
+                    assert_close(
+                        coefficient.value.expect("known wide coefficient"),
+                        (column + 1) as f64 / columns as f64,
+                        1e-10,
+                    );
                 }
-            }
-            let mut within = DenseMatrix::from_row_major(rows, columns + 1, within_values)
-                .expect("wide within matrix");
-            let weights = normalized_weights(&prepared).expect("unit weights");
-            let mut reference_norms = Vec::with_capacity(columns);
-            for column in 0..columns {
-                reference_norms.push(
-                    weighted_matrix_column_norm(&within, column + 1, weights)
-                        .expect("reference norm"),
-                );
-            }
-            let score_norms = reference_norms.clone();
-            for row in 0..rows {
-                for column in 0..columns {
-                    within[(row, column + 1)] /= reference_norms[column];
-                }
-            }
-            let candidates = (0..columns).collect::<Vec<_>>();
-            let statuses = vec![PreparedOlsFitStatus::NumericallyRankDeficient; columns];
-            let mut reservation = SystemFitReservation;
-            let (rhs, gram) = build_standardized_moments(&within, &candidates, &mut reservation)
-                .expect("wide standardized moments");
-            let relative_threshold = PreparedOlsFitConfig::default().rank_tolerance_multiplier
-                * f64::EPSILON
-                * rows as f64;
-            let bread_weight_scale =
-                prepared_bread_weight_scale(&prepared, weights).expect("bread weight scale");
-            let fit = try_fit_scaled_pivoted_cholesky(
-                Some(&within),
-                weights,
-                bread_weight_scale,
-                &reference_norms,
-                &score_norms,
-                &candidates,
-                &statuses,
-                &gram,
-                &rhs,
-                relative_threshold,
-                PreparedOlsFitConfig::default(),
-                &mut reservation,
-                false,
-                false,
-                true,
-            )
-            .expect("guarded Cholesky attempt")
-            .expect("well-conditioned design selects guarded Cholesky");
-            assert_eq!(fit.rank, columns);
-            assert!(fit.certificate.passed);
-            assert_eq!(fit.certificate.maximum_dropped_trailing_norm, 0.0);
-            assert!(fit.finite_score.infinity_scale < 1e-10);
-            let scratch_fit = try_fit_scaled_pivoted_cholesky(
-                None,
-                weights,
-                bread_weight_scale,
-                &reference_norms,
-                &score_norms,
-                &candidates,
-                &statuses,
-                &gram,
-                &rhs,
-                relative_threshold,
-                PreparedOlsFitConfig::default(),
-                &mut reservation,
-                false,
-                false,
-                true,
-            )
-            .expect("scratch Cholesky attempt")
-            .expect("scratch moments select guarded Cholesky");
-            assert!(scratch_fit.within_residuals.is_none());
-            assert!(!scratch_fit.standardized_within_is_reusable);
-            assert!(fit.within_residuals.is_some());
-            assert!(fit.standardized_within_is_reusable);
-            assert_eq!(
-                scratch_fit.generated_coefficients,
-                fit.generated_coefficients
-            );
-            assert_eq!(scratch_fit.generated_statuses, fit.generated_statuses);
-            assert_eq!(scratch_fit.kept, fit.kept);
-            assert_eq!(scratch_fit.dropped, fit.dropped);
-            assert_eq!(
-                scratch_fit.certificate.condition_proxy.to_bits(),
-                fit.certificate.condition_proxy.to_bits()
-            );
-            assert_eq!(
-                scratch_fit.bread.as_ref().expect("scratch bread").values,
-                fit.bread.as_ref().expect("dense bread").values
-            );
-            let bread = fit.bread.expect("certified Cholesky bread");
-            assert!(bread.left_inverse_relative_infinity_norm < 5e-10);
-            assert!(bread.right_inverse_relative_infinity_norm < 5e-10);
-            // A nearly duplicated final coordinate must fail the stronger pivot
-            // guard even while its Gram matrix is positive definite.
-            if columns > 64 {
-                for gap in [0.0_f64, 1e-10] {
-                    let mut weak_gram = gram.clone();
-                    for j in 0..columns {
-                        weak_gram[(columns - 1) * columns + j] = gram[j];
-                        weak_gram[j * columns + columns - 1] = gram[j * columns];
-                    }
-                    weak_gram[columns * columns - 1] = gram[0] + gap;
-                    assert!(try_fit_scaled_pivoted_cholesky(
-                        None,
-                        weights,
-                        bread_weight_scale,
-                        &reference_norms,
-                        &score_norms,
-                        &candidates,
-                        &statuses,
-                        &weak_gram,
-                        &rhs,
-                        relative_threshold,
-                        PreparedOlsFitConfig::default(),
-                        &mut reservation,
-                        false,
-                        false,
-                        true,
-                    )
-                    .expect("weak Cholesky attempt")
-                    .is_none());
-                }
+                assert!(fit.residuals().iter().all(|value| value.abs() < 1e-10));
             }
         }
     }
@@ -15261,20 +12822,17 @@ mod tests {
         let stride = prepared_data.fit_model().columns.len() + 1;
         let logical_elements = rows * stride;
         let expected = vec![1.25, -2.5, 3.75, -4.0, 5.5, 6.25];
-        let selected_norm = 3.5;
         let mut values = vec![0.0; logical_elements];
         for (row, expected) in expected.iter().copied().enumerate() {
             values[row * stride] = row as f64 + 1.0;
             values[row * stride + 1] = 100.0 + row as f64;
-            values[row * stride + 2] =
-                expected * frame.weights().root(row).expect("root weight") / selected_norm;
+            values[row * stride + 2] = expected;
         }
         let source_capacity = values.capacity();
         assert!(source_capacity >= logical_elements);
-        let cache = PreparedOlsFastScoreCache::Strided {
+        let cache = PreparedOlsFastScoreCache::Selected {
             generated_columns: vec![0, 1],
             within: DenseMatrix::from_row_major(rows, stride, values).expect("strided cache"),
-            reference_norms: vec![2.0, selected_norm],
             means: vec![0.0, 0.0],
         };
         let (memory, pointer_preserved, compacted) = session
@@ -15673,7 +13231,7 @@ mod tests {
         .expect("strided inference-cache control fit");
         assert!(matches!(
             strided.fast_score_cache,
-            Some(PreparedOlsFastScoreCache::Strided { .. })
+            Some(PreparedOlsFastScoreCache::Selected { .. })
         ));
         for fail_at in 1..=strided_successful.calls {
             let mut injected = InjectedReservation {

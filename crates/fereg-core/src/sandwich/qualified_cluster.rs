@@ -777,9 +777,10 @@ fn finish_dense_groups<R: SandwichReservation>(
         0.0_f64,
         "unable to reserve qualified clustered dense partials",
     )?;
-    crate::parallel::stage_rows_mut(&mut partials, stride, group_slots as u128 * square as u128)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
+    crate::parallel::stage_try_for_each(
+        partials.par_chunks_mut(stride).enumerate(),
+        group_slots as u128 * square as u128,
+        |(chunk, partial)| -> Result<()> {
             let (raw, tail) = partial.split_at_mut(square);
             let (independent, workspace) = tail.split_at_mut(square);
             let (raw_score, workspace) = workspace.split_at_mut(dimension);
@@ -803,7 +804,8 @@ fn finish_dense_groups<R: SandwichReservation>(
                 count[0] += 1.0;
             }
             Ok(())
-        })?;
+        },
+    )?;
     merge_partials(&partials, stride, dimension, square, reservation)
 }
 
@@ -864,9 +866,10 @@ where
         0.0,
         "unable to reserve qualified clustered ordered partials",
     )?;
-    crate::parallel::stage_rows_mut(&mut partials, stride, nobs as u128 * square as u128)
-        .enumerate()
-        .try_for_each(|(chunk, partial)| -> Result<()> {
+    crate::parallel::stage_try_for_each(
+        partials.par_chunks_mut(stride).enumerate(),
+        nobs as u128 * square as u128,
+        |(chunk, partial)| -> Result<()> {
             let (raw, tail) = partial.split_at_mut(square);
             let (independent, workspace) = tail.split_at_mut(square);
             let (group, workspace) = workspace.split_at_mut(dimension);
@@ -922,7 +925,8 @@ where
                     "qualified clustered ordered partial is nonfinite",
                 ))
             }
-        })?;
+        },
+    )?;
     merge_partials(&partials, stride, dimension, square, reservation)
 }
 

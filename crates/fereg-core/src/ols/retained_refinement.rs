@@ -25,6 +25,24 @@ pub(crate) fn coefficient_accuracy_scale(left: f64, right: f64) -> f64 {
     (1e-3 + magnitude).min(magnitude.max(1.0))
 }
 
+pub(super) fn refine_workspace<Slot>(
+    frame: RefinementFrame<'_>,
+    workspace: &mut crate::ols::finite_wls_kernel::FiniteWorkspace<Slot>,
+    tolerance: f64,
+) -> Result<()> {
+    refine_retained_coefficients(
+        frame,
+        RefinementWorkspace {
+            coefficients: &mut workspace.coefficients,
+            bread: &workspace.bread,
+            row: &mut workspace.row,
+            scores: &mut workspace.scores,
+            corrections: &mut workspace.solve,
+        },
+        tolerance,
+    )
+}
+
 pub(super) fn refine_retained_coefficients(
     frame: RefinementFrame<'_>,
     workspace: RefinementWorkspace<'_>,

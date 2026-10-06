@@ -6005,16 +6005,21 @@ fn project_effect_parallel<
     let row_work = values.nrows() as u128 * columns as u128;
     if FROM_INPUT || COMPLEMENT {
         let auxiliary = auxiliary.expect("validated auxiliary projection matrix");
-        crate::parallel::stage_rows_mut(values.as_mut_slice(), columns, row_work)
-            .zip(auxiliary.as_slice().par_chunks(columns))
-            .enumerate()
-            .try_for_each(|(observation, (row, auxiliary))| {
-                update_row(observation, row, Some(auxiliary))
-            })?;
+        crate::parallel::stage_try_for_each(
+            values
+                .as_mut_slice()
+                .par_chunks_mut(columns)
+                .zip(auxiliary.as_slice().par_chunks(columns))
+                .enumerate(),
+            row_work,
+            |(observation, (row, auxiliary))| update_row(observation, row, Some(auxiliary)),
+        )?;
     } else {
-        crate::parallel::stage_rows_mut(values.as_mut_slice(), columns, row_work)
-            .enumerate()
-            .try_for_each(|(observation, row)| update_row(observation, row, None))?;
+        crate::parallel::stage_try_for_each(
+            values.as_mut_slice().par_chunks_mut(columns).enumerate(),
+            row_work,
+            |(observation, row)| update_row(observation, row, None),
+        )?;
     }
     Ok(())
 }
@@ -6150,16 +6155,21 @@ fn project_effect_parallel_fused<
     let row_work = values.nrows() as u128 * columns as u128;
     if FROM_INPUT || COMPLEMENT {
         let auxiliary = auxiliary.expect("validated auxiliary projection matrix");
-        crate::parallel::stage_rows_mut(values.as_mut_slice(), columns, row_work)
-            .zip(auxiliary.as_slice().par_chunks(columns))
-            .enumerate()
-            .try_for_each(|(observation, (row, auxiliary))| {
-                update_row(observation, row, Some(auxiliary))
-            })?;
+        crate::parallel::stage_try_for_each(
+            values
+                .as_mut_slice()
+                .par_chunks_mut(columns)
+                .zip(auxiliary.as_slice().par_chunks(columns))
+                .enumerate(),
+            row_work,
+            |(observation, (row, auxiliary))| update_row(observation, row, Some(auxiliary)),
+        )?;
     } else {
-        crate::parallel::stage_rows_mut(values.as_mut_slice(), columns, row_work)
-            .enumerate()
-            .try_for_each(|(observation, row)| update_row(observation, row, None))?;
+        crate::parallel::stage_try_for_each(
+            values.as_mut_slice().par_chunks_mut(columns).enumerate(),
+            row_work,
+            |(observation, row)| update_row(observation, row, None),
+        )?;
     }
     Ok(())
 }
@@ -6765,22 +6775,23 @@ fn borrowed_symmetric_projection_from_group_means_recording(
             if let Some(batch) = coefficients.as_mut() {
                 batch.add_intercept_level_major(effect_index, means, effect.n_levels())?;
             }
-            crate::parallel::stage_rows_mut(
-                projection.as_mut_slice(),
-                columns,
+            crate::parallel::stage_try_for_each(
+                projection
+                    .as_mut_slice()
+                    .par_chunks_mut(columns)
+                    .enumerate(),
                 input.nrows() as u128 * columns as u128,
-            )
-            .enumerate()
-            .try_for_each(|(row, values)| -> Result<()> {
-                let start = effect.codes()[row] as usize * columns;
-                for (value, mean) in values.iter_mut().zip(&means[start..start + columns]) {
-                    *value += mean;
-                    if !value.is_finite() {
-                        return Err(invalid_data("categorical projection action is nonfinite"));
+                |(row, values)| -> Result<()> {
+                    let start = effect.codes()[row] as usize * columns;
+                    for (value, mean) in values.iter_mut().zip(&means[start..start + columns]) {
+                        *value += mean;
+                        if !value.is_finite() {
+                            return Err(invalid_data("categorical projection action is nonfinite"));
+                        }
                     }
-                }
-                Ok(())
-            })?;
+                    Ok(())
+                },
+            )?;
         } else {
             let means = &mut workspace.group_sums[..columns];
             for level in 0..effect.n_levels() {

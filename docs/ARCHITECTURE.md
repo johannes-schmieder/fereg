@@ -170,8 +170,8 @@ Progress remains in MILESTONES. M9 consolidates QR rank progression; M10 tests
 Schur scheduling and may retain current execution on a negative result; M11
 clarifies PPML memory ownership, storage contributions and phase lifetimes.
 
-M9 now shares pivot selection, rank progression and Householder stopping in
-`ols/prepared_fit/qr_factorization.rs`. Dense and scratch adapters retain their
+M9 historically shared pivot selection, rank progression and Householder
+stopping in the prepared QR owner, superseded by the M31 finite service. Dense and scratch adapters retain their
 norm refresh and storage behavior. This removes one duplicated policy, with a
 net reduction of one production line; inherited large fit functions remain.
 [Clean paired evidence](../bench/history/2026-10-03-m9-qr-factorization.json)
@@ -355,3 +355,24 @@ are retired within the later architectural milestones.
 The [M28 acceptance](../bench/history/2026-10-05-m28-capacity-owner-acceptance.json)
 binds the unchanged local evidence, actual +96-line change and explicit
 architectural exception. Its terminal performance evidence remains unresolved.
+
+## M31 shared finite operations (candidate)
+
+`ols/finite_operations.rs` owns guarded factor/solve/inverse and explicit OLS
+discovery, retained discovery and frozen-basis rank policy.
+`ols/finite_wls_kernel` retains concrete dense, scratch and implicit kernels
+over immutable projected rows. OLS owns a temporary `FiniteWorkspace`; PPML
+lends its existing banks. OLS creates no PPML session.
+
+`ols/prepared_fit/one_shot.rs` owns the single Fast/Low fit lifecycle. One
+finite-result owner and publisher serve OLS and retained PPML fits. The
+prepared-standardized moment/QR owner and `qr_factorization.rs` are deleted.
+Inference keeps selected raw projected rows; Low transfers its same row-major
+file and compacts it in place. The column-major working/copy/transpose pipeline
+and I/O-buffer handoff are retired. Scientific and performance acceptance of
+this candidate remains open in MILESTONES.
+
+The candidate also corrects the shared stage scheduler: indexed tasks are
+partitioned explicitly into planned lanes rather than relying on Rayon's
+minimum-length splitting. Finite moments, FE/OLS norms, sandwich reductions
+and PPML row work retain their physical arithmetic leaves and ordered merges.

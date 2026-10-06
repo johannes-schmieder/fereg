@@ -36,20 +36,21 @@ impl OlsFrameMemory {
         let q = k.max(p);
         let square = mul(q, q)?;
         let blocks = rows.div_ceil(16_384).clamp(1, 64) as u128;
-        // Within/RHS and the optional packed score cache; QR outcome, raw and
+        // Immutable within/RHS and the optional packed score cache; raw and
         // independent residuals, normalized weights, and certificate vectors.
         let fast_rows = mul(mul(n, add(mul(k, 2)?, 8)?)?, 8)?;
         let low_rows = add(
             mul(mul(n, add(poolsize.min(generated) as u128, 8)?)?, 8)?,
-            // Working and score scratch I/O buffers, row cache and transpose.
+            // Conservative block I/O and score-row cache reserve; a single
+            // projected file survives until selected-column compaction.
             // Private file payload is reported separately, never heap-charged.
             if generated == 0 { 0 } else { 4 * (1 << 20) },
         )?;
-        // Gram, QR/Cholesky trial, inverse/bread and independent checks. The
-        // failed Cholesky's local owners drop before QR fallback begins.
+        // Shared Gram, factor, QR fallback, inverse/bread and independent
+        // checks. The factor trial and QR reuse the same numerical banks.
         let finite = add(add(mul(square, 128)?, mul(q, 1024)?)?, 4096)?;
-        // Fused moments use at most 64 columns and 64 deterministic blocks;
-        // larger axes take the columnwise path. Norm/mean partials are linear.
+        // The historical moment allowance bounds shared physical moments
+        // and independent norm/mean partials; public admission stays unchanged.
         let moment_k = k.min(64);
         let moments = mul(
             mul(blocks, add(mul(moment_k, moment_k)?, mul(add(k, 1)?, 8)?)?)?,

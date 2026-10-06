@@ -7,12 +7,30 @@ generate double x = mod(7 * _n, 29) / 14 - 1
 generate double y = 0.7 + mod(11 * _n, 23) / 5
 generate byte g = mod(_n, 8)
 
+quietly regress y c.x i.g
+scalar oracle_x = _b[x]
+scalar oracle_vx = e(V)[1,1]
+scalar oracle_df = e(df_r)
+quietly summarize y, meanonly
+scalar oracle_mean_y = r(mean)
+quietly summarize x, meanonly
+scalar oracle_cons = oracle_mean_y - oracle_x*r(mean)
+
 quietly fereg y c.x, absorb(g) threads(1) deterministic
 assert "`e(fereg_engine)'" == "next"
 matrix ols_b = e(b)
 matrix ols_v = e(V)
+assert abs(ols_b[1,1]-oracle_x)<1e-12
+assert abs(ols_b[1,2]-oracle_cons)<1e-12
+assert abs(ols_v[1,1]-oracle_vx)<1e-12
+assert e(df_r)==oracle_df
+matrix ols_b_next = ols_b
+matrix ols_v_next = ols_v
 generate byte ols_sample = e(sample)
 estimates store next_ols
+quietly fereg y c.x, absorb(g) threads(1) deterministic engine(legacy)
+matrix ols_b_legacy = e(b)
+matrix ols_v_legacy = e(V)
 quietly feppml y c.x, absorb(g) threads(1) deterministic
 assert "`e(feppml_engine)'" == "next"
 matrix ppml_b = e(b)
@@ -23,7 +41,13 @@ generate byte ppml_sample = e(sample)
 foreach engine in legacy next legacy next {
     quietly fereg y c.x, absorb(g) threads(1) deterministic engine(`engine')
     assert "`e(fereg_engine)'" == "`engine'"
-    assert mreldif(e(b), ols_b) == 0 & mreldif(e(V), ols_v) == 0
+    * Scoped finite arithmetic may differ across engines; handle alternation
+    * must preserve each engine's own exact coefficients and covariance.
+    assert mreldif(e(b), ols_b_`engine') == 0 & mreldif(e(V), ols_v_`engine') == 0
+    assert mreldif(e(b), ols_b) < 1e-12 & mreldif(e(V), ols_v) < 1e-12
+    assert abs(e(b)[1,1]-oracle_x)<1e-12
+    assert abs(e(V)[1,1]-oracle_vx)<1e-12
+    assert e(df_r)==oracle_df
     assert e(sample) == ols_sample
     quietly feppml y c.x, absorb(g) threads(1) deterministic engine(`engine')
     assert "`e(feppml_engine)'" == "`engine'"

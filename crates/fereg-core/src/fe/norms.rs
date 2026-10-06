@@ -36,11 +36,14 @@ pub(super) fn column_norms(
     }
     // Local scalar state avoids sharing cache lines during the recurrence.
     // Columns retain precisely the serial kernel's observation order.
-    crate::parallel::stage_items_mut(output, work)
-        .zip(scales.par_iter_mut())
-        .zip(sums.par_iter_mut())
-        .enumerate()
-        .try_for_each(|(column, ((out, scale), sum))| {
+    crate::parallel::stage_try_for_each(
+        output
+            .par_iter_mut()
+            .zip(scales.par_iter_mut())
+            .zip(sums.par_iter_mut())
+            .enumerate(),
+        work,
+        |(column, ((out, scale), sum))| {
             let mut local_scale = 0.0;
             let mut local_sum = 1.0;
             for row in 0..values.nrows() {
@@ -55,7 +58,8 @@ pub(super) fn column_norms(
             *scale = local_scale;
             *sum = local_sum;
             Ok(())
-        })
+        },
+    )
 }
 
 fn update(value: f64, scale: &mut f64, sum: &mut f64, message: &'static str) -> Result<()> {

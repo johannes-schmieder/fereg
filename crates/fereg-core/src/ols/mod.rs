@@ -2,6 +2,7 @@
 
 mod canonical_products;
 mod dof;
+mod finite_operations;
 mod finite_wls_kernel;
 pub(crate) use canonical_products::canonical_three_workspace_bytes;
 mod fit;

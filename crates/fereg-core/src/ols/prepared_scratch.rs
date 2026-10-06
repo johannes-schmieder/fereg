@@ -2,9 +2,8 @@
 //!
 //! The file is private to one fit, created with `create_new`, and removed by
 //! `Drop` on success, ordinary error, panic unwinding, or caller cancellation.
-//! Ordinary OLS uses column-major storage. Iterative callers may explicitly
-//! create row-major storage so absorbed blocks can be patched and compacted in
-//! place without owning a second observation-by-parameter scratch file.
+//! OLS and iterative callers share row-major blocks. Absorbed columns are
+//! patched and compacted in place without a second projected scratch file.
 
 use rayon::prelude::*;
 use std::fs::{remove_file, File, OpenOptions};
@@ -19,24 +18,13 @@ const IO_BUFFER_BYTES: usize = 1 << 20;
 const SHARED_READ_BUFFER_BYTES: usize = 8 << 10;
 static SCRATCH_SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum ScratchLayout {
-    ColumnMajor,
-    RowMajor,
-}
-
 /// Concrete storage and conservative admission have different row-buffer rules.
 struct ScratchCapacityPlan {
     bytes: u64,
     buffer: Capacity<u8>,
 }
 impl ScratchCapacityPlan {
-    fn concrete(
-        rows: usize,
-        columns: usize,
-        layout: ScratchLayout,
-        buffered: bool,
-    ) -> Result<Self> {
+    fn concrete(rows: usize, columns: usize) -> Result<Self> {
         let cells = Capacity::<f64>::matrix(
             rows as u128,
             columns as u128,
@@ -47,7 +35,7 @@ impl ScratchCapacityPlan {
             .ok()
             .and_then(|n| n.checked_mul(8))
             .ok_or_else(|| allocation("prepared OLS scratch size overflows u64"))?;
-        let row = if layout == ScratchLayout::RowMajor && rows != 0 {
+        let row = if rows != 0 {
             columns
                 .checked_mul(8)
                 .ok_or_else(|| allocation("prepared OLS row-major scratch row size overflows"))?
@@ -60,7 +48,7 @@ impl ScratchCapacityPlan {
             .max(8);
         Ok(Self {
             bytes,
-            buffer: Capacity::new(if buffered { buffer as u128 } else { 0 }),
+            buffer: Capacity::new(buffer as u128),
         })
     }
 }
@@ -93,7 +81,6 @@ pub(crate) struct PreparedOlsScratch {
     rows: usize,
     columns: usize,
     bytes: u64,
-    layout: ScratchLayout,
     poisoned: bool,
     io_buffer: Vec<u8>,
     #[cfg(test)]
@@ -184,30 +171,12 @@ impl PreparedOlsScratch {
         }
     }
 
-    pub(crate) fn create(rows: usize, columns: usize) -> Result<Self> {
-        Self::create_with_layout(rows, columns, ScratchLayout::ColumnMajor)
-    }
-
     pub(crate) fn create_row_major(rows: usize, columns: usize) -> Result<Self> {
-        Self::create_with_layout(rows, columns, ScratchLayout::RowMajor)
+        Self::create_with_buffer(rows, columns)
     }
 
-    fn create_with_layout(rows: usize, columns: usize, layout: ScratchLayout) -> Result<Self> {
-        Self::create_with_buffer(rows, columns, layout, true)
-    }
-
-    /// A retained copy borrows the working file's buffer until QR releases it.
-    pub(crate) fn create_unbuffered(rows: usize, columns: usize) -> Result<Self> {
-        Self::create_with_buffer(rows, columns, ScratchLayout::ColumnMajor, false)
-    }
-
-    fn create_with_buffer(
-        rows: usize,
-        columns: usize,
-        layout: ScratchLayout,
-        buffered: bool,
-    ) -> Result<Self> {
-        let plan = ScratchCapacityPlan::concrete(rows, columns, layout, buffered)?;
+    fn create_with_buffer(rows: usize, columns: usize) -> Result<Self> {
+        let plan = ScratchCapacityPlan::concrete(rows, columns)?;
         let bytes = plan.bytes;
         let io_buffer = plan
             .buffer
@@ -246,7 +215,6 @@ impl PreparedOlsScratch {
                         rows,
                         columns,
                         bytes,
-                        layout,
                         poisoned: false,
                         io_buffer,
                         #[cfg(test)]
@@ -286,11 +254,6 @@ impl PreparedOlsScratch {
         self.bytes
     }
 
-    #[cfg(test)]
-    pub(crate) const fn layout(&self) -> ScratchLayout {
-        self.layout
-    }
-
     pub(crate) fn io_buffer_capacity(&self) -> usize {
         self.io_buffer.capacity()
     }
@@ -298,63 +261,6 @@ impl PreparedOlsScratch {
     #[cfg(test)]
     pub(crate) fn identity_path(&self) -> &std::path::Path {
         &self.path
-    }
-
-    pub(crate) fn write_column(&mut self, column: usize, values: &[f64]) -> Result<()> {
-        self.require_layout(ScratchLayout::ColumnMajor)?;
-        self.validate_column(column, values.len())?;
-        let offset = self.column_element_offset(column, 0)?;
-        self.write_values_at(offset, values)
-    }
-
-    pub(crate) fn write_column_with_borrowed_buffer(
-        &mut self,
-        column: usize,
-        values: &[f64],
-        donor: &mut Self,
-    ) -> Result<()> {
-        self.take_io_buffer_from(donor)?;
-        let result = self.write_column(column, values);
-        // Ordinary errors return the bank; panic unwinding drops both private
-        // files and their buffers with the enclosing failed fit.
-        std::mem::swap(&mut self.io_buffer, &mut donor.io_buffer);
-        result
-    }
-
-    pub(crate) fn take_io_buffer_from(&mut self, donor: &mut Self) -> Result<()> {
-        if !self.io_buffer.is_empty() || donor.io_buffer.len() < 8 {
-            return Err(invalid(
-                "scratch buffer transfer requires an empty recipient",
-            ));
-        }
-        self.require_healthy()?;
-        donor.require_healthy()?;
-        std::mem::swap(&mut self.io_buffer, &mut donor.io_buffer);
-        Ok(())
-    }
-
-    pub(crate) fn read_column(&mut self, column: usize, values: &mut [f64]) -> Result<()> {
-        self.require_layout(ScratchLayout::ColumnMajor)?;
-        self.validate_column(column, values.len())?;
-        let offset = self.column_element_offset(column, 0)?;
-        self.read_values_at(offset, values)
-    }
-
-    pub(crate) fn read_column_range(
-        &mut self,
-        column: usize,
-        start_row: usize,
-        values: &mut [f64],
-    ) -> Result<()> {
-        self.require_layout(ScratchLayout::ColumnMajor)?;
-        let end_row = start_row
-            .checked_add(values.len())
-            .ok_or_else(|| allocation("prepared OLS scratch row range overflows"))?;
-        if column >= self.columns || end_row > self.rows {
-            return Err(invalid("prepared OLS scratch row range is out of bounds"));
-        }
-        let offset = self.column_element_offset(column, start_row)?;
-        self.read_values_at(offset, values)
     }
 
     /// Replace a complete current-frame design with one contiguous write per
@@ -382,7 +288,7 @@ impl PreparedOlsScratch {
         prepare: impl Fn(&mut T, usize, usize) -> Result<()>,
         value: impl Fn(&T, usize, usize) -> Result<f64> + Sync,
     ) -> Result<()> {
-        if self.layout != ScratchLayout::RowMajor || self.poisoned || maximum_rows == 0 {
+        if self.poisoned || maximum_rows == 0 {
             return Err(invalid(
                 "prepared OLS rewrite requires valid row-major scratch",
             ));
@@ -536,7 +442,7 @@ impl PreparedOlsScratch {
         selected_columns: &[usize],
         values: &mut [f64],
     ) -> Result<()> {
-        self.require_layout(ScratchLayout::RowMajor)?;
+        self.require_healthy()?;
         if row >= self.rows || values.len() != selected_columns.len() {
             return Err(invalid(
                 "prepared OLS selected row dimensions are inconsistent",
@@ -600,7 +506,7 @@ impl PreparedOlsScratch {
         &mut self,
         selected_columns: &[usize],
     ) -> Result<()> {
-        self.require_layout(ScratchLayout::RowMajor)?;
+        self.require_healthy()?;
         self.validate_selected_columns(selected_columns)?;
         let old_columns = self.columns;
         let new_columns = selected_columns.len();
@@ -678,9 +584,21 @@ impl PreparedOlsScratch {
         Ok(())
     }
 
+    #[cfg(test)]
     pub(crate) fn write_linear(&mut self, offset: usize, values: &[f64]) -> Result<()> {
         self.validate_linear_range(offset, values.len())?;
-        self.write_values_at(offset, values)
+        if values.iter().any(|value| !value.is_finite()) {
+            return Err(invalid("nonfinite test scratch initializer"));
+        }
+        self.seek_element(offset)?;
+        self.poisoned = true;
+        for value in values {
+            self.file_mut()
+                .write_all(&value.to_le_bytes())
+                .map_err(|error| io_error("unable to initialize test scratch", error))?;
+        }
+        self.poisoned = false;
+        Ok(())
     }
 
     pub(crate) fn read_linear(&mut self, offset: usize, values: &mut [f64]) -> Result<()> {
@@ -749,44 +667,6 @@ impl PreparedOlsScratch {
             .map_err(|error| io_error("unable to write prepared OLS scratch tile", error))
     }
 
-    fn write_values_at(&mut self, offset: usize, values: &[f64]) -> Result<()> {
-        self.require_healthy()?;
-        if values.iter().any(|value| !value.is_finite()) {
-            return Err(invalid(
-                "prepared OLS scratch write received a nonfinite value",
-            ));
-        }
-        if values.is_empty() {
-            return Ok(());
-        }
-        self.seek_element(offset)?;
-        let values_per_chunk = self.io_buffer.len() / 8;
-        if values_per_chunk == 0 {
-            return Err(invalid("prepared OLS scratch has no active I/O buffer"));
-        }
-        for chunk in values.chunks(values_per_chunk) {
-            let byte_count = chunk
-                .len()
-                .checked_mul(8)
-                .ok_or_else(|| allocation("prepared OLS scratch write size overflows"))?;
-            for (value, bytes) in chunk
-                .iter()
-                .zip(self.io_buffer[..byte_count].chunks_exact_mut(8))
-            {
-                bytes.copy_from_slice(&value.to_le_bytes());
-            }
-            self.poisoned = true;
-            let file = self
-                .file
-                .as_mut()
-                .expect("prepared OLS scratch file is open before Drop");
-            file.write_all(&self.io_buffer[..byte_count])
-                .map_err(|error| io_error("unable to write prepared OLS scratch column", error))?;
-        }
-        self.poisoned = false;
-        Ok(())
-    }
-
     fn read_values_at(&mut self, offset: usize, values: &mut [f64]) -> Result<()> {
         self.seek_element(offset)?;
         let values_per_chunk = self.io_buffer.len() / 8;
@@ -819,22 +699,13 @@ impl PreparedOlsScratch {
         Ok(())
     }
 
-    fn validate_column(&self, column: usize, values: usize) -> Result<()> {
-        if column >= self.columns || values != self.rows {
-            return Err(invalid(
-                "prepared OLS scratch column dimensions are inconsistent",
-            ));
-        }
-        Ok(())
-    }
-
     fn validate_row_major_block(
         &self,
         start_column: usize,
         block_columns: usize,
         values: usize,
     ) -> Result<()> {
-        self.require_layout(ScratchLayout::RowMajor)?;
+        self.require_healthy()?;
         let end_column = start_column
             .checked_add(block_columns)
             .ok_or_else(|| allocation("prepared OLS row-major block range overflows"))?;
@@ -866,15 +737,6 @@ impl PreparedOlsScratch {
         Ok(())
     }
 
-    fn require_layout(&self, expected: ScratchLayout) -> Result<()> {
-        self.require_healthy()?;
-        if self.layout == expected {
-            Ok(())
-        } else {
-            Err(invalid("prepared OLS scratch layout is inconsistent"))
-        }
-    }
-
     fn require_healthy(&self) -> Result<()> {
         if self.poisoned {
             Err(invalid(
@@ -892,7 +754,7 @@ impl PreparedOlsScratch {
     }
 
     fn row_major_tile_rows(&self) -> Result<usize> {
-        self.require_layout(ScratchLayout::RowMajor)?;
+        self.require_healthy()?;
         let row_bytes = self.row_bytes()?;
         if row_bytes == 0 {
             return Ok(self.rows.max(1));
@@ -921,13 +783,6 @@ impl PreparedOlsScratch {
             ));
         }
         Ok(())
-    }
-
-    fn column_element_offset(&self, column: usize, row: usize) -> Result<usize> {
-        column
-            .checked_mul(self.rows)
-            .and_then(|value| value.checked_add(row))
-            .ok_or_else(|| allocation("prepared OLS scratch column offset overflows"))
     }
 
     fn seek_element(&mut self, element: usize) -> Result<()> {
@@ -1098,72 +953,24 @@ mod tests {
     }
 
     #[test]
-    fn retained_columns_survive_working_mutation_without_another_io_bank() {
-        let n = IO_BUFFER_BYTES / 8 + 3;
-        let values = (0..n).map(|row| row as f64 * 0.125).collect::<Vec<_>>();
-        let paths;
-        {
-            let mut working = PreparedOlsScratch::create(n, 1).unwrap();
-            let mut retained = PreparedOlsScratch::create_unbuffered(n, 1).unwrap();
-            paths = [working.path.clone(), retained.path.clone()];
-            let capacity = working.io_buffer_capacity();
-            assert_eq!(retained.io_buffer_capacity(), 0);
-            working.write_column(0, &values).unwrap();
-            retained
-                .write_column_with_borrowed_buffer(0, &values, &mut working)
-                .unwrap();
-            assert_eq!(working.io_buffer_capacity(), capacity);
-            assert_eq!(retained.io_buffer_capacity(), 0);
-            working.write_column(0, &vec![0.0; n]).unwrap();
-            retained.take_io_buffer_from(&mut working).unwrap();
-            assert_eq!(working.io_buffer_capacity(), 0);
-            assert_eq!(retained.io_buffer_capacity(), capacity);
-            let mut actual = vec![0.0; n];
-            retained.read_column(0, &mut actual).unwrap();
-            assert_eq!(actual, values);
-            assert!(working.read_column(0, &mut actual).is_err());
-        }
-        assert!(paths.iter().all(|path| !path.exists()));
-    }
-
-    #[test]
-    fn failed_retained_write_returns_the_working_buffer_and_removes_its_file() {
-        let paths;
-        {
-            let mut working = PreparedOlsScratch::create(3, 1).unwrap();
-            let mut retained = PreparedOlsScratch::create_unbuffered(3, 1).unwrap();
-            paths = [working.path.clone(), retained.path.clone()];
-            let capacity = working.io_buffer_capacity();
-            let values = [1.0, -2.0, 3.0];
-            working.write_column(0, &values).unwrap();
-            retained.file = Some(File::open(&retained.path).unwrap());
-            assert!(retained
-                .write_column_with_borrowed_buffer(0, &values, &mut working)
-                .is_err());
-            assert_eq!(working.io_buffer_capacity(), capacity);
-            assert_eq!(retained.io_buffer_capacity(), 0);
-            let mut actual = [0.0; 3];
-            working.read_column(0, &mut actual).unwrap();
-            assert_eq!(actual, values);
-        }
-        assert!(paths.iter().all(|path| !path.exists()));
-    }
-
-    #[test]
-    fn scratch_round_trips_columns_and_cleans_up() {
+    fn scratch_round_trips_blocks_and_cleans_up() {
         let (path, bytes) = {
-            let mut scratch = PreparedOlsScratch::create(4, 2).expect("scratch");
+            let mut scratch = PreparedOlsScratch::create_row_major(4, 2).expect("scratch");
             let path = scratch.path.clone();
             scratch
-                .write_column(0, &[1.0, -2.0, 3.5, 4.25])
+                .patch_row_major_block(0, 1, &[1.0, -2.0, 3.5, 4.25])
                 .expect("write first");
             scratch
-                .write_column(1, &[8.0, 7.0, 6.0, 5.0])
+                .patch_row_major_block(1, 1, &[8.0, 7.0, 6.0, 5.0])
                 .expect("write second");
             let mut values = vec![0.0; 4];
-            scratch.read_column(0, &mut values).expect("read first");
+            scratch
+                .read_row_major_block(0, 1, &mut values)
+                .expect("read first");
             assert_eq!(values, [1.0, -2.0, 3.5, 4.25]);
-            scratch.read_column(1, &mut values).expect("read second");
+            scratch
+                .read_row_major_block(1, 1, &mut values)
+                .expect("read second");
             assert_eq!(values, [8.0, 7.0, 6.0, 5.0]);
             assert_eq!(scratch.rows(), 4);
             assert_eq!(scratch.columns(), 2);
@@ -1175,21 +982,24 @@ mod tests {
 
     #[test]
     fn scratch_rejects_dimension_and_nonfinite_errors() {
-        let mut scratch = PreparedOlsScratch::create(2, 1).expect("scratch");
+        let mut scratch = PreparedOlsScratch::create_row_major(2, 1).expect("scratch");
         assert_eq!(
             scratch
-                .write_column(1, &[1.0, 2.0])
+                .patch_row_major_block(1, 1, &[1.0, 2.0])
                 .expect_err("column bound")
                 .code,
             ErrorCode::InvalidData
         );
         assert_eq!(
-            scratch.write_column(0, &[1.0]).expect_err("row bound").code,
+            scratch
+                .patch_row_major_block(0, 1, &[1.0])
+                .expect_err("row bound")
+                .code,
             ErrorCode::InvalidData
         );
         assert_eq!(
             scratch
-                .write_column(0, &[1.0, f64::NAN])
+                .patch_row_major_block(0, 1, &[1.0, f64::NAN])
                 .expect_err("nonfinite")
                 .code,
             ErrorCode::InvalidData
@@ -1201,7 +1011,7 @@ mod tests {
         fn assert_sync<T: Sync>() {}
         assert_sync::<PreparedOlsScratch>();
 
-        let mut scratch = PreparedOlsScratch::create(4, 2).expect("scratch");
+        let mut scratch = PreparedOlsScratch::create_row_major(4, 2).expect("scratch");
         scratch
             .write_linear(0, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0])
             .expect("write rows");
@@ -1322,7 +1132,6 @@ mod tests {
         let rows = 5;
         let columns = 5;
         let mut scratch = PreparedOlsScratch::create_row_major(rows, columns).expect("scratch");
-        assert_eq!(scratch.layout(), ScratchLayout::RowMajor);
         let initial = (0..rows * columns)
             .map(|position| position as f64 + 0.25)
             .collect::<Vec<_>>();
@@ -1456,35 +1265,6 @@ mod tests {
             }
         }
     }
-    #[test]
-    fn scratch_layout_keeps_column_and_row_major_apis_disjoint() {
-        let mut columns = PreparedOlsScratch::create(3, 2).expect("column scratch");
-        assert_eq!(columns.layout(), ScratchLayout::ColumnMajor);
-        columns
-            .write_column(0, &[1.0, 2.0, 3.0])
-            .expect("column write");
-        assert_eq!(
-            columns
-                .patch_row_major_block(0, 1, &[1.0, 2.0, 3.0])
-                .expect_err("row patch on column layout")
-                .code,
-            ErrorCode::InvalidData
-        );
-
-        let mut rows = PreparedOlsScratch::create_row_major(3, 2).expect("row scratch");
-        rows.write_linear(0, &[1.0, 2.0, 3.0, 4.0, 5.0, 6.0])
-            .expect("linear write remains layout neutral");
-        assert_eq!(
-            rows.write_column(0, &[1.0, 3.0, 5.0])
-                .expect_err("column write on row layout")
-                .code,
-            ErrorCode::InvalidData
-        );
-        let mut selected = [0.0, 0.0];
-        rows.read_selected_row_shared(1, &[0, 1], &mut selected)
-            .expect("row read");
-        assert_eq!(selected, [3.0, 4.0]);
-    }
 
     #[test]
     fn row_major_compaction_is_forward_in_place_and_updates_metadata() {
@@ -1504,7 +1284,6 @@ mod tests {
             .expect("compact");
         assert_eq!(scratch.identity_path(), path);
         assert!(path.exists());
-        assert_eq!(scratch.layout(), ScratchLayout::RowMajor);
         assert_eq!(scratch.rows(), rows);
         assert_eq!(scratch.columns(), 3);
         assert_eq!(scratch.bytes(), (rows * 3 * 8) as u64);

@@ -1398,29 +1398,30 @@ impl ReusableMapAbsorber {
             let groups = effect.n_levels();
             let bank =
                 &mut self.certificate_groups[first_group * stride..(first_group + groups) * stride];
-            crate::parallel::stage_rows_mut(
-                bank,
-                stride,
+            crate::parallel::stage_try_for_each(
+                bank.par_chunks_mut(stride).enumerate(),
                 self.design.nobs() as u128 * rhs as u128 * effect.channels() as u128,
+                |(level, result)| {
+                    let members = effect.level_index().members(level);
+                    let rank = geometry.ranks[first_group + level];
+                    let start = first_basis
+                        + effect.channels() * effect.level_index().membership_offsets()[level];
+                    let basis = &geometry.basis[start..start + members.len() * rank];
+                    certify_reusable_group(
+                        effect,
+                        members,
+                        weights,
+                        residuals,
+                        &self.rhs_scales[..rhs],
+                        basis,
+                        rank,
+                        &mut result[..rhs + 1],
+                    );
+
+                    Ok(())
+                },
             )
-            .enumerate()
-            .for_each(|(level, result)| {
-                let members = effect.level_index().members(level);
-                let rank = geometry.ranks[first_group + level];
-                let start = first_basis
-                    + effect.channels() * effect.level_index().membership_offsets()[level];
-                let basis = &geometry.basis[start..start + members.len() * rank];
-                certify_reusable_group(
-                    effect,
-                    members,
-                    weights,
-                    residuals,
-                    &self.rhs_scales[..rhs],
-                    basis,
-                    rank,
-                    &mut result[..rhs + 1],
-                );
-            });
+            .expect("infallible FE certificate stage");
             first_group += groups;
             first_basis += effect.channels() * self.design.nobs();
         }

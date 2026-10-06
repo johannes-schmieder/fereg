@@ -25,7 +25,7 @@ impl LinearConstantRepresentation {
     pub(super) fn capture(
         model: &super::super::PreparedOlsModel,
         retained: &RetainedWithinDesign,
-        workspace: &FrozenLinearWorkspace,
+        relations: super::super::finite_operations::BasisRelations<'_>,
         rank: usize,
         initial_norm: f64,
         relative_threshold: f64,
@@ -41,10 +41,10 @@ impl LinearConstantRepresentation {
         else {
             return Ok(None);
         };
-        let candidates = workspace.candidate_ids.len();
-        let Some(dropped) = workspace.permutation[rank..]
+        let candidates = relations.candidates.len();
+        let Some(dropped) = relations.permutation[rank..]
             .iter()
-            .position(|&position| workspace.candidate_ids[position] == constant)
+            .position(|&position| relations.candidates[position] == constant)
         else {
             return Ok(None);
         };
@@ -66,21 +66,21 @@ impl LinearConstantRepresentation {
             return Ok(None);
         }
         let kept = fallible_copy(
-            &workspace.kept,
+            relations.selected,
             "unable to reserve constant basis identities",
         )?;
         let mut loadings = fallible_empty(rank, "unable to reserve constant basis recipe")?;
         for &generated in &kept {
-            let pivot = workspace.permutation[..rank]
+            let pivot = relations.permutation[..rank]
                 .iter()
-                .position(|&position| workspace.candidate_ids[position] == generated)
+                .position(|&position| relations.candidates[position] == generated)
                 .ok_or_else(|| invalid_argument("constant recipe pivot is absent"))?;
             let position = retained
                 .stored_generated_columns
                 .iter()
                 .position(|&column| column == generated)
                 .ok_or_else(|| invalid_argument("constant recipe basis source is absent"))?;
-            let gamma = workspace.inverse_lower[pivot * (candidates - rank) + dropped];
+            let gamma = relations.dropped_projection[pivot * (candidates - rank) + dropped];
             let loading = (gamma * reference_norm) / retained.reference_norms[position];
             if !loading.is_finite() {
                 return Err(invalid_data("constant basis recipe is not finite"));

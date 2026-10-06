@@ -230,26 +230,16 @@ pub(super) fn replay_final_objectives_with_threads(
         for first in (0..outcome.len()).step_by(rows) {
             let count = rows.min(outcome.len() - first);
             let buffer = &mut tile[..count];
-            let failure = team.install(|| {
-                buffer
-                    .par_iter_mut()
-                    .enumerate()
-                    .with_min_len(
-                        crate::parallel::StagePlan::current(
-                            outcome.len() as u128 * 4,
-                            outcome.len(),
-                        )
-                        .chunk(outcome.len()),
-                    )
-                    .map(|(i, output)| -> Result<()> {
+            team.install(|| {
+                crate::parallel::stage_try_for_each(
+                    buffer.par_iter_mut().enumerate(),
+                    outcome.len() as u128 * 4,
+                    |(i, output)| -> Result<()> {
                         *output = row_values(first + i)?;
                         Ok(())
-                    })
-                    .find_first(Result::is_err)
-            });
-            if let Some(result) = failure {
-                result?;
-            }
+                    },
+                )
+            })?;
             // All three compensated chains retain their scalar row order.
             for values in buffer {
                 deviance.add(values[0]);
@@ -482,26 +472,16 @@ impl<'a> PreparedPoissonInputs<'a> {
         };
         if let Some(team) = &team {
             terms.resize(outcome.len(), [0.; 2]);
-            let failure = team.install(|| {
-                terms
-                    .par_iter_mut()
-                    .enumerate()
-                    .with_min_len(
-                        crate::parallel::StagePlan::current(
-                            outcome.len() as u128 * 4,
-                            outcome.len(),
-                        )
-                        .chunk(outcome.len()),
-                    )
-                    .map(|(row, output)| -> Result<()> {
+            team.install(|| {
+                crate::parallel::stage_try_for_each(
+                    terms.par_iter_mut().enumerate(),
+                    outcome.len() as u128 * 4,
+                    |(row, output)| -> Result<()> {
                         *output = row_terms(row)?;
                         Ok(())
-                    })
-                    .find_first(Result::is_err)
-            });
-            if let Some(result) = failure {
-                result?;
-            }
+                    },
+                )
+            })?;
         } else {
             for row in 0..outcome.len() {
                 terms.push(row_terms(row)?);
@@ -558,45 +538,39 @@ impl<'a> PreparedPoissonInputs<'a> {
         for first in (0..blocks).step_by(bank_blocks) {
             let count = bank_blocks.min(blocks - first);
             let partials = &mut partials_storage[..4 * count];
-            let failure = team.install(|| {
-                crate::parallel::stage_rows_mut(
-                    partials,
-                    4,
+            team.install(|| {
+                crate::parallel::stage_try_for_each(
+                    partials.par_chunks_mut(4).enumerate(),
                     count as u128 * FAMILY_ROWS_PER_WORKER as u128 * 4,
+                    |(block, output)| -> Result<()> {
+                        let begin = (first + block) * FAMILY_ROWS_PER_WORKER;
+                        let end = begin
+                            .saturating_add(FAMILY_ROWS_PER_WORKER)
+                            .min(self.outcome.len());
+                        let mut deviance = CompensatedSum::default();
+                        let mut likelihood = CompensatedSum::default();
+                        for row in begin..end {
+                            let values = objective_row(
+                                self.outcome,
+                                Some(eta),
+                                mean,
+                                self.prior_weights,
+                                Some(&self.terms),
+                                row,
+                            )?;
+                            deviance.add(values[0]);
+                            likelihood.add(values[1]);
+                        }
+                        output.copy_from_slice(&[
+                            deviance.sum,
+                            deviance.correction,
+                            likelihood.sum,
+                            likelihood.correction,
+                        ]);
+                        Ok(())
+                    },
                 )
-                .enumerate()
-                .map(|(block, output)| -> Result<()> {
-                    let begin = (first + block) * FAMILY_ROWS_PER_WORKER;
-                    let end = begin
-                        .saturating_add(FAMILY_ROWS_PER_WORKER)
-                        .min(self.outcome.len());
-                    let mut deviance = CompensatedSum::default();
-                    let mut likelihood = CompensatedSum::default();
-                    for row in begin..end {
-                        let values = objective_row(
-                            self.outcome,
-                            Some(eta),
-                            mean,
-                            self.prior_weights,
-                            Some(&self.terms),
-                            row,
-                        )?;
-                        deviance.add(values[0]);
-                        likelihood.add(values[1]);
-                    }
-                    output.copy_from_slice(&[
-                        deviance.sum,
-                        deviance.correction,
-                        likelihood.sum,
-                        likelihood.correction,
-                    ]);
-                    Ok(())
-                })
-                .find_first(Result::is_err)
-            });
-            if let Some(result) = failure {
-                result?;
-            }
+            })?;
             // Fixed observation blocks and an ordered compensated merge make
             // reduction independent of scheduling and workspace capacity. Keep
             // corrections separate until merging; no rounded partial totals.
@@ -631,26 +605,16 @@ impl<'a> PreparedPoissonInputs<'a> {
                 "eta and mean buffers have different lengths",
             ));
         }
-        let failure = team.install(|| {
-            mean.par_iter_mut()
-                .zip(eta)
-                .enumerate()
-                .with_min_len(
-                    crate::parallel::StagePlan::current(
-                        self.outcome.len() as u128 * 4,
-                        self.outcome.len(),
-                    )
-                    .chunk(self.outcome.len()),
-                )
-                .map(|(row, (output, &value))| -> Result<()> {
+        team.install(|| {
+            crate::parallel::stage_try_for_each(
+                mean.par_iter_mut().zip(eta).enumerate(),
+                self.outcome.len() as u128 * 4,
+                |(row, (output, &value))| -> Result<()> {
                     *output = mean_row(row, value, bounds)?;
                     Ok(())
-                })
-                .find_first(Result::is_err)
-        });
-        if let Some(result) = failure {
-            result?;
-        }
+                },
+            )
+        })?;
         Ok(())
     }
 
@@ -701,25 +665,13 @@ impl<'a> PreparedPoissonInputs<'a> {
                 Ok(())
             };
         if let Some(team) = &self.team {
-            let failure = team.install(|| {
-                weights
-                    .par_iter_mut()
-                    .zip(response)
-                    .zip(scores)
-                    .enumerate()
-                    .with_min_len(
-                        crate::parallel::StagePlan::current(
-                            self.outcome.len() as u128 * 4,
-                            self.outcome.len(),
-                        )
-                        .chunk(self.outcome.len()),
-                    )
-                    .map(|(row, ((weight, response), score))| fill(row, weight, response, score))
-                    .find_first(Result::is_err)
-            });
-            if let Some(result) = failure {
-                result?;
-            }
+            team.install(|| {
+                crate::parallel::stage_try_for_each(
+                    weights.par_iter_mut().zip(response).zip(scores).enumerate(),
+                    self.outcome.len() as u128 * 4,
+                    |(row, ((weight, response), score))| fill(row, weight, response, score),
+                )
+            })?;
         } else {
             for row in 0..n {
                 fill(row, &mut weights[row], &mut response[row], &mut scores[row])?;
