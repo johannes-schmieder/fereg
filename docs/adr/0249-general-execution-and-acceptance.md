@@ -46,6 +46,9 @@ focused development precedes frozen integrated acceptance. Predetermined,
 calibrated screening/confirmation may target unresolved workloads without
 discarding observations or widening the allowance; historical rules remain.
 Every structural milestone retires named code and counts all replacements.
+Johannes's 2026-10-06 [budget revision](../../bench/history/2026-10-06-m34-budget-revision.json)
+accepts the measured 11,807-line retirement scope and removes the missed original
+line-count budgets as blockers; scientific and final performance gates remain.
 Scientific authority stays with independent witnesses. The new plan governs
 future migrations; this ADR does not assert that worker semantics or algorithms
 have already changed in the current runtime. ADRs 0247/0248 otherwise remain

@@ -2,7 +2,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M34.1 accepted; whole-M34 budgets open. Remaining-scope audit requires direction; Mac-only qualification remains active.
+Current task: M35 integrated Mac qualification; M34 measured scope/budget revision approved. Final science, holdout, performance and scaling gates open.
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 Accepted runtime: M34.1 host boundary; production109589, net vsM26 -11807; native70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e.
@@ -78,7 +78,7 @@ Accepted runtime: M34.1 host boundary; production109589, net vsM26 -11807; nativ
 - [x] M32 Products retire1319lines; science/Astra pass; parent15within/fixed3unresolved accepted by Johannes; [record](bench/history/2026-10-06-m32-architectural-acceptance.json).
 - [x] M33 Frame/CMG retirement; science/Astra high pass; inherited costs accepted; [record](bench/history/2026-10-06-m33-frame-qualification.json).
 - [x] M34.1 Host/dead-policy retirement; science/Astra high pass; comparable costs accepted; [record](bench/history/2026-10-06-m34-host-qualification.json).
-- [ ] M34 Whole-call integration, outstanding retirements and architecture/coverage refresh.
+- [x] M34 Audited integration/architecture accepted;11807 net retirement and revised budgets approved; [decision](bench/history/2026-10-06-m34-budget-revision.json).
 - [ ] M35 Held-out, cross-platform, scaling and final independent acceptance.
 ## Gates
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
@@ -98,8 +98,8 @@ Accepted runtime: M34.1 host boundary; production109589, net vsM26 -11807; nativ
 - 2026-10-04 Johannes: preserve original factor slots/base flags as SPEC requires; repair next and conflicting tests, with legacy behavior unchanged.
 - Bundle separate plugins; legacy/source policies are historical except retained SPEC/active ADR requirements.
 ## Blockers
-M30 costs/deferred8/16 remain; M34.1 is-11807/M26;3193 targetlines and816 named-host budget miss remain; M33 forecast missed599–1399.
-[Remaining-scope audit](bench/history/2026-10-06-m34-remaining-scope-review.json): no defensible target-closing owner in bounded audit; budget/scope direction required.
+M35 integrated performance/scaling/holdouts remain; accepted11807 net retirement; original3193/816 misses approved as measured scope, not deleted lines.
+[Remaining-scope audit](bench/history/2026-10-06-m34-remaining-scope-review.json): required live numerical owners retained; no further source retirement promised by forecast.
 M28 accepted architecturally: +96 vsM27/-1627 vsM26; timing unresolved for three workloads, with no established regression; full local/science pass.
 All4720 commands retained; FE-cluster timing drifts in both roles. Optimization remains open; [acceptance](bench/history/2026-10-05-m28-capacity-owner-acceptance.json).
 M29 accepted architecturally: -208 vsM28/-1835 vsM26; all local/science pass; timing interrupted by unrelated Stata;200 records/201 raw dirs retained; final scaling open.
@@ -271,3 +271,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-06 M33.1 accepted: -401/M32,-10869/M26; science/Astra high pass; parent15within,fixed12within2outside1unresolved; inherited costs retained; Mac only.
 - 2026-10-06 M34.1 accepted: -938/M33,-11807/M26; science/Astra high pass;4448commands,parent15within,fixed4unresolved; priorM28/M30 costs retained; whole-M34 budgets open.
 - 2026-10-06 M34.2: Label frozenM26 owner/protocol maps as historical; current architecture/qualified plan linked; runtime/evidence unchanged; governance/links pass.
+- 2026-10-06 M34.3: Johannes approves11807 measured retirement/revised budgets; original3193/816 misses retained; science/performance/scaling gates unchanged; M35 begins.

@@ -11,6 +11,13 @@ This contract changes benchmark tooling and documentation, with zero runtime cha
 
 ## Counted replacements
 
+The table and forecasts below record the original allocations. Johannes's
+2026-10-06 [budget revision](../../bench/history/2026-10-06-m34-budget-revision.json)
+accepts the measured 11,807-line retirement and named M34 successor of 7,206.
+The 3,193 aggregate shortfall and 816 named overrun remain recorded; the original
+line-count targets cease to block completion. M35's science, performance,
+holdout, scaling and final review requirements remain binding.
+
 The [disjoint inventory](../../bench/history/2026-10-04-m26-retirement-inventory.json)
 names the frozen files and reassigned function slices. The [M28 design review](../../bench/history/2026-10-05-m28-capacity-design.json)
 prospectively reassigns 1,119 disjoint baseline lines and their successor budgets.
@@ -184,15 +191,16 @@ checks every semantic family above against the integrated source. The current
 accepted host tranche removes 938 production lines including replacements; its 109,589
 total is 11,807 below M26, leaving 3,193 against the unchanged target. The
 conservative named-M34 successor envelope is 7,206 including new metadata/store
-code, exceeding the revised 6,390 allocation by 816. These misses remain open;
-meeting the tranche's 700–1,100 forecast does not close whole-M34 budgets.
+code, exceeding the original 6,390 allocation by 816. The approved budget
+revision accepts these measured counts; the original misses remain historical.
 The [qualification](../../bench/history/2026-10-06-m34-host-qualification.json)
 retains the raw failed timing result and accepted inherited uncertainty/costs.
 The [remaining-scope review](../../bench/history/2026-10-06-m34-remaining-scope-review.json)
 finds no demonstrated target-closing retirement in the audited finite and PPML
 drivers. Required numerical kernels and independent certificates are live code.
-Budget revision or additional algorithm/representation scope requires direction;
-existing architectural performance acceptance does not waive retirement goals.
+Johannes subsequently approved the budget revision and proceeding to M35;
+the earlier performance acceptance and the explicit budget decision remain
+distinct. Required independent numerical work remains in the accepted scope.
 
 The audit distinguishes surviving physical kernel/admission policies from the
 retired estimator controllers. In particular, qualified-cluster ordered/table

@@ -4,8 +4,8 @@
 M0–M25. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The [second program](../milestones2.md) and [replacement contract](cleanup/REPLACEMENTS.md)
 define the remaining scoped retirements; M27–M33 are accepted with the measured
-tradeoffs recorded in MILESTONES. M34.1's host retirement is accepted; whole-M34
-budgets and final integrated acceptance remain open.
+tradeoffs recorded in MILESTONES. M34's audited architecture and measured scope
+are accepted after the approved budget revision; M35 integrated acceptance is open.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -428,7 +428,9 @@ required raw FWL and projection certificates and declared numerical scope.
 The accepted tranche measures 95,559 core and 14,030 host production lines,
 including all replacement code: 938 below accepted M33 and 11,807 below M26.
 There are 81 functions over 150 lines and 19 files over 1,500; both are below
-the program limits. The 15,000-line target remains 3,193 lines away. These are
+the program limits. The original 15,000-line forecast missed by 3,193; Johannes
+accepted the measured retirement scope in the
+[budget revision](../bench/history/2026-10-06-m34-budget-revision.json). These are
 source measurements; [qualification](../bench/history/2026-10-06-m34-host-qualification.json)
 binds exact science, transactions and Astra high architectural acceptance.
 All immediate-parent timing families are within; four fixed-M26 families remain

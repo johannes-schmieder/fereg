@@ -245,6 +245,13 @@ before implementation. There is no arbitrary repository-wide ceiling or claim
 that line count alone measures maintainability. Failure to find substantial
 removals requires revising the design before starting a structural tranche.
 
+Johannes's 2026-10-06 [approved budget revision](bench/history/2026-10-06-m34-budget-revision.json)
+accepts 11,807 net production lines retired against M26, including replacement
+code. The original 15,000 target and 3,193 shortfall remain historical evidence;
+the named M34 successor is 7,206 against its original 6,390 budget. These unmet
+line-count forecasts cease to block completion. Keep the ratchet, concrete
+retirement audits and every scientific/performance/scaling requirement.
+
 Runtime commits require the full local entrypoint, long independent oracles for
 core changes, actual parent-next native replay, Mac build/ABI and mapped Stata,
 allocation/rollback/Break fixtures. Deliberate changes use the declared science
@@ -455,9 +462,10 @@ against its classified mathematical, resource or kernel purpose.
 Refresh the actual module map, dependency directions, ownership/lifetime map and
 feature-to-test coverage. Inspect major drivers for responsibilities left behind
 by extraction; do not satisfy function limits through arbitrary forwarding layers.
-Gate: all promised retirements are complete, subsystem and whole-program budgets
-hold, no migration duplication remains, and combined runtime/transaction evidence
-passes. Any missed removal is unfinished scope, not a future-cleanup footnote.
+Gate: the audited retirements and retained scientific responsibilities are
+accepted under the approved scope, no migration duplication remains, and combined
+runtime/transaction evidence passes. The 2026-10-06 budget revision resolves the
+recorded line-count misses; it does not waive a source defect or scientific gate.
 
 ### M35 — Demonstrate the clean version
 
@@ -473,7 +481,7 @@ complexity summaries with binary/data identities and all admitted tradeoffs.
 Keep development and untouched holdout results distinct. A fresh Astra
 extra-high review checks scientific scope, concrete deletions, surviving policy,
 platform gaps and whether broad performance claims match the evidence.
-Gate: the target architecture and quantified retirement goals are met;
+Gate: the audited target architecture and approved measured retirement scope hold;
 predeclared expensive families improve; covered scaling/option cliffs are
 resolved within the envelope; required evidence is complete. Otherwise keep
 the corresponding gate open with a reproducer and bounded next action.
