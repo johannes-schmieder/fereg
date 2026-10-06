@@ -82,6 +82,7 @@ Recoverable M35 repair: production109684,+95/M34,-11712/M26; science-qualified, 
 - [x] M34 Audited integration/architecture accepted;11807 net retirement and revised budgets approved; [decision](bench/history/2026-10-06-m34-budget-revision.json).
 - [ ] M35 Held-out, cross-platform, scaling and final independent acceptance.
 - [x] M35.2 Strict PPML recovery repair locally qualified/recoverable; full/MacABI/replay73/Stata60/fresh1309/Astra high pass; final acceptance open.
+- [ ] M35.3 General dependency determinism: ordered-Schwarz prototype40 passes; execution policy, large-scatter and memory admission remain.
 ## Gates
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
 - [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
@@ -276,3 +277,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-06 M34.2: Label frozenM26 owner/protocol maps as historical; current architecture/qualified plan linked; runtime/evidence unchanged; governance/links pass.
 - 2026-10-06 M34.3: Johannes approves11807 measured retirement/revised budgets; original3193/816 misses retained; science/performance/scaling gates unchanged; M35 begins.
 - 2026-10-06 M35.2: PPML repair+95; fresh1309/strict48/full/MacABI/replay73/Stata60/Astra high pass; original166-failure decision retained; inherited4FE repeat defect blocks final timing.
+- 2026-10-06 M35.3: Deterministic96 confirms inherited4FE failure; isolated ordered prototype40/ARM ABI passes; [diagnosis](bench/history/2026-10-06-m35-determinism-diagnosis.json); final gates open.

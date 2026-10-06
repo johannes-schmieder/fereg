@@ -1,0 +1,165 @@
+--- a/crates/schwarz-precond/src/schwarz/buffers.rs
++++ b/crates/schwarz-precond/src/schwarz/buffers.rs
+@@ -82,6 +82,7 @@
+ }
+
+ pub(super) struct LocalSolveScratch {
++    pub(super) solve_error: Option<crate::error::LocalSolveError>,
+     pub(super) r_scratch: Vec<f64>,
+     pub(super) z_scratch: Vec<f64>,
+ }
+@@ -90,6 +91,7 @@
+     #[inline]
+     pub(super) fn new(max_scratch_size: usize) -> Self {
+         Self {
++            solve_error: None,
+             r_scratch: vec![0.0f64; max_scratch_size],
+             z_scratch: vec![0.0f64; max_scratch_size],
+         }
+--- a/crates/schwarz-precond/src/schwarz/executor.rs
++++ b/crates/schwarz-precond/src/schwarz/executor.rs
+@@ -71,6 +71,37 @@
+         // `put` is infallible and never overwrites the real `apply_result`.
+         self.buf_pool.put(bufs, &apply_result);
+         apply_result
++    }
++
++    pub(super) fn apply_ordered(&self, allow_inner_parallelism: bool, r: &[f64], z: &mut [f64]) -> Result<(), SolveError> {
++        use super::planning::ResolvedReductionStrategy;
++        let mut buffers = self.buf_pool.take(ResolvedReductionStrategy::AtomicScatter)?;
++        let SchwarzBuffers::Atomic {scratch_pool, ..} = &mut buffers else {unreachable!("requested atomic scratch layout")};
++        z.fill(0.0);
++        let width = rayon::current_num_threads().min(self.subdomains.len()).max(1);
++        scratch_pool.resize_with(width, ||LocalSolveScratch::new(self.buf_pool.max_scratch_size()));
++        let result = (|| {
++            for (window_index, entries) in self.subdomains.chunks(width).enumerate() {
++                let scratch = &mut scratch_pool[..entries.len()];
++                entries.par_iter().zip(scratch.par_iter_mut()).for_each(|(entry, scratch)| {
++                    if entry.is_empty() {scratch.solve_error=None;return;}
++                    entry.core().restrict_weighted(r, &mut scratch.r_scratch);
++                    scratch.solve_error = entry.solver().solve_local(&mut scratch.r_scratch, &mut scratch.z_scratch, allow_inner_parallelism).err();
++                });
++                for (index, scratch) in scratch.iter_mut().enumerate() {
++                    if let Some(source) = scratch.solve_error.take() {
++                        return Err(SolveError::LocalSolveFailed {subdomain:window_index*width+index, source});
++                    }
++                }
++                for (entry, scratch) in entries.iter().zip(scratch.iter()) {
++                    entry.core().prolongate_weighted_add(&scratch.z_scratch, z);
++                }
++            }
++            Ok(())
++        })();
++        if result.is_err() {z.fill(0.0);}
++        self.buf_pool.put(buffers, &result);
++        result
+     }
+
+     fn apply_atomic(
+--- a/crates/schwarz-precond/src/schwarz/preconditioner.rs
++++ b/crates/schwarz-precond/src/schwarz/preconditioner.rs
+@@ -165,6 +165,14 @@
+         self.executor.apply(plan, r, z)
+     }
+
++    /// Apply the same local solves with index-ordered accumulation, independent of completion order.
++    pub fn apply_ordered(&self, r: &[f64], z: &mut [f64]) -> Result<(), SolveError> {
++        if r.len()!=self.executor.n_dofs() || z.len()!=self.executor.n_dofs() {
++            return Err(SolveError::InvalidInput{context:"SchwarzPreconditioner::apply_ordered",message:"dimension mismatch".into()});
++        }
++        self.executor.apply_ordered(self.reduction_plan().allow_inner_parallelism, r, z)
++    }
++
+     fn reduction_plan(&self) -> ReductionPlan {
+         let threads = rayon::current_num_threads().max(1);
+         self.scheduler.reduction_plan(
+--- a/crates/within/src/operator/schwarz.rs
++++ b/crates/within/src/operator/schwarz.rs
+@@ -48,11 +48,11 @@
+     }
+
+     fn apply(&self, x: &[f64], y: &mut [f64]) -> Result<(), schwarz_precond::SolveError> {
+-        self.inner.apply(x, y)
++        self.inner.apply_ordered(x, y)
+     }
+
+     fn apply_adjoint(&self, x: &[f64], y: &mut [f64]) -> Result<(), schwarz_precond::SolveError> {
+-        self.inner.apply_adjoint(x, y)
++        self.inner.apply_ordered(x, y)
+     }
+ }
+
+--- a/crates/within/src/operator/design/scatter.rs
++++ b/crates/within/src/operator/design/scatter.rs
+@@ -271,3 +271,29 @@
+         }
+     }
+ }
++
++#[cfg(test)]
++mod fereg_repeat_diagnosis {
++    use super::*;
++    #[test]
++    fn fixed_worker_fold_repeat_diagnosis() {
++        let levels: Vec<u32> = (0..100_000).map(|i| ((i * 17 + i / 997) % 503) as u32).collect();
++        let values: Vec<f64> = (0..levels.len()).map(|i| (i as f64 * 0.31).sin() / (1.0 + (i % 7) as f64)).collect();
++        let mut sequential = vec![0.0;503];
++        scatter_sequential::<1>(&mut sequential,503,&levels,&|i|[values[i]]);
++        for threads in [4,8] {
++            let pool = rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
++            let mut results = Vec::new();
++            for _ in 0..32 {
++                results.push(pool.install(|| {
++                    (0..9).into_par_iter().map(|_|{let mut b=vec![0.0;503];scatter_fold::<1>(&mut b,503,&levels,&|i|[values[i]]);b}).collect::<Vec<_>>()
++                }));
++            }
++            let reference = &results[0][0];
++            let different = results.iter().flatten().filter(|b| b.iter().zip(reference).any(|(a,b)|a.to_bits()!=b.to_bits())).count();
++            let max_error = results.iter().flatten().flat_map(|b| b.iter().zip(&sequential).map(|(a,b)|(a-b).abs())).fold(0.0f64,f64::max);
++            println!("FEREG_KERNEL_DIAG scatter workers={threads} captures=288 nonexact={different} max_abs_error={max_error:.17e}");
++            assert!(max_error < 1e-11);
++        }
++    }
++}
+--- /dev/null
++++ b/crates/schwarz-precond/tests/fereg_order_diagnosis.rs
+@@ -0,0 +1,39 @@
++use schwarz_precond::{LocalSolver, LocalSolveError, SubdomainEntry, SubdomainCore, SchwarzPreconditioner, ReductionStrategy};
++use std::sync::{Arc, atomic::{AtomicUsize,Ordering}, Barrier};
++
++struct DelayedDiagonal { index:usize, phase:Arc<AtomicUsize>, barrier:Arc<Barrier> }
++impl LocalSolver for DelayedDiagonal {
++    fn n_local(&self)->usize{1}
++    fn scratch_size(&self)->usize{1}
++    fn solve_local(&self,r:&mut[f64],z:&mut[f64],_:bool)->Result<(),LocalSolveError>{
++        self.barrier.wait();
++        let order=if self.phase.load(Ordering::Relaxed)==0 {[0,1,2]}else{[2,0,1]};
++        std::thread::sleep(std::time::Duration::from_millis(order[self.index]*3));
++        z[0]=r[0]*if self.index==0{1.0}else{2.0f64.powi(-53)};
++        Ok(())
++    }
++}
++
++#[test]
++fn overlapping_spd_terms_complete_in_different_orders(){
++    for threads in [4,8] {
++        let pool=rayon::ThreadPoolBuilder::new().num_threads(threads).build().unwrap();
++        for strategy in [ReductionStrategy::AtomicScatter,ReductionStrategy::ParallelReduction] {
++          for ordered in [false,true] {
++            let phase=Arc::new(AtomicUsize::new(0));
++            let barrier=Arc::new(Barrier::new(3));
++            let entries=(0..3).map(|index|SubdomainEntry::try_new(SubdomainCore::uniform(vec![0]),DelayedDiagonal{index,phase:phase.clone(),barrier:barrier.clone()}).unwrap()).collect();
++            let pre=SchwarzPreconditioner::new(entries,strategy);
++            let mut bits=Vec::new();
++            for order in [0,1,0,1] {
++                phase.store(order,Ordering::Relaxed);
++                bits.push(pool.install(||{let mut z=[0.0];if ordered{pre.apply_ordered(&[1.0],&mut z).unwrap();}else{pre.apply(&[1.0],&mut z).unwrap();}z[0].to_bits()}));
++            }
++            println!("FEREG_KERNEL_DIAG schwarz workers={threads} backend={strategy:?} ordered={ordered} bits={bits:?} nonexact={}",bits.iter().any(|b|*b!=bits[0]));
++            // All terms are positive diagonal SPD operators. Exact mathematical sum is 1+2^-52.
++            if ordered {assert!(bits.iter().all(|b|*b==bits[0]));}
++            for b in bits {assert!((f64::from_bits(b)-(1.0+2.0f64.powi(-52))).abs()<=f64::EPSILON);}
++          }
++        }
++    }
++}
