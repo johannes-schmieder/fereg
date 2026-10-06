@@ -7446,59 +7446,60 @@ mod tests {
 
     #[test]
     fn loaded_moment_errors_remain_after_validation_and_stale_rows_are_discarded() {
-        let n = 16_384;
-        let columns: Vec<Vec<f64>> = (0..8)
-            .map(|c| {
-                (0..n)
-                    .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin())
-                    .collect()
-            })
-            .collect();
-        let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
-        let response: Vec<_> = (0..n)
-            .map(|r| groups[r] + columns[0][r] + (r as f64).cos())
-            .collect();
-        let mut data = prepared(
-            &response,
-            &columns,
-            &[false; 8],
-            Some(&groups),
-            true,
-            TestWeights::Unit,
-        );
-        let raw = data.fit_build_rhs().unwrap();
-        let mut config = PreparedOlsFitConfig::default();
-        config.execution.threads = ThreadConfig::from_requested(8, true).unwrap();
-        let error = invalid_data("deferred raw moment error");
-        let loaded = |stale| {
-            let mut rows = raw.as_slice().to_vec();
-            if stale {
-                rows[1] += 0.5;
-            }
-            LoadedOlsRows {
-                rows,
-                moments: Some(Err(error.clone())),
-            }
-        };
-        assert_eq!(
-            fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(false))
-                .unwrap_err(),
-            error
-        );
-        let expected =
-            without_solve_timings(fit_prepared_ols_coefficients_map(&data, config).unwrap());
-        let actual = without_solve_timings(
-            fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(true)).unwrap(),
-        );
-        assert!(actual == expected);
-        data.sample.outcome[0] = f64::NAN;
-        assert_eq!(
-            fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(false))
-                .unwrap_err(),
-            fit_prepared_ols_coefficients_map(&data, config).unwrap_err()
-        );
+        for (n, width, workers) in [(257, 1, 1), (4095, 3, 4), (16_384, 8, 8)] {
+            let columns: Vec<Vec<f64>> = (0..width)
+                .map(|c| {
+                    (0..n)
+                        .map(|r| ((r * (c + 17) % 1009) as f64 / 11.0).sin())
+                        .collect()
+                })
+                .collect();
+            let groups: Vec<_> = (0..n).map(|r| (r % 79) as f64).collect();
+            let response: Vec<_> = (0..n)
+                .map(|r| groups[r] + columns[0][r] + (r as f64).cos())
+                .collect();
+            let mut data = prepared(
+                &response,
+                &columns,
+                &vec![false; width],
+                Some(&groups),
+                true,
+                TestWeights::Unit,
+            );
+            let raw = data.fit_build_rhs().unwrap();
+            let mut config = PreparedOlsFitConfig::default();
+            config.execution.threads = ThreadConfig::from_requested(workers, true).unwrap();
+            let error = invalid_data("deferred raw moment error");
+            let loaded = |stale| {
+                let mut rows = raw.as_slice().to_vec();
+                if stale {
+                    rows[1] += 0.5;
+                }
+                LoadedOlsRows {
+                    rows,
+                    moments: Some(Err(error.clone())),
+                }
+            };
+            assert_eq!(
+                fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(false))
+                    .unwrap_err(),
+                error
+            );
+            let expected =
+                without_solve_timings(fit_prepared_ols_coefficients_map(&data, config).unwrap());
+            let actual = without_solve_timings(
+                fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(true))
+                    .unwrap(),
+            );
+            assert!(actual == expected);
+            data.sample.outcome[0] = f64::NAN;
+            assert_eq!(
+                fit_prepared_ols_coefficients_with_loaded_rows(&data, config, loaded(false))
+                    .unwrap_err(),
+                fit_prepared_ols_coefficients_map(&data, config).unwrap_err()
+            );
+        }
     }
-
     #[test]
     fn one_fe_borrow_reuse_preserves_complete_fits_and_error_order() {
         for n in [16_383, 16_384, 32_771] {

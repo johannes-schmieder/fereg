@@ -1,3 +1,6 @@
+use crate::publication::store_matrix;
+#[cfg(test)]
+use fereg_core::metadata::ModelWireV2;
 #[path = "ppml_bias.rs"]
 pub(crate) mod bias;
 use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS};
@@ -27,9 +30,8 @@ use crate::ppml_result::{
 };
 use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::metadata::{
-    AbsorbedTerm, CompiledTermGraph, ExpandedTerm, MetadataFlag, ModelWireV2, SourceEntry,
-    SourceId, TermComponent, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
-    COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
+    AbsorbedTerm, CompiledTermGraph, ExpandedTerm, MetadataFlag, SourceEntry, SourceId,
+    TermComponent,
 };
 use fereg_core::ols::{
     LoadedNumericColumn, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputRole, OlsRequestV1,
@@ -105,52 +107,57 @@ impl Drop for PublicationPhaseScope {
 }
 
 #[derive(Debug, Clone)]
-struct ResultMatrices {
-    bias: Option<String>,
-    bias_diagnostics: Option<String>,
-    bias_support: Option<String>,
-    b: String,
-    covariance: String,
-    coefficient_status: String,
-    fit: String,
-    dof: String,
-    fixed_effects: String,
-    clusters: String,
-    subsets: String,
-    separation: String,
-    inference: String,
-    drop_counts: String,
-    separation_sequence: String,
-    certificates: String,
-    solver: String,
-    runtime: String,
-    memory_report: String,
-    receipt: String,
+struct ResultMatrices<T = String> {
+    bias: Option<T>,
+    bias_diagnostics: Option<T>,
+    bias_support: Option<T>,
+    b: T,
+    covariance: T,
+    coefficient_status: T,
+    fit: T,
+    dof: T,
+    fixed_effects: T,
+    clusters: T,
+    subsets: T,
+    separation: T,
+    inference: T,
+    drop_counts: T,
+    separation_sequence: T,
+    certificates: T,
+    solver: T,
+    runtime: T,
+    memory_report: T,
+    receipt: T,
 }
 
-#[derive(Debug)]
-struct PreparedResultMatrices {
-    bias: Option<PreparedMatrixStoreName>,
-    bias_diagnostics: Option<PreparedMatrixStoreName>,
-    bias_support: Option<PreparedMatrixStoreName>,
-    b: PreparedMatrixStoreName,
-    covariance: PreparedMatrixStoreName,
-    coefficient_status: PreparedMatrixStoreName,
-    fit: PreparedMatrixStoreName,
-    dof: PreparedMatrixStoreName,
-    fixed_effects: PreparedMatrixStoreName,
-    clusters: PreparedMatrixStoreName,
-    subsets: PreparedMatrixStoreName,
-    separation: PreparedMatrixStoreName,
-    inference: PreparedMatrixStoreName,
-    drop_counts: PreparedMatrixStoreName,
-    separation_sequence: PreparedMatrixStoreName,
-    certificates: PreparedMatrixStoreName,
-    solver: PreparedMatrixStoreName,
-    runtime: PreparedMatrixStoreName,
-    memory_report: PreparedMatrixStoreName,
-    receipt: PreparedMatrixStoreName,
+impl<T> ResultMatrices<T> {
+    fn names(&self) -> impl Iterator<Item = &T> {
+        [
+            &self.b,
+            &self.covariance,
+            &self.coefficient_status,
+            &self.fit,
+            &self.dof,
+            &self.fixed_effects,
+            &self.clusters,
+            &self.subsets,
+            &self.separation,
+            &self.inference,
+            &self.drop_counts,
+            &self.separation_sequence,
+            &self.certificates,
+            &self.solver,
+            &self.runtime,
+            &self.memory_report,
+            &self.receipt,
+        ]
+        .into_iter()
+        .chain(self.bias.iter())
+        .chain(self.bias_diagnostics.iter())
+        .chain(self.bias_support.iter())
+    }
 }
+type PreparedResultMatrices = ResultMatrices<PreparedMatrixStoreName>;
 
 #[derive(Debug, Clone, Copy)]
 struct ResultMatrixDimensions {
@@ -251,24 +258,7 @@ struct EstimatePpmlSpec {
     memory_baseline: Baseline,
     transport_parent_bytes: u128,
     transport_peak_bytes: u128,
-    model_major: f64,
-    model_minor: f64,
-    source_matrix: String,
-    source_count: usize,
-    term_matrix: String,
-    term_count: usize,
-    component_matrix: String,
-    component_count: usize,
-    source_names: Vec<String>,
-    canonical_tokens: Vec<String>,
-    raw_component_operators: Vec<String>,
-    raw_time_series_operators: Vec<String>,
-    absorb_term_matrix: String,
-    absorb_term_count: usize,
-    absorb_component_matrix: String,
-    absorb_component_count: usize,
-    absorb_labels: Vec<String>,
-    absorb_saved_names: Vec<String>,
+    model: crate::model_metadata::ModelMetadata,
     cluster_term_matrix: String,
     cluster_term_count: usize,
     cluster_component_matrix: String,
@@ -562,7 +552,9 @@ impl EstimatePpmlAction {
                 as u128
                 * size_of::<Option<u32>>() as u128
             + self.break_marker_token.capacity() as u128
-            + prepared_matrix_names(&self.matrices)
+            + self
+                .matrices
+                .names()
                 .map(|name| name.as_c_str().to_bytes_with_nul().len() as u128)
                 .sum::<u128>()
     }
@@ -584,55 +576,39 @@ impl EstimatePpmlAction {
 impl EstimatePpmlSpec {
     fn metadata_shape(&self) -> crate::metadata_memory::MetadataShape {
         let registry_bytes = [
-            &self.source_names,
-            &self.canonical_tokens,
-            &self.raw_component_operators,
-            &self.raw_time_series_operators,
-            &self.absorb_labels,
-            &self.absorb_saved_names,
+            &self.model.registries.source_names,
+            &self.model.registries.canonical_tokens,
+            &self.model.registries.raw_component_operators,
+            &self.model.registries.raw_time_series_operators,
+            &self.model.registries.absorb_labels,
+            &self.model.registries.absorb_saved_names,
             &self.cluster_labels,
         ]
         .into_iter()
         .map(crate::metadata_memory::strings_bytes)
         .sum::<u128>();
         let string_bytes = [
-            &self.source_matrix,
-            &self.term_matrix,
-            &self.component_matrix,
-            &self.absorb_term_matrix,
-            &self.absorb_component_matrix,
+            &self.model.source_matrix,
+            &self.model.term_matrix,
+            &self.model.component_matrix,
+            &self.model.absorb_term_matrix,
+            &self.model.absorb_component_matrix,
             &self.cluster_term_matrix,
             &self.cluster_component_matrix,
             &self.binding_matrix,
-            &self.matrices.b,
-            &self.matrices.covariance,
-            &self.matrices.coefficient_status,
-            &self.matrices.fit,
-            &self.matrices.dof,
-            &self.matrices.solver,
-            &self.matrices.fixed_effects,
-            &self.matrices.clusters,
-            &self.matrices.subsets,
-            &self.matrices.certificates,
-            &self.matrices.runtime,
-            &self.matrices.memory_report,
-            &self.matrices.receipt,
-            &self.matrices.separation,
-            &self.matrices.inference,
-            &self.matrices.drop_counts,
-            &self.matrices.separation_sequence,
             &self.break_marker_token,
         ]
         .into_iter()
+        .chain(self.matrices.names())
         .map(|value| value.capacity() as u128)
         .sum::<u128>();
         crate::metadata_memory::MetadataShape {
             rows: [
-                self.source_count,
-                self.term_count,
-                self.component_count,
-                self.absorb_term_count,
-                self.absorb_component_count,
+                self.model.source_count,
+                self.model.term_count,
+                self.model.component_count,
+                self.model.absorb_term_count,
+                self.model.absorb_component_count,
                 self.cluster_term_count,
                 self.cluster_component_count,
                 self.binding_count,
@@ -640,21 +616,6 @@ impl EstimatePpmlSpec {
             transport_parent_bytes: self.transport_parent_bytes,
             specification_bytes: registry_bytes
                 + string_bytes
-                + self
-                    .matrices
-                    .bias
-                    .as_ref()
-                    .map_or(0, |v| v.capacity() as u128)
-                + self
-                    .matrices
-                    .bias_diagnostics
-                    .as_ref()
-                    .map_or(0, |v| v.capacity() as u128)
-                + self
-                    .matrices
-                    .bias_support
-                    .as_ref()
-                    .map_or(0, |v| v.capacity() as u128)
                 + self.outputs.bias_channels.capacity() as u128
                     * std::mem::size_of::<Option<u32>>() as u128
                 + self.outputs.saved_channels.capacity() as u128
@@ -704,11 +665,7 @@ impl EstimatePpmlSpec {
                 PPML_REQUEST_WIRE_VERSION.major, PPML_REQUEST_WIRE_VERSION.minor,
             )));
         }
-        let source_count = parse_usize(&values, "source_count")?;
-        let term_count = parse_usize(&values, "term_count")?;
-        let component_count = parse_usize(&values, "component_count")?;
-        let absorb_term_count = parse_usize(&values, "absorb_term_count")?;
-        let absorb_component_count = parse_usize(&values, "absorb_component_count")?;
+        let model_counts = crate::model_metadata::ModelMetadata::counts(&values)?;
         let cluster_term_count = parse_usize(&values, "cluster_term_count")?;
         let cluster_component_count = parse_usize(&values, "cluster_component_count")?;
         let bias_request = bias::parse(&values)?;
@@ -722,46 +679,19 @@ impl EstimatePpmlSpec {
             memory_baseline: Baseline::parse(&values)?,
             transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
             transport_peak_bytes,
-            model_major: f64::from(parse_u16(&values, "model_major")?),
-            model_minor: f64::from(parse_u16(&values, "model_minor")?),
-            source_matrix: required(&values, "source_matrix")?.to_owned(),
-            source_count,
-            term_matrix: required(&values, "term_matrix")?.to_owned(),
-            term_count,
-            component_matrix: required(&values, "component_matrix")?.to_owned(),
-            component_count,
-            source_names: decode_ppml_registry(required(&values, "source_names")?, source_count)?,
-            canonical_tokens: decode_ppml_registry(
-                required(&values, "canonical_tokens")?,
-                term_count,
-            )?,
-            raw_component_operators: decode_ppml_registry(
-                required(&values, "raw_component_operators")?,
-                component_count,
-            )?,
-            raw_time_series_operators: decode_ppml_registry(
-                required(&values, "raw_time_series_operators")?,
-                component_count,
-            )?,
-            absorb_term_matrix: required(&values, "absorb_term_matrix")?.to_owned(),
-            absorb_term_count,
-            absorb_component_matrix: required(&values, "absorb_component_matrix")?.to_owned(),
-            absorb_component_count,
-            absorb_labels: decode_ppml_registry(
-                required(&values, "absorb_labels")?,
-                absorb_term_count,
-            )?,
-            absorb_saved_names: decode_ppml_registry(
-                required(&values, "absorb_saved_names")?,
-                absorb_term_count,
+            model: crate::model_metadata::ModelMetadata::parse(
+                &values,
+                model_counts,
+                crate::model_metadata::RegistryFraming::Delimited,
             )?,
             cluster_term_matrix: required(&values, "cluster_term_matrix")?.to_owned(),
             cluster_term_count,
             cluster_component_matrix: required(&values, "cluster_component_matrix")?.to_owned(),
             cluster_component_count,
-            cluster_labels: decode_ppml_registry(
+            cluster_labels: crate::model_metadata::decode_registry(
                 required(&values, "cluster_labels")?,
                 cluster_term_count,
+                crate::model_metadata::RegistryFraming::Delimited,
             )?,
             binding_matrix: required(&values, "binding_matrix")?.to_owned(),
             binding_count: parse_usize(&values, "binding_count")?,
@@ -1010,51 +940,18 @@ impl EstimatePpmlSpec {
             .admit(memory.usable_bytes())?
             .max(self.transport_peak_bytes);
         crate::metadata_memory::admit(metadata_peak_bytes, memory.usable_bytes())?;
-        let wire = ModelWireV2 {
-            major: self.model_major,
-            minor: self.model_minor,
-            sources: read_table(
-                spi,
-                &self.source_matrix,
-                self.source_count,
-                SOURCE_ROW_WIDTH,
+        let registries = std::mem::take(&mut self.model.registries);
+        let wire = self.model.read_wire(
+            spi,
+            registries,
+            [
                 "PPML source",
-            )?,
-            terms: read_table(
-                spi,
-                &self.term_matrix,
-                self.term_count,
-                TERM_ROW_WIDTH,
                 "PPML term",
-            )?,
-            components: read_table(
-                spi,
-                &self.component_matrix,
-                self.component_count,
-                COMPONENT_ROW_WIDTH,
                 "PPML component",
-            )?,
-            source_names: std::mem::take(&mut self.source_names),
-            canonical_tokens: std::mem::take(&mut self.canonical_tokens),
-            raw_component_operators: std::mem::take(&mut self.raw_component_operators),
-            raw_time_series_operators: std::mem::take(&mut self.raw_time_series_operators),
-            absorb_terms: read_table(
-                spi,
-                &self.absorb_term_matrix,
-                self.absorb_term_count,
-                ABSORB_TERM_ROW_WIDTH,
                 "PPML absorbed term",
-            )?,
-            absorb_components: read_table(
-                spi,
-                &self.absorb_component_matrix,
-                self.absorb_component_count,
-                ABSORB_COMPONENT_ROW_WIDTH,
                 "PPML absorbed component",
-            )?,
-            absorb_labels: std::mem::take(&mut self.absorb_labels),
-            absorb_saved_names: std::mem::take(&mut self.absorb_saved_names),
-        };
+            ],
+        )?;
         let decoded = wire.decode_specification()?;
         drop(wire);
         decoded.model.validate_executable_metadata()?;
@@ -1125,11 +1022,11 @@ impl EstimatePpmlSpec {
             },
             spi,
             &[
-                &self.source_matrix,
-                &self.term_matrix,
-                &self.component_matrix,
-                &self.absorb_term_matrix,
-                &self.absorb_component_matrix,
+                &self.model.source_matrix,
+                &self.model.term_matrix,
+                &self.model.component_matrix,
+                &self.model.absorb_term_matrix,
+                &self.model.absorb_component_matrix,
                 &self.cluster_term_matrix,
                 &self.cluster_component_matrix,
                 &self.binding_matrix,
@@ -1699,7 +1596,7 @@ fn validate_shadow(
     {
         return Err(internal("PPML retained original-row map is invalid"));
     }
-    for name in prepared_matrix_names(&action.matrices) {
+    for name in action.matrices.names() {
         let (rows, columns) = spi.matrix_dimensions(name.as_str())?;
         if rows != name.rows() || columns != name.columns() {
             return Err(invalid(format!(
@@ -2548,22 +2445,6 @@ fn store_runtime_and_complete(
     )
 }
 
-fn store_matrix(
-    spi: &mut dyn SpiApi,
-    name: &PreparedMatrixStoreName,
-    rows: usize,
-    columns: usize,
-    values: &[f64],
-) -> Result<()> {
-    debug_assert_eq!(values.len(), rows * columns);
-    for row in 1..=rows {
-        for column in 1..=columns {
-            spi.store_matrix(name, row, column, values[(row - 1) * columns + column - 1])?;
-        }
-    }
-    Ok(())
-}
-
 fn validate_ppml_weights(request: &OlsRequestV1) -> Result<()> {
     if request
         .bindings
@@ -2591,7 +2472,7 @@ fn parse_ppml_vce(value: &str, clusters: &[OlsClusterTermV1]) -> Result<PpmlVceR
 }
 
 fn publication_matrix_cells(matrices: &PreparedResultMatrices) -> Result<usize> {
-    prepared_matrix_names(matrices).try_fold(0_usize, |total, matrix| {
+    matrices.names().try_fold(0_usize, |total, matrix| {
         let cells = matrix
             .rows()
             .checked_mul(matrix.columns())
@@ -2812,94 +2693,7 @@ fn validate_matrix_layout(
     input_matrices: &[&String],
 ) -> Result<PreparedResultMatrices> {
     let dimension = dimensions.coefficient_count.max(1);
-    let layouts = [
-        (&matrices.b, 1, dimension),
-        (&matrices.covariance, dimension, dimension),
-        (
-            &matrices.coefficient_status,
-            dimension,
-            COEFFICIENT_STATUS_COLUMNS,
-        ),
-        (&matrices.fit, FIT_ROWS, 1),
-        (&matrices.dof, DOF_ROWS, 1),
-        (
-            &matrices.fixed_effects,
-            dimensions.fixed_effect_rows.max(1),
-            FE_COLUMNS,
-        ),
-        (
-            &matrices.clusters,
-            dimensions.cluster_dimensions.max(1),
-            CLUSTER_COLUMNS,
-        ),
-        (
-            &matrices.subsets,
-            dimensions.cluster_subset_rows.max(1),
-            SUBSET_COLUMNS,
-        ),
-        (
-            &matrices.separation,
-            dimensions.separation_rows.max(1),
-            SEPARATION_COLUMNS,
-        ),
-        (&matrices.inference, INFERENCE_ROWS, 1),
-        (&matrices.drop_counts, DROP_COUNT_ROWS, DROP_COUNT_COLUMNS),
-        (
-            &matrices.separation_sequence,
-            SEPARATION_SEQUENCE_ROWS,
-            SEPARATION_SEQUENCE_COLUMNS,
-        ),
-        (&matrices.certificates, CERTIFICATE_ROWS, 1),
-        (&matrices.solver, SOLVER_ROWS, SOLVER_COLUMNS),
-        (&matrices.runtime, RUNTIME_ROWS, 1),
-        (&matrices.memory_report, MEMORY_ROWS, 2),
-        (&matrices.receipt, 1, PPML_RESULT_RECEIPT_COLUMNS),
-    ];
-    let input_names = input_matrices
-        .iter()
-        .map(|name| name.as_str())
-        .collect::<BTreeSet<_>>();
-    let mut output_names = BTreeSet::new();
-    for (name, rows, columns) in layouts
-        .into_iter()
-        .chain(
-            matrices
-                .bias
-                .as_ref()
-                .map(|name| (name, bias::CHANNELS, dimension)),
-        )
-        .chain(
-            matrices
-                .bias_diagnostics
-                .as_ref()
-                .map(|name| (name, bias::DIAGNOSTICS, 1)),
-        )
-        .chain(
-            matrices
-                .bias_support
-                .as_ref()
-                .map(|name| (name, 2, bias::SUPPORT_COLUMNS)),
-        )
-    {
-        if name.is_empty() || input_names.contains(name.as_str()) || !output_names.insert(name) {
-            return Err(invalid(
-                "PPML result matrices alias an input or another output matrix",
-            ));
-        }
-        if spi.matrix_dimensions(name)? != (rows, columns) {
-            return Err(invalid(format!(
-                "PPML output matrix {name} has an invalid layout",
-            )));
-        }
-    }
-    for column in 1..=PPML_RESULT_RECEIPT_COLUMNS {
-        if spi.matrix_element(&matrices.receipt, 1, column)? != 0.0 {
-            return Err(invalid(
-                "PPML output receipt must be all zero before observation loading",
-            ));
-        }
-    }
-    Ok(PreparedResultMatrices {
+    let prepared = PreparedResultMatrices {
         bias: matrices
             .bias
             .as_ref()
@@ -2968,35 +2762,34 @@ fn validate_matrix_layout(
             1,
             PPML_RESULT_RECEIPT_COLUMNS,
         )?,
-    })
-}
-
-fn prepared_matrix_names(
-    matrices: &PreparedResultMatrices,
-) -> impl Iterator<Item = &PreparedMatrixStoreName> {
-    [
-        &matrices.b,
-        &matrices.covariance,
-        &matrices.coefficient_status,
-        &matrices.fit,
-        &matrices.dof,
-        &matrices.fixed_effects,
-        &matrices.clusters,
-        &matrices.subsets,
-        &matrices.separation,
-        &matrices.inference,
-        &matrices.drop_counts,
-        &matrices.separation_sequence,
-        &matrices.certificates,
-        &matrices.solver,
-        &matrices.runtime,
-        &matrices.memory_report,
-        &matrices.receipt,
-    ]
-    .into_iter()
-    .chain(matrices.bias.iter())
-    .chain(matrices.bias_diagnostics.iter())
-    .chain(matrices.bias_support.iter())
+    };
+    let input_names = input_matrices
+        .iter()
+        .map(|name| name.as_str())
+        .collect::<BTreeSet<_>>();
+    let mut output_names = BTreeSet::new();
+    for matrix in prepared.names() {
+        let name = matrix.as_str();
+        let (rows, columns) = (matrix.rows(), matrix.columns());
+        if name.is_empty() || input_names.contains(name) || !output_names.insert(name) {
+            return Err(invalid(
+                "PPML result matrices alias an input or another output matrix",
+            ));
+        }
+        if spi.matrix_dimensions(name)? != (rows, columns) {
+            return Err(invalid(format!(
+                "PPML output matrix {name} has an invalid layout",
+            )));
+        }
+    }
+    for column in 1..=PPML_RESULT_RECEIPT_COLUMNS {
+        if spi.matrix_element(&matrices.receipt, 1, column)? != 0.0 {
+            return Err(invalid(
+                "PPML output receipt must be all zero before observation loading",
+            ));
+        }
+    }
+    Ok(prepared)
 }
 
 fn parse_separation_methods(value: &str) -> Result<SeparationMethods> {
@@ -3100,7 +2893,11 @@ fn validate_saved_output_layout(
 }
 
 fn decode_output_position_registry(value: &str, expected: usize) -> Result<Vec<Option<u32>>> {
-    let values = decode_ppml_registry(value, expected)?;
+    let values = crate::model_metadata::decode_registry(
+        value,
+        expected,
+        crate::model_metadata::RegistryFraming::Delimited,
+    )?;
     let mut output = Vec::new();
     output
         .try_reserve_exact(expected)
@@ -3110,49 +2907,6 @@ fn decode_output_position_registry(value: &str, expected: usize) -> Result<Vec<O
             .parse::<u32>()
             .map_err(|_| syntax("PPML saved-output position must be an unsigned integer"))?;
         output.push((position != 0).then_some(position));
-    }
-    Ok(output)
-}
-
-fn decode_ppml_registry(value: &str, expected: usize) -> Result<Vec<String>> {
-    if expected == 0 {
-        if value != "." {
-            return Err(invalid("empty registry must use the dot sentinel"));
-        }
-        return Ok(Vec::new());
-    }
-    // The caller's declared cardinality is not an allocation bound until it
-    // agrees with the actual framing. Reject malformed huge counts first.
-    if value.split('|').count() != expected {
-        return Err(invalid(
-            "registry cardinality does not match its declared count",
-        ));
-    }
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(expected)
-        .map_err(|_| allocation("unable to reserve PPML length-framed registry"))?;
-    for piece in value.split('|') {
-        if output.len() == expected {
-            return Err(invalid(
-                "registry cardinality does not match its declared count",
-            ));
-        }
-        let (length, payload) = piece
-            .split_once(':')
-            .ok_or_else(|| invalid("registry item lacks a length prefix"))?;
-        let length = length
-            .parse::<usize>()
-            .map_err(|_| syntax("registry length must be an unsigned integer"))?;
-        if payload.len() != length {
-            return Err(invalid("registry byte length is incorrect"));
-        }
-        output.push(fallible_string(payload, "PPML registry payload")?);
-    }
-    if output.len() != expected {
-        return Err(invalid(
-            "registry cardinality does not match its declared count",
-        ));
     }
     Ok(output)
 }
@@ -5026,7 +4780,12 @@ mod tests {
     fn malformed_registry_cardinality_rejects_before_reservation() {
         let _guard = crate::instrumentation::lock_action_observation();
         let (start, _) = crate::ffi::begin_ols_allocation_observation();
-        let error = decode_ppml_registry("1:x", usize::MAX / 32).unwrap_err();
+        let error = crate::model_metadata::decode_registry(
+            "1:x",
+            usize::MAX / 32,
+            crate::model_metadata::RegistryFraming::Delimited,
+        )
+        .unwrap_err();
         assert_eq!(error.code, ErrorCode::InvalidArgument);
         assert!(crate::ffi::allocation_usage().peak_bytes - start.current_bytes < 1024);
     }

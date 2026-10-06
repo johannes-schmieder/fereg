@@ -224,25 +224,20 @@ impl<'a> FeSession<'a> {
         if let Some(design) = borrowed {
             match config.absorb.solver {
                 super::FeSolverKind::Cmg => {
-                    owner.cmg = Some(
-                        super::CmgAbsorber::build(
-                            design,
-                            weights,
-                            super::CmgConfig {
-                                map: config.absorb.map,
-                                threads: config.execution.threads,
-                                batch_size: rhs,
-                                retain_coefficients: config.absorb.retain_coefficients,
-                                requested_solver: super::FeSolverKind::Cmg,
-                                components: super::explicit_cmg_components(
-                                    super::FeSolverKind::Cmg,
-                                ),
-                                solver_memory_budget: config.absorb.solver_memory_budget,
-                            },
-                            prepared.fit_structural_intercept(),
-                        )?
-                        .with_ols_final_reuse(config.allow_final_fe_recovery),
-                    );
+                    owner.cmg = Some(super::CmgAbsorber::build(
+                        design,
+                        weights,
+                        super::CmgConfig {
+                            map: config.absorb.map,
+                            threads: config.execution.threads,
+                            batch_size: rhs,
+                            retain_coefficients: config.absorb.retain_coefficients,
+                            requested_solver: super::FeSolverKind::Cmg,
+                            components: super::explicit_cmg_components(super::FeSolverKind::Cmg),
+                            solver_memory_budget: config.absorb.solver_memory_budget,
+                        },
+                        prepared.fit_structural_intercept(),
+                    )?);
                 }
                 super::FeSolverKind::Lsmr if !design.effects().is_empty() => {
                     owner.lsmr = Some(super::BorrowedLsmrAbsorber::new(

@@ -5,7 +5,7 @@ use rayon::prelude::*;
 
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError};
-use crate::memory::LsmrBatchPolicy;
+use crate::memory::lsmr_rhs_window;
 use within::{BatchSolveResult, Effect, LsmrOptions, PreconditionerConfig, Solver, WithinError};
 
 #[derive(Debug)]
@@ -162,27 +162,9 @@ pub(super) fn solve_batch(
     options: &LsmrOptions,
     preconditioner: PreconditionerConfig,
 ) -> Result<BatchSolveResult, BatchError> {
-    solve_batch_with_policy(
-        effects,
-        rhs,
-        weights,
-        options,
-        preconditioner,
-        LsmrBatchPolicy::Default,
-    )
-}
-
-pub(super) fn solve_batch_with_policy(
-    effects: Vec<Effect<'_>>,
-    rhs: &[&[f64]],
-    weights: Option<&[f64]>,
-    options: &LsmrOptions,
-    preconditioner: PreconditionerConfig,
-    batch_policy: LsmrBatchPolicy,
-) -> Result<BatchSolveResult, BatchError> {
     // Keep the upstream construction/transport lifetime for narrow batches.
     // Only a windowed batch needs to retain its solver across several calls.
-    if rhs.len() <= batch_policy.rhs_window(rhs.len(), rayon::current_num_threads()) {
+    if rhs.len() <= lsmr_rhs_window(rhs.len(), rayon::current_num_threads()) {
         return within::solve_batch(effects, rhs, weights, options, preconditioner)
             .map_err(BatchError::Upstream);
     }
@@ -198,7 +180,7 @@ pub(super) fn solve_batch_with_policy(
     let solver = Solver::new(effects, weights, preconditioner)
         .map_err(|error| BatchError::Upstream(error.into()))?;
     let setup = started.elapsed().as_secs_f64();
-    let mut result = solve_prepared_batch(&solver, rhs, options, batch_policy)?;
+    let mut result = solve_prepared_batch(&solver, rhs, options)?;
     result.time_setup += setup;
     result.time_total = started.elapsed().as_secs_f64();
     Ok(result)
@@ -208,12 +190,11 @@ pub(super) fn solve_prepared_batch(
     solver: &Solver<'_>,
     rhs: &[&[f64]],
     options: &LsmrOptions,
-    batch_policy: LsmrBatchPolicy,
 ) -> Result<BatchSolveResult, BatchError> {
     // An explicit outer window bounds live recurrences even when nested Rayon
     // suspends one RHS and starts another. Use the installed team, including
     // checkpoints whose LsmrConfig retains the machine-default thread setting.
-    let window = batch_policy.rhs_window(rhs.len(), rayon::current_num_threads());
+    let window = lsmr_rhs_window(rhs.len(), rayon::current_num_threads());
     if rhs.len() <= window {
         return solver
             .solve_batch(rhs, options)
@@ -402,9 +383,7 @@ mod tests {
                         .unwrap();
                         let oracle = solver.solve_batch(&rhs, &options).unwrap();
                         assert!(oracle.converged.iter().all(|&converged| converged));
-                        let result =
-                            solve_prepared_batch(&solver, &rhs, &options, LsmrBatchPolicy::Default)
-                                .unwrap();
+                        let result = solve_prepared_batch(&solver, &rhs, &options).unwrap();
                         assert_eq!(result.x, oracle.x);
                         assert_eq!(result.demeaned, oracle.demeaned);
                         assert_eq!(result.unidentified, oracle.unidentified);
@@ -418,7 +397,7 @@ mod tests {
     }
 
     #[test]
-    fn retained_serial_ols_windows_match_full_batches_and_fail_atomically() {
+    fn narrow_batch_adapters_match_upstream_and_fail_atomically() {
         let rows = 512;
         let left: Vec<u32> = (0..rows).map(|r| (r % 32) as u32).collect();
         let right: Vec<u32> = (0..rows).map(|r| ((r / 7) % 19) as u32).collect();
@@ -466,20 +445,13 @@ mod tests {
                                 let expected = solver.solve_batch(rhs, &options).unwrap();
                                 assert!(expected.converged.iter().all(|&v| v));
                                 for actual in [
-                                    solve_prepared_batch(
-                                        &solver,
-                                        rhs,
-                                        &options,
-                                        LsmrBatchPolicy::RetainedSerialOls,
-                                    )
-                                    .unwrap(),
-                                    solve_batch_with_policy(
+                                    solve_prepared_batch(&solver, rhs, &options).unwrap(),
+                                    solve_batch(
                                         effects(),
                                         rhs,
                                         w,
                                         &options,
                                         preconditioner.clone(),
-                                        LsmrBatchPolicy::RetainedSerialOls,
                                     )
                                     .unwrap(),
                                 ] {
@@ -499,19 +471,13 @@ mod tests {
                                 let mut malformed = views[..16].to_vec();
                                 malformed[15] = &columns[15][..rows - 1];
                                 for attempt in [
-                                    solve_prepared_batch(
-                                        &solver,
-                                        &malformed,
-                                        &options,
-                                        LsmrBatchPolicy::RetainedSerialOls,
-                                    ),
-                                    solve_batch_with_policy(
+                                    solve_prepared_batch(&solver, &malformed, &options),
+                                    solve_batch(
                                         effects(),
                                         &malformed,
                                         w,
                                         &options,
                                         preconditioner.clone(),
-                                        LsmrBatchPolicy::RetainedSerialOls,
                                     ),
                                 ] {
                                     assert!(matches!(attempt, Err(BatchError::Upstream(_))));
@@ -539,14 +505,7 @@ mod tests {
             .num_threads(2)
             .build()
             .unwrap()
-            .install(|| {
-                solve_prepared_batch(
-                    &solver,
-                    &batch,
-                    &LsmrOptions::default(),
-                    LsmrBatchPolicy::Default,
-                )
-            })
+            .install(|| solve_prepared_batch(&solver, &batch, &LsmrOptions::default()))
             .unwrap_err();
         assert!(matches!(
             &error,

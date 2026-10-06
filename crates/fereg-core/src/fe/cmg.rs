@@ -5,7 +5,6 @@
 //! complement. One graph hierarchy and workspace pool are retained for the
 //! complete prepared OLS fit, including low-memory blocks and residual polish.
 
-use rayon::prelude::*;
 use std::time::Instant;
 
 use cmg::{
@@ -298,7 +297,6 @@ pub(crate) struct CmgAbsorber<'a> {
     pending_setup_seconds: f64,
     pending_setup_metrics: CmgSolveMetrics,
     structural_constant_if_empty: bool,
-    ols_final_reuse: bool,
     memory: CmgWorkspacePlan,
 }
 
@@ -1034,18 +1032,9 @@ impl<'a> CmgAbsorber<'a> {
             pending_setup_metrics,
             structural_constant_if_empty,
             memory,
-            ols_final_reuse: false,
         })
     }
 
-    pub(crate) fn with_ols_final_reuse(mut self, enabled: bool) -> Self {
-        self.ols_final_reuse = enabled;
-        self
-    }
-
-    /// Apply only the graph/Schur projection. No observation-space CG polish
-    /// or route fallback is permitted here; callers must independently
-    /// certify the returned residualized columns before using them.
     pub(crate) fn project_unpolished(
         &mut self,
         values: &mut DenseMatrix,
@@ -1113,7 +1102,6 @@ impl<'a> CmgAbsorber<'a> {
                 self.config,
                 self.config.pcg_options_at(relative_tolerance),
                 seed.map(|seed| (seed, use_seed)),
-                false,
             ),
             CmgRoute::Direct | CmgRoute::Failed(_) => unreachable!("CMG route checked above"),
         }?;
@@ -1166,14 +1154,6 @@ impl<'a> CmgAbsorber<'a> {
     /// matrix to the caller; a valid partial CMG projection can still seed the
     /// existing certified CG fallback.
     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
-        self.absorb_with_bulk_tolerance(values, None)
-    }
-
-    fn absorb_with_bulk_tolerance(
-        &mut self,
-        values: DenseMatrix,
-        bulk_tolerance: Option<f64>,
-    ) -> Result<CertifiedBorrowedMap> {
         let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
             return Err(invalid_argument(
@@ -1254,16 +1234,7 @@ impl<'a> CmgAbsorber<'a> {
 
         let solve_started = Instant::now();
         let mut candidate = values;
-        let batch_ols_subtraction = self.ols_final_reuse
-            && self.config.requested_solver == FeSolverKind::Auto
-            && self.design.effects().len() == 2
-            && self.config.threads.resolved() >= 8
-            && candidate.nrows() >= 16_384
-            && candidate.ncols() >= 3;
-        let pcg_options = bulk_tolerance.map_or_else(
-            || self.config.pcg_options(),
-            |tolerance| self.config.pcg_options_at(tolerance),
-        );
+        let pcg_options = self.config.pcg_options();
         let bulk = match &mut self.route {
             CmgRoute::Graph(graph) => graph.project_matrix_with_options(
                 &self.design,
@@ -1273,13 +1244,43 @@ impl<'a> CmgAbsorber<'a> {
                 self.config,
                 pcg_options,
                 None,
-                batch_ols_subtraction,
             ),
             CmgRoute::Direct => unreachable!("direct CMG route returned above"),
             CmgRoute::Failed(_) => unreachable!("failed CMG route returned above"),
         };
         let bulk_seconds = solve_started.elapsed().as_secs_f64();
 
+        self.certify_graph_projection(
+            candidate,
+            bulk,
+            reference_norms,
+            norm_peak,
+            setup_metrics,
+            setup_seconds,
+            solve_started,
+            bulk_seconds,
+            norm_seconds,
+            phase_started.is_some(),
+        )
+    }
+
+    // A graph projection has a distinct certification/fallback boundary. The
+    // raw norms survive it; no speculative result or temporary array escapes.
+    #[allow(clippy::too_many_arguments)]
+    fn certify_graph_projection(
+        &mut self,
+        candidate: DenseMatrix,
+        bulk: Result<(CmgSolveMetrics, Option<FeCoefficientBatch>)>,
+        reference_norms: Vec<f64>,
+        norm_peak: SolverWorkspacePeak,
+        setup_metrics: CmgSolveMetrics,
+        setup_seconds: f64,
+        solve_started: Instant,
+        bulk_seconds: f64,
+        norm_seconds: f64,
+        trace: bool,
+    ) -> Result<CertifiedBorrowedMap> {
+        let norm_bytes = reference_norms.capacity() as u128 * 8;
         match bulk {
             Ok((mut metrics, coefficients)) => {
                 let coefficient_bytes = coefficients
@@ -1288,24 +1289,16 @@ impl<'a> CmgAbsorber<'a> {
                 let graph_retained = self.retained_workspace_peak()?;
                 let bulk_peak = self.memory.projection.with_retained(coefficient_bytes)?;
                 metrics.include_from(setup_metrics);
-                let retain_correction = self.ols_final_reuse
-                    && (coefficients.is_some() || bulk_tolerance.is_some())
-                    && retained_cg_correction_fits(
-                        &self.design,
-                        candidate.ncols(),
-                        self.config,
-                        graph_retained.with_retained(coefficient_bytes + norm_bytes)?,
-                    )?;
                 let polished = polish_borrowed_intercept_cg_with_products_certified(
                     &self.design,
                     self.weights,
                     candidate,
                     self.config.map,
                     &reference_norms,
-                    retain_correction,
+                    false,
                 )?;
                 let (residualized, mut report, correction) = polished.into_full_parts();
-                if phase_started.is_some() {
+                if trace {
                     eprintln!(
                         "FEREG_PHASE|cmg|norms={norm_seconds:.9}|bulk={bulk_seconds:.9}|polish={:.9}",
                         solve_started.elapsed().as_secs_f64() - bulk_seconds,
@@ -1403,15 +1396,13 @@ impl<'a> CmgAbsorber<'a> {
     /// coordinates and are normally FE-orthogonal. Running graph PCG on that
     /// near-zero right-hand side can exhaust its relative iteration budget.
     /// Certify first and perform a CG correction only when one is actually
-    /// required. Public two-FE OLS can reuse its current-weight hierarchy when
-    /// the joint correction workspace fits; other calls release the hierarchy
-    /// before reserving their established correction workspace.
+    /// required. Release the hierarchy before reserving the admitted
+    /// correction workspace; final certification remains independent.
     pub(crate) fn absorb_final_residual(
-        mut self,
+        self,
         values: DenseMatrix,
         tolerance: f64,
     ) -> Result<CertifiedBorrowedMap> {
-        let check_started = Instant::now();
         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
             return Err(invalid_argument(
                 "CMG final-residual design and matrix dimensions are inconsistent",
@@ -1429,62 +1420,17 @@ impl<'a> CmgAbsorber<'a> {
             )?;
         let certificate_peak = certificate_workspace.with_retained_peak(retained)?;
         if !certificate.passed {
-            if self.ols_final_reuse
-                && matches!(self.route, CmgRoute::Graph(_))
-                && retained_cg_correction_fits(
-                    &self.design,
-                    values.ncols(),
-                    config,
-                    retained.with_retained(values.ncols() as u128 * 8)?,
-                )?
-            {
-                // The graph still has this sample and these weights. Its
-                // preconditioner can resolve the tiny remaining FE component
-                // before a direct correction loses that reuse opportunity.
-                let check_seconds = check_started.elapsed().as_secs_f64();
-                self.config.map = config.map;
-                // The remaining graph RHS is tiny relative to the original
-                // observations. Scale the bulk accuracy to the fresh FE
-                // defect; the final observation certificate is unchanged.
-                let bulk_tolerance = (0.01 * config.map.tolerance
-                    / certificate.relative_infinity_norm)
-                    .clamp(PCG_TOLERANCE_FLOOR, 0.01);
-                let (residualized, mut report, coefficients) = self
-                    .absorb_with_bulk_tolerance(values, Some(bulk_tolerance))?
-                    .into_full_parts();
-                report.solver_workspace_peak = report.solver_workspace_peak.max(certificate_peak);
-                report.certification_seconds += check_seconds;
-                report
-                    .warnings
-                    .push("final CMG residual reused its current-weight graph".to_owned());
-                return if let Some(coefficients) = coefficients {
-                    CertifiedBorrowedMap::from_certified_parts_with_coefficients(
-                        residualized,
-                        report,
-                        coefficients,
-                    )
-                } else {
-                    CertifiedBorrowedMap::from_certified_parts(residualized, report)
-                };
-            }
             drop(self.route);
             ensure_cg_fallback_fits(&self.design, values.ncols(), config)?;
             let (reference_norms, norm_peak) =
                 weighted_column_norms(&values, self.weights, self.weight_scale)?;
-            let retain_correction = self.ols_final_reuse
-                && retained_cg_correction_fits(
-                    &self.design,
-                    values.ncols(),
-                    config,
-                    SolverWorkspacePeak::from_bytes(reference_norms.capacity() as u128 * 8)?,
-                )?;
             let corrected = polish_borrowed_intercept_cg_with_products_certified(
                 &self.design,
                 self.weights,
                 values,
                 config.map,
                 &reference_norms,
-                retain_correction,
+                false,
             )?;
             let (residualized, mut report, mut coefficients) = corrected.into_full_parts();
             if !config.retain_coefficients {
@@ -1565,7 +1511,6 @@ impl GraphCmg {
         config: CmgConfig,
         pcg_options: PcgOptions,
         seed: Option<(&mut CmgControlSeed, bool)>,
-        batch_ols_subtraction: bool,
     ) -> Result<(CmgSolveMetrics, Option<FeCoefficientBatch>)> {
         let mut metrics = CmgSolveMetrics::default();
         self.projection_work = CmgProjectionWork::default();
@@ -1585,7 +1530,6 @@ impl GraphCmg {
                 coefficient_scale: 1.0,
                 pcg_options,
                 seed,
-                batch_ols_subtraction,
             },
         )?;
         metrics.include_from(core_metrics);
@@ -1706,7 +1650,6 @@ impl GraphCmg {
                         coefficient_scale: -1.0,
                         pcg_options,
                         seed: None,
-                        batch_ols_subtraction: false,
                     },
                 )?;
                 metrics.include_from(correction_metrics);
@@ -1741,7 +1684,6 @@ impl GraphCmg {
             coefficient_scale,
             pcg_options,
             mut seed,
-            batch_ols_subtraction,
         } = request;
         if let Some((seed, _)) = &seed {
             if !matches!(self.workspace, GraphCmgWorkspace::CallerBuffers(_))
@@ -1845,24 +1787,12 @@ impl GraphCmg {
                                 solution,
                             )?;
                         }
-                        if !batch_ols_subtraction {
-                            subtract_core_fit(
-                                design,
-                                self.core_effects,
-                                values,
-                                start + local,
-                                solution,
-                            )?;
-                        }
-                    }
-                    if batch_ols_subtraction {
-                        subtract_core_fit_batch(
+                        subtract_core_fit(
                             design,
                             self.core_effects,
                             values,
-                            start,
-                            end,
-                            &caller.solutions[..width * vertices],
+                            start + local,
+                            solution,
                         )?;
                     }
                     if let Some(started) = subtract_started {
@@ -1884,7 +1814,6 @@ struct CoreProjectionRequest<'a> {
     coefficient_scale: f64,
     pcg_options: PcgOptions,
     seed: Option<(&'a mut CmgControlSeed, bool)>,
-    batch_ols_subtraction: bool,
 }
 
 fn record_core_solution(
@@ -2634,43 +2563,6 @@ fn ensure_cg_fallback_fits(
     }
 }
 
-fn retained_cg_correction_fits(
-    design: &BorrowedInterceptFeDesign<'_>,
-    right_hand_sides: usize,
-    config: CmgConfig,
-    retained: SolverWorkspacePeak,
-) -> Result<bool> {
-    // Retained CG products need four coefficient banks. Stable group-mean
-    // projection itself does not. The OLS owner controls this admission;
-    // explicit solvers and tighter budgets keep their established policy.
-    if config.requested_solver != FeSolverKind::Auto || design.effects().len() != 2 {
-        return Ok(false);
-    }
-    let Some(retained) = retained.bytes() else {
-        return Ok(false);
-    };
-    let levels = [
-        design.effects()[0].n_levels(),
-        design.effects()[1].n_levels(),
-    ];
-    let estimate = estimate_fe_solver_memory(
-        design.nobs(),
-        right_hand_sides,
-        &levels,
-        config.threads.resolved(),
-        None,
-    )?;
-    let required = estimate
-        .coefficient_batch_bytes
-        .checked_mul(4)
-        .and_then(|bytes| bytes.checked_add(estimate.cg_bytes))
-        .and_then(|bytes| bytes.checked_add(retained as u128))
-        .ok_or_else(|| allocation("retained CMG correction workspace overflows"))?;
-    Ok(config
-        .solver_memory_budget
-        .is_none_or(|budget| budget.fits(required)))
-}
-
 fn ensure_cmg_exact_retained_memory_fits(
     graph: &GraphCmg,
     config: CmgConfig,
@@ -3088,66 +2980,6 @@ fn subtract_core_fit(
     Ok(())
 }
 
-fn subtract_core_fit_batch(
-    design: &BorrowedInterceptFeDesign<'_>,
-    core: [usize; 2],
-    values: &mut DenseMatrix,
-    start: usize,
-    end: usize,
-    solutions: &[f64],
-) -> Result<()> {
-    let vertices = core_vertices(design, core)?;
-    let width = end
-        .checked_sub(start)
-        .ok_or_else(|| invalid_argument("CMG subtraction batch range is invalid"))?;
-    if width == 0
-        || end > values.ncols()
-        || design.nobs() != values.nrows()
-        || width.checked_mul(vertices) != Some(solutions.len())
-    {
-        return Err(invalid_argument(
-            "CMG subtraction batch dimensions are inconsistent",
-        ));
-    }
-    let left = design.effects()[core[0]].codes();
-    let right = design.effects()[core[1]].codes();
-    let right_offset = design.effects()[core[0]].n_levels();
-    let columns = values.ncols();
-    // Check the whole batch before any row changes. An overflow must leave
-    // complete prior column projections for the certified CG fallback, not
-    // partially subtracted groups from parallel workers.
-    values
-        .as_slice()
-        .par_chunks(columns)
-        .enumerate()
-        .try_for_each(|(row, values)| {
-            let a = left[row] as usize;
-            let b = right_offset + right[row] as usize;
-            for local in 0..width {
-                let base = local * vertices;
-                let fitted = solutions[base + a] - solutions[base + b];
-                if !(values[start + local] - fitted).is_finite() {
-                    return Err(invalid_data("CMG projection produced a nonfinite residual"));
-                }
-            }
-            Ok(())
-        })?;
-    values
-        .as_mut_slice()
-        .par_chunks_mut(columns)
-        .enumerate()
-        .for_each(|(row, values)| {
-            let a = left[row] as usize;
-            let b = right_offset + right[row] as usize;
-            for local in 0..width {
-                let base = local * vertices;
-                let fitted = solutions[base + a] - solutions[base + b];
-                values[start + local] -= fitted;
-            }
-        });
-    Ok(())
-}
-
 fn core_vertices(design: &BorrowedInterceptFeDesign<'_>, core: [usize; 2]) -> Result<usize> {
     design.effects()[core[0]]
         .n_levels()
@@ -3516,116 +3348,6 @@ mod tests {
     use super::super::certify_borrowed_intercept_candidate;
     use super::*;
     use crate::fe::{absorb_borrowed_intercept_cg_certified, BorrowedInterceptEffect, LevelIndex};
-
-    #[test]
-    fn core_batch_subtraction_preserves_bits_and_rejects_before_mutation() {
-        for threads in [1, 8, 16] {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(threads)
-                .build()
-                .unwrap()
-                .install(|| {
-                    for n in [257, 16_387] {
-                        let left: Vec<_> = (0..n).map(|r| ((r / 3) % 17) as u32).collect();
-                        let right: Vec<_> = (0..n).map(|r| ((r * 7 / 5) % 13) as u32).collect();
-                        let li = LevelIndex::from_codes(&left, 17).unwrap();
-                        let ri = LevelIndex::from_codes(&right, 13).unwrap();
-                        let design = BorrowedInterceptFeDesign::new(
-                            n,
-                            vec![effect(&left, 17, &li), effect(&right, 13, &ri)],
-                        )
-                        .unwrap();
-                        for core in [[0, 1], [1, 0]] {
-                            for columns in [3, 8, 52] {
-                                let input = DenseMatrix::from_row_major(
-                                    n,
-                                    columns,
-                                    (0..n * columns)
-                                        .map(|i| {
-                                            if i % 19 == 0 {
-                                                -0.0
-                                            } else if i % 23 == 0 {
-                                                1e300
-                                            } else {
-                                                (i as f64 * 0.17).sin()
-                                            }
-                                        })
-                                        .collect(),
-                                )
-                                .unwrap();
-                                for (start, end) in
-                                    [(0, columns), (1, columns - 1), (columns - 2, columns)]
-                                {
-                                    let solutions: Vec<_> = (0..(end - start) * 30)
-                                        .map(|i| ((i * 37 % 101) as f64 - 50.0) / 17.0)
-                                        .collect();
-                                    let mut expected = input.clone();
-                                    for local in 0..end - start {
-                                        subtract_core_fit(
-                                            &design,
-                                            core,
-                                            &mut expected,
-                                            start + local,
-                                            &solutions[local * 30..(local + 1) * 30],
-                                        )
-                                        .unwrap();
-                                    }
-                                    let mut actual = input.clone();
-                                    subtract_core_fit_batch(
-                                        &design,
-                                        core,
-                                        &mut actual,
-                                        start,
-                                        end,
-                                        &solutions,
-                                    )
-                                    .unwrap();
-                                    assert!(actual
-                                        .as_slice()
-                                        .iter()
-                                        .zip(expected.as_slice())
-                                        .all(|(a, b)| a.to_bits() == b.to_bits()));
-                                    let mut invalid = solutions;
-                                    invalid[0] = f64::NAN;
-                                    let mut rejected = input.clone();
-                                    assert!(subtract_core_fit_batch(
-                                        &design,
-                                        core,
-                                        &mut rejected,
-                                        start,
-                                        end,
-                                        &invalid
-                                    )
-                                    .is_err());
-                                    assert!(rejected
-                                        .as_slice()
-                                        .iter()
-                                        .zip(input.as_slice())
-                                        .all(|(a, b)| a.to_bits() == b.to_bits()));
-                                    invalid.fill(0.0);
-                                    invalid[0] = f64::MAX;
-                                    invalid[design.effects()[core[0]].n_levels()] = -f64::MAX;
-                                    assert!(subtract_core_fit_batch(
-                                        &design,
-                                        core,
-                                        &mut rejected,
-                                        start,
-                                        end,
-                                        &invalid
-                                    )
-                                    .is_err());
-                                    assert!(rejected
-                                        .as_slice()
-                                        .iter()
-                                        .zip(input.as_slice())
-                                        .all(|(a, b)| a.to_bits() == b.to_bits()));
-                                }
-                            }
-                        }
-                    }
-                });
-        }
-    }
 
     #[test]
     fn hierarchy_work_counts_recursive_level_visits() {
@@ -5452,143 +5174,6 @@ mod tests {
                 &coefficients,
                 1e-12,
             );
-        }
-    }
-
-    #[test]
-    fn automatic_two_fe_cmg_corrections_retain_requested_products_within_budget() {
-        let rows = 48;
-        let left = (0..rows).map(|row| (row % 4) as u32).collect::<Vec<_>>();
-        let right = (0..rows)
-            .map(|row| ((row / 4) % 3) as u32)
-            .collect::<Vec<_>>();
-        let li = LevelIndex::from_codes(&left, 4).unwrap();
-        let ri = LevelIndex::from_codes(&right, 3).unwrap();
-        let design = || {
-            BorrowedInterceptFeDesign::new(
-                rows,
-                vec![effect(&left, 4, &li), effect(&right, 3, &ri)],
-            )
-            .unwrap()
-        };
-        let noise = (0..rows)
-            .map(|row| if (row / 12) % 2 == 0 { -1.0 } else { 1.0 })
-            .collect::<Vec<_>>();
-        let input = DenseMatrix::from_columns(&[(0..rows)
-            .map(|row| noise[row] + 2e-9 * left[row] as f64 + 1e-9 * right[row] as f64)
-            .collect()])
-        .unwrap();
-        for threads in [1, 8] {
-            rayon::ThreadPoolBuilder::new()
-                .num_threads(threads)
-                .build()
-                .unwrap()
-                .install(|| {
-                    for scale in [None, Some(1e-100), Some(1.0), Some(1e100)] {
-                        let raw = scale.map(|scale| {
-                            (0..rows)
-                                .map(|row| scale * (1 + row % 12) as f64)
-                                .collect::<Vec<_>>()
-                        });
-                        let weights = raw
-                            .as_deref()
-                            .map_or(BorrowedMapWeights::Unit, BorrowedMapWeights::Provided);
-                        for (requested, save, short) in [
-                            (FeSolverKind::Auto, true, false),
-                            (FeSolverKind::Auto, true, true),
-                            (FeSolverKind::Auto, false, false),
-                            (FeSolverKind::Cmg, true, false),
-                        ] {
-                            let mut options = config(1);
-                            options.threads = ThreadConfig::from_requested(threads, true).unwrap();
-                            options.map.tolerance = 1e-8;
-                            options.requested_solver = requested;
-                            options.retain_coefficients = save;
-                            let session =
-                                CmgAbsorber::build(design(), weights, options, false).unwrap();
-                            assert!(!session.ols_final_reuse);
-                            let mut session = session.with_ols_final_reuse(true);
-                            let estimate =
-                                estimate_fe_solver_memory(rows, 1, &[4, 3], threads, None).unwrap();
-                            let required =
-                                estimate.cg_bytes + 4 * estimate.coefficient_batch_bytes + 8;
-                            session.config.solver_memory_budget = Some(FeSolverMemoryBudget {
-                                execution_bytes: 512,
-                                usable_bytes: 512 + required - u128::from(short),
-                            });
-                            let admitted = requested == FeSolverKind::Auto && !short;
-                            assert_eq!(
-                                retained_cg_correction_fits(
-                                    &design(),
-                                    1,
-                                    session.config,
-                                    SolverWorkspacePeak::from_bytes(8).unwrap()
-                                )
-                                .unwrap(),
-                                admitted
-                            );
-                            if !admitted {
-                                continue;
-                            }
-                            session.memory = CmgWorkspacePlan::EMPTY;
-                            let result =
-                                session.absorb_final_residual(input.clone(), 1e-12).unwrap();
-                            assert!(result.report().certified() && result.report().iterations > 0);
-                            let (within, _, coefficients) = result.into_full_parts();
-                            assert_eq!(coefficients.is_some(), save);
-                            for (&value, &expected) in within.as_slice().iter().zip(&noise) {
-                                assert!(
-                                    (value - expected).abs() < 1e-11,
-                                    "threads={threads} scale={scale:?} difference={}",
-                                    value - expected
-                                );
-                            }
-                            if let Some(coefficients) = coefficients {
-                                assert_coefficients_reconstruct(
-                                    &input,
-                                    &within,
-                                    &[&left, &right],
-                                    &coefficients,
-                                    1e-12,
-                                );
-                            }
-                            let reuse = CmgAbsorber::build(design(), weights, options, false)
-                                .unwrap()
-                                .with_ols_final_reuse(true)
-                                .absorb_final_residual(input.clone(), 1e-12)
-                                .unwrap();
-                            assert!(reuse.report().certified());
-                            assert_eq!(
-                                reuse.report().used_solver,
-                                FeSolverKind::Cmg,
-                                "threads={threads} scale={scale:?} report={:?}",
-                                reuse.report()
-                            );
-                            assert!(
-                                reuse
-                                    .report()
-                                    .warnings
-                                    .iter()
-                                    .any(|warning| warning
-                                        .contains("reused its current-weight graph"))
-                            );
-                            let (reused, _, coefficients) = reuse.into_full_parts();
-                            assert_eq!(coefficients.is_some(), save);
-                            if let Some(coefficients) = coefficients {
-                                assert_coefficients_reconstruct(
-                                    &input,
-                                    &reused,
-                                    &[&left, &right],
-                                    &coefficients,
-                                    1e-12,
-                                );
-                            }
-                            for (&value, &expected) in reused.as_slice().iter().zip(&noise) {
-                                assert!((value - expected).abs() < 1e-11);
-                            }
-                        }
-                    }
-                });
         }
     }
 

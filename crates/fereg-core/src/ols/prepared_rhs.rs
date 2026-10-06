@@ -293,7 +293,7 @@ impl<'a> NumericOlsColumns<'a> {
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample,
     ) -> Result<Option<Self>> {
-        Self::bind_with_minimum(model, sample, 1)
+        Self::bind_with_minimum(model, sample, 1, 4096)
     }
 
     /// None is an explicit intercept; every borrowed source has the active row count.
@@ -305,36 +305,32 @@ impl<'a> NumericOlsColumns<'a> {
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample,
     ) -> Result<Option<Self>> {
-        Self::bind_with_minimum(model, sample, 8)
+        Self::bind_with_minimum(model, sample, 8, 4096)
     }
 
     pub(crate) fn bind_loaded_rhs(
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample,
     ) -> Result<Option<Self>> {
-        // Narrow transport admission does not widen the separate predictor,
-        // residual-update and ordinary RHS-construction fast paths.
-        let minimum = if sample.n_active() >= 16_384 && rayon::current_num_threads() >= 8 {
-            2
-        } else {
-            8
-        };
-        Self::bind_with_minimum(model, sample, minimum)
+        // Ownership reuse needs structural alignment and exact values;
+        // worker budget controls only the validation scan.
+        Self::bind_with_minimum(model, sample, 1, 0)
     }
 
     pub(crate) fn bind_residual_mean(
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample,
     ) -> Result<Option<Self>> {
-        Self::bind_with_minimum(model, sample, 2)
+        Self::bind_with_minimum(model, sample, 2, 4096)
     }
 
     fn bind_with_minimum(
         model: &super::PreparedOlsModel,
         sample: &'a crate::data::PreparedNumericSample,
         minimum: usize,
+        minimum_rows: usize,
     ) -> Result<Option<Self>> {
-        if sample.n_active() < 4096
+        if sample.n_active() < minimum_rows
             || !(minimum..=MAX_BOUND_NUMERIC_COLUMNS).contains(&model.columns.len())
             || model.columns.iter().any(|c| {
                 !matches!(
@@ -369,28 +365,35 @@ impl<'a> NumericOlsColumns<'a> {
 
     pub(crate) fn matches_rhs(&self, response: &[f64], data: &[f64]) -> bool {
         let width = self.width + 1;
-        response.len() == self.rows
-            && self.rows.checked_mul(width) == Some(data.len())
-            && data
-                .par_chunks(NUMERIC_TILE_ROWS * width)
-                .enumerate()
-                .all(|(tile, input)| {
-                    let start = tile * NUMERIC_TILE_ROWS;
-                    for (offset, row) in input.chunks_exact(width).enumerate() {
-                        if row[0].to_bits() != response[start + offset].to_bits() {
-                            return false;
-                        }
+        if response.len() != self.rows || self.rows.checked_mul(width) != Some(data.len()) {
+            return false;
+        }
+        let tile_cells = NUMERIC_TILE_ROWS * width;
+        let check = |(tile, input): (usize, &[f64])| {
+            let start = tile * NUMERIC_TILE_ROWS;
+            for (offset, row) in input.chunks_exact(width).enumerate() {
+                if row[0].to_bits() != response[start + offset].to_bits() {
+                    return false;
+                }
+            }
+            for (column, source) in self.columns[..self.width].iter().enumerate() {
+                for (offset, row) in input.chunks_exact(width).enumerate() {
+                    let expected = source.map_or(1.0, |values| values[start + offset]);
+                    if row[column + 1].to_bits() != expected.to_bits() {
+                        return false;
                     }
-                    for (column, source) in self.columns[..self.width].iter().enumerate() {
-                        for (offset, row) in input.chunks_exact(width).enumerate() {
-                            let expected = source.map_or(1.0, |values| values[start + offset]);
-                            if row[column + 1].to_bits() != expected.to_bits() {
-                                return false;
-                            }
-                        }
-                    }
-                    true
-                })
+                }
+            }
+            true
+        };
+        if crate::parallel::StagePlan::current(data.len() as u128, data.len().div_ceil(tile_cells))
+            .lanes
+            > 1
+        {
+            data.par_chunks(tile_cells).enumerate().all(check)
+        } else {
+            data.chunks(tile_cells).enumerate().all(check)
+        }
     }
 
     pub(crate) fn fill_reserved_rhs(&self, response: &[f64], data: &mut Vec<f64>) -> Result<()> {
@@ -1113,7 +1116,10 @@ mod tests {
     fn loaded_rhs_reuse_preserves_bits_and_rejects_stale_rows() {
         use crate::{ThreadConfig, ThreadTeam};
         for (width, n) in [
-            (3_usize, 16383),
+            (2_usize, 257),
+            (3, 257),
+            (3, 4095),
+            (3, 16383),
             (3, 16384),
             (5, 16384),
             (7, 16384),
@@ -1176,7 +1182,7 @@ mod tests {
                         )
                         .unwrap();
                         let reused = rhs.into_values();
-                        assert_eq!(transferred, width >= 9 || n >= 16384 && threads >= 8);
+                        assert!(transferred);
                         if transferred {
                             assert_eq!(pointer, reused.as_slice().as_ptr());
                         }
@@ -1214,7 +1220,11 @@ mod tests {
                     })
                     .unwrap();
             }
-            prepared.sample.regressors[0][0] = f64::NAN;
+            if let Some(column) = prepared.sample.regressors.first_mut() {
+                column[0] = f64::NAN;
+            } else {
+                prepared.sample.outcome[0] = f64::NAN;
+            }
             assert_eq!(
                 build_prepared_ols_rhs(&prepared).unwrap_err(),
                 build_prepared_ols_rhs_with_loaded_rows(

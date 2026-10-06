@@ -1,23 +1,20 @@
+use crate::estimate::{parse_bool, parse_positive_u32, parse_usize, read_bindings, required};
 use std::collections::BTreeSet;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
 
 use crate::output::OutputSink;
 use fereg_core::error::{ErrorCode, FeregError, Result};
-use fereg_core::metadata::{
-    ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
-    COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
-};
+#[cfg(test)]
+use fereg_core::metadata::SourceId;
 use fereg_core::ols::{
-    absorb_prepared_ols_rhs_map, prepare_ols_data, LoadedNumericColumn, LoadedOlsInput,
-    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsData,
+    absorb_prepared_ols_rhs_map, prepare_ols_data, OlsRequestV1, PreparedOlsData,
 };
 use fereg_core::protocol::{parse_key_values, Handshake};
 use fereg_core::{MapConfig, SolveStopReason};
 
 pub const ACTION_PREPARE_OLS_TEST: &str = "prepare-ols-test";
 const CONFIRMATION: &str = "developer-preparation-test";
-const BINDING_ROW_WIDTH: usize = 3;
 pub(crate) const MAX_NUMERIC_STORE_COLUMNS: usize = 64;
 const PREPARED_MAP_CHECK_CONFIG: MapConfig = MapConfig {
     tolerance: 1e-10,
@@ -251,7 +248,9 @@ fn prepare_ols_test_with_map_config(
 ) -> Result<()> {
     let specification = PrepareActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
-    let prepared = load_and_prepare(&action, spi)?;
+    let loaded = crate::estimate::load_preparation_input(&action.request, spi)?;
+    let prepared = prepare_ols_data(&action.request, &loaded)?;
+    drop(loaded);
     let map_summary = if action.run_borrowed_map {
         spi.check_interrupted()?;
         Some(run_borrowed_map_check(&prepared, map_config)?)
@@ -343,24 +342,7 @@ const fn stop_reason_label(reason: SolveStopReason) -> &'static str {
 
 #[derive(Debug)]
 struct PrepareActionSpec {
-    model_major: f64,
-    model_minor: f64,
-    source_matrix: String,
-    source_count: usize,
-    term_matrix: String,
-    term_count: usize,
-    component_matrix: String,
-    component_count: usize,
-    source_names: Vec<String>,
-    canonical_tokens: Vec<String>,
-    raw_component_operators: Vec<String>,
-    raw_time_series_operators: Vec<String>,
-    absorb_term_matrix: String,
-    absorb_term_count: usize,
-    absorb_component_matrix: String,
-    absorb_component_count: usize,
-    absorb_labels: Vec<String>,
-    absorb_saved_names: Vec<String>,
+    model: crate::model_metadata::ModelMetadata,
     binding_matrix: String,
     binding_count: usize,
     include_intercept: bool,
@@ -378,44 +360,22 @@ impl PrepareActionSpec {
                 "{ACTION_PREPARE_OLS_TEST} requires confirm={CONFIRMATION}",
             )));
         }
-        let source_count = parse_usize(&values, "source_count")?;
-        let term_count = parse_usize(&values, "term_count")?;
-        let component_count = parse_usize(&values, "component_count")?;
-        let absorb_term_count = parse_usize(&values, "absorb_term_count")?;
-        let absorb_component_count = parse_usize(&values, "absorb_component_count")?;
+        let model_counts = crate::model_metadata::ModelMetadata::counts(&values)?;
         let specification = Self {
-            model_major: f64::from(parse_u16(&values, "model_major")?),
-            model_minor: f64::from(parse_u16(&values, "model_minor")?),
-            source_matrix: required(&values, "source_matrix")?.to_owned(),
-            source_count,
-            term_matrix: required(&values, "term_matrix")?.to_owned(),
-            term_count,
-            component_matrix: required(&values, "component_matrix")?.to_owned(),
-            component_count,
-            source_names: decode_registry(required(&values, "source_names")?, source_count)?,
-            canonical_tokens: decode_registry(required(&values, "canonical_tokens")?, term_count)?,
-            raw_component_operators: decode_registry(
-                required(&values, "raw_component_operators")?,
-                component_count,
-            )?,
-            raw_time_series_operators: decode_registry(
-                required(&values, "raw_time_series_operators")?,
-                component_count,
-            )?,
-            absorb_term_matrix: required(&values, "absorb_term_matrix")?.to_owned(),
-            absorb_term_count,
-            absorb_component_matrix: required(&values, "absorb_component_matrix")?.to_owned(),
-            absorb_component_count,
-            absorb_labels: decode_registry(required(&values, "absorb_labels")?, absorb_term_count)?,
-            absorb_saved_names: decode_registry(
-                required(&values, "absorb_saved_names")?,
-                absorb_term_count,
+            model: crate::model_metadata::ModelMetadata::parse(
+                &values,
+                model_counts,
+                crate::model_metadata::RegistryFraming::ByteLengths,
             )?,
             binding_matrix: required(&values, "binding_matrix")?.to_owned(),
             binding_count: parse_usize(&values, "binding_count")?,
             include_intercept: parse_bool(&values, "include_intercept")?,
             keep_singletons: parse_bool(&values, "keep_singletons")?,
-            run_borrowed_map: parse_optional_bool(&values, "run_borrowed_map", false)?,
+            run_borrowed_map: values
+                .get("run_borrowed_map")
+                .map(|_| parse_bool(&values, "run_borrowed_map"))
+                .transpose()?
+                .unwrap_or(false),
             diagnostics: DiagnosticBindings {
                 original_observation: parse_positive_u32(&values, "output_original_observation")?,
                 retained: parse_positive_u32(&values, "output_retained")?,
@@ -474,51 +434,17 @@ impl PrepareActionSpec {
     }
 
     fn decode_and_validate(&self, spi: &mut dyn SpiApi) -> Result<PrepareAction> {
-        let wire = ModelWireV2 {
-            major: self.model_major,
-            minor: self.model_minor,
-            sources: read_table(
-                spi,
-                &self.source_matrix,
-                self.source_count,
-                SOURCE_ROW_WIDTH,
+        let wire = self.model.read_wire(
+            spi,
+            self.model.registries.clone(),
+            [
                 "source",
-            )?,
-            terms: read_table(
-                spi,
-                &self.term_matrix,
-                self.term_count,
-                TERM_ROW_WIDTH,
                 "term",
-            )?,
-            components: read_table(
-                spi,
-                &self.component_matrix,
-                self.component_count,
-                COMPONENT_ROW_WIDTH,
                 "component",
-            )?,
-            source_names: self.source_names.clone(),
-            canonical_tokens: self.canonical_tokens.clone(),
-            raw_component_operators: self.raw_component_operators.clone(),
-            raw_time_series_operators: self.raw_time_series_operators.clone(),
-            absorb_terms: read_table(
-                spi,
-                &self.absorb_term_matrix,
-                self.absorb_term_count,
-                ABSORB_TERM_ROW_WIDTH,
                 "absorbed term",
-            )?,
-            absorb_components: read_table(
-                spi,
-                &self.absorb_component_matrix,
-                self.absorb_component_count,
-                ABSORB_COMPONENT_ROW_WIDTH,
                 "absorbed component",
-            )?,
-            absorb_labels: self.absorb_labels.clone(),
-            absorb_saved_names: self.absorb_saved_names.clone(),
-        };
+            ],
+        )?;
         let specification = wire.decode_specification()?;
         let bindings = read_bindings(spi, &self.binding_matrix, self.binding_count)?;
         let request = OlsRequestV1 {
@@ -545,108 +471,6 @@ impl PrepareActionSpec {
             run_borrowed_map: self.run_borrowed_map,
         })
     }
-}
-
-fn load_and_prepare(action: &PrepareAction, spi: &mut dyn SpiApi) -> Result<PreparedOlsData> {
-    let n = spi.nobs()?;
-    let mut candidate = reserved_filled(n, false, "candidate marker")?;
-
-    let candidate_position = role_position(&action.request, OlsInputRoleTag::Candidate)?;
-    for observation in 1..=n {
-        spi.check_interrupted()?;
-        let (value, missing) = spi.read_numeric(candidate_position, observation)?;
-        if missing || !value.is_finite() || !matches!(value, 0.0 | 1.0) {
-            return Err(invalid_data(format!(
-                "candidate marker at observation {observation} must be nonmissing and exactly zero or one",
-            )));
-        }
-        candidate[observation - 1] = value == 1.0;
-    }
-
-    let mut outcome = empty_loaded_column(n, "outcome")?;
-    let mut numeric_sources = Vec::new();
-    numeric_sources
-        .try_reserve_exact(action.request.model.sources.len())
-        .map_err(|_| allocation("unable to reserve numeric source table"))?;
-    for source in &action.request.model.sources {
-        numeric_sources.push((source.id, empty_loaded_column(n, "numeric source")?));
-    }
-
-    let outcome_position = role_position(&action.request, OlsInputRoleTag::Outcome)?;
-    let analytic_weight_position = action.request.bindings.iter().find_map(|binding| {
-        (binding.role == OlsInputRole::AnalyticWeight).then_some(binding.stata_var_position)
-    });
-    let frequency_weight_position = action.request.bindings.iter().find_map(|binding| {
-        (binding.role == OlsInputRole::FrequencyWeight).then_some(binding.stata_var_position)
-    });
-    let probability_weight_position = action.request.bindings.iter().find_map(|binding| {
-        (binding.role == OlsInputRole::ProbabilityWeight).then_some(binding.stata_var_position)
-    });
-    let mut analytic_weight = analytic_weight_position
-        .map(|_| empty_loaded_column(n, "analytic weight"))
-        .transpose()?;
-    let mut frequency_weight = frequency_weight_position
-        .map(|_| empty_loaded_column(n, "frequency weight"))
-        .transpose()?;
-    let mut probability_weight = probability_weight_position
-        .map(|_| empty_loaded_column(n, "probability weight"))
-        .transpose()?;
-    let source_positions = action
-        .request
-        .model
-        .sources
-        .iter()
-        .map(|source| source_position(&action.request, source.id))
-        .collect::<Result<Vec<_>>>()?;
-
-    for (zero_based, retained_candidate) in candidate.iter().copied().enumerate() {
-        if !retained_candidate {
-            continue;
-        }
-        spi.check_interrupted()?;
-        let observation = zero_based + 1;
-        let (value, missing) = spi.read_numeric(outcome_position, observation)?;
-        outcome.values[zero_based] = value;
-        outcome.missing[zero_based] = missing;
-        for ((_, destination), position) in numeric_sources.iter_mut().zip(&source_positions) {
-            let (value, missing) = spi.read_numeric(*position, observation)?;
-            destination.values[zero_based] = value;
-            destination.missing[zero_based] = missing;
-        }
-        if let (Some(position), Some(destination)) =
-            (analytic_weight_position, analytic_weight.as_mut())
-        {
-            let (value, missing) = spi.read_numeric(position, observation)?;
-            destination.values[zero_based] = value;
-            destination.missing[zero_based] = missing;
-        }
-        if let (Some(position), Some(destination)) =
-            (frequency_weight_position, frequency_weight.as_mut())
-        {
-            let (value, missing) = spi.read_numeric(position, observation)?;
-            destination.values[zero_based] = value;
-            destination.missing[zero_based] = missing;
-        }
-        if let (Some(position), Some(destination)) =
-            (probability_weight_position, probability_weight.as_mut())
-        {
-            let (value, missing) = spi.read_numeric(position, observation)?;
-            destination.values[zero_based] = value;
-            destination.missing[zero_based] = missing;
-        }
-    }
-
-    prepare_ols_data(
-        &action.request,
-        &LoadedOlsInput {
-            candidate,
-            outcome,
-            numeric_sources,
-            analytic_weight,
-            frequency_weight,
-            probability_weight,
-        },
-    )
 }
 
 fn write_diagnostics(
@@ -735,255 +559,6 @@ fn validate_numeric_position(
         )));
     }
     Ok(())
-}
-
-fn read_table(
-    spi: &mut dyn SpiApi,
-    name: &str,
-    declared_count: usize,
-    width: usize,
-    label: &str,
-) -> Result<NumericWireTable> {
-    let (rows, columns) = spi.matrix_dimensions(name)?;
-    let expected_rows = declared_count.max(1);
-    if rows != expected_rows || columns != width {
-        return Err(invalid(format!(
-            "{label} matrix {name:?} is {rows}x{columns}, expected {expected_rows}x{width}",
-        )));
-    }
-    let mut values = Vec::new();
-    values
-        .try_reserve_exact(rows)
-        .map_err(|_| allocation(format!("unable to reserve {label} matrix rows")))?;
-    for row in 1..=rows {
-        let mut output_row = Vec::new();
-        output_row
-            .try_reserve_exact(width)
-            .map_err(|_| allocation(format!("unable to reserve {label} matrix row")))?;
-        for column in 1..=width {
-            output_row.push(spi.matrix_element(name, row, column)?);
-        }
-        values.push(output_row);
-    }
-    Ok(NumericWireTable {
-        declared_count: declared_count as f64,
-        rows: values,
-    })
-}
-
-fn read_bindings(spi: &mut dyn SpiApi, name: &str, count: usize) -> Result<Vec<OlsInputBinding>> {
-    if count == 0 {
-        return Err(invalid(
-            "binding matrix must contain candidate and outcome rows",
-        ));
-    }
-    let (rows, columns) = spi.matrix_dimensions(name)?;
-    if rows != count || columns != BINDING_ROW_WIDTH {
-        return Err(invalid(format!(
-            "binding matrix {name:?} is {rows}x{columns}, expected {count}x{BINDING_ROW_WIDTH}",
-        )));
-    }
-    let mut bindings = Vec::new();
-    bindings
-        .try_reserve_exact(count)
-        .map_err(|_| allocation("unable to reserve OLS input bindings"))?;
-    for row in 1..=rows {
-        let position = exact_positive_u32(spi.matrix_element(name, row, 1)?, "binding position")?;
-        let role = exact_nonnegative_u32(spi.matrix_element(name, row, 2)?, "binding role")?;
-        let source = exact_nonnegative_u32(spi.matrix_element(name, row, 3)?, "binding source")?;
-        let role = match (role, source) {
-            (1, 0) => OlsInputRole::Candidate,
-            (2, 0) => OlsInputRole::Outcome,
-            (3, source) if source > 0 => OlsInputRole::NumericSource(SourceId::new(source)?),
-            (4, 0) => OlsInputRole::AnalyticWeight,
-            (5, 0) => OlsInputRole::FrequencyWeight,
-            (6, 0) => OlsInputRole::ProbabilityWeight,
-            _ => return Err(invalid(format!("invalid OLS input binding at row {row}"))),
-        };
-        bindings.push(OlsInputBinding {
-            stata_var_position: position,
-            role,
-        });
-    }
-    Ok(bindings)
-}
-
-#[derive(Clone, Copy)]
-enum OlsInputRoleTag {
-    Candidate,
-    Outcome,
-}
-
-fn role_position(request: &OlsRequestV1, target: OlsInputRoleTag) -> Result<u32> {
-    request
-        .bindings
-        .iter()
-        .find_map(|binding| match (target, binding.role) {
-            (OlsInputRoleTag::Candidate, OlsInputRole::Candidate)
-            | (OlsInputRoleTag::Outcome, OlsInputRole::Outcome) => Some(binding.stata_var_position),
-            _ => None,
-        })
-        .ok_or_else(|| invalid("validated OLS role binding disappeared"))
-}
-
-fn source_position(request: &OlsRequestV1, source: SourceId) -> Result<u32> {
-    request
-        .bindings
-        .iter()
-        .find_map(|binding| match binding.role {
-            OlsInputRole::NumericSource(candidate) if candidate == source => {
-                Some(binding.stata_var_position)
-            }
-            _ => None,
-        })
-        .ok_or_else(|| invalid("validated OLS source binding disappeared"))
-}
-
-fn empty_loaded_column(n: usize, label: &str) -> Result<LoadedNumericColumn> {
-    Ok(LoadedNumericColumn {
-        values: reserved_filled(n, 0.0, &format!("{label} values"))?,
-        missing: reserved_filled(n, false, &format!("{label} missing mask"))?,
-    })
-}
-
-fn reserved_filled<T: Clone>(n: usize, value: T, label: &str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(n)
-        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
-    output.resize(n, value);
-    Ok(output)
-}
-
-fn decode_registry(encoded: &str, expected: usize) -> Result<Vec<String>> {
-    if expected == 0 {
-        return if encoded == "." {
-            Ok(Vec::new())
-        } else {
-            Err(invalid("empty registry must use the '.' sentinel"))
-        };
-    }
-    let bytes = encoded.as_bytes();
-    let mut cursor = 0_usize;
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(expected)
-        .map_err(|_| allocation("unable to reserve model string registry"))?;
-    while cursor < bytes.len() {
-        let colon = bytes[cursor..]
-            .iter()
-            .position(|byte| *byte == b':')
-            .map(|offset| cursor + offset)
-            .ok_or_else(|| invalid("registry entry is missing its length separator"))?;
-        let length_text = std::str::from_utf8(&bytes[cursor..colon])
-            .map_err(|_| invalid("registry length is not UTF-8"))?;
-        let length = length_text
-            .parse::<usize>()
-            .map_err(|_| invalid("registry length is not a nonnegative integer"))?;
-        let start = colon + 1;
-        let end = start
-            .checked_add(length)
-            .filter(|end| *end <= bytes.len())
-            .ok_or_else(|| invalid("registry entry length exceeds its encoded value"))?;
-        output.push(
-            std::str::from_utf8(&bytes[start..end])
-                .map_err(|_| invalid("registry entry is not UTF-8"))?
-                .to_owned(),
-        );
-        cursor = end;
-        if cursor < bytes.len() {
-            if bytes[cursor] != b'|' {
-                return Err(invalid("registry entries must be separated by '|'"));
-            }
-            cursor += 1;
-            if cursor == bytes.len() {
-                return Err(invalid("registry must not end with an empty separator"));
-            }
-        }
-    }
-    if output.len() != expected {
-        return Err(invalid(format!(
-            "registry has {} entries, expected {expected}",
-            output.len(),
-        )));
-    }
-    Ok(output)
-}
-
-fn required<'a>(
-    values: &'a std::collections::BTreeMap<String, String>,
-    key: &str,
-) -> Result<&'a str> {
-    values.get(key).map(String::as_str).ok_or_else(|| {
-        syntax(format!(
-            "missing required {ACTION_PREPARE_OLS_TEST} field {key}=...",
-        ))
-    })
-}
-
-fn parse_u16(values: &std::collections::BTreeMap<String, String>, key: &str) -> Result<u16> {
-    required(values, key)?
-        .parse::<u16>()
-        .map_err(|_| syntax(format!("field {key} must be an unsigned integer")))
-}
-
-fn parse_usize(values: &std::collections::BTreeMap<String, String>, key: &str) -> Result<usize> {
-    required(values, key)?
-        .parse::<usize>()
-        .map_err(|_| syntax(format!("field {key} must be a nonnegative integer")))
-}
-
-fn parse_positive_u32(
-    values: &std::collections::BTreeMap<String, String>,
-    key: &str,
-) -> Result<u32> {
-    let value = required(values, key)?
-        .parse::<u32>()
-        .map_err(|_| syntax(format!("field {key} must be a positive integer")))?;
-    if value == 0 {
-        Err(syntax(format!("field {key} must be positive")))
-    } else {
-        Ok(value)
-    }
-}
-
-fn parse_bool(values: &std::collections::BTreeMap<String, String>, key: &str) -> Result<bool> {
-    match required(values, key)? {
-        "0" => Ok(false),
-        "1" => Ok(true),
-        _ => Err(syntax(format!("field {key} must be exactly zero or one"))),
-    }
-}
-
-fn parse_optional_bool(
-    values: &std::collections::BTreeMap<String, String>,
-    key: &str,
-    default: bool,
-) -> Result<bool> {
-    match values.get(key).map(String::as_str) {
-        None => Ok(default),
-        Some("0") => Ok(false),
-        Some("1") => Ok(true),
-        Some(_) => Err(syntax(format!("field {key} must be exactly zero or one",))),
-    }
-}
-
-fn exact_positive_u32(value: f64, label: &str) -> Result<u32> {
-    let parsed = exact_nonnegative_u32(value, label)?;
-    if parsed == 0 {
-        Err(invalid(format!("{label} must be positive")))
-    } else {
-        Ok(parsed)
-    }
-}
-
-fn exact_nonnegative_u32(value: f64, label: &str) -> Result<u32> {
-    if !value.is_finite() || value < 0.0 || value.fract() != 0.0 || value > f64::from(u32::MAX) {
-        return Err(invalid(format!(
-            "{label} must be a nonnegative integer representable as u32",
-        )));
-    }
-    Ok(value as u32)
 }
 
 fn syntax(message: impl Into<String>) -> FeregError {
@@ -2508,18 +2083,66 @@ mod tests {
 
     #[test]
     fn registry_decoder_is_length_delimited_and_exact() {
+        use crate::model_metadata::{decode_registry, RegistryFraming};
+
         assert_eq!(
-            decode_registry("0:|3:c.x", 2).expect("registry"),
+            crate::model_metadata::decode_registry(
+                "0:|3:c.x",
+                2,
+                crate::model_metadata::RegistryFraming::ByteLengths
+            )
+            .expect("registry"),
             vec![String::new(), "c.x".to_owned()]
         );
         assert_eq!(
-            decode_registry(".", 0).expect("empty"),
+            crate::model_metadata::decode_registry(
+                ".",
+                0,
+                crate::model_metadata::RegistryFraming::ByteLengths
+            )
+            .expect("empty"),
             Vec::<String>::new()
         );
         assert_eq!(
-            decode_registry("2:x", 1).expect_err("short entry").code,
+            crate::model_metadata::decode_registry(
+                "2:x",
+                1,
+                crate::model_metadata::RegistryFraming::ByteLengths
+            )
+            .expect_err("short entry")
+            .code,
             ErrorCode::InvalidArgument
         );
+        assert_eq!(
+            decode_registry("3:a|b", 1, RegistryFraming::ByteLengths).unwrap(),
+            vec!["a|b"]
+        );
+        assert_eq!(
+            decode_registry("3:a|b", 1, RegistryFraming::Delimited)
+                .unwrap_err()
+                .code,
+            ErrorCode::InvalidArgument
+        );
+        for framing in [RegistryFraming::ByteLengths, RegistryFraming::Delimited] {
+            assert_eq!(
+                decode_registry("2:é|3:猫", 2, framing).unwrap(),
+                vec!["é", "猫"]
+            );
+            for invalid in ["1:é", "3:猫|", "3:猫|0:"] {
+                assert_eq!(
+                    decode_registry(invalid, 1, framing).unwrap_err().code,
+                    ErrorCode::InvalidArgument
+                );
+            }
+            assert_eq!(
+                decode_registry("x:a", 1, framing).unwrap_err().code,
+                if matches!(framing, RegistryFraming::Delimited) {
+                    ErrorCode::Syntax
+                } else {
+                    ErrorCode::InvalidArgument
+                }
+            );
+        }
     }
 
     #[test]

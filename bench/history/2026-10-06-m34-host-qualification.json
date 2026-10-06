@@ -1,0 +1,700 @@
+{
+  "native": {
+    "path": "fereg_macos.plugin",
+    "engine": "next",
+    "source_sha": "8f99a93445a4c55a0295291fb228da172aabf4c0",
+    "sha256": "70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e",
+    "bytes": 16368368,
+    "source_patch_sha256": "d72a907eaeefdc85495f7131d7912e172babc51217568a8efb5928392ca943f6",
+    "source_archive_sha256": "a046af7a1276343696af8b14ca4175deda212508019d76f530413cf171f329fa",
+    "identity_kind": "identified precommit bounded source"
+  },
+  "source": {
+    "commit": "8f99a93445a4c55a0295291fb228da172aabf4c0",
+    "archive_sha256": "a046af7a1276343696af8b14ca4175deda212508019d76f530413cf171f329fa",
+    "paths": [
+      "Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      "clippy.toml",
+      "references.lock.toml",
+      "crates",
+      "legacy",
+      "vendor",
+      "plugin",
+      "stata",
+      "scripts",
+      "ci/reference-bundles",
+      "tests/mock_spi",
+      "bench",
+      "AGENTS.md",
+      "docs/SPEC.md",
+      "docs/ARCHITECTURE.md"
+    ],
+    "scope": "bounded native/frontend snapshot, not full repository",
+    "patch_sha256": "d72a907eaeefdc85495f7131d7912e172babc51217568a8efb5928392ca943f6"
+  },
+  "science": "Full local04, long30, universal native/ABI, actualM33 exact73/fivebudgets, licensed46/mapped10 incl developer preparation and independentCMG30cells60fits; exact1540productcube1326360values and405664witnessvalues. Mac only.",
+  "retained_failures": "Early development compiler/Clippy/fixture failures retained. Focused02 mistakenly ran process-global FFI allocator concurrently; corrected required harness passes. Full02 size ratchet refused renamed inherited274line function; substantive accounting partition fixes before final source freeze. Earlier builds/source-phase evidence not substituted for final native. Historical optional repository audit remains failed/stale, not part of required local entrypoint.",
+  "evidence": [
+    {
+      "path": "target/m34-host-boundary/full-local-04.log",
+      "sha256": "e32e63696196194bc5b359177dcbb5d79bbc82bc8651166a0a732f8f493e3cf4"
+    },
+    {
+      "path": "target/m34-host-boundary/long-oracles-04.log",
+      "sha256": "a43bb92832235f9da73202624dd5a532694eb3c7e387710bb3705280c360a2ba"
+    },
+    {
+      "path": "target/m34-host-boundary/native-build-04.log",
+      "sha256": "040d1fa41371ebb54c89bab34369a99d478656df6e8a28ec471a91ac059b996c"
+    },
+    {
+      "path": "target/m34-host-boundary/abi-identified.log",
+      "sha256": "8751b854d28b30459e644da7801662df0d13c4f2c60b010643e62c31425f76ac"
+    },
+    {
+      "path": "target/m34-host-boundary/replay/summary.json",
+      "sha256": "bbc5c81374e02e548988d16de22ddb31e2b3e98305226cd7f8f3d48a50b4cd5a"
+    },
+    {
+      "path": "target/m34-host-boundary/stata/licensed46/summary.json",
+      "sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+    },
+    {
+      "path": "target/m34-host-boundary/stata/mapped-products/summary.json",
+      "sha256": "991af9dc6fc22dfb2fd9db0c775b9a990ad7f0e40fdd2dfa82a2fb4e2660a101"
+    },
+    {
+      "path": "target/m34-host-boundary/exact-witnesses/summary.json",
+      "sha256": "0578ae2a46091632c5380f508c74f3988345c950ba386671bcae1a43f62ad8bc"
+    },
+    {
+      "path": "target/m34-host-boundary/product-capture-summary.json",
+      "sha256": "74d2c42e2c605b96293084e11e672cc4d7c591135f39ae4605169a59763f8c54"
+    },
+    {
+      "path": "target/m34-host-boundary/development-inventory-06.json",
+      "sha256": "9a6323f8a29eb8f14b64a81f12f80597e3ca8e125646057f5e7a0bdc9f65ea52"
+    },
+    {
+      "path": "target/m34-host-boundary/registry-framing.log",
+      "sha256": "ed6ca1d5b673db2de10cc836ae7c8cccd856deb14c2494e6e09f9c51a3bdd051"
+    },
+    {
+      "path": "target/m34-host-boundary/final-ratchet.log",
+      "sha256": "ab7c9e86807ed9b125b85073e2527d1ff4812df1db7ab5baa4e5244b654dd107"
+    },
+    {
+      "path": "target/m34-host-boundary/acceptance-freeze.log",
+      "sha256": "74759b1d24c429098e30b62fcc2fd9fb68684796d0da4b856ab5f9134ab2ffaf"
+    }
+  ],
+  "state": "Architecturally accepted M34.1 tranche under Johannes comparable-successor authorization and independent Astra high review; raw performance failed; whole-M34 and final-program gates open.",
+  "production": {
+    "accepted_before": 110527,
+    "accepted_before_vs_M26": -10869,
+    "tranche_vs_parent": -938,
+    "accepted_total": 109589,
+    "accepted_core": 95559,
+    "accepted_host": 14030,
+    "accepted_vs_M26": -11807,
+    "remaining_15000": 3193,
+    "named_M34_successor": 7206,
+    "named_M34_budget": 6390,
+    "named_M34_miss": 816,
+    "functions_over_150": 81,
+    "files_over_1500": 19,
+    "growth_exceptions": []
+  },
+  "performance": {
+    "responsibility": "M34 integrated host boundary and dead-policy Mac performance decision",
+    "native_candidate": "70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e",
+    "native_parent": "09c295b7a79c707d69e6aef7267a1d3a41e32299a880defee53073ea1114c0ee",
+    "native_fixed_M26": "706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981",
+    "plan": {
+      "path": "target/m34-host-boundary/acceptance/acceptance-plan.json",
+      "sha256": "6b7d003dd9c2963758f47f03bda9bb10c158a953ca23708594ef8e1f6569303c",
+      "canonical_sha256": "5188e9084c4e06a95f8bd0fd4a4b352e266c3f7ceee11e04a29e0521876987eb"
+    },
+    "verdict": {
+      "path": "target/m34-host-boundary/acceptance/acceptance-verdict.json",
+      "sha256": "6036514244e1f0ee448057300c8611956ab9eb8f3ec15d1dea4657bbf45ad2bd",
+      "passed": false,
+      "counts": {
+        "parent": {
+          "within": 15
+        },
+        "fixed_baseline": {
+          "within": 11,
+          "unresolved": 4
+        }
+      }
+    },
+    "counts": {
+      "records": 4448,
+      "reference": 208,
+      "warmup": 208,
+      "timed": 4032,
+      "raw_capture_directories": 4448
+    },
+    "blocks": [
+      {
+        "path": "target/m34-host-boundary/acceptance/acceptance-confirmation-fixed_baseline-forward/results.json",
+        "sha256": "f09b4c015e1dedd98cb81ba16c40fef99e5757e80dc3037d28d9011b04facae4",
+        "records": 812,
+        "wall_seconds": 303.4915969170106,
+        "identities_verified": true
+      },
+      {
+        "path": "target/m34-host-boundary/acceptance/acceptance-confirmation-fixed_baseline-reverse/results.json",
+        "sha256": "147a6b58711caef0928068a9c681cc80139bc4a95aa2ff46c205ecd96b3d44ab",
+        "records": 812,
+        "wall_seconds": 302.4163620839972,
+        "identities_verified": true
+      },
+      {
+        "path": "target/m34-host-boundary/acceptance/acceptance-confirmation-parent-forward/results.json",
+        "sha256": "b120886c3b56e3076a06b7640c23e6771739234448421b56f2bc83d3c5ce0928",
+        "records": 812,
+        "wall_seconds": 285.41242495800543,
+        "identities_verified": true
+      },
+      {
+        "path": "target/m34-host-boundary/acceptance/acceptance-confirmation-parent-reverse/results.json",
+        "sha256": "b4b1342ff4300e92f85aadb11a22b6107a7862a05a2730b7aa70303d5f1fc902",
+        "records": 812,
+        "wall_seconds": 286.50249029100814,
+        "identities_verified": true
+      },
+      {
+        "path": "target/m34-host-boundary/acceptance/acceptance-screening-fixed_baseline-forward/results.json",
+        "sha256": "dd8e0aa274ae3a69e7ac22f30a22f854ae5968df33af222e233e72ac81111d11",
+        "records": 300,
+        "wall_seconds": 123.45357016699563,
+        "identities_verified": true
+      },
+      {
+        "path": "target/m34-host-boundary/acceptance/acceptance-screening-fixed_baseline-reverse/results.json",
+        "sha256": "97ca0dd434d57aba4e68ec917568fcb1fb6c0ea38dc1e840955fe574a2ab5a1c",
+        "records": 300,
+        "wall_seconds": 123.65351233299589,
+        "identities_verified": true
+      },
+      {
+        "path": "target/m34-host-boundary/acceptance/acceptance-screening-parent-forward/results.json",
+        "sha256": "43a9e29f9655d6a58907c4e2558ccebaf376795a774360bd249e1f36ecb9da65",
+        "records": 300,
+        "wall_seconds": 117.95021387499582,
+        "identities_verified": true
+      },
+      {
+        "path": "target/m34-host-boundary/acceptance/acceptance-screening-parent-reverse/results.json",
+        "sha256": "43e41300b5a9047af8b32ccbf02142576684964355c6cbd3b85777bbbe32f081",
+        "records": 300,
+        "wall_seconds": 116.49861337500624,
+        "identities_verified": true
+      }
+    ],
+    "established_regressions": [],
+    "unresolved": [
+      {
+        "cell": "cover-ppml-bias-randomized",
+        "threads": 4,
+        "verdict": "unresolved",
+        "confirmed": true,
+        "blocks": [
+          {
+            "verdict": "unresolved",
+            "delta_seconds": -0.0003861874999999959,
+            "allowance_seconds": 0.00212176875,
+            "parent_median_interval_seconds": [
+              0.0416339583333333,
+              0.0435502916666667
+            ],
+            "candidate_median_interval_seconds": [
+              0.0416543333333333,
+              0.044064375
+            ],
+            "lower_excess_seconds": -0.004073472916666734,
+            "upper_excess_seconds": 0.00034871875000004084,
+            "reverse_upper_excess_seconds": -0.00018675833333326635,
+            "pairs": 40,
+            "established_regression": false
+          },
+          {
+            "verdict": "within",
+            "delta_seconds": 0.00014424999999999855,
+            "allowance_seconds": 0.00206989375,
+            "parent_median_interval_seconds": [
+              0.041070625,
+              0.0419165833333333
+            ],
+            "candidate_median_interval_seconds": [
+              0.041150833333333296,
+              0.0420785416666667
+            ],
+            "lower_excess_seconds": -0.0028615791666666674,
+            "upper_excess_seconds": -0.0010456145833333016,
+            "reverse_upper_excess_seconds": -0.0012917916666666624,
+            "pairs": 40,
+            "established_regression": false
+          }
+        ],
+        "comparator": "fixed_baseline",
+        "observed_orders": [
+          {
+            "reverse": false,
+            "roles": {
+              "parent": {
+                "command_median_seconds": 0.042435375,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "total_seconds": 0.0252341455
+                }
+              },
+              "candidate": {
+                "command_median_seconds": 0.0420491875,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "total_seconds": 0.024986625
+                }
+              }
+            },
+            "delta_seconds": -0.0003861874999999959,
+            "relative_difference": -0.009100602975701144
+          },
+          {
+            "reverse": true,
+            "roles": {
+              "parent": {
+                "command_median_seconds": 0.041397875,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "total_seconds": 0.0243996875
+                }
+              },
+              "candidate": {
+                "command_median_seconds": 0.041542125,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "total_seconds": 0.0245210835
+                }
+              }
+            },
+            "delta_seconds": 0.00014424999999999855,
+            "relative_difference": 0.003484478369964572
+          }
+        ]
+      },
+      {
+        "cell": "development-ols-2fe-residual-robust",
+        "threads": 4,
+        "verdict": "unresolved",
+        "confirmed": true,
+        "blocks": [
+          {
+            "verdict": "unresolved",
+            "delta_seconds": 0.006054875000000057,
+            "allowance_seconds": 0.003931698958333333,
+            "parent_median_interval_seconds": [
+              0.0780470833333334,
+              0.07908662500000001
+            ],
+            "candidate_median_interval_seconds": [
+              0.0840054166666667,
+              0.08519170833333341
+            ],
+            "lower_excess_seconds": 0.000964460416666685,
+            "upper_excess_seconds": 0.0032422708333333314,
+            "reverse_upper_excess_seconds": -0.009119062500000021,
+            "pairs": 40,
+            "established_regression": false
+          },
+          {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0054719583333332905,
+            "allowance_seconds": 0.003925693750000003,
+            "parent_median_interval_seconds": [
+              0.0779808333333333,
+              0.0793155833333334
+            ],
+            "candidate_median_interval_seconds": [
+              0.0832318333333334,
+              0.08483225
+            ],
+            "lower_excess_seconds": -4.952916666667393e-05,
+            "upper_excess_seconds": 0.002952375000000028,
+            "reverse_upper_excess_seconds": -0.008077841666666665,
+            "pairs": 40,
+            "established_regression": false
+          }
+        ],
+        "comparator": "fixed_baseline",
+        "observed_orders": [
+          {
+            "reverse": false,
+            "roles": {
+              "parent": {
+                "command_median_seconds": 0.07863397916666665,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "input_seconds": 0.0091055215,
+                  "native_seconds": 0.0404695415,
+                  "total_seconds": 0.049804353999999995
+                }
+              },
+              "candidate": {
+                "command_median_seconds": 0.0846888541666667,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "input_seconds": 0.0084512915,
+                  "native_seconds": 0.0472603125,
+                  "total_seconds": 0.056064312000000005
+                }
+              }
+            },
+            "delta_seconds": 0.006054875000000057,
+            "relative_difference": 0.07700074527789824
+          },
+          {
+            "reverse": true,
+            "roles": {
+              "parent": {
+                "command_median_seconds": 0.07851387500000005,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "input_seconds": 0.009020103999999998,
+                  "native_seconds": 0.040404687499999994,
+                  "total_seconds": 0.0496694995
+                }
+              },
+              "candidate": {
+                "command_median_seconds": 0.08398583333333334,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "input_seconds": 0.008363770999999999,
+                  "native_seconds": 0.046909979,
+                  "total_seconds": 0.0554587295
+                }
+              }
+            },
+            "delta_seconds": 0.0054719583333332905,
+            "relative_difference": 0.06969415703063042
+          }
+        ]
+      },
+      {
+        "cell": "development-ols-absorbed-slope-combined-multiway",
+        "threads": 4,
+        "verdict": "unresolved",
+        "confirmed": true,
+        "blocks": [
+          {
+            "verdict": "unresolved",
+            "delta_seconds": 0.0025828749999999567,
+            "allowance_seconds": 0.003287731250000002,
+            "parent_median_interval_seconds": [
+              0.0651211666666667,
+              0.066361125
+            ],
+            "candidate_median_interval_seconds": [
+              0.0677555,
+              0.0691225833333333
+            ],
+            "lower_excess_seconds": -0.0019236812500000111,
+            "upper_excess_seconds": 0.0007453583333332692,
+            "reverse_upper_excess_seconds": -0.004782149999999989,
+            "pairs": 40,
+            "established_regression": false
+          },
+          {
+            "verdict": "unresolved",
+            "delta_seconds": 0.002307624999999952,
+            "allowance_seconds": 0.0032613114583333355,
+            "parent_median_interval_seconds": [
+              0.064860625,
+              0.0657117916666667
+            ],
+            "candidate_median_interval_seconds": [
+              0.0671085,
+              0.06815841666666671
+            ],
+            "lower_excess_seconds": -0.001888881250000033,
+            "upper_excess_seconds": 5.476041666670206e-05,
+            "reverse_upper_excess_seconds": -0.004752133333333302,
+            "pairs": 40,
+            "established_regression": false
+          }
+        ],
+        "comparator": "fixed_baseline",
+        "observed_orders": [
+          {
+            "reverse": false,
+            "roles": {
+              "parent": {
+                "command_median_seconds": 0.06575462500000004,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "input_seconds": 0.006349604,
+                  "native_seconds": 0.031807104499999996,
+                  "total_seconds": 0.038461771
+                }
+              },
+              "candidate": {
+                "command_median_seconds": 0.0683375,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "input_seconds": 0.005736438,
+                  "native_seconds": 0.0348497915,
+                  "total_seconds": 0.0408605205
+                }
+              }
+            },
+            "delta_seconds": 0.0025828749999999567,
+            "relative_difference": 0.039280506884496136
+          },
+          {
+            "reverse": true,
+            "roles": {
+              "parent": {
+                "command_median_seconds": 0.0652262291666667,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "input_seconds": 0.006218458,
+                  "native_seconds": 0.031470687,
+                  "total_seconds": 0.0378218335
+                }
+              },
+              "candidate": {
+                "command_median_seconds": 0.06753385416666666,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "input_seconds": 0.005633979,
+                  "native_seconds": 0.0347381045,
+                  "total_seconds": 0.040548417
+                }
+              }
+            },
+            "delta_seconds": 0.002307624999999952,
+            "relative_difference": 0.03537878901604885
+          }
+        ]
+      },
+      {
+        "cell": "development-ppml-2fe-residual-robust",
+        "threads": 4,
+        "verdict": "unresolved",
+        "confirmed": true,
+        "blocks": [
+          {
+            "verdict": "unresolved",
+            "delta_seconds": 0.015953729166666625,
+            "allowance_seconds": 0.011610177083333336,
+            "parent_median_interval_seconds": [
+              0.2310950833333334,
+              0.23349625
+            ],
+            "candidate_median_interval_seconds": [
+              0.2470655416666667,
+              0.2497994166666667
+            ],
+            "lower_excess_seconds": 0.0018944791666667057,
+            "upper_excess_seconds": 0.007149579166666625,
+            "reverse_upper_excess_seconds": -0.02592256875000004,
+            "pairs": 40,
+            "established_regression": false
+          },
+          {
+            "verdict": "unresolved",
+            "delta_seconds": 0.016149645833333393,
+            "allowance_seconds": 0.0115880625,
+            "parent_median_interval_seconds": [
+              0.2305349166666667,
+              0.23317575
+            ],
+            "candidate_median_interval_seconds": [
+              0.2464374583333334,
+              0.2503992916666667
+            ],
+            "lower_excess_seconds": 0.0016029208333333995,
+            "upper_excess_seconds": 0.008337629166666654,
+            "reverse_upper_excess_seconds": -0.02558358125000007,
+            "pairs": 40,
+            "established_regression": true
+          }
+        ],
+        "comparator": "fixed_baseline",
+        "observed_orders": [
+          {
+            "reverse": false,
+            "roles": {
+              "parent": {
+                "command_median_seconds": 0.2322035416666667,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "total_seconds": 0.17352602150000002
+                }
+              },
+              "candidate": {
+                "command_median_seconds": 0.24815727083333333,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "total_seconds": 0.1902680415
+                }
+              }
+            },
+            "delta_seconds": 0.015953729166666625,
+            "relative_difference": 0.0687057960105042
+          },
+          {
+            "reverse": true,
+            "roles": {
+              "parent": {
+                "command_median_seconds": 0.23176124999999997,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "total_seconds": 0.1727045835
+                }
+              },
+              "candidate": {
+                "command_median_seconds": 0.24791089583333337,
+                "observations": 40,
+                "confirmation_phase_medians_seconds": {
+                  "total_seconds": 0.1891742915
+                }
+              }
+            },
+            "delta_seconds": 0.016149645833333393,
+            "relative_difference": 0.06968225203019651
+          }
+        ]
+      }
+    ],
+    "retained_diagnosis": {
+      "path": "target/m34-host-boundary/acceptance/retained-diagnostics.json",
+      "sha256": "33a0bda6157921aa9cc9f388c882d010d42d5a58f0c43bee9c1adc5e84766ef8",
+      "confirmation_series": 88,
+      "established_half_drift_above_allowance": [],
+      "interpretation": "Chronological halves and lag-one dependence diagnose the original stationarity requirement. Raw verdict unchanged; all observations retained; no new criterion or favorable retries.",
+      "largest_confirmation_half_change_allowance_fraction": 0.88044625655804,
+      "confirmation_lag_one_range": [
+        -0.4223761073961019,
+        0.718029497212676
+      ]
+    },
+    "analysis_wall_seconds": 75.92787229100941,
+    "total_wall_seconds": 1934.6872215829935,
+    "clean_window": "Owned builds/tests/agents finished; two quiet checks30seconds apart before start; repeated read-only Stata/build checks with parent identities found only owned benchmark work. Unrelated processes untouched.",
+    "production": {
+      "accepted_minus_M26": -10869,
+      "candidate_minus_M33": -938,
+      "candidate_minus_M26": -11807,
+      "candidate_production": 109589,
+      "program_target": 15000,
+      "candidate_target_remaining": 3193
+    },
+    "historical": "Earlier accepted M28 uncertainty and M30 exceptions and missing scaling remain recorded; this campaign does not import observations or widen allowance.",
+    "platform": "Mac only; GitHub tests paused; no new remote-platform qualification",
+    "established_regression_orders": [
+      {
+        "comparator": "fixed_baseline",
+        "cell": "development-ppml-2fe-residual-robust",
+        "threads": 4,
+        "reverse": true,
+        "block": {
+          "verdict": "unresolved",
+          "delta_seconds": 0.016149645833333393,
+          "allowance_seconds": 0.0115880625,
+          "parent_median_interval_seconds": [
+            0.2305349166666667,
+            0.23317575
+          ],
+          "candidate_median_interval_seconds": [
+            0.2464374583333334,
+            0.2503992916666667
+          ],
+          "lower_excess_seconds": 0.0016029208333333995,
+          "upper_excess_seconds": 0.008337629166666654,
+          "reverse_upper_excess_seconds": -0.02558358125000007,
+          "pairs": 40,
+          "established_regression": true
+        }
+      }
+    ]
+  },
+  "retirements": [
+    "Three independent model metadata owners and ModelWire construction sequences",
+    "Developer scalar input preparation pipeline and its private decoding/loading helpers",
+    "Parallel String/prepared matrix schemas and repeated dimension/name inventories",
+    "Initialized numeric loading retry whose eligibility implies an already attempted identical reserved path",
+    "PreparedPipeline and legacy/categorical result-view wrappers around the same canonical owner",
+    "Dead automatic-CMG final-reuse/correction/graph/bulk-subtraction owners",
+    "Speculative early factorization owner and crossovers controlling loaded RHS ownership reuse",
+    "Production-unreachable serial-retained OLS LSMR policy and stale PPML Auto/LSMR admission veto"
+  ],
+  "authority": {
+    "source": "Johannes: accept M32 and accept similar situations; narrowed successor policy retained in AGENTS, milestones2 and active ADR0249.",
+    "disposition": "All15 immediate-parent families within. Fixed-M26 costs are smaller than accepted M30 costs; randomized-bias uncertainty was accepted at M28. No new/worsened established regression identified.",
+    "unchanged": "max(5%,1ms), frozen observations and original raw verdict; no retry, new statistic or broad/final acceptance."
+  },
+  "review": {
+    "model": "GPT-6 Astra",
+    "effort": "high",
+    "result": "Supports architectural acceptance of identified M34 tranche; no new source blocker. Whole-M34/M35, budgets, final integrated envelope and remote scope remain open.",
+    "verified": "13 evidence hashes; archive/patch;315 compared source files; actual parent229 Rust files; native/frontend/tools/clock; all8 blocks,11 prescribed confirmation workloads,4448 metadata files and4240 timed/warmup coefficient/sample comparisons; all60 final order intervals/flags exactly reconstructed.",
+    "science": "Full04/long30/universal ABI;73 exact replay cases at1/2/4/8/16 budgets;46 licensed and10 mapped fixtures;1326360 product and405664 witness values exact.",
+    "timing": "Parent15within; fixed11within/4unresolved/0outside; one established reverse PPML residual-robust order retained.88 confirmation series have no established half drift; lag dependence retained, no independence/universal-stationarity claim.",
+    "historical_ms": {
+      "OLS_residual_robust": {
+        "current": [
+          6.054875,
+          5.471958333333291
+        ],
+        "accepted_M30": [
+          10.667,
+          11.126
+        ]
+      },
+      "OLS_slope": {
+        "current": [
+          2.582875,
+          2.307625
+        ],
+        "accepted_M30": [
+          9.232,
+          8.443
+        ]
+      },
+      "PPML_residual_robust": {
+        "current": [
+          15.953729166666625,
+          16.149645833333395
+        ],
+        "accepted_M30": [
+          24.488,
+          23.677
+        ]
+      },
+      "PPML_randomized_bias": {
+        "current": [
+          -0.3861875,
+          0.14425
+        ],
+        "accepted_M28": [
+          -0.216,
+          0.311
+        ],
+        "current_upper_excess": [
+          0.349,
+          -1.046
+        ],
+        "M28_upper_excess": [
+          4.379,
+          -1.087
+        ]
+      }
+    }
+  },
+  "scope_limits": "Mac only, GitHub testing paused; no new Linux/SCC/Windows evidence. Whole-M34 architectural/budget and M35 holdout/scaling/final qualification gates remain open. All historical failures and costs retained."
+}

@@ -926,18 +926,9 @@ pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
     cluster_sources: &[SourceId],
 ) -> Result<PreparedCategoricalOlsData> {
     let _plan = plan_categorical_absorbed_request(request)?;
-    let (model, sample, early_factor) =
+    let (model, sample) =
         prepare_categorical_numeric_sample_owned(request, loaded, cluster_sources)?;
-    finish_prepared_model(
-        request,
-        cluster_sources,
-        model,
-        sample,
-        early_factor,
-        true,
-        false,
-        true,
-    )
+    finish_prepared_model(request, cluster_sources, model, sample, true, false, true)
 }
 
 /// PPML preparation boundary that also admits an empty absorbed topology.
@@ -962,16 +953,7 @@ pub(crate) fn prepare_ppml_categorical_ols_data(
     }
 
     let (model, sample) = prepare_ols_numeric_sample(request, loaded, cluster_sources)?;
-    finish_prepared_model(
-        request,
-        cluster_sources,
-        model,
-        sample,
-        None,
-        true,
-        true,
-        true,
-    )
+    finish_prepared_model(request, cluster_sources, model, sample, true, true, true)
 }
 
 pub(crate) fn prepare_categorical_ols_data_with_cluster_sources(
@@ -1000,7 +982,6 @@ fn prepare_categorical_ols_data_with_cluster_sources_policy(
         cluster_sources,
         model,
         sample,
-        None,
         true,
         ppml_structural_constant,
         true,
@@ -1013,12 +994,11 @@ pub(crate) fn finish_prepared_model(
     cluster_sources: &[SourceId],
     model: PreparedOlsModel,
     sample: PreparedNumericSample,
-    early_factor: Option<Result<PreparedCategoricalSource>>,
     categorical: bool,
     ppml_constant: bool,
     reuse_membership: bool,
 ) -> Result<PreparedModel> {
-    let candidate_sources = factorize_preparation_sources(request, &sample, early_factor)?;
+    let candidate_sources = factorize_preparation_sources(request, &sample)?;
     let recipes = crate::fe::bind_categorical_effect_recipes(request, &candidate_sources)?;
     let recipe_views: Vec<_> = recipes.iter().map(Vec::as_slice).collect();
     let mut membership =

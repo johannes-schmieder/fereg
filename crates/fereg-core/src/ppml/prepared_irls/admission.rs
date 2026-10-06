@@ -61,20 +61,8 @@ impl LinearAdmission {
             .finite_columns
             .checked_add(1)
             .ok_or_else(|| allocation("PPML FE solver RHS width overflows"))?;
-        let mut solver_admission =
+        let solver_admission =
             public_solver_memory_admission(prepared, memory_plan, config, solver_rhs, purpose)?;
-        // A modeled budget veto precedes any specialized solver construction.
-        // It is selection, not recovery from allocation or numerical failure.
-        if config.solver_plan.requested == crate::ppml::PpmlSolverFamily::Auto
-            && config.solver_plan.selected == crate::ppml::PpmlSolverFamily::Lsmr
-            && memory_plan.usable_bytes.is_some_and(|usable| {
-                solver_admission.incremental_bytes
-                    > usable.saturating_sub(memory_plan.selected_inventory().peak_bytes)
-            })
-        {
-            config.solver_plan.selected = crate::ppml::PpmlSolverFamily::Map;
-            solver_admission = PublicSolverMemoryAdmission::default();
-        }
         memory_plan = memory_plan.with_solver_workspace(solver_admission.incremental_bytes)?;
         let solver_execution_bytes = memory_plan
             .selected_inventory()

@@ -12,7 +12,7 @@ use fereg_core::ols::{
 use fereg_core::protocol::OLS_RESULT_WIRE_VERSION;
 use fereg_core::{CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofReport};
 
-use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
+use fereg_core::ols::PreparedOlsData;
 
 pub(crate) const FIT_ROWS: usize = 12;
 pub(crate) const DOF_ROWS: usize = 20;
@@ -244,15 +244,15 @@ impl OlsShadowResult<'_> {
 }
 
 pub(crate) fn build_shadow_result<'a>(
-    prepared: PreparedOlsResultData<'a>,
-    clustered_prepared: Option<PreparedOlsClusteredResultData<'a>>,
+    prepared: &'a PreparedOlsData,
+    clustered_prepared: Option<&'a PreparedOlsData>,
     inference: CertifiedOlsInference<'a>,
     residual_requested: bool,
 ) -> Result<OlsShadowResult<'a>> {
     validate_alignment(prepared, clustered_prepared, &inference)?;
     let fit = inference.fit();
     let coefficient_count = prepared.model().coefficients.len();
-    let coefficient_capacity = prepared.coefficient_capacity();
+    let coefficient_capacity = prepared.report_plan().original_coefficient_count();
     if coefficient_count > coefficient_capacity {
         return Err(invalid(
             "prepared OLS logical coefficient count exceeds its caller allocation",
@@ -455,12 +455,12 @@ pub(crate) fn build_shadow_result<'a>(
 }
 
 fn validate_alignment(
-    prepared: PreparedOlsResultData<'_>,
-    clustered: Option<PreparedOlsClusteredResultData<'_>>,
+    prepared: &'_ PreparedOlsData,
+    clustered: Option<&'_ PreparedOlsData>,
     inference: &CertifiedOlsInference<'_>,
 ) -> Result<()> {
     match (inference.is_clustered(), clustered) {
-        (true, Some(value)) if value.is_bound_to(prepared) => {}
+        (true, Some(value)) if std::ptr::eq(value, prepared) => {}
         (true, _) => {
             return Err(invalid(
                 "clustered inference is not sample-bound to its preparation",
@@ -540,7 +540,7 @@ fn build_fit_statistics(statistics: PreparedOlsFitStatistics) -> Result<Vec<f64>
 }
 
 fn build_dof(
-    prepared: PreparedOlsResultData<'_>,
+    prepared: &'_ PreparedOlsData,
     inference: &CertifiedOlsInference<'_>,
 ) -> Result<Vec<f64>> {
     let mut output = reserved_filled(DOF_ROWS * 2, 0.0, "OLS DoF table")?;
@@ -741,7 +741,7 @@ fn write_fixed_effect_row(
 }
 
 fn build_clusters(
-    prepared: Option<PreparedOlsClusteredResultData<'_>>,
+    prepared: Option<&'_ PreparedOlsData>,
     inference: &CertifiedOlsInference<'_>,
 ) -> Result<(Vec<f64>, usize, Vec<f64>, usize)> {
     let cluster_counts = inference.cluster_counts().unwrap_or(&[]);
@@ -1021,7 +1021,7 @@ fn set_selected_certificates(output: &mut [f64], selected: &[f64; 8]) -> Result<
 
 #[allow(clippy::too_many_arguments)]
 fn build_receipt(
-    prepared: PreparedOlsResultData<'_>,
+    prepared: &'_ PreparedOlsData,
     kind: OlsVceKind,
     coefficient_count: usize,
     covariance_dimension: usize,

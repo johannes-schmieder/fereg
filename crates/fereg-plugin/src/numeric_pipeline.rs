@@ -60,94 +60,6 @@ impl Drop for CloseOnDrop<'_> {
     }
 }
 
-/// Return false before reading when the optional path does not fit. Worker
-/// scratch is admitted before reservation; no SPI object crosses the scope.
-#[cfg(test)]
-pub(crate) fn try_read(
-    spi: &mut dyn SpiApi,
-    positions: &[u32],
-    columns: &mut [&mut [f64]],
-    missing: &mut [&mut [bool]],
-    team: ThreadTeam,
-    memory: &mut InputMemory,
-) -> Result<bool> {
-    try_read_with_rhs(spi, positions, columns, missing, team, memory, None)
-}
-
-pub(crate) fn try_read_with_rhs(
-    spi: &mut dyn SpiApi,
-    positions: &[u32],
-    columns: &mut [&mut [f64]],
-    missing: &mut [&mut [bool]],
-    team: ThreadTeam,
-    memory: &mut InputMemory,
-    mut rhs: Option<(&mut Vec<f64>, NumericRhsLayout)>,
-) -> Result<bool> {
-    if !spi.supports_numeric_rows()
-        || !(1..=MAX_COLUMNS).contains(&positions.len())
-        || columns.is_empty()
-        || fereg_core::parallel::StagePlan::new(
-            columns[0].len() as u128 * positions.len() as u128,
-            2,
-            team.threads(),
-        )
-        .lanes
-            <= 1
-    {
-        return Ok(false);
-    }
-    let width = positions.len();
-    let rows = columns[0].len();
-    if columns.len() != width
-        || missing.len() != width
-        || columns
-            .iter()
-            .zip(missing.iter())
-            .any(|(values, flags)| values.len() != rows || flags.len() != rows)
-    {
-        return Err(FeregError::new(
-            ErrorCode::InvalidArgument,
-            "numeric pipeline has an invalid shape",
-        ));
-    }
-    if rhs.as_ref().is_some_and(|(buffer, layout)| {
-        layout.width < 2
-            || layout.width > width
-            || !buffer.is_empty()
-            || rows
-                .checked_mul(layout.width)
-                .is_none_or(|n| buffer.capacity() < n)
-    }) {
-        return Err(FeregError::new(
-            ErrorCode::InvalidArgument,
-            "numeric RHS reservation has an invalid shape",
-        ));
-    }
-    read_tiles(
-        spi,
-        positions,
-        rows,
-        team,
-        memory,
-        |start, count, values, boundary| {
-            // Column-major destination writes stay contiguous. Missing
-            // classification uses the very same runtime SPI boundary.
-            for (column, (destination, missing_flags)) in
-                columns.iter_mut().zip(missing.iter_mut()).enumerate()
-            {
-                for offset in 0..count {
-                    let value = values[offset * width + column];
-                    destination[start + offset] = value;
-                    missing_flags[start + offset] = value >= boundary;
-                }
-            }
-            if let Some((rhs, layout)) = rhs.as_mut() {
-                append_rhs(rhs, *layout, width, count, values);
-            }
-        },
-    )
-}
-
 /// Fill reserved empty columns directly from owned tiles. Each push initializes
 /// one element; the preflight guarantees capacity for the complete input.
 // Keep admitted buffers separate from the main-thread SPI handle.
@@ -459,17 +371,19 @@ mod tests {
         memory: &mut InputMemory,
     ) -> Result<bool> {
         let positions: Vec<u32> = (1..=width as u32).rev().collect();
-        let mut values = vec![vec![0.0; rows]; width];
-        let mut flags = vec![vec![false; rows]; width];
-        let mut columns: Vec<_> = values.iter_mut().map(Vec::as_mut_slice).collect();
-        let mut missing: Vec<_> = flags.iter_mut().map(Vec::as_mut_slice).collect();
-        let read = try_read(
+        let mut values: Vec<Vec<f64>> = (0..width).map(|_| Vec::with_capacity(rows)).collect();
+        let mut flags: Vec<Vec<bool>> = (0..width).map(|_| Vec::with_capacity(rows)).collect();
+        let mut columns: Vec<_> = values.iter_mut().collect();
+        let mut missing: Vec<_> = flags.iter_mut().collect();
+        let read = try_read_reserved(
             input,
             &positions,
+            rows,
             &mut columns,
             &mut missing,
             ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
             memory,
+            None,
         )?;
         if read {
             for column in 0..width {
@@ -491,82 +405,10 @@ mod tests {
     }
 
     #[test]
-    fn numeric_pipeline_constructs_owned_rhs_without_changing_fe_or_missing() {
-        for append_intercept in [false, true] {
-            for (width, threads) in [
-                (3, 4),
-                (4, 4),
-                (6, 4),
-                (8, 8),
-                (9, 4),
-                (12, 4),
-                (52, 4),
-                (64, 4),
-            ] {
-                for extra_sources in [0, 1, 2, 5] {
-                    if extra_sources + 2 > width {
-                        continue;
-                    }
-                    let rhs_width = width - extra_sources;
-                    let rows = 16387;
-                    let positions: Vec<u32> = (1..=width as u32).rev().collect();
-                    let mut values = vec![vec![0.0; rows]; width];
-                    let mut flags = vec![vec![false; rows]; width];
-                    let mut columns: Vec<_> = values.iter_mut().map(Vec::as_mut_slice).collect();
-                    let mut missing: Vec<_> = flags.iter_mut().map(Vec::as_mut_slice).collect();
-                    let mut rhs = Vec::with_capacity(rows * rhs_width);
-                    let capacity = rhs.capacity();
-                    let mut input = Input::new();
-                    assert!(try_read_with_rhs(
-                        &mut input,
-                        &positions,
-                        &mut columns,
-                        &mut missing,
-                        ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
-                        &mut InputMemory::new(None, (capacity * 8) as u128).unwrap(),
-                        Some((
-                            &mut rhs,
-                            NumericRhsLayout {
-                                width: rhs_width,
-                                append_intercept
-                            }
-                        ))
-                    )
-                    .unwrap());
-                    assert_eq!(rhs.capacity(), capacity);
-                    assert_eq!(rhs.len(), rows * rhs_width);
-                    for row in 0..rows {
-                        for column in 0..width {
-                            let is_missing = (row + 1) % 197 == 0;
-                            let expected = if is_missing {
-                                input.boundary
-                            } else {
-                                (row + 1) as f64 + f64::from(positions[column]) * 100000.0
-                            };
-                            assert_eq!(values[column][row], expected);
-                            assert_eq!(flags[column][row], is_missing);
-                            if column < rhs_width {
-                                assert_eq!(
-                                    rhs[row * rhs_width + column],
-                                    if append_intercept && column == rhs_width - 1 {
-                                        1.0
-                                    } else {
-                                        expected
-                                    }
-                                );
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
-    #[test]
     fn reserved_pipeline_preserves_values_capacities_and_failure_shutdown() {
         for append_intercept in [false, true] {
             for (width, threads) in [
-                (3, 4),
+                (3_usize, 4),
                 (4, 4),
                 (6, 4),
                 (8, 8),
@@ -575,61 +417,66 @@ mod tests {
                 (52, 4),
                 (64, 4),
             ] {
-                for failure in [usize::MAX, 1, 3, 5] {
-                    let rows = 16387;
-                    let positions: Vec<u32> = (1..=width as u32).rev().collect();
-                    let mut values: Vec<Vec<f64>> =
-                        (0..width).map(|_| Vec::with_capacity(rows)).collect();
-                    let mut flags: Vec<Vec<bool>> =
-                        (0..width).map(|_| Vec::with_capacity(rows)).collect();
-                    let pointers: Vec<_> = values.iter().map(Vec::as_ptr).collect();
-                    let mut rhs = Vec::with_capacity(rows * width);
-                    let mut input = Input::new();
-                    input.failure = failure;
-                    let result = try_read_reserved(
-                        &mut input,
-                        &positions,
-                        rows,
-                        &mut values.iter_mut().collect::<Vec<_>>(),
-                        &mut flags.iter_mut().collect::<Vec<_>>(),
-                        ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
-                        &mut InputMemory::new(None, 0).unwrap(),
-                        Some((
-                            &mut rhs,
-                            NumericRhsLayout {
-                                width,
-                                append_intercept,
-                            },
-                        )),
-                    );
-                    if failure == usize::MAX {
-                        assert_eq!(result, Ok(true));
-                    } else {
-                        assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
-                    }
-                    let initialized = rows.min(failure.saturating_sub(1).saturating_mul(TILE_ROWS));
-                    assert_eq!(rhs.len(), initialized * width);
-                    for column in 0..width {
-                        assert_eq!(pointers[column], values[column].as_ptr());
-                        assert_eq!(values[column].len(), initialized);
-                        assert_eq!(flags[column].len(), initialized);
-                        for row in 0..initialized {
-                            let missing = (row + 1) % 197 == 0;
-                            let expected = if missing {
-                                input.boundary
-                            } else {
-                                (row + 1) as f64 + f64::from(positions[column]) * 100000.0
-                            };
-                            assert_eq!(values[column][row], expected);
-                            assert_eq!(flags[column][row], missing);
-                            assert_eq!(
-                                rhs[row * width + column],
-                                if append_intercept && column == width - 1 {
-                                    1.0
+                for rhs_width in [2, width.div_ceil(2), width] {
+                    for failure in [usize::MAX, 1, 3, 5] {
+                        let rows = 16387;
+                        let positions: Vec<u32> = (1..=width as u32).rev().collect();
+                        let mut values: Vec<Vec<f64>> =
+                            (0..width).map(|_| Vec::with_capacity(rows)).collect();
+                        let mut flags: Vec<Vec<bool>> =
+                            (0..width).map(|_| Vec::with_capacity(rows)).collect();
+                        let pointers: Vec<_> = values.iter().map(Vec::as_ptr).collect();
+                        let mut rhs = Vec::with_capacity(rows * rhs_width);
+                        let mut input = Input::new();
+                        input.failure = failure;
+                        let result = try_read_reserved(
+                            &mut input,
+                            &positions,
+                            rows,
+                            &mut values.iter_mut().collect::<Vec<_>>(),
+                            &mut flags.iter_mut().collect::<Vec<_>>(),
+                            ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap()),
+                            &mut InputMemory::new(None, 0).unwrap(),
+                            Some((
+                                &mut rhs,
+                                NumericRhsLayout {
+                                    width: rhs_width,
+                                    append_intercept,
+                                },
+                            )),
+                        );
+                        if failure == usize::MAX {
+                            assert_eq!(result, Ok(true));
+                        } else {
+                            assert_eq!(result.unwrap_err().code, ErrorCode::Interrupted);
+                        }
+                        let initialized =
+                            rows.min(failure.saturating_sub(1).saturating_mul(TILE_ROWS));
+                        assert_eq!(rhs.len(), initialized * rhs_width);
+                        for column in 0..width {
+                            assert_eq!(pointers[column], values[column].as_ptr());
+                            assert_eq!(values[column].len(), initialized);
+                            assert_eq!(flags[column].len(), initialized);
+                            for row in 0..initialized {
+                                let missing = (row + 1) % 197 == 0;
+                                let expected = if missing {
+                                    input.boundary
                                 } else {
-                                    expected
+                                    (row + 1) as f64 + f64::from(positions[column]) * 100000.0
+                                };
+                                assert_eq!(values[column][row], expected);
+                                assert_eq!(flags[column][row], missing);
+                                if column < rhs_width {
+                                    assert_eq!(
+                                        rhs[row * rhs_width + column],
+                                        if append_intercept && column == rhs_width - 1 {
+                                            1.0
+                                        } else {
+                                            expected
+                                        }
+                                    );
                                 }
-                            );
+                            }
                         }
                     }
                 }

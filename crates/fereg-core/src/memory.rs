@@ -250,24 +250,6 @@ pub(crate) fn lsmr_rhs_window(rhs: usize, threads: usize) -> usize {
     }
 }
 
-/// The estimator that owns a serial retained fallback opts into one live RHS.
-/// Legacy/shared callers keep their existing transport and admission envelope.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum LsmrBatchPolicy {
-    Default,
-    RetainedSerialOls,
-}
-
-impl LsmrBatchPolicy {
-    pub(crate) fn rhs_window(self, rhs: usize, threads: usize) -> usize {
-        if self == Self::RetainedSerialOls && threads == 1 && (16..=64).contains(&rhs) {
-            1
-        } else {
-            lsmr_rhs_window(rhs, threads)
-        }
-    }
-}
-
 /// Estimate the complete incremental solver workspace after topology is known.
 ///
 /// The model deliberately separates CG, LSMR recurrence, Schwarz topology,
@@ -282,32 +264,13 @@ pub fn estimate_fe_solver_memory(
     threads: usize,
     local_reorthogonalization_size: Option<usize>,
 ) -> Result<FeSolverMemoryEstimate> {
-    estimate_fe_solver_memory_with_batch_policy(
-        observations,
-        rhs_columns,
-        effect_level_counts,
-        threads,
-        local_reorthogonalization_size,
-        LsmrBatchPolicy::Default,
-    )
-}
-
-pub(crate) fn estimate_fe_solver_memory_with_batch_policy(
-    observations: usize,
-    rhs_columns: usize,
-    effect_level_counts: &[usize],
-    threads: usize,
-    local_reorthogonalization_size: Option<usize>,
-    batch_policy: LsmrBatchPolicy,
-) -> Result<FeSolverMemoryEstimate> {
-    estimate_fe_solver_memory_for_channels_with_batch_policy(
+    estimate_fe_solver_memory_for_channels(
         observations,
         rhs_columns,
         effect_level_counts,
         threads,
         local_reorthogonalization_size,
         false,
-        batch_policy,
     )
 }
 
@@ -318,27 +281,6 @@ fn estimate_fe_solver_memory_for_channels(
     threads: usize,
     local_reorthogonalization_size: Option<usize>,
     signed_cover: bool,
-) -> Result<FeSolverMemoryEstimate> {
-    estimate_fe_solver_memory_for_channels_with_batch_policy(
-        observations,
-        rhs_columns,
-        effect_level_counts,
-        threads,
-        local_reorthogonalization_size,
-        signed_cover,
-        LsmrBatchPolicy::Default,
-    )
-}
-
-#[allow(clippy::too_many_arguments)]
-fn estimate_fe_solver_memory_for_channels_with_batch_policy(
-    observations: usize,
-    rhs_columns: usize,
-    effect_level_counts: &[usize],
-    threads: usize,
-    local_reorthogonalization_size: Option<usize>,
-    signed_cover: bool,
-    batch_policy: LsmrBatchPolicy,
 ) -> Result<FeSolverMemoryEstimate> {
     if observations == 0 || rhs_columns == 0 {
         return Err(FeregError::new(
@@ -412,10 +354,97 @@ fn estimate_fe_solver_memory_for_channels_with_batch_policy(
         scalar_rhs_bytes,
     ])?;
 
+    let mut estimate = FeSolverMemoryEstimate {
+        cg_bytes,
+        coefficient_batch_bytes,
+        lsmr_off_bytes: 0,
+        lsmr_diagonal_bytes: 0,
+        lsmr_schwarz_bytes: 0,
+        lsmr_off_retained_bytes: 0,
+        lsmr_diagonal_retained_bytes: 0,
+        lsmr_schwarz_retained_bytes: 0,
+        lsmr_result_metadata_bytes: 0,
+        rhs_copy_bytes,
+        krylov_bytes: 0,
+        topology_bytes: 0,
+        thread_reduction_bytes,
+        borrowed_code_copy_avoided_bytes: 0,
+    };
+    populate_lsmr_memory(
+        FeSolverDimensions {
+            observations,
+            rhs_columns,
+            effect_level_counts,
+            threads,
+            local_reorthogonalization_size,
+            levels,
+            maximum_levels,
+            signed_cover,
+            group_workspace_bytes,
+            scalar_rhs_bytes,
+        },
+        &mut estimate,
+    )?;
+    estimate.borrowed_code_copy_avoided_bytes = checked_sum(&[
+        checked_mul(
+            checked_mul(n, effects, "avoided FE codes")?,
+            4,
+            "avoided FE code bytes",
+        )?,
+        checked_mul(
+            checked_mul(n, effects, "avoided FE memberships")?,
+            std::mem::size_of::<usize>() as u128,
+            "avoided FE membership bytes",
+        )?,
+        checked_mul(
+            levels,
+            std::mem::size_of::<usize>() as u128,
+            "avoided FE offset bytes",
+        )?,
+    ])?;
+    Ok(estimate)
+}
+
+/// Checked topology dimensions shared by recurrence and retained-operator peaks.
+/// This is borrowed scalar metadata; it owns no workspace or second formula bank.
+struct FeSolverDimensions<'a> {
+    observations: usize,
+    rhs_columns: usize,
+    effect_level_counts: &'a [usize],
+    threads: usize,
+    local_reorthogonalization_size: Option<usize>,
+    levels: u128,
+    maximum_levels: u128,
+    signed_cover: bool,
+    group_workspace_bytes: u128,
+    scalar_rhs_bytes: u128,
+}
+
+struct LsmrRecurrenceMemory {
+    active_rhs: u128,
+    active_matrix_bytes: u128,
+    krylov_bytes: u128,
+    off_krylov_bytes: u128,
+    scatter_bytes: u128,
+}
+
+/// Live batch recurrence/scatter capacities mirror the pinned upstream operator.
+fn lsmr_recurrence_memory(dimensions: &FeSolverDimensions<'_>) -> Result<LsmrRecurrenceMemory> {
+    let FeSolverDimensions {
+        observations,
+        rhs_columns,
+        effect_level_counts,
+        threads,
+        local_reorthogonalization_size,
+        levels,
+        maximum_levels,
+        ..
+    } = *dimensions;
+    let n = observations as u128;
     // Wide adapters explicitly window calls to the installed team's width.
     // Small batches remain unwindowed and must charge their full RHS count:
     // nested Rayon can suspend outer solves beyond the number of workers.
-    let active_rhs = batch_policy.rhs_window(rhs_columns, threads) as u128;
+    let active_rhs = lsmr_rhs_window(rhs_columns, threads) as u128;
     let active_matrix_bytes = checked_mul(n, active_rhs, "LSMR window observation values")?
         .checked_mul(8)
         .ok_or_else(|| FeregError::new(ErrorCode::Allocation, "LSMR window bytes overflow"))?;
@@ -474,6 +503,48 @@ fn estimate_fe_solver_memory_for_channels_with_batch_policy(
         8,
         "LSMR scatter bytes",
     )?;
+    Ok(LsmrRecurrenceMemory {
+        active_rhs,
+        active_matrix_bytes,
+        krylov_bytes,
+        off_krylov_bytes,
+        scatter_bytes,
+    })
+}
+
+/// Retained preconditioner, output transport and certification are sequential
+/// peaks beyond the recurrence. Populate the same public estimate after checking
+/// each overlap; no partially populated estimate escapes on failure.
+fn populate_lsmr_memory(
+    dimensions: FeSolverDimensions<'_>,
+    estimate: &mut FeSolverMemoryEstimate,
+) -> Result<()> {
+    let LsmrRecurrenceMemory {
+        active_rhs,
+        active_matrix_bytes,
+        krylov_bytes,
+        off_krylov_bytes,
+        scatter_bytes,
+    } = lsmr_recurrence_memory(&dimensions)?;
+    let FeSolverDimensions {
+        observations,
+        rhs_columns,
+        effect_level_counts,
+        threads,
+        levels,
+        maximum_levels,
+        signed_cover,
+        group_workspace_bytes,
+        scalar_rhs_bytes,
+        ..
+    } = dimensions;
+    let n = observations as u128;
+    let rhs = rhs_columns as u128;
+    let effects = effect_level_counts.len() as u128;
+    let matrix_bytes = estimate.rhs_copy_bytes;
+    let rhs_copy_bytes = estimate.rhs_copy_bytes;
+    let coefficient_batch_bytes = estimate.coefficient_batch_bytes;
+    let thread_reduction_bytes = estimate.thread_reduction_bytes;
     // Both locality-permuted input and weighted RHS can be owned per solve.
     // During assembly the individual results coexist with combined banks;
     // these are a different peak from the recurrence, not additive to it.
@@ -572,39 +643,16 @@ fn estimate_fe_solver_memory_for_channels_with_batch_policy(
     let lsmr_schwarz_bytes = schwarz_setup_peak
         .max(schwarz_solve_peak)
         .max(postprocess(lsmr_schwarz_retained_bytes)?);
-    let borrowed_code_copy_avoided_bytes = checked_sum(&[
-        checked_mul(
-            checked_mul(n, effects, "avoided FE codes")?,
-            4,
-            "avoided FE code bytes",
-        )?,
-        checked_mul(
-            checked_mul(n, effects, "avoided FE memberships")?,
-            std::mem::size_of::<usize>() as u128,
-            "avoided FE membership bytes",
-        )?,
-        checked_mul(
-            levels,
-            std::mem::size_of::<usize>() as u128,
-            "avoided FE offset bytes",
-        )?,
-    ])?;
-    Ok(FeSolverMemoryEstimate {
-        cg_bytes,
-        coefficient_batch_bytes,
-        lsmr_off_bytes,
-        lsmr_diagonal_bytes,
-        lsmr_schwarz_bytes,
-        lsmr_off_retained_bytes,
-        lsmr_diagonal_retained_bytes,
-        lsmr_schwarz_retained_bytes,
-        lsmr_result_metadata_bytes: metadata_bytes,
-        rhs_copy_bytes,
-        krylov_bytes,
-        topology_bytes,
-        thread_reduction_bytes,
-        borrowed_code_copy_avoided_bytes,
-    })
+    estimate.lsmr_off_bytes = lsmr_off_bytes;
+    estimate.lsmr_diagonal_bytes = lsmr_diagonal_bytes;
+    estimate.lsmr_schwarz_bytes = lsmr_schwarz_bytes;
+    estimate.lsmr_off_retained_bytes = lsmr_off_retained_bytes;
+    estimate.lsmr_diagonal_retained_bytes = lsmr_diagonal_retained_bytes;
+    estimate.lsmr_schwarz_retained_bytes = lsmr_schwarz_retained_bytes;
+    estimate.krylov_bytes = krylov_bytes;
+    estimate.topology_bytes = topology_bytes;
+    estimate.lsmr_result_metadata_bytes = metadata_bytes;
+    Ok(())
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -967,73 +1015,6 @@ mod tests {
         assert!(estimate.lsmr_schwarz_bytes >= estimate.topology_bytes);
         assert!(estimate.cg_bytes < 327_680);
         assert!(estimate.lsmr_schwarz_bytes > 327_680);
-    }
-
-    #[test]
-    fn retained_serial_ols_window_model_preserves_other_admission_envelopes() {
-        for threads in [1, 4, 16] {
-            for rhs in [1, 7, 15, 16, 17, 52, 64, 65] {
-                let ordinary =
-                    estimate_fe_solver_memory(16_384, rhs, &[4096, 1024], threads, Some(4))
-                        .unwrap();
-                let default = estimate_fe_solver_memory_with_batch_policy(
-                    16_384,
-                    rhs,
-                    &[4096, 1024],
-                    threads,
-                    Some(4),
-                    LsmrBatchPolicy::Default,
-                )
-                .unwrap();
-                assert_eq!(ordinary, default);
-                let windowed = estimate_fe_solver_memory_with_batch_policy(
-                    16_384,
-                    rhs,
-                    &[4096, 1024],
-                    threads,
-                    Some(4),
-                    LsmrBatchPolicy::RetainedSerialOls,
-                )
-                .unwrap();
-                if threads == 1 && (16..=64).contains(&rhs) {
-                    assert_eq!(
-                        LsmrBatchPolicy::RetainedSerialOls.rhs_window(rhs, threads),
-                        1
-                    );
-                    let one =
-                        estimate_fe_solver_memory(16_384, 1, &[4096, 1024], 1, Some(4)).unwrap();
-                    assert_eq!(windowed.krylov_bytes, one.krylov_bytes);
-                    assert_eq!(ordinary.krylov_bytes, rhs as u128 * one.krylov_bytes);
-                    assert_eq!(windowed.cg_bytes, ordinary.cg_bytes);
-                    assert_eq!(
-                        windowed.coefficient_batch_bytes,
-                        ordinary.coefficient_batch_bytes
-                    );
-                    assert_eq!(windowed.rhs_copy_bytes, ordinary.rhs_copy_bytes);
-                    assert_eq!(windowed.topology_bytes, ordinary.topology_bytes);
-                    assert_eq!(
-                        windowed.lsmr_schwarz_retained_bytes,
-                        ordinary.lsmr_schwarz_retained_bytes
-                    );
-                    assert!(windowed.lsmr_off_bytes < ordinary.lsmr_off_bytes);
-                    assert!(windowed.lsmr_diagonal_bytes < ordinary.lsmr_diagonal_bytes);
-                    assert!(windowed.lsmr_schwarz_bytes <= ordinary.lsmr_schwarz_bytes);
-                    if windowed.lsmr_schwarz_bytes == ordinary.lsmr_schwarz_bytes {
-                        // Windowing reduces live recurrences, but cannot
-                        // reduce an unchanged preconditioner-construction peak.
-                        let construction = ordinary.rhs_copy_bytes
-                            + ordinary.topology_bytes
-                            + ordinary.lsmr_result_metadata_bytes;
-                        assert_eq!(windowed.lsmr_schwarz_bytes, construction);
-                        eprintln!(
-                            "SERIAL_WINDOW_CONSTRUCTION_DOMINATES rhs={rhs} bytes={construction}"
-                        );
-                    }
-                } else {
-                    assert_eq!(ordinary, windowed);
-                }
-            }
-        }
     }
 
     #[test]

@@ -3,7 +3,9 @@
 [SPEC](SPEC.md) governs scientific behavior; [PLAN](cleanup/PLAN.md) defines
 M0–M25. [MILESTONES](../MILESTONES.md) distinguishes planned from completed work.
 The [second program](../milestones2.md) and [replacement contract](cleanup/REPLACEMENTS.md)
-define the remaining scoped retirements; M27 preparation, M28 capacity/storage and M29 worker-policy ownership are accepted.
+define the remaining scoped retirements; M27–M33 are accepted with the measured
+tradeoffs recorded in MILESTONES. M34.1's host retirement is accepted; whole-M34
+budgets and final integrated acceptance remain open.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -42,7 +44,7 @@ Stata. Scientific oracle checks, exact-change checks and frontend Stata checks
 are separate layers. Coverage uses an instrumented next build, never the
 canonical comparator or benchmark binary.
 
-The accepted M29 runtime's [versioned inventory](cleanup/complexity.md) measures
+The historical accepted M29 runtime's [versioned inventory](cleanup/complexity.md) measures
 104,486 production lines in core and 15,075 in the host.
 Core has 92 functions over 150 lines and 18 files over 1,500;
 the host has 15 and 3. Its conservative dispatch inventory contains
@@ -419,3 +421,80 @@ specialized direction engines still create canonical checkpoints lazily.
 `ppml/topology_identity.rs` checks the original FE owner retained throughout the
 fit. CMG uses the common finite moment/factor/solve service, with independently
 required raw FWL and projection certificates and declared numerical scope.
+
+
+## M34.1 accepted host boundary
+
+The accepted tranche measures 95,559 core and 14,030 host production lines,
+including all replacement code: 938 below accepted M33 and 11,807 below M26.
+There are 81 functions over 150 lines and 19 files over 1,500; both are below
+the program limits. The 15,000-line target remains 3,193 lines away. These are
+source measurements; [qualification](../bench/history/2026-10-06-m34-host-qualification.json)
+binds exact science, transactions and Astra high architectural acceptance.
+All immediate-parent timing families are within; four fixed-M26 families remain
+unresolved under prior accepted costs/uncertainty. The raw timing gate failed.
+
+`model_metadata.rs` owns the common model descriptor/registry decoder and
+`ModelWireV2` construction for OLS, PPML and developer preparation. Estimate
+requests retain delimiter framing; developer preparation retains byte framing.
+PPML transfers its six registries into the wire, while OLS retains its registry
+copies for publication. Common parsing depends on SPI and primitive tables;
+it does not depend on estimation or scientific result modules.
+
+`input.rs` owns developer request orchestration and delegates to the shared
+`estimate::load_preparation_input` admitted loader. The developer action selects
+complete candidate validation before reading source/outcome values, then the
+same main-thread SPI loading and canonical core preparation. Its narrow request
+support, MAP check and diagnostic transaction remain explicit. Native numeric
+loading retains one reserved two-buffer pipeline; the duplicate initialized
+retry and private developer loading/decoding pipeline are deleted.
+
+OLS and PPML each have one generic named matrix schema. Prepared store names
+carry their dimensions; that schema supplies alias/layout validation, capacity,
+precommit and publication consumers. `publication.rs` owns ordered scalar
+matrix stores, while estimator result code owns receipts and field order.
+`PreparedPipeline` and `result_view` are deleted. Fit, inference, result and
+requested-output consumers borrow the canonical `PreparedOlsData` directly;
+cluster binding still checks the identity of that exact prepared owner.
+
+Preparation classifies the complete sample before one final FE factorization.
+There is no speculative factor bank or handoff. Common `StagePlan` schedules
+classification and compaction. Loaded RHS ownership reuse requires structural
+alignment and exact values, without row/width/worker crossover gates. A newly
+eligible valid cache retains its deferred error until the normal fit boundary;
+stale values fall back and input-validation errors retain precedence.
+
+The automatic CMG final-reuse flag, graph retry, retained-correction admission
+and bulk subtraction state are deleted: their sole setter selected explicit
+CMG, while all removed branches required Auto. The serial-retained OLS LSMR
+policy, propagation and alternate memory wrappers are deleted: production
+constructors always selected Default. The obsolete Auto/LSMR admission veto
+is also deleted; Auto's constructor selects MAP. Live explicit solver support,
+general LSMR transport windows, final certificates and failure behavior survive.
+
+| Lifetime | Owner and invariant |
+|---|---|
+| Request and loading | Host metadata and validated store names precede observation reads; only main-thread SPI accesses Stata |
+| Preparation and fitting | Canonical sample/topology owner survives all borrowed FE, cluster and score consumers; public slots/base flags remain original |
+| PPML generations | Immutable prepared owner is shared; weight/response/basis stamps and accepted/speculative frames remain distinct |
+| Publication | Certified immutable core result outlives precommit and ordered stores; final receipt is written only after successful publication |
+| Failure | No legacy fallback; FFI contains panic; Break, allocation refusal, receipt sentinels and Stata rollback retain their separate tests |
+
+This feature-to-test map identifies executable obligations, not measured LLVM
+coverage. Historical instrumented coverage above does not describe this native.
+
+| Retained feature/responsibility | Independent or transactional coverage |
+|---|---|
+| Model grammar, original factor slots/base flags and preparation | `model_metadata`/`input` unit fixtures; `prepare_ols_boundary.do`; `factor_single_level_original_axis.do`; parser/model-wire licensed fixtures |
+| Sample pruning, weights, ordinary/categorical FE and absorbed DoF | Prepared fit/DoF/cluster oracle suites; frequency/singleton and weighted licensed parity fixtures |
+| Fast/Low, explicit MAP/LSMR/CMG and worker budgets | Core memory/allocation and solver tests; actual parent replay at 1/2/4/8/16; near-within CMG and independent explicit-CMG dummy fixtures |
+| IID/robust/multiway inference and all requested products | Independent covariance/PSD/Wald/score tests; exact 1,540-cell accepted-product cube; rank-pruned products |
+| PPML strict recovery, rank/rebase, separation and both bias modes | Long dense Poisson and recession oracles; strict no-FE, centered/canonical/joint column witnesses; licensed separation/bias/saved-slope fixtures |
+| Admission, SPI capability, stores, Break and rollback | Fresh-process allocator audits; reserved numeric loading/unit store-failure fixtures; actual native ABI; hidden/public transaction and fail-closed Stata fixtures |
+
+Major host drivers retain request orchestration, precommit and estimator field
+order; shared modules own concrete parsing, loading, schemas and store mechanics.
+The CMG certificate/fallback boundary is a mathematical responsibility, not an
+arbitrary forwarding layer. Public raw OLS rank/statistics/VCE APIs remain live
+and were outside M26's named M31/M34 pools. Retained physical kernels and
+independent certificates cannot be counted as superseded code.

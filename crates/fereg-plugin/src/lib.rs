@@ -9,6 +9,7 @@ mod instrumentation;
 mod memory_forecast;
 mod memory_report;
 mod metadata_memory;
+mod model_metadata;
 mod numeric_pipeline;
 mod ols_frame_memory;
 mod ols_preparation_memory;
@@ -17,8 +18,8 @@ mod output;
 mod ppml_estimate;
 mod ppml_execution;
 mod ppml_result;
+mod publication;
 mod result;
-mod result_view;
 
 #[cfg(feature = "ffi")]
 mod ffi;

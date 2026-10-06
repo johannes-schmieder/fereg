@@ -8,10 +8,7 @@ use crate::fe::{
     BorrowedInterceptFeDesign, FeCertificate, FeSolverKind, LsmrConfig, LsmrPreconditioner,
     MapConfig, SolveReport, SolveStopReason,
 };
-use crate::memory::{
-    estimate_fe_solver_memory, estimate_fe_solver_memory_with_batch_policy, FeSolverMemoryBudget,
-    LsmrBatchPolicy, SolverWorkspacePeak,
-};
+use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
 use rayon::prelude::*;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
 
@@ -4052,7 +4049,6 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             },
             self.config.preconditioner,
             borrowed_within_preconditioner(resolved),
-            self.memory.batch_policy,
         )?;
         #[cfg(test)]
         self.attempted_rhs.push(rhs.len());
@@ -4249,7 +4245,6 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
 
 // Keep the maximum even if postprocessing fails and auto continues to CG.
 struct BorrowedLsmrCallMemory {
-    batch_policy: LsmrBatchPolicy,
     peak: SolverWorkspacePeak,
     metadata_bytes: u128,
     budget: Option<FeSolverMemoryBudget>,
@@ -4263,24 +4258,7 @@ impl BorrowedLsmrCallMemory {
         budget: Option<FeSolverMemoryBudget>,
         parent_bytes: u128,
     ) -> Result<Self> {
-        Self::with_batch_policy(
-            estimate,
-            preconditioner,
-            budget,
-            parent_bytes,
-            LsmrBatchPolicy::Default,
-        )
-    }
-
-    fn with_batch_policy(
-        estimate: crate::memory::FeSolverMemoryEstimate,
-        preconditioner: LsmrPreconditioner,
-        budget: Option<FeSolverMemoryBudget>,
-        parent_bytes: u128,
-        batch_policy: LsmrBatchPolicy,
-    ) -> Result<Self> {
         let mut memory = Self {
-            batch_policy,
             peak: SolverWorkspacePeak::ZERO,
             metadata_bytes: estimate.lsmr_result_metadata_bytes,
             budget,
@@ -4333,20 +4311,18 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         options: &LsmrOptions,
         requested: LsmrPreconditioner,
         preconditioner: PreconditionerConfig,
-        batch_policy: LsmrBatchPolicy,
     ) -> Result<(within::BatchSolveResult, bool)> {
         let levels = design
             .effects()
             .iter()
             .map(|effect| effect.n_levels())
             .collect::<Vec<_>>();
-        let memory = estimate_fe_solver_memory_with_batch_policy(
+        let memory = estimate_fe_solver_memory(
             design.nobs(),
             rhs.len(),
             &levels,
             rayon::current_num_threads(),
             options.local_size,
-            batch_policy,
         )?;
         let resolved = resolve_borrowed_lsmr_preconditioner(
             levels.len(),
@@ -4379,7 +4355,6 @@ impl<'a> BorrowedLsmrPrepared<'a> {
             self.solver.as_ref().expect("LSMR preparation exists"),
             rhs,
             options,
-            batch_policy,
         );
         let mut solved = match initial {
             Ok(solved) => solved,
@@ -4407,7 +4382,6 @@ impl<'a> BorrowedLsmrPrepared<'a> {
                         .expect("fallback LSMR preparation exists"),
                     rhs,
                     options,
-                    batch_policy,
                 )
                 .map_err(|error| {
                     error
@@ -4568,17 +4542,15 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             &options,
             lsmr_config.preconditioner,
             preconditioner,
-            memory.batch_policy,
         )?
     } else {
         let effects = borrowed_lsmr_effects(design)?;
-        let initial = super::lsmr_batch::solve_batch_with_policy(
+        let initial = super::lsmr_batch::solve_batch(
             effects.clone(),
             &rhs_views,
             weights.values,
             &options,
             preconditioner,
-            memory.batch_policy,
         );
         match initial {
             Ok(solved) => (solved, false),
@@ -4586,13 +4558,12 @@ fn run_borrowed_lsmr_with_prepared<'a>(
                 if lsmr_config.preconditioner == LsmrPreconditioner::Auto
                     && error.preconditioner_breakdown() =>
             {
-                let solved = super::lsmr_batch::solve_batch_with_policy(
+                let solved = super::lsmr_batch::solve_batch(
                     effects,
                     &rhs_views,
                     weights.values,
                     &options,
                     PreconditionerConfig::Off,
-                    memory.batch_policy,
                 )
                 .map_err(|fallback_error| {
                     fallback_error

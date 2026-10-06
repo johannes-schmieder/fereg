@@ -468,14 +468,12 @@ pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
 ) -> Result<PreparedOlsData> {
-    let (model, sample, early_factor) =
-        prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?;
+    let (model, sample) = prepare_ols_numeric_sample_owned(request, loaded, cluster_sources)?;
     crate::prepared_categorical_data::finish_prepared_model(
         request,
         cluster_sources,
         model,
         sample,
-        early_factor,
         false,
         false,
         true,
@@ -489,11 +487,7 @@ pub(crate) fn prepare_ols_numeric_sample_owned(
     request: &OlsRequestV1,
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
-) -> Result<(
-    PreparedOlsModel,
-    PreparedNumericSample,
-    Option<Result<PreparedCategoricalSource>>,
-)> {
+) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
     prepare_numeric_sample_owned(request, loaded, cluster_sources, false)
 }
 
@@ -501,11 +495,7 @@ pub(crate) fn prepare_categorical_numeric_sample_owned(
     request: &OlsRequestV1,
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
-) -> Result<(
-    PreparedOlsModel,
-    PreparedNumericSample,
-    Option<Result<PreparedCategoricalSource>>,
-)> {
+) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
     prepare_numeric_sample_owned(request, loaded, cluster_sources, true)
 }
 
@@ -514,60 +504,17 @@ fn prepare_numeric_sample_owned(
     loaded: LoadedOlsInput,
     cluster_sources: &[SourceId],
     categorical: bool,
-) -> Result<(
-    PreparedOlsModel,
-    PreparedNumericSample,
-    Option<Result<PreparedCategoricalSource>>,
-)> {
+) -> Result<(PreparedOlsModel, PreparedNumericSample)> {
     let model = request.compile_model(cluster_sources, categorical)?;
     validate_loaded(request, &loaded)?;
     validate_candidate_weight_domain(&loaded)?;
-    let early_source = if loaded.candidate.len() >= 16_384
-        && (8..=16).contains(&loaded.numeric_sources.len())
-        && rayon::current_thread_index().is_some()
-        && rayon::current_num_threads() >= 8
-        && loaded.analytic_weight.is_none()
-        && loaded.frequency_weight.is_none()
-        && loaded.probability_weight.is_none()
-        && early_partition_source(request, categorical).is_some()
-        && request.model.terms.iter().all(|term| {
-            term.components
-                .iter()
-                .all(|component| component.kind == ComponentKind::Continuous)
-        }) {
-        early_partition_source(request, categorical)
-    } else {
-        None
-    };
-    let (full, mut early_factor) = if let Some(source) = early_source {
-        let index = source_index(source)?;
-        let (full, encoded) = rayon::join(
-            || is_full_retained_unweighted_sample(&loaded),
-            || factorize_f64(&loaded.numeric_sources[index].1.values),
-        );
-        (
-            full,
-            Some(encoded.map(|encoded| PreparedCategoricalSource {
-                source,
-                prepared_source_index: index,
-                encoded,
-            })),
-        )
-    } else {
-        (is_full_retained_unweighted_sample(&loaded), None)
-    };
-    let sample = if full {
-        // Ownership transfer preserves every input value used by the optional
-        // factorization. Its errors remain behind sample allocation, as before.
+    let sample = if is_full_retained_unweighted_sample(&loaded) {
         take_full_retained_unweighted_sample(loaded)?
     } else {
-        // Classification may remove rows. Release speculative storage before
-        // compaction; final codes must be rebuilt on the authoritative sample.
-        drop(early_factor.take());
         take_classified_sample(request, loaded, cluster_sources)?
     };
     validate_available_categorical_domain(request, &sample)?;
-    Ok((model, sample, early_factor))
+    Ok((model, sample))
 }
 
 pub(crate) fn prepare_ols_data_with_cluster_sources(
@@ -665,7 +612,6 @@ fn finish_prepare_ols_data(
         cluster_sources,
         model,
         sample,
-        None,
         false,
         false,
         true,
@@ -685,7 +631,6 @@ fn finish_prepare_ols_data_with_membership(
         cluster_sources,
         model,
         sample,
-        None,
         false,
         false,
         reuse_membership,
@@ -695,41 +640,8 @@ fn finish_prepare_ols_data_with_membership(
 pub(crate) fn factorize_preparation_sources(
     request: &OlsRequestV1,
     sample: &PreparedNumericSample,
-    early_factor: Option<Result<PreparedCategoricalSource>>,
 ) -> Result<Vec<PreparedCategoricalSource>> {
-    let mut previous = Vec::new();
-    if let Some(factor) = early_factor {
-        previous
-            .try_reserve_exact(1)
-            .map_err(|_| allocation("unable to reserve early categorical source"))?;
-        previous.push(factor?);
-    }
-    factorize_categorical_sources_reusing(request, sample, &[], previous)
-}
-
-fn early_partition_source(request: &OlsRequestV1, categorical: bool) -> Option<SourceId> {
-    if categorical {
-        let mut sources = request
-            .absorbed_terms
-            .iter()
-            .flat_map(|term| term.categorical_sources.iter().chain(&term.slope_sources))
-            .copied();
-        let first = sources.next();
-        if sources.all(|source| Some(source) == first) {
-            first
-        } else {
-            None
-        }
-    } else {
-        let [term] = request.absorbed_terms.as_slice() else {
-            return None;
-        };
-        if term.intercept && term.categorical_sources.len() == 1 && term.slope_sources.is_empty() {
-            Some(term.categorical_sources[0])
-        } else {
-            None
-        }
-    }
+    factorize_categorical_sources_reusing(request, sample, &[], Vec::new())
 }
 
 // A one-effect unit sample is a singleton fixed point precisely when no final
@@ -808,10 +720,13 @@ fn is_full_retained_unweighted_sample(loaded: &LoadedOlsInput) -> bool {
             // This predicate chooses an ownership shortcut, not error order.
             // Failed checks still enter the authoritative classification
             // path. Never create Rayon's global pool for standalone callers.
-            if loaded.numeric_sources.len() >= 8
-                && loaded.candidate.len() >= 16_384
-                && rayon::current_thread_index().is_some()
-                && rayon::current_num_threads() > 1
+            if rayon::current_thread_index().is_some()
+                && crate::parallel::StagePlan::current(
+                    loaded.candidate.len() as u128 * loaded.numeric_sources.len() as u128 * 2,
+                    loaded.numeric_sources.len(),
+                )
+                .lanes
+                    > 1
             {
                 loaded.numeric_sources.par_iter().all(complete)
             } else {
@@ -933,10 +848,13 @@ fn take_classified_sample(
         }
         Ok(())
     };
-    if loaded.numeric_sources.len() >= 8
-        && n_original >= 16_384
-        && rayon::current_thread_index().is_some()
-        && rayon::current_num_threads() > 1
+    if rayon::current_thread_index().is_some()
+        && crate::parallel::StagePlan::current(
+            n_original as u128 * loaded.numeric_sources.len() as u128,
+            loaded.numeric_sources.len(),
+        )
+        .lanes
+            > 1
     {
         loaded
             .numeric_sources
@@ -3171,70 +3089,69 @@ mod tests {
     }
 
     #[test]
-    fn factor_overlap_preserves_owned_sample_codes_and_fallback() {
+    fn shared_factor_preparation_preserves_owned_sample_codes_and_fallback() {
         use crate::{ThreadConfig, ThreadTeam};
-        for n in [16383, 16384, 32769] {
-            let mut request = request(9, false);
-            request.absorbed_terms = vec![AbsorbedTerm {
-                id: AbsorbTermId::new(1).unwrap(),
-                intercept: true,
-                categorical_sources: vec![SourceId::new(9).unwrap()],
-                slope_sources: Vec::new(),
-                label: "g".into(),
-                saved_name: String::new(),
-            }];
-            let input = LoadedOlsInput {
-                candidate: vec![true; n],
-                outcome: column(&vec![1.0; n], &vec![false; n]),
-                numeric_sources: (1..=9)
-                    .map(|j| {
-                        (
-                            SourceId::new(j).unwrap(),
-                            column(
-                                &(0..n)
-                                    .map(|r| {
-                                        if j == 9 {
-                                            (r / 5) as f64 - 0.25
-                                        } else {
-                                            ((r * j as usize) as f64).sin()
-                                        }
-                                    })
-                                    .collect::<Vec<_>>(),
-                                &vec![false; n],
-                            ),
-                        )
-                    })
-                    .collect(),
-                analytic_weight: None,
-                frequency_weight: None,
-                probability_weight: None,
-            };
-            for case in 0..6 {
-                let mut input = input.clone();
-                match case {
-                    1 => input.candidate[0] = false,
-                    2 => input.outcome.missing[1] = true,
-                    3 => input.numeric_sources[8].1.values[1] = f64::NAN,
-                    4 => input.numeric_sources[8].1.values[n / 2] = 1e12,
-                    5 => input.numeric_sources[8].1.values.reverse(),
-                    _ => (),
-                }
-                let run = |threads| {
-                    ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
-                        .install(|| prepare_ols_data_owned(&request, input.clone()))
-                        .unwrap()
+        for width in [7, 8, 16, 17] {
+            for n in [16383, 16384, 32769] {
+                let mut request = request(width, false);
+                request.absorbed_terms = vec![AbsorbedTerm {
+                    id: AbsorbTermId::new(1).unwrap(),
+                    intercept: true,
+                    categorical_sources: vec![SourceId::new(width as u32).unwrap()],
+                    slope_sources: Vec::new(),
+                    label: "g".into(),
+                    saved_name: String::new(),
+                }];
+                let input = LoadedOlsInput {
+                    candidate: vec![true; n],
+                    outcome: column(&vec![1.0; n], &vec![false; n]),
+                    numeric_sources: (1..=width as u32)
+                        .map(|j| {
+                            (
+                                SourceId::new(j).unwrap(),
+                                column(
+                                    &(0..n)
+                                        .map(|r| {
+                                            if j == width as u32 {
+                                                (r / 5) as f64 - 0.25
+                                            } else {
+                                                ((r * j as usize) as f64).sin()
+                                            }
+                                        })
+                                        .collect::<Vec<_>>(),
+                                    &vec![false; n],
+                                ),
+                            )
+                        })
+                        .collect(),
+                    analytic_weight: None,
+                    frequency_weight: None,
+                    probability_weight: None,
                 };
-                let expected = run(1).expect("serial prepared fixture");
-                assert_eq!(
-                    expected,
-                    run(8).expect("eight-worker prepared fixture"),
-                    "N={n}, case={case}"
-                );
-                assert_eq!(
-                    expected,
-                    run(16).expect("sixteen-worker prepared fixture"),
-                    "N={n}, case={case}"
-                );
+                for case in 0..6 {
+                    let mut input = input.clone();
+                    match case {
+                        1 => input.candidate[0] = false,
+                        2 => input.outcome.missing[1] = true,
+                        3 => input.numeric_sources[width - 1].1.values[1] = f64::NAN,
+                        4 => input.numeric_sources[width - 1].1.values[n / 2] = 1e12,
+                        5 => input.numeric_sources[width - 1].1.values.reverse(),
+                        _ => (),
+                    }
+                    let run = |threads| {
+                        ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
+                            .install(|| prepare_ols_data_owned(&request, input.clone()))
+                            .unwrap()
+                    };
+                    let expected = run(1).expect("serial prepared fixture");
+                    for workers in [4, 8, 16] {
+                        assert_eq!(
+                            expected,
+                            run(workers).expect("shared prepared fixture"),
+                            "N={n}, width={width}, workers={workers}, case={case}"
+                        );
+                    }
+                }
             }
         }
     }
@@ -3337,7 +3254,7 @@ mod tests {
                 sample.drop_reasons[3],
                 crate::DropReason::MissingFixedEffect
             );
-            let sources = factorize_preparation_sources(&request, &sample, None).unwrap();
+            let sources = factorize_preparation_sources(&request, &sample).unwrap();
             assert_eq!(
                 sources
                     .iter()
@@ -3410,7 +3327,6 @@ mod tests {
                     &[],
                     model,
                     sample,
-                    None,
                     false,
                     false,
                     reusable,
@@ -4020,7 +3936,7 @@ mod tests {
         let request = two_way_singleton_request(true);
         let metadata = |reservation: &mut InjectedFeTopologyReservation| {
             let prepared = prepare_ols_data(&request, &two_way_singleton_input()).unwrap();
-            let sources = factorize_preparation_sources(&request, prepared.sample(), None).unwrap();
+            let sources = factorize_preparation_sources(&request, prepared.sample()).unwrap();
             let required: Vec<_> = sources.iter().map(|source| source.source).collect();
             crate::prepared_categorical_data::retain_model_sources_with_reservation(
                 sources,

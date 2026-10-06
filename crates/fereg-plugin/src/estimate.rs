@@ -1,5 +1,13 @@
 use crate::input_memory::{InputMemory, StringDictionary};
 use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS};
+pub(crate) use crate::model_metadata::{
+    exact_positive_u32, exact_usize, parse_bool, parse_nonnegative_u32, parse_positive_f64,
+    parse_positive_u32, parse_positive_usize, parse_u16, parse_usize, push_reserved, read_bindings,
+    read_table, required, reserved_empty,
+};
+use crate::publication::store_matrix;
+#[cfg(test)]
+use fereg_core::ols::OlsInputBinding;
 use std::collections::{BTreeMap, BTreeSet};
 use std::time::Instant;
 
@@ -11,15 +19,12 @@ use crate::result::{
     RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, RUNTIME_ROWS, SOLVER_COLUMNS, SOLVER_ROWS,
     SUBSET_COLUMNS,
 };
-use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::fe::{AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner};
-use fereg_core::metadata::{
-    ComponentKind, ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH,
-    ABSORB_TERM_ROW_WIDTH, COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
-};
+use fereg_core::metadata::{ComponentKind, SourceId};
 #[cfg(all(test, feature = "ffi"))]
 use fereg_core::ols::prepare_ols_data_owned;
+use fereg_core::ols::PreparedOlsData;
 #[cfg(test)]
 use fereg_core::ols::{
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_unadjusted_map,
@@ -28,9 +33,9 @@ use fereg_core::ols::{
 };
 use fereg_core::ols::{
     CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput, LoadedOlsRows, OlsClusterTermV1,
-    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsClusteredConfig, PreparedOlsColumnKind, PreparedOlsExecutionConfig,
-    PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
+    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsClusteredConfig,
+    PreparedOlsColumnKind, PreparedOlsExecutionConfig, PreparedOlsExecutionMode,
+    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
     PreparedOlsUnadjustedConfig,
 };
 #[cfg(test)]
@@ -46,47 +51,51 @@ use rayon::prelude::*;
 
 pub const ACTION_ESTIMATE_OLS: &str = "estimate-ols";
 const CONFIRMATION: &str = "fereg-estimation";
-const BINDING_ROW_WIDTH: usize = 3;
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
 
 #[derive(Debug, Clone)]
-struct ResultMatrices {
-    b: String,
-    covariance: String,
-    coefficient_status: String,
-    omission_b_marker: String,
-    omission_v_marker: String,
-    fit: String,
-    dof: String,
-    solver: String,
-    fixed_effects: String,
-    clusters: String,
-    subsets: String,
-    certificates: String,
-    runtime: String,
-    memory_report: String,
-    receipt: String,
+struct ResultMatrices<T = String> {
+    b: T,
+    covariance: T,
+    coefficient_status: T,
+    omission_b_marker: T,
+    omission_v_marker: T,
+    fit: T,
+    dof: T,
+    solver: T,
+    fixed_effects: T,
+    clusters: T,
+    subsets: T,
+    certificates: T,
+    runtime: T,
+    memory_report: T,
+    receipt: T,
 }
 
-#[derive(Debug)]
-struct PreparedResultMatrices {
-    b: PreparedMatrixStoreName,
-    covariance: PreparedMatrixStoreName,
-    coefficient_status: PreparedMatrixStoreName,
-    omission_b_marker: PreparedMatrixStoreName,
-    omission_v_marker: PreparedMatrixStoreName,
-    fit: PreparedMatrixStoreName,
-    dof: PreparedMatrixStoreName,
-    solver: PreparedMatrixStoreName,
-    fixed_effects: PreparedMatrixStoreName,
-    clusters: PreparedMatrixStoreName,
-    subsets: PreparedMatrixStoreName,
-    certificates: PreparedMatrixStoreName,
-    runtime: PreparedMatrixStoreName,
-    memory_report: PreparedMatrixStoreName,
-    receipt: PreparedMatrixStoreName,
+impl<T> ResultMatrices<T> {
+    fn names(&self) -> impl Iterator<Item = &T> {
+        [
+            &self.b,
+            &self.covariance,
+            &self.coefficient_status,
+            &self.omission_b_marker,
+            &self.omission_v_marker,
+            &self.fit,
+            &self.dof,
+            &self.solver,
+            &self.fixed_effects,
+            &self.clusters,
+            &self.subsets,
+            &self.certificates,
+            &self.runtime,
+            &self.memory_report,
+            &self.receipt,
+        ]
+        .into_iter()
+    }
 }
+type PreparedResultMatrices = ResultMatrices<PreparedMatrixStoreName>;
 
 #[derive(Debug, Clone)]
 struct ObservationOutputs {
@@ -156,24 +165,7 @@ struct EstimateActionSpec {
     memory_baseline: Baseline,
     transport_parent_bytes: u128,
     transport_peak_bytes: u128,
-    model_major: f64,
-    model_minor: f64,
-    source_matrix: String,
-    source_count: usize,
-    term_matrix: String,
-    term_count: usize,
-    component_matrix: String,
-    component_count: usize,
-    source_names: Vec<String>,
-    canonical_tokens: Vec<String>,
-    raw_component_operators: Vec<String>,
-    raw_time_series_operators: Vec<String>,
-    absorb_term_matrix: String,
-    absorb_term_count: usize,
-    absorb_component_matrix: String,
-    absorb_component_count: usize,
-    absorb_labels: Vec<String>,
-    absorb_saved_names: Vec<String>,
+    model: crate::model_metadata::ModelMetadata,
     cluster_term_matrix: String,
     cluster_term_count: usize,
     cluster_component_matrix: String,
@@ -275,6 +267,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         &mut loaded_rhs,
         rhs_budget,
         action.loaded_rhs_layout,
+        false,
     )?;
     action.loaded_fit_workspace_bytes = loaded_rhs
         .as_ref()
@@ -301,14 +294,14 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
     let prepare_seconds = trace_started.elapsed().as_secs_f64();
     let inference_started = Instant::now();
-    let inference = prepared.infer(&action, loaded_rows)?;
+    let inference = infer_ols(&prepared, &action, loaded_rows)?;
     let view = inference.view();
     action.admit_output_parent(view.owned_buffer_bytes())?;
     let inference_seconds = inference_started.elapsed().as_secs_f64();
     complete_ols(
         &action,
-        prepared.data(),
-        prepared.clusters(),
+        &prepared,
+        prepared.cluster_design().map(|_| &prepared),
         view,
         &observation,
         spi,
@@ -326,7 +319,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
 }
 
 mod ols_pipeline;
-use ols_pipeline::prepare_ols_pipeline;
+use ols_pipeline::{infer_ols, prepare_ols_pipeline};
 
 struct OlsPhaseTrace {
     label: &'static str,
@@ -335,19 +328,19 @@ struct OlsPhaseTrace {
     inference_seconds: f64,
 }
 
-// Keep all six inference variants behind the same output/transaction boundary.
+// One canonical prepared owner feeds the three mathematical covariance variants.
 // Borrowed views preserve prepared owners until the validated result is stored.
 fn complete_ols(
     action: &EstimateAction,
-    data: PreparedOlsResultData<'_>,
-    clusters: Option<PreparedOlsClusteredResultData<'_>>,
+    data: &'_ PreparedOlsData,
+    clusters: Option<&'_ PreparedOlsData>,
     inference: CertifiedOlsInference<'_>,
     observation: &ActionObservation,
     spi: &mut dyn SpiApi,
     trace: Option<OlsPhaseTrace>,
 ) -> Result<()> {
     let outputs_started = Instant::now();
-    let categorical = data.categorical_data();
+    let categorical = data.uses_categorical_preparation().then_some(data);
     let known_connected =
         categorical.is_some() && normalization_known_connected(inference.absorbed_dof());
     let derived = build_derived_observation_outputs(
@@ -446,7 +439,14 @@ fn prepare_loaded_ols<T: Send>(
     prepare: impl FnOnce(LoadedOlsInput) -> Result<T> + Send,
 ) -> Result<T> {
     let started = Instant::now();
-    let prepared = if loaded.numeric_sources.len() >= 8 && loaded.candidate.len() >= 16_384 {
+    let prepared = if fereg_core::parallel::StagePlan::new(
+        loaded.candidate.len() as u128 * loaded.numeric_sources.len() as u128 * 2,
+        loaded.numeric_sources.len(),
+        threads.resolved(),
+    )
+    .lanes
+        > 1
+    {
         ThreadTeam::new(threads).install(|| prepare(loaded))??
     } else {
         prepare(loaded)?
@@ -622,11 +622,7 @@ impl EstimateAction {
             }).sum::<u128>()
             + self.outputs.saved_channels.capacity() as u128 * size_of::<Option<u32>>() as u128
             // CString owns a boxed byte slice, including its NUL terminator.
-            + [&matrices.b, &matrices.covariance, &matrices.coefficient_status,
-                &matrices.omission_b_marker, &matrices.omission_v_marker, &matrices.fit,
-                &matrices.dof, &matrices.solver, &matrices.fixed_effects, &matrices.clusters,
-                &matrices.subsets, &matrices.certificates, &matrices.runtime, &matrices.memory_report, &matrices.receipt]
-                .iter().map(|name| name.as_c_str().to_bytes_with_nul().len() as u128).sum::<u128>()
+            + matrices.names().map(|name| name.as_c_str().to_bytes_with_nul().len() as u128).sum::<u128>()
     }
 
     /// Reconcile the surviving preparation owner before fit/inference allocates
@@ -700,52 +696,38 @@ impl EstimateAction {
 impl EstimateActionSpec {
     fn metadata_shape(&self) -> crate::metadata_memory::MetadataShape {
         let registry_bytes = [
-            &self.source_names,
-            &self.canonical_tokens,
-            &self.raw_component_operators,
-            &self.raw_time_series_operators,
-            &self.absorb_labels,
-            &self.absorb_saved_names,
+            &self.model.registries.source_names,
+            &self.model.registries.canonical_tokens,
+            &self.model.registries.raw_component_operators,
+            &self.model.registries.raw_time_series_operators,
+            &self.model.registries.absorb_labels,
+            &self.model.registries.absorb_saved_names,
             &self.cluster_labels,
         ]
         .into_iter()
         .map(crate::metadata_memory::strings_bytes)
         .sum::<u128>();
         let string_bytes = [
-            &self.source_matrix,
-            &self.term_matrix,
-            &self.component_matrix,
-            &self.absorb_term_matrix,
-            &self.absorb_component_matrix,
+            &self.model.source_matrix,
+            &self.model.term_matrix,
+            &self.model.component_matrix,
+            &self.model.absorb_term_matrix,
+            &self.model.absorb_component_matrix,
             &self.cluster_term_matrix,
             &self.cluster_component_matrix,
             &self.binding_matrix,
-            &self.matrices.b,
-            &self.matrices.covariance,
-            &self.matrices.coefficient_status,
-            &self.matrices.fit,
-            &self.matrices.dof,
-            &self.matrices.solver,
-            &self.matrices.fixed_effects,
-            &self.matrices.clusters,
-            &self.matrices.subsets,
-            &self.matrices.certificates,
-            &self.matrices.runtime,
-            &self.matrices.memory_report,
-            &self.matrices.receipt,
-            &self.matrices.omission_b_marker,
-            &self.matrices.omission_v_marker,
         ]
         .into_iter()
+        .chain(self.matrices.names())
         .map(|value| value.capacity() as u128)
         .sum::<u128>();
         crate::metadata_memory::MetadataShape {
             rows: [
-                self.source_count,
-                self.term_count,
-                self.component_count,
-                self.absorb_term_count,
-                self.absorb_component_count,
+                self.model.source_count,
+                self.model.term_count,
+                self.model.component_count,
+                self.model.absorb_term_count,
+                self.model.absorb_component_count,
                 self.cluster_term_count,
                 self.cluster_component_count,
                 self.binding_count,
@@ -790,11 +772,7 @@ impl EstimateActionSpec {
                 OLS_RESULT_WIRE_VERSION.major, OLS_RESULT_WIRE_VERSION.minor,
             )));
         }
-        let source_count = parse_usize(&values, "source_count")?;
-        let term_count = parse_usize(&values, "term_count")?;
-        let component_count = parse_usize(&values, "component_count")?;
-        let absorb_term_count = parse_usize(&values, "absorb_term_count")?;
-        let absorb_component_count = parse_usize(&values, "absorb_component_count")?;
+        let model_counts = crate::model_metadata::ModelMetadata::counts(&values)?;
         let cluster_term_count = parse_usize(&values, "cluster_term_count")?;
         let cluster_component_count = parse_usize(&values, "cluster_component_count")?;
         let output_residual = parse_nonnegative_u32(&values, "output_residual")?;
@@ -807,40 +785,19 @@ impl EstimateActionSpec {
             memory_baseline: Baseline::parse(&values)?,
             transport_parent_bytes: crate::metadata_memory::argument_parent_bytes(args)?,
             transport_peak_bytes,
-            model_major: f64::from(parse_u16(&values, "model_major")?),
-            model_minor: f64::from(parse_u16(&values, "model_minor")?),
-            source_matrix: required(&values, "source_matrix")?.to_owned(),
-            source_count,
-            term_matrix: required(&values, "term_matrix")?.to_owned(),
-            term_count,
-            component_matrix: required(&values, "component_matrix")?.to_owned(),
-            component_count,
-            source_names: decode_registry(required(&values, "source_names")?, source_count)?,
-            canonical_tokens: decode_registry(required(&values, "canonical_tokens")?, term_count)?,
-            raw_component_operators: decode_registry(
-                required(&values, "raw_component_operators")?,
-                component_count,
-            )?,
-            raw_time_series_operators: decode_registry(
-                required(&values, "raw_time_series_operators")?,
-                component_count,
-            )?,
-            absorb_term_matrix: required(&values, "absorb_term_matrix")?.to_owned(),
-            absorb_term_count,
-            absorb_component_matrix: required(&values, "absorb_component_matrix")?.to_owned(),
-            absorb_component_count,
-            absorb_labels: decode_registry(required(&values, "absorb_labels")?, absorb_term_count)?,
-            absorb_saved_names: decode_registry(
-                required(&values, "absorb_saved_names")?,
-                absorb_term_count,
+            model: crate::model_metadata::ModelMetadata::parse(
+                &values,
+                model_counts,
+                crate::model_metadata::RegistryFraming::Delimited,
             )?,
             cluster_term_matrix: required(&values, "cluster_term_matrix")?.to_owned(),
             cluster_term_count,
             cluster_component_matrix: required(&values, "cluster_component_matrix")?.to_owned(),
             cluster_component_count,
-            cluster_labels: decode_registry(
+            cluster_labels: crate::model_metadata::decode_registry(
                 required(&values, "cluster_labels")?,
                 cluster_term_count,
+                crate::model_metadata::RegistryFraming::Delimited,
             )?,
             binding_matrix: required(&values, "binding_matrix")?.to_owned(),
             binding_count: parse_usize(&values, "binding_count")?,
@@ -1004,51 +961,17 @@ impl EstimateActionSpec {
             .admit(usable_bytes)?
             .max(self.transport_peak_bytes);
         crate::metadata_memory::admit(metadata_peak_bytes, usable_bytes)?;
-        let wire = ModelWireV2 {
-            major: self.model_major,
-            minor: self.model_minor,
-            sources: read_table(
-                spi,
-                &self.source_matrix,
-                self.source_count,
-                SOURCE_ROW_WIDTH,
+        let wire = self.model.read_wire(
+            spi,
+            self.model.registries.clone(),
+            [
                 "source",
-            )?,
-            terms: read_table(
-                spi,
-                &self.term_matrix,
-                self.term_count,
-                TERM_ROW_WIDTH,
                 "term",
-            )?,
-            components: read_table(
-                spi,
-                &self.component_matrix,
-                self.component_count,
-                COMPONENT_ROW_WIDTH,
                 "component",
-            )?,
-            source_names: self.source_names.clone(),
-            canonical_tokens: self.canonical_tokens.clone(),
-            raw_component_operators: self.raw_component_operators.clone(),
-            raw_time_series_operators: self.raw_time_series_operators.clone(),
-            absorb_terms: read_table(
-                spi,
-                &self.absorb_term_matrix,
-                self.absorb_term_count,
-                ABSORB_TERM_ROW_WIDTH,
                 "absorbed term",
-            )?,
-            absorb_components: read_table(
-                spi,
-                &self.absorb_component_matrix,
-                self.absorb_component_count,
-                ABSORB_COMPONENT_ROW_WIDTH,
                 "absorbed component",
-            )?,
-            absorb_labels: self.absorb_labels.clone(),
-            absorb_saved_names: self.absorb_saved_names.clone(),
-        };
+            ],
+        )?;
         let decoded = wire.decode_specification()?;
         drop(wire);
         let bindings = read_bindings(spi, &self.binding_matrix, self.binding_count)?;
@@ -1210,11 +1133,11 @@ impl EstimateActionSpec {
             self.cluster_term_count,
             spi,
             &[
-                &self.source_matrix,
-                &self.term_matrix,
-                &self.component_matrix,
-                &self.absorb_term_matrix,
-                &self.absorb_component_matrix,
+                &self.model.source_matrix,
+                &self.model.term_matrix,
+                &self.model.component_matrix,
+                &self.model.absorb_term_matrix,
+                &self.model.absorb_component_matrix,
                 &self.cluster_term_matrix,
                 &self.cluster_component_matrix,
                 &self.binding_matrix,
@@ -1546,6 +1469,25 @@ pub(crate) fn load_ols_input(
     load_ols_input_with_memory(request, candidate_all, input_complete, &mut memory, spi)
 }
 
+pub(crate) fn load_preparation_input(
+    request: &OlsRequestV1,
+    spi: &mut dyn SpiApi,
+) -> Result<LoadedOlsInput> {
+    let mut memory = loading_memory(request, spi.nobs()?, 0, 0, None)?;
+    load_ols_input_with_team(
+        request,
+        false,
+        false,
+        &mut memory,
+        spi,
+        None,
+        &mut None,
+        0,
+        None,
+        true,
+    )
+}
+
 pub(crate) fn loading_memory(
     request: &OlsRequestV1,
     rows: usize,
@@ -1619,6 +1561,7 @@ pub(crate) fn load_ols_input_with_memory(
         &mut None,
         0,
         None,
+        false,
     )
 }
 
@@ -1661,14 +1604,25 @@ fn load_ols_input_with_team(
     rhs: &mut Option<Vec<f64>>,
     rhs_budget: usize,
     compiled_rhs_layout: Option<crate::numeric_pipeline::NumericRhsLayout>,
+    candidate_first: bool,
 ) -> Result<LoadedOlsInput> {
     let n = spi.nobs()?;
     let mut candidate = reserved_filled(n, candidate_all, "OLS candidate marker")?;
-    let candidate_position = if candidate_all {
+    let mut candidate_position = if candidate_all {
         None
     } else {
         Some(role_position(request, InputRoleTag::Candidate)?)
     };
+    if candidate_first {
+        if let Some(position) = candidate_position.take() {
+            // Developer diagnostics require the complete marker to be valid
+            // before any outcome/source observation is read.
+            for (row, retained) in candidate.iter_mut().enumerate() {
+                spi.check_interrupted()?;
+                *retained = read_candidate_marker(spi, position, row + 1)?;
+            }
+        }
+    }
     let has_weight = request.bindings.iter().any(|binding| {
         matches!(
             binding.role,
@@ -1895,26 +1849,7 @@ fn load_ols_input_with_team(
                 missing.push(destination.missing.as_mut_slice());
             }
         }
-        let pipelined = if reserved_read {
-            true
-        } else if candidate_all && all_sources_numeric {
-            if let Some(team) = team {
-                crate::numeric_pipeline::try_read_with_rhs(
-                    spi,
-                    &positions,
-                    &mut columns,
-                    &mut missing,
-                    team,
-                    memory,
-                    rhs.as_mut().zip(rhs_layout),
-                )?
-            } else {
-                false
-            }
-        } else {
-            false
-        };
-        if !pipelined {
+        if !reserved_read {
             read_numeric_columns_in_chunks(
                 spi,
                 &positions,
@@ -1963,7 +1898,7 @@ fn load_ols_input_with_team(
                 *retained_slot = retained;
                 retained
             } else {
-                true
+                *retained_slot
             };
             if !retained_candidate {
                 continue;
@@ -2154,8 +2089,32 @@ fn read_into(
     Ok(())
 }
 
+fn add_fitted_terms(
+    prepared: &fereg_core::ols::PreparedOlsData,
+    terms: &[(usize, f64)],
+    output: &mut [f64],
+) -> Result<()> {
+    if !fereg_core::ols::add_numeric_ols_predictor(
+        prepared.model(),
+        prepared.sample(),
+        terms,
+        output,
+    )? {
+        output
+            .par_iter_mut()
+            .enumerate()
+            .try_for_each(|(row, value)| -> Result<()> {
+                for &(column, coefficient) in terms {
+                    *value = coefficient.mul_add(prepared.column_value(column, row)?, *value);
+                }
+                Ok(())
+            })?;
+    }
+    Ok(())
+}
+
 fn certify_recovered_model_outputs(
-    prepared: PreparedOlsResultData<'_>,
+    prepared: &'_ PreparedOlsData,
     fit: &CertifiedPreparedOlsFit,
     fitted_terms: &[(usize, f64)],
     absorbed: &[f64],
@@ -2166,7 +2125,7 @@ fn certify_recovered_model_outputs(
         return Err(invalid("model recovery output dimensions disagree"));
     }
     workspace.fill(0.0);
-    prepared.add_fitted_terms(fitted_terms, workspace)?;
+    add_fitted_terms(prepared, fitted_terms, workspace)?;
     let mut error = 0.0_f64;
     let mut scale = 0.0_f64;
     for row in 0..workspace.len() {
@@ -2195,7 +2154,7 @@ fn certify_recovered_model_outputs(
 }
 
 fn build_derived_observation_outputs(
-    prepared: PreparedOlsResultData<'_>,
+    prepared: &'_ PreparedOlsData,
     categorical: Option<&PreparedCategoricalOlsData>,
     fit: &CertifiedPreparedOlsFit,
     requested: &ObservationOutputs,
@@ -2215,7 +2174,7 @@ fn build_derived_observation_outputs(
 }
 
 fn build_derived_observation_outputs_in_team(
-    prepared: PreparedOlsResultData<'_>,
+    prepared: &'_ PreparedOlsData,
     categorical: Option<&PreparedCategoricalOlsData>,
     fit: &CertifiedPreparedOlsFit,
     requested: &ObservationOutputs,
@@ -2289,7 +2248,7 @@ fn build_derived_observation_outputs_in_team(
         None
     };
     if let Some(xb) = xb_work.as_mut() {
-        prepared.add_fitted_terms(&fitted_terms, xb)?;
+        add_fitted_terms(prepared, &fitted_terms, xb)?;
     }
     if xb_work
         .as_ref()
@@ -2311,7 +2270,7 @@ fn build_derived_observation_outputs_in_team(
             // Saved-only publication does not need an xb vector after target
             // construction. Accumulate xb in the target buffer, then convert
             // it in place; this preserves the ordinary xb rounding exactly.
-            prepared.add_fitted_terms(&fitted_terms, target)?;
+            add_fitted_terms(prepared, &fitted_terms, target)?;
             target.par_iter_mut().enumerate().for_each(|(row, value)| {
                 *value = prepared.sample().outcome[row] - *value - fit.residuals()[row];
             });
@@ -2402,7 +2361,7 @@ fn build_derived_observation_outputs_in_team(
                     .as_mut()
                     .ok_or_else(|| invalid("model FE recovery target is absent"))?;
                 raw.fill(0.0);
-                prepared.add_fitted_terms(&fitted_terms, raw)?;
+                add_fitted_terms(prepared, &fitted_terms, raw)?;
                 let mut recovery_model_scale = 0.0_f64;
                 for (row, value) in raw.iter_mut().enumerate() {
                     let y = prepared.sample().outcome[row];
@@ -3320,22 +3279,6 @@ fn try_store_full_observation_outputs(
     spi.try_store_numeric_columns(&columns[..count])
 }
 
-fn store_matrix(
-    spi: &mut dyn SpiApi,
-    name: &PreparedMatrixStoreName,
-    rows: usize,
-    columns: usize,
-    values: &[f64],
-) -> Result<()> {
-    debug_assert_eq!(values.len(), rows * columns);
-    for row in 1..=rows {
-        for column in 1..=columns {
-            spi.store_matrix(name, row, column, values[(row - 1) * columns + column - 1])?;
-        }
-    }
-    Ok(())
-}
-
 #[allow(clippy::too_many_arguments)]
 fn validate_layout(
     request: &OlsRequestV1,
@@ -3464,62 +3407,15 @@ fn validate_layout(
         runtime: PreparedMatrixStoreName::try_new(&matrices.runtime, RUNTIME_ROWS, 2)?,
         receipt: PreparedMatrixStoreName::try_new(&matrices.receipt, 1, RECEIPT_COLUMNS)?,
     };
-    let result_matrices = [
-        (prepared_matrices.b.as_str(), 1, matrix_dimension),
-        (
-            prepared_matrices.covariance.as_str(),
-            matrix_dimension,
-            matrix_dimension,
-        ),
-        (
-            prepared_matrices.coefficient_status.as_str(),
-            matrix_dimension,
-            COEFFICIENT_STATUS_COLUMNS,
-        ),
-        (
-            prepared_matrices.omission_b_marker.as_str(),
-            1,
-            matrix_dimension,
-        ),
-        (
-            prepared_matrices.omission_v_marker.as_str(),
-            matrix_dimension,
-            matrix_dimension,
-        ),
-        (prepared_matrices.fit.as_str(), FIT_ROWS, 2),
-        (prepared_matrices.dof.as_str(), DOF_ROWS, 2),
-        (
-            prepared_matrices.solver.as_str(),
-            SOLVER_ROWS,
-            SOLVER_COLUMNS,
-        ),
-        (
-            prepared_matrices.fixed_effects.as_str(),
-            fe_rows,
-            FE_COLUMNS,
-        ),
-        (
-            prepared_matrices.clusters.as_str(),
-            cluster_rows,
-            CLUSTER_COLUMNS,
-        ),
-        (
-            prepared_matrices.subsets.as_str(),
-            subset_count,
-            SUBSET_COLUMNS,
-        ),
-        (prepared_matrices.certificates.as_str(), CERTIFICATE_ROWS, 2),
-        (prepared_matrices.runtime.as_str(), RUNTIME_ROWS, 2),
-        (prepared_matrices.memory_report.as_str(), MEMORY_ROWS, 2),
-        (prepared_matrices.receipt.as_str(), 1, RECEIPT_COLUMNS),
-    ];
     let mut names = BTreeSet::new();
     for name in input_matrix_names {
         if !names.insert(name.as_str()) {
             return Err(invalid("OLS input matrix name is duplicated"));
         }
     }
-    for (name, rows, columns) in result_matrices {
+    for matrix in prepared_matrices.names() {
+        let name = matrix.as_str();
+        let (rows, columns) = (matrix.rows(), matrix.columns());
         if !names.insert(name) {
             return Err(invalid(
                 "OLS result matrix name is duplicated or aliases an input",
@@ -3595,81 +3491,6 @@ fn source_requires_numeric(request: &OlsRequestV1, source: SourceId) -> bool {
         .any(|term| term.slope_sources.contains(&source))
 }
 
-pub(crate) fn read_table(
-    spi: &mut dyn SpiApi,
-    name: &str,
-    declared_count: usize,
-    width: usize,
-    label: &str,
-) -> Result<NumericWireTable> {
-    let (rows, columns) = spi.matrix_dimensions(name)?;
-    let expected_rows = declared_count.max(1);
-    if (rows, columns) != (expected_rows, width) {
-        return Err(invalid(format!(
-            "{label} matrix {name:?} is {rows}x{columns}, expected {expected_rows}x{width}",
-        )));
-    }
-    let mut values = reserved_empty(rows, "numeric wire table")?;
-    for row in 1..=rows {
-        let mut output_row = reserved_empty(width, "numeric wire row")?;
-        for column in 1..=width {
-            push_reserved(
-                &mut output_row,
-                spi.matrix_element(name, row, column)?,
-                "numeric wire row capacity exhausted",
-            )?;
-        }
-        push_reserved(
-            &mut values,
-            output_row,
-            "numeric wire table capacity exhausted",
-        )?;
-    }
-    Ok(NumericWireTable {
-        declared_count: declared_count as f64,
-        rows: values,
-    })
-}
-
-pub(crate) fn read_bindings(
-    spi: &mut dyn SpiApi,
-    name: &str,
-    count: usize,
-) -> Result<Vec<OlsInputBinding>> {
-    if count == 0 {
-        return Err(invalid("OLS binding matrix cannot be empty"));
-    }
-    if spi.matrix_dimensions(name)? != (count, BINDING_ROW_WIDTH) {
-        return Err(invalid("OLS binding matrix has the wrong dimensions"));
-    }
-    let mut bindings = reserved_empty(count, "OLS input bindings")?;
-    for row in 1..=count {
-        let position = exact_positive_u32(spi.matrix_element(name, row, 1)?, "binding position")?;
-        let role = exact_usize(spi.matrix_element(name, row, 2)?, "binding role")?;
-        let source = exact_usize(spi.matrix_element(name, row, 3)?, "binding source")?;
-        let role = match (role, source) {
-            (1, 0) => OlsInputRole::Candidate,
-            (2, 0) => OlsInputRole::Outcome,
-            (3, source) if source > 0 => OlsInputRole::NumericSource(SourceId::new(
-                u32::try_from(source).map_err(|_| invalid("binding source exceeds u32"))?,
-            )?),
-            (4, 0) => OlsInputRole::AnalyticWeight,
-            (5, 0) => OlsInputRole::FrequencyWeight,
-            (6, 0) => OlsInputRole::ProbabilityWeight,
-            _ => return Err(invalid(format!("invalid OLS binding row {row}"))),
-        };
-        push_reserved(
-            &mut bindings,
-            OlsInputBinding {
-                stata_var_position: position,
-                role,
-            },
-            "OLS input-binding capacity exhausted",
-        )?;
-    }
-    Ok(bindings)
-}
-
 #[derive(Clone, Copy)]
 enum InputRoleTag {
     Candidate,
@@ -3728,40 +3549,12 @@ fn empty_loaded_column(n: usize, label: &'static str) -> Result<LoadedNumericCol
     })
 }
 
-pub(crate) fn decode_registry(value: &str, expected: usize) -> Result<Vec<String>> {
-    if expected == 0 {
-        if value != "." {
-            return Err(invalid("empty registry must use the dot sentinel"));
-        }
-        return Ok(Vec::new());
-    }
-    if value.split('|').count() != expected {
-        return Err(invalid(
-            "registry cardinality does not match its declared count",
-        ));
-    }
-    let mut output = reserved_empty(expected, "length-framed registry")?;
-    for piece in value.split('|') {
-        let (length, payload) = piece
-            .split_once(':')
-            .ok_or_else(|| invalid("registry item lacks a length prefix"))?;
-        let length = length
-            .parse::<usize>()
-            .map_err(|_| syntax("registry length must be an unsigned integer"))?;
-        if payload.len() != length {
-            return Err(invalid("registry byte length is incorrect"));
-        }
-        let mut text = String::new();
-        text.try_reserve_exact(payload.len())
-            .map_err(|_| allocation("unable to reserve registry payload"))?;
-        text.push_str(payload);
-        push_reserved(&mut output, text, "registry capacity exhausted")?;
-    }
-    Ok(output)
-}
-
 fn decode_output_position_registry(value: &str, expected: usize) -> Result<Vec<Option<u32>>> {
-    let values = decode_registry(value, expected)?;
+    let values = crate::model_metadata::decode_registry(
+        value,
+        expected,
+        crate::model_metadata::RegistryFraming::Delimited,
+    )?;
     let mut output = reserved_empty(expected, "saved-output position registry")?;
     for value in values {
         let position = value
@@ -3826,39 +3619,6 @@ fn parse_preconditioner(value: &str) -> Result<LsmrPreconditioner> {
     }
 }
 
-pub(crate) fn required<'a>(values: &'a BTreeMap<String, String>, key: &str) -> Result<&'a str> {
-    values
-        .get(key)
-        .map(String::as_str)
-        .ok_or_else(|| syntax(format!("missing required field {key}")))
-}
-
-pub(crate) fn parse_usize(values: &BTreeMap<String, String>, key: &str) -> Result<usize> {
-    required(values, key)?
-        .parse::<usize>()
-        .map_err(|_| syntax(format!("field {key} must be an unsigned integer")))
-}
-
-pub(crate) fn parse_positive_usize(values: &BTreeMap<String, String>, key: &str) -> Result<usize> {
-    let value = parse_usize(values, key)?;
-    if value == 0 {
-        Err(syntax(format!("field {key} must be positive")))
-    } else {
-        Ok(value)
-    }
-}
-
-pub(crate) fn parse_positive_f64(values: &BTreeMap<String, String>, key: &str) -> Result<f64> {
-    let value = required(values, key)?
-        .parse::<f64>()
-        .map_err(|_| syntax(format!("field {key} must be numeric")))?;
-    if value.is_finite() && value > 0.0 && value < 1.0 {
-        Ok(value)
-    } else {
-        Err(syntax(format!("field {key} must be finite and in (0,1)")))
-    }
-}
-
 pub(crate) fn imposed_memory_limit_bytes() -> Result<Option<u128>> {
     let Some(value) = std::env::var_os("FEREG_MEMORY_LIMIT_BYTES") else {
         return Ok(instrumentation::system_available_memory_bytes());
@@ -3876,74 +3636,10 @@ pub(crate) fn imposed_memory_limit_bytes() -> Result<Option<u128>> {
     }
 }
 
-pub(crate) fn parse_u16(values: &BTreeMap<String, String>, key: &str) -> Result<u16> {
-    required(values, key)?
-        .parse::<u16>()
-        .map_err(|_| syntax(format!("field {key} must be a u16 integer")))
-}
-
-pub(crate) fn parse_positive_u32(values: &BTreeMap<String, String>, key: &str) -> Result<u32> {
-    let value = parse_nonnegative_u32(values, key)?;
-    if value == 0 {
-        Err(syntax(format!("field {key} must be positive")))
-    } else {
-        Ok(value)
-    }
-}
-
-pub(crate) fn parse_nonnegative_u32(values: &BTreeMap<String, String>, key: &str) -> Result<u32> {
-    required(values, key)?
-        .parse::<u32>()
-        .map_err(|_| syntax(format!("field {key} must be a u32 integer")))
-}
-
-pub(crate) fn parse_bool(values: &BTreeMap<String, String>, key: &str) -> Result<bool> {
-    match required(values, key)? {
-        "0" => Ok(false),
-        "1" => Ok(true),
-        _ => Err(syntax(format!("field {key} must be zero or one"))),
-    }
-}
-
-fn exact_usize(value: f64, label: &str) -> Result<usize> {
-    if !value.is_finite() || value < 0.0 || value.fract() != 0.0 || value > usize::MAX as f64 {
-        return Err(invalid(format!(
-            "{label} must be an exact nonnegative integer"
-        )));
-    }
-    Ok(value as usize)
-}
-
-fn exact_positive_u32(value: f64, label: &str) -> Result<u32> {
-    if !value.is_finite() || value < 1.0 || value.fract() != 0.0 || value > f64::from(u32::MAX) {
-        return Err(invalid(format!("{label} must be an exact positive u32")));
-    }
-    Ok(value as u32)
-}
-
-fn reserved_empty<T>(elements: usize, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
-    if output.capacity() < elements {
-        return Err(allocation(format!("{label} reservation was undersized")));
-    }
-    Ok(output)
-}
-
 fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
     let mut output = reserved_empty(elements, label)?;
     output.resize(elements, value);
     Ok(output)
-}
-
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
 }
 
 fn syntax(message: impl Into<String>) -> FeregError {
@@ -5006,14 +4702,14 @@ mod tests {
         )
         .unwrap();
         let fit = result.fit();
-        let data = PreparedOlsResultData::new(&prepared);
+        let data = &prepared;
         let terms: Vec<_> = fit
             .coefficients()
             .iter()
             .filter_map(|value| value.generated_column_index.zip(value.value))
             .collect();
         let mut xb = vec![0.0; fit.residuals().len()];
-        data.add_fitted_terms(&terms, &mut xb).unwrap();
+        add_fitted_terms(data, &terms, &mut xb).unwrap();
         let mut product: Vec<_> = xb
             .iter()
             .enumerate()
@@ -5842,7 +5538,7 @@ mod tests {
                 },
             )
             .unwrap();
-            let result_data = PreparedOlsResultData::new(&prepared);
+            let result_data = &prepared;
             let derived = build_derived_observation_outputs(
                 result_data,
                 Some(&prepared),
@@ -6484,6 +6180,7 @@ mod tests {
                     &mut rhs,
                     budget,
                     compiled_width,
+                    false,
                 )
                 .unwrap();
                 assert_eq!(loaded, reference_loaded);
@@ -6697,6 +6394,7 @@ mod tests {
                     &mut rhs,
                     required,
                     compiled,
+                    false,
                 )
                 .unwrap();
                 assert_eq!(loaded, reference);
@@ -6886,6 +6584,7 @@ mod tests {
                         &mut rhs,
                         budget,
                         compiled_width,
+                        false,
                     )
                     .unwrap();
                     assert_eq!(loaded, reference);

@@ -1,0 +1,143 @@
+{
+  "milestone": "M34",
+  "status": "Source audit at accepted M34.1 tranche; whole-M34 budgets open",
+  "review": {
+    "model": "GPT-6 Astra",
+    "effort": "high",
+    "scope": "Bounded read-only audit of every semantic family in REPLACEMENTS routes table, grouped below; no tests/builds/measurements"
+  },
+  "families": [
+    {
+      "family": "Worker caps, recurrence/overlap controllers",
+      "owner": "parallel::StagePlan; fe/session; prepared_fit/one_shot; canonical preparation",
+      "classification": "retired",
+      "disposition": "Old command cap, seven-worker crossover and speculative outcome/DoF/RSS overlap owners disappear."
+    },
+    {
+      "family": "FE families, Schur and automatic fallback",
+      "owner": "fe/session.rs; fe/auto.rs; borrowed_map.rs",
+      "classification": "mathematical/resource",
+      "disposition": "Topology/channel applicability, checked capacity, contraction and bounded work; old multipartition builder absent."
+    },
+    {
+      "family": "CMG automatic density/final reuse",
+      "owner": "fe/cmg.rs; fe/cmg_admission.rs",
+      "classification": "retired/support/dependency",
+      "disposition": "Automatic density and final-reuse owners gone; explicit support and may_need_plan mirror dependency applicability."
+    },
+    {
+      "family": "Finite algebra, QR and scratch",
+      "owner": "ols/linear_session.rs; finite_wls_kernel.rs; finite_wls_direction.rs; prepared_fit/one_shot.rs",
+      "classification": "mathematical/storage/kernel",
+      "disposition": "Concrete dense/scratch/implicit kernels under common owners; no second full estimator identified."
+    },
+    {
+      "family": "Two/three-FE canonical products",
+      "owner": "ols/canonical_products.rs; canonical_products/three.rs; borrowed_map/three_fe_schur.rs",
+      "classification": "mathematical/resource/numerical work",
+      "disposition": "Elimination topology, contraction/work and reduced-square<=6N have computational meanings."
+    },
+    {
+      "family": "Projection and certificates",
+      "owner": "fe/projection.rs; fe/certificate.rs",
+      "classification": "science/resource/kernel",
+      "disposition": "Independent rank-aware geometry; admitted caches and partial banks; StagePlan scheduling."
+    },
+    {
+      "family": "Slope and saved-FE recovery",
+      "owner": "fe/session.rs::recover; topology_slope_map.rs; model_recovery.rs",
+      "classification": "mathematical/science",
+      "disposition": "Old specialized owner/recovery controllers retired; channel kernels and independent reconstruction remain."
+    },
+    {
+      "family": "LSMR transport",
+      "owner": "memory.rs::lsmr_rhs_window; fe/lsmr_batch.rs",
+      "classification": "resource/kernel",
+      "disposition": "64/4workers full-bank/window rule bounds simultaneous recurrences; serial-retained OLS override retired."
+    },
+    {
+      "family": "Loading/preparation/factorization",
+      "owner": "host estimate/input/numeric_pipeline; data/sample.rs; ols/prepared.rs; factorize.rs; prepared_rhs.rs",
+      "classification": "support/resource/kernel/inherited schedule",
+      "disposition": "Speculative factor bank, initialized retry and loaded reuse crossovers gone; supported framing, fixed capacities and physical scan/kernel crossovers remain."
+    },
+    {
+      "family": "Saved products and score storage",
+      "owner": "prepared_fit.rs; prepared_scores.rs; host result/request owners",
+      "classification": "storage/resource",
+      "disposition": "Inference cache32MiB/default512MiB and Dense/Scratch choices describe simultaneous lifetimes."
+    },
+    {
+      "family": "PPML solver/memory admission",
+      "owner": "ppml/solver.rs; ppml/memory.rs; prepared_irls/admission.rs",
+      "classification": "support/resource",
+      "disposition": "Auto=>Map; dead Auto/LSMR veto retired; public memory/explicit solver admission remain."
+    },
+    {
+      "family": "PPML profiles/checkpoints/products",
+      "owner": "prepared_irls admission/install/transitions; one_fe_profile; canonical products",
+      "classification": "science/generation/storage",
+      "disposition": "Accepted/speculative frames, frozen/canonical proofs and independent final Hessian have distinct roles."
+    },
+    {
+      "family": "Joint-LSMR predictor/progress",
+      "owner": "ppml/categorical_lsmr.rs",
+      "classification": "numerical work",
+      "disposition": "Prior certificate, core pair, weight-change0.5/tolerance ratio0.01/refresh128 bound numerical reuse/progress."
+    },
+    {
+      "family": "Objective/VCE/clusters/separation",
+      "owner": "ppml/family.rs; ppml/vce.rs; sandwich/qualified_cluster.rs; prepared_separation.rs",
+      "classification": "science/resource/kernel/inherited route",
+      "disposition": "Fixed leaves, partial/table/radix budgets and independent replay remain; live cluster crossover explicitly listed."
+    },
+    {
+      "family": "Validation/publication",
+      "owner": "Singleton/rank/separation, score/factor covariance and host result modules",
+      "classification": "science/transaction",
+      "disposition": "Independent certificates, original-row mapping, receipts and atomic publication are retained obligations."
+    }
+  ],
+  "live_inherited_policies": [
+    {
+      "owner": "sandwich/qualified_cluster.rs::prefer_ordered",
+      "condition": "workers>1/K>=8 or workers>=8/N>=16384/K>=6",
+      "classification": "Inherited performance choice of physical reduction representation",
+      "disposition": "Retained; final option/scaling evidence open, not mathematical applicability or memory admission."
+    },
+    {
+      "owner": "data/sample.rs",
+      "condition": "width>=8 and N>=16384",
+      "classification": "Inherited scan scheduling crossover",
+      "disposition": "Retained; no different estimator; final adjacent-boundary evidence open."
+    },
+    {
+      "owner": "ols/prepared_rhs.rs::NumericOlsColumns",
+      "condition": "ordinary/score/residual minimum widths8/1/2 and N>=4096; capacity64",
+      "classification": "Physical numeric kernel crossover versus true stack capacity",
+      "disposition": "Retained for kernels; ownership reuse now structural without crossovers."
+    },
+    {
+      "owner": "factorize.rs; borrowed_map dot/CG; PPML generated score means; host SPI",
+      "condition": "ordered/integer factor paths, fixed dot/row tiles and bulk capabilities",
+      "classification": "Topology/storage/kernel scheduling; SPI capability is support",
+      "disposition": "Retained with common worker budget; no benchmark-cell rescue fence introduced."
+    }
+  ],
+  "coverage": "Feature-to-test and lifetime map in docs/ARCHITECTURE.md; no fresh LLVM branch-coverage claim.",
+  "limits": "No further concrete duplicate live owner identified by this bounded audit. Raw public OLS APIs are outside named M31/M34 pools; physical kernels and independent certificates are not superseded implementations.",
+  "budget": {
+    "fixed_m26": 121396,
+    "accepted_m33": 110527,
+    "candidate": 109589,
+    "candidate_delta_parent": -938,
+    "candidate_delta_m26": -11807,
+    "remaining_15000": 3193,
+    "named_m34_survivors": 6791,
+    "new_metadata_publication": 415,
+    "conservative_successor": 7206,
+    "revised_budget": 6390,
+    "miss": 816
+  },
+  "gate": "No whole-M34 or final-program completion claim while named/aggregate budgets and final envelope remain open."
+}

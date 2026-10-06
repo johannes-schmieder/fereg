@@ -179,6 +179,29 @@ survive. Independent byte formula owners currently include core `memory.rs`,
 `ppml/memory.rs`, FE workspace estimates, scratch constructors and host input,
 preparation, frame and publication modules, all named in the counted pools.
 
+The [M34 source audit](../../bench/history/2026-10-06-m34-policy-audit.json)
+checks every semantic family above against the integrated source. The current
+accepted host tranche removes 938 production lines including replacements; its 109,589
+total is 11,807 below M26, leaving 3,193 against the unchanged target. The
+conservative named-M34 successor envelope is 7,206 including new metadata/store
+code, exceeding the revised 6,390 allocation by 816. These misses remain open;
+meeting the tranche's 700–1,100 forecast does not close whole-M34 budgets.
+The [qualification](../../bench/history/2026-10-06-m34-host-qualification.json)
+retains the raw failed timing result and accepted inherited uncertainty/costs.
+The [remaining-scope review](../../bench/history/2026-10-06-m34-remaining-scope-review.json)
+finds no demonstrated target-closing retirement in the audited finite and PPML
+drivers. Required numerical kernels and independent certificates are live code.
+Budget revision or additional algorithm/representation scope requires direction;
+existing architectural performance acceptance does not waive retirement goals.
+
+The audit distinguishes surviving physical kernel/admission policies from the
+retired estimator controllers. In particular, qualified-cluster ordered/table
+selection retains an inherited worker/row/width crossover, as do numeric sample
+classification and numeric predictor/score/mean kernels. Final option/scaling
+evidence remains required. The module, dependency, lifetime and executable
+feature-test map is refreshed in [ARCHITECTURE](../ARCHITECTURE.md); this does
+not claim fresh instrumented coverage or final integrated acceptance.
+
 ## Executable evidence
 
 [program-v1.json](../../bench/program-v1.json) runs through the existing

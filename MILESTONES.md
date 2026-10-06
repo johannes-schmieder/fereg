@@ -2,10 +2,10 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M33 accepted; M34 whole-call host retirement next. Mac-only; comparable inherited-cost acceptance authorized.
+Current task: M34.1 accepted; whole-M34 budgets open. Remaining-scope audit requires direction; Mac-only qualification remains active.
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
-Accepted runtime: M33 generation frame; production110527, net vsM26 -10869; native09c295b7a79c707d69e6aef7267a1d3a41e32299a880defee53073ea1114c0ee.
+Accepted runtime: M34.1 host boundary; production109589, net vsM26 -11807; native70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e.
 ## Tasks and prerequisites
 - [x] M0.1 Governance, ADR dispositions, resolved covariance decision and new ledger.
 - [x] M0.2 Frozen/tagged baseline; all three canonical platforms built/stored; Mac 34 Stata fixtures pass.
@@ -77,6 +77,7 @@ Accepted runtime: M33 generation frame; production110527, net vsM26 -10869; nati
 - [x] M31 Shared finite operations retired; science/Astra high pass; Johannes accepts largeFast M26 cost and defers remaining timing.
 - [x] M32 Products retire1319lines; science/Astra pass; parent15within/fixed3unresolved accepted by Johannes; [record](bench/history/2026-10-06-m32-architectural-acceptance.json).
 - [x] M33 Frame/CMG retirement; science/Astra high pass; inherited costs accepted; [record](bench/history/2026-10-06-m33-frame-qualification.json).
+- [x] M34.1 Host/dead-policy retirement; science/Astra high pass; comparable costs accepted; [record](bench/history/2026-10-06-m34-host-qualification.json).
 - [ ] M34 Whole-call integration, outstanding retirements and architecture/coverage refresh.
 - [ ] M35 Held-out, cross-platform, scaling and final independent acceptance.
 ## Gates
@@ -97,7 +98,8 @@ Accepted runtime: M33 generation frame; production110527, net vsM26 -10869; nati
 - 2026-10-04 Johannes: preserve original factor slots/base flags as SPEC requires; repair next and conflicting tests, with legacy behavior unchanged.
 - Bundle separate plugins; legacy/source policies are historical except retained SPEC/active ADR requirements.
 ## Blockers
-M30's accepted M26 costs and deferred8/16 timing remain open; accepted M33 is-10869/M26;4131 targetlines remain; M33 forecast missed599–1399.
+M30 costs/deferred8/16 remain; M34.1 is-11807/M26;3193 targetlines and816 named-host budget miss remain; M33 forecast missed599–1399.
+[Remaining-scope audit](bench/history/2026-10-06-m34-remaining-scope-review.json): no defensible target-closing owner in bounded audit; budget/scope direction required.
 M28 accepted architecturally: +96 vsM27/-1627 vsM26; timing unresolved for three workloads, with no established regression; full local/science pass.
 All4720 commands retained; FE-cluster timing drifts in both roles. Optimization remains open; [acceptance](bench/history/2026-10-05-m28-capacity-owner-acceptance.json).
 M29 accepted architecturally: -208 vsM28/-1835 vsM26; all local/science pass; timing interrupted by unrelated Stata;200 records/201 raw dirs retained; final scaling open.
@@ -267,3 +269,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-06 M32 clean:3376commands/8blocks; parent15within/fixed12within3unresolved,0outside; Astra high supports architecture; prior exceptions do not waive new gate; approval requested.
 - 2026-10-06 M32.1 accepted: net-1319/M31,-10468/M26; source/science/Astra high pass; fixed3unresolved retained; comparable successor acceptance authorized; Mac only.
 - 2026-10-06 M33.1 accepted: -401/M32,-10869/M26; science/Astra high pass; parent15within,fixed12within2outside1unresolved; inherited costs retained; Mac only.
+- 2026-10-06 M34.1 accepted: -938/M33,-11807/M26; science/Astra high pass;4448commands,parent15within,fixed4unresolved; priorM28/M30 costs retained; whole-M34 budgets open.
