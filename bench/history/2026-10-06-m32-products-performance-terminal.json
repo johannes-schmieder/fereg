@@ -1,0 +1,431 @@
+{
+  "responsibility": "M32 integrated accepted-product Mac performance decision",
+  "native_candidate": "d86dfbc2fcab389ca736a90dec4bebaa76e2ad01a095579a300e81f247a55e53",
+  "native_parent": "6ab9059c75f762f1627fda90bcc0f5c22b7f6c4b025082628b0bd0d3b45b2ea2",
+  "native_fixed_M26": "706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981",
+  "plan": {
+    "path": "target/m32-fit-products/acceptance-clean-03/acceptance-plan.json",
+    "sha256": "e53be8ec60da1005b65a013068c148be2226a9dabef790f97da37d99df5b08a2",
+    "canonical_sha256": "ee0426d49db2741de67f5c6f5fd43a3aed44da22e8868c6777599e70fb73ed98"
+  },
+  "verdict": {
+    "path": "target/m32-fit-products/acceptance-clean-03/acceptance-verdict.json",
+    "sha256": "8dd810b8cc023b66403450fe106c3fedd83b6a87decd8e77db42fd2f95839af5",
+    "passed": false,
+    "counts": {
+      "parent": {
+        "within": 15
+      },
+      "fixed_baseline": {
+        "within": 12,
+        "unresolved": 3
+      }
+    }
+  },
+  "counts": {
+    "records": 3376,
+    "reference": 184,
+    "warmup": 184,
+    "timed": 3008,
+    "raw_capture_directories": 3376
+  },
+  "blocks": [
+    {
+      "path": "target/m32-fit-products/acceptance-clean-03/acceptance-confirmation-fixed_baseline-forward/results.json",
+      "sha256": "e0828463e8b78aeb73d5752cec1755f67611317fed2b2791f963e51f24de81f6",
+      "records": 544,
+      "wall_seconds": 195.73027608299162,
+      "identities_verified": true
+    },
+    {
+      "path": "target/m32-fit-products/acceptance-clean-03/acceptance-confirmation-fixed_baseline-reverse/results.json",
+      "sha256": "a3edcab7df51569c223bbc6f1f9a4d253549569bcc0bc6fe5c8e4b8d0c174cd9",
+      "records": 544,
+      "wall_seconds": 195.56111312500434,
+      "identities_verified": true
+    },
+    {
+      "path": "target/m32-fit-products/acceptance-clean-03/acceptance-confirmation-parent-forward/results.json",
+      "sha256": "5d8ba654fb26e37a32e8a0c5ce4c8bf1c0f00585e5a7b3b70a74d37aa6ef09b2",
+      "records": 544,
+      "wall_seconds": 193.14776770900062,
+      "identities_verified": true
+    },
+    {
+      "path": "target/m32-fit-products/acceptance-clean-03/acceptance-confirmation-parent-reverse/results.json",
+      "sha256": "12ffd3936de58527dcb1154f251154c53911797dfad8618e54d8f101c74bafee",
+      "records": 544,
+      "wall_seconds": 194.30616279199603,
+      "identities_verified": true
+    },
+    {
+      "path": "target/m32-fit-products/acceptance-clean-03/acceptance-screening-fixed_baseline-forward/results.json",
+      "sha256": "db629262a478bca42151b22c9692d7b016023a1eaccfc670e4869b4b9c5d88f8",
+      "records": 300,
+      "wall_seconds": 124.37354870799754,
+      "identities_verified": true
+    },
+    {
+      "path": "target/m32-fit-products/acceptance-clean-03/acceptance-screening-fixed_baseline-reverse/results.json",
+      "sha256": "dd898b0494792137c5aa27d75134ddc8fe67c2190221d5fb3df51f1f01f435ee",
+      "records": 300,
+      "wall_seconds": 123.7251798750076,
+      "identities_verified": true
+    },
+    {
+      "path": "target/m32-fit-products/acceptance-clean-03/acceptance-screening-parent-forward/results.json",
+      "sha256": "a3903fdf415b74d8949d88df6a346bcb992371e1f4dc196ff515f7e47d2b0ee2",
+      "records": 300,
+      "wall_seconds": 116.26111862499965,
+      "identities_verified": true
+    },
+    {
+      "path": "target/m32-fit-products/acceptance-clean-03/acceptance-screening-parent-reverse/results.json",
+      "sha256": "ba0066e3c23fc09c62cc37035bad4bd3bc74a8bd046dcd49e46d99232019125b",
+      "records": 300,
+      "wall_seconds": 116.4652494579932,
+      "identities_verified": true
+    }
+  ],
+  "established_regressions": [],
+  "unresolved": [
+    {
+      "cell": "development-ols-2fe-residual-robust",
+      "threads": 4,
+      "verdict": "unresolved",
+      "confirmed": true,
+      "blocks": [
+        {
+          "verdict": "unresolved",
+          "delta_seconds": 0.007159979166666691,
+          "allowance_seconds": 0.003909965625,
+          "parent_median_interval_seconds": [
+            0.0777109583333333,
+            0.0791351666666667
+          ],
+          "candidate_median_interval_seconds": [
+            0.08400145833333329,
+            0.0862299583333334
+          ],
+          "lower_excess_seconds": 0.0009095333333332565,
+          "upper_excess_seconds": 0.00463345208333343,
+          "reverse_upper_excess_seconds": -0.009066364583333257,
+          "pairs": 40,
+          "established_regression": true
+        },
+        {
+          "verdict": "unresolved",
+          "delta_seconds": 0.006724083333333353,
+          "allowance_seconds": 0.003904496875000002,
+          "parent_median_interval_seconds": [
+            0.0775572916666667,
+            0.07917595833333341
+          ],
+          "candidate_median_interval_seconds": [
+            0.083887625,
+            0.08520904166666671
+          ],
+          "lower_excess_seconds": 0.0007528687499999158,
+          "upper_excess_seconds": 0.003773885416666678,
+          "reverse_upper_excess_seconds": -0.008906047916666587,
+          "pairs": 40,
+          "established_regression": false
+        }
+      ],
+      "comparator": "fixed_baseline",
+      "observed_orders": [
+        {
+          "reverse": false,
+          "roles": {
+            "parent": {
+              "command_median_seconds": 0.0781993125,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "input_seconds": 0.009057916499999999,
+                "native_seconds": 0.040109271,
+                "total_seconds": 0.0494060415
+              }
+            },
+            "candidate": {
+              "command_median_seconds": 0.0853592916666667,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "input_seconds": 0.0083393335,
+                "native_seconds": 0.048248604,
+                "total_seconds": 0.056838
+              }
+            }
+          },
+          "delta_seconds": 0.007159979166666691,
+          "relative_difference": 0.09156064085175553
+        },
+        {
+          "reverse": true,
+          "roles": {
+            "parent": {
+              "command_median_seconds": 0.07808993750000004,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "input_seconds": 0.008984896,
+                "native_seconds": 0.040256583500000005,
+                "total_seconds": 0.049537750500000005
+              }
+            },
+            "candidate": {
+              "command_median_seconds": 0.08481402083333339,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "input_seconds": 0.008418771,
+                "native_seconds": 0.0474927715,
+                "total_seconds": 0.0561631465
+              }
+            }
+          },
+          "delta_seconds": 0.006724083333333353,
+          "relative_difference": 0.08610691144852489
+        }
+      ]
+    },
+    {
+      "cell": "development-ols-absorbed-slope-combined-multiway",
+      "threads": 4,
+      "verdict": "unresolved",
+      "confirmed": true,
+      "blocks": [
+        {
+          "verdict": "unresolved",
+          "delta_seconds": 0.003344291666666596,
+          "allowance_seconds": 0.0032718958333333354,
+          "parent_median_interval_seconds": [
+            0.0648155833333333,
+            0.0660081666666667
+          ],
+          "candidate_median_interval_seconds": [
+            0.0680261666666667,
+            0.069173125
+          ],
+          "lower_excess_seconds": -0.0012824083333333432,
+          "upper_excess_seconds": 0.0011167625000000352,
+          "reverse_upper_excess_seconds": -0.005419308333333327,
+          "pairs": 40,
+          "established_regression": false
+        },
+        {
+          "verdict": "unresolved",
+          "delta_seconds": 0.002530479166666655,
+          "allowance_seconds": 0.003276102083333335,
+          "parent_median_interval_seconds": [
+            0.06507275,
+            0.06613225
+          ],
+          "candidate_median_interval_seconds": [
+            0.0672524166666667,
+            0.0685413333333333
+          ],
+          "lower_excess_seconds": -0.0021864458333333003,
+          "upper_excess_seconds": 0.00021494583333330278,
+          "reverse_upper_excess_seconds": -0.004482787500000035,
+          "pairs": 40,
+          "established_regression": false
+        }
+      ],
+      "comparator": "fixed_baseline",
+      "observed_orders": [
+        {
+          "reverse": false,
+          "roles": {
+            "parent": {
+              "command_median_seconds": 0.0654379166666667,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "input_seconds": 0.0063647289999999995,
+                "native_seconds": 0.031292687,
+                "total_seconds": 0.0379009165
+              }
+            },
+            "candidate": {
+              "command_median_seconds": 0.0687822083333333,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "input_seconds": 0.0057415420000000005,
+                "native_seconds": 0.0353897505,
+                "total_seconds": 0.0414357915
+              }
+            }
+          },
+          "delta_seconds": 0.003344291666666596,
+          "relative_difference": 0.051106328517486865
+        },
+        {
+          "reverse": true,
+          "roles": {
+            "parent": {
+              "command_median_seconds": 0.0655220416666667,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "input_seconds": 0.006256292,
+                "native_seconds": 0.0319298125,
+                "total_seconds": 0.0383797705
+              }
+            },
+            "candidate": {
+              "command_median_seconds": 0.06805252083333335,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "input_seconds": 0.005692854,
+                "native_seconds": 0.034868854,
+                "total_seconds": 0.040755353999999994
+              }
+            }
+          },
+          "delta_seconds": 0.002530479166666655,
+          "relative_difference": 0.03862027345759578
+        }
+      ]
+    },
+    {
+      "cell": "development-ppml-2fe-residual-robust",
+      "threads": 4,
+      "verdict": "unresolved",
+      "confirmed": true,
+      "blocks": [
+        {
+          "verdict": "unresolved",
+          "delta_seconds": 0.01669283333333335,
+          "allowance_seconds": 0.011600248958333337,
+          "parent_median_interval_seconds": [
+            0.2299477500000001,
+            0.2335867916666667
+          ],
+          "candidate_median_interval_seconds": [
+            0.2474860416666667,
+            0.25002758333333336
+          ],
+          "lower_excess_seconds": 0.002219910416666665,
+          "upper_excess_seconds": 0.008582445833333265,
+          "reverse_upper_excess_seconds": -0.02627355208333334,
+          "pairs": 40,
+          "established_regression": true
+        },
+        {
+          "verdict": "unresolved",
+          "delta_seconds": 0.016650041666666726,
+          "allowance_seconds": 0.011598145833333335,
+          "parent_median_interval_seconds": [
+            0.2299567083333334,
+            0.2338822083333334
+          ],
+          "candidate_median_interval_seconds": [
+            0.2465531666666667,
+            0.25047549999999996
+          ],
+          "lower_excess_seconds": 0.0009768479166666448,
+          "upper_excess_seconds": 0.009020956249999892,
+          "reverse_upper_excess_seconds": -0.024998616666666654,
+          "pairs": 40,
+          "established_regression": false
+        }
+      ],
+      "comparator": "fixed_baseline",
+      "observed_orders": [
+        {
+          "reverse": false,
+          "roles": {
+            "parent": {
+              "command_median_seconds": 0.2320049791666667,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "total_seconds": 0.1737818955
+              }
+            },
+            "candidate": {
+              "command_median_seconds": 0.24869781250000006,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "total_seconds": 0.19022547950000002
+              }
+            }
+          },
+          "delta_seconds": 0.01669283333333335,
+          "relative_difference": 0.07195032362362208
+        },
+        {
+          "reverse": true,
+          "roles": {
+            "parent": {
+              "command_median_seconds": 0.23196291666666669,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "total_seconds": 0.1725899585
+              }
+            },
+            "candidate": {
+              "command_median_seconds": 0.2486129583333334,
+              "observations": 40,
+              "confirmation_phase_medians_seconds": {
+                "total_seconds": 0.190317333
+              }
+            }
+          },
+          "delta_seconds": 0.016650041666666726,
+          "relative_difference": 0.07177889425572714
+        }
+      ]
+    }
+  ],
+  "retained_diagnosis": {
+    "path": "target/m32-fit-products/acceptance-clean-03/retained-diagnostics.json",
+    "sha256": "a4b26fd091d1d7e908c1c43e069cfe11c2a883eb600eece28f49f3a1dceaf58c",
+    "confirmation_series": 64,
+    "established_half_drift_above_allowance": [],
+    "interpretation": "Chronological halves and lag-one dependence diagnose the original stationarity requirement. Raw verdict unchanged; all observations retained; no new criterion or favorable retries."
+  },
+  "analysis_wall_seconds": 56.15854366699932,
+  "total_wall_seconds": 1495.7155492500024,
+  "clean_window": "Owned builds/tests/agents finished; two quiet checks30seconds apart before start; repeated read-only Stata/build checks with parent identities found only owned benchmark work. Unrelated processes untouched.",
+  "production": {
+    "accepted_minus_M26": -9149,
+    "candidate_minus_M31": -1319,
+    "candidate_minus_M26": -10468,
+    "candidate_production": 110928,
+    "program_target": 15000,
+    "candidate_target_remaining": 4532
+  },
+  "historical": "Earlier M30 exceptions and missing scaling remain recorded; this campaign does not import observations or widen allowance.",
+  "platform": "Mac only; GitHub tests paused; no new remote-platform qualification",
+  "terminal_summary_sha256": "ac4d3f174d7c1ac764669aa038d353fa510a178ea36a7c7fbb69d855f6dcb0da",
+  "coordination": {
+    "task": "fevc corrected centering",
+    "handoff": "Explicit human authorization; FEVC confirmed no active compute and reserved the Mac until fereg release.",
+    "release": "Measurements and saved-capture analysis completed; explicit release sent in this thread.",
+    "clean_window_minutes": 24.92859248750004
+  },
+  "historical_interrupted_attempts": {
+    "record": "bench/history/2026-10-06-m32-products-candidate.json",
+    "recorded_commands": 4689,
+    "raw_directories": 4691,
+    "rule": "Three terminal infrastructure interruptions remain separate; none of their observations enters this campaign."
+  },
+  "inherited_exception_scope": {
+    "status": "Independent completion review pending; no new waiver asserted.",
+    "families": [
+      "development-ols-2fe-residual-robust",
+      "development-ols-absorbed-slope-combined-multiway",
+      "development-ppml-2fe-residual-robust"
+    ],
+    "authority": "Specific M30 accepted historical costs and M31 dependent-work authorization; raw fixed-M26 verdict stays unresolved.",
+    "M30_receipt": "bench/history/2026-10-06-m30-architectural-acceptance.json",
+    "M31_receipt": "bench/history/2026-10-06-m31-architectural-acceptance.json"
+  },
+  "analysis_identity_correction": "The saved-capture summary now compares canonical plan identity against freeze.json rather than itself. No measurements, verdicts, statistical rules or observations changed.",
+  "completion_review": {
+    "model": "GPT-6 Astra",
+    "effort": "high",
+    "result": "Scientifically qualified and architecturally supportable; no new source/scientific/identity blocker. Specific human acceptance required for three fixed-M26 unresolved comparisons.",
+    "independent_verification": "Reconstructed frozen statistical result from all3376records; eightblock hashes,counts,embeddedidentities,plan/verdict/diagnostic andten scientific hashes match;19currentruntimefiles match frozen;16rawmetadata spotchecks match.",
+    "stationarity": "No diagnosed materialhalfdrift in64confirmationseries; absence of flags does not prove universalstationarity/independence.",
+    "authority": "M30/M31 exceptions identify their candidates only; frozenM32plan retains unresolvedgates binding. No downstream waiver inferred.",
+    "recommendation": "Accept this retirement architecturally with rawpassedfalse andinheritedcost uncertainty retained; no unchangedcandidate favorable retry.",
+    "scope": "Read-only; no edits/builds/tests/timing/subagents."
+  }
+}

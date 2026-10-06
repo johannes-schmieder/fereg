@@ -2,7 +2,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M32 science/Astra pass; three timings interrupted by unrelated fevc build/Stata. Candidate unpromoted; M33 design complete. Mac-only.
+Current task: M32 clean timing/Astra complete; parent15within, fixed12within/3unresolved. Specific acceptance requested; candidate unpromoted. Mac-only.
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 Accepted runtime: M31 shared finite operations; production112247, net vsM26 -9149; native6ab9059c75f762f1627fda90bcc0f5c22b7f6c4b025082628b0bd0d3b45b2ea2.
@@ -75,7 +75,7 @@ Accepted runtime: M31 shared finite operations; production112247, net vsM26 -914
 - [x] M29 Common worker/stage policy retired; Mac scientific gates pass; architectural override retains interrupted timing and open final scaling.
 - [x] M30 Common FE lifecycle/structural auto families retired; science/Astra high pass; Johannes accepts three regressions and defers8/16 timing.
 - [x] M31 Shared finite operations retired; science/Astra high pass; Johannes accepts largeFast M26 cost and defers remaining timing.
-- [ ] M32 Canonical products retire1319lines; local science/Astra pass; three timing attempts interrupted; [declaration](bench/history/2026-10-06-m32-products-design.json).
+- [ ] M32 Products retire1319lines; science/Astra pass; parent15within/fixed3unresolved; specific acceptance pending; [timing](bench/history/2026-10-06-m32-products-performance-terminal.json).
 - [ ] M33 PPML generation/linear-product retirement; [Astra design](bench/history/2026-10-06-m33-generations-design.json); awaits M32.
 - [ ] M34 Whole-call integration, outstanding retirements and architecture/coverage refresh.
 - [ ] M35 Held-out, cross-platform, scaling and final independent acceptance.
@@ -264,3 +264,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-06 M32.0a: Fresh authorized timing interrupted by unrelated Stata;175commands/176raw captures retained; no verdict; M33 Astra design complete.
 - 2026-10-06 M32.0b: Third attempt interrupted by unrelated Stata;4044commands/raw dirs retained; total4689commands/4691dirs; exclusive timing window needed.
 - 2026-10-06 M32.0c: Astra high terminal audit verifies science/source/recovery/all4689commands; checkpoint safe/unpromoted; timing window remains blocker.
+- 2026-10-06 M32 clean:3376commands/8blocks; parent15within/fixed12within3unresolved,0outside; Astra high supports architecture; prior exceptions do not waive new gate; approval requested.
