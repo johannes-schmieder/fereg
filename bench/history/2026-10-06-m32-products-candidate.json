@@ -112,7 +112,7 @@
     }
   },
   "performance": {
-    "state": "Terminal infrastructure interruption; original campaign unpromoted, no verdict",
+    "state": "Three terminal infrastructure interruptions; no final verdict or timing pass. Candidate remains unpromoted.",
     "plan": "target/m32-fit-products/acceptance/acceptance-plan.json",
     "canonical_plan_sha256": "4303d2bb56af06c7b4f3f572efe0958e1b2724e4fe95a0c75965fc444fbd4b43",
     "interruption": "Competing varcomp_hdfe/fevc build detected during screening; only identified owned measurement processes stopped. Original observations cannot join clean replacement evidence.",
@@ -134,7 +134,93 @@
       }
     ],
     "retained_commands": 470,
-    "raw_capture_directories": 471
+    "raw_capture_directories": 471,
+    "replacements": [
+      {
+        "state": "terminal interrupted/incomplete; no performance decision",
+        "reason": "Unrelated varcomp_hdfe Stata performance job invalidated the clean window; only verified M32 descendants stopped.",
+        "plan": "target/m32-fit-products/acceptance-clean-01/acceptance-plan.json",
+        "plan_sha256": "658039becd6f3c1183ec103660a22e20fc2cb5eb1f1db238e446a7b21fb3e772",
+        "canonical_plan_sha256": "db274e31145f1c76395c6b3288ef60f455df3e27fc62a4e47b34c55a14f91016",
+        "interruption_sha256": "d2b923935b26198ef89fafe2e8c3e9f03ea9c036cb7dfe48879e353284273ade",
+        "retained_blocks": [
+          {
+            "path": "target/m32-fit-products/acceptance-clean-01/acceptance-screening-parent-forward/results.json",
+            "sha256": "c591b347f38664639e4d019bf3255b802fafdf4378657b86f04b01f86b89fa73",
+            "records": 175,
+            "complete": false,
+            "raw_capture_directories": 176
+          }
+        ],
+        "retained_commands": 175,
+        "raw_capture_directories": 176,
+        "authority": "Existing human authorization for infrastructure-interruption retries; no statistical failure retry or merged evidence."
+      },
+      {
+        "state": "terminal interrupted/incomplete; no performance decision",
+        "reason": "Unrelated varcomp_hdfe Stata benchmark was directly observed during fixed-M26 forward confirmation. It ended before the termination check, but already invalidated the clean window. Only identified M32 descendants stopped; unrelated jobs untouched.",
+        "plan": "target/m32-fit-products/acceptance-clean-02/acceptance-plan.json",
+        "plan_sha256": "8c097826258d6c5c33623c833be8c800bc77d6ae8a1dfd20302f8b6ff7597fab",
+        "canonical_plan_sha256": "553a9860f6dfa89a2adf2557dc46e57d5aaccf279ce32c2986255a33144376bf",
+        "interruption_sha256": "666162eacb240f7976f081bd271fd410d163e3c0518aef59f9bebc75cbb203e9",
+        "retained_blocks": [
+          {
+            "path": "target/m32-fit-products/acceptance-clean-02/acceptance-confirmation-fixed_baseline-forward/results.json",
+            "sha256": "aa4ef365012e864d53825905ef1dce3139826b098ed3dec9676ea762fe8258dc",
+            "records": 948,
+            "complete": true,
+            "raw_capture_directories": 948
+          },
+          {
+            "path": "target/m32-fit-products/acceptance-clean-02/acceptance-confirmation-parent-forward/results.json",
+            "sha256": "97c97b282c3053521ace2dc064ea0194cb1622b8d825e172763fdaa5eb182b13",
+            "records": 948,
+            "complete": true,
+            "raw_capture_directories": 948
+          },
+          {
+            "path": "target/m32-fit-products/acceptance-clean-02/acceptance-confirmation-parent-reverse/results.json",
+            "sha256": "1b9f5493e643c9af8894c430e12bc8e886865a5b703aaaefc5cf8689bb4e8db8",
+            "records": 948,
+            "complete": true,
+            "raw_capture_directories": 948
+          },
+          {
+            "path": "target/m32-fit-products/acceptance-clean-02/acceptance-screening-fixed_baseline-forward/results.json",
+            "sha256": "c06fa3b86db1f685c99756fc6b8842df8dfc7edc60901e58f64c499bca61cacd",
+            "records": 300,
+            "complete": true,
+            "raw_capture_directories": 300
+          },
+          {
+            "path": "target/m32-fit-products/acceptance-clean-02/acceptance-screening-fixed_baseline-reverse/results.json",
+            "sha256": "07d534d9743c81fdcaa28930c290d56497fa68653dba0122c57bedf444b74e56",
+            "records": 300,
+            "complete": true,
+            "raw_capture_directories": 300
+          },
+          {
+            "path": "target/m32-fit-products/acceptance-clean-02/acceptance-screening-parent-forward/results.json",
+            "sha256": "a94f7ac3da07b096f4014f47217f2bdaa277271c49eecfc7e5d818b1540baa23",
+            "records": 300,
+            "complete": true,
+            "raw_capture_directories": 300
+          },
+          {
+            "path": "target/m32-fit-products/acceptance-clean-02/acceptance-screening-parent-reverse/results.json",
+            "sha256": "c7605ba345ce27fcd9892bb09c164ac0b3b17fc72ee7a5b5951f1668429823aa",
+            "records": 300,
+            "complete": true,
+            "raw_capture_directories": 300
+          }
+        ],
+        "retained_commands": 4044,
+        "raw_capture_directories": 4044,
+        "authority": "Existing human authorization for infrastructure interruptions, no statistical failure retry; reserve exclusive Mac period before another campaign."
+      }
+    ],
+    "all_interrupted_commands": 4689,
+    "all_interrupted_raw_capture_directories": 4691
   },
   "platform": "Mac only",
   "evidence": [
@@ -201,5 +287,13 @@
     "hashes": "Ten evidence files, source archive/patch and all changed runtime files match identified frozen candidate",
     "acceptance": "Timing pending; review grants no timing pass or new allowance"
   },
-  "optional_historical_checker": "scripts/check_repository.py still fails old frozen version/allocation-source/abandoned architecture contracts; this optional historical checker is not a passing gate. Required current full entrypoint passes; unrelated issue recorded for M34 map audit."
+  "optional_historical_checker": "scripts/check_repository.py still fails old frozen version/allocation-source/abandoned architecture contracts; this optional historical checker is not a passing gate. Required current full entrypoint passes; unrelated issue recorded for M34 map audit.",
+  "next_blocker": "Coordinate an exclusive Mac qualification window with fevc corrected centering; messaging authorization requested and not yet received. M33 design is independent, dependent implementation awaits M32 acceptance.",
+  "terminal_checkpoint_review": {
+    "model": "GPT-6 Astra",
+    "effort": "high",
+    "result": "Safe to preserve/commit as unpromoted evidence; no new science/artifact identity blocker. Verified10evidence hashes,19frozen runtime files,21recovery postimages,10timing blocks,all4689command statuses and plans differing only in attempt text.",
+    "minor_record_correction": "Final fixed-M26 reverse block stopped before first capture; updated interruption wording/hash; counts unchanged.",
+    "gate": "Complete existing-protocol parent/fixed-M26 qualification in coordinated exclusive Mac window; no promotion/waiver/dependent implementation authority."
+  }
 }
