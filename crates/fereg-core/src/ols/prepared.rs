@@ -198,23 +198,6 @@ impl PreparedOlsData {
         let mut reservation = SystemFeTopologyReservation;
         build_borrowed_intercept_fe_design_with_reservation(self, &mut reservation)
     }
-
-    pub(crate) fn effect_codes(&self, effect: usize) -> Result<&[u32]> {
-        ValidatedBorrowedInterceptSource::from_finalized_source(
-            &self.fe_topology,
-            self.effect_source_index(effect)?,
-        )
-        .map(|source| source.effect().codes())
-        .ok_or_else(|| invalid("prepared intercept partition is unavailable"))
-    }
-
-    pub(crate) fn effect_source_index(&self, effect: usize) -> Result<usize> {
-        self.fe_topology()
-            .effect_to_topology()
-            .get(effect)
-            .copied()
-            .ok_or_else(|| invalid("prepared FE effect index is out of range"))
-    }
 }
 
 impl OlsRequestV1 {
@@ -2911,8 +2894,8 @@ mod tests {
             PreparedOlsFeSingletonPolicy::KeptByRequest
         );
         assert_eq!(
-            prepared.effect_source_index(0).unwrap(),
-            prepared.effect_source_index(2).unwrap()
+            prepared.fe_topology().effect_to_topology()[0],
+            prepared.fe_topology().effect_to_topology()[2]
         );
         assert_eq!(prepared.fe_effects()[0].label, "g");
         assert_eq!(prepared.fe_effects()[1].label, "h");
@@ -3823,7 +3806,7 @@ mod tests {
         assert_eq!(design.total_term_slots(), 4);
         for (effect_index, effect) in design.effects().iter().enumerate() {
             let topology_source = &prepared.fe_topology().registry().sources()
-                [prepared.effect_source_index(effect_index).unwrap()];
+                [prepared.fe_topology().effect_to_topology()[effect_index]];
             let categorical = &prepared.categorical_sources()[prepared
                 .categorical_sources()
                 .iter()

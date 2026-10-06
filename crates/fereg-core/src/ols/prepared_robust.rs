@@ -1,3 +1,5 @@
+#[cfg(test)]
+use super::prepared_inference_view::compute_canonical_prepared_ols_absorbed_dof;
 use super::prepared_wald::{calculate_wald, WaldCalculation};
 use crate::data::WeightKind;
 use crate::error::{ErrorCode, FeregError, Result};
@@ -17,11 +19,13 @@ use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
 #[cfg(test)]
 use super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
+#[cfg(test)]
+use super::prepared_scores::take_prepared_ols_score_product;
+use super::prepared_scores::PreparedOlsScoreProduct;
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
     PreparedInferenceReservation, PreparedOlsDenseScoreView, SystemPreparedInferenceReservation,
 };
-use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
     build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
     compensated_add, compensated_add_scaled_row, exact_integer_as_f64, independent_outcome_sum,
@@ -29,10 +33,9 @@ use super::prepared_unadjusted::{
     validate_sum_of_squares, ReferenceWeightView,
 };
 use super::{
-    compute_prepared_ols_absorbed_dof, CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsColumnKind,
-    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatistics,
-    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy, PreparedOlsColumnKind, PreparedOlsData,
+    PreparedOlsFitConfig, PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport,
+    PreparedOlsResidualDofReport,
 };
 
 /// Numerical and structural policy for the prepared HC1 OLS/WLS checkpoint.
@@ -106,113 +109,26 @@ impl PreparedOlsRobustCovariance {
     }
 }
 
-/// Same-call certified fit, absorbed rank, HC1 covariance, and fit statistics.
-/// The observation-by-kept-coordinate score design is destroyed before this
-/// value is returned.
-#[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedOlsRobust<A = PreparedOlsAbsorbedDofReport> {
-    fit: CertifiedPreparedOlsFit,
-    absorbed_dof: A,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsResidualDofReport,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsRobustCovariance,
-    certificate: PreparedOlsRobustCertificate,
-}
+/// Same-call certified fit with its robust covariance payload.
+pub type CertifiedPreparedOlsRobust<A = CategoricalTopologyDofReport> =
+    super::prepared_products::CertifiedPreparedOlsInference<
+        A,
+        PreparedOlsResidualDofReport,
+        PreparedOlsRobustCovariance,
+        PreparedOlsRobustCertificate,
+    >;
 
-impl<A> CertifiedPreparedOlsRobust<A> {
-    /// Heap owners retained after inference, excluding the borrowed prepared data.
-    #[must_use]
-    fn inference_buffer_bytes(&self) -> u128 {
-        self.fit.owned_buffer_bytes()
-            + crate::memory::vec_capacity_bytes(&self.covariance.values)
-            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
-    }
+/// Canonical topology identities for categorical and ordinary consumers.
+pub type CertifiedPreparedCategoricalOlsRobust = CertifiedPreparedOlsRobust;
 
-    #[must_use]
-    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
-        &self.fit
-    }
-
-    #[must_use]
-    pub const fn absorbed_dof(&self) -> &A {
-        &self.absorbed_dof
-    }
-
-    #[must_use]
-    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
-        self.weights
-    }
-
-    #[must_use]
-    pub const fn dof(&self) -> PreparedOlsResidualDofReport {
-        self.dof
-    }
-
-    #[must_use]
-    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
-        self.statistics
-    }
-
-    #[must_use]
-    pub const fn covariance(&self) -> &PreparedOlsRobustCovariance {
-        &self.covariance
-    }
-
-    #[must_use]
-    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
-        self.fit.bread().coordinates()
-    }
-
-    #[must_use]
-    pub const fn certificate(&self) -> PreparedOlsRobustCertificate {
-        self.certificate
+impl super::prepared_products::PreparedOlsInferenceBuffers for PreparedOlsRobustCovariance {
+    fn inference_owned_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        bytes(&self.values) + bytes(&self.standard_errors)
     }
 }
 
-/// The categorical report retains its exact topology identities.
-pub type CertifiedPreparedCategoricalOlsRobust =
-    CertifiedPreparedOlsRobust<CategoricalTopologyDofReport>;
-
-impl CertifiedPreparedOlsRobust<PreparedOlsAbsorbedDofReport> {
-    /// Heap owners retained after inference, excluding borrowed prepared data.
-    #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
-    }
-}
-
-impl CertifiedPreparedOlsRobust<CategoricalTopologyDofReport> {
-    /// Heap owners retained after inference, excluding borrowed prepared data.
-    #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
-    }
-}
-
-#[derive(Debug, PartialEq)]
-struct PreparedOlsRobustComponents {
-    fit: CertifiedPreparedOlsFit,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsResidualDofReport,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsRobustCovariance,
-    certificate: PreparedOlsRobustCertificate,
-}
-
-impl PreparedOlsRobustComponents {
-    fn with_absorbed_dof<A>(self, absorbed_dof: A) -> CertifiedPreparedOlsRobust<A> {
-        CertifiedPreparedOlsRobust {
-            fit: self.fit,
-            absorbed_dof,
-            weights: self.weights,
-            dof: self.dof,
-            statistics: self.statistics,
-            covariance: self.covariance,
-            certificate: self.certificate,
-        }
-    }
-}
+type PreparedOlsRobustComponents = CertifiedPreparedOlsRobust<()>;
 
 struct PreparedOlsRobustCovarianceBuild {
     covariance: PreparedOlsRobustCovariance,
@@ -357,23 +273,12 @@ pub fn fit_prepared_ols_robust_map_with_loaded_moments(
     config: PreparedOlsRobustConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsRobust> {
-    let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
-    let prepared = &ordinary;
-    validate_config(config)?;
-    let (fit, score_scratch) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)?;
-    let absorbed_dof = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
-    ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let mut reservation = SystemPreparedInferenceReservation;
-        compose_internal(
-            prepared,
-            fit,
-            absorbed_dof,
-            config,
-            &mut reservation,
-            RobustPerturbations::default(),
-            score_scratch,
-        )
-    })?
+    fit_inference_view(
+        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
+        config,
+        rows,
+        false,
+    )
 }
 
 /// Fit and certify categorical-interaction HC1 covariance through the same
@@ -391,23 +296,52 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
     config: PreparedOlsRobustConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedCategoricalOlsRobust> {
+    fit_inference_view(prepared, config, rows, true)
+}
+
+/// Fit the canonical owner with its declared projection semantics.
+pub fn fit_prepared_model_robust_with_loaded_moments(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsRobustConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedOlsRobust> {
+    if prepared.uses_categorical_preparation() {
+        fit_inference_view(prepared, config, rows, true)
+    } else {
+        fit_prepared_ols_robust_map_with_loaded_moments(prepared, config, rows)
+    }
+}
+
+fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
+    prepared: &P,
+    config: PreparedOlsRobustConfig,
+    rows: Option<super::LoadedOlsRows>,
+    defer_dof: bool,
+) -> Result<CertifiedPreparedOlsRobust> {
     validate_config(config)?;
-    let (fit, score_scratch) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config.fit, rows)?;
-    crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let (absorbed_dof, absorbed_summary) =
-            super::prepared_inference_view::categorical_dof_after_fit(
-                prepared,
-                config.absorbed_dof,
-            )?;
+    let (fit, scores) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(
+        prepared, config.fit, rows)?;
+    let early_dof = if defer_dof {
+        None
+    } else {
+        Some(prepared.inference_compute_absorbed_dof(config.absorbed_dof)?)
+    };
+    ThreadTeam::new(config.fit.execution.threads).install(|| {
+        let absorbed_dof = match early_dof {
+            Some(report) => report,
+            None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
+        };
+        let summary =
+            prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
         let mut reservation = SystemPreparedInferenceReservation;
         let components = compose_view_internal(
             prepared,
             fit,
-            absorbed_summary,
+            summary,
             config,
             &mut reservation,
             RobustPerturbations::default(),
-            score_scratch,
+            scores,
         )?;
         Ok(components.with_absorbed_dof(absorbed_dof))
     })?
@@ -415,14 +349,15 @@ pub fn fit_prepared_categorical_ols_robust_map_with_loaded_moments(
 
 // Keep the legacy workspace and ownership boundaries explicit during migration.
 #[allow(clippy::too_many_arguments)]
+#[cfg(test)]
 fn compose_internal<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsData,
     fit: CertifiedPreparedOlsFit,
-    absorbed_dof: PreparedOlsAbsorbedDofReport,
+    absorbed_dof: CategoricalTopologyDofReport,
     config: PreparedOlsRobustConfig,
     reservation: &mut R,
     perturbations: RobustPerturbations,
-    score_scratch: Option<PreparedOlsScratch>,
+    score_scratch: PreparedOlsScoreProduct,
 ) -> Result<CertifiedPreparedOlsRobust> {
     let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
     let prepared = &ordinary;
@@ -449,7 +384,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     config: PreparedOlsRobustConfig,
     reservation: &mut R,
     perturbations: RobustPerturbations,
-    score_scratch: Option<PreparedOlsScratch>,
+    score_scratch: PreparedOlsScoreProduct,
 ) -> Result<PreparedOlsRobustComponents> {
     let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
     let total_started = Instant::now();
@@ -495,7 +430,6 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
         prepared,
         &mut fit,
         weight_view,
-        config.fit.absorb,
         config.certificate_tolerance,
         reservation,
         score_scratch,
@@ -635,6 +569,8 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     // `score_design` owns the only N-by-kept-coordinate inference matrix. It
     // goes out of scope here and is intentionally absent from the result.
     Ok(PreparedOlsRobustComponents {
+        absorbed_dof: (),
+        metadata: (),
         fit,
         weights,
         dof,
@@ -1489,7 +1425,8 @@ mod tests {
                 fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
                     .unwrap();
             let absorbed =
-                compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+                compute_canonical_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+                    .unwrap();
             let expected = ThreadTeam::new(config.fit.execution.threads)
                 .install(|| {
                     compose_internal(
@@ -1546,11 +1483,14 @@ mod tests {
                 fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
                     .unwrap();
             assert_eq!(fit.finite_rank(), 2);
-            let scratch = scratch.expect("original low-memory columns retained");
+            let PreparedOlsScoreProduct::Low(scratch) = scratch else {
+                panic!("original low-memory columns retained")
+            };
             assert!(scratch.columns() > fit.finite_rank());
             assert_eq!(fit.execution().scratch_bytes, scratch.bytes());
             let absorbed =
-                compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+                compute_canonical_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+                    .unwrap();
             let cached = compose_internal(
                 &prepared,
                 fit,
@@ -1558,23 +1498,29 @@ mod tests {
                 config,
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
-                Some(scratch),
+                PreparedOlsScoreProduct::Low(scratch),
             )
             .unwrap();
-            let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
-                &prepared, config.fit, 0,
+            let mut reference_config = config;
+            reference_config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Fast;
+            let mut fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+                &prepared,
+                reference_config.fit,
+                0,
             )
             .unwrap();
+            let scores = take_prepared_ols_score_product(&mut fit, None).unwrap();
             let absorbed =
-                compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+                compute_canonical_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+                    .unwrap();
             let reference = compose_internal(
                 &prepared,
                 fit,
                 absorbed,
-                config,
+                reference_config,
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
-                None,
+                scores,
             )
             .unwrap();
             assert_eq!(cached.fit().coefficients(), reference.fit().coefficients());
@@ -1590,12 +1536,15 @@ mod tests {
                 fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
                     .unwrap();
             let selected = fit.kept_generated_columns()[0];
-            let mut scratch = scratch.unwrap();
+            let PreparedOlsScoreProduct::Low(mut scratch) = scratch else {
+                panic!("retained low score rows")
+            };
             scratch
                 .patch_row_major_block(selected, 1, &vec![0.0; n])
                 .unwrap();
             let absorbed =
-                compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
+                compute_canonical_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+                    .unwrap();
             let error = compose_internal(
                 &prepared,
                 fit,
@@ -1603,7 +1552,7 @@ mod tests {
                 config,
                 &mut CountingReservation::default(),
                 RobustPerturbations::default(),
-                Some(scratch),
+                PreparedOlsScoreProduct::Low(scratch),
             )
             .unwrap_err();
             assert!(
@@ -1643,7 +1592,30 @@ mod tests {
     }
 
     #[test]
-    fn score_reconstruction_admits_retained_fe_parent_before_solver_setup() {
+    fn accepted_score_handoff_rejects_missing_products() {
+        let y = [2.0, 4.1, 5.9, 8.0, 10.1, 11.8];
+        let prepared = prepared(
+            &y,
+            &[vec![1., 2., 3., 4., 5., 6.]],
+            None,
+            true,
+            TestWeights::Unit,
+        );
+        for mode in [
+            super::super::PreparedOlsExecutionMode::Fast,
+            super::super::PreparedOlsExecutionMode::Low,
+        ] {
+            let mut config = PreparedOlsFitConfig::default();
+            config.execution.mode = mode;
+            let mut fit = fit_prepared_ols_coefficients_view_map(&prepared, config).unwrap();
+            let error = take_prepared_ols_score_product(&mut fit, None).unwrap_err();
+            assert_eq!(error.code, ErrorCode::InvalidData);
+            assert!(error.message.contains("score product"));
+        }
+    }
+
+    #[test]
+    fn inference_reuses_accepted_rows_without_another_solver_workspace() {
         let rows = 48;
         let groups = (0..rows).map(|r| (r / 6) as f64).collect::<Vec<_>>();
         let x = (0..rows)
@@ -1652,104 +1624,9 @@ mod tests {
         let y = (0..rows)
             .map(|r| 1.7 * x[r] + groups[r] + 0.07 * (r as f64 * 1.13).sin())
             .collect::<Vec<_>>();
-        let (request, input) = prepared_inputs(&y, &[x], Some(&groups), true, TestWeights::Unit);
-        let prepared = crate::prepare_categorical_ols_data(&request, &input).unwrap();
-        let absorbed = prepared
-            .inference_compute_absorbed_dof(PreparedOlsAbsorbedDofPolicy::default())
-            .unwrap();
-        let summary = prepared
-            .inference_absorbed_dof_summary(&absorbed, PreparedOlsAbsorbedDofPolicy::default())
-            .unwrap();
-        let mut config = PreparedOlsRobustConfig::default();
-        config.fit.absorb.retain_coefficients = true;
-        config.fit.absorb.solver = crate::fe::FeSolverKind::Cg;
-        config.fit.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
-            execution_bytes: 1234,
-            usable_bytes: 1 << 30,
-        });
-        let build = || {
-            let mut fit = fit_prepared_ols_coefficients_view_map(&prepared, config.fit).unwrap();
-            let generated = fit.kept_generated_columns().to_vec();
-            drop(fit.take_fast_score_cache(&generated));
-            fit
-        };
-        let expected = compose_view_internal(
-            &prepared,
-            build(),
-            summary,
-            config,
-            &mut CountingReservation::default(),
-            RobustPerturbations::default(),
-            None,
-        )
-        .unwrap();
-        let fit = build();
-        let parent = fit.retained_fe_coefficient_bytes();
-        assert!(parent > 0);
-        let mut tight = config;
-        tight.fit.absorb.solver_memory_budget = Some(crate::memory::FeSolverMemoryBudget {
-            execution_bytes: 1234,
-            usable_bytes: 1234 + parent - 1,
-        });
-        let error = compose_view_internal(
-            &prepared,
-            fit,
-            summary,
-            tight,
-            &mut CountingReservation::default(),
-            RobustPerturbations::default(),
-            None,
-        )
-        .unwrap_err();
-        assert_eq!(error.code, ErrorCode::Allocation);
-        assert!(error.message.contains("inference FE coefficient parent"));
-        // Known fit/solver bounds admit the uncached reconstruction without
-        // changing its coefficient, residual or independent covariance checks.
-        tight
-            .fit
-            .absorb
-            .solver_memory_budget
-            .as_mut()
-            .unwrap()
-            .usable_bytes =
-            1234 + u128::from(expected.fit.solver_workspace_peak().bytes().unwrap());
-        let result = compose_view_internal(
-            &prepared,
-            build(),
-            summary,
-            tight,
-            &mut CountingReservation::default(),
-            RobustPerturbations::default(),
-            None,
-        )
-        .unwrap();
-        assert_eq!(result.fit.coefficients(), expected.fit.coefficients());
-        assert_eq!(result.fit.residuals(), expected.fit.residuals());
-        assert_eq!(result.covariance, expected.covariance);
-    }
-
-    #[test]
-    fn score_reconstruction_retains_its_separate_solver_memory_report() {
-        let rows = 48;
-        let groups = (0..rows).map(|r| (r / 6) as f64).collect::<Vec<_>>();
-        let x1 = (0..rows)
-            .map(|r| (r as f64 * 0.31).sin())
-            .collect::<Vec<_>>();
-        let x2 = (0..rows)
-            .map(|r| (r as f64 * 0.71).cos())
-            .collect::<Vec<_>>();
         let weights = (0..rows).map(|r| 0.5 + (r % 5) as f64).collect::<Vec<_>>();
-        let y = (0..rows)
-            .map(|r| 1.7 * x1[r] - 0.4 * x2[r] + groups[r] + 0.07 * (r as f64 * 1.13).sin())
-            .collect::<Vec<_>>();
-        for test_weights in [TestWeights::Unit, TestWeights::Analytic(&weights)] {
-            let prepared = prepared(
-                &y,
-                &[x1.clone(), x2.clone()],
-                Some(&groups),
-                true,
-                test_weights,
-            );
+        for kind in [TestWeights::Unit, TestWeights::Analytic(&weights)] {
+            let prepared = prepared(&y, &[x.clone()], Some(&groups), true, kind);
             for mode in [
                 super::super::PreparedOlsExecutionMode::Fast,
                 super::super::PreparedOlsExecutionMode::Low,
@@ -1757,21 +1634,19 @@ mod tests {
                 let mut config = PreparedOlsRobustConfig::default();
                 config.fit.execution.mode = mode;
                 config.fit.execution.poolsize = 1;
+                config.fit.absorb.retain_coefficients = true;
                 config.fit.absorb.solver = crate::fe::FeSolverKind::Map;
                 let expected = fit_prepared_ols_robust_map(&prepared, config).unwrap();
-                let mut fit =
-                    fit_prepared_ols_coefficients_view_map(&prepared, config.fit).unwrap();
-                // Exercise the uncached branch even when this finite solve
-                // can retain its ordinary fast-inference score bank.
-                let generated = fit.kept_generated_columns().to_vec();
-                drop(fit.take_fast_score_cache(&generated));
-                let initial_peak = fit.solver_workspace_peak().bytes();
+                let (fit, scores) =
+                    fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
+                        .unwrap();
+                let initial_peak = fit.solver_workspace_peak();
                 let absorbed =
-                    compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof).unwrap();
-                // Reconstruct scores with a separate solver session, while the
-                // coefficient fit keeps its original reports and numerical state.
+                    compute_canonical_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+                        .unwrap();
+                // A different projection request cannot create another solver:
+                // these scores belong to the fit's already certified rows.
                 config.fit.absorb.solver = crate::fe::FeSolverKind::Lsmr;
-                config.fit.absorb.lsmr.tolerance = 1e-12;
                 let result = compose_internal(
                     &prepared,
                     fit,
@@ -1779,22 +1654,17 @@ mod tests {
                     config,
                     &mut CountingReservation::default(),
                     RobustPerturbations::default(),
-                    None,
+                    scores,
                 )
                 .unwrap();
-                assert!(result.certificate().passed);
+                assert_eq!(result.fit().solver_workspace_peak(), initial_peak);
                 assert_eq!(result.fit().coefficients(), expected.fit().coefficients());
-                let final_peak = result.fit().solver_workspace_peak().bytes();
-                assert!(initial_peak.is_some() && final_peak > initial_peak,
-                    "score reconstruction must add its known larger peak: {initial_peak:?} -> {final_peak:?}");
+                assert_eq!(result.fit().residuals(), expected.fit().residuals());
+                assert_eq!(result.covariance(), expected.covariance());
+                assert!(result.certificate().passed);
                 assert_eq!(
-                    result.fit().absorption_report().used_solver,
-                    crate::fe::FeSolverKind::Map
-                );
-                assert_slice_close(
-                    result.covariance().values(),
-                    expected.covariance().values(),
-                    2e-11,
+                    result.fit().recovered_fe_coefficients(),
+                    expected.fit().recovered_fe_coefficients()
                 );
             }
         }
@@ -1830,12 +1700,14 @@ mod tests {
             );
             let config = PreparedOlsRobustConfig::default();
             let packed = fit_prepared_ols_robust_map(&prepared, config).expect("packed robust fit");
-            let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+            let mut fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
                 &prepared, config.fit, 0,
             )
             .expect("strided coefficient fit");
-            let absorbed = compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
-                .expect("strided absorbed DoF");
+            let scores = take_prepared_ols_score_product(&mut fit, None).unwrap();
+            let absorbed =
+                compute_canonical_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+                    .expect("strided absorbed DoF");
             let mut reservation = CountingReservation::default();
             let strided = compose_internal(
                 &prepared,
@@ -1844,7 +1716,7 @@ mod tests {
                 config,
                 &mut reservation,
                 RobustPerturbations::default(),
-                None,
+                scores,
             )
             .expect("strided robust fit");
             assert!(strided.certificate().passed);
@@ -1942,13 +1814,14 @@ mod tests {
         let mut config = PreparedOlsRobustConfig::default();
         config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
         config.fit.execution.poolsize = 1;
-        let mut fit = fit_prepared_ols_coefficients_view_map(&prepared, config.fit)
-            .expect("low-memory coefficient fit");
+        let (mut fit, scores) =
+            fit_prepared_ols_coefficients_view_map_for_inference(&prepared, config.fit)
+                .expect("low-memory coefficient fit");
         assert_eq!(
             fit.execution().mode,
             super::super::PreparedOlsExecutionMode::Low
         );
-        let absorbed = compute_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
+        let absorbed = compute_canonical_prepared_ols_absorbed_dof(&prepared, config.absorbed_dof)
             .expect("low-memory absorbed DoF");
         let absorbed_summary = crate::prepared_fit_view::OrdinaryPrepared(&prepared)
             .inference_absorbed_dof_summary(&absorbed, config.absorbed_dof)
@@ -1963,10 +1836,9 @@ mod tests {
             &prepared,
             &mut fit,
             weight_view,
-            config.fit.absorb,
             config.certificate_tolerance,
             &mut reservation,
-            None,
+            scores,
         )
         .expect("low-memory score design");
         assert!(scores.dense_view().is_none());
@@ -2322,8 +2194,9 @@ mod tests {
         perturbations: RobustPerturbations,
     ) -> Result<CertifiedPreparedOlsRobust> {
         let config = PreparedOlsRobustConfig::default();
-        let fit = fit_prepared_ols_coefficients_view_map(prepared, config.fit)?;
-        let absorbed = compute_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
+        let (fit, scores) =
+            fit_prepared_ols_coefficients_view_map_for_inference(prepared, config.fit)?;
+        let absorbed = compute_canonical_prepared_ols_absorbed_dof(prepared, config.absorbed_dof)?;
         compose_internal(
             prepared,
             fit,
@@ -2331,7 +2204,7 @@ mod tests {
             config,
             reservation,
             perturbations,
-            None,
+            scores,
         )
     }
 

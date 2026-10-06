@@ -419,7 +419,7 @@ pub(crate) fn build_certified_ppml_shadow(
 
     let likelihood = result.likelihood();
     let dof_report = &inference.dof;
-    validate_dof_and_weight_identities(result)?;
+    validate_result_representation(result)?;
     let weighted_outcome_sum = weighted_outcome_sum(sample.outcome(), sample.prior_weights())?;
     let mut fit = reserved_filled(FIT_ROWS, STATA_SYSTEM_MISSING, "PPML fit-statistics shadow")?;
     fit[0] = exact_count(weights.physical_observations, "physical observations")?;
@@ -864,136 +864,13 @@ fn build_cluster_shadow(result: &CertifiedPpmlResult) -> Result<(Vec<f64>, usize
     Ok((output, rows))
 }
 
-fn validate_cluster_subsets(result: &CertifiedPpmlResult) -> Result<()> {
-    let inference = result.inference();
-    let dimensions = result.clusters().len();
-    let expected_rows = if dimensions == 0 {
-        0
-    } else {
-        (1_usize << dimensions) - 1
-    };
-    let expected_kind = if dimensions == 0 {
-        PpmlVceKind::Robust
-    } else {
-        PpmlVceKind::Clustered
-    };
-    if inference.vce.effective != expected_kind
-        || inference.vce.cluster_subsets.len() != expected_rows
-        || inference.vce.cluster_dimension_groups.len() != dimensions
-    {
-        return Err(invalid(
-            "PPML covariance topology does not match the declared clusters",
-        ));
-    }
-    let expected_requested = match inference.vce.requested {
-        PpmlVceRequest::Unadjusted | PpmlVceRequest::Robust => dimensions == 0,
-        PpmlVceRequest::Clustered => dimensions > 0,
-    };
-    if !expected_requested
-        || inference.vce.coefficient_distribution != PpmlTestDistribution::StandardNormal
-        || inference.wald.distribution != PpmlTestDistribution::ChiSquared
-    {
-        return Err(invalid(
-            "PPML covariance request or reference distribution is inconsistent",
-        ));
-    }
-    let expected_correction = if dimensions == 0 {
-        let observations = inference.dof.effective_observations;
-        if observations < 2 {
-            return Err(invalid(
-                "robust PPML covariance requires at least two effective observations",
-            ));
-        }
-        observations as f64 / (observations - 1) as f64
-    } else {
-        let minimum = *inference
-            .vce
-            .cluster_dimension_groups
-            .iter()
-            .min()
-            .ok_or_else(|| invalid("clustered PPML covariance lacks group counts"))?;
-        if minimum < 2 {
-            return Err(invalid(
-                "clustered PPML covariance requires at least two groups per dimension",
-            ));
-        }
-        minimum as f64 / (minimum - 1) as f64
-    };
-    if !is_stata_publishable(inference.vce.correction) {
+fn build_subset_shadow(result: &CertifiedPpmlResult) -> Result<(Vec<f64>, usize)> {
+    let reports = &result.inference().vce.cluster_subsets;
+    if !is_stata_publishable(result.inference().vce.correction) {
         return Err(numerical_nonconvergence(
             "certified PPML covariance correction is not representable in Stata",
         ));
     }
-    if relative_error(inference.vce.correction, expected_correction) > 64.0 * f64::EPSILON {
-        return Err(invalid("PPML covariance correction is inconsistent"));
-    }
-    for (row, subset) in inference.vce.cluster_subsets.iter().enumerate() {
-        let cardinality = subset.mask.count_ones() as usize;
-        let expected_mask = canonical_subset_mask(dimensions, row)?;
-        if subset.mask != expected_mask
-            || cardinality == 0
-            || cardinality != subset.dimensions.len()
-            || subset.sign != if cardinality % 2 == 1 { 1 } else { -1 }
-            || subset.groups < 2
-            || subset
-                .dimensions
-                .iter()
-                .enumerate()
-                .any(|(position, dimension)| {
-                    *dimension >= dimensions
-                        || (position > 0 && subset.dimensions[position - 1] >= *dimension)
-                        || subset.mask & (1_u16 << *dimension) == 0
-                })
-        {
-            return Err(invalid(
-                "PPML cluster subsets are incomplete or not in canonical order",
-            ));
-        }
-        for dimension in 0..dimensions {
-            if (subset.mask & (1_u16 << dimension) != 0)
-                != subset.dimensions.binary_search(&dimension).is_ok()
-            {
-                return Err(invalid(
-                    "PPML cluster subset mask disagrees with its dimensions",
-                ));
-            }
-        }
-        if cardinality == 1 {
-            let dimension = subset.dimensions[0];
-            if subset.groups != inference.vce.cluster_dimension_groups[dimension]
-                || subset.groups != result.clusters()[dimension].groups
-            {
-                return Err(invalid(
-                    "PPML singleton cluster subset has the wrong group count",
-                ));
-            }
-        }
-    }
-    Ok(())
-}
-
-fn canonical_subset_mask(dimensions: usize, row: usize) -> Result<u16> {
-    let mut position = 0_usize;
-    for cardinality in 1..=dimensions {
-        for mask in 1_u16..(1_u16 << dimensions) {
-            if mask.count_ones() as usize == cardinality {
-                if position == row {
-                    return Ok(mask);
-                }
-                position = position
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("PPML subset inventory overflows"))?;
-            }
-        }
-    }
-    Err(invalid(
-        "PPML subset row is outside the canonical inventory",
-    ))
-}
-
-fn build_subset_shadow(result: &CertifiedPpmlResult) -> Result<(Vec<f64>, usize)> {
-    let reports = &result.inference().vce.cluster_subsets;
-    validate_cluster_subsets(result)?;
     let rows = reports.len();
     let mut output = reserved_filled(
         checked_product(rows.max(1), SUBSET_COLUMNS, "PPML subset shadow")?,
@@ -1913,67 +1790,10 @@ fn checked_count_add(left: usize, right: usize, label: &'static str) -> Result<u
         .ok_or_else(|| invalid(format!("PPML {label} overflowed")))
 }
 
-fn validate_dof_and_weight_identities(result: &CertifiedPpmlResult) -> Result<()> {
-    let sample = result.sample();
+fn validate_result_representation(result: &CertifiedPpmlResult) -> Result<()> {
+    // Scientific identities were certified before this immutable result crossed
+    // the core boundary. The host checks its narrower Stata numeric domain.
     let weights = result.weights();
-    let inference = result.inference();
-    let dof = &inference.dof;
-    let model_rank = dof
-        .finite_within_rank
-        .checked_add(dof.absorbed_rank)
-        .ok_or_else(|| invalid("PPML model rank overflows"))?;
-    let structural = dof
-        .effective_observations
-        .checked_sub(dof.model_rank)
-        .ok_or_else(|| invalid("PPML model rank exceeds effective observations"))?;
-    let cluster_minimum = result.clusters().iter().map(|cluster| cluster.groups).min();
-    let expected_reported = cluster_minimum
-        .map(|groups| structural.min(groups.saturating_sub(1)))
-        .unwrap_or(structural);
-    let weight_metadata_consistent = match weights.kind {
-        None => {
-            weights.raw_weight_sum.is_none()
-                && weights.log_raw_weight_sum.is_none()
-                && weights.raw_to_prepared_multiplier == Some(1.0)
-                && weights.log_raw_to_prepared_multiplier == 0.0
-        }
-        Some(WeightKind::Frequency) => {
-            weights.raw_weight_sum.is_some()
-                && weights.log_raw_weight_sum.is_some()
-                && weights.raw_to_prepared_multiplier == Some(1.0)
-                && weights.log_raw_to_prepared_multiplier == 0.0
-        }
-        Some(WeightKind::Probability) => {
-            weights.log_raw_weight_sum.is_some()
-                && (weights.raw_to_prepared_multiplier.is_some()
-                    || weights.log_raw_to_prepared_multiplier.abs() > f64::MAX.ln())
-        }
-        Some(WeightKind::Analytic | WeightKind::Importance) => false,
-    };
-    if weights.physical_observations != sample.original_rows().len()
-        || weights.effective_observations != dof.effective_observations
-        || dof.model_rank != model_rank
-        || dof.structural_residual != structural
-        || dof.reported != expected_reported
-        || dof.minimum_cluster_groups != cluster_minimum
-        || !weights.prepared_weight_sum.is_finite()
-        || weights.prepared_weight_sum <= 0.0
-        || weights
-            .raw_weight_sum
-            .is_some_and(|value| !value.is_finite() || value <= 0.0)
-        || weights
-            .raw_to_prepared_multiplier
-            .is_some_and(|value| !value.is_finite() || value <= 0.0)
-        || weights
-            .log_raw_weight_sum
-            .is_some_and(|value| !value.is_finite())
-        || !weights.log_raw_to_prepared_multiplier.is_finite()
-        || !weight_metadata_consistent
-    {
-        return Err(invalid(
-            "PPML DoF, final-sample, cluster, or weight identities are inconsistent",
-        ));
-    }
     if !is_stata_publishable(weights.prepared_weight_sum)
         || weights
             .log_raw_weight_sum
@@ -1995,53 +1815,19 @@ fn validate_dof_and_weight_identities(result: &CertifiedPpmlResult) -> Result<()
             "certified PPML likelihood statistics are not representable in Stata",
         ));
     }
-    if likelihood.deviance < 0.0 || likelihood.null_mean <= 0.0 {
-        return Err(invalid("PPML likelihood statistics are inconsistent"));
-    }
     validate_inference_contract(result)
 }
 
 fn validate_inference_contract(result: &CertifiedPpmlResult) -> Result<()> {
     let inference = result.inference();
-    let coefficients = result.coefficients();
     let wald = &inference.wald;
-    if wald.degrees_of_freedom != wald.tested_columns.len()
-        || wald.distribution != PpmlTestDistribution::ChiSquared
-        || wald
-            .tested_columns
-            .iter()
-            .enumerate()
-            .any(|(position, slot)| {
-                *slot >= coefficients.statuses().len()
-                    || coefficients.statuses()[*slot] != PpmlCoefficientStatus::Identified
-                    || (position > 0 && wald.tested_columns[position - 1] >= *slot)
-            })
-        || (wald.degrees_of_freedom == 0 && wald.statistic.is_some())
-        || wald.statistic.is_some_and(|value| value < 0.0)
-        || wald.solve_relative_infinity_norm < 0.0
-    {
-        return Err(invalid("PPML Wald report is inconsistent"));
-    }
     if wald.reference.as_ref().is_some_and(|reference| {
-        reference.slot() >= coefficients.statuses().len()
-            || coefficients.statuses()[reference.slot()] != PpmlCoefficientStatus::Identified
-            || wald.tested_columns.contains(&reference.slot())
-            || wald.tested_columns.len() + 1 != coefficients.kept_full_slots().len()
-            || coefficients
-                .kept_full_slots()
-                .iter()
-                .any(|slot| *slot != reference.slot() && !wald.tested_columns.contains(slot))
-            || reference.loadings().len() != wald.tested_columns.len()
-            || reference
-                .loadings()
-                .iter()
-                .any(|value| !is_stata_publishable(*value) || value.abs() > 1.0)
+        reference
+            .loadings()
+            .iter()
+            .any(|value| !is_stata_publishable(*value))
             || !is_stata_publishable(reference.span_error())
-            || reference.span_error() < 0.0
             || !is_stata_publishable(reference.span_tolerance())
-            || reference.span_tolerance() <= 0.0
-            || reference.span_tolerance() >= 1.0
-            || reference.span_error() > reference.span_tolerance()
     }) {
         return Err(invalid("PPML constant contrast report is inconsistent"));
     }
@@ -2069,14 +1855,6 @@ fn validate_inference_contract(result: &CertifiedPpmlResult) -> Result<()> {
             "certified PPML sandwich certificate is not representable in Stata",
         ));
     }
-    if !certificate.passed
-        || certificate.tolerance <= 0.0
-        || certificate.tolerance >= 1.0
-        || norms.iter().any(|value| *value < 0.0)
-        || norms.iter().any(|value| *value > certificate.tolerance)
-    {
-        return Err(invalid("PPML sandwich certificate is inconsistent"));
-    }
     let psd = inference.vce.psd;
     let psd_errors = [
         psd.eigensystem_reconstruction_relative_error,
@@ -2090,19 +1868,6 @@ fn validate_inference_contract(result: &CertifiedPpmlResult) -> Result<()> {
         return Err(numerical_nonconvergence(
             "certified PPML PSD certificate is not representable in Stata",
         ));
-    }
-    if !psd.passed
-        || psd.adjusted != (psd.clipped_eigenvalues > 0)
-        || psd_errors.iter().any(|value| *value < 0.0)
-        || psd_errors
-            .iter()
-            .any(|value| *value > certificate.tolerance)
-        || match psd.state {
-            PpmlPsdState::Strict | PpmlPsdState::MultiwayRaw => psd.adjusted,
-            PpmlPsdState::MultiwayClipped => !psd.adjusted,
-        }
-    {
-        return Err(invalid("PPML PSD certificate is inconsistent"));
     }
     Ok(())
 }

@@ -356,7 +356,7 @@ The [M28 acceptance](../bench/history/2026-10-05-m28-capacity-owner-acceptance.j
 binds the unchanged local evidence, actual +96-line change and explicit
 architectural exception. Its terminal performance evidence remains unresolved.
 
-## M31 shared finite operations (candidate)
+## M31 shared finite operations
 
 `ols/finite_operations.rs` owns guarded factor/solve/inverse and explicit OLS
 discovery, retained discovery and frozen-basis rank policy.
@@ -369,10 +369,31 @@ finite-result owner and publisher serve OLS and retained PPML fits. The
 prepared-standardized moment/QR owner and `qr_factorization.rs` are deleted.
 Inference keeps selected raw projected rows; Low transfers its same row-major
 file and compacts it in place. The column-major working/copy/transpose pipeline
-and I/O-buffer handoff are retired. Scientific and performance acceptance of
-this candidate remains open in MILESTONES.
+and I/O-buffer handoff are retired. The scoped M31 acceptance and deferred timing are recorded in MILESTONES.
 
-The candidate also corrects the shared stage scheduler: indexed tasks are
+The shared stage scheduler now uses explicit partitioning: indexed tasks are
 partitioned explicitly into planned lanes rather than relying on Rayon's
 minimum-length splitting. Finite moments, FE/OLS norms, sandwich reductions
 and PPML row work retain their physical arithmetic leaves and ordered merges.
+
+## M32 accepted-fit product ownership
+
+`ols/prepared_products.rs` owns one accepted fit, canonical absorbed-DoF report,
+statistics and mathematically distinct covariance/certificate payloads. Ordinary
+DoF consumers use the canonical topology engine; no second nesting, mobility,
+union-find or report owner survives. The host assembles three VCE payloads.
+Ordinary and categorical projection semantics remain explicit at the core boundary.
+
+Robust and clustered inference consume an immutable fit-stage score product:
+packed projected columns, selected raw projected rows, or the retained Low
+row-major file. The score consumer never constructs another FE/CMG solver or
+reabsorbs the raw design. Independent score-Gram, bread, covariance, PSD and
+Wald witnesses remain separate from the production accumulation.
+
+PPML final outputs have one requested-product constructor and one retained xb
+representation. The sample and outputs share a newly copied immutable final-row
+ledger; admission and result ownership charge its payload/control block once.
+Independent reconstruction and composite objective replay remain authoritative.
+The host consumes the immutable certified result, checking Stata representability
+and wire cells without repeating certified DoF, cluster lattice and weight science.
+The declared replacement and active qualification are linked from MILESTONES.

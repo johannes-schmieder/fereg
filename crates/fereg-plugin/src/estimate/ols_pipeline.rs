@@ -57,42 +57,26 @@ impl PreparedPipeline {
             ..PreparedOlsClusteredConfig::default()
         };
         let p = &self.prepared;
-        match (p.uses_categorical_preparation(), action.vce) {
-            (false, OlsVceKind::Iid) => {
-                fit_prepared_ols_unadjusted_map_with_loaded_moments(p, iid(), rows)
-                    .map(OwnedInference::Iid)
-            }
-            (false, OlsVceKind::Robust) => {
-                fit_prepared_ols_robust_map_with_loaded_moments(p, robust(), rows)
-                    .map(OwnedInference::Robust)
-            }
-            (true, OlsVceKind::Iid) => {
-                fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(p, iid(), rows)
-                    .map(OwnedInference::CategoricalIid)
-            }
-            (true, OlsVceKind::Robust) => {
-                fit_prepared_categorical_ols_robust_map_with_loaded_moments(p, robust(), rows)
-                    .map(OwnedInference::CategoricalRobust)
-            }
-            (false, OlsVceKind::Clustered) => {
-                fit_prepared_ols_clustered_map_with_loaded_moments(p, clustered(), rows)
+        match action.vce {
+            OlsVceKind::Iid => fit_prepared_model_unadjusted_with_loaded_moments(p, iid(), rows)
+                .map(OwnedInference::Iid),
+            OlsVceKind::Robust => fit_prepared_model_robust_with_loaded_moments(p, robust(), rows)
+                .map(OwnedInference::Robust),
+            OlsVceKind::Clustered => {
+                fit_prepared_model_clustered_with_loaded_moments(p, clustered(), rows)
                     .map(OwnedInference::Clustered)
-            }
-            (true, OlsVceKind::Clustered) => {
-                fit_prepared_categorical_ols_clustered_map_with_loaded_moments(p, clustered(), rows)
-                    .map(OwnedInference::CategoricalClustered)
             }
         }
     }
 }
 
+// Keep the single certified result on the action stack; boxing would add a
+// new allocation between certification and publication. The owner is bounded.
+#[allow(clippy::large_enum_variant)]
 pub(super) enum OwnedInference {
     Iid(CertifiedPreparedOlsUnadjusted),
     Robust(CertifiedPreparedOlsRobust),
-    CategoricalIid(CertifiedPreparedCategoricalOlsUnadjusted),
-    CategoricalRobust(CertifiedPreparedCategoricalOlsRobust),
     Clustered(CertifiedPreparedOlsClustered),
-    CategoricalClustered(CertifiedPreparedCategoricalOlsClustered),
 }
 
 impl OwnedInference {
@@ -100,10 +84,7 @@ impl OwnedInference {
         match self {
             Self::Iid(value) => CertifiedOlsInference::Iid(value),
             Self::Robust(value) => CertifiedOlsInference::Robust(value),
-            Self::CategoricalIid(value) => CertifiedOlsInference::CategoricalIid(value),
-            Self::CategoricalRobust(value) => CertifiedOlsInference::CategoricalRobust(value),
             Self::Clustered(value) => CertifiedOlsInference::Clustered(value),
-            Self::CategoricalClustered(value) => CertifiedOlsInference::CategoricalClustered(value),
         }
     }
 }

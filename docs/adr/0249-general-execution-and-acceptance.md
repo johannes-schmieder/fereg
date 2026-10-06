@@ -72,3 +72,13 @@ large Fast OLS being 8.2–8.6% slower than fixed M26, defers its remaining broa
 and scaling timing, and authorizes dependent M32–M35 work. The
 [specific acceptance](../../bench/history/2026-10-06-m31-architectural-acceptance.json)
 retains the failed verdict and open evidence; future allowances remain unchanged.
+
+Johannes accepts M32 on 2026-10-06 and authorizes comparable architectural
+acceptance prospectively: science/transactions and Astra review pass, a
+substantial retirement is delivered, every parent comparison is within, and
+only previously accepted fixed-M26 cost families remain unresolved without
+observed worsening beyond their accepted costs. Preserve all observations,
+the allowance and unresolved verdict. New established regressions require a
+separate decision; final integrated performance remains open. The
+[M32 acceptance](../../bench/history/2026-10-06-m32-architectural-acceptance.json)
+records the identified artifact and scope.

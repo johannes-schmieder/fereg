@@ -113,6 +113,12 @@ allowance is max(5%, 1 ms). Johannes's M28–M30 override permits architectural
 acceptance when measured performance is inconclusive and substantial code-quality
 benefit is independently reviewed; retain uncertainty rather than claim a timing
 pass. Scientific gates and established-regression findings remain binding.
+Johannes's 2026-10-06 M32 successor authorization also permits comparable
+architectural acceptance after science/transactions and Astra review pass:
+substantial retirement, every parent comparison within, and only previously
+accepted fixed-M26 cost families unresolved without observed worsening beyond
+their accepted costs. Retain raw verdicts; new regressions and final integrated
+performance gates remain binding. See active ADR 0249 and the M32 acceptance.
 Historical campaigns retain their original rule. Reserve clean periods without our builds/agents;
 coordinate unrelated workloads without terminating them.
 

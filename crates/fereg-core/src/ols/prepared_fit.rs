@@ -300,7 +300,6 @@ pub struct CertifiedPreparedOlsFit {
     recovered_fe_coefficients: Option<FeCoefficientBatch>,
     fast_score_cache: Option<PreparedOlsFastScoreCache>,
     execution: PreparedOlsExecutionReport,
-    additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak,
 }
 
 /// Certified projection onto the complete prepared finite-plus-FE model span.
@@ -418,6 +417,77 @@ pub(super) enum PreparedOlsFastScoreCache {
 }
 
 impl PreparedOlsFastScoreCache {
+    fn into_kept<R: FitReservation>(self, kept: &[usize], reservation: &mut R) -> Result<Self> {
+        if self.matches(kept) {
+            return Ok(self);
+        }
+        let Self::Packed {
+            mut generated_columns,
+            within,
+            mut means,
+        } = self
+        else {
+            return Err(invalid_data(
+                "selected score product differs from accepted finite basis",
+            ));
+        };
+        if within.ncols() != generated_columns.len()
+            || means.len() != generated_columns.len()
+            || generated_columns.windows(2).any(|pair| pair[0] >= pair[1])
+            || kept.len() > generated_columns.len()
+        {
+            return Err(invalid_data(
+                "packed score product has inconsistent identities or dimensions",
+            ));
+        }
+        // One bounded row holds selected positions, original means and row
+        // values. It makes compaction safe for any certified basis ordering.
+        let mut selection = reserved_empty(
+            reservation,
+            kept.len(),
+            "unable to reserve accepted packed score selection",
+        )?;
+        for &generated in kept {
+            let position = generated_columns
+                .binary_search(&generated)
+                .map_err(|_| invalid_data("accepted score column is absent from packed product"))?;
+            if selection
+                .iter()
+                .any(|entry: &(usize, f64, f64)| entry.0 == position)
+            {
+                return Err(invalid_data("accepted packed score column is duplicated"));
+            }
+            push_reserved(
+                &mut selection,
+                (position, means[position], 0.0),
+                "accepted packed score selection capacity exhausted",
+            )?;
+        }
+        let rows = within.nrows();
+        let stride = within.ncols();
+        let mut values = within.into_row_major();
+        for row in 0..rows {
+            for entry in &mut selection {
+                entry.2 = values[row * stride + entry.0];
+            }
+            for (column, entry) in selection.iter().enumerate() {
+                values[row * kept.len() + column] = entry.2;
+            }
+        }
+        values.truncate(rows * kept.len());
+        for (column, entry) in selection.iter().enumerate() {
+            generated_columns[column] = kept[column];
+            means[column] = entry.1;
+        }
+        generated_columns.truncate(kept.len());
+        means.truncate(kept.len());
+        Ok(Self::Packed {
+            generated_columns,
+            within: DenseMatrix::from_row_major(rows, kept.len(), values)?,
+            means,
+        })
+    }
+
     fn mean(&self, generated: usize) -> Option<f64> {
         let (generated_columns, means) = match self {
             Self::Packed {
@@ -462,14 +532,6 @@ impl PreparedOlsFastScoreCache {
 }
 
 impl CertifiedPreparedOlsFit {
-    /// This product survives score reabsorption. Other fit owners belong to
-    /// the finite/inference execution envelope, rather than FE workspace.
-    pub(super) fn retained_fe_coefficient_bytes(&self) -> u128 {
-        self.recovered_fe_coefficients
-            .as_ref()
-            .map_or(0, FeCoefficientBatch::retained_bytes)
-    }
-
     pub(crate) fn owned_buffer_bytes(&self) -> u128 {
         use crate::memory::vec_capacity_bytes as bytes;
         let warnings = |report: &SolveReport| {
@@ -598,33 +660,21 @@ impl CertifiedPreparedOlsFit {
         self.execution
     }
 
-    pub(super) fn take_fast_score_cache(
+    pub(super) fn take_inference_score_cache(
         &mut self,
-        generated_columns: &[usize],
-    ) -> Option<PreparedOlsFastScoreCache> {
-        let cache = self.fast_score_cache.take()?;
-        if cache.matches(generated_columns) {
-            Some(cache)
-        } else {
-            None
-        }
+    ) -> Result<Option<PreparedOlsFastScoreCache>> {
+        self.fast_score_cache
+            .take()
+            .map(|cache| cache.into_kept(self.kept_generated_columns(), &mut SystemFitReservation))
+            .transpose()
     }
 
-    /// Includes sequential inference projections without changing the fit's
-    /// scientific solver reports or summing workspaces released between stages.
+    /// Maximum live workspace from the fit's certified FE operations.
     #[must_use]
     pub fn solver_workspace_peak(&self) -> crate::memory::SolverWorkspacePeak {
         self.absorption_report
             .solver_workspace_peak
             .max(self.residual_absorption_report.solver_workspace_peak)
-            .max(self.additional_solver_workspace_peak)
-    }
-
-    pub(super) fn record_additional_solver_workspace_peak(
-        &mut self,
-        peak: crate::memory::SolverWorkspacePeak,
-    ) {
-        self.additional_solver_workspace_peak = self.additional_solver_workspace_peak.max(peak);
     }
 
     pub(super) fn record_additional_scratch_peak(&mut self, bytes: u64) {
@@ -928,7 +978,6 @@ impl FiniteFit {
         self.kept.sort_unstable();
         self.dropped.sort_unstable();
         CertifiedPreparedOlsFit {
-            additional_solver_workspace_peak: crate::memory::SolverWorkspacePeak::ZERO,
             coefficients,
             kept_generated_columns: self.kept,
             dropped_generated_columns: self.dropped,
@@ -1599,7 +1648,10 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference<
 >(
     prepared: &P,
     config: PreparedOlsFitConfig,
-) -> Result<(CertifiedPreparedOlsFit, Option<PreparedOlsScratch>)> {
+) -> Result<(
+    CertifiedPreparedOlsFit,
+    super::prepared_scores::PreparedOlsScoreProduct,
+)> {
     fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(prepared, config, None)
 }
 
@@ -1609,16 +1661,20 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_m
     prepared: &P,
     config: PreparedOlsFitConfig,
     rows: Option<LoadedOlsRows>,
-) -> Result<(CertifiedPreparedOlsFit, Option<PreparedOlsScratch>)> {
+) -> Result<(
+    CertifiedPreparedOlsFit,
+    super::prepared_scores::PreparedOlsScoreProduct,
+)> {
     let mut scratch = None;
-    let fit = fit_for_inference_with_scratch(
+    let mut fit = fit_for_inference_with_scratch(
         prepared,
         config,
         MAX_FAST_SCORE_CACHE_BYTES.min(32 * 1024 * 1024),
         Some(&mut scratch),
         rows,
     )?;
-    Ok((fit, scratch))
+    let scores = super::prepared_scores::take_prepared_ols_score_product(&mut fit, scratch)?;
+    Ok((fit, scores))
 }
 
 #[cfg(test)]
@@ -1642,8 +1698,8 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
     let team = ThreadTeam::new(config.execution.threads);
     // Inference needs the projected columns again. Prefer a packed cache when
     // its caller's bound admits it; larger fits retain immutable projected
-    // rows through a selected-column view. The established score builder
-    // handles QR fits whose mutated solve matrix cannot be retained.
+    // rows through a selected-column view. Rank-selected QR and Cholesky solves both retain
+    // the immutable projected rows used to certify their accepted fit.
     let retain_fast_score_cache = true;
     team.install(|| {
         let mut reservation = SystemFitReservation;
@@ -13148,6 +13204,88 @@ mod tests {
             TestWeights::Unit,
         );
         assert_packed_and_strided_score_caches_match(&no_intercept);
+    }
+
+    #[test]
+    fn packed_score_handoff_selects_arbitrary_basis_without_reallocating_rows() {
+        let make_cache = || {
+            let mut values = Vec::with_capacity(40);
+            values.extend([1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 7.0, 8.0]);
+            PreparedOlsFastScoreCache::Packed {
+                generated_columns: vec![0, 2, 5, 9],
+                within: DenseMatrix::from_row_major(2, 4, values).expect("matrix"),
+                means: vec![-0.0, 0.25, -2.0, 3.0],
+            }
+        };
+        let original = make_cache();
+        let PreparedOlsFastScoreCache::Packed { within, .. } = &original else {
+            unreachable!();
+        };
+        let pointer = within.as_slice().as_ptr();
+        let capacity = within.storage_capacity();
+        let mut reservation = InjectedReservation::default();
+        let selected = original
+            .into_kept(&[9, 0, 5], &mut reservation)
+            .expect("selected packed bank");
+        let PreparedOlsFastScoreCache::Packed {
+            generated_columns,
+            within,
+            means,
+        } = selected
+        else {
+            unreachable!();
+        };
+        assert_eq!(generated_columns, [9, 0, 5]);
+        assert_eq!(within.as_slice(), [4.0, 1.0, 3.0, 8.0, 5.0, 7.0]);
+        assert_eq!(within.as_slice().as_ptr(), pointer);
+        assert_eq!(within.storage_capacity(), capacity);
+        assert_eq!(
+            means.iter().map(|x| x.to_bits()).collect::<Vec<_>>(),
+            [
+                3.0_f64.to_bits(),
+                (-0.0_f64).to_bits(),
+                (-2.0_f64).to_bits()
+            ]
+        );
+        assert_eq!(
+            reservation.records,
+            [(3, "unable to reserve accepted packed score selection")]
+        );
+        let mut no_alloc = InjectedReservation {
+            fail_at: Some(1),
+            ..Default::default()
+        };
+        make_cache()
+            .into_kept(&[0, 2, 5, 9], &mut no_alloc)
+            .expect("unchanged bank");
+        assert_eq!(no_alloc.calls, 0);
+        for kept in [&[2, 2][..], &[2, 7][..]] {
+            assert_eq!(
+                make_cache()
+                    .into_kept(kept, &mut SystemFitReservation)
+                    .expect_err("invalid selection")
+                    .code,
+                ErrorCode::InvalidData
+            );
+        }
+        for mut refusal in [
+            InjectedReservation {
+                fail_at: Some(1),
+                ..Default::default()
+            },
+            InjectedReservation {
+                undersize: true,
+                ..Default::default()
+            },
+        ] {
+            assert_eq!(
+                make_cache()
+                    .into_kept(&[9, 0, 5], &mut refusal)
+                    .expect_err("selection allocation refusal")
+                    .code,
+                ErrorCode::Allocation
+            );
+        }
     }
 
     #[test]

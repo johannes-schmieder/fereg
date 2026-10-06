@@ -1,115 +1,20 @@
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::metadata::{AbsorbTermId, SourceId};
+#[cfg(test)]
+use crate::metadata::AbsorbTermId;
 
 use super::PreparedOlsData;
 
-/// Reference-compatible absorbed-degree-of-freedom policy for the currently
-/// supported intercept-only prepared FE surface.
-///
-/// `None` is deliberately named after reghdfe's `dof(none)`: it disables
-/// mobility searches, but it does not make absorbed fixed effects free.
-#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
-pub enum PreparedOlsAbsorbedDofPolicy {
-    None,
-    FirstPair,
-    #[default]
-    Pairwise,
-    Continuous,
-}
+/// Ordinary and categorical consumers retain the same canonical report.
+pub type PreparedOlsAbsorbedDofPolicy = crate::topology_dof::CategoricalTopologyDofPolicy;
+pub type PreparedOlsAbsorbedDofEffectIdentity =
+    crate::topology_dof::CategoricalTopologyDofEffectIdentity;
+pub type PreparedOlsAbsorbedDofEffect = crate::topology_dof::CategoricalTopologyDofEffect;
+pub type PreparedOlsAbsorbedDofReport = crate::topology_dof::CategoricalTopologyDofReport;
 
-/// One wire-ordered row of the prepared absorbed-DoF table.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PreparedOlsAbsorbedDofEffectIdentity {
-    Explicit {
-        term_id: AbsorbTermId,
-        source: SourceId,
-    },
-    /// Virtual one-level HDFE synthesized by the pinned no-absorb contract.
-    ImplicitNoAbsorb,
-}
-
-/// One wire-ordered row of the prepared absorbed-DoF table.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PreparedOlsAbsorbedDofEffect {
-    pub identity: PreparedOlsAbsorbedDofEffectIdentity,
-    pub label: String,
-    pub categories: usize,
-    pub redundant: usize,
-    pub coefficients: usize,
-    pub redundancy_exact: bool,
-    /// Cluster nesting is not part of this core-only checkpoint.
-    pub nested: bool,
-}
-
-/// Certified structural absorbed-rank report on the final prepared sample.
-///
-/// This report deliberately excludes finite-regressor rank, the reported
-/// constant, effective frequency-weight N, cluster nesting, and residual DoF.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct PreparedOlsAbsorbedDofReport {
-    pub policy: PreparedOlsAbsorbedDofPolicy,
-    pub effects: Vec<PreparedOlsAbsorbedDofEffect>,
-    pub initial_categories: usize,
-    pub redundant_categories: usize,
-    pub absorbed_rank: usize,
-    /// Categories made redundant because an explicit absorbed intercept is
-    /// equal to or nested within at least one declared cluster dimension.
-    pub nested_categories: usize,
-    pub is_approximate: bool,
-}
-
-impl PreparedOlsAbsorbedDofReport {
-    pub(crate) fn owned_buffer_bytes(&self) -> u128 {
-        crate::memory::vec_capacity_bytes(&self.effects)
-            + self
-                .effects
-                .iter()
-                .map(|effect| effect.label.capacity() as u128)
-                .sum::<u128>()
-    }
-}
-
-trait PreparedDofReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-
-    fn reserve_string(
-        &mut self,
-        target: &mut String,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemPreparedDofReservation;
-
-impl PreparedDofReservation for SystemPreparedDofReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
-
-    fn reserve_string(
-        &mut self,
-        target: &mut String,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
-}
+use crate::topology_dof::{
+    SystemTopologyDofReservation as SystemPreparedDofReservation,
+    TopologyDofReservation as PreparedDofReservation,
+};
 
 /// Compute the reference-compatible absorbed rank for the current prepared
 /// single-source, intercept-only numeric FE surface.
@@ -126,20 +31,6 @@ pub fn compute_prepared_ols_absorbed_dof(
     compute_with_reservation(prepared, policy, &mut reservation)
 }
 
-pub(super) fn compute_prepared_ols_absorbed_dof_with_nesting(
-    prepared: &PreparedOlsData,
-    policy: PreparedOlsAbsorbedDofPolicy,
-    cluster_dimensions: &[&[u32]],
-) -> Result<PreparedOlsAbsorbedDofReport> {
-    let mut reservation = SystemPreparedDofReservation;
-    compute_with_nesting_reservation_validated(
-        prepared,
-        policy,
-        cluster_dimensions,
-        &mut reservation,
-    )
-}
-
 fn compute_with_reservation<R: PreparedDofReservation>(
     prepared: &PreparedOlsData,
     policy: PreparedOlsAbsorbedDofPolicy,
@@ -154,534 +45,44 @@ fn compute_with_nesting_reservation_validated<R: PreparedDofReservation>(
     cluster_dimensions: &[&[u32]],
     reservation: &mut R,
 ) -> Result<PreparedOlsAbsorbedDofReport> {
-    validate_prepared_topology(prepared)?;
-    validate_cluster_nesting_view(prepared, cluster_dimensions)?;
-    let effects = prepared.fe_effects();
-
-    let mut redundant = reserved_filled(
-        reservation,
-        effects.len(),
-        0_usize,
-        "unable to reserve prepared absorbed-DoF redundancies",
-    )?;
-    let mut exact = reserved_filled(
-        reservation,
-        effects.len(),
-        false,
-        "unable to reserve prepared absorbed-DoF exactness flags",
-    )?;
-    let mut nested = reserved_filled(
-        reservation,
-        effects.len(),
-        false,
-        "unable to reserve prepared absorbed-DoF nesting flags",
-    )?;
-    let mut eligible = reserved_filled(
-        reservation,
-        effects.len(),
-        true,
-        "unable to reserve prepared absorbed-DoF mobility eligibility",
-    )?;
-    let mut nested_categories = 0_usize;
-    for effect_index in 0..effects.len() {
-        let levels = effect_level_count(prepared, effect_index)?;
-        if effect_is_nested_within_any_cluster(
-            prepared,
-            effect_index,
-            cluster_dimensions,
-            reservation,
-        )? {
-            redundant[effect_index] = levels;
-            exact[effect_index] = true;
-            nested[effect_index] = true;
-            eligible[effect_index] = false;
-            nested_categories = nested_categories
-                .checked_add(levels)
-                .ok_or_else(|| allocation("prepared absorbed nested category total overflows"))?;
-        }
-    }
-
-    let mut eligible_indices = reserved_empty(
-        reservation,
-        effects.len(),
-        "unable to reserve prepared absorbed-DoF eligible effect indices",
-    )?;
-    for (index, is_eligible) in eligible.iter().copied().enumerate() {
-        if is_eligible {
-            push_reserved(
-                &mut eligible_indices,
-                index,
-                "prepared absorbed-DoF eligible-index capacity exhausted",
-            )?;
-        }
-    }
-    if let Some(first) = eligible_indices.first().copied() {
-        exact[first] = true;
-    }
-    let skip_first = nested_categories == 0;
-    for (position, effect_index) in eligible_indices.iter().copied().enumerate() {
-        if skip_first && position == 0 {
-            continue;
-        }
-        redundant[effect_index] = usize::from(effect_level_count(prepared, effect_index)? > 0);
-    }
-
-    match policy {
-        PreparedOlsAbsorbedDofPolicy::None | PreparedOlsAbsorbedDofPolicy::Continuous => {}
-        PreparedOlsAbsorbedDofPolicy::FirstPair => {
-            if eligible_indices.len() >= 2 {
-                let earlier = eligible_indices[0];
-                let later = eligible_indices[1];
-                let components =
-                    pair_components_for_effects(prepared, earlier, later, reservation)?;
-                redundant[later] = redundant[later].max(components);
-                exact[later] = true;
-            }
-        }
-        PreparedOlsAbsorbedDofPolicy::Pairwise => {
-            for later_position in 1..eligible_indices.len() {
-                let later = eligible_indices[later_position];
-                for (earlier_position, earlier) in eligible_indices
-                    .iter()
-                    .copied()
-                    .enumerate()
-                    .take(later_position)
-                {
-                    let components =
-                        pair_components_for_effects(prepared, earlier, later, reservation)?;
-                    redundant[later] = redundant[later].max(components);
-                    if earlier_position == 0 && later_position == 1 {
-                        exact[later] = true;
-                    }
-                }
-            }
-        }
-    }
-
-    let mut rows = Vec::new();
-    let implicit_no_absorb =
-        prepared.structural_intercept && effects.is_empty() && prepared.sample.n_active() > 0;
-    reservation.reserve_vec(
-        &mut rows,
-        effects
-            .len()
-            .checked_add(usize::from(implicit_no_absorb))
-            .ok_or_else(|| allocation("prepared absorbed-DoF row count overflows"))?,
-        "unable to reserve prepared absorbed-DoF effect rows",
-    )?;
-    let mut initial_categories = 0_usize;
-    let mut redundant_categories = 0_usize;
-    let mut absorbed_rank = 0_usize;
-    let mut is_approximate = false;
-    if implicit_no_absorb {
-        let label = fallible_string_copy(
-            "_cons",
-            reservation,
-            "unable to reserve implicit no-absorb DoF label",
-        )?;
-        push_reserved(
-            &mut rows,
-            PreparedOlsAbsorbedDofEffect {
-                identity: PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb,
-                label,
-                categories: 1,
-                redundant: 0,
-                coefficients: 1,
-                redundancy_exact: true,
-                nested: false,
-            },
-            "prepared absorbed-DoF implicit-row capacity exhausted",
-        )?;
-        initial_categories = 1;
-        absorbed_rank = 1;
-    }
-    for (effect_index, effect) in effects.iter().enumerate() {
-        let categories = effect_level_count(prepared, effect_index)?;
-        let effect_redundant = redundant[effect_index];
-        if effect_redundant > categories {
-            return Err(invalid_data(
-                "prepared absorbed-DoF redundancy exceeds its category count",
-            ));
-        }
-        let coefficients = categories
-            .checked_sub(effect_redundant)
-            .ok_or_else(|| invalid_data("prepared absorbed-DoF subtraction underflowed"))?;
-        initial_categories = initial_categories
-            .checked_add(categories)
-            .ok_or_else(|| allocation("prepared absorbed-DoF category total overflows"))?;
-        redundant_categories = redundant_categories
-            .checked_add(effect_redundant)
-            .ok_or_else(|| allocation("prepared absorbed-DoF redundancy total overflows"))?;
-        absorbed_rank = absorbed_rank
-            .checked_add(coefficients)
-            .ok_or_else(|| allocation("prepared absorbed rank overflows"))?;
-        is_approximate |= !exact[effect_index];
-        let label = fallible_string_copy(
-            &effect.label,
-            reservation,
-            "unable to reserve prepared absorbed-DoF label",
-        )?;
-        push_reserved(
-            &mut rows,
-            PreparedOlsAbsorbedDofEffect {
-                identity: PreparedOlsAbsorbedDofEffectIdentity::Explicit {
-                    term_id: effect.term_id,
-                    source: effect.sources[0],
-                },
-                label,
-                categories,
-                redundant: effect_redundant,
-                coefficients,
-                redundancy_exact: exact[effect_index],
-                nested: nested[effect_index],
-            },
-            "prepared absorbed-DoF effect-row capacity exhausted",
-        )?;
-    }
-    let recomputed_rank = initial_categories
-        .checked_sub(redundant_categories)
-        .ok_or_else(|| invalid_data("prepared absorbed-DoF totals are inconsistent"))?;
-    if recomputed_rank != absorbed_rank {
-        return Err(invalid_data(
-            "prepared absorbed-DoF rank certificate did not pass",
-        ));
-    }
-
-    Ok(PreparedOlsAbsorbedDofReport {
-        policy,
-        effects: rows,
-        initial_categories,
-        redundant_categories,
-        absorbed_rank,
-        nested_categories,
-        is_approximate,
-    })
-}
-
-fn validate_cluster_nesting_view(
-    prepared: &PreparedOlsData,
-    cluster_dimensions: &[&[u32]],
-) -> Result<()> {
-    let nobs = prepared.sample.n_active();
-    if cluster_dimensions.len() > 10 {
-        return Err(invalid_argument(
-            "prepared absorbed-DoF nesting view exceeds ten cluster dimensions",
-        ));
-    }
-    for codes in cluster_dimensions {
-        if codes.len() != nobs {
-            return Err(invalid_argument(
-                "prepared absorbed-DoF cluster nesting view is not sample-aligned",
-            ));
-        }
-    }
-    Ok(())
-}
-
-fn effect_is_nested_within_any_cluster<R: PreparedDofReservation>(
-    prepared: &PreparedOlsData,
-    effect_index: usize,
-    cluster_dimensions: &[&[u32]],
-    reservation: &mut R,
-) -> Result<bool> {
-    if cluster_dimensions.is_empty() {
-        return Ok(false);
-    }
-    let _effect = prepared
-        .fe_effects()
-        .get(effect_index)
-        .ok_or_else(|| invalid_argument("prepared absorbed-DoF nested effect is out of range"))?;
-    let topology_source = prepared
-        .fe_topology()
-        .registry()
-        .sources()
-        .get(prepared.effect_source_index(effect_index)?)
-        .ok_or_else(|| invalid_argument("prepared absorbed-DoF nested source is out of range"))?;
-    let fe_codes = prepared.effect_codes(effect_index)?;
-    for cluster_codes in cluster_dimensions {
-        let mut cluster_by_level = reserved_filled(
-            reservation,
-            topology_source.n_levels(),
-            u32::MAX,
-            "unable to reserve prepared absorbed-DoF nesting map",
-        )?;
-        let mut is_nested = true;
-        for (&fe, &cluster) in fe_codes.iter().zip(*cluster_codes) {
-            let mapped = cluster_by_level
-                .get_mut(fe as usize)
-                .ok_or_else(|| invalid_data("prepared absorbed-DoF nested FE code is invalid"))?;
-            if *mapped == u32::MAX {
-                *mapped = cluster;
-            } else if *mapped != cluster {
-                is_nested = false;
-                break;
-            }
-        }
-        if is_nested {
-            return Ok(true);
-        }
-    }
-    Ok(false)
-}
-
-fn validate_prepared_topology(prepared: &PreparedOlsData) -> Result<()> {
+    // Ordinary entrypoints retain their narrower supported grammar while
+    // report ownership and computation remain canonical.
     if !prepared.structural_intercept {
         return Err(invalid_argument(
             "prepared absorbed-DoF intercept metadata is inconsistent with the supported surface",
         ));
     }
-    prepared.validate_fe_bindings()
-}
-
-fn effect_level_count(prepared: &PreparedOlsData, effect_index: usize) -> Result<usize> {
-    let _effect = prepared
-        .fe_effects()
-        .get(effect_index)
-        .ok_or_else(|| invalid_argument("prepared absorbed-DoF effect is out of range"))?;
-    prepared
-        .fe_topology()
-        .registry()
-        .sources()
-        .get(prepared.effect_source_index(effect_index)?)
-        .map(|source| source.n_levels())
-        .ok_or_else(|| invalid_argument("prepared absorbed-DoF topology source is out of range"))
-}
-
-fn pair_components_for_effects<R: PreparedDofReservation>(
-    prepared: &PreparedOlsData,
-    earlier: usize,
-    later: usize,
-    reservation: &mut R,
-) -> Result<usize> {
-    let _earlier_effect = prepared
-        .fe_effects()
-        .get(earlier)
-        .ok_or_else(|| invalid_argument("earlier prepared absorbed-DoF effect is out of range"))?;
-    let _later_effect = prepared
-        .fe_effects()
-        .get(later)
-        .ok_or_else(|| invalid_argument("later prepared absorbed-DoF effect is out of range"))?;
-    let earlier_source = prepared
-        .fe_topology()
-        .registry()
-        .sources()
-        .get(prepared.effect_source_index(earlier)?)
-        .ok_or_else(|| invalid_argument("earlier prepared absorbed-DoF source is out of range"))?;
-    let later_source = prepared
-        .fe_topology()
-        .registry()
-        .sources()
-        .get(prepared.effect_source_index(later)?)
-        .ok_or_else(|| invalid_argument("later prepared absorbed-DoF source is out of range"))?;
-    let earlier_codes = prepared.effect_codes(earlier)?;
-    let later_codes = prepared.effect_codes(later)?;
-    pair_component_count(
-        earlier_codes,
-        earlier_source.n_levels(),
-        later_codes,
-        later_source.n_levels(),
+    prepared.validate_fe_bindings()?;
+    if cluster_dimensions.len() > 10 {
+        return Err(invalid_argument(
+            "prepared absorbed-DoF nesting view exceeds ten cluster dimensions",
+        ));
+    }
+    if cluster_dimensions
+        .iter()
+        .any(|codes| codes.len() != prepared.sample.n_active())
+    {
+        return Err(invalid_argument(
+            "prepared absorbed-DoF cluster nesting view is not sample-aligned",
+        ));
+    }
+    crate::topology_dof::compute_with_reservation(
+        prepared.fe_topology(),
+        prepared.effect_specs(),
+        prepared.structural_intercept,
+        policy,
+        cluster_dimensions,
+        &[],
+        None,
         reservation,
     )
-}
-
-fn pair_component_count<R: PreparedDofReservation>(
-    left_codes: &[u32],
-    left_levels: usize,
-    right_codes: &[u32],
-    right_levels: usize,
-    reservation: &mut R,
-) -> Result<usize> {
-    if left_codes.len() != right_codes.len() {
-        return Err(invalid_argument(
-            "prepared absorbed-DoF pair has inconsistent observation counts",
-        ));
-    }
-    if left_codes.is_empty() {
-        if left_levels != 0 || right_levels != 0 {
-            return Err(invalid_argument(
-                "empty prepared absorbed-DoF pair retains levels",
-            ));
-        }
-        return Ok(0);
-    }
-    if left_levels == 0 || right_levels == 0 {
-        return Err(invalid_argument(
-            "nonempty prepared absorbed-DoF pair has no levels",
-        ));
-    }
-    if left_codes.iter().any(|code| *code as usize >= left_levels)
-        || right_codes
-            .iter()
-            .any(|code| *code as usize >= right_levels)
-    {
-        return Err(invalid_data(
-            "prepared absorbed-DoF pair code exceeds its declared level count",
-        ));
-    }
-
-    let nodes = left_levels
-        .checked_add(right_levels)
-        .ok_or_else(|| allocation("prepared absorbed-DoF pair node count overflows"))?;
-    let mut parent = reserved_empty(
-        reservation,
-        nodes,
-        "unable to reserve prepared absorbed-DoF union-find parents",
-    )?;
-    for node in 0..nodes {
-        push_reserved(
-            &mut parent,
-            node,
-            "prepared absorbed-DoF parent capacity exhausted",
-        )?;
-    }
-    let mut ranks = reserved_filled(
-        reservation,
-        nodes,
-        0_u8,
-        "unable to reserve prepared absorbed-DoF union-find ranks",
-    )?;
-
-    for (&left, &right) in left_codes.iter().zip(right_codes) {
-        let right_node = left_levels
-            .checked_add(right as usize)
-            .ok_or_else(|| allocation("prepared absorbed-DoF right node overflows"))?;
-        union(&mut parent, &mut ranks, left as usize, right_node)?;
-    }
-
-    let mut components = 0_usize;
-    for node in 0..nodes {
-        if find_root(&mut parent, node)? == node {
-            components = components
-                .checked_add(1)
-                .ok_or_else(|| allocation("prepared absorbed-DoF component count overflows"))?;
-        }
-    }
-    Ok(components)
-}
-
-fn find_root(parent: &mut [usize], start: usize) -> Result<usize> {
-    if start >= parent.len() {
-        return Err(invalid_argument(
-            "prepared absorbed-DoF union-find node is out of range",
-        ));
-    }
-    let mut root = start;
-    let mut traversed = 0_usize;
-    loop {
-        let next = *parent.get(root).ok_or_else(|| {
-            invalid_argument("prepared absorbed-DoF union-find parent is out of range")
-        })?;
-        if next == root {
-            break;
-        }
-        root = next;
-        traversed = traversed
-            .checked_add(1)
-            .ok_or_else(|| allocation("prepared absorbed-DoF traversal count overflows"))?;
-        if traversed >= parent.len() {
-            return Err(invalid_argument(
-                "prepared absorbed-DoF union-find contains a cycle",
-            ));
-        }
-    }
-
-    let mut node = start;
-    loop {
-        let next = *parent.get(node).ok_or_else(|| {
-            invalid_argument("prepared absorbed-DoF union-find parent is out of range")
-        })?;
-        if next == node {
-            break;
-        }
-        parent[node] = root;
-        node = next;
-    }
-    Ok(root)
-}
-
-fn union(parent: &mut [usize], ranks: &mut [u8], left: usize, right: usize) -> Result<()> {
-    if parent.len() != ranks.len() || left >= parent.len() || right >= parent.len() {
-        return Err(invalid_argument(
-            "prepared absorbed-DoF union-find dimensions are inconsistent",
-        ));
-    }
-    let left_root = find_root(parent, left)?;
-    let right_root = find_root(parent, right)?;
-    if left_root == right_root {
-        return Ok(());
-    }
-    match ranks[left_root].cmp(&ranks[right_root]) {
-        std::cmp::Ordering::Less => parent[left_root] = right_root,
-        std::cmp::Ordering::Greater => parent[right_root] = left_root,
-        std::cmp::Ordering::Equal => {
-            parent[right_root] = left_root;
-            ranks[left_root] = ranks[left_root]
-                .checked_add(1)
-                .ok_or_else(|| allocation("prepared absorbed-DoF union rank overflows"))?;
-        }
-    }
-    Ok(())
-}
-
-fn fallible_string_copy<R: PreparedDofReservation>(
-    value: &str,
-    reservation: &mut R,
-    label: &'static str,
-) -> Result<String> {
-    let mut output = String::new();
-    reservation.reserve_string(&mut output, value.len(), label)?;
-    if output.capacity() < value.len() {
-        return Err(allocation("prepared absorbed-DoF label capacity exhausted"));
-    }
-    output.push_str(value);
-    Ok(output)
-}
-
-fn reserved_empty<T, R: PreparedDofReservation>(
-    reservation: &mut R,
-    elements: usize,
-    label: &'static str,
-) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    if elements == 0 {
-        return Ok(output);
-    }
-    reservation.reserve_vec(&mut output, elements, label)?;
-    if output.capacity() < elements {
-        return Err(allocation(
-            "prepared absorbed-DoF reservation returned insufficient capacity",
-        ));
-    }
-    Ok(output)
-}
-
-fn reserved_filled<T: Clone, R: PreparedDofReservation>(
-    reservation: &mut R,
-    elements: usize,
-    value: T,
-    label: &'static str,
-) -> Result<Vec<T>> {
-    let mut output = reserved_empty(reservation, elements, label)?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
 }
 
 fn invalid_argument(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InvalidArgument, message)
 }
 
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
+#[cfg(test)]
 fn allocation(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Allocation, message)
 }
@@ -1040,26 +441,23 @@ mod tests {
     }
 
     #[test]
-    fn pair_validation_rejects_lengths_codes_and_node_overflow() {
-        let mut reservation = InjectedReservation::default();
-        assert_eq!(
-            pair_component_count(&[0], 1, &[], 0, &mut reservation)
-                .expect_err("mismatched lengths")
-                .code,
-            ErrorCode::InvalidArgument
-        );
-        assert_eq!(
-            pair_component_count(&[1], 1, &[0], 1, &mut reservation)
-                .expect_err("bad code")
-                .code,
-            ErrorCode::InvalidData
-        );
-        assert_eq!(
-            pair_component_count(&[0], usize::MAX, &[0], 1, &mut reservation)
-                .expect_err("node overflow")
-                .code,
-            ErrorCode::Allocation
-        );
+    fn canonical_cluster_inputs_reject_malformed_axes_and_sentinels() {
+        let codes = [0, 0, 1, 1];
+        let prepared = prepared_case(&[("g", &codes)], TestWeights::Unit);
+        for (dimensions, expected) in [
+            (vec![&codes[..3]], ErrorCode::InvalidArgument),
+            (vec![&[0, 0, u32::MAX, 1][..]], ErrorCode::InvalidData),
+            (vec![&codes[..]; 11], ErrorCode::InvalidArgument),
+        ] {
+            let error = compute_with_nesting_reservation_validated(
+                &prepared,
+                PreparedOlsAbsorbedDofPolicy::Pairwise,
+                &dimensions,
+                &mut InjectedReservation::default(),
+            )
+            .unwrap_err();
+            assert_eq!(error.code, expected);
+        }
     }
 
     #[test]
@@ -1083,33 +481,14 @@ mod tests {
             }
 
             let expected = graph_search_components(&left, left_levels, &right, right_levels);
-            let mut reservation = InjectedReservation::default();
-            assert_eq!(
-                pair_component_count(&left, left_levels, &right, right_levels, &mut reservation,)
-                    .expect("union-find components"),
-                expected
-            );
+            let prepared = prepared_case(&[("left", &left), ("right", &right)], TestWeights::Unit);
+            let report = compute_prepared_ols_absorbed_dof(
+                &prepared,
+                PreparedOlsAbsorbedDofPolicy::Pairwise,
+            )
+            .expect("canonical union-find components");
+            assert_eq!(report.effects[1].redundant, expected);
         }
-    }
-
-    #[test]
-    fn iterative_find_compresses_paths_and_rejects_corrupt_parents() {
-        let mut chain = vec![1, 2, 3, 3];
-        assert_eq!(find_root(&mut chain, 0).expect("chain root"), 3);
-        assert_eq!(chain, [3, 3, 3, 3]);
-
-        let mut cycle = vec![1, 0];
-        assert_eq!(
-            find_root(&mut cycle, 0).expect_err("cycle must fail").code,
-            ErrorCode::InvalidArgument
-        );
-        let mut out_of_range = vec![2, 1];
-        assert_eq!(
-            find_root(&mut out_of_range, 0)
-                .expect_err("bad parent must fail")
-                .code,
-            ErrorCode::InvalidArgument
-        );
     }
 
     #[test]
@@ -1145,6 +524,9 @@ mod tests {
             );
         }
         for undersize_at in 0..successful.calls {
+            if successful.records[undersize_at].0 == 0 {
+                continue;
+            }
             let mut injected = InjectedReservation {
                 undersize_at: Some(undersize_at),
                 ..InjectedReservation::default()
@@ -1166,10 +548,6 @@ mod tests {
     #[test]
     fn implicit_no_absorb_row_and_label_reservations_fail_closed() {
         let prepared = prepared_case_n(4, &[], TestWeights::Unit);
-        let expected = vec![
-            (1, "unable to reserve prepared absorbed-DoF effect rows"),
-            (5, "unable to reserve implicit no-absorb DoF label"),
-        ];
         let mut successful = InjectedReservation::default();
         let report = compute_with_reservation(
             &prepared,
@@ -1177,8 +555,12 @@ mod tests {
             &mut successful,
         )
         .expect("successful implicit no-absorb DoF reservation");
-        assert_eq!(successful.records, expected);
-        assert_eq!(successful.calls, expected.len());
+        assert!(successful
+            .records
+            .contains(&(1, "unable to reserve categorical absorbed-DoF rows")));
+        assert!(successful
+            .records
+            .contains(&(5, "unable to reserve implicit no-absorb DoF label")));
         assert_eq!(report.effects.len(), 1);
         assert_eq!(
             report.effects[0].identity,
@@ -1204,6 +586,9 @@ mod tests {
             );
         }
         for undersize_at in 0..successful.calls {
+            if successful.records[undersize_at].0 == 0 {
+                continue;
+            }
             let mut injected = InjectedReservation {
                 undersize_at: Some(undersize_at),
                 ..InjectedReservation::default()

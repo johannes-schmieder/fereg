@@ -149,7 +149,7 @@ pub(crate) fn compute_categorical_topology_absorbed_dof_with_slopes(
     )
 }
 
-trait TopologyDofReservation {
+pub(crate) trait TopologyDofReservation {
     fn reserve_vec<T>(
         &mut self,
         target: &mut Vec<T>,
@@ -165,7 +165,7 @@ trait TopologyDofReservation {
     ) -> Result<()>;
 }
 
-struct SystemTopologyDofReservation;
+pub(crate) struct SystemTopologyDofReservation;
 
 impl TopologyDofReservation for SystemTopologyDofReservation {
     fn reserve_vec<T>(
@@ -193,7 +193,7 @@ impl TopologyDofReservation for SystemTopologyDofReservation {
 
 // Keep the legacy workspace and ownership boundaries explicit during migration.
 #[allow(clippy::too_many_arguments)]
-fn compute_with_reservation<R: TopologyDofReservation>(
+pub(crate) fn compute_with_reservation<R: TopologyDofReservation>(
     topology: &FinalizedCategoricalTopology,
     effect_specs: &[CategoricalTopologyDofEffectSpec],
     structural_intercept: bool,

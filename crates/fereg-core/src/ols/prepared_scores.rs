@@ -1,9 +1,7 @@
 use std::cell::RefCell;
 
-use crate::data::{DenseMatrix, PreparedWeights};
+use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::fe::{AbsorbConfig, BorrowedMapWeights, CmgAbsorber, CmgConfig, FeSolverKind};
-use crate::options::ThreadConfig;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
@@ -19,6 +17,33 @@ pub(super) use crate::sandwich::{
     SandwichReservation as PreparedInferenceReservation,
     SystemSandwichReservation as SystemPreparedInferenceReservation,
 };
+
+/// Rows retained by the accepted fit, with no second FE solver lifecycle.
+#[derive(Debug)]
+pub(super) enum PreparedOlsScoreProduct {
+    Empty,
+    Fast(PreparedOlsFastScoreCache),
+    Low(PreparedOlsScratch),
+}
+
+pub(super) fn take_prepared_ols_score_product(
+    fit: &mut CertifiedPreparedOlsFit,
+    scratch: Option<PreparedOlsScratch>,
+) -> Result<PreparedOlsScoreProduct> {
+    if fit.finite_rank() == 0 {
+        drop(fit.take_inference_score_cache()?);
+        return Ok(PreparedOlsScoreProduct::Empty);
+    }
+    match fit.execution().mode {
+        PreparedOlsExecutionMode::Fast => fit
+            .take_inference_score_cache()?
+            .map(PreparedOlsScoreProduct::Fast)
+            .ok_or_else(|| invalid_data("accepted Fast fit has no matching score product")),
+        PreparedOlsExecutionMode::Low => scratch
+            .map(PreparedOlsScoreProduct::Low)
+            .ok_or_else(|| invalid_data("accepted Low fit has no retained score product")),
+    }
+}
 
 const TRANSPOSE_BUFFER_BYTES: usize = 1 << 20;
 const SCORE_CERTIFICATE_REDUCTION_ROWS: usize = 16_384;
@@ -342,10 +367,9 @@ pub(super) fn build_prepared_ols_score_design<
     prepared: &'a P,
     fit: &mut CertifiedPreparedOlsFit,
     weights: ReferenceWeightView<'a>,
-    absorb: AbsorbConfig,
     tolerance: f64,
     reservation: &mut R,
-    retained_scratch: Option<PreparedOlsScratch>,
+    score_product: PreparedOlsScoreProduct,
 ) -> Result<CertifiedPreparedOlsScoreDesign<'a>> {
     let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
     let total_started = Instant::now();
@@ -411,124 +435,63 @@ pub(super) fn build_prepared_ols_score_design<
         ));
     }
 
-    let cached = if fit.execution().mode == PreparedOlsExecutionMode::Fast {
-        fit.take_fast_score_cache(&generated_columns)
-    } else {
-        None
-    };
-    // A reconstructed score bank can invoke another solver while the final
-    // fit's coefficient product remains live. Retained/cached score paths do
-    // not construct that solver and need no additional workspace reservation.
-    let retained_fe_parent = if cached.is_none() && retained_scratch.is_none() {
-        fit.retained_fe_coefficient_bytes()
-    } else {
-        0
-    };
-    let mut absorb = absorb;
-    if let Some(budget) = absorb.solver_memory_budget.as_mut() {
-        budget.execution_bytes = budget
-            .execution_bytes
-            .checked_add(retained_fe_parent)
-            .ok_or_else(|| allocation("inference FE parent budget overflows"))?;
-        if !budget.fits(0) {
-            return Err(allocation(
-                "inference FE coefficient parent exceeds usable memory",
-            ));
-        }
-    }
-    let map_weights = match &prepared.fit_sample().weights {
-        PreparedWeights::None => BorrowedMapWeights::Unit,
-        PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
-    };
-    let score_cmg_solver = if absorb.solver == FeSolverKind::Cmg {
-        Some(FeSolverKind::Cmg)
-    } else if absorb.solver == FeSolverKind::Auto
-        && fit.absorption_report().used_solver == FeSolverKind::Cmg
-    {
-        Some(FeSolverKind::Auto)
-    } else {
-        None
-    };
-    let mut solver_peak = crate::memory::SolverWorkspacePeak::ZERO;
-    let mut cmg = if let (Some(requested_solver), true) = (
-        score_cmg_solver,
-        cached.is_none() && retained_scratch.is_none(),
-    ) {
-        let built = CmgAbsorber::build_with_workspace(
-            prepared.fit_borrowed_cmg_design()?,
-            map_weights,
-            CmgConfig {
-                map: absorb.map,
-                threads: ThreadConfig::from_requested(
-                    fit.execution().effective_threads,
-                    fit.execution().deterministic,
-                )?,
-                batch_size: fit.execution().poolsize.max(1),
-                retain_coefficients: false,
-                requested_solver,
-                components: crate::fe::explicit_cmg_components(requested_solver),
-                solver_memory_budget: absorb.solver_memory_budget,
-            },
-            prepared.fit_structural_intercept(),
-            &mut solver_peak,
-        );
-        match built {
-            Ok(session) => Some(session),
-            Err(_) if requested_solver == FeSolverKind::Auto => None,
-            Err(error) => return Err(error),
-        }
-    } else {
-        None
-    };
     let setup_seconds = phase_started.elapsed().as_secs_f64();
     let phase_started = Instant::now();
-    let used_strided_cache = matches!(&cached, Some(PreparedOlsFastScoreCache::Selected { .. }));
-    let reabsorbed_fast_scores =
-        fit.execution().mode == PreparedOlsExecutionMode::Fast && cached.is_none();
-    let (storage, means, scratch_peak_bytes) = match (fit.execution().mode, cached) {
-        (
-            PreparedOlsExecutionMode::Fast,
-            Some(PreparedOlsFastScoreCache::Packed { within, means, .. }),
-        ) => (PreparedOlsScoreStorage::Dense(within), means, 0),
-        (
-            PreparedOlsExecutionMode::Fast,
-            Some(PreparedOlsFastScoreCache::Selected {
-                generated_columns,
-                within,
-                means,
-            }),
-        ) => (
-            PreparedOlsScoreStorage::Selected(PreparedOlsSelectedScoreStorage {
-                within,
-                generated_columns,
-                weights,
-            }),
-            means,
+    let used_strided_cache = matches!(
+        &score_product,
+        PreparedOlsScoreProduct::Fast(PreparedOlsFastScoreCache::Selected { .. })
+    );
+    let (storage, means, scratch_peak_bytes) = match score_product {
+        PreparedOlsScoreProduct::Empty if rank == 0 => (
+            PreparedOlsScoreStorage::Dense(DenseMatrix::from_row_major(nrows, 0, Vec::new())?),
+            Vec::new(),
             0,
         ),
-        (PreparedOlsExecutionMode::Fast, None) => build_dense_score_storage(
-            prepared,
-            &generated_columns,
-            weights,
-            absorb,
-            &mut cmg,
-            &mut solver_peak,
-            reservation,
-        )?,
-        (PreparedOlsExecutionMode::Low, _) => build_scratch_score_storage(
-            prepared,
-            &generated_columns,
-            weights,
-            absorb,
-            fit.execution().poolsize,
-            &mut cmg,
-            &mut solver_peak,
-            reservation,
-            retained_scratch,
-        )?,
+        PreparedOlsScoreProduct::Fast(PreparedOlsFastScoreCache::Packed {
+            generated_columns: identities,
+            within,
+            means,
+        }) if fit.execution().mode == PreparedOlsExecutionMode::Fast
+            && identities == generated_columns =>
+        {
+            (PreparedOlsScoreStorage::Dense(within), means, 0)
+        }
+        PreparedOlsScoreProduct::Fast(PreparedOlsFastScoreCache::Selected {
+            generated_columns: identities,
+            within,
+            means,
+        }) if fit.execution().mode == PreparedOlsExecutionMode::Fast
+            && identities == generated_columns =>
+        {
+            (
+                PreparedOlsScoreStorage::Selected(PreparedOlsSelectedScoreStorage {
+                    within,
+                    generated_columns: identities,
+                    weights,
+                }),
+                means,
+                0,
+            )
+        }
+        PreparedOlsScoreProduct::Low(scratch)
+            if fit.execution().mode == PreparedOlsExecutionMode::Low =>
+        {
+            build_scratch_score_storage(
+                prepared,
+                &generated_columns,
+                weights,
+                fit.execution().poolsize,
+                reservation,
+                scratch,
+            )?
+        }
+        _ => {
+            return Err(invalid_data(
+                "accepted score product differs from the fit basis or storage",
+            ))
+        }
     };
     fit.record_additional_scratch_peak(scratch_peak_bytes);
-    fit.record_additional_solver_workspace_peak(solver_peak.with_retained(retained_fe_parent)?);
     let storage_seconds = phase_started.elapsed().as_secs_f64();
 
     let phase_started = Instant::now();
@@ -566,7 +529,7 @@ pub(super) fn build_prepared_ols_score_design<
         eprintln!(
             "FEREG_PHASE|score_design|setup={setup_seconds:.9}|storage={storage_seconds:.9}|certificate={certificate_seconds:.9}|finalize={finalize_seconds:.9}|strided={}|reabsorbed={}|total={:.9}",
             usize::from(used_strided_cache),
-            usize::from(reabsorbed_fast_scores),
+            0,
             total_started.elapsed().as_secs_f64(),
         );
     }
@@ -582,39 +545,6 @@ pub(super) fn build_prepared_ols_score_design<
     })
 }
 
-fn build_dense_score_storage<
-    'a,
-    P: PreparedOlsFitView + ?Sized,
-    R: PreparedInferenceReservation,
->(
-    prepared: &'a P,
-    generated_columns: &[usize],
-    weights: ReferenceWeightView<'a>,
-    absorb: AbsorbConfig,
-    cmg: &mut Option<CmgAbsorber<'_>>,
-    solver_peak: &mut crate::memory::SolverWorkspacePeak,
-    reservation: &mut R,
-) -> Result<(PreparedOlsScoreStorage<'a>, Vec<f64>, u64)> {
-    let nrows = prepared.fit_sample().n_active();
-    let rank = generated_columns.len();
-    let elements = nrows
-        .checked_mul(rank)
-        .ok_or_else(|| allocation("prepared robust score design dimensions overflow usize"))?;
-    let mut raw_values = reserved_filled(
-        reservation,
-        elements,
-        0.0_f64,
-        "unable to reserve prepared robust kept score design",
-    )?;
-    fill_raw_score_block(prepared, generated_columns, &mut raw_values)?;
-    let means = score_block_means(&raw_values, nrows, rank, weights, reservation)?;
-    let raw = DenseMatrix::from_row_major(nrows, rank, raw_values)?;
-    let within = absorb_score_block(prepared, raw, absorb, cmg, solver_peak)?;
-    Ok((PreparedOlsScoreStorage::Dense(within), means, 0))
-}
-
-// Keep the legacy workspace and ownership boundaries explicit during migration.
-#[allow(clippy::too_many_arguments)]
 fn build_scratch_score_storage<
     'a,
     P: PreparedOlsFitView + ?Sized,
@@ -623,12 +553,9 @@ fn build_scratch_score_storage<
     prepared: &'a P,
     generated_columns: &[usize],
     weights: ReferenceWeightView<'a>,
-    absorb: AbsorbConfig,
     poolsize: usize,
-    cmg: &mut Option<CmgAbsorber<'_>>,
-    solver_peak: &mut crate::memory::SolverWorkspacePeak,
     reservation: &mut R,
-    retained_scratch: Option<PreparedOlsScratch>,
+    mut columns: PreparedOlsScratch,
 ) -> Result<(PreparedOlsScoreStorage<'a>, Vec<f64>, u64)> {
     let nrows = prepared.fit_sample().n_active();
     let rank = generated_columns.len();
@@ -643,18 +570,11 @@ fn build_scratch_score_storage<
         return Ok((PreparedOlsScoreStorage::Dense(empty), means, 0));
     }
     let block_width = poolsize.max(1).min(rank);
-    let reused = retained_scratch.is_some();
-    let mut columns = match retained_scratch {
-        Some(columns) => {
-            if columns.rows() != nrows || columns.columns() != prepared.fit_model().columns.len() {
-                return Err(invalid_argument(
-                    "retained low-memory score scratch has a different model frame",
-                ));
-            }
-            columns
-        }
-        None => PreparedOlsScratch::create_row_major(nrows, rank)?,
-    };
+    if columns.rows() != nrows || columns.columns() != prepared.fit_model().columns.len() {
+        return Err(invalid_argument(
+            "retained low-memory score scratch has a different model frame",
+        ));
+    }
     for start in (0..rank).step_by(block_width) {
         let end = start.saturating_add(block_width).min(rank);
         let block_rank = end - start;
@@ -672,16 +592,8 @@ fn build_scratch_score_storage<
             means[start + local] =
                 weighted_matrix_column_mean(&raw_values, nrows, block_rank, local, weights)?;
         }
-        if reused {
-            continue;
-        }
-        let raw = DenseMatrix::from_row_major(nrows, block_rank, raw_values)?;
-        let within = absorb_score_block(prepared, raw, absorb, cmg, solver_peak)?;
-        columns.patch_row_major_block(start, block_rank, within.as_slice())?;
     }
-    if reused {
-        columns.compact_row_major_columns_forward(generated_columns)?;
-    }
+    columns.compact_row_major_columns_forward(generated_columns)?;
     let tile_rows = ((TRANSPOSE_BUFFER_BYTES / 8) / rank).max(1).min(nrows);
     let cache_values = reserved_filled(
         reservation,
@@ -729,53 +641,6 @@ fn fill_raw_score_block<P: PreparedOlsFitView + ?Sized>(
         }
     }
     Ok(())
-}
-
-fn score_block_means<R: PreparedInferenceReservation>(
-    values: &[f64],
-    nrows: usize,
-    ncols: usize,
-    weights: ReferenceWeightView<'_>,
-    reservation: &mut R,
-) -> Result<Vec<f64>> {
-    let mut means = reserved_filled(
-        reservation,
-        ncols,
-        0.0_f64,
-        "unable to reserve prepared robust score means",
-    )?;
-    for (column, mean) in means.iter_mut().enumerate() {
-        *mean = weighted_matrix_column_mean(values, nrows, ncols, column, weights)?;
-    }
-    Ok(means)
-}
-
-fn absorb_score_block<P: PreparedOlsFitView + ?Sized>(
-    prepared: &P,
-    raw: DenseMatrix,
-    absorb: AbsorbConfig,
-    cmg: &mut Option<CmgAbsorber<'_>>,
-    solver_peak: &mut crate::memory::SolverWorkspacePeak,
-) -> Result<DenseMatrix> {
-    if raw.ncols() == 0 {
-        return Ok(raw);
-    }
-    let map_weights = match &prepared.fit_sample().weights {
-        PreparedWeights::None => BorrowedMapWeights::Unit,
-        PreparedWeights::Provided { values, .. } => BorrowedMapWeights::Provided(values),
-    };
-    let absorbed = if let Some(session) = cmg.as_mut() {
-        session.absorb(raw)?
-    } else {
-        prepared.fit_absorb_matrix(map_weights, raw, absorb)?
-    };
-    if !absorbed.report().certified() {
-        return Err(invalid_data(
-            "prepared robust score-design absorption did not certify",
-        ));
-    }
-    *solver_peak = solver_peak.max(absorbed.report().solver_workspace_peak);
-    Ok(absorbed.into_parts().0)
 }
 
 struct ScoreCertificateInputs<'storage, 'weights> {

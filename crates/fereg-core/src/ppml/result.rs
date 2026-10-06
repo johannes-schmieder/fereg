@@ -177,12 +177,7 @@ pub struct PpmlReconstructionCertificate {
 #[derive(Debug, Clone, PartialEq)]
 pub struct PpmlOutputState {
     original_observations: usize,
-    original_rows: Vec<usize>,
-    /// Retained only by the general-purpose constructor. Production PPML
-    /// stores the one requested xb vector directly instead of retaining two
-    /// inputs for one output.
-    offset: Vec<f64>,
-    finite_predictor: Vec<f64>,
+    original_rows: Arc<Vec<usize>>,
     xb: Vec<f64>,
     absorbed_predictor: Vec<f64>,
     eta: Vec<f64>,
@@ -329,7 +324,7 @@ pub struct PpmlFinalSample {
     original_observations: usize,
     candidate_observations: usize,
     prepared_original_rows: Arc<Vec<usize>>,
-    original_rows: Vec<usize>,
+    original_rows: Arc<Vec<usize>>,
     drop_reasons: Vec<DropReason>,
     outcome: Vec<f64>,
     prior_weights: Vec<f64>,
@@ -341,11 +336,12 @@ impl PpmlFinalSample {
         original_observations: usize,
         candidate_observations: usize,
         prepared_original_rows: Arc<Vec<usize>>,
-        original_rows: Vec<usize>,
+        original_rows: impl Into<Arc<Vec<usize>>>,
         drop_reasons: Vec<DropReason>,
         outcome: Vec<f64>,
         prior_weights: Vec<f64>,
     ) -> Result<Self> {
+        let original_rows = original_rows.into();
         if original_observations == 0
             || candidate_observations == 0
             || candidate_observations > original_observations
@@ -1073,9 +1069,7 @@ impl CertifiedPpmlResult {
             + bytes(&sample.drop_reasons)
             + bytes(&sample.outcome)
             + bytes(&sample.prior_weights)
-            + bytes(&output.original_rows)
-            + bytes(&output.offset)
-            + bytes(&output.finite_predictor)
+            + (2 * std::mem::size_of::<usize>() + std::mem::size_of::<Vec<usize>>()) as u128
             + bytes(&output.xb)
             + bytes(&output.absorbed_predictor)
             + bytes(&output.eta)
@@ -1137,59 +1131,6 @@ impl CertifiedPpmlResult {
 }
 
 impl PpmlOutputState {
-    #[allow(clippy::too_many_arguments)]
-    pub fn new(
-        original_observations: usize,
-        original_rows: Vec<usize>,
-        offset: Vec<f64>,
-        finite_predictor: Vec<f64>,
-        absorbed_predictor: Vec<f64>,
-        eta: Vec<f64>,
-        mean: Vec<f64>,
-        saved_effects: Option<PpmlSavedEffectOutput>,
-        tolerance: f64,
-    ) -> Result<Self> {
-        let certificate = certify_ppml_reconstruction(
-            original_observations,
-            &original_rows,
-            &offset,
-            &finite_predictor,
-            &absorbed_predictor,
-            &eta,
-            &mean,
-            saved_effects.as_ref(),
-            tolerance,
-        )
-        .map_err(|error| composed_result_error("PPML output-state construction failed", error))?;
-        if !certificate.passed {
-            return Err(FeregError::new(
-                ErrorCode::NonConvergence,
-                format!(
-                    "PPML final predictor reconstruction did not certify: predictor={:.3e}, mean={:.3e}, saved_total={:.3e}, saved_channels={:.3e}",
-                    certificate.predictor_relative_infinity_norm,
-                    certificate.mean_relative_infinity_norm,
-                    certificate.saved_total_relative_infinity_norm,
-                    certificate.saved_channels_relative_infinity_norm,
-                ),
-            ));
-        }
-        Ok(Self {
-            original_observations,
-            original_rows,
-            offset,
-            finite_predictor,
-            xb: Vec::new(),
-            absorbed_predictor,
-            eta,
-            mean,
-            mean_requested: true,
-            residual_kind: None,
-            residual: Vec::new(),
-            saved_effects,
-            certificate,
-        })
-    }
-
     /// Certify against the complete strict state while retaining only the
     /// exact observation products requested by the embedding transaction.
     ///
@@ -1199,7 +1140,7 @@ impl PpmlOutputState {
     #[allow(clippy::too_many_arguments)]
     pub(crate) fn new_requested(
         original_observations: usize,
-        original_rows: Vec<usize>,
+        original_rows: Arc<Vec<usize>>,
         offset: &[f64],
         finite_predictor: &[f64],
         absorbed_predictor: &[f64],
@@ -1262,8 +1203,6 @@ impl PpmlOutputState {
         Ok(Self {
             original_observations,
             original_rows,
-            offset: Vec::new(),
-            finite_predictor: Vec::new(),
             xb,
             absorbed_predictor: if request.absorbed {
                 fallible_copy(
@@ -1297,16 +1236,6 @@ impl PpmlOutputState {
     #[must_use]
     pub fn original_rows(&self) -> &[usize] {
         &self.original_rows
-    }
-
-    #[must_use]
-    pub fn offset(&self) -> &[f64] {
-        &self.offset
-    }
-
-    #[must_use]
-    pub fn finite_predictor(&self) -> &[f64] {
-        &self.finite_predictor
     }
 
     #[must_use]
@@ -1389,33 +1318,8 @@ impl PpmlOutputState {
             PpmlPredictionKind::Eta if !self.eta.is_empty() => {
                 fallible_copy(&self.eta, "unable to reserve PPML eta prediction")
             }
-            PpmlPredictionKind::Xb => {
-                if !self.xb.is_empty() {
-                    return fallible_copy(&self.xb, "unable to reserve PPML xb prediction");
-                }
-                if self.offset.len() != self.original_rows.len()
-                    || self.finite_predictor.len() != self.original_rows.len()
-                {
-                    return Err(FeregError::new(
-                        ErrorCode::InvalidArgument,
-                        "requested PPML xb product was not retained by this transaction",
-                    ));
-                }
-                let mut output = fallible_filled(
-                    self.offset.len(),
-                    0.0_f64,
-                    "unable to reserve PPML xb prediction",
-                )?;
-                for (row, value) in output.iter_mut().enumerate() {
-                    *value = self.offset[row] + self.finite_predictor[row];
-                    if !value.is_finite() {
-                        return Err(FeregError::new(
-                            ErrorCode::NonConvergence,
-                            "PPML xb prediction is not finite",
-                        ));
-                    }
-                }
-                Ok(output)
+            PpmlPredictionKind::Xb if !self.xb.is_empty() => {
+                fallible_copy(&self.xb, "unable to reserve PPML xb prediction")
             }
             PpmlPredictionKind::Response
             | PpmlPredictionKind::Score
@@ -1451,12 +1355,13 @@ impl PpmlOutputState {
                 };
                 ppml_residuals(outcome, &self.mean, residual_kind)
             }
-            PpmlPredictionKind::Mu | PpmlPredictionKind::Absorbed | PpmlPredictionKind::Eta => {
-                Err(FeregError::new(
-                    ErrorCode::InvalidArgument,
-                    "requested PPML observation product was not retained by this transaction",
-                ))
-            }
+            PpmlPredictionKind::Mu
+            | PpmlPredictionKind::Xb
+            | PpmlPredictionKind::Absorbed
+            | PpmlPredictionKind::Eta => Err(FeregError::new(
+                ErrorCode::InvalidArgument,
+                "requested PPML observation product was not retained by this transaction",
+            )),
         }
     }
 
@@ -1488,78 +1393,67 @@ impl PpmlOutputState {
 
 impl CertifiedPpmlResult {
     pub(crate) fn new(input: CertifiedPpmlResultInput) -> Result<Self> {
-        let CertifiedPpmlResultInput {
-            bias,
-            coefficients,
-            sample,
-            weights,
-            adjustment,
-            objective,
-            inference,
-            output,
-            convergence,
-            fixed_effects,
-            clusters,
-            separation,
-            separation_config,
-            separation_seal,
-            memory,
-            solver,
-            certificate_tolerance,
-        } = input;
-        if !certificate_tolerance.is_finite()
-            || certificate_tolerance <= 0.0
-            || certificate_tolerance >= 1.0
-        {
+        let sample = &input.sample;
+        let memory = &input.memory;
+        let tolerance = input.certificate_tolerance;
+        if !tolerance.is_finite() || tolerance <= 0.0 || tolerance >= 1.0 {
             return Err(FeregError::new(
                 ErrorCode::Internal,
                 "PPML result tolerance must be finite and lie in (0, 1)",
             ));
         }
-        if let Some(bias) = &bias {
+        if let Some(bias) = &input.bias {
             bias.validate()?;
-            if separation.separated_count != 0 {
+            if input.separation.separated_count != 0 {
                 return Err(FeregError::new(
                     ErrorCode::Internal,
                     "bias correction cannot certify a separation-selected sample",
                 ));
             }
         }
-        validate_adjustment_report(adjustment)?;
+        validate_adjustment_report(input.adjustment)?;
         validate_weight_report(
             sample.prior_weights(),
-            weights,
+            input.weights,
             sample.original_rows().len(),
         )
         .map_err(|error| composed_result_error("PPML final weight report is invalid", error))?;
         memory
             .validate()
             .map_err(|error| composed_result_error("PPML final memory report is invalid", error))?;
-        solver
+        input
+            .solver
             .validate()
             .map_err(|error| composed_result_error("PPML final solver report is invalid", error))?;
-        validate_memory_sample_axes(&sample, weights, adjustment, separation_config, &memory)?;
-        separation_seal.validate(
-            separation_config,
-            &separation,
+        validate_memory_sample_axes(
+            sample,
+            input.weights,
+            input.adjustment,
+            input.separation_config,
+            memory,
+        )?;
+        input.separation_seal.validate(
+            input.separation_config,
+            &input.separation,
             sample.original_rows(),
             sample.outcome(),
         )?;
-        let generation_aligned = validate_result_generation(&sample, &output, &separation)?;
+        let generation_aligned =
+            validate_result_generation(sample, &input.output, &input.separation)?;
         let metadata_aligned = validate_result_metadata(ResultMetadataValidation {
-            coefficients: &coefficients,
-            inference: &inference,
-            output: &output,
-            fixed_effects: &fixed_effects,
-            clusters: &clusters,
-            memory: &memory,
-            weights,
-            tolerance: certificate_tolerance,
+            coefficients: &input.coefficients,
+            inference: &input.inference,
+            output: &input.output,
+            fixed_effects: &input.fixed_effects,
+            clusters: &input.clusters,
+            memory,
+            weights: input.weights,
+            tolerance,
         })?;
-        validate_convergence(&convergence, certificate_tolerance)?;
+        validate_convergence(&input.convergence, tolerance)?;
         let separation_passed = validate_separation_report(
-            &separation,
-            separation_config,
+            &input.separation,
+            input.separation_config,
             sample.prepared_original_rows(),
             memory
                 .plan
@@ -1572,13 +1466,13 @@ impl CertifiedPpmlResult {
                         "PPML full separation dimension overflowed",
                     )
                 })?,
-            &fixed_effects,
+            &input.fixed_effects,
             memory.plan.preflight_dimensions.fe_total_levels,
         )?;
 
         let (recomputed_objective, null_objective) = replay_final_objectives_with_threads(
             sample.outcome(),
-            output.mean(),
+            input.output.mean(),
             sample.prior_weights(),
             crate::options::ThreadConfig::from_requested(memory.plan.dimensions.threads, true)?,
             memory
@@ -1588,20 +1482,21 @@ impl CertifiedPpmlResult {
         )
         .map_err(|error| composed_result_error("PPML final objective replay failed", error))?;
         let objective_deviance_relative_error =
-            relative_scalar_error(objective.deviance, recomputed_objective.deviance);
+            relative_scalar_error(input.objective.deviance, recomputed_objective.deviance);
         let objective_log_likelihood_relative_error = relative_scalar_error(
-            objective.log_likelihood,
+            input.objective.log_likelihood,
             recomputed_objective.log_likelihood,
         );
-        let likelihood = PpmlLikelihoodStatistics::from_replayed_null(objective, null_objective)
-            .map_err(|error| {
-                composed_result_error("PPML final likelihood publication failed", error)
-            })?;
-        let score_passed = convergence.final_score.passed;
-        let inference_passed = inference.vce.certificate.passed && inference.vce.psd.passed;
-        let reconstruction_passed = output.certificate().passed;
-        let passed = objective_deviance_relative_error <= certificate_tolerance
-            && objective_log_likelihood_relative_error <= certificate_tolerance
+        let likelihood =
+            PpmlLikelihoodStatistics::from_replayed_null(input.objective, null_objective).map_err(
+                |error| composed_result_error("PPML final likelihood publication failed", error),
+            )?;
+        let score_passed = input.convergence.final_score.passed;
+        let inference_passed =
+            input.inference.vce.certificate.passed && input.inference.vce.psd.passed;
+        let reconstruction_passed = input.output.certificate().passed;
+        let passed = objective_deviance_relative_error <= tolerance
+            && objective_log_likelihood_relative_error <= tolerance
             && score_passed
             && inference_passed
             && reconstruction_passed
@@ -1617,21 +1512,21 @@ impl CertifiedPpmlResult {
             ));
         }
         Ok(Self {
-            bias,
-            coefficients,
-            sample,
-            weights,
-            adjustment,
+            bias: input.bias,
+            coefficients: input.coefficients,
+            sample: input.sample,
+            weights: input.weights,
+            adjustment: input.adjustment,
             likelihood,
-            inference,
-            output,
-            convergence,
-            fixed_effects,
-            clusters,
-            separation,
-            separation_config,
-            memory,
-            solver,
+            inference: input.inference,
+            output: input.output,
+            convergence: input.convergence,
+            fixed_effects: input.fixed_effects,
+            clusters: input.clusters,
+            separation: input.separation,
+            separation_config: input.separation_config,
+            memory: input.memory,
+            solver: input.solver,
             certificate: PpmlResultCertificate {
                 objective_deviance_relative_error,
                 objective_log_likelihood_relative_error,
@@ -1641,7 +1536,7 @@ impl CertifiedPpmlResult {
                 separation_passed,
                 generation_aligned,
                 metadata_aligned,
-                tolerance: certificate_tolerance,
+                tolerance: input.certificate_tolerance,
                 passed,
             },
         })
@@ -3917,6 +3812,40 @@ mod tests {
         PpmlMemoryDimensions, PpmlSolverEngine, PpmlSolverFamily, PpmlSolverPlan, PpmlVceRequest,
     };
 
+    #[allow(clippy::too_many_arguments)]
+    fn output_state_for_test(
+        original_observations: usize,
+        original_rows: impl Into<Arc<Vec<usize>>>,
+        offset: Vec<f64>,
+        finite_predictor: Vec<f64>,
+        absorbed_predictor: Vec<f64>,
+        eta: Vec<f64>,
+        mean: Vec<f64>,
+        saved_effects: Option<PpmlSavedEffectOutput>,
+        tolerance: f64,
+    ) -> Result<PpmlOutputState> {
+        PpmlOutputState::new_requested(
+            original_observations,
+            original_rows.into(),
+            &offset,
+            &finite_predictor,
+            &absorbed_predictor,
+            &eta,
+            &mean,
+            &[],
+            saved_effects,
+            super::super::PreparedPpmlOutputRequest {
+                xb: true,
+                absorbed: true,
+                eta: true,
+                mean: true,
+                requested_observation_columns: 4,
+                ..Default::default()
+            },
+            tolerance,
+        )
+    }
+
     fn exact_state(saved: bool) -> PpmlOutputState {
         let offset = vec![0.1_f64, -0.2, 0.3];
         let finite = vec![0.2_f64, 0.4, -0.1];
@@ -3943,7 +3872,7 @@ mod tests {
             full_decomposition_tolerance: 1e-12,
             full_decomposition_certified: true,
         });
-        PpmlOutputState::new(
+        output_state_for_test(
             5,
             vec![0, 2, 4],
             offset,
@@ -3975,7 +3904,7 @@ mod tests {
             outcome.len(),
             outcome.len(),
             Arc::new((0..outcome.len()).collect::<Vec<_>>()),
-            (0..outcome.len()).collect(),
+            (0..outcome.len()).collect::<Vec<_>>(),
             vec![DropReason::Retained; outcome.len()],
             outcome.clone(),
             prior_weights.clone(),
@@ -4018,9 +3947,9 @@ mod tests {
             certificate_tolerance: 1e-10,
         })
         .expect("certified inference");
-        let output = PpmlOutputState::new(
+        let output = output_state_for_test(
             outcome.len(),
-            (0..outcome.len()).collect(),
+            (0..outcome.len()).collect::<Vec<_>>(),
             vec![0.0; outcome.len()],
             eta.clone(),
             vec![0.0; outcome.len()],
@@ -4034,7 +3963,7 @@ mod tests {
         let separation = SeparationReport {
             candidate_observations: outcome.len(),
             active: vec![true; outcome.len()],
-            retained_observations: (0..outcome.len()).collect(),
+            retained_observations: (0..outcome.len()).collect::<Vec<_>>(),
             dropped_observations: Vec::new(),
             drop_reasons: vec![None; outcome.len()],
             singleton_count: 0,
@@ -4319,11 +4248,11 @@ mod tests {
     #[test]
     fn nonmonotone_mapping_and_inconsistent_saved_effects_fail_closed() {
         let state = exact_state(true);
-        let error = PpmlOutputState::new(
+        let error = output_state_for_test(
             5,
             vec![0, 0, 4],
-            state.offset.clone(),
-            state.finite_predictor.clone(),
+            vec![0.0; state.xb.len()],
+            state.xb.clone(),
             state.absorbed_predictor.clone(),
             state.eta.clone(),
             state.mean.clone(),
@@ -4336,11 +4265,11 @@ mod tests {
 
         let mut saved = state.saved_effects.clone().expect("saved");
         saved.channels[0][1] += 0.25;
-        let error = PpmlOutputState::new(
+        let error = output_state_for_test(
             5,
             vec![0, 2, 4],
-            state.offset,
-            state.finite_predictor,
+            vec![0.0; state.xb.len()],
+            state.xb,
             state.absorbed_predictor,
             state.eta,
             state.mean,
@@ -4365,11 +4294,11 @@ mod tests {
             full_decomposition_tolerance: 1e-12,
             full_decomposition_certified: true,
         };
-        let partial_state = PpmlOutputState::new(
+        let partial_state = output_state_for_test(
             state.original_observations,
             state.original_rows,
-            state.offset,
-            state.finite_predictor,
+            vec![0.0; state.xb.len()],
+            state.xb,
             state.absorbed_predictor,
             state.eta,
             state.mean,
@@ -4388,11 +4317,11 @@ mod tests {
         let mut duplicate = state.saved_effects.clone().expect("saved effects");
         duplicate.declared_channel_indices = vec![0, 0];
         assert_eq!(
-            PpmlOutputState::new(
+            output_state_for_test(
                 state.original_observations,
                 state.original_rows.clone(),
-                state.offset.clone(),
-                state.finite_predictor.clone(),
+                vec![0.0; state.xb.len()],
+                state.xb.clone(),
                 state.absorbed_predictor.clone(),
                 state.eta.clone(),
                 state.mean.clone(),
@@ -4407,11 +4336,11 @@ mod tests {
         let mut out_of_range = state.saved_effects.clone().expect("saved effects");
         out_of_range.declared_channel_indices = vec![0, 2];
         assert_eq!(
-            PpmlOutputState::new(
+            output_state_for_test(
                 state.original_observations,
                 state.original_rows,
-                state.offset,
-                state.finite_predictor,
+                vec![0.0; state.xb.len()],
+                state.xb,
                 state.absorbed_predictor,
                 state.eta,
                 state.mean,
@@ -4670,7 +4599,7 @@ mod tests {
         assert!(error.message.contains("retained pre-separation"));
 
         let mut active = certified_composite_input();
-        active.sample.original_rows.pop();
+        Arc::make_mut(&mut active.sample.original_rows).pop();
         active.sample.outcome.pop();
         active.sample.prior_weights.pop();
         active.weights.physical_observations -= 1;
@@ -4961,7 +4890,7 @@ mod tests {
                 outcome.len(),
                 outcome.len(),
                 Arc::new((0..outcome.len()).collect::<Vec<_>>()),
-                (0..outcome.len()).collect(),
+                (0..outcome.len()).collect::<Vec<_>>(),
                 vec![DropReason::Retained; outcome.len()],
                 outcome,
                 prior_weights,

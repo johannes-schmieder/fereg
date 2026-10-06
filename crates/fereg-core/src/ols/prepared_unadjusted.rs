@@ -9,12 +9,12 @@ use std::time::Instant;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
 
 #[cfg(test)]
-use super::compute_prepared_ols_absorbed_dof;
+use super::fit_prepared_ols_coefficients_map;
+#[cfg(test)]
+use super::prepared_inference_view::compute_canonical_prepared_ols_absorbed_dof;
 use super::{
-    fit_prepared_categorical_ols_coefficients_map, fit_prepared_ols_coefficients_map,
-    CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy, PreparedOlsAbsorbedDofReport,
-    PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind, PreparedOlsColumnKind,
-    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
+    CertifiedPreparedOlsFit, PreparedOlsAbsorbedDofPolicy, PreparedOlsBreadCoordinateKind,
+    PreparedOlsColumnKind, PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatus,
 };
 
 /// Numerical and structural policy for the prepared iid OLS/WLS checkpoint.
@@ -124,115 +124,26 @@ impl PreparedOlsUnadjustedCovariance {
     }
 }
 
-/// Certified core-only prepared iid OLS/WLS result.
-///
-/// This type is intentionally constructed by one same-call pipeline so a fit
-/// or absorbed-DoF report from another prepared sample cannot be composed with
-/// it accidentally.  It is not a Stata result and performs no SPI writes.
-#[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedOlsUnadjusted<A = PreparedOlsAbsorbedDofReport> {
-    fit: CertifiedPreparedOlsFit,
-    absorbed_dof: A,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsResidualDofReport,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsUnadjustedCovariance,
-    certificate: PreparedOlsUnadjustedCertificate,
-}
+/// Same-call certified fit with its unadjusted covariance payload.
+pub type CertifiedPreparedOlsUnadjusted<A = CategoricalTopologyDofReport> =
+    super::prepared_products::CertifiedPreparedOlsInference<
+        A,
+        PreparedOlsResidualDofReport,
+        PreparedOlsUnadjustedCovariance,
+        PreparedOlsUnadjustedCertificate,
+    >;
 
-impl<A> CertifiedPreparedOlsUnadjusted<A> {
-    /// Heap owners retained after inference, excluding the borrowed prepared data.
-    #[must_use]
-    fn inference_buffer_bytes(&self) -> u128 {
-        self.fit.owned_buffer_bytes()
-            + crate::memory::vec_capacity_bytes(&self.covariance.values)
-            + crate::memory::vec_capacity_bytes(&self.covariance.standard_errors)
-    }
+/// Canonical topology identities for categorical and ordinary consumers.
+pub type CertifiedPreparedCategoricalOlsUnadjusted = CertifiedPreparedOlsUnadjusted;
 
-    #[must_use]
-    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
-        &self.fit
-    }
-
-    #[must_use]
-    pub const fn absorbed_dof(&self) -> &A {
-        &self.absorbed_dof
-    }
-
-    #[must_use]
-    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
-        self.weights
-    }
-
-    #[must_use]
-    pub const fn dof(&self) -> PreparedOlsResidualDofReport {
-        self.dof
-    }
-
-    #[must_use]
-    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
-        self.statistics
-    }
-
-    #[must_use]
-    pub const fn covariance(&self) -> &PreparedOlsUnadjustedCovariance {
-        &self.covariance
-    }
-
-    #[must_use]
-    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
-        self.fit.bread().coordinates()
-    }
-
-    #[must_use]
-    pub const fn certificate(&self) -> PreparedOlsUnadjustedCertificate {
-        self.certificate
+impl super::prepared_products::PreparedOlsInferenceBuffers for PreparedOlsUnadjustedCovariance {
+    fn inference_owned_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        bytes(&self.values) + bytes(&self.standard_errors)
     }
 }
 
-/// The categorical report retains its exact topology identities.
-pub type CertifiedPreparedCategoricalOlsUnadjusted =
-    CertifiedPreparedOlsUnadjusted<CategoricalTopologyDofReport>;
-
-impl CertifiedPreparedOlsUnadjusted<PreparedOlsAbsorbedDofReport> {
-    /// Heap owners retained after inference, excluding borrowed prepared data.
-    #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
-    }
-}
-
-impl CertifiedPreparedOlsUnadjusted<CategoricalTopologyDofReport> {
-    /// Heap owners retained after inference, excluding borrowed prepared data.
-    #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
-    }
-}
-
-#[derive(Debug, PartialEq)]
-struct PreparedOlsUnadjustedComponents {
-    fit: CertifiedPreparedOlsFit,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsResidualDofReport,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsUnadjustedCovariance,
-    certificate: PreparedOlsUnadjustedCertificate,
-}
-
-impl PreparedOlsUnadjustedComponents {
-    fn with_absorbed_dof<A>(self, absorbed_dof: A) -> CertifiedPreparedOlsUnadjusted<A> {
-        CertifiedPreparedOlsUnadjusted {
-            fit: self.fit,
-            absorbed_dof,
-            weights: self.weights,
-            dof: self.dof,
-            statistics: self.statistics,
-            covariance: self.covariance,
-            certificate: self.certificate,
-        }
-    }
-}
+type PreparedOlsUnadjustedComponents = CertifiedPreparedOlsUnadjusted<()>;
 
 trait InferenceReservation {
     fn reserve<T>(
@@ -390,29 +301,12 @@ fn fit_with_outcome_stages(
     config: PreparedOlsUnadjustedConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedOlsUnadjusted> {
-    let ordinary = crate::prepared_fit_view::OrdinaryPrepared(prepared);
-    let prepared = &ordinary;
-    validate_config(config)?;
-    reject_probability_iid(prepared)?;
-    let fit = || match rows {
-        Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(
-            prepared, config.fit, rows,
-        ),
-        None => fit_prepared_ols_coefficients_map(prepared, config.fit),
-    };
-    let fit = fit()?;
-    let absorbed_dof = prepared.inference_compute_absorbed_dof(config.absorbed_dof)?;
-    let mut reservation = SystemInferenceReservation;
-    crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-        compose_internal(
-            prepared,
-            fit,
-            absorbed_dof,
-            config.certificate_tolerance,
-            &mut reservation,
-            InferencePerturbations::default(),
-        )
-    })?
+    fit_inference_view(
+        &crate::prepared_fit_view::OrdinaryPrepared(prepared),
+        config,
+        rows,
+        false,
+    )
 }
 
 /// Fit and certify categorical-interaction OLS/WLS with conventional
@@ -433,27 +327,55 @@ pub fn fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments(
     fit_categorical_with_outcome_stages(prepared, config, rows)
 }
 
+/// Fit the canonical owner using its declared ordinary or categorical projection semantics.
+pub fn fit_prepared_model_unadjusted_with_loaded_moments(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsUnadjustedConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedOlsUnadjusted> {
+    if prepared.uses_categorical_preparation() {
+        fit_inference_view(prepared, config, rows, true)
+    } else {
+        fit_with_outcome_stages(prepared, config, rows)
+    }
+}
+
 fn fit_categorical_with_outcome_stages(
     prepared: &PreparedCategoricalOlsData,
     config: PreparedOlsUnadjustedConfig,
     rows: Option<super::LoadedOlsRows>,
 ) -> Result<CertifiedPreparedCategoricalOlsUnadjusted> {
+    fit_inference_view(prepared, config, rows, true)
+}
+
+fn fit_inference_view<P: PreparedOlsInferenceView + Sync + ?Sized>(
+    prepared: &P,
+    config: PreparedOlsUnadjustedConfig,
+    rows: Option<super::LoadedOlsRows>,
+    defer_dof: bool,
+) -> Result<CertifiedPreparedOlsUnadjusted> {
     validate_config(config)?;
     reject_probability_iid(prepared)?;
-    let fit = || match rows {
+    let fit = match rows {
         Some(rows) => super::prepared_fit::fit_prepared_ols_coefficients_with_loaded_rows(
             prepared, config.fit, rows,
         ),
-        None => fit_prepared_categorical_ols_coefficients_map(prepared, config.fit),
+        None => super::prepared_fit::fit_prepared_ols_coefficients_view_map(prepared, config.fit),
+    }?;
+    // Preserve ordinary metadata errors before team entry and categorical
+    // prefix errors inside it. Both paths consume the same accepted fit.
+    let early_dof = if defer_dof {
+        None
+    } else {
+        Some(prepared.inference_compute_absorbed_dof(config.absorbed_dof)?)
     };
-    let fit = fit()?;
-    // Surface prefix-validation errors after the fit. Metadata validation and
-    // DoF report allocation retain their original position on the same team.
     crate::ThreadTeam::new(config.fit.execution.threads).install(|| {
-        let (absorbed_dof, summary) = super::prepared_inference_view::categorical_dof_after_fit(
-            prepared,
-            config.absorbed_dof,
-        )?;
+        let absorbed_dof = match early_dof {
+            Some(report) => report,
+            None => prepared.inference_compute_absorbed_dof(config.absorbed_dof)?,
+        };
+        let summary =
+            prepared.inference_absorbed_dof_summary(&absorbed_dof, config.absorbed_dof)?;
         let mut reservation = SystemInferenceReservation;
         let components = compose_view_internal(
             prepared,
@@ -489,10 +411,11 @@ fn reject_probability_iid<P: PreparedOlsInferenceView + ?Sized>(prepared: &P) ->
     Ok(())
 }
 
+#[cfg(test)]
 fn compose_internal<R: InferenceReservation>(
     prepared: &PreparedOlsData,
     fit: CertifiedPreparedOlsFit,
-    absorbed_dof: PreparedOlsAbsorbedDofReport,
+    absorbed_dof: CategoricalTopologyDofReport,
     tolerance: f64,
     reservation: &mut R,
     perturbations: InferencePerturbations,
@@ -630,6 +553,8 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
         );
     }
     Ok(PreparedOlsUnadjustedComponents {
+        absorbed_dof: (),
+        metadata: (),
         fit,
         weights,
         dof,
@@ -1911,7 +1836,7 @@ mod tests {
 
     use super::super::{
         prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
-        OlsRequestV1, PreparedOlsAbsorbedDofEffectIdentity,
+        OlsRequestV1,
     };
     use super::*;
 
@@ -2625,7 +2550,7 @@ mod tests {
         assert!(no_intercept.dof().has_structural_intercept);
         assert_eq!(
             no_intercept.absorbed_dof().effects[0].identity,
-            PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb
+            crate::CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb
         );
         assert_eq!(no_intercept.covariance().dimension(), 0);
         let mean = y.iter().sum::<f64>() / y.len() as f64;
@@ -3016,12 +2941,12 @@ mod tests {
                 if fixed_effect.is_none() {
                     assert_eq!(
                         reported.absorbed_dof().effects[0].identity,
-                        PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb
+                        crate::CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb
                     );
                 } else {
                     assert!(matches!(
                         reported.absorbed_dof().effects[0].identity,
-                        PreparedOlsAbsorbedDofEffectIdentity::Explicit { .. }
+                        crate::CategoricalTopologyDofEffectIdentity::Explicit { .. }
                     ));
                 }
             }
@@ -3114,9 +3039,11 @@ mod tests {
         );
         let fit = fit_prepared_ols_coefficients_map(&with_fe, PreparedOlsFitConfig::default())
             .expect("certified fit");
-        let mut absorbed =
-            compute_prepared_ols_absorbed_dof(&with_fe, PreparedOlsAbsorbedDofPolicy::Pairwise)
-                .expect("certified absorbed DoF");
+        let mut absorbed = compute_canonical_prepared_ols_absorbed_dof(
+            &with_fe,
+            PreparedOlsAbsorbedDofPolicy::Pairwise,
+        )
+        .expect("certified absorbed DoF");
         absorbed.effects[0].categories += 1;
         absorbed.initial_categories += 1;
         absorbed.absorbed_rank += 1;
@@ -3142,12 +3069,14 @@ mod tests {
         );
         let fit = fit_prepared_ols_coefficients_map(&no_absorb, PreparedOlsFitConfig::default())
             .expect("no-absorb fit");
-        let mut absorbed =
-            compute_prepared_ols_absorbed_dof(&no_absorb, PreparedOlsAbsorbedDofPolicy::Pairwise)
-                .expect("implicit no-absorb DoF");
-        absorbed.effects[0].identity = PreparedOlsAbsorbedDofEffectIdentity::Explicit {
+        let mut absorbed = compute_canonical_prepared_ols_absorbed_dof(
+            &no_absorb,
+            PreparedOlsAbsorbedDofPolicy::Pairwise,
+        )
+        .expect("implicit no-absorb DoF");
+        absorbed.effects[0].identity = crate::CategoricalTopologyDofEffectIdentity::Explicit {
             term_id: AbsorbTermId::new(1).expect("fake term"),
-            source: SourceId::new(1).expect("fake source"),
+            sources: vec![SourceId::new(1).expect("fake source")],
         };
         let mut reservation = CountingReservation::default();
         let error = compose_internal(
@@ -3197,8 +3126,10 @@ mod tests {
         perturbations: InferencePerturbations,
     ) -> Result<CertifiedPreparedOlsUnadjusted> {
         let fit = fit_prepared_ols_coefficients_map(prepared, PreparedOlsFitConfig::default())?;
-        let absorbed =
-            compute_prepared_ols_absorbed_dof(prepared, PreparedOlsAbsorbedDofPolicy::Pairwise)?;
+        let absorbed = compute_canonical_prepared_ols_absorbed_dof(
+            prepared,
+            PreparedOlsAbsorbedDofPolicy::Pairwise,
+        )?;
         compose_internal(
             prepared,
             fit,

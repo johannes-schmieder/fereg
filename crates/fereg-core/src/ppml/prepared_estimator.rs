@@ -520,14 +520,15 @@ pub fn fit_prepared_ppml_interruptible(
     begin_phase_allocation(request.phase_allocation_probe, PpmlPhase::Publication);
     let publication_clock = PpmlPhaseClock::start();
     interrupt(PpmlInterruptPoint::Publication)?;
+    let final_rows = std::sync::Arc::new(fallible_copy(
+        prepared.original_rows(),
+        "unable to copy PPML final-sample row ledger",
+    )?);
     let sample = PpmlFinalSample::new(
         prepared.original_observations(),
         prepared.requested_candidate_observations(),
         separation_outcome.candidate_original_rows.clone(),
-        fallible_copy(
-            prepared.original_rows(),
-            "unable to copy PPML final-sample row ledger",
-        )?,
+        final_rows.clone(),
         final_drop_reasons,
         fallible_copy(
             prepared.outcome(),
@@ -540,10 +541,7 @@ pub fn fit_prepared_ppml_interruptible(
     )?;
     let output = PpmlOutputState::new_requested(
         prepared.original_observations(),
-        fallible_copy(
-            prepared.original_rows(),
-            "unable to copy PPML output row ledger",
-        )?,
+        final_rows,
         prepared.offset(),
         fit.linear().finite_predictor(),
         fit.linear().absorbed_predictor(),
@@ -3706,6 +3704,11 @@ mod tests {
         loaded.adjustment = Some(column(&exposure));
         loaded.adjustment_kind = PreparedPpmlAdjustmentKind::Exposure;
 
+        let mut offset_loaded = loaded.clone();
+        offset_loaded.adjustment = Some(column(&exposure.map(f64::ln)));
+        offset_loaded.adjustment_kind = PreparedPpmlAdjustmentKind::Offset;
+        let offset_result =
+            fit_prepared_ppml(request.clone(), offset_loaded).expect("fweighted offset PPML");
         let result = fit_prepared_ppml(request, loaded).expect("fweighted exposure PPML");
         assert_eq!(result.weights().kind, Some(WeightKind::Frequency));
         assert_eq!(result.weights().effective_observations, 23);
@@ -3716,12 +3719,9 @@ mod tests {
         );
         assert!(result.adjustment().prepared_as_offset);
         assert!(result.adjustment().exposure_log_transformed);
-        assert!(result
-            .output()
-            .offset()
-            .iter()
-            .zip(exposure)
-            .all(|(offset, exposure)| (*offset - exposure.ln()).abs() <= 2e-16));
+        assert_eq!(result.coefficients(), offset_result.coefficients());
+        assert_eq!(result.inference(), offset_result.inference());
+        assert_eq!(result.likelihood(), offset_result.likelihood());
         assert!(result.output().certificate().passed);
     }
 

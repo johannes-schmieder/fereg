@@ -6,10 +6,10 @@ use std::time::Instant;
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{self, ResourceSnapshot};
 use crate::result::{
-    build_shadow_result, CertifiedOlsInference, OlsShadowResult, OlsVceKind,
-    PreparedAbsorbedDofData, CERTIFICATE_ROWS, CLUSTER_COLUMNS, COEFFICIENT_STATUS_COLUMNS,
-    DOF_ROWS, FE_COLUMNS, FIT_ROWS, RECEIPT_COLUMNS, RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC,
-    RUNTIME_ROWS, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
+    build_shadow_result, CertifiedOlsInference, OlsShadowResult, OlsVceKind, CERTIFICATE_ROWS,
+    CLUSTER_COLUMNS, COEFFICIENT_STATUS_COLUMNS, DOF_ROWS, FE_COLUMNS, FIT_ROWS, RECEIPT_COLUMNS,
+    RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, RUNTIME_ROWS, SOLVER_COLUMNS, SOLVER_ROWS,
+    SUBSET_COLUMNS,
 };
 use crate::result_view::{PreparedOlsClusteredResultData, PreparedOlsResultData};
 use fereg_core::error::{ErrorCode, FeregError, Result};
@@ -348,10 +348,8 @@ fn complete_ols(
 ) -> Result<()> {
     let outputs_started = Instant::now();
     let categorical = data.categorical_data();
-    let known_connected = match inference.absorbed_dof() {
-        PreparedAbsorbedDofData::Categorical(report) => normalization_known_connected(report),
-        PreparedAbsorbedDofData::Legacy(_) => false,
-    };
+    let known_connected =
+        categorical.is_some() && normalization_known_connected(inference.absorbed_dof());
     let derived = build_derived_observation_outputs(
         data,
         categorical,
@@ -5857,7 +5855,7 @@ mod tests {
             let mut shadow = build_shadow_result(
                 result_data,
                 None,
-                CertifiedOlsInference::CategoricalIid(&inference),
+                CertifiedOlsInference::Iid(&inference),
                 action.outputs.residual.is_some(),
             )
             .unwrap();

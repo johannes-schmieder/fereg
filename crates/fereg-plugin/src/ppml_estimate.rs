@@ -4833,8 +4833,10 @@ mod tests {
     fn final_sample_validation_allocates_no_observation_mask() {
         let _guard = crate::instrumentation::lock_action_observation();
         let n = 100_000;
-        let rows: Vec<usize> = (0..n).step_by(2).collect();
-        let prepared = std::sync::Arc::new(rows.clone());
+        // Construct the shared row owner before measuring validation, as the
+        // estimator does. Publication audits separately charge its control block.
+        let rows: std::sync::Arc<Vec<usize>> = std::sync::Arc::new((0..n).step_by(2).collect());
+        let prepared = std::sync::Arc::new(rows.as_ref().clone());
         let reasons = (0..n)
             .map(|row| {
                 if row % 2 == 0 {

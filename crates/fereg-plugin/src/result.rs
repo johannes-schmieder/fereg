@@ -1,10 +1,8 @@
 use fereg_core::error::{ErrorCode, FeregError, Result};
 use fereg_core::fe::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
 use fereg_core::ols::{
-    CertifiedPreparedCategoricalOlsClustered, CertifiedPreparedCategoricalOlsRobust,
-    CertifiedPreparedCategoricalOlsUnadjusted, CertifiedPreparedOlsClustered,
-    CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust, CertifiedPreparedOlsUnadjusted,
-    PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate,
+    CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
+    CertifiedPreparedOlsUnadjusted, PreparedOlsBreadCoordinate,
     PreparedOlsClusterSubsetCertificate, PreparedOlsClusteredCertificate,
     PreparedOlsClusteredCovariance, PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdState,
     PreparedOlsExecutionReport, PreparedOlsFitStatistics, PreparedOlsFitStatus,
@@ -49,49 +47,12 @@ impl OlsVceKind {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub(crate) enum PreparedAbsorbedDofData<'a> {
-    Legacy(&'a PreparedOlsAbsorbedDofReport),
-    Categorical(&'a CategoricalTopologyDofReport),
-}
-
-impl PreparedAbsorbedDofData<'_> {
-    fn effects_len(self) -> usize {
-        match self {
-            Self::Legacy(value) => value.effects.len(),
-            Self::Categorical(value) => value.effects.len(),
-        }
-    }
-
-    fn initial_categories(self) -> usize {
-        match self {
-            Self::Legacy(value) => value.initial_categories,
-            Self::Categorical(value) => value.initial_categories,
-        }
-    }
-
-    fn redundant_categories(self) -> usize {
-        match self {
-            Self::Legacy(value) => value.redundant_categories,
-            Self::Categorical(value) => value.redundant_categories,
-        }
-    }
-
-    fn nested_categories(self) -> usize {
-        match self {
-            Self::Legacy(value) => value.nested_categories,
-            Self::Categorical(value) => value.nested_categories,
-        }
-    }
-}
+pub(crate) type PreparedAbsorbedDofData<'a> = &'a CategoricalTopologyDofReport;
 
 pub(crate) enum CertifiedOlsInference<'a> {
     Iid(&'a CertifiedPreparedOlsUnadjusted),
     Robust(&'a CertifiedPreparedOlsRobust),
     Clustered(&'a CertifiedPreparedOlsClustered),
-    CategoricalIid(&'a CertifiedPreparedCategoricalOlsUnadjusted),
-    CategoricalRobust(&'a CertifiedPreparedCategoricalOlsRobust),
-    CategoricalClustered(&'a CertifiedPreparedCategoricalOlsClustered),
 }
 
 impl<'a> CertifiedOlsInference<'a> {
@@ -99,18 +60,15 @@ impl<'a> CertifiedOlsInference<'a> {
         match self {
             Self::Iid(value) => value.owned_buffer_bytes(),
             Self::Robust(value) => value.owned_buffer_bytes(),
-            Self::CategoricalIid(value) => value.owned_buffer_bytes(),
-            Self::CategoricalRobust(value) => value.owned_buffer_bytes(),
             Self::Clustered(value) => value.owned_buffer_bytes(),
-            Self::CategoricalClustered(value) => value.owned_buffer_bytes(),
         }
     }
 
     pub(crate) const fn kind(&self) -> OlsVceKind {
         match self {
-            Self::Iid(_) | Self::CategoricalIid(_) => OlsVceKind::Iid,
-            Self::Robust(_) | Self::CategoricalRobust(_) => OlsVceKind::Robust,
-            Self::Clustered(_) | Self::CategoricalClustered(_) => OlsVceKind::Clustered,
+            Self::Iid(_) => OlsVceKind::Iid,
+            Self::Robust(_) => OlsVceKind::Robust,
+            Self::Clustered(_) => OlsVceKind::Clustered,
         }
     }
 
@@ -119,26 +77,14 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Iid(value) => value.fit(),
             Self::Robust(value) => value.fit(),
             Self::Clustered(value) => value.fit(),
-            Self::CategoricalIid(value) => value.fit(),
-            Self::CategoricalRobust(value) => value.fit(),
-            Self::CategoricalClustered(value) => value.fit(),
         }
     }
 
     pub(crate) fn absorbed_dof(&self) -> PreparedAbsorbedDofData<'a> {
         match self {
-            Self::Iid(value) => PreparedAbsorbedDofData::Legacy(value.absorbed_dof()),
-            Self::Robust(value) => PreparedAbsorbedDofData::Legacy(value.absorbed_dof()),
-            Self::Clustered(value) => PreparedAbsorbedDofData::Legacy(value.absorbed_dof()),
-            Self::CategoricalIid(value) => {
-                PreparedAbsorbedDofData::Categorical(value.absorbed_dof())
-            }
-            Self::CategoricalRobust(value) => {
-                PreparedAbsorbedDofData::Categorical(value.absorbed_dof())
-            }
-            Self::CategoricalClustered(value) => {
-                PreparedAbsorbedDofData::Categorical(value.absorbed_dof())
-            }
+            Self::Iid(value) => value.absorbed_dof(),
+            Self::Robust(value) => value.absorbed_dof(),
+            Self::Clustered(value) => value.absorbed_dof(),
         }
     }
 
@@ -147,9 +93,6 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Iid(value) => value.weights(),
             Self::Robust(value) => value.weights(),
             Self::Clustered(value) => value.weights(),
-            Self::CategoricalIid(value) => value.weights(),
-            Self::CategoricalRobust(value) => value.weights(),
-            Self::CategoricalClustered(value) => value.weights(),
         }
     }
 
@@ -158,9 +101,6 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Iid(value) => value.statistics(),
             Self::Robust(value) => value.statistics(),
             Self::Clustered(value) => value.statistics(),
-            Self::CategoricalIid(value) => value.statistics(),
-            Self::CategoricalRobust(value) => value.statistics(),
-            Self::CategoricalClustered(value) => value.statistics(),
         }
     }
 
@@ -169,9 +109,6 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Iid(value) => value.covariance_coordinates(),
             Self::Robust(value) => value.covariance_coordinates(),
             Self::Clustered(value) => value.covariance_coordinates(),
-            Self::CategoricalIid(value) => value.covariance_coordinates(),
-            Self::CategoricalRobust(value) => value.covariance_coordinates(),
-            Self::CategoricalClustered(value) => value.covariance_coordinates(),
         }
     }
 
@@ -180,9 +117,6 @@ impl<'a> CertifiedOlsInference<'a> {
             Self::Iid(value) => value.covariance().values(),
             Self::Robust(value) => value.covariance().values(),
             Self::Clustered(value) => value.covariance().values(),
-            Self::CategoricalIid(value) => value.covariance().values(),
-            Self::CategoricalRobust(value) => value.covariance().values(),
-            Self::CategoricalClustered(value) => value.covariance().values(),
         }
     }
 
@@ -190,16 +124,13 @@ impl<'a> CertifiedOlsInference<'a> {
         match self {
             Self::Iid(value) => Some(value.dof()),
             Self::Robust(value) => Some(value.dof()),
-            Self::CategoricalIid(value) => Some(value.dof()),
-            Self::CategoricalRobust(value) => Some(value.dof()),
-            Self::Clustered(_) | Self::CategoricalClustered(_) => None,
+            Self::Clustered(_) => None,
         }
     }
 
     fn clustered_dof(&self) -> Option<PreparedOlsClusteredDofReport> {
         match self {
             Self::Clustered(value) => Some(value.dof()),
-            Self::CategoricalClustered(value) => Some(value.dof()),
             _ => None,
         }
     }
@@ -207,7 +138,6 @@ impl<'a> CertifiedOlsInference<'a> {
     fn cluster_counts(&self) -> Option<&'a [usize]> {
         match self {
             Self::Clustered(value) => Some(value.cluster_counts()),
-            Self::CategoricalClustered(value) => Some(value.cluster_counts()),
             _ => None,
         }
     }
@@ -215,7 +145,6 @@ impl<'a> CertifiedOlsInference<'a> {
     fn subsets(&self) -> Option<&'a [PreparedOlsClusterSubsetCertificate]> {
         match self {
             Self::Clustered(value) => Some(value.subsets()),
-            Self::CategoricalClustered(value) => Some(value.subsets()),
             _ => None,
         }
     }
@@ -223,7 +152,6 @@ impl<'a> CertifiedOlsInference<'a> {
     fn clustered_covariance(&self) -> Option<&'a PreparedOlsClusteredCovariance> {
         match self {
             Self::Clustered(value) => Some(value.covariance()),
-            Self::CategoricalClustered(value) => Some(value.covariance()),
             _ => None,
         }
     }
@@ -231,7 +159,6 @@ impl<'a> CertifiedOlsInference<'a> {
     fn iid_certificate(&self) -> Option<PreparedOlsUnadjustedCertificate> {
         match self {
             Self::Iid(value) => Some(value.certificate()),
-            Self::CategoricalIid(value) => Some(value.certificate()),
             _ => None,
         }
     }
@@ -239,7 +166,6 @@ impl<'a> CertifiedOlsInference<'a> {
     fn robust_certificate(&self) -> Option<PreparedOlsRobustCertificate> {
         match self {
             Self::Robust(value) => Some(value.certificate()),
-            Self::CategoricalRobust(value) => Some(value.certificate()),
             _ => None,
         }
     }
@@ -247,7 +173,6 @@ impl<'a> CertifiedOlsInference<'a> {
     fn clustered_certificate(&self) -> Option<PreparedOlsClusteredCertificate> {
         match self {
             Self::Clustered(value) => Some(value.certificate()),
-            Self::CategoricalClustered(value) => Some(value.certificate()),
             _ => None,
         }
     }
@@ -663,7 +588,7 @@ fn build_dof(
             dof.residual_dof as f64,
             dof.residual_dof as f64,
             dof.residual_dof as f64,
-            absorbed.nested_categories(),
+            absorbed.nested_categories,
             dof.has_structural_intercept,
             dof.has_normalized_absorbed_intercept,
             dof.absorbed_rank_is_approximate,
@@ -683,8 +608,8 @@ fn build_dof(
         Some(fit),
         Some(correction),
         Some(nested as f64),
-        Some(absorbed.initial_categories() as f64),
-        Some(absorbed.redundant_categories() as f64),
+        Some(absorbed.initial_categories as f64),
+        Some(absorbed.redundant_categories as f64),
         Some(prepared.singletons().num_singletons as f64),
         Some(prepared.singletons().cascade_events as f64),
         Some(f64::from(structural)),
@@ -741,78 +666,50 @@ fn write_solver_row(output: &mut [f64], row: usize, report: &SolveReport) -> Res
 }
 
 fn build_fixed_effects(report: PreparedAbsorbedDofData<'_>) -> Result<(Vec<f64>, usize)> {
-    let rows = report.effects_len().max(1);
+    let rows = report.effects.len().max(1);
     let mut output = reserved_filled(
         checked_product(rows, FE_COLUMNS, "OLS FE metadata")?,
         0.0,
         "OLS FE metadata",
     )?;
-    match report {
-        PreparedAbsorbedDofData::Legacy(report) => {
-            for (row, effect) in report.effects.iter().enumerate() {
-                let (identity, term, source) = match effect.identity {
-                    PreparedOlsAbsorbedDofEffectIdentity::Explicit { term_id, source } => {
-                        (1.0, f64::from(term_id.get()), f64::from(source.get()))
-                    }
-                    PreparedOlsAbsorbedDofEffectIdentity::ImplicitNoAbsorb => (2.0, 0.0, 0.0),
-                };
-                write_fixed_effect_row(
-                    &mut output,
-                    row,
-                    identity,
-                    term,
-                    source,
-                    effect.categories,
-                    effect.redundant,
-                    effect.coefficients,
-                    effect.redundancy_exact,
-                    effect.nested,
-                );
-            }
-        }
-        PreparedAbsorbedDofData::Categorical(report) => {
-            for (row, effect) in report.effects.iter().enumerate() {
-                let (identity, term, source) = match &effect.identity {
-                    CategoricalTopologyDofEffectIdentity::Explicit { term_id, sources } => {
-                        if let Some(slope_source) = effect.slope_source {
-                            (4.0, f64::from(term_id.get()), f64::from(slope_source.get()))
-                        } else {
-                            match sources.as_slice() {
-                                [] => {
-                                    return Err(invalid(
-                                        "categorical absorbed effect has no source identity",
-                                    ));
-                                }
-                                [source] => {
-                                    (1.0, f64::from(term_id.get()), f64::from(source.get()))
-                                }
-                                _ => (3.0, f64::from(term_id.get()), 0.0),
-                            }
-                        }
-                    }
-                    CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb => {
-                        if effect.slope_source.is_some() {
+    for (row, effect) in report.effects.iter().enumerate() {
+        let (identity, term, source) = match &effect.identity {
+            CategoricalTopologyDofEffectIdentity::Explicit { term_id, sources } => {
+                if let Some(slope_source) = effect.slope_source {
+                    (4.0, f64::from(term_id.get()), f64::from(slope_source.get()))
+                } else {
+                    match sources.as_slice() {
+                        [] => {
                             return Err(invalid(
-                                "implicit categorical absorbed effect has a slope source",
+                                "categorical absorbed effect has no source identity",
                             ));
                         }
-                        (2.0, 0.0, 0.0)
+                        [source] => (1.0, f64::from(term_id.get()), f64::from(source.get())),
+                        _ => (3.0, f64::from(term_id.get()), 0.0),
                     }
-                };
-                write_fixed_effect_row(
-                    &mut output,
-                    row,
-                    identity,
-                    term,
-                    source,
-                    effect.categories,
-                    effect.redundant,
-                    effect.coefficients,
-                    effect.redundancy_exact,
-                    effect.nested,
-                );
+                }
             }
-        }
+            CategoricalTopologyDofEffectIdentity::ImplicitNoAbsorb => {
+                if effect.slope_source.is_some() {
+                    return Err(invalid(
+                        "implicit categorical absorbed effect has a slope source",
+                    ));
+                }
+                (2.0, 0.0, 0.0)
+            }
+        };
+        write_fixed_effect_row(
+            &mut output,
+            row,
+            identity,
+            term,
+            source,
+            effect.categories,
+            effect.redundant,
+            effect.coefficients,
+            effect.redundancy_exact,
+            effect.nested,
+        );
     }
     Ok((output, rows))
 }

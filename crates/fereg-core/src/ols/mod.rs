@@ -20,6 +20,8 @@ mod prepared_fit;
 mod prepared_inference_view;
 mod prepared_rhs;
 pub(crate) use prepared_rhs::retained_rhs_stride;
+mod prepared_products;
+pub use prepared_products::{CertifiedPreparedOlsInference, PreparedOlsInferenceBuffers};
 mod prepared_robust;
 mod prepared_scores;
 mod prepared_scratch;
@@ -70,7 +72,8 @@ pub use prepared_categorical_clusters::{
 };
 pub use prepared_clustered::{
     fit_prepared_categorical_ols_clustered_map,
-    fit_prepared_categorical_ols_clustered_map_with_loaded_moments, fit_prepared_ols_clustered_map,
+    fit_prepared_categorical_ols_clustered_map_with_loaded_moments,
+    fit_prepared_model_clustered_with_loaded_moments, fit_prepared_ols_clustered_map,
     fit_prepared_ols_clustered_map_with_loaded_moments, CertifiedPreparedCategoricalOlsClustered,
     CertifiedPreparedOlsClustered, PreparedOlsClusterSubsetCertificate,
     PreparedOlsClusteredCertificate, PreparedOlsClusteredConfig, PreparedOlsClusteredCovariance,
@@ -110,7 +113,8 @@ pub(crate) use prepared_rhs::{
 };
 pub use prepared_robust::{
     fit_prepared_categorical_ols_robust_map,
-    fit_prepared_categorical_ols_robust_map_with_loaded_moments, fit_prepared_ols_robust_map,
+    fit_prepared_categorical_ols_robust_map_with_loaded_moments,
+    fit_prepared_model_robust_with_loaded_moments, fit_prepared_ols_robust_map,
     fit_prepared_ols_robust_map_with_loaded_moments, CertifiedPreparedCategoricalOlsRobust,
     CertifiedPreparedOlsRobust, PreparedOlsRobustCertificate, PreparedOlsRobustConfig,
     PreparedOlsRobustCovariance,
@@ -119,7 +123,8 @@ pub(crate) use prepared_scratch::{conservative_scratch_io_bytes, ols_scratch_tra
 pub use prepared_unadjusted::{
     fit_prepared_categorical_ols_unadjusted_map,
     fit_prepared_categorical_ols_unadjusted_map_with_loaded_moments,
-    fit_prepared_ols_unadjusted_map, fit_prepared_ols_unadjusted_map_with_loaded_moments,
+    fit_prepared_model_unadjusted_with_loaded_moments, fit_prepared_ols_unadjusted_map,
+    fit_prepared_ols_unadjusted_map_with_loaded_moments,
     fit_prepared_ols_unadjusted_map_with_loaded_rows, CertifiedPreparedCategoricalOlsUnadjusted,
     CertifiedPreparedOlsUnadjusted, PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport,
     PreparedOlsResidualDofReport, PreparedOlsUnadjustedCertificate, PreparedOlsUnadjustedConfig,

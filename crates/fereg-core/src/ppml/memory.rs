@@ -55,7 +55,8 @@ const STRICT_FINAL_OVERLAP_VECTOR_COUNT: u128 = 4;
 /// composite objective replay. Requested observation products are accounted
 /// separately by `saved_output_bytes`.
 const PUBLICATION_RESULT_NUMERIC_VECTOR_COUNT: u128 = 3;
-const PUBLICATION_RESULT_ROW_MAP_COUNT: u128 = 2;
+// Sample and requested outputs share one immutable final-row ledger.
+const PUBLICATION_RESULT_ROW_MAP_COUNT: u128 = 1;
 const PREPARED_DROP_REASON_COPY_COUNT: u128 = 2;
 const _: () = assert!(size_of::<DropReason>() == 1);
 const _: () = assert!(size_of::<Option<SeparationDropReason>>() == 1);
@@ -1763,6 +1764,7 @@ fn estimate_route(
         )?,
     ])?;
     let publication_result_bytes = checked_sum(&[
+        arc_vec_control_block_bytes,
         matrix_bytes::<f64>(
             n,
             PUBLICATION_RESULT_NUMERIC_VECTOR_COUNT,
@@ -5680,7 +5682,8 @@ mod tests {
             estimate.fast.publication_result_bytes,
             validator_dimensions.observations as u128
                 * (PUBLICATION_RESULT_NUMERIC_VECTOR_COUNT * size_of::<f64>() as u128
-                    + PUBLICATION_RESULT_ROW_MAP_COUNT * size_of::<usize>() as u128),
+                    + PUBLICATION_RESULT_ROW_MAP_COUNT * size_of::<usize>() as u128)
+                + (2 * size_of::<usize>() + size_of::<Vec<usize>>()) as u128,
         );
         let plan = plan_ppml_memory(
             validator_dimensions,

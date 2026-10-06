@@ -17,14 +17,14 @@ use crate::topology_dof::CategoricalTopologyDofReport;
 use rayon::prelude::*;
 
 use super::prepared_clustered_view::PreparedOlsClusteredView;
-#[cfg(test)]
-use super::prepared_fit::fit_prepared_ols_coefficients_view_map;
 use super::prepared_inference_view::{PreparedOlsAbsorbedDofSummary, PreparedOlsInferenceView};
+#[cfg(test)]
+use super::prepared_scores::take_prepared_ols_score_product;
+use super::prepared_scores::PreparedOlsScoreProduct;
 use super::prepared_scores::{
     build_prepared_ols_score_design, reserved_filled, CertifiedPreparedOlsScoreDesign,
     PreparedInferenceReservation, SystemPreparedInferenceReservation,
 };
-use super::prepared_scratch::PreparedOlsScratch;
 use super::prepared_unadjusted::{
     build_reference_weight_report_view, build_residual_dof_view, build_statistics, checked_square,
     compensated_add, exact_integer_as_f64, independent_outcome_sum, independent_residual_sum,
@@ -32,9 +32,9 @@ use super::prepared_unadjusted::{
 };
 use super::{
     CertifiedPreparedOlsFit, PreparedCategoricalOlsClusteredData, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsAbsorbedDofReport, PreparedOlsBreadCoordinate, PreparedOlsBreadCoordinateKind,
-    PreparedOlsClusteredData, PreparedOlsColumnKind, PreparedOlsFitConfig,
-    PreparedOlsFitStatistics, PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
+    PreparedOlsBreadCoordinateKind, PreparedOlsClusteredData, PreparedOlsColumnKind,
+    PreparedOlsData, PreparedOlsFitConfig, PreparedOlsFitStatistics,
+    PreparedOlsReferenceWeightReport, PreparedOlsResidualDofReport,
 };
 
 const CLUSTER_REDUCTION_MAX_BLOCKS: usize = 64;
@@ -188,103 +188,48 @@ pub struct PreparedOlsClusteredCertificate {
     pub passed: bool,
 }
 
-/// Same-call fit, cluster-aware absorbed DoF, multiway covariance, statistics,
-/// and independent certificates. No observation-scale inference matrix or
-/// subset ordering survives in this returned value.
+/// Same-call certified fit with its clustered covariance payload.
+pub type CertifiedPreparedOlsClustered<A = CategoricalTopologyDofReport> =
+    super::prepared_products::CertifiedPreparedOlsInference<
+        A,
+        PreparedOlsClusteredDofReport,
+        PreparedOlsClusteredCovariance,
+        PreparedOlsClusteredCertificate,
+        PreparedOlsClusteredMetadata,
+    >;
+
+/// Canonical topology identities for categorical and ordinary consumers.
+pub type CertifiedPreparedCategoricalOlsClustered = CertifiedPreparedOlsClustered;
+
+impl super::prepared_products::PreparedOlsInferenceBuffers for PreparedOlsClusteredCovariance {
+    fn inference_owned_bytes(&self) -> u128 {
+        use crate::memory::vec_capacity_bytes as bytes;
+        bytes(&self.values) + bytes(&self.standard_errors) + bytes(&self.raw_values)
+    }
+}
+
+/// Cluster identities and subset certificates retained after score consumption.
 #[derive(Debug, PartialEq)]
-pub struct CertifiedPreparedOlsClustered<A = PreparedOlsAbsorbedDofReport> {
-    fit: CertifiedPreparedOlsFit,
-    absorbed_dof: A,
-    weights: PreparedOlsReferenceWeightReport,
-    dof: PreparedOlsClusteredDofReport,
+pub struct PreparedOlsClusteredMetadata {
     cluster_counts: Vec<usize>,
     subsets: Vec<PreparedOlsClusterSubsetCertificate>,
-    statistics: PreparedOlsFitStatistics,
-    covariance: PreparedOlsClusteredCovariance,
-    certificate: PreparedOlsClusteredCertificate,
+}
+
+impl super::prepared_products::PreparedOlsInferenceBuffers for PreparedOlsClusteredMetadata {
+    fn inference_owned_bytes(&self) -> u128 {
+        crate::memory::vec_capacity_bytes(&self.cluster_counts)
+            + crate::memory::vec_capacity_bytes(&self.subsets)
+    }
 }
 
 impl<A> CertifiedPreparedOlsClustered<A> {
-    /// Heap owners retained after inference, excluding prepared data/cluster codes.
-    #[must_use]
-    fn inference_buffer_bytes(&self) -> u128 {
-        use crate::memory::vec_capacity_bytes as bytes;
-        self.fit.owned_buffer_bytes()
-            + bytes(&self.cluster_counts)
-            + bytes(&self.subsets)
-            + bytes(&self.covariance.raw_values)
-            + bytes(&self.covariance.values)
-            + bytes(&self.covariance.standard_errors)
-    }
-
-    #[must_use]
-    pub const fn fit(&self) -> &CertifiedPreparedOlsFit {
-        &self.fit
-    }
-
-    #[must_use]
-    pub const fn absorbed_dof(&self) -> &A {
-        &self.absorbed_dof
-    }
-
-    #[must_use]
-    pub const fn weights(&self) -> PreparedOlsReferenceWeightReport {
-        self.weights
-    }
-
-    #[must_use]
-    pub const fn dof(&self) -> PreparedOlsClusteredDofReport {
-        self.dof
-    }
-
     #[must_use]
     pub fn cluster_counts(&self) -> &[usize] {
-        &self.cluster_counts
+        &self.metadata.cluster_counts
     }
-
     #[must_use]
     pub fn subsets(&self) -> &[PreparedOlsClusterSubsetCertificate] {
-        &self.subsets
-    }
-
-    #[must_use]
-    pub const fn statistics(&self) -> PreparedOlsFitStatistics {
-        self.statistics
-    }
-
-    #[must_use]
-    pub const fn covariance(&self) -> &PreparedOlsClusteredCovariance {
-        &self.covariance
-    }
-
-    #[must_use]
-    pub fn covariance_coordinates(&self) -> &[PreparedOlsBreadCoordinate] {
-        self.fit.bread().coordinates()
-    }
-
-    #[must_use]
-    pub const fn certificate(&self) -> PreparedOlsClusteredCertificate {
-        self.certificate
-    }
-}
-
-/// The categorical report retains its exact topology identities.
-pub type CertifiedPreparedCategoricalOlsClustered =
-    CertifiedPreparedOlsClustered<CategoricalTopologyDofReport>;
-
-impl CertifiedPreparedOlsClustered<PreparedOlsAbsorbedDofReport> {
-    /// Heap owners retained after inference, excluding borrowed prepared data.
-    #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
-    }
-}
-
-impl CertifiedPreparedOlsClustered<CategoricalTopologyDofReport> {
-    /// Heap owners retained after inference, excluding borrowed prepared data.
-    #[must_use]
-    pub fn owned_buffer_bytes(&self) -> u128 {
-        self.inference_buffer_bytes() + self.absorbed_dof.owned_buffer_bytes()
+        &self.metadata.subsets
     }
 }
 
@@ -506,6 +451,19 @@ pub fn fit_prepared_categorical_ols_clustered_map_with_loaded_moments(
     Ok(components)
 }
 
+/// Fit the canonical owner without duplicating the host's VCE dispatch.
+pub fn fit_prepared_model_clustered_with_loaded_moments(
+    prepared: &PreparedOlsData,
+    config: PreparedOlsClusteredConfig,
+    rows: Option<super::LoadedOlsRows>,
+) -> Result<CertifiedPreparedOlsClustered> {
+    if prepared.uses_categorical_preparation() {
+        fit_prepared_categorical_ols_clustered_map_with_loaded_moments(prepared, config, rows)
+    } else {
+        fit_prepared_ols_clustered_map_with_loaded_moments(prepared, config, rows)
+    }
+}
+
 #[cfg(test)]
 fn fit_with_reservation<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsClusteredData,
@@ -538,8 +496,7 @@ fn fit_clustered_view_with_reservation<
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
     rows: Option<super::LoadedOlsRows>,
-) -> Result<CertifiedPreparedOlsClustered<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
-{
+) -> Result<CertifiedPreparedOlsClustered<CategoricalTopologyDofReport>> {
     validate_config(prepared, config)?;
     let ols = prepared.clustered_ols();
     let (fit, score_scratch) = super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_loaded_moments(ols, config.fit, rows)?;
@@ -556,18 +513,19 @@ fn fit_clustered_view_with_reservation<
 #[cfg(test)]
 fn compose<R: PreparedInferenceReservation>(
     prepared: &PreparedOlsClusteredData,
-    fit: CertifiedPreparedOlsFit,
+    mut fit: CertifiedPreparedOlsFit,
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
 ) -> Result<CertifiedPreparedOlsClustered> {
+    let scores = take_prepared_ols_score_product(&mut fit, None)?;
     let components = compose_clustered_view(
         &crate::prepared_fit_view::OrdinaryPrepared(prepared),
         fit,
         config,
         reservation,
         perturbations,
-        None,
+        scores,
     )?;
     Ok(components)
 }
@@ -578,9 +536,8 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
     config: PreparedOlsClusteredConfig,
     reservation: &mut R,
     perturbations: ClusteredPerturbations,
-    score_scratch: Option<PreparedOlsScratch>,
-) -> Result<CertifiedPreparedOlsClustered<<P::Ols as PreparedOlsInferenceView>::AbsorbedDofReport>>
-{
+    score_scratch: PreparedOlsScoreProduct,
+) -> Result<CertifiedPreparedOlsClustered<CategoricalTopologyDofReport>> {
     let ols = prepared.clustered_ols();
     let dimensions = borrow_cluster_dimensions(prepared, reservation)?;
     let nesting_dimensions = if config.account_cluster_nesting {
@@ -644,7 +601,6 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
         ols,
         &mut fit,
         weight_view,
-        config.fit.absorb,
         config.certificate_tolerance,
         reservation,
         score_scratch,
@@ -809,8 +765,10 @@ fn compose_clustered_view<P: PreparedOlsClusteredView + ?Sized, R: PreparedInfer
         absorbed_dof,
         weights,
         dof,
-        cluster_counts,
-        subsets: raw.subsets,
+        metadata: PreparedOlsClusteredMetadata {
+            cluster_counts,
+            subsets: raw.subsets,
+        },
         statistics,
         covariance,
         certificate,
@@ -3421,7 +3379,11 @@ mod tests {
         perturbations: ClusteredPerturbations,
     ) -> Result<CertifiedPreparedOlsClustered> {
         let config = PreparedOlsClusteredConfig::default();
-        let fit = fit_prepared_ols_coefficients_view_map(prepared.ols(), config.fit)?;
+        let fit = fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit(
+            prepared.ols(),
+            config.fit,
+            0,
+        )?;
         compose(prepared, fit, config, reservation, perturbations)
     }
 
