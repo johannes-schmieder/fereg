@@ -270,3 +270,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-06 M32.1 accepted: net-1319/M31,-10468/M26; source/science/Astra high pass; fixed3unresolved retained; comparable successor acceptance authorized; Mac only.
 - 2026-10-06 M33.1 accepted: -401/M32,-10869/M26; science/Astra high pass; parent15within,fixed12within2outside1unresolved; inherited costs retained; Mac only.
 - 2026-10-06 M34.1 accepted: -938/M33,-11807/M26; science/Astra high pass;4448commands,parent15within,fixed4unresolved; priorM28/M30 costs retained; whole-M34 budgets open.
+- 2026-10-06 M34.2: Label frozenM26 owner/protocol maps as historical; current architecture/qualified plan linked; runtime/evidence unchanged; governance/links pass.

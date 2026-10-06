@@ -224,6 +224,12 @@ The holdout tier is reserved from tuning and combines frozen new shapes/seeds
 with skewed weighted, disconnected factor and three-FE slope models.
 Revealed holdouts require replacement before a generalization claim.
 
+The following timing declaration is the frozen M26 protocol, retained for its
+historical campaigns. Prospective campaigns use the separately calibrated and
+Astra-reviewed bounded protocol identified by their frozen plans; the
+[M34.1 receipt](../../bench/history/2026-10-06-m34-host-qualification.json)
+identifies the current plan and all screening/confirmation observations.
+
 Command median is primary. Each artifact/cell gets one warmup and 32 fresh
 processes per block, in alternating artifact pairs. Exactly one forward and
 one inverse-order block are allowed. The resolution check uses the central 95%
@@ -260,12 +266,14 @@ allocation audits. Absent row-pass or observed-memory counters stay unavailable;
 the M24 profiles identify repeated normalization independently of phase timers.
 No synthetic zero is used for unavailable telemetry.
 
-The executable cell attributes map to current owners as follows. The host
-predicate is `estimate.rs::run`: a multi-source absorbed term, any absorbed
-slope, or any saved-effect name selects categorical OLS preparation. Thus
-saved FE alone currently changes the owning preparation pipeline.
+The following cell-to-owner map records frozen M26. Its `estimate.rs::run`
+predicate selected categorical OLS preparation for a multi-source absorbed
+term, an absorbed slope or a saved-effect name. That owning-pipeline split,
+cluster wrappers and `PreparedPipeline` have since been retired. The accepted
+module/dependency/lifetime and feature-test map is in
+[ARCHITECTURE](../ARCHITECTURE.md#m341-accepted-host-boundary).
 
-| Cell attributes | Current owner/operation exercised |
+| Cell attributes | Frozen-M26 owner/operation exercised |
 |---|---|
 | OLS, intercept-only FE, outputs none/residual | Ordinary `PreparedOlsData`; numeric sample, finite recipes and ordinary topology |
 | OLS, absorbed slopes or outputs fe/combined | `PreparedCategoricalOlsData`; finalized categorical topology and recovery |
