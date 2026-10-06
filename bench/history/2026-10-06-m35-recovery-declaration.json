@@ -1,0 +1,30 @@
+{
+  "milestone": "M35",
+  "responsibility": "PPML saved-FE recovery stopping contract",
+  "status": "declared before implementation; qualification pending",
+  "qualified_parent": "365066460fb2a264f3122cc843ec219d11d533d6",
+  "parent_native_sha256": "70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e",
+  "reproducer": "original development campaign: cover-ppml-3fe-disconnected-s0-{auto,fast,low}; both M33 and M34 strict references fail with r430",
+  "diagnosis": "Shared MAP accepts a recurrence residual up to max(100*tolerance,1e-10); PPML publication demands its requested tolerance, 1e-12 in the failed references. The solve stops prematurely.",
+  "affected_scope": [
+    "PPML requested saved effects using general categorical MAP recovery when the old stopping condition is weaker than publication",
+    "Recovery iteration count, saved-channel values, reconstruction evidence and previously refused output publication may improve",
+    "Shared recovery accepts an explicit caller reconstruction requirement; OLS keeps its existing cancellation-aware requirement"
+  ],
+  "preserved_scope": [
+    "No estimator, coefficient, sample, rank, covariance, weight, normalization or discrete model policy change",
+    "Already certified recovery keeps the same iteration sequence and results",
+    "Requested tolerance, iteration cap, failure transaction and allocation envelope remain binding",
+    "No workload, size, worker, weight or memory routing fence"
+  ],
+  "implementation": "Continue the same bounded MAP solve until both FE moments and caller reconstruction requirement pass; independently check the fresh coefficient product against the original target before finishing.",
+  "qualification": [
+    "Preserve original six failed references and every original campaign observation",
+    "Strict residual-only diagnostic and independent explicit sparse-indicator recovery on the exact disconnected dataset",
+    "Executable premature-stop and exhausted-budget regressions",
+    "All three memory choices and eight worker budgets for repaired references, fixed-config repeatability and exact unaffected science against M34",
+    "Required full local entrypoint, mapped PPML output and transaction checks, complexity ratchet and fresh Astra acceptance review",
+    "Fresh integrated artifact qualification before timing; GitHub and remote tests remain paused"
+  ],
+  "production_line_effect": "Repair adds bounded contract/certificate code; count all additions against the accepted 11807-line retirement. No additional retirement claimed."
+}

@@ -566,6 +566,7 @@ impl PreparedModel {
             lsmr,
             map,
             memory_budget,
+            None,
         )
     }
 
@@ -593,6 +594,7 @@ impl PreparedModel {
             lsmr,
             map,
             None,
+            Some(map.tolerance),
         )
     }
 
@@ -608,6 +610,7 @@ impl PreparedModel {
         lsmr: LsmrConfig,
         map: MapConfig,
         memory_budget: Option<FeSolverMemoryBudget>,
+        reconstruction_tolerance: Option<f64>,
     ) -> Result<RecoveredCategoricalEffects> {
         self.validate_with_reusable_topology(true)?;
         let effects = self.effect_views()?;
@@ -623,6 +626,7 @@ impl PreparedModel {
             lsmr,
             map,
             memory_budget,
+            reconstruction_tolerance,
         })
     }
 

@@ -447,9 +447,11 @@ pub fn recover_finalized_categorical_effects_map_certified(
         requested_channels,
         config,
         true,
+        None,
     )
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn recover_finalized_categorical_effects_map_selected_certified(
     topology: &FinalizedCategoricalTopology,
     effects: &[CategoricalAbsorbedEffectView<'_>],
@@ -458,6 +460,7 @@ pub(crate) fn recover_finalized_categorical_effects_map_selected_certified(
     requested_channels: &[bool],
     config: MapConfig,
     materialize_absorbed_sum: bool,
+    reconstruction_tolerance: Option<f64>,
 ) -> Result<RecoveredCategoricalEffects> {
     let mut reservation = SystemSlopeWorkspaceReservation;
     recover_with_reservation(
@@ -467,6 +470,7 @@ pub(crate) fn recover_finalized_categorical_effects_map_selected_certified(
         target,
         requested_channels,
         config,
+        reconstruction_tolerance,
         &mut reservation,
     )
     .map(|mut recovered| {
@@ -2174,6 +2178,7 @@ fn channel_major_effect_offsets(
     Ok(offsets)
 }
 
+#[allow(clippy::too_many_arguments)]
 fn recover_with_reservation<R: SlopeWorkspaceReservation>(
     topology: &FinalizedCategoricalTopology,
     effects: &[CategoricalAbsorbedEffectView<'_>],
@@ -2181,9 +2186,22 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
     target: &[f64],
     requested_channels: &[bool],
     config: MapConfig,
+    reconstruction_tolerance: Option<f64>,
     reservation: &mut R,
 ) -> Result<RecoveredCategoricalEffects> {
     validate_config(config)?;
+    let span_tolerance = recovery_reconstruction_threshold(config.tolerance);
+    let reconstruction_threshold = match reconstruction_tolerance {
+        Some(tolerance) if tolerance.is_finite() && tolerance > 0.0 => {
+            tolerance.min(span_tolerance)
+        }
+        Some(_) => {
+            return Err(invalid_argument(
+                "invalid recovery reconstruction tolerance",
+            ))
+        }
+        None => span_tolerance,
+    };
     topology.validate()?;
     let nobs = topology.nobs();
     if target.len() != nobs || effects.len() != topology.effect_to_topology().len() {
@@ -2276,7 +2294,19 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
     // A small FE moment only shows that the remainder is nearly orthogonal to
     // each effect. Weak graphs can reach that condition before the remainder
     // is small enough to certify that the target lies in the absorbed span.
-    if initial.passed && recovery_reconstruction_passed(target, &residual, config.tolerance)? {
+    if initial.passed
+        && recovery_reconstruction_passed(target, &residual, reconstruction_threshold)?
+        && reconstruction_tolerance.is_none_or(|tolerance| {
+            coefficient_reconstruction_passed(
+                topology,
+                effects,
+                target,
+                &effect_offsets,
+                &alphas,
+                tolerance,
+            )
+        })
+    {
         return finish_recovery(
             topology,
             effects,
@@ -2287,6 +2317,7 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
             &residual,
             0,
             config.tolerance,
+            reconstruction_threshold,
             reservation,
         );
     }
@@ -2328,7 +2359,17 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
                 &mut workspace,
             )?;
             if certificate.passed
-                && recovery_reconstruction_passed(target, &residual, config.tolerance)?
+                && recovery_reconstruction_passed(target, &residual, reconstruction_threshold)?
+                && reconstruction_tolerance.is_none_or(|tolerance| {
+                    coefficient_reconstruction_passed(
+                        topology,
+                        effects,
+                        target,
+                        &effect_offsets,
+                        &alphas,
+                        tolerance,
+                    )
+                })
             {
                 return finish_recovery(
                     topology,
@@ -2340,10 +2381,14 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
                     &residual,
                     iteration,
                     config.tolerance,
+                    reconstruction_threshold,
                     reservation,
                 );
             }
-            if certificate.passed && iteration == config.max_iterations {
+            if certificate.passed
+                && iteration == config.max_iterations
+                && reconstruction_tolerance.is_none()
+            {
                 return finish_recovery(
                     topology,
                     effects,
@@ -2354,12 +2399,18 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
                     &residual,
                     iteration,
                     config.tolerance,
+                    reconstruction_threshold,
                     reservation,
                 );
             }
         }
     }
-    Err(invalid_data(
+    Err(FeregError::new(
+        if reconstruction_tolerance.is_some() {
+            ErrorCode::NonConvergence
+        } else {
+            ErrorCode::InvalidData
+        },
         "categorical effect recovery exhausted its iteration budget without certification",
     ))
 }
@@ -2434,11 +2485,12 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
     residual: &DenseMatrix,
     iterations: usize,
     tolerance: f64,
+    reconstruction_threshold: f64,
     reservation: &mut R,
 ) -> Result<RecoveredCategoricalEffects> {
     let reconstruction_relative_infinity =
         recovery_reconstruction_relative_infinity(target, residual)?;
-    if reconstruction_relative_infinity > recovery_reconstruction_threshold(tolerance) {
+    if reconstruction_relative_infinity > reconstruction_threshold {
         return Err(invalid_data(format!(
             "categorical recovery target is not certified to lie in the absorbed span: relative infinity residual {reconstruction_relative_infinity:.6e}",
         )));
@@ -2516,10 +2568,52 @@ fn finish_recovery<R: SlopeWorkspaceReservation>(
 fn recovery_reconstruction_passed(
     target: &[f64],
     residual: &DenseMatrix,
-    tolerance: f64,
+    threshold: f64,
 ) -> Result<bool> {
-    Ok(recovery_reconstruction_relative_infinity(target, residual)?
-        <= recovery_reconstruction_threshold(tolerance))
+    Ok(recovery_reconstruction_relative_infinity(target, residual)? <= threshold)
+}
+
+// Recurrence residuals can drift from the accumulated coefficient product.
+// A strict publication caller must certify that fresh product in declared
+// channel order against the original target, without allocating in the solve.
+fn coefficient_reconstruction_passed(
+    topology: &FinalizedCategoricalTopology,
+    effects: &[CategoricalAbsorbedEffectView<'_>],
+    target: &[f64],
+    offsets: &[usize],
+    alphas: &[f64],
+    tolerance: f64,
+) -> bool {
+    target.iter().enumerate().all(|(row, expected)| {
+        let mut fitted = 0.0;
+        for (index, effect) in effects.iter().enumerate() {
+            let Ok(source) = topology
+                .registry()
+                .source(topology.effect_to_topology()[index])
+            else {
+                return false;
+            };
+            // The solve validated this immutable finalized owner before iterating.
+            let codes = source
+                .partition()
+                .owned_interaction_codes()
+                .unwrap_or_else(|| {
+                    topology.compacted_sources()[source.partition().categorical_source_indices()[0]]
+                        .codes()
+                });
+            let level = codes[row] as usize;
+            for channel in 0..effect.channels() {
+                let basis = if effect.intercept && channel == 0 {
+                    1.0
+                } else {
+                    effect.slopes[channel - usize::from(effect.intercept)][row]
+                };
+                fitted += alphas[offsets[index] + level * effect.channels() + channel] * basis;
+            }
+        }
+        let scale = fitted.abs().max(expected.abs()).max(1.0);
+        fitted.is_finite() && (fitted - expected).abs() / scale <= tolerance
+    })
 }
 
 fn recovery_reconstruction_relative_infinity(
@@ -3549,6 +3643,7 @@ mod tests {
             lsmr: crate::fe::LsmrConfig::default(),
             map,
             memory_budget: None,
+            reconstruction_tolerance: None,
         })
     }
 
@@ -3579,6 +3674,7 @@ mod tests {
                 ..MapConfig::default()
             },
             memory_budget: None,
+            reconstruction_tolerance: None,
         })
     }
     #[allow(clippy::too_many_arguments)]
@@ -3607,6 +3703,7 @@ mod tests {
             lsmr,
             map,
             memory_budget: None,
+            reconstruction_tolerance: None,
         })
     }
 
@@ -5057,6 +5154,85 @@ mod tests {
         assert!(materialized_sum.is_some());
         assert!(saved_only_sum.is_none());
         assert_eq!(materialized_channels, saved_only_channels);
+    }
+
+    #[test]
+    fn publication_recovery_continues_to_requested_reconstruction_or_refuses() {
+        const GROUPS: usize = 24;
+        let mut worker_codes = Vec::new();
+        let mut firm_codes = Vec::new();
+        let mut component_codes = Vec::new();
+        let mut target = Vec::new();
+        let mut weights = Vec::new();
+        for component in 0..2 {
+            for firm in 0..GROUPS {
+                for worker in [firm, (firm + 1) % GROUPS] {
+                    worker_codes.push((component * GROUPS + worker) as u32);
+                    firm_codes.push((component * GROUPS + firm) as u32);
+                    component_codes.push(component as u32);
+                    target.push(
+                        2.0 + component as f64
+                            + (std::f64::consts::TAU * worker as f64 / GROUPS as f64).cos()
+                            + (std::f64::consts::TAU * firm as f64 / GROUPS as f64).sin(),
+                    );
+                    weights.push(if worker == firm { 0.5 } else { 2.0 });
+                }
+            }
+        }
+        let sources = [
+            CategoricalCodeView::new(&worker_codes, 2 * GROUPS),
+            CategoricalCodeView::new(&firm_codes, 2 * GROUPS),
+            CategoricalCodeView::new(&component_codes, 2),
+        ];
+        let topology = finalize_categorical_topology(
+            &sources,
+            &[&[0][..], &[1][..], &[2][..]],
+            &vec![true; target.len()],
+        )
+        .unwrap();
+        let effects = (0..3)
+            .map(|_| CategoricalAbsorbedEffectView::new(true, Vec::new()).unwrap())
+            .collect::<Vec<_>>();
+        let config = MapConfig {
+            tolerance: 1e-12,
+            max_iterations: 20_000,
+            check_every: 1,
+            symmetric: true,
+        };
+        let recover = |config, tolerance| {
+            recover_finalized_categorical_effects_map_selected_certified(
+                &topology,
+                &effects,
+                BorrowedMapWeights::Provided(&weights),
+                &target,
+                &[true; 3],
+                config,
+                true,
+                tolerance,
+            )
+        };
+        let relaxed = recover(config, None).unwrap();
+        assert!(relaxed.reconstruction_relative_infinity() > 1e-12);
+        assert!(relaxed.reconstruction_relative_infinity() <= 1e-10);
+        assert_eq!(recover(config, Some(1e-8)).unwrap(), relaxed);
+        let strict = recover(config, Some(1e-12)).unwrap();
+        assert!(strict.iterations() > relaxed.iterations());
+        assert!(strict.reconstruction_relative_infinity() <= 1e-12);
+        let scale = target.iter().map(|v| v.abs()).fold(0.0_f64, f64::max);
+        for (actual, expected) in strict.absorbed_sum().iter().zip(&target) {
+            assert!((actual - expected).abs() / scale <= 1e-12);
+            assert!((actual - expected).abs() / actual.abs().max(expected.abs()).max(1.0) <= 1e-12);
+        }
+        let refused = recover(
+            MapConfig {
+                max_iterations: relaxed.iterations(),
+                ..config
+            },
+            Some(1e-12),
+        );
+        let refused = refused.unwrap_err();
+        assert_eq!(refused.code, ErrorCode::NonConvergence);
+        assert!(refused.message.contains("exhausted its iteration budget"));
     }
 
     #[test]

@@ -768,6 +768,7 @@ pub(crate) struct RecoveryRequest<'a> {
     pub(crate) lsmr: super::LsmrConfig,
     pub(crate) map: MapConfig,
     pub(crate) memory_budget: Option<crate::memory::FeSolverMemoryBudget>,
+    pub(crate) reconstruction_tolerance: Option<f64>,
 }
 impl FeSession<'_> {
     pub(crate) fn recover(
@@ -906,6 +907,7 @@ impl FeSession<'_> {
                 ..r.map
             },
             r.materialize_absorbed_sum,
+            r.reconstruction_tolerance,
         )
         .map(|v| v.with_solver_workspace_peak(peak))
     }

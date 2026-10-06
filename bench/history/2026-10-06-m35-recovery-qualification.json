@@ -1,0 +1,274 @@
+{
+  "responsibility": "M35 strict PPML saved-FE reconstruction stopping contract",
+  "disposition": "Locally scientifically qualified, recoverable runtime repair; integrated M35 and performance acceptance remain open. Qualified performance parent remains M34.1.",
+  "native": {
+    "path": "fereg_macos.plugin",
+    "engine": "next",
+    "source_sha": "0932f74f870e39d4c142557d0945474a32b62a21",
+    "sha256": "fc08240a674a5df2e0d2fc93b1ec815b019cf01746bb2c9b82a1b37c148205d5",
+    "bytes": 16384784,
+    "source_patch_sha256": "e6f6101668ecfd74b56af0b86ee90967b41393694127df28e45ecb711673fa7c",
+    "source_archive_sha256": "764ee18df2ff35afbc57b2b75151370341a2bba53aa28f97dd0f9c9dca1247da",
+    "identity_kind": "identified precommit bounded source"
+  },
+  "source": {
+    "commit": "0932f74f870e39d4c142557d0945474a32b62a21",
+    "archive_sha256": "764ee18df2ff35afbc57b2b75151370341a2bba53aa28f97dd0f9c9dca1247da",
+    "paths": [
+      "Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      "clippy.toml",
+      "references.lock.toml",
+      "crates",
+      "legacy",
+      "vendor",
+      "plugin",
+      "stata",
+      "scripts",
+      "ci/reference-bundles",
+      "tests/mock_spi",
+      "bench",
+      "AGENTS.md",
+      "docs/SPEC.md",
+      "docs/ARCHITECTURE.md"
+    ],
+    "scope": "bounded native/frontend snapshot, not full repository",
+    "patch_sha256": "e6f6101668ecfd74b56af0b86ee90967b41393694127df28e45ecb711673fa7c"
+  },
+  "declaration": {
+    "path": "bench/history/2026-10-06-m35-recovery-declaration.json",
+    "sha256": "29058a99a8a8ac6922f6d7bfa399445532e16947e3d46cd7881518803cb209d8"
+  },
+  "change": "PPML declares requested reconstruction tolerance. Existing capped MAP continues until moments and recurrence pass, then checks the fresh coefficient product against the original target using the caller metric. Cap exhaustion returns r430. OLS retains the prior branch/arithmetic. No new workspace or route.",
+  "science": {
+    "full_local": "Required run_tests.sh, clippy/fmt/workspace/FFI serial allocator/ratchet/mock SPI pass on final source",
+    "native": "Universal Mac native build, binary audit and actual ABI pass",
+    "replay": "73 cases with implicit1 and workers2/4/7/8/9/15/16 pass exact unaffected parent science and fixed repeats",
+    "licensed_fixtures": 60,
+    "fresh_cells": 77,
+    "worker_budgets": [
+      1,
+      2,
+      4,
+      7,
+      8,
+      9,
+      15,
+      16
+    ],
+    "fresh_commands": 1309,
+    "fresh_strict_references": 77,
+    "fresh_audit_passed": true,
+    "fresh_audit_counts": {
+      "commands_checked": 1232,
+      "exact_parent_files": 6112,
+      "repeat_files": 3056
+    },
+    "strict_combined_output_captures": 48,
+    "strict_requested_tolerance": 1e-12,
+    "strict_independent_output_maxima": [
+      {
+        "cell": "cover-ppml-3fe-disconnected-s0-auto",
+        "rows": 100000,
+        "components": 3,
+        "dataset_sha256": "5f1e7b93ccc619afe4aafcd4923a437e5fb1675ef66b131dbd60e68ee447ad1a",
+        "maximum_per_row_reconstruction": 9.561240688071848e-13,
+        "maximum_local_span_certificate": 3.985604726535822e-14,
+        "maximum_component_gauge_mean": 2.4389172863453655e-17
+      },
+      {
+        "cell": "cover-ppml-3fe-disconnected-s0-fast",
+        "rows": 100000,
+        "components": 3,
+        "dataset_sha256": "5f1e7b93ccc619afe4aafcd4923a437e5fb1675ef66b131dbd60e68ee447ad1a",
+        "maximum_per_row_reconstruction": 9.561240688071848e-13,
+        "maximum_local_span_certificate": 3.985604726535822e-14,
+        "maximum_component_gauge_mean": 2.4389172863453655e-17
+      },
+      {
+        "cell": "cover-ppml-3fe-disconnected-s0-low",
+        "rows": 100000,
+        "components": 3,
+        "dataset_sha256": "5f1e7b93ccc619afe4aafcd4923a437e5fb1675ef66b131dbd60e68ee447ad1a",
+        "maximum_per_row_reconstruction": 3.372842816717828e-13,
+        "maximum_local_span_certificate": 1.3988949627994907e-14,
+        "maximum_component_gauge_mean": 4.482975795881237e-17
+      }
+    ],
+    "independent_sparse_recovery": {
+      "purpose": "independent explicit sparse-indicator recovery; no fereg solver",
+      "dataset_sha256": "5f1e7b93ccc619afe4aafcd4923a437e5fb1675ef66b131dbd60e68ee447ad1a",
+      "strict_residual_native_sha256": "70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e",
+      "rows": 100000,
+      "columns": 960,
+      "solver": "existing column-equilibrated SciPy LSMR atol=btol=1e-13 plus two fixed residual corrections",
+      "row_relative_infinity": 1.4372715069873567e-15,
+      "weighted_local_mean_relative": 8.357595623580172e-17,
+      "weighted_local_span_certificate": 2.3079606776893354e-17,
+      "requested_tolerance": 1e-12,
+      "passed": true,
+      "seconds": 0.3183234580064891
+    },
+    "regressions": [
+      "Rust premature stopping, unchanged looser-caller arithmetic and exhausted cap refusal",
+      "Stata separated-none recession failure: 24 worker/memory calls preserve prior e()/sample and publish no partial variables"
+    ]
+  },
+  "scope": "Mac only. Exact fresh ordinary captures versus actual M34 across all potentially affected requested-PPML-FE families and eight off-path anchors. Historical unaffected evidence keeps its own identities; no exhaustive recapture claim.",
+  "production": {
+    "M26": 121396,
+    "accepted_M34": 109589,
+    "accepted_retirement": 11807,
+    "repair_additions_including_adapters": 95,
+    "candidate_total": 109684,
+    "candidate_core": 95654,
+    "candidate_host": 14030,
+    "candidate_retirement": 11712,
+    "new_retirement": 0,
+    "functions_over150": 81,
+    "files_over1500": 19,
+    "core_dispatch": 1285,
+    "host_dispatch": 136
+  },
+  "original_integrated_campaign": {
+    "development_raw_passed": false,
+    "development_audit": {
+      "counts": {
+        "failures": 166,
+        "role_budget_groups": 4432,
+        "commands_checked": 8864,
+        "exact_repeat_files": 20159,
+        "exact_parent_files": 10082,
+        "scientific_values_checked": 1266976,
+        "output_values_checked": 1014400000
+      },
+      "maxima": {
+        "science.hex": 3.0741260961950154e-07,
+        "scalars.hex": 5.544671385123944e-06,
+        "outputs": 0.0007232306468455553
+      }
+    },
+    "holdout_raw_passed": true,
+    "holdout_audit": {
+      "counts": {
+        "role_budget_groups": 1568,
+        "commands_checked": 3136,
+        "exact_repeat_files": 7392,
+        "exact_parent_files": 3696,
+        "scientific_values_checked": 314048,
+        "output_values_checked": 584004064
+      },
+      "maxima": {
+        "science.hex": 4.0756165891024194e-07,
+        "scalars.hex": 1.1118707264311035e-07,
+        "outputs": 3.041420933171619e-05
+      }
+    },
+    "frozen_failure_count": 166,
+    "strict_reference_failures": "Six M33/M34 strict references r430 are retained; fresh repair evidence is a separate campaign.",
+    "separated_none": "No finite PPML optimum: explicit recession witness confirms strict r430. Original success-oriented cell remains failed; new transaction fixture validates expected refusal.",
+    "four_FE": "67 excess exact discrepancies only OLS4FE. A separately predeclared 96-capture deterministic diagnostic confirms the defect in M33, M34 and repaired binary. Differences remain scientifically small and discrete solver decisions exact, but SPEC18 fixed-worker repeat gate fails.",
+    "timing": "Calibration and acceptance not frozen or started; earlier draft identities updated prospectively with original drafts retained. No performance claim.",
+    "next_blocker": "Pinned within scatter and additive-Schwarz scheduling-dependent reductions. Bounded source kernel diagnosis; general deterministic repair with declared affected scope, memory bound and fresh science is required before clean timing."
+  },
+  "retained_failures": "Early compiler, fixture, native slice, replay-argument and analysis-interpreter failures remain local. Final checked source/native evidence is named explicitly; no failed/absent gate described as passing.",
+  "review": {
+    "agent": "m35_recovery_acceptance_astra",
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "scope": "Read-only independent repair acceptance; no final M35 disposition",
+    "report": "Recommend committing the repair as a recoverable, locally qualified M35 subtask. No concrete scientific or transaction defect introduced by the three-file runtime change. This does not establish whole-M35 or performance acceptance. Fixed-config four-FE defect is inherited and remains binding; the focused repair pass cannot replace the original failed verdict."
+  },
+  "platforms": "GitHub testing remains paused. No new Linux/SCC/Windows qualification; historical platform gaps retained.",
+  "evidence": [
+    {
+      "path": "target/m35-integrated/recovery-full-local-final.log",
+      "sha256": "3661730d47fbf1b828a339332dc7b469278c34580f7f9cf12a7dcaba158da42e"
+    },
+    {
+      "path": "target/m35-integrated/recovery-native-build-final.log",
+      "sha256": "03d6f8a6f6dc0e02e9b723ed96649cc595936cb5ba3456d34dffecdde15b7400"
+    },
+    {
+      "path": "target/m35-integrated/recovery-checked-source.json",
+      "sha256": "be4d7bbe91a4e80f42785a3b0e78792230e5f639ac2f764a599267d0019f364b"
+    },
+    {
+      "path": "target/m35-integrated/recovery-source-audit.json",
+      "sha256": "1b52757e7cab4bd00554905fac2e855124480f4c5a88526ca035e4f91e4a93e7"
+    },
+    {
+      "path": "target/m35-integrated/recovery-replay/summary.json",
+      "sha256": "76860237e2ec6b23cf96e20fb03742a3fff0535e011eaf5a05b8fed675ddd8fd"
+    },
+    {
+      "path": "target/m35-integrated/recovery-stata/licensed46/summary.json",
+      "sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+    },
+    {
+      "path": "target/m35-integrated/recovery-stata/mapped-products/summary.json",
+      "sha256": "991af9dc6fc22dfb2fd9db0c775b9a990ad7f0e40fdd2dfa82a2fb4e2660a101"
+    },
+    {
+      "path": "target/m35-integrated/recovery-stata/failure-contract/summary.json",
+      "sha256": "8518da9e3772658ec91c33d56e9a504b78327bd362b91d98d1d101b8f13c5e38"
+    },
+    {
+      "path": "target/m35-integrated/recovery-science-manifest.json",
+      "sha256": "899b24a19efde7fc63b2a597001c4135d2d303e2d405c2fb50f7a020fe0056bd"
+    },
+    {
+      "path": "target/m35-integrated/recovery-science-development/results.json",
+      "sha256": "d607d5a94f169575804564e8f349e03625bb50aa0d65fe58ea63a3b92539616b"
+    },
+    {
+      "path": "target/m35-integrated/recovery-science-holdout/results.json",
+      "sha256": "4f5bba46b2f10d29ee74908598908874745e68d45e59f42895daa70d241f9fdc"
+    },
+    {
+      "path": "target/m35-integrated/recovery-science-analysis.json",
+      "sha256": "20ef6359ff0bb0a92fa8c9d03ebb74fa752dbe200ee413f47f9e2b722e43ebbb"
+    },
+    {
+      "path": "target/m35-integrated/recovery-diagnosis/repaired-strict-results.json",
+      "sha256": "4c3f5d69d90c55b835432259419f2a9a7c65f5f6d3103ad6ecec0b319aa8c223"
+    },
+    {
+      "path": "target/m35-integrated/recovery-diagnosis/strict-output-witness.json",
+      "sha256": "8795ad7da43a89b76381d2f19b070893722ea3b7d85ef7b37199ad312a2bfcfc"
+    },
+    {
+      "path": "target/m35-integrated/recovery-diagnosis/independent-recovery.json",
+      "sha256": "68918169fe4866b3ee7371e02568596a53813812e6965d78f9f132a30653fdcd"
+    },
+    {
+      "path": "target/m35-integrated/science-analysis-development.json",
+      "sha256": "e6ba855850220fe22a1a071bff875730f7cdd7da519792c2821b4c9649685c6e"
+    },
+    {
+      "path": "target/m35-integrated/science-analysis-holdout.json",
+      "sha256": "b3e265c95bf82a382e403bd56c687947a6795518f2cfa97d22bcc3c1789ad938"
+    },
+    {
+      "path": "target/m35-integrated/science-development/results.json",
+      "sha256": "400f77948bc89f1d2ee6d9edb7e5aab9bedc107ee75ac25ffed1c891200a17fb"
+    },
+    {
+      "path": "target/m35-integrated/science-holdout/results.json",
+      "sha256": "3dfed5a47b3565591bd0468c0a17cf5c791aae537d624a0356fce9e9557f3e52"
+    },
+    {
+      "path": "target/m35-integrated/deterministic-diagnosis/declaration.json",
+      "sha256": "ee4e249f21cc7cb12eee48e911cd11a14819d0e4ef4f35c6796cccd2f2925502"
+    },
+    {
+      "path": "target/m35-integrated/deterministic-diagnosis/results.json",
+      "sha256": "7a76dc67ef42275f803ffb2591e409980e31865ac7f9cd20a297c09f438bdcfd"
+    },
+    {
+      "path": "target/m35-integrated/deterministic-diagnosis/repeat-analysis.json",
+      "sha256": "402ef92b52b348d2bb50e7c9c350d27ba3134e80a309695c9b0a8770ead6bbd5"
+    }
+  ]
+}
