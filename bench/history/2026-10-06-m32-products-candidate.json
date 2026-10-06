@@ -1,0 +1,205 @@
+{
+  "native": {
+    "path": "fereg_macos.plugin",
+    "engine": "next",
+    "source_sha": "3f3d9ae0a1a969a259971513c812d3e2cf26265d",
+    "sha256": "d86dfbc2fcab389ca736a90dec4bebaa76e2ad01a095579a300e81f247a55e53",
+    "bytes": 16430736,
+    "source_patch_sha256": "e94171d7ab797938b93283733b5f20cb395454c9fb3220816b533cecc655d28f",
+    "source_archive_sha256": "e61578ffaa75c1e58714d08bc9c6ff71d9bfbe2ad8f9f1782efc0af809b4d1ee",
+    "identity_kind": "identified precommit bounded source"
+  },
+  "source": {
+    "commit": "3f3d9ae0a1a969a259971513c812d3e2cf26265d",
+    "archive_sha256": "e61578ffaa75c1e58714d08bc9c6ff71d9bfbe2ad8f9f1782efc0af809b4d1ee",
+    "paths": [
+      "Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      "clippy.toml",
+      "references.lock.toml",
+      "crates",
+      "legacy",
+      "vendor",
+      "plugin",
+      "stata",
+      "scripts",
+      "ci/reference-bundles",
+      "tests/mock_spi",
+      "bench",
+      "AGENTS.md",
+      "docs/SPEC.md",
+      "docs/ARCHITECTURE.md"
+    ],
+    "scope": "bounded native/frontend snapshot, not full repository",
+    "patch_sha256": "e94171d7ab797938b93283733b5f20cb395454c9fb3220816b533cecc655d28f"
+  },
+  "full_local_entrypoint": "PASS full-local-03; two previous gate failures retained and repaired",
+  "long_oracles": "PASS30 including ignored long differential2000 designs and inherited diagnostic",
+  "native_universal_ABI": "PASS",
+  "replay": {
+    "passed": true,
+    "cases": 73,
+    "threads": [
+      1,
+      2,
+      4,
+      8,
+      16
+    ],
+    "scope_sha256": "c4f3ee71994a9f65cdff4e235b41416ff08deb1130903362d7b03e7150f41ac3",
+    "affected_cases": [
+      "known-12",
+      "known-294"
+    ]
+  },
+  "licensed46": "PASS",
+  "mapped_products": "PASS5 including independent weighted rank-pruned sandwiches and full1540cells",
+  "product_captures": {
+    "cube": {
+      "cells_per_artifact": 1540,
+      "exact_values": 1326160,
+      "declared_affected_changed_values": 200,
+      "unexpected_differences": 0,
+      "parent_capture_sha256": "817a8bff9b10868302788a72885ec2ae083ebb652d1016bae3d337b038a95221",
+      "candidate_capture_sha256": "05ea3ec714d988decd8068b91d5ea28f2447bb5d3759b514a01111f288e88639"
+    }
+  },
+  "independent_witnesses": {
+    "feppml_no_fe_strict_oracle": {
+      "exact_values": 396960,
+      "declared_affected_changed_values": 0,
+      "unexpected_differences": 0,
+      "parent_capture_sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2",
+      "candidate_capture_sha256": "ebff75e2c228845f94598847ce405940e5736a5317948adb01715f23fb6355a2"
+    },
+    "ols_near_within_cmg_oracle": {
+      "exact_values": 5952,
+      "declared_affected_changed_values": 0,
+      "unexpected_differences": 0,
+      "parent_capture_sha256": "3f1e71366ee7973b382860164b1ae15dd047609c4f516a883d83f7a00d7dd32b",
+      "candidate_capture_sha256": "3f1e71366ee7973b382860164b1ae15dd047609c4f516a883d83f7a00d7dd32b"
+    },
+    "factor_single_level_original_axis_exact": {
+      "exact_values": 2680,
+      "declared_affected_changed_values": 72,
+      "unexpected_differences": 0,
+      "parent_capture_sha256": "09a49c222a752a09cccfb95b5cd1bded3ea3e763780d1525bc9443745d1ca86a",
+      "candidate_capture_sha256": "9e07bacb66f1ac5fe11d0ea4f9e3c16fc016324458e2e4380f85f680bb11a8a8"
+    }
+  },
+  "production": {
+    "accepted_M31": 112247,
+    "accepted_vs_M26": -9149,
+    "candidate": 110928,
+    "candidate_vs_M31": -1319,
+    "candidate_vs_M26": -10468,
+    "metrics": {
+      "fereg-core": {
+        "chunk_candidates": 11,
+        "dispatch_candidates": 1300,
+        "files_over_1500": 17,
+        "functions_over_150": 72,
+        "production_lines": 96221
+      },
+      "fereg-plugin": {
+        "chunk_candidates": 0,
+        "dispatch_candidates": 147,
+        "files_over_1500": 3,
+        "functions_over_150": 15,
+        "production_lines": 14707
+      }
+    }
+  },
+  "performance": {
+    "state": "Terminal infrastructure interruption; original campaign unpromoted, no verdict",
+    "plan": "target/m32-fit-products/acceptance/acceptance-plan.json",
+    "canonical_plan_sha256": "4303d2bb56af06c7b4f3f572efe0958e1b2724e4fe95a0c75965fc444fbd4b43",
+    "interruption": "Competing varcomp_hdfe/fevc build detected during screening; only identified owned measurement processes stopped. Original observations cannot join clean replacement evidence.",
+    "rule": "Existing15workloads/8screenpairs/original32or64confirm/max(5%,1ms); no favorable retries or widened allowance.",
+    "retained_blocks": [
+      {
+        "path": "target/m32-fit-products/acceptance/acceptance-screening-parent-forward/results.json",
+        "sha256": "86a31f4e9d8dcd8e9944d1344ebfb0cdbf675dda4a1e59f6c98385049f72af7b",
+        "records": 300,
+        "complete": true,
+        "raw_capture_directories": 300
+      },
+      {
+        "path": "target/m32-fit-products/acceptance/acceptance-screening-parent-reverse/results.json",
+        "sha256": "547ff96499d4e6132bb59b0021e2dd9e813c1ef818f0f56d3d83c8c47ce5200e",
+        "records": 170,
+        "complete": false,
+        "raw_capture_directories": 171
+      }
+    ],
+    "retained_commands": 470,
+    "raw_capture_directories": 471
+  },
+  "platform": "Mac only",
+  "evidence": [
+    {
+      "path": "target/m32-fit-products/full-local-03.log",
+      "sha256": "96109df11e28e18d8d78075fa90c612a2842b61347071036e7cd73c8268b3dfb"
+    },
+    {
+      "path": "target/m32-fit-products/long-oracles.log",
+      "sha256": "189dfd4d45533e57a3a7126679df8690db15998f64a03fe5fa7adfac18d3d1a5"
+    },
+    {
+      "path": "target/m32-fit-products/native-build.log",
+      "sha256": "9a9c4f25d3a1567ece7893b4471e03fd5ea7c48c47bec29a5f273dfb0e145a85"
+    },
+    {
+      "path": "target/m32-fit-products/abi-identified.log",
+      "sha256": "8751b854d28b30459e644da7801662df0d13c4f2c60b010643e62c31425f76ac"
+    },
+    {
+      "path": "target/m32-fit-products/replay/summary.json",
+      "sha256": "c0a8b356d7f54a086167ed6fd6bf6262cfe44c8c0319afe45af9348f8ad8ae66"
+    },
+    {
+      "path": "target/m32-fit-products/replay-scope.json",
+      "sha256": "c4f3ee71994a9f65cdff4e235b41416ff08deb1130903362d7b03e7150f41ac3"
+    },
+    {
+      "path": "target/m32-fit-products/stata/licensed46/summary.json",
+      "sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+    },
+    {
+      "path": "target/m32-fit-products/stata/mapped-products/summary.json",
+      "sha256": "187e940056a571253842f486bb9c62808993d87ff4a144e87e6fbc642f8a75a8"
+    },
+    {
+      "path": "target/m32-fit-products/product-capture-summary.json",
+      "sha256": "af3ee772119d1c4167a7e9ec27ea731c6b42ff80dc2d2687ff60d5863385b5be"
+    },
+    {
+      "path": "target/m32-fit-products/exact-witnesses/summary.json",
+      "sha256": "03b583fb354f98cd0603bbc0337ee099c4be0af52d86995349d7743c4cda1318"
+    }
+  ],
+  "responsibility": "M32 canonical accepted-fit products candidate; science qualified, performance incomplete, unpromoted",
+  "retirements": [
+    "Ordinary independent absorbed-DoF nesting/mobility/union-find/report-construction pipeline",
+    "Associated legacy/categorical inference-report split and redundant validation",
+    "Separate IID/robust/clustered fit-owning result/components and six-way host inference assembly",
+    "Score-design second solver/CMG/FE absorption and raw-design reconstruction lifecycle",
+    "Equivalent PPML final output construction and redundant predictor/row-axis owners where authority agrees"
+  ],
+  "replacement": "One canonical topology DoF engine; one accepted-product owner with explicit mathematical covariance payloads; fit-stage immutable packed/selected/scratch score handoff; bounded requested-output consumers after residual refinement.",
+  "forecast": {
+    "expected": 1950,
+    "actual": 1319,
+    "honest_shortfall": 631,
+    "all_replacements_counted": true
+  },
+  "review": {
+    "model": "GPT-6 Astra",
+    "effort": "high",
+    "source_scientific_architecture": "Supported; no actionable blocker in independent bounded review",
+    "hashes": "Ten evidence files, source archive/patch and all changed runtime files match identified frozen candidate",
+    "acceptance": "Timing pending; review grants no timing pass or new allowance"
+  },
+  "optional_historical_checker": "scripts/check_repository.py still fails old frozen version/allocation-source/abandoned architecture contracts; this optional historical checker is not a passing gate. Required current full entrypoint passes; unrelated issue recorded for M34 map audit."
+}

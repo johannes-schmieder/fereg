@@ -2,12 +2,10 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M31 accepted by Johannes; M32 shared inference/output products next. Historical costs and deferred timing remain recorded; Mac-only qualification.
-
+Current task: M32 science/Astra pass; timing interrupted by unrelated build. Candidate unpromoted; M33 design is independent. Mac-only qualification.
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 Accepted runtime: M31 shared finite operations; production112247, net vsM26 -9149; native6ab9059c75f762f1627fda90bcc0f5c22b7f6c4b025082628b0bd0d3b45b2ea2.
-
 ## Tasks and prerequisites
 - [x] M0.1 Governance, ADR dispositions, resolved covariance decision and new ledger.
 - [x] M0.2 Frozen/tagged baseline; all three canonical platforms built/stored; Mac 34 Stata fixtures pass.
@@ -24,21 +22,17 @@ Accepted runtime: M31 shared finite operations; production112247, net vsM26 -914
 - [x] M1.3 Bounded qualification: 73 science cases at 1/2/4/8/16 threads, exact fixed-thread repeats and 46 licensed fixtures pass.
 - [x] M1.4 Six-plugin review bundle; licensed Mac installation, Linux/Windows builds/audits/ABI and final Linux source/replay CI pass.
 - [x] M1.5 Identity-bound smoke/scaling, Mac/Linux coverage and refreshed complexity; proposed next cleanup remains unimplemented.
-
 - [x] M2.1 Boundary regression passes on parent; 34 fresh timing groups recorded with qualified parent Mac binary.
 - [x] M2.2 Shared classification; full/long tests, exact parent replay, five-thread science/repeats, native ABI and 3 Stata fixtures pass.
 - [x] M2.3 All 34 timing ranges overlap; 214 coefficient/sample pairs exact; complexity lowered; M3 proposal documented for discussion.
-
 - [x] M3 Shared OLS completion; full local checks, 73 exact native replay and 4 licensed output/transaction fixtures pass.
 - [x] M4 Shared QR pivot/solve/status kernels; full/long checks, 73 exact/scientific native replay and 2 fast/low Stata fixtures pass.
 - [x] M5 Shared robust/clustered Wald solve and IID coefficient lookup; full/long checks, 73 exact/scientific replay and 2 Stata fixtures pass.
 - [x] M6 Shared deferred categorical DoF and checked totals; full/long checks, 73 exact/scientific replay and 3 Stata fixtures pass.
 - [x] M7 Scaling diagnosis and combined qualification; shared Schur preparation proposed for discussion, not implemented.
-
 - [x] M8.1 Preparation-order audit; 34 parent timing groups plus existing-phase profile recorded.
 - [x] M8.2 Shared Schur preparation; full/long checks, 73 exact/scientific replay, native ABI and 6 Stata pass; core -36 lines overall.
 - [x] M8.3 Clean Mac 73/five-thread replay, 46 Stata, paired/follow-up timings and Linux CI 37131877394 pass.
-
 - [x] M9.1 QR norm/reflector/Cholesky fallback boundaries audited; retain storage-specific validation and arithmetic.
 - [x] M9.2 Shared QR driver; full/30 oracles, 73 exact parent replay, Mac ABI and 3 Stata pass; core -1 line.
 - [x] M9.3 Clean parent comparison, forced QR timings and CI 37134379100 pass; fresh ranges overlap.
@@ -47,7 +41,6 @@ Accepted runtime: M31 shared finite operations; production112247, net vsM26 -914
 - [x] M11.1 Owners/lifetimes audited; 312 shapes, 71 fields per route, 2,808 admissions and errors exactly match parent.
 - [x] M11.2 Shared storage/owner totals/admission; core -12 lines; full/30 oracles, 73 native and 7 Stata pass.
 - [x] M11.3 Clean 73/five-thread replay, 46 Stata, 34 timing pairs, Linux CI 37137263330 and Astra max assessment complete.
-
 - [x] M12 Availability owner; disposable topology retired; full/30, Mac exact73/9 Stata/ABI, clean timings and Linux CI pass.
 - [x] M13 Source-role encodings; full/30, mixed-role witness, exact73 Mac/9 Stata/ABI, clean timings and Linux CI pass.
 - [x] M14 Encoding transfer; full/30, pointer witness, exact73/five-thread Mac/ABI, 46 Stata, clean timings and Linux CI pass.
@@ -58,7 +51,6 @@ Accepted runtime: M31 shared finite operations; production112247, net vsM26 -914
 - [x] M19 One active PPML direction owner; full/30, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
 - [x] M20 One ordinary canonical retry transition; full/30, exact73 Mac/ABI, 7 Stata, clean timings and Linux CI pass.
 - [x] M21 Strict recovery/readiness; full/30, clean exact73/five-thread Mac/ABI, 46 Stata, clean timings, Linux CI and separate Astra review complete.
-
 - [x] M22.0 Johannes raises repair limit to ten; active policy synchronized; Astra assistance authorized.
 - [x] M22.1 Strict no-FE PPML repaired; independent strict24, full/30, clean73/five-thread/Mac ABI/46 Stata and Linux CI pass; timing cost recorded.
 - [x] M22.2 Near-within/saved-FE recovery repaired; full/30/ABI, clean73/five-thread, saved48/PPML24/46 Stata, timing and Linux CI pass.
@@ -70,7 +62,6 @@ Accepted runtime: M31 shared finite operations; production112247, net vsM26 -914
 - [x] M25.1 Cache trial and canonical-index validation scientifically qualified; exact parent arithmetic/failure/implicit regressions pass.
 - [x] M25.2 Trial rejected by Astra; parent production restored; full/30/Mac/73/five-thread/46Stata/witness local checks pass.
 - [x] M25.3 Clean restoration73/five-thread/402912 values exact; Astra extra-high terminal approval and Linux CI37201256978 pass; paused.
-
 - [x] M26.0 Roadmap and active ADR 0249 recorded; separate Astra extra-high review and local governance/links pass; runtime work not started.
 - [x] M26.1 Fixed baseline, interaction/holdout matrix, 15,000-line target, Mac calibration, Linux CI/SCC smoke and fresh Astra high review pass.
 - [x] M27.1 Trial not promoted: 11 within/4 unresolved; production restored; retained fixture/full local and Linux CI37222999041 pass.
@@ -84,13 +75,11 @@ Accepted runtime: M31 shared finite operations; production112247, net vsM26 -914
 - [x] M29 Common worker/stage policy retired; Mac scientific gates pass; architectural override retains interrupted timing and open final scaling.
 - [x] M30 Common FE lifecycle/structural auto families retired; science/Astra high pass; Johannes accepts three regressions and defers8/16 timing.
 - [x] M31 Shared finite operations retired; science/Astra high pass; Johannes accepts largeFast M26 cost and defers remaining timing.
-- [ ] M32 Inference and requested outputs from accepted shared products; full interaction qualification.
+- [ ] M32 Canonical DoF/result/score/output owners implemented; integrated local qualification pending; [declaration](bench/history/2026-10-06-m32-products-design.json).
 - [ ] M33 PPML generation/state/certificate consolidation and repeated-work retirement.
 - [ ] M34 Whole-call integration, outstanding retirements and architecture/coverage refresh.
 - [ ] M35 Held-out, cross-platform, scaling and final independent acceptance.
-
 ## Gates
-
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
 - [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
 - [x] G-M2: shared classification, exact parent-next checks, independent science and performance/complexity evidence; CI 37118979350 passes.
@@ -102,28 +91,20 @@ Accepted runtime: M31 shared finite operations; production112247, net vsM26 -914
 - [x] G-M27: integrated canonical retirement, unchanged science/transactions, calibrated parent/fixed-M26 timing and Astra high; Mac-only override.
 - [ ] G-M26–M35: architectural retirements, substantial measured simplification and broad scientific/performance acceptance.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
-
 ## Decisions
-
 - Full-matrix OLS multiway PSD repair including the reported constant is approved; it is not an open question.
 - Scientific agreement across thread counts; retain fixed-thread deterministic repeatability and exact-change checks.
 - 2026-10-04 Johannes: preserve original factor slots/base flags as SPEC requires; repair next and conflicting tests, with legacy behavior unchanged.
 - Bundle separate plugins; legacy/source policies are historical except retained SPEC/active ADR requirements.
-
 ## Blockers
-
 M30 accepted by Johannes on2026-10-06: three measured M26 regressions retained; 8/16 frozen/unstarted and deferred. Net-5812 vsM29/-7647 vsM26; M31 subsequently removes1502lines; target5851 remain.
-
 M28 accepted architecturally: +96 vsM27/-1627 vsM26; timing unresolved for three workloads, with no established regression; full local/science pass.
 All4720 commands retained; FE-cluster timing drifts in both roles. Optimization remains open; [acceptance](bench/history/2026-10-05-m28-capacity-owner-acceptance.json).
 M29 accepted architecturally: -208 vsM28/-1835 vsM26; all local/science pass; timing interrupted by unrelated Stata;200 records/201 raw dirs retained; final scaling open.
-
 Historical PPML ~3–5% cost remains recorded; M24 localizes added finite/strict work and duplicate normalization; whole-command timings vary with order.
 Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-witnesses.json).
-
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
-
 ## Log
 - 2026-10-06 M31.1 accepted: net-1502/M30,-9149/M26; largeFast M26 cost accepted; broad/scaling deferred; [record](bench/history/2026-10-06-m31-architectural-acceptance.json).
 - 2026-10-06 M31 design: initial+488 extraction preserved; immutable finite owner declared; exact retainedPPML/stable public decisions bind; [scope](bench/history/2026-10-06-m31-finite-design.json).
@@ -157,35 +138,20 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 M27.7 tools:28 checks pass; four CSVs/full frozen verdict identical;66-capture accuracy19.62s to1.49s; [profile](bench/history/2026-10-04-m27-measurement-efficiency.json).
 - 2026-10-04 M27 strategy: complete retirement batches; focused development then integrated acceptance; historical frozen rules unchanged; accepted net vsM26 +452.
 - 2026-10-04 M27.6: parent15within/fixed14within1unresolved; no confirmed regression, no promotion; [recoverable trial](bench/history/2026-10-04-m27-common-topology.json).
-
 - 2026-10-04 M27.6 scope: Astra xhigh common-topology design; arithmetic fixed, topology proofs narrow; [declaration](bench/history/2026-10-04-m27-common-topology.json).
-
 - 2026-10-04 M27.5 closeout: zero merged retirement; recovered trial preserved; b9d892a6 source/4d1e native exact; [evidence](bench/history/2026-10-04-m27-consumed-model.json).
-
 - 2026-10-04 M27.5 trial: science/exact405664 pass; frozen parent14within/1unresolved, fixed15within; Astra high blocks promotion; qualified runtime restored.
-
 - 2026-10-04 M27.5 worktree: source review/full local/30 oracles pass; fresh target resolves stale comparator cache; memory edges unchanged; native/science/timing/CI open.
-
 - 2026-10-04 M27.4 b9d892a6 — Astra high/local science/timing and Linux CI37241856158 all3 pass; M27.5 [scope](bench/history/2026-10-04-m27-consumed-model.json).
-
 - 2026-10-04 M27.4 this commit: original-axis support/constant-invariant Wald; all local gates/fourtimingblocks/Astra high terminal pass; Linux CI/fullM27 open.
-
 - 2026-10-04 M27.4 timing: four15-workload blocks/4080commands pass; all15within both parent/fixed envelopes; original5%/1ms unchanged; terminal review/CI open.
-
 - 2026-10-04 M27.4 worktree: approved Wald/source support; full/30/ABI/73/five-thread/48Stata/M22 exact402912 pass; Astra high finds no code defect; clean timing/CI open.
-
 - 2026-10-04 M27.4: Johannes approves basis-independent PPML model Wald with unrestricted constant; original slots/base flags retained; [scope](bench/history/2026-10-04-m27-single-level.json).
-
 - 2026-10-04 M27.3: trial parked; production restored after local science pass/competing Stata timing; [evidence](bench/history/2026-10-04-m27-scaffold-retirement.json).
-
 - 2026-10-04 M27.2 1d003b4f — preserved original axis/base flags; Astra high accepts; timing15within/0unresolved; CI37227673296 all three jobs pass.
-
 - 2026-10-04 M27.2: approved original-axis correction; full/30/ABI/73/five-thread/46Stata/M22/legacy exact pass; [evidence](bench/history/2026-10-04-m27-factor-axis.json).
-
 - 2026-10-04 M27.1 d74199bf — restored production/test-only fixture; Astra high accepts; CI37222999041 all three jobs pass.
-
 - 2026-10-04 M27.1: Astra high accepts non-promotion; 4 timing cells unresolved; parent production restored; [trial evidence](bench/history/2026-10-04-m27-cluster-owner.json).
-
 - 2026-10-02 M0.1 6643939b — governance reset; fmt/Clippy, 1906 workspace, 173 doc/FFI, 9 isolated working audits, size/mock/static pass; rewrite-only audits retired.
 - 2026-10-02 M0.2a 9323fe00 — tag 15a57ba2; Mac 80329f51 ABI/native audit and 34/34 Stata pass; 5 identity tests pass; hosted platforms pending.
 - 2026-10-02 M0.2b this commit — build setup repair 1: scoped Linux checkout trust and LF archive override; frozen source hash check retained.
@@ -229,13 +195,11 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M6.1 this commit — common deferred DoF/totals; core -32 lines; identity, slope and nesting checks retained; full/long tests, 73 replay and 3 Stata pass.
 - 2026-10-03 M7.1 b3fa58a7 — clean Mac 73/five-thread replay, 46 Stata and CI 37121923471 pass; 158 production lines removed; legacy unchanged.
 - 2026-10-03 G-M3–M7 this commit — timings/phase diagnosis and [evidence](bench/history/2026-10-03-m3-m7-refactoring.json); PPML follow-up ranges overlap; M8 discussion only.
-
 - 2026-10-03 M8.0 this commit — scope authorized; share Schur level sums/projection and probe preparation; preserve validation order and routes.
 - 2026-10-03 M8.2 this commit — one Schur level kernel/probe stage; core -39 lines; analytic/full/30 oracle checks, 73 replay, Mac ABI and 6 Stata pass.
 - 2026-10-03 M8.3 bd9e1aa8 — science/46 Stata pass; full-Schur init rises beyond phase noise; restore contiguous row access before final qualification.
 - 2026-10-03 M8.2b this commit — contiguous row view restored; full/30 oracle checks, exact 73 replay, Mac ABI and 6 Stata pass; narrow +3-line ratchet reason.
 - 2026-10-03 M8.3 local — row repair passes 73/five-thread replay, 46 Stata and 34 overlapping timing pairs; final clean/CI gate awaits main commit approval.
-
 - 2026-10-03 M8.3 d36c3f79 — corrected source committed/pushed; clean universal Mac/ABI pass; final timings, replay and CI qualification underway.
 - 2026-10-03 M9–M11 scope this commit — current request authorizes QR driver, bounded scheduling experiment and PPML memory simplification; Astra max review requested.
 - 2026-10-03 G-M8 d36c3f79 — clean 73/five-thread replay, 46 Stata and CI 37131877394 pass; fresh GM 0.980/0.949, no regression; frozen assets unchanged.
@@ -269,7 +233,6 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-03 M21.2 this commit — M17 stale qualification fields corrected; Astra finds no new runtime defect; two inherited numerical witnesses prioritized; governance/links/ratchet pass.
 - 2026-10-03 M22 worktree — full/30/Mac ABI, exact73/five-thread and46 Stata pass; two new witnesses fail; Astra extra-high review done; timebox directions pending; uncommitted, M21 binary restored.
 - 2026-10-03 M22.0 this commit — Johannes authorizes continuation and ten repairs; policy/ADR/plan synchronized; Astra extra-high assistance; governance/links pass.
-
 - 2026-10-03 M22 worktree — PPML24 and original FE prototype pass; weighted disconnected recovery exposed raw-noise stopping; normalized FE-discrepancy candidate5 under qualification.
 - 2026-10-03 M22.1 this commit — full/30, Mac ABI, exact73/five-thread, strict24/mapped46 Stata pass; timing/Linux pending; [evidence](bench/history/2026-10-03-m22-ppml-correction.json).
 - 2026-10-04 M22.1 b34596b2 — clean73/five-thread/strict24 pass; repeated PPML ~3–5% cost recorded; Linux replay passes/full check pending.
@@ -297,3 +260,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-04 M26.4 worktree — isolate worker/RSS audit scope; full/Mac50/clock smoke pass; Astra high accepts; SCC compiler retest/CI pending.
 - 2026-10-04 M26 SCC focused retest — sourcedeae0260, setup7868669/benchmark7868670; original compiler failure retained; whole28/3G/two hours.
 - 2026-10-04 G-M26 deae0260 — CI37217034343 full/24/Linux73 pass; SCC7868669/70 accounting/16 groups/clock pass; fresh Astra high accepts; [evidence](bench/history/2026-10-04-m26-contract.json).
+- 2026-10-06 M32 candidate — full/30/Mac ABI/73replay/46Stata/1540cube/Astra high pass; timing interrupted by competing build; -1319 vsM31/-10468 vsM26, unpromoted.
