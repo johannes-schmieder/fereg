@@ -1,0 +1,15 @@
+{
+  "base_commit": "171414defab93488fb11c0f5db7fac6f38f16224",
+  "patch": {
+    "path": "bench/history/2026-10-05-m30-integrated-candidate.patch",
+    "sha256": "3f8f828dede2dfec23d3b7095311fae6b70193de99e42d409c1ea2dafd7b6e43",
+    "bytes": 862718
+  },
+  "applies_cleanly_to_base": true,
+  "frozen_files_match_after_recovery": 351,
+  "native_sha256": "4d81e8c0fab26e1ff013ac9e213b739b7a6b1214aca1e8d0151cac2f33df76a9",
+  "source_archive_sha256": "4be92e7cf4020cf75bef1c98d4061c76994a0111fb45d21e05932451b0d9cfd0",
+  "frozen_source_patch_sha256": "cb104e8653114c7d49dae4d09d10a0386864c42377eb1be7a9ec9c300b830437",
+  "includes": "Complete runtime/test/tooling candidate; production replacements, scientific fixtures and targeted multiworker confirmation fix. Candidate complexity baseline remains unpromoted.",
+  "status": "Recoverable unpromoted candidate; actual scientific gates pass, bounded performance fails,8/16automatic timing unstarted."
+}

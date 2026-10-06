@@ -11,3 +11,6 @@ vendor/rayon-core/src/sleep/README.md -whitespace
 
 # Preserve the M30 recoverable patch blank-context prefix verbatim.
 bench/history/2026-10-05-m30-fe-lifecycle-candidate.patch -text -whitespace
+
+# Preserve the integrated M30 recovery patch byte-for-byte.
+bench/history/2026-10-05-m30-integrated-candidate.patch -text -whitespace
