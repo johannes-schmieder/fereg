@@ -1,9 +1,8 @@
 # Incremental refactoring — milestones
-
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M28–M30 accepted architecturally; M30 explicit performance exception recorded; 8/16 timing deferred to quiet Mac window. M31 not started.
+Current task: M31 reviewed finite retirement+lane repair; science passes, new largeFast M26 loss blocks acceptance. M30 remains accepted; M32–M35 await M31 gate.
 
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
@@ -127,6 +126,9 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 
 ## Log
+- 2026-10-06 M31 design: initial+488 extraction preserved; immutable finite owner declared; exact retainedPPML/stable public decisions bind; [scope](bench/history/2026-10-06-m31-finite-design.json).
+- 2026-10-06 M31 checkpoint: candidate−1490/M30,−9137/M26; timing failed/unresolved, new largeFast loss; Astra high supports science; [record](bench/history/2026-10-06-m31-finite-checkpoint.json).
+- 2026-10-06 M31 repair: candidate−1502/M30,−9149/M26; science/exact/Astra high pass; largeFast M26+8.2–8.6%, broad/scaling open; [record](bench/history/2026-10-06-m31-scheduler-checkpoint.json).
 - 2026-10-06 M30.2: Johannes accepts3regressions/defers8/16; source/science/Astra high pass; net-7647 vsM26; [acceptance](bench/history/2026-10-06-m30-architectural-acceptance.json).
 - 2026-10-05 M30 integrated: -5812 vsM29/-7647 vsM26; full/science/Astra high pass; recoverable patch; [local](bench/history/2026-10-05-m30-integrated-local.json).
 - 2026-10-05 M30 terminal:20within/7unresolved/3outside; one unrelated unresolved family drifts; scaling blocked; [timing](bench/history/2026-10-05-m30-integrated-performance-terminal.json).

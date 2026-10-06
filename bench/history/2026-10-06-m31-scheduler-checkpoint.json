@@ -1,0 +1,247 @@
+{
+  "responsibility": "M31 complete immutable finite-operation retirement plus general lane-partition repair; reviewed unpromoted candidate",
+  "base_commit": "0a2fabfb32cdab5ea2a7ba9ad8d8e6910711bc33",
+  "native_candidate": "6ab9059c75f762f1627fda90bcc0f5c22b7f6c4b025082628b0bd0d3b45b2ea2",
+  "native_parent": "4d81e8c0fab26e1ff013ac9e213b739b7a6b1214aca1e8d0151cac2f33df76a9",
+  "native_fixed_M26": "706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981",
+  "source": {
+    "commit": "0a2fabfb32cdab5ea2a7ba9ad8d8e6910711bc33",
+    "archive_sha256": "d83632aeee4ab23c91ddbcc2ed6dc89308070d70cb3f980bcb4c0b7ec386fdbe",
+    "paths": [
+      "Cargo.toml",
+      "Cargo.lock",
+      "rust-toolchain.toml",
+      "clippy.toml",
+      "references.lock.toml",
+      "crates",
+      "legacy",
+      "vendor",
+      "plugin",
+      "stata",
+      "scripts",
+      "ci/reference-bundles",
+      "tests/mock_spi",
+      "bench",
+      "AGENTS.md",
+      "docs/SPEC.md",
+      "docs/ARCHITECTURE.md"
+    ],
+    "scope": "bounded native/frontend snapshot, not full repository",
+    "patch_sha256": "e5b1bc305d61cd0c84c0cc42fbf34ccbc75c9280e63284cb53e7941bc423d9fa"
+  },
+  "disposition": "Scientifically qualified on Mac; architectural acceptance blocked. New established large-Fast M26 regression needs Johannes\u2019s separate decision. Broader repaired-artifact15workload campaign and applicable8/16/boundary timing remain unstarted/open. No dependent implementation or runtime promotion.",
+  "production": {
+    "accepted_vs_M26": -7647,
+    "candidate_vs_M30": -1502,
+    "candidate_vs_M26": -9149,
+    "candidate_total": 112247,
+    "core": 97183,
+    "host": 15064,
+    "target": 15000,
+    "remaining_if_accepted": 5851,
+    "all_replacements_and_repairs_counted": true
+  },
+  "retirements": [
+    "Separate Fast/Low end-to-end fit controllers",
+    "Destructive prepared QR owner and prepared-only moment/inverse/transformed-residual kernels",
+    "Equivalent prepared/retained/frozen factor/refinement/assembly wiring",
+    "Standardized strided inference representation",
+    "Two-file Low scratch/copy/transpose/handoff pipeline",
+    "Defective iterator minimum-length scheduling across finite/FE/OLS/sandwich/PPML consumers"
+  ],
+  "replacement": "Immutable stateless finite operations with one finisher; OLS temporary workspace, PPML borrowed banks; one row-major Low owner. Explicit indexed planned-lane scheduling preserves arithmetic leaves and ordered merges.",
+  "science": {
+    "full_local_entrypoint": "PASS;1192coretests/3ignored plus required Rust/Python/FFI/allocator/size/mockSPI checks",
+    "long_oracles": 30,
+    "native_universal_ABI": "PASS",
+    "exact_replay_cases": 73,
+    "fixed_budget_exact_transactions": 584,
+    "budgets": [
+      1,
+      2,
+      4,
+      7,
+      8,
+      9,
+      15,
+      16
+    ],
+    "licensed46": "PASS including repaired engine-selection fixture",
+    "mapped_fixtures": 2,
+    "independent_witnesses": 3,
+    "unchanged_exact_witness_values": 405664,
+    "public_decisions": "Originalslots/baseflags,sample/rank/omission/separation,DoF,weights,certificateflags and transactional behavior preserved",
+    "scheduler_scope": "Arithmetic-preserving versus original8077 candidate; all same-budget scientific results and available work signatures exact"
+  },
+  "performance": {
+    "replacement_shapes": {
+      "rows": [
+        1559,
+        151237
+      ],
+      "regressors": 12,
+      "seed": 819293,
+      "declaration": "Replacement holdouts declared after general repair, before any measurement; no pre-implementationM26 holdout claim; previous revealed shapes are development."
+    },
+    "calibration": "Identical acceptedM30 in all three roles; symmetricPASS,1408retainedcommands, no diagnosed confirmation half-drift above allowance",
+    "raw_verdict": "FAILED;4parentwithin,3fixed-M26within,1fixed-M26outside",
+    "established_regression": {
+      "workload": "m31-unrevealed-large-finite-fast",
+      "comparator": "fixedM26",
+      "percent": [
+        8.574,
+        8.214
+      ],
+      "milliseconds": [
+        6.682,
+        6.415
+      ]
+    },
+    "counts": {
+      "records": 592,
+      "reference": 40,
+      "warmup": 40,
+      "timed": 512,
+      "raw_capture_directories": 592
+    },
+    "confirmed_gains": {
+      "rule": "Both order upper raw median difference bounds below zero, as prospectively declared. Point improvement alone is not sufficient.",
+      "gains": [
+        {
+          "comparator": "parent",
+          "cell": "m31-unrevealed-large-finite-fast",
+          "upper_raw_difference_seconds": [
+            -0.002145791666666702,
+            -0.0006937083333333899
+          ]
+        },
+        {
+          "comparator": "parent",
+          "cell": "m31-unrevealed-large-finite-low",
+          "upper_raw_difference_seconds": [
+            -0.0576545416666667,
+            -0.05910716666666663
+          ]
+        },
+        {
+          "comparator": "parent",
+          "cell": "m31-unrevealed-small-finite-low",
+          "upper_raw_difference_seconds": [
+            -0.0012050416666666008,
+            -0.0008831666666667005
+          ]
+        },
+        {
+          "comparator": "fixed_baseline",
+          "cell": "m31-unrevealed-large-finite-low",
+          "upper_raw_difference_seconds": [
+            -0.053800375000000095,
+            -0.04861941666666661
+          ]
+        },
+        {
+          "comparator": "fixed_baseline",
+          "cell": "m31-unrevealed-small-finite-low",
+          "upper_raw_difference_seconds": [
+            -0.0010856666666667018,
+            -0.0008553333333334023
+          ]
+        }
+      ]
+    },
+    "measurement_rule": "Unchanged8screeningpairs,32preassignedconfirmation, bothorders/comparators,max5%/1ms. OnlylargeFast flagged;592commands retained, no diagnosed confirmation half-drift. No unchanged-artifact favorable retry.",
+    "open": "Broader15workload campaign and migrated operation8/16/adjacent-boundary timings on repaired artifact not run after finite gate failed. M30-only deferral does not silently extend.",
+    "history": "Original8077 failed/unresolved campaigns retained at first checkpoint; new evidence never merged. M30\u2019s three accepted historical cost families remain distinct and have not been requalified on repaired candidate."
+  },
+  "review": {
+    "model": "GPT-6 Astra",
+    "effort": "high",
+    "disposition": "Supports source, science and substantive architectural advantage; explicit Johannes exception required for this regression and broader/scaling deferral with dependent-work authorization.",
+    "verified": "Frozen hashes and224currentcratefiles match; receipt/native/source identities,584exacttransactions,405664witnessvalues,net inventory reconciled; rootdist acceptedM30 restored.",
+    "no_source_science_or_admission_blocker": true,
+    "measurement_status": "Read-only independent review; no builds/tests/timing/edits/subagents."
+  },
+  "recovery": {
+    "apply_from_base_commit": "0a2fabfb32cdab5ea2a7ba9ad8d8e6910711bc33",
+    "original": {
+      "path": "bench/history/2026-10-06-m31-original-recovery.patch",
+      "sha256": "83b540aaa7c9ff8686f0e051045ae7741f0f76e08211e86f76c5f3edd2a4643d"
+    },
+    "repaired": {
+      "path": "bench/history/2026-10-06-m31-scheduler-recovery.patch",
+      "sha256": "bb980135b1a494bf3e925219c542d27c8c144b22828394a88bb86ff72e4e548a",
+      "note": "Frozen native/frontend source patch plus separately retained test-fixture and complexity inventory transition; no raw logs/data/native assets committed."
+    }
+  },
+  "evidence": [
+    {
+      "path": "target/m31-finite-operations/full-local-scheduler-03.log",
+      "sha256": "ea1f901d09d00ce0ea669000c4b30f3a02856b9501550718a2779ecfeb7c6724"
+    },
+    {
+      "path": "target/m31-finite-operations/long-oracles-scheduler.log",
+      "sha256": "a5ff0abb4454e95ff2b5d3a177f51e01a70d9d5a14281af9c1a2f01226820d60"
+    },
+    {
+      "path": "target/m31-finite-operations/native-build-scheduler.log",
+      "sha256": "95a621490adca9fd44aee594ea63e69d748333500708cbcf737829b279120f8b"
+    },
+    {
+      "path": "target/m31-finite-operations/replay-scheduler/summary.json",
+      "sha256": "ea6dec8f1dcb602a9da4c0db06738eeb4c38f98361932ceb9c9c62445d42f885"
+    },
+    {
+      "path": "target/m31-finite-operations/replay-scheduler/all-budget-exact.json",
+      "sha256": "11c484e92458ed47d59f322d5383aa6cdb4261b9750e5e410d0f04f56414dd20"
+    },
+    {
+      "path": "target/m31-finite-operations/stata-scheduler/licensed46/summary.json",
+      "sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+    },
+    {
+      "path": "target/m31-finite-operations/stata-scheduler/mapped-axis/summary.json",
+      "sha256": "93598019538af7b7a1cd2e8c70423651461b924e716858c3b6991bc254bd97c5"
+    },
+    {
+      "path": "target/m31-finite-operations/stata-scheduler/exact-witnesses/summary.json",
+      "sha256": "cc741a13ab9803da8e022d48b8cda5df897c308fe7cca8d51e063a0cfb235391"
+    },
+    {
+      "path": "target/m31-finite-operations/stata-scheduler/exact-witnesses/exact-comparison.json",
+      "sha256": "77807d014508b6a1a2c94b2d56a1657106fb437fb445214b981a1aff57ba2226"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-scheduler-calibration/calibration-plan.json",
+      "sha256": "3b0e47263a02f5a2ba60176c56ecf68d9f8b58fa274aa2b0c393ce576d885aa9"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-scheduler-calibration/calibration-verdict.json",
+      "sha256": "13e33b9a97f66738a8608a2765efb6869b01508dddd3dd7f935befe1264fe3a7"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-scheduler-calibration/calibration-decision.json",
+      "sha256": "028b014334822c96a61aac8799e73ef7ddb8d3a2c329a5a0e75faf59ff4bebf8"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-scheduler-calibration/terminal.json",
+      "sha256": "5e470fefc10d054005f61e6e7ff6ec0afbfea9f989cc96e4311274ac73fda193"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-scheduler-acceptance/acceptance-plan.json",
+      "sha256": "61115422306411fecb5c2ddc9b05c1c954bcd0b8436cc8a222ccc90278d0a0e0"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-scheduler-acceptance/acceptance-verdict.json",
+      "sha256": "ade9a9e6b1979d638ffec0d705429b543b35e178f5ae465c377b9aac99dcec12"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-scheduler-acceptance/terminal.json",
+      "sha256": "e450238781dcdab67e119d15d379d71de8b60961250daa27094455151ca935ff"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-scheduler-acceptance/confirmed-gains.json",
+      "sha256": "b4254ec71db15abb4705196fa5694a8ff24b65445f40a67a36067865772a3f15"
+    }
+  ],
+  "platform": "Mac only; GitHub testing paused; no new Linux/SCC/Windows qualification or portability claim"
+}

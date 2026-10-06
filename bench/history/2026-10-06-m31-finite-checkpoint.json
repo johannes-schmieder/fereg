@@ -1,0 +1,144 @@
+{
+  "responsibility": "M31 immutable finite-service retirement; terminal first integrated candidate checkpoint",
+  "accepted_runtime": "0a2fabfb32cdab5ea2a7ba9ad8d8e6910711bc33",
+  "candidate_native": "8077e173d0c6e36346bd0bc4356619a6d4627615aa7ae4d2a4340397255aafec",
+  "disposition": "Unpromoted; scientific gates passed, performance not accepted. Original campaigns terminal and preserved. A prospectively declared general scheduler repair is under development; no favorable retry of this candidate.",
+  "net_production": {
+    "accepted_vs_M26": -7647,
+    "this_frozen_candidate_vs_M30": -1490,
+    "this_frozen_candidate_vs_M26": -9137,
+    "candidate_total": 112259,
+    "all_replacements_counted": true
+  },
+  "retired": [
+    "Fast/Low end-to-end one-shot fit controllers",
+    "destructive prepared QR owner",
+    "prepared-only moment/inverse/transformed-residual kernels",
+    "duplicate prepared/retained/frozen fit assembly",
+    "standardized strided inference representation",
+    "two-file Low scratch/copy/handoff pipeline"
+  ],
+  "local_science": {
+    "full_entrypoint": "pass",
+    "long_independent_oracles": 30,
+    "native_build_ABI": "pass",
+    "parent_replay": 73,
+    "additional_budget_science_transactions": 511,
+    "PPML_all_budget_exact_transactions": 304,
+    "licensed46": "45 original passes plus repaired engine_selection pass; original declared-arithmetic exact failure retained",
+    "independent_M22_and_original_axis_witnesses": "pass with predeclared OLS scope, PPML exact",
+    "scope": "Mac only; remote/CI paused"
+  },
+  "performance": {
+    "main15": {
+      "verdict": "failed/unresolved",
+      "parent": {
+        "within": 13,
+        "unresolved": 2,
+        "outside": 0
+      },
+      "fixed_M26": {
+        "within": 9,
+        "unresolved": 3,
+        "outside": 3
+      },
+      "recorded_commands": 4720,
+      "known_M30_families": [
+        "OLS2FE residual robust",
+        "slope OLS",
+        "PPML2FE residual robust"
+      ]
+    },
+    "finite_shapes": {
+      "calibration": "pass symmetric accepted-M30 role identity",
+      "verdict": "failed",
+      "parent": "all four within allowance",
+      "fixed_M26": "large Fast outside; other three within",
+      "recorded_commands": 1136,
+      "large_Fast_M26_slowdown_percent": [
+        11.78,
+        11.28
+      ],
+      "Low_parent_point_improvements_percent": {
+        "large": [
+          20.31,
+          20.62
+        ],
+        "small": [
+          7.78,
+          7.82
+        ]
+      },
+      "Low_gain_claim": "point observations only; require raw-difference upper bounds before confirmed gain claim"
+    },
+    "scaling": "M31 migrated finite-operation 8/16 timing not yet supplied; M30-only deferral is not silently extended",
+    "rule": "unchanged max(5%,1ms); all observations retained; raw failed/unresolved verdicts unchanged"
+  },
+  "independent_review": {
+    "model": "GPT-6 Astra",
+    "effort": "high",
+    "disposition": "supports architectural retirement and Mac science; not accepted while performance/scaling open",
+    "source": "Independent read-only integrated review; no edits/builds/tests/measurements/subagents",
+    "findings": [
+      "Source/receipt identities match; exact inventory reconciled",
+      "No concrete remaining science/transaction/admission defect",
+      "Large Fast M26 cost distinct from named M30 exceptions",
+      "Rayon min-length splitting underexposes planned lanes for 9/10 items at budget4; explicitly balanced indexed partitions are a general arithmetic-preserving repair"
+    ]
+  },
+  "checkpoint_relation": "Explicitly supersedes the pre-performance status of local-evidence.json while retaining that immutable historical checkpoint and all its original receipts. This file does not claim the revised scheduler candidate is qualified.",
+  "evidence": [
+    {
+      "path": "target/m31-finite-operations/local-evidence.json",
+      "sha256": "8bd45f315094221864e4fdc8306f70c5e36a1db9158e4385b90126f5d6519413"
+    },
+    {
+      "path": "target/m31-finite-operations/performance-terminal.json",
+      "sha256": "fe99a9e81ff579ff62747eec385b8dd17cb88da0b34e6865a8b3d9214b6fdd24"
+    },
+    {
+      "path": "target/m31-finite-operations/acceptance/acceptance-plan.json",
+      "sha256": "b5373535ffa65e3c1b1bed384cd0a00c89b8db88c9f38cf48bcd315741dc02b2"
+    },
+    {
+      "path": "target/m31-finite-operations/acceptance/acceptance-verdict.json",
+      "sha256": "dae268ced08fbe38ead0647d8347a6627deb82b8088497d9bc8ad9e31a86833e"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-calibration/calibration-verdict.json",
+      "sha256": "680fb63213910155a9efc50cec60466e13eb78e871286d25ac5d104cc4dce456"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-calibration/calibration-decision.json",
+      "sha256": "686339396f818c8a5fa112289c08323fe9bb141a14e9e72582309c956506c902"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-acceptance/acceptance-plan.json",
+      "sha256": "cff44d54e585f7bdd3886200a810b4ac24cc227f5ff3cd336fbc2cfb55cac94a"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-acceptance/acceptance-verdict.json",
+      "sha256": "2cce4a4f389844e08cc55b0e421b157d42f9d7b415091384ff18e8a72a2595d4"
+    },
+    {
+      "path": "target/m31-finite-operations/finite-acceptance/terminal.json",
+      "sha256": "16ba8924a3a1fcf5aa7f0b63f2bcfed5a547883c7dbe0e3bd04e758263fd946a"
+    },
+    {
+      "path": "target/m31-finite-operations/replay/summary.json",
+      "sha256": "da9164472dcded941278bccc96d4a968fdd88e783556ec80e92b23030e5ed6b0"
+    },
+    {
+      "path": "target/m31-finite-operations/ppml-unaffected-budget-exact.json",
+      "sha256": "e70b34ca1bae1180cf12a006fd50fac3a6700ca26a8c5b0998cf60be7cc9c89d"
+    },
+    {
+      "path": "target/m31-finite-operations/exact-witnesses/scope-analysis-summary.json",
+      "sha256": "c654911bd7f52d40eb3a6c3309a96f7fc8b054aaef1baeabdaca06156c40439b"
+    },
+    {
+      "path": "target/m31-finite-operations/shape-science/scientific-summary.json",
+      "sha256": "ee979430edd8cbb62d2afbe3fbfe4ae7c1af3dbfe7654e2266edad9dbb5e82d8"
+    }
+  ]
+}
