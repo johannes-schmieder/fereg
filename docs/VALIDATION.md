@@ -93,7 +93,24 @@ as passing from that run.
 Astra's high-effort review identified a missing private-driver prerequisite:
 the build invoked the C compiler/linker and dumpbin without initializing the
 MSVC developer environment. The build now initializes and validates the x64
-environment before Cargo. This is a concrete repair, not proof of the observed
-failure's cause; its native retest is pending. Linux source transfer and execution
-are pending specific SCC transfer approval. Local binary-audit tests (19), loader
-tests (3), shell syntax and changed-document links passed.
+environment before Cargo. The same bounded native retest then passed:
+
+- Source: `a8cdd888e6f4aca74e888193b7f2af07810bc594`.
+- Run: `win-20261007T162625Z-3fc8a31f`, private `stata-do` controller.
+- Archive SHA-256:
+  `d77eb8d1f6fc47cd3f8c8c7fdd3425a1661eb97c67ca6786b68f225f04a7608e`.
+- Receipt SHA-256:
+  `feb66e9e97b04fcc6b4142cf6cc94db1e9b6fc8ddddae568427c3cc12c87132a`.
+- Windows x86-64 release build, PE dependency/export/static-CRT audit,
+  real-plugin ABI/load/selftest/protocol rejection and panic containment passed.
+- The driver verified the generated plugin checksum and passed
+  `windows_ci_smoke.do` and `single_runtime.do`: OLS/PPML estimation, the simple
+  independent OLS witness, exact repeats, retired-option rejection and rollback.
+- Source identity, receipt digest and every controller check were verified.
+  The wrapper confirmed stopped state, deleted transient transfers and released
+  the lock. No binary was published; the first failed run remains a failure.
+
+Linux source transfer and execution are pending specific SCC transfer approval.
+Local binary-audit tests (19), loader tests (3), shell syntax and changed-document
+links passed. These checks do not replace full Windows scientific/platform or
+performance qualification, and GitHub test workflows remain paused.
