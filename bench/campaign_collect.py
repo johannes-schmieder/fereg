@@ -64,7 +64,8 @@ def collect(context_path, output):
     files = ['manifest.json', 'input/source.json', 'setup.sh', 'job.sh', 'environment/runtime.json', 'environment/COMPLETE',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
              'smoke/results.json', 'smoke/COMPLETE', 'logs/setup.sge', 'logs/smoke.sge',
-             'logs/build.log', 'logs/dependency-fetch.log', 'logs/clock-build.log', 'logs/harness-tests.log']
+             'logs/build.log', 'logs/dependency-fetch.log', 'logs/clock-build.log', 'logs/harness-tests.log',
+             'logs/reference-prepare.log']
     files += [f'task-{i}/{name}' for i in range(1, 5) for name in ['results.json', 'COMPLETE']]
     listing = remote('find '+shlex.quote(root+'/logs')+" -maxdepth 1 -type f -name 'production.*.sge'").decode().splitlines()
     files.extend(str(Path(path).relative_to(root)) for path in listing)

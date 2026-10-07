@@ -19,6 +19,17 @@ cp -a "$REFERENCE_ROOT/environment/r-library" environment/
 cp "$REFERENCE_ROOT/environment/environment.json" environment/reference-origin.json
 module purge
 module load python3/3.12.4 stata-mp/19 R/4.5.2
+python3 - "$RUN_ROOT" "$REFERENCE_ROOT" <<'PY'
+import hashlib,pathlib,shutil,sys,tomllib
+r,origin=map(pathlib.Path,sys.argv[1:]);refs=r/'environment/references'
+for ref in tomllib.loads((r/'source/references.lock.toml').read_text())['reference']:
+    if ref['name'] not in ['ftools','reghdfe','ppmlhdfe','require']:continue
+    for name,expected in ref.get('required_capture_sha256',{}).items():
+        path=refs/pathlib.Path(name).name
+        if not path.exists():
+            shutil.copy2(origin/'environment/sources'/ref['name']/name,path)
+        assert hashlib.sha256(path.read_bytes()).hexdigest()==expected,name
+PY
 export CARGO_HOME=/projectnb/welfgr/johannes/fereg-rust-1.85.1/cargo
 export RUSTUP_HOME=/projectnb/welfgr/johannes/fereg-rust-1.85.1/rustup
 export RUSTUP_TOOLCHAIN=1.85.1-x86_64-unknown-linux-gnu
@@ -34,6 +45,14 @@ export CARGO_NET_OFFLINE=true
 bash scripts/build_linux.sh > "$RUN_ROOT/logs/build.log" 2>&1
 python3 bench/build_clock.py --output "$RUN_ROOT/environment/command-clock.plugin" > "$RUN_ROOT/logs/clock-build.log" 2>&1
 python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1
+cd "$RUN_ROOT/environment/references"
+stata-mp -b do "$RUN_ROOT/source/bench/scc/prepare_references.do" "$RUN_ROOT/environment/references"
+mv prepare_references.log "$RUN_ROOT/logs/reference-prepare.log"
+python3 - "$RUN_ROOT/logs/reference-prepare.log" <<'PY'
+import pathlib,sys
+assert 'CAMPAIGN_REFERENCES_COMPLETE rc=0' in pathlib.Path(sys.argv[1]).read_text()
+PY
+cd "$RUN_ROOT/source"
 python3 bench/campaign.py prepare "$RUN_ROOT"
 Rscript -e 'library(fixest);library(foreign);library(jsonlite);library(digest);writeLines(toJSON(as.list(setNames(vapply(loadedNamespaces(),find.package,character(1)),loadedNamespaces())),auto_unbox=TRUE),file.path(Sys.getenv("RUN_ROOT"),"environment/r-package-paths.json"))'
 python3 - "$RUN_ROOT" <<'PY'
