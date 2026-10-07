@@ -15,10 +15,6 @@ import os
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-try:
-    from scripts import ppml_memory_performance as performance
-except ImportError:
-    import ppml_memory_performance as performance  # type: ignore[no-redef]
 
 
 ORACLE_ROWS = 256
@@ -249,8 +245,7 @@ def generator_do(cell: Mapping[str, Any], seed: int) -> str:
 
 
 def compile_fixtures(manifest_path: Path, output: Path) -> Mapping[str, Any]:
-    manifest = performance.load_manifest(manifest_path)
-    indexed = {cell["cell_id"]: cell for cell in performance.expand_cells(manifest)}
+    indexed = {cell["cell_id"]: cell for cell in json.loads(manifest_path.read_text())["cells"]}
     if not set(ORACLE_CELL_IDS) <= set(indexed):
         raise FixtureCompileError("development manifest omits a frozen oracle cell")
     records = []
@@ -280,7 +275,7 @@ def compile_fixtures(manifest_path: Path, output: Path) -> Mapping[str, Any]:
     document = {
         "schema_version": 1,
         "fixture_type": "feppml-explicit-dummy-fixtures-v1",
-        "development_manifest_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+        "models_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
         "oracle_cell_ids": list(ORACLE_CELL_IDS),
         "cells": records,
         "complete_sentinel": "FEPPML_ORACLE_FIXTURES_COMPLETE",
@@ -296,8 +291,7 @@ def compile_fixtures(manifest_path: Path, output: Path) -> Mapping[str, Any]:
 def validate_compiled_fixtures(
     document: Mapping[str, Any], manifest_path: Path, generated_root: Path
 ) -> None:
-    manifest = performance.load_manifest(manifest_path)
-    indexed = {cell["cell_id"]: cell for cell in performance.expand_cells(manifest)}
+    indexed = {cell["cell_id"]: cell for cell in json.loads(manifest_path.read_text())["cells"]}
     if document.get("oracle_cell_ids") != list(ORACLE_CELL_IDS):
         raise FixtureCompileError("oracle cell inventory/order differs from frozen registry")
     records = document.get("cells")
@@ -326,13 +320,13 @@ def validate_compiled_fixtures(
 
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--development-manifest", type=Path, required=True)
+    parser.add_argument("--models", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args(argv)
     if args.output.exists():
         raise SystemExit("oracle fixture output already exists")
     args.output.mkdir(parents=True)
-    compile_fixtures(args.development_manifest.resolve(), args.output.resolve())
+    compile_fixtures(args.models.resolve(), args.output.resolve())
     print("FEPPML_ORACLE_FIXTURES_COMPLETE")
     return 0
 

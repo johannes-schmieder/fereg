@@ -1,7 +1,0 @@
-{
-  "all_pairs_exact_science": false,
-  "completed_pairs": 17,
-  "contents": "Synthetic-input identities, complete numeric b/V/diagnostic exports, sample hashes, runtime and RSS receipts, saved-output values where requested, and phase traces. No raw licensed logs, binaries, request paths or private data.",
-  "sha256": "4bdc3205b9e928b766ce6f87bd8887b133938fb16f089f2ed67c0eecc1e9a54c",
-  "successful_measured_calls": 34
-}

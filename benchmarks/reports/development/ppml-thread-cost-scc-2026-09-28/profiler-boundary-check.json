@@ -1,5 +1,0 @@
-{
-  "cases": 5,
-  "status": "pass",
-  "scope": "Controller-requested normal SIGINT codes accepted; unsolicited SIGINT and other signals still rejected. Sample-file existence checked; remote controller separately requires decodable nonempty samples and zero lost samples."
-}

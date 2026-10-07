@@ -1,8 +1,0 @@
-{
-  "snapshot": "cda0912f3f7c4ed74856770d57f263b3786afe50c75e66e66154c1b6e523c670",
-  "decision": "CPU attribution selected inlining checked accumulator and group-mean helpers, not portable proposal arithmetic. Preserve exact recurrences, error checks, certificate replay, storage and routing. No arithmetic relaxation.",
-  "profile_job": "7763535",
-  "tuning_seed": 2026092817,
-  "fresh_seed": 2026092819,
-  "unchanged_screen_cases": true
-}

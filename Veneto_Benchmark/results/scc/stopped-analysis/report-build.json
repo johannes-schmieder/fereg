@@ -1,9 +1,0 @@
-{
-  "builder_sha256": "516165e8602842b6ec4992d78bd3dc5c01fd1b2622d509da20eaa5999e35b14c",
-  "calls_sha256": "3ae4733fe7464493cc23914be86c56c461aea9563376b44481145b46758aea26",
-  "main_calls": 110,
-  "pages": 11,
-  "pdf_sha256": "a01ef0e2687b482b5c05ce6637d1245e2dce855115fb7423821862fbd337bcca",
-  "supplemental_calls": 14,
-  "visual_QA": "pending"
-}

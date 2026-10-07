@@ -1,7 +1,0 @@
-job_id=7357077
-task_id=7
-scope_index=20
-scope_name=n1m-akm_standard-k30-t1
-hostname=scc-sb3
-slots=16
-job_rc=0

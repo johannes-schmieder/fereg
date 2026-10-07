@@ -1,9 +1,0 @@
-{
-  "cold_requests": 4,
-  "contains": "Synthetic input identities and full numeric exports; failure receipt; rejected covariance dump. No licensed logs or datasets.",
-  "expected_baseline_warm_failure_rc": 430,
-  "failed_request_not_timing_evidence": true,
-  "full_case_science_exact": true,
-  "sha256": "3bc14bbcd3e147c47fdc487f2b482b437e8a6d3e68eeef712ea68adbcfe951a9",
-  "successful_requests": 3
-}

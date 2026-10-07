@@ -1,9 +1,0 @@
-{
-  "logical_receipts": 10140,
-  "payloads": 2397,
-  "bytes": 25296608,
-  "sha256": "ceec6ecc2342a71f92a0915f8fe9e5a5d4f2140019c3920f4aae1345fe1e8d47",
-  "restored_verified": true,
-  "licensed_headers_or_local_home_paths": 0,
-  "raw_data_or_plugin_files": 0
-}

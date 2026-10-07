@@ -31,6 +31,7 @@ PUBLIC_PPML_FIXTURES = [
     "tests/stata/parity_ppmlhdfe/feppml_separation_outputs.do",
     "tests/stata/parity_ppmlhdfe/feppml_time_series.do",
     "tests/stata/parity_ppmlhdfe/feppml_weights_inference.do",
+    "tests/stata/development/feppml_no_fe_strict_oracle.do",
 ]
 PUBLIC_HELP_FIXTURE = "tests/stata/documentation/feppml_help_examples.do"
 
@@ -46,11 +47,6 @@ class StataProfileSeparationContractTests(unittest.TestCase):
         self.assertNotIn("  push:", workflow)
         self.assertIn("        default: smoke", workflow)
         self.assertNotIn("inputs.profile ||", workflow)
-        reference = (
-            ROOT / ".github/workflows/fe-interaction-reference-probe.yml"
-        ).read_text(encoding="utf-8")
-        self.assertIn("  workflow_dispatch:", reference)
-        self.assertNotIn("  push:", reference)
 
     def test_scc_development_profiles_are_small_and_boundary_explicit(self) -> None:
         profiles = load_profiles()

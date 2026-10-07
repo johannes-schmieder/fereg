@@ -1,4 +1,0 @@
-test fe::topology_slope_map::tests::two_effect_graph_recovery_certifies_disconnected_and_inconsistent_targets ... ok
-test ols::prepared_fit::tests::two_effect_graph_recovery_admits_exact_finishing_budget ... ok
-test fe::topology_slope_map::tests::weighted_graph_recovery_preserves_components_scale_and_pointwise_rejection ... ok
-test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 955 filtered out; finished in 0.05s

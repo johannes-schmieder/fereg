@@ -1,9 +1,0 @@
-{
-  "job_id": "7763797",
-  "run_root": "/projectnb/welfgr/fereg/dev/20260928-private-moments-01",
-  "source_snapshot": "a9fb23075ecbe4f2bc135c78e547d3aa301e49f50a281bdae61820e469edcc20",
-  "slots": 16,
-  "mem_per_core": "3G",
-  "walltime": "00:30:00",
-  "lane": "shared numerical boundary; PPML smoke, finite/linear/IRLS/profile Rust suites and six PPML/OLS independent licensed fixtures"
-}

@@ -1,9 +1,0 @@
-test_exact_case_coverage (test_run.Evidence) ... ok
-test_failure_is_not_upgraded (test_run.Evidence) ... ok
-test_missing_duplicate_and_unregistered_cases_fail (test_run.Evidence) ... ok
-test_test_runner_prefix_and_bad_boolean (test_run.Evidence) ... ok
-
-----------------------------------------------------------------------
-Ran 4 tests in 0.001s
-
-OK

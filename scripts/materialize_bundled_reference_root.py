@@ -23,7 +23,7 @@ import tempfile
 from pathlib import Path
 from typing import Any, Mapping, Sequence
 
-from ols_reference import load_reference_lock, preflight_reference_root
+from reference_identity import load_reference_lock, preflight_reference_root
 from resolve_reference_root import (
     LOCK,
     ROOT,

@@ -1,2 +1,0 @@
-case_id,test_id,topology,topology_detail,n,controls,rhs,threads,memory_mode,poolsize,absorb_order,best_certified_explicit_solver,best_explicit_seconds,auto_used_solver_code,auto_selected_solver,auto_seconds,auto_fallback,auto_pilot_contraction,auto_regret_percent
-baln_p8_r50_m02_q10_s1,balanced_diagnostic,balanced_worker_firm_nuisance,periods8_ratio5_mobility0.2_nuisance10_seed1,64000,4,5,8,auto,0,worker firm year,none,,,,,,,

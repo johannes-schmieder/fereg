@@ -1,9 +1,0 @@
-{
-  "candidate_plugin": "253bf9eb6e406331f101c3354ceff560ad2a36916e6c97a7582208cc275cf5f2",
-  "diagnostic_plugin": "e9b2141ef77f9907b63e6afa186265e91f3a338f160f6fa484b14a60f5267141",
-  "diagnostic_patch": "019aeefec57b4c600dffec1b7534409fa2fabf77cdbe755fcc6f572d395bac65",
-  "diagnostic_estimate_source": "8dbe71cf6393e1c9d78f8fd88e29fe1ac487419adcb571aa032d0ad21efbdb30",
-  "unchanged_singleton_source": "fbf90451c95cb2718877508f221c199af7392c4ab144f17d6836120b7ba5517e",
-  "diagnostic_script": "b3bcbc6d99ac0685f8ecaa88dae80ce73ec5d399874e170fd51c5ab347825af9",
-  "diagnostic_wrapper": "f21712fb46ee5d059eaab4c355f648fde998c2170a46e309ee953a07b6040a3f"
-}

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fixed-seed inputs ported from legacy_generators/{systematic,two_fe_dense}.
+"""Fixed-seed inputs for the maintained local benchmark.
 
 All estimators read exactly the same DTA; generation is outside command timings.
 """
@@ -60,8 +60,6 @@ def groups(cell, rng):
 
 
 def generate(cell, seed, path):
-    if cell["design"] == "veneto":
-        raise ValueError("Veneto must be supplied as an external prepared DTA; never generated or committed")
     n, k = cell["rows"], cell["regressors"]
     rng = np.random.Generator(np.random.PCG64(seed))
     data = {"obs_id": np.arange(1, n + 1, dtype=np.int64), **groups(cell, rng)}
@@ -97,7 +95,7 @@ def generate(cell, seed, path):
     frame = pd.DataFrame(data)
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
-    # Version 114 is numeric-lossless here and readable by base R's foreign package.
+    # Version 114 is numeric-lossless here and readable by supported Stata versions.
     frame.to_stata(path, write_index=False, version=114, time_stamp=datetime(2000, 1, 1))
     decoded = pd.read_stata(path, convert_categoricals=False)
     for name in frame:
@@ -109,38 +107,12 @@ def generate(cell, seed, path):
     return metadata
 
 
-def prepare_external(cell, source, destination):
-    """Convert the pinned model input losslessly for base R; never change its model/sample."""
-    source, destination = Path(source), Path(destination)
-    source_hash = sha256(source)
-    if source_hash != cell["input_sha256"]:
-        raise ValueError("external model input differs from the declared source hash")
-    frame = pd.read_stata(source, convert_categoricals=False)
-    required = ["obs_id", "y", *[f"g{j}" for j in range(1, cell["effects"]+1)],
-                *[f"x{j}" for j in range(1, cell["regressors"]+1)]]
-    if len(frame) != cell["rows"] or not set(required) <= set(frame):
-        raise ValueError("external input dimensions do not match the declared model")
-    if not frame.obs_id.is_unique:
-        raise ValueError("external observation IDs are not unique")
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    frame.to_stata(destination, write_index=False, version=114, time_stamp=datetime(2000,1,1))
-    decoded = pd.read_stata(destination, convert_categoricals=False)
-    for name in frame:
-        if not np.array_equal(frame[name].to_numpy(), decoded[name].to_numpy()):
-            raise ValueError(f"external DTA conversion changed {name}")
-    metadata = {"cell": cell, "source_sha256": source_hash, "sha256": sha256(destination),
-                "rows": len(frame), "numpy": np.__version__, "pandas": pd.__version__}
-    destination.with_suffix(".json").write_text(json.dumps(metadata,indent=2)+"\n")
-    return metadata
-
-
 if __name__ == "__main__":
     from run import load_suite, selected_cells
     parser = argparse.ArgumentParser()
-    parser.add_argument("--tier", choices=["smoke", "standard", "full"], default="smoke")
+    parser.add_argument("--tier", choices=["smoke", "standard"], default="smoke")
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     suite = load_suite()
     for cell in selected_cells(suite, args.tier):
-        if cell["design"] != "veneto":
-            generate(cell, suite["seed"], args.output / (cell["id"] + ".dta"))
+        generate(cell, suite["seed"], args.output / (cell["id"] + ".dta"))

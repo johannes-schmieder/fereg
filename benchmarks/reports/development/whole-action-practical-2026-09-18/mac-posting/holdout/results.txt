@@ -1,4 +1,0 @@
-levels17_32m n 1060921 k 7 allocated_growth -39449 data_growth 0 per_n -0.037 sec 0.99
-wide75_32m n 2097152 k 75 allocated_growth 134035615 data_growth 134217728 per_n 63.913 sec 13.16
-german_shape_32m n 4552233 k 15 allocated_growth 100610519 data_growth 100663296 per_n 22.101 sec 6.41
-numeric50_32m n 1048576 k 50 allocated_growth -120205 data_growth 0 per_n -0.115 sec 1.61

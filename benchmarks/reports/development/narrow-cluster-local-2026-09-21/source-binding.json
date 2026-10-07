@@ -1,7 +1,0 @@
-{
-  "plugin": "5e1dda46536c8a675ef617be64a4b4a3d661b5ca7edecae131cd8051e3dbc823",
-  "base_commit": "ffa3bde17997ddf3dbf420f97113dcdf588569f8",
-  "artifact_source_sha256": "f9ced4c3af60fa96d3646a7516b771c3c12044849a8aa9bb054b326348112eb1",
-  "current_source_sha256": "79634c484a114257b2f631c3a79e10f75abc0e16bc6f75ca2e6f6f23d4557d31",
-  "production_prefix_equal": true
-}

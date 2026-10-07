@@ -1,9 +1,0 @@
-{
-  "controller_return_code": 0,
-  "terminal_sentinel": "NEXT_SUBSYSTEM_SCREEN_COMPLETE",
-  "terminal_sentinel_present": true,
-  "original_controller_log_sha256": "ddc9a9a5ba33899e9cd84874ab9f327685f9782898aac0d82c91002dafc82ed0",
-  "attempts": 24,
-  "passing_application_results": 24,
-  "clean_monitors": true
-}

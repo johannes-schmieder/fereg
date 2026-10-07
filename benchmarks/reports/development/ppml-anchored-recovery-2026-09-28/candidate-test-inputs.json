@@ -1,7 +1,0 @@
-{
-  "source_manifest_sha256": "e0ce365c88956bdcdc02617cdb34d2e92398f34c1c3ab506adb6b9a9a4e396b6",
-  "scope": "Test-only compilation closure supplement; no production source or binary changes",
-  "files": {
-    "tests/fixtures/ppml/reconstruction.csv": "3f3f4de4d63ff2a4b427ec53f2cbc2112e33b369cb58d6657e7b9d6aa08ff2c5"
-  }
-}

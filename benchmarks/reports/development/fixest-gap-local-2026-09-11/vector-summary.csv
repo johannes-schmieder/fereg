@@ -1,9 +1,0 @@
-design,threads,variant,runs,median_seconds,min_seconds,max_seconds,median_peak_rss_gib
-strong_d3,4,fixest,3,1.894,1.879,1.903,1.8741455078125
-strong_d3,4,vector,3,2.582,2.566,2.607,1.725982666015625
-strong_d3,16,fixest,3,0.84,0.826,0.842,1.845184326171875
-strong_d3,16,vector,3,1.742,1.736,1.788,1.730621337890625
-strong_d6,4,fixest,3,1.541,1.528,1.546,1.8643646240234375
-strong_d6,4,vector,3,2.124,2.105,2.149,1.523681640625
-strong_d6,16,fixest,3,0.69,0.683,0.697,1.9974517822265625
-strong_d6,16,vector,3,1.466,1.451,1.471,1.52313232421875

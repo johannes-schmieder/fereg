@@ -1,6 +1,0 @@
-{
-  "original_manifest_sha256": "3d68d41f9a97021b2255aec60e4bbde77ff4b148b82680adeadffc6682b1956a",
-  "archived_manifest_sha256": "aa2c218efb31ee546dfe376c8cc811a1ae14b740fcb13166a1b6aeb359ae7090",
-  "modification": "Only the local fereg-core dependency path is rewritten for this repository location. Source and dependency pin are unchanged. The original manifest text is retained separately.",
-  "initial_probe_limit": "The first eight-probe binary is hash-identified, but its initial source was edited before a snapshot was saved. Those results are exploratory; nine final source-bound probes independently repeat the shapes and exact chain witness."
-}

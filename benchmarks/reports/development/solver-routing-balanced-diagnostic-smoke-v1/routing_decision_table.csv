@@ -1,2 +1,0 @@
-case_id,test_id,topology,topology_detail,n,controls,rhs,threads,absorb_order,best_certified_explicit_solver,best_explicit_seconds,auto_used_solver_code,auto_selected_solver,auto_seconds,auto_fallback,auto_pilot_contraction,auto_regret_percent
-bal_p3_r20_m002_s1,balanced_diagnostic,balanced_worker_firm,periods3_ratio2_mobility0.02_seed1,24000,4,5,8,worker firm,cmg,0.026,3.0,LSMR,0.072,0.0,0.0,176.9230769230769

@@ -1,9 +1,0 @@
-{
-  "label": "small-aw-batch-diagnostic",
-  "paired_workers": 5,
-  "requested_commands_per_timed_region": 16,
-  "environment": {
-    "ONE_FE_PROFILE_REPEAT": "16"
-  },
-  "scope": "Separate diagnostic; does not replace the single-call control gate"
-}

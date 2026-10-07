@@ -1,8 +1,0 @@
-Fontconfig warning: ignoring C.UTF-8: not a valid language tag
-Matplotlib is building the font cache; this may take a moment.
-.....................
-----------------------------------------------------------------------
-Ran 21 tests in 1.440s
-
-OK
-PREDECLARED PACKING 17 174.05583002122214 node hours

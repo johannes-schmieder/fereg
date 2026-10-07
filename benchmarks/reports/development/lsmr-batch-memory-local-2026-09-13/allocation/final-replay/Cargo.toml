@@ -1,9 +1,0 @@
-[package]
-name = "fereg-lsmr-memory-probe"
-version = "0.0.0"
-edition = "2021"
-[dependencies]
-within = { git = "https://github.com/johannes-schmieder/within", rev = "1ac3522a251c2622dbeab451415924f9ebe117b9" }
-rayon = "=1.12.0"
-schwarz-precond = { git = "https://github.com/johannes-schmieder/within", rev = "1ac3522a251c2622dbeab451415924f9ebe117b9" }
-fereg-core = { path = "../../../../../../crates/fereg-core" }

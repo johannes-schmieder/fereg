@@ -125,7 +125,7 @@
   not make the common kernel a public Rust stability promise.
 
 No tag or GitHub release is created by this checkpoint. Qualification status
-and exact accepted receipts are recorded in `STATUS.md`.
+and exact accepted receipts remain recorded in the historical `STATUS.md` in Git.
 
 ## 0.1.0-phase01 — 2026-08-20
 

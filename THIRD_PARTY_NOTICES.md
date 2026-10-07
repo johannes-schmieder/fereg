@@ -9,39 +9,21 @@ They are not relicensed by fereg.
 
 ## Pinned numerical dependencies
 
-The Rust `within` dependency is MIT licensed. The frozen legacy core pins
-`1ac3522a251c2622dbeab451415924f9ebe117b9` in
-`references.lock.toml`. It supplies modified LSMR and Schwarz preconditioning,
-not another public solver family. The legacy adapter in
-`legacy/fereg-core/src/fe/lsmr.rs` maps native `EffectTerm` values to
-`within::Effect`, calls `within::solve_batch`, and copies returned demeaned
-vectors into fereg storage. Prepared adapters reuse native categorical views.
-`fe/certificate.rs` independently recomputes the weighted FE certificate;
-the upstream recurrence alone is not scientific acceptance. No within source
-is copied or modified in this tree. Its original MIT notice must accompany
-the corresponding source distribution.
+The MIT-licensed `within` and `schwarz-precond` runtime dependencies are pinned to
+`803a4feacef526f55e1520f22be4409779b7d8ff`. The native LSMR adapters map fereg FE
+views to upstream operations; fereg independently recomputes the final weighted
+FE certificate. Preserve the upstream MIT notices with source distributions.
 
-CMG is GPL-3.0-only, pinned to
-`1d39c113f0c397f29653d92672090e5a42f80921`. It is statically linked by the
-legacy `fe/cmg.rs` adapter for graph-Laplacian/SDDM preconditioning and PCG;
-that adapter uses prepared Laplacian topology, hierarchy/workspace construction
-and caller-buffer `solve_pcg_batch_*` interfaces. PPML's
-`ppml/categorical_fwl_cmg.rs` shares this graph adapter and refreshes numerical
-state with changing weights. Preserve CMG's original license and notices.
-The clean engine and oracle use within
-`268a1f5d4fe71ec3521cb02ef977620389a2cf40`; the clean engine uses CMG
-`980064c30b02f6e403f9739619e31ab7bcfa3d9d`. These additive APIs provide
-cooperative iteration polling. The clean engine reconstructs and certifies
-original-coordinate results through narrow adapters; frozen legacy identities
-remain unchanged. All identities are recorded in `references.lock.toml`.
+CMG is GPL-3.0-only, pinned to `1d39c113f0c397f29653d92672090e5a42f80921` and
+statically linked for graph-Laplacian/SDDM preconditioning and PCG. Preserve its
+original license and notices. Exact runtime pins also appear in Cargo.lock and
+references.lock.toml.
 
-Johannes approved GPLv3 as the project distribution direction. Project license
-metadata and corresponding-source packaging are migrated together at M7.3.
-This notice does not assert that the Stata/SPI native-linking questions are
-resolved: [rebuild ADR 0008](docs/cleanup/rebuild-adr/0008-dependencies-licensing.md)
-records the unpassed G-LICENSE gate. Changing fereg's own license cannot grant
-an exception for dependency or StataCorp code. Native-plugin release requires
-the documented disposition and any necessary rights-holder permissions.
+Johannes approved GPLv3 as the distribution direction. Project license metadata
+and corresponding-source packaging must be migrated together before publication.
+The [licensing decision](docs/licensing.md) retains the unresolved Stata/SPI
+native-linking gate. A change to fereg's license cannot grant exceptions for
+third-party code; native release needs the necessary rights-holder permissions.
 
 ## Frozen behavioral references and provenance
 
@@ -52,14 +34,11 @@ Stata syntax, FE/singleton/DoF/VCE oracle; ppmlhdfe is the PPML sample,
 separation and inference oracle. They are not called by fereg at runtime.
 The independent explicit-dummy oracle is development-only.
 
-`scripts/ppml_reference_closure.py` verifies the pinned ppmlhdfe source archive
-and the reghdfe/ftools/require closure before staging an isolated offline
-reference runtime outside the repository. A floating checkout or preinstalled
-ado package does not establish reference identity. Reference comparisons bind
-both candidate and comparator closure and are supplemented by independent
-Poisson and recession-cone calculations.
+Pinned offline reference sources and required files remain independently bound.
+A floating checkout or preinstalled ado package does not establish identity.
+Independent Poisson and recession-cone calculations supplement reference parity.
 
-The legacy `fe/borrowed_map.rs` path is native fereg code, not adapted within,
+The `fe/borrowed_map.rs` path is native fereg code, not adapted within,
 PyFixest or reghdfe source. Later source adaptation must identify the exact
 upstream file/function, preserve its notice and add a regression for the
 borrowed behavior. A repository-level attribution alone is insufficient.

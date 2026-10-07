@@ -1,7 +1,0 @@
-{
-  "initial_job": "7763505",
-  "candidate_unchanged": true,
-  "reason": "All18 native pairs pass; meaningful paired gains on small fast, serial, wide and strong-d2. Low mode loses2.7%; weak stock SE remains NR. Proceed with the existing frozen fresh seed/cases, without threshold or guard tuning.",
-  "fresh_design": "fresh-design-registration.json",
-  "planned_fits": 99
-}

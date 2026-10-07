@@ -1,8 +1,7 @@
 # Local Stata and Rust checks
 
-The licensed Mac runner is manual-only and accepts trusted repository code.
-Push/PR CI uses hosted Linux for the lean Rust and mock-SPI checks. Neither
-an ordinary push nor an external pull request launches licensed Stata.
+GitHub testing is paused by Johannes. Run applicable tests locally on this Mac;
+do not dispatch remote or licensed runner workflows until he resumes them.
 
 ## Setup
 
@@ -37,7 +36,7 @@ The current formal runner checks a committed source archive in an isolated
 temporary tree; it does not validate arbitrary uncommitted files. For working
 tree development fixtures, use ci/run_fixture_profile.py and its documented
 arguments. Local outputs stay in ignored .ci/stata/run/ or target/ directories.
-Preserve source/plugin identity when comparing old and new engines.
+Preserve source/plugin identity when comparing runtime revisions.
 
 Stata shell exit zero alone is insufficient. Inspect Stata return codes,
 per-fixture status and the terminal END_FIXTURE sentinel. The installed-package
@@ -46,11 +45,7 @@ Break and transaction failures must restore previous results and outputs.
 
 ## Workflow boundaries
 
-- ci.yml runs on push and pull_request on hosted Linux.
-- stata-ci.yml stays manual on the licensed Mac.
-- Existing reference/qualification workflows remain manual during migration.
-- M7 removes obsolete receipt machinery only after replacement coverage passes.
-
-Follow [MILESTONES.md](../MILESTONES.md), [AGENTS.md](../AGENTS.md) and the
-[approved plan](../docs/cleanup/PLAN.md) for required milestone checks. Windows
-has build/mock coverage only; no licensed Windows Stata result is implied.
+The retained definitions are manual; no remote run is required during the pause.
+Follow [AGENTS](../AGENTS.md) and [development checks](../docs/development_workflow.md).
+Current qualification is Mac-only. Platform build scripts are retained for future
+use; their existence does not establish fresh platform evidence.

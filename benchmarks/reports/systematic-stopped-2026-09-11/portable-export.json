@@ -1,9 +1,0 @@
-{
-  "changed_members": 5330,
-  "original_archive_sha256": "377342b3a9d498859de9338433d81da8e88f7922e8aec3cec25b4ccbd8900425",
-  "original_members": 45992,
-  "portable_archive_bytes": 48438189,
-  "portable_archive_sha256": "3294fbbb56306b33cba934b8692c41b0cc54dcca0bafefeeda1477d5792daca0",
-  "schema": "portable-historical-evidence-v1",
-  "transformation": "Only execution root strings are replaced by <repo>, <scc-project>, <scratch>. Original archive remains unchanged locally. Source and result hashes in historical records still identify originals; this derivative is not an exact-source replay artifact."
-}

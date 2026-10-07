@@ -1,7 +1,0 @@
-{
-  "status": "pass",
-  "expected_rc": 198,
-  "prior_results_and_variables_exact": true,
-  "script_sha256": "d6103d90288e45dc542d01fa0344f1d74723f911617aa00753d624b8afa3f607",
-  "process_returncode": 0
-}

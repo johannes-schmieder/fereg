@@ -1,9 +1,0 @@
-{
-  "status": "restored_exact_accepted_source_and_mac_artifact",
-  "source_snapshot": "5c0d4685f7e10f126f140d8bfe9a6177ffc8ce73dc00f51f1845cd319800b7e0",
-  "computational_inputs": 211,
-  "mac_plugin_sha256": "0172ddaf57d2a6037ead11135dc9ae2a5267c35fdc619a2b37f3a4a6381e6a0d",
-  "rejected_patch_sha256": "9de8ecc892d0f0f0a1d037c0bbb147b35fc05068bab2b60cd42d20095a305bc4",
-  "method": "Reverted only the seven candidate lines, verified all baseline source hashes, relinked saved accepted Rust archives with the unchanged standard C/ABI build commands, and recovered the exact prior universal plugin hash. ABI/panic harness passed.",
-  "restore_log_sha256": "47189c4126eda154f8e29b00bfaa1d214f2971fc8621f98e03efa83cd1d30b9a"
-}

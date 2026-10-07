@@ -1,8 +1,0 @@
-{
-  "status": "pass",
-  "cases": 16,
-  "baseline": "5eb6f18cd85217dad4dca216f00c1033fce0e30a16700d3a22445823fb993554",
-  "candidate": "7b9ea42d56785803e05ae9a6bf48135d09a45f415ba96294b365a0ec5b91734f",
-  "script": "567e8041d329bd81de8a9cbf77a6c2b4b70be6dc3f467c7b92ba6c79c6df862c",
-  "log": "36c9629439279ab27897eb9f0f72abbde383ccd80c2c2064e3f43353cb022c3b"
-}

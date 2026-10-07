@@ -7,7 +7,7 @@ program define _fereg_estimate_public, eclass
          SOLVer(string) PREConditioner(string) THREADS(integer 0) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) DETERMINISTIC TIMEIT VERBose(integer 0) ///
-         NOCONStant ENGINE(string)]
+         NOCONStant]
 
     if `threads' < 0 | `poolsize' <= 0 | `tolerance' <= 0 | ///
        `tolerance' >= 1 | `iterate' <= 0 {
@@ -102,7 +102,7 @@ program define _fereg_estimate_public, eclass
         `weight_option' ///
         solver(`solver_mode') preconditioner(`preconditioner_mode') ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
-        iterate(`iterate') `deterministic' engine(`"`engine'"')
+        iterate(`iterate') `deterministic'
 
     // Preserve the public coefficient-axis adapter without paying for a
     // second full syntax/parser program invocation on every estimate.

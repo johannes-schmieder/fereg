@@ -1,7 +1,0 @@
-job_id=7359555
-task_id=4
-scope_index=10
-scope_name=n1m-one_fe-k30-t16
-hostname=scc-pg5
-slots=16
-job_rc=0

@@ -1,7 +1,0 @@
-job_id=7362162
-task_id=5
-scope_index=24
-scope_name=n1m-akm_standard-k30-t16
-hostname=scc-b12
-slots=16
-job_rc=0

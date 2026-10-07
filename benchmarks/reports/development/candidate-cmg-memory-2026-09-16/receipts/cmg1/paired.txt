@@ -1,5 +1,0 @@
-Traceback (most recent call last):
-  File "$RUN/cmg1/harness/run-screen.py", line 15, in <module>
-    for p,h in ident['baseline_files'].items():assert sha256(sources['baseline']/p)==h,p
-               ~~~~~^^^^^^^^^^^^^^^^^^
-KeyError: 'baseline_files'

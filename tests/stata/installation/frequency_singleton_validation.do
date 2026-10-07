@@ -16,10 +16,8 @@ scalar reference_b = _b[x]
 scalar reference_v = _se[x]^2
 scalar reference_df = e(df_r)
 predict double reference_resid, residuals
-capture noisily fereg y x i.f [fw=w], absorb(g#c.z) engine(legacy)
-assert _rc == 459
 foreach memory in fast low {
-    quietly fereg y x i.f [fw=w], absorb(g#c.z) engine(next) ///
+    quietly fereg y x i.f [fw=w], absorb(g#c.z) ///
         memory(`memory') residuals(actual_resid) threads(1) deterministic
     assert abs(_b[x] - reference_b) < 1e-10
     assert abs(_se[x]^2 - reference_v) < 1e-10
@@ -37,7 +35,7 @@ foreach keep in "" "keepsingletons" {
     scalar reference_b = _b[x]
     predict double unit_resid if e(sample), residuals
     foreach memory in fast low {
-        quietly fereg y x i.f [fw=w], absorb(g#c.z) engine(next) ///
+        quietly fereg y x i.f [fw=w], absorb(g#c.z) ///
             memory(`memory') `keep' residuals(actual_resid) threads(1) deterministic
         assert abs(_b[x] - reference_b) < 1e-10
         assert abs(actual_resid - unit_resid) < 1e-8 if e(sample)

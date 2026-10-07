@@ -1,8 +1,0 @@
-{
-  "job": "7763485",
-  "run_directory": "dev/20260928-publication-target-proof02",
-  "source_snapshot": "5c0d4685f7e10f126f140d8bfe9a6177ffc8ce73dc00f51f1845cd319800b7e0",
-  "slots": 4,
-  "wall_minutes": 30,
-  "scope": "Original positive and zero inputs; independent optimum intervals; baseline fast T4, candidate fast T1/T4 and low T4 (zero T4/low only); diagnostic clocks not rankable."
-}

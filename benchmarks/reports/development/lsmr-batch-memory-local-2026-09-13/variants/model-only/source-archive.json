@@ -1,6 +1,0 @@
-{
-  "sha256": "886a7a2ec052023849ace16ac49bb394e647bbac667808591cce9b4bce9699a8",
-  "files": 4,
-  "contents": "Exact changed native source/build inputs relative to the accepted baseline; per-file hashes in changed-native-inputs.json. Not a compiled binary.",
-  "unmodified_inputs": "Use the base commit in identities.json; compare all native input hashes before building."
-}

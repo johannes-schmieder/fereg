@@ -165,7 +165,7 @@ local allowed_macros cmd cmdline model depvar indepvars vce vcetype absvars ///
     adjustment offset exposure wtype wexp clustvar clustvar1 clustvar2 ///
     clustvar3 clustvar4 clustvar5 resid residual_type xb_var d_var eta_var ///
     mu_var drop_reason_var predict feppml_action_protocol feppml_model_wire ///
-    feppml_request_wire feppml_result_wire feppml_plugin feppml_engine feppml_gate ///
+    feppml_request_wire feppml_result_wire feppml_plugin feppml_gate ///
     feppml_memory_requested feppml_memory_method solver feppml_solver_requested ///
     feppml_solver_selected feppml_solver_engine feppml_solver_effective ///
     feppml_solver_engine_effective feppml_solver_checkpoint ///

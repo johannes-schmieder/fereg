@@ -1,7 +1,0 @@
-{
-  "errors": 167,
-  "distinct_messages": 50,
-  "new_bias_file_errors": 0,
-  "comparison": "Same 167 errors and 50 distinct messages as v05 and recorded baseline; not a globally passing clippy result.",
-  "output_sha256": "d8fb596f2dd85906ae38ca58fa8b6c6444714be5605d5af0cee5f62e5230fd9c"
-}

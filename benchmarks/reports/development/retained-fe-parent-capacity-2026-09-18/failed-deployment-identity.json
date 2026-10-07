@@ -1,5 +1,0 @@
-{
-  "base_commit": "dd1cf057d828115d4d0be34ef703e04b05a8f525",
-  "snapshot_manifest_sha256": "9036f20752b221554221b56a75cfcb26d2d914305f2ab83001422d7e33c7426c",
-  "scope": "scoped retained FE parent fix plus separately labelled preserved overlay; native synthetic tests only"
-}

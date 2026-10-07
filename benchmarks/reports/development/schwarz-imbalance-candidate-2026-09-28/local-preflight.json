@@ -1,8 +1,0 @@
-{
-  "no_compilation": true,
-  "patch_applies": true,
-  "production_inputs_unchanged": 259,
-  "python_ast": true,
-  "rust_parse": true,
-  "shell_syntax": true
-}

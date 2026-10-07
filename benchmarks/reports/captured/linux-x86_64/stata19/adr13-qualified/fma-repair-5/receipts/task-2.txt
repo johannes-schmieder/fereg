@@ -1,7 +1,0 @@
-job_id=7362162
-task_id=2
-scope_index=10
-scope_name=n1m-one_fe-k30-t16
-hostname=scc-gd4
-slots=16
-job_rc=0

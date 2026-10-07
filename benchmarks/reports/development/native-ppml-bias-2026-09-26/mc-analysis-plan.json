@@ -1,8 +1,0 @@
-{
-  "schema": 1,
-  "analysis_script_sha256": "555acde5d373b54903cd4d43d38aa8555942255ee1416e31c9c7eb2e1f6b4b44",
-  "wage_fevc_absolute_tolerance": 1e-10,
-  "reason": "Unchanged arithmetic after FE spreading can differ in summation order; seven development pilots gave maximum wage/FEVC differences of 7.14e-14. No change to wage fits or FEVC code, probes or seeds.",
-  "dataset_signatures": "exact match",
-  "criteria": "Report finite-draw bias, MCSE, RMSE and tails with all failures retained; no target bias/RMSE threshold."
-}

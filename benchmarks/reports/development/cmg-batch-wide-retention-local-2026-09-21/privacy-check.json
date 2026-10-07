@@ -1,9 +1,0 @@
-{
-  "status": "pass",
-  "archives": {
-    "evidence.zip": "f271c5ba93b6a3e3ad56ba0b7ae47484710623531e0ea576d4ee0a96c8d9af07",
-    "sources.zip": "0ebb84330bc51d0997549d096f2f48ef856347ab283eb3f061eb50e742bf83da",
-    "checks.zip": "403b8fd728eaa8d4080589e697ae7735db5a20ef7c775687adb2527b220e8661"
-  },
-  "machine_home_path_matches": []
-}

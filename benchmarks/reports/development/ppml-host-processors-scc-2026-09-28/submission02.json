@@ -1,9 +1,0 @@
-{
-  "job_id": "7763618",
-  "run_root": "/projectnb/welfgr/fereg/dev/20260928-host-processors-02",
-  "snapshot": "d21200242734bd33960f633d21d9619fe623efe69825003a08bc19ad5ba4a840",
-  "purpose": "Bounded Linux validation after hidden native Break handshake correction",
-  "slots": 4,
-  "mem_per_core": "3G",
-  "walltime": "00:30:00"
-}

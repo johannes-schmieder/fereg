@@ -1,7 +1,7 @@
 # Optional PPML coefficient mean correction
 
 This is the accepted implementation contract. Public availability and completed
-evidence are recorded in STATUS.md; this document alone does not certify a feature.
+evidence are recorded in VALIDATION.md; this document alone does not certify a feature.
 
 ## Statistical target
 
@@ -245,28 +245,7 @@ The independent checks are `tests/python/test_ppml_bias_oracle.py`,
 `scripts/ppml_bias_reconstruction.py`. The Stata drivers take an exact candidate
 plugin and its pre-build source manifest. The reconstruction regression retains
 one synthetic duration draw and checks full/A/B exact and randomized outputs
-against explicit-design oracles under four row orders. The
-test-only Split Branch adapter is staged by `scripts/ppml_bias_mc.py`; the
-campaign planner freezes disjoint fresh-seed jobs, and the analyzer preserves
-failure denominators, reports all ten external moments, and separates joint
-interior comparisons from all available results. Wage and FEVC operations
-remain copied from the pinned external runtime. The report renderer
-`scripts/ppml_bias_mc_report.py` requires a complete audit by default and labels
-explicitly requested partial reports. It preserves the paired available and
-joint-interior populations and includes exact/higher-probe sensitivity.
-
-`scripts/ppml_bias_benchmark.py` compares matched Philox probes and full-system
-contractions with current-solve and cached-factor Mata routes. Use
-`--refit-reference` for end-to-end timings. The analyzer checks accuracy before
-ranking timings. The established process monitor must pass for timing claims;
-probe preparation, cold/warm calls, publication and process RSS have separate
-measurements. Startup and Mata compilation are excluded from repeated-call
-timings; process elapsed also includes all calls and exports, so it is not an
-isolated startup measurement. Supply the frozen `--source-manifest` to the
-benchmark analyzer to bind every receipt to the tested artifact.
-These focused development checks do not qualify a release
-or establish performance at unmeasured scales.
-
-See the [development evidence](../benchmarks/reports/development/native-ppml-bias-2026-09-26/README.md)
-for completed checks and their artifact identities. The sole current resume
-point and any uncompleted gates remain in [STATUS.md](../STATUS.md).
+against explicit-design oracles under four row orders. The Split Branch fixture
+and independent correction witnesses remain under `tests/stata/bias/`.
+Historical simulation and profiling campaign tooling is retired; it remains
+available in Git history. See [validation](VALIDATION.md) for accepted scope.

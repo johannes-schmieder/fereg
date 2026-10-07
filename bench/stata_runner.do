@@ -51,7 +51,6 @@ local controls
 if "`arm'" == "fereg" {
     local controls threads(`threads')
     if "`deterministic'" == "1" local controls `controls' deterministic
-    if `engine_option' local controls `controls' engine(`engine')
     if "`tolerance'" != "" local controls `controls' tolerance(`tolerance')
     if "`solver'" != "auto" local controls `controls' solver(`solver')
     if "`memory'" != "" local controls `controls' memory(`memory')
@@ -104,14 +103,8 @@ file write `metadata' "estimation_rc" _tab "`estimation_rc'" _n "clock_rc" _tab 
 file write `metadata' "stata_seconds" _tab %24.17g (`stata_seconds') _n
 if "`clock_plugin'" != "" file write `metadata' "clock_resolution_seconds" _tab %24.17g (scalar(`clock_resolution')) _n
 file write `metadata' "processors" _tab "`processors'" _n
-file write `metadata' "engine" _tab "`engine'" _n
 file write `metadata' "deterministic_requested" _tab "`deterministic'" _n
 if !`rc' {
-    if "`arm'" == "fereg" {
-        local actual_engine "`e(fereg_engine)'"
-        if "`model'" == "ppml" local actual_engine "`e(feppml_engine)'"
-        file write `metadata' "actual_engine" _tab "`actual_engine'" _n
-    }
     file write `metadata' "N" _tab %24.17g (e(N)) _n
     tempname coeff
     file open `coeff' using `"`output'/coefficients.csv"', write text replace

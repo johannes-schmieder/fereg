@@ -1,7 +1,0 @@
-hostname     scc-zj4.scc.bu.edu  
-jobnumber    7632768             
-slots        28                  
-failed       0    
-exit_status  0                   
-ru_wallclock 33           
-maxvmem      1.928G

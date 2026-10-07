@@ -1,8 +1,0 @@
-{
-  "job": "7763539",
-  "run_directory": "dev/20260928-centered-inline-02",
-  "snapshot": "cda0912f3f7c4ed74856770d57f263b3786afe50c75e66e66154c1b6e523c670",
-  "slots": 4,
-  "wall_minutes": 30,
-  "classification": "focused build, Rust and licensed oracle development validation"
-}

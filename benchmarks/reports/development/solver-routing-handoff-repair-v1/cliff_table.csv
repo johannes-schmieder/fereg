@@ -1,2 +1,0 @@
-case_id,n,auto_selected_solver,auto_fallback,auto_pilot_contraction,best_certified_explicit_solver,auto_regret_percent,auto_median_seconds,auto_eligible,map_median_seconds,map_eligible,cg_median_seconds,cg_eligible,lsmr_schwarz_1e8_median_seconds,lsmr_schwarz_1e8_eligible,lsmr_schwarz_1e10_median_seconds,lsmr_schwarz_1e10_eligible,cmg_median_seconds,cmg_eligible
-cliff_n25000,25000,LSMR,0.0,0.011839133,none,,0.047,1,,,,,,,,,,

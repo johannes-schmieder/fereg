@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Versioned runtime inventory and ratchet; see docs/cleanup/complexity.md."""
+"""Versioned runtime inventory and ratchet; see docs/development_workflow.md."""
 from __future__ import annotations
 import argparse
 from bisect import bisect_right
@@ -10,10 +10,10 @@ import re
 import subprocess
 import sys
 
-from fereg_allocation_source_contract import _production_tokens, _function_spans, _matching, _item_start_with_attributes
+from rust_source import _production_tokens, _function_spans, _matching, _item_start_with_attributes
 
 ROOT = Path(__file__).resolve().parents[1]
-BASELINE = 'docs/cleanup/complexity.json'
+BASELINE = 'tests/reference/complexity.json'
 CRATES = ('fereg-core', 'fereg-plugin')
 SENSITIVE = re.compile(r'(^|_)(n|p|k|nobs|nrows|ncols|rows|cols|columns|width|threads?|workers?|weights?|weighted|memory|budget|capacity|len|size|fast|low)($|_)')
 CHUNK = re.compile(r'(^|_)(chunks?|tiles?|partitions?|grains?)($|_)')
@@ -138,6 +138,16 @@ def growth_errors(old, new, exceptions):
     return errors
 
 
+def read_baseline(revision):
+    result = subprocess.run(['git','show',f'{revision}:{BASELINE}'],cwd=ROOT,text=True,capture_output=True)
+    if result.returncode == 0:
+        return json.loads(result.stdout)
+    # One audited relocation of the same inventory; fail closed for every other absence.
+    previous_path = 'docs/cleanup/complexity.json'
+    old = subprocess.run(['git','show',f'{revision}:{previous_path}'],cwd=ROOT,text=True,capture_output=True)
+    return json.loads(old.stdout) if old.returncode == 0 else None
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--write-inventory', type=Path, help='write measured data for review; never approves growth')
@@ -150,18 +160,18 @@ def main():
         return
     baseline = json.loads((ROOT/BASELINE).read_text())
     if args.base is None:
-        head = subprocess.run(['git','show',f'HEAD:{BASELINE}'],cwd=ROOT,text=True,capture_output=True)
+        head = read_baseline('HEAD')
         # Pre-commit checks audit this working transition, not the previous
         # commit's transition. Clean CI checkouts still compare HEAD with HEAD^.
-        args.base = 'HEAD' if head.returncode == 0 and json.loads(head.stdout) != baseline else 'HEAD^'
+        args.base = 'HEAD' if head is not None and head != baseline else 'HEAD^'
     errors = []
     if current != baseline['inventory']:
         errors.append('inventory differs; review measurements, lower reductions, and declare scoped growth')
-    parent = subprocess.run(['git','show',f'{args.base}:{BASELINE}'],cwd=ROOT,text=True,capture_output=True)
+    parent = read_baseline(args.base)
     if subprocess.run(['git','cat-file','-e',f'{args.base}^{{commit}}'],cwd=ROOT,capture_output=True).returncode:
         errors.append('parent revision unavailable; fetch at least two commits before checking the ratchet')
-    if parent.returncode == 0:
-        previous = json.loads(parent.stdout)
+    if parent is not None:
+        previous = parent
         # Exceptions describe this baseline transition, not permanent allowances.
         if previous != baseline:
             errors += growth_errors(previous['inventory'], current, baseline.get('growth',[]))

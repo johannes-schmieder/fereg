@@ -9,9 +9,9 @@ assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
 local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
 
 * Frozen licensed comparator:
-* benchmarks/reports/captured/darwin-arm64/stata18/ols/
+* Historical Git provenance: benchmarks/reports/captured/darwin-arm64/stata18/ols/
 * 20260824T161810Z-9f2494d, case intercept_and_slope. The projection also
-* binds this receipt in benchmarks/manifests/ols_hidden_numeric_v1.json.
+* historically bound this receipt in the retired ols_hidden_numeric_v1 manifest.
 * The independent Rust explicit-dummy oracle
 * separately establishes nuisance/model rank 22, finite-regressor rank 0,
 * mathematical residual DoF 26, and RSS .04 on this exact twofold replication.

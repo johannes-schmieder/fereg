@@ -1,9 +1,0 @@
-{
-  "accepted_build_inputs_verified": 176,
-  "installed_dist_unchanged": true,
-  "restored_paths": [
-    "crates/fereg-core/src/fe/mod.rs",
-    "crates/fereg-core/src/fe/topology_slope_map.rs",
-    "crates/fereg-core/src/ols/prepared_categorical_data.rs"
-  ]
-}

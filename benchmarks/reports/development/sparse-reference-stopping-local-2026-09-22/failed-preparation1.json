@@ -1,1 +1,0 @@
-{"status":"failed","source":"spr1-instrument.py","detail":"Expected src/Makevars before configure; archive contains Makevars.in instead. Instrumentation stopped before source identity/library creation; subsequent install failed to change to missing library directory. No diagnostic fit executed."}

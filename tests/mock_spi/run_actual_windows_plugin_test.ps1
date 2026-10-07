@@ -1,10 +1,6 @@
 param(
     [Parameter(Mandatory = $true)]
-    [string] $Plugin,
-
-    [Parameter(Mandatory = $false)]
-    [ValidateSet("candidate", "f0-baseline")]
-    [string] $Mode = "candidate"
+    [string] $Plugin
 )
 $ErrorActionPreference = "Stop"
 $Root = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
@@ -17,5 +13,5 @@ $Loader = Join-Path $Build "actual_plugin_loader_test_windows.exe"
     /DSYSTEM=STWIN32 /I"$Root\plugin" `
     "$Root\tests\mock_spi\actual_plugin_loader_test_windows.c" "/Fe:$Loader"
 if ($LASTEXITCODE -ne 0) { throw "actual Windows plugin loader compilation failed" }
-& $Loader $PluginPath $Mode
+& $Loader $PluginPath
 if ($LASTEXITCODE -ne 0) { throw "actual Windows plugin ABI/self-test harness failed" }

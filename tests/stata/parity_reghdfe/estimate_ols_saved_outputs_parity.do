@@ -9,7 +9,7 @@ assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
 local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
 
 * Frozen licensed comparator:
-* benchmarks/reports/captured/darwin-arm64/stata18/ols/
+* Historical Git provenance: benchmarks/reports/captured/darwin-arm64/stata18/ols/
 * 20260824T161810Z-9f2494d, case saved_outputs.
 import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
 

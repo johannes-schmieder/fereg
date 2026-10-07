@@ -4,7 +4,7 @@ import unittest
 
 import numpy as np
 
-SOURCE = Path(__file__).resolve().parents[2] / 'benchmarks/two_fe_dense/cycle_effect_oracle.py'
+SOURCE = Path(__file__).resolve().parents[2] / 'tests/python/cycle_effect_oracle.py'
 SPEC = importlib.util.spec_from_file_location('cycle_effect_oracle', SOURCE)
 oracle = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(oracle)

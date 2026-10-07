@@ -2,8 +2,6 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-python3 scripts/check_governance.py
-python3 -m unittest discover -s tests/python -p test_legacy_comparator.py
 python3 -m unittest discover -s tests/python -p test_plugin_replay.py
 
 command -v cargo >/dev/null 2>&1 || {

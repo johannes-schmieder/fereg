@@ -7,14 +7,11 @@ removal, robust and multiway-clustered inference, and saved fixed-effect
 outputs. Estimation runs in one native call and publishes results only after
 the numerical and covariance checks pass.
 
-The repository follows an incremental simplification plan for
-[issue 28](https://github.com/johannes-schmieder/fereg/issues/28). Both `fereg`
-and `feppml` default to `engine(next)`, copied from the complete working core.
-A separate `engine(legacy)` plugin is frozen at `legacy-comparator-v1` for
-comparison. Legacy is evidence, not the authority on scientific correctness;
-next includes focused corrections while retaining the supported functionality.
-Follow [MILESTONES.md](MILESTONES.md) and the [approved M0–M1 plan](docs/cleanup/PLAN.md).
-Public native release remains subject to the existing licensing gate.
+`fereg` and `feppml` share one maintained native runtime. The former next engine
+is now the only engine; there is no engine selector or fallback. Scientific
+requirements live in [SPEC](docs/SPEC.md), with current validation scope in
+[VALIDATION](docs/VALIDATION.md). Public native distribution remains subject to
+the [licensing decision](docs/licensing.md).
 
 ## Quick start
 
@@ -79,7 +76,6 @@ Common options are:
   `absorb(fe_worker=worker fe_firm=firm)`, for saved outputs;
 - `solver(auto|map|it|squarem|lsmr|cmg)` and
   `preconditioner(auto|off|diagonal|schwarz)` for the fixed-effect solver; and
-- `engine(next|legacy)` to select the maintained or frozen native plugin; and
 - `memory(auto|fast|low)`, `poolsize(#)`, `threads(#)`, `deterministic`, and
   `timeit` for execution control and diagnostics.
 
@@ -109,20 +105,14 @@ exact postestimation contract.
 
 ## Installation and diagnostics
 
-The beta requires Stata 18 or newer. Development packages bundle separate
-next and frozen legacy plugins, with checksums, for each included platform.
-Next retains `fereg_macos.plugin`, `fereg_linux.plugin` and
-`fereg_windows.plugin`; comparator names insert `legacy_` after `fereg_`.
-The package manifest identifies both engines and the shared frontend.
+The package requires Stata 18 or newer and one platform plugin:
+`fereg_macos.plugin`, `fereg_linux.plugin`, or `fereg_windows.plugin`.
+A missing plugin fails with `r(601)`. The removed `engine()` option fails with
+`r(198)`; the old `FEREG_ENGINE` global has no effect.
 
-Selection precedence is explicit `engine()`, then the `FEREG_ENGINE` global,
-then `next`. Invalid selections fail with `r(198)` and a missing selected
-binary fails with `r(601)`; there is no automatic engine fallback. Results
-record `e(fereg_engine)` or `e(feppml_engine)`. Legacy prints a note per call.
-
-Release artifacts are not published. Use an internally qualified development
-package. Licensed Windows Stata testing remains deferred; hosted native builds,
-audits and mock SPI checks have a narrower scope.
+Use an internally qualified development package. Native release assets are not
+published. Current qualification is Mac-only; Windows/Linux build support does
+not imply fresh licensed-platform qualification.
 
 After installation, run:
 
@@ -130,7 +120,6 @@ After installation, run:
 fereg, version
 fereg, doctor verbose
 fereg, selftest
-fereg, version engine(legacy)
 ```
 
 The source tree uses the pinned Rust toolchain and these main development
@@ -154,11 +143,7 @@ acceptance and runner requirements are documented in
 - [`stata/fereg.sthlp`](stata/fereg.sthlp) — installed Stata help and
   self-contained examples.
 - [`docs/README.md`](docs/README.md) — documentation map.
-- [`docs/compatibility_matrix.md`](docs/compatibility_matrix.md) — implemented,
-  deferred, and platform-specific behavior.
-- [`MILESTONES.md`](MILESTONES.md) — incremental refactoring progress and checks.
 - [`AGENTS.md`](AGENTS.md) — concise operating rules for repository work.
-- [`docs/adr/`](docs/adr/) — accepted architectural and scientific decisions.
 
 Development is consolidated on `main`. Historical receipts are evidence for
 the exact source and artifact they name; they are not general release claims.
@@ -168,4 +153,4 @@ the exact source and artifact they name; they are not general release claims.
 The manuscript, publication assets, and frozen paper evidence live in the
 sibling [fereg-paper repository](../fereg-paper/README.md). Build it there with
 `make paper`; the paper build does not require this implementation checkout.
-Original benchmark execution scripts and qualification receipts remain here.
+Historical programs and receipts remain in Git history; the maintained local benchmark is in [bench](bench/README.md).

@@ -1,9 +1,0 @@
-{
-  "measure.py": "6fc012df26a5dad7deda42659e91d67134aa82d4fd42f969311f6177b011488c",
-  "run.py": "ba9fc4d4ef014889402ab3a62ff7ae563230adb08039a26771639253443715ea",
-  "final_compare.py": "f73c1cdbaa66d3541aa545c453124a8195c338dfe2209246d5f3f04b2984ff4c",
-  "preparation_compare.py": "4db2dfd612bacba05f4f402b5667d3659a1d0e6bf2f50ce9e3fa7c16a8b869b5",
-  "common.py": "dfb15d34b8df2d5899e14f4306fbc732f070ef219cd472fd4e3702f31daca09c",
-  "route_holdouts.py": "a3fdcc92d3ec91721c0cc593f6c75c97bc8ed8508a6b2c39dfef9a1a4f35c523",
-  "stata_worker.do": "d7d38e0cd5a4f4e1b7e9fa65f5c4b39779fae81ceec80df1b76c9907c06efdfe"
-}

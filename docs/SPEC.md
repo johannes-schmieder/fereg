@@ -1,24 +1,9 @@
 # fereg behavioral specification
 
-This is the scientific contract for [incremental refactoring](cleanup/PLAN.md)
-and the [second simplification program](../milestones2.md).
-[MILESTONES](../MILESTONES.md) records implementation and qualification; this
-specification does not claim that a pending correction has shipped.
-
-The initial next implementation is the working legacy code, not the discarded
-rewrite. M0 establishes exact-copy identity and explicitly captured legacy
-scientific defects. M1 corrects the declared defects with independent evidence.
-Legacy and pinned external packages are comparisons, not absolute authorities.
-Historical implementation policies do not override this contract or the
-[active ADR index](adr/README.md).
-
-Existing algorithms, options, starts, iteration policies and memory modes stay
-unchanged in the initial copy. Old references below to rewrite modules, M2–M9,
-shared-interface implementation or old cutover gates describe historical
-implementation proposals, not prerequisites or active tasks. The approved
-M0–M1 plan controls those implementation choices. Scientific samples, weights,
-DoF, estimator meanings, independent accuracy and transaction rules remain.
-Requirements-to-tests mapping is maintained in [coverage](cleanup/coverage.md).
+This document governs scientific results and failure behavior of the single
+fereg runtime. [Architecture](ARCHITECTURE.md) describes current ownership;
+[development](development_workflow.md) describes validation. Pinned external
+packages are compatibility references; independent mathematics decides correctness.
 
 In this document N is retained physical rows, N_eff is effective observations,
 D is the complete absorbed design, X the finite design, and W positive fitting
@@ -56,21 +41,14 @@ Stata 18 is the minimum host. Installed diagnostic calls remain
 | `biascorrection(exact|randomized)` | Unsupported | Optional mean correction (§15) |
 | `biasunit()`, `biasfe()`, `biasprobes()`, `biasseed()`, `biasstream()` | Unsupported | Correction controls (§15) |
 
-During M0–M1 keep existing supported solver/map/iteration options,
-preconditioner(), poolsize(), memory() and deterministic. solver(cg) remains
-rejected with r(198) under the existing safety repair. Explicit LSMR/CMG and
-both PPML mean-bias modes remain required. Option removal is deferred.
+Preserve supported solver/map/iteration options, preconditioner(), poolsize(),
+memory() and deterministic. solver(cg) remains rejected with r(198) under the
+existing safety repair. Explicit LSMR/CMG and both PPML mean-bias modes are required.
 
-M1 selection is engine(legacy|next), then a validated FEREG_ENGINE developer
-global, then next. Unknown selections return r(198); missing selected binaries
-fail clearly, never trigger cross-engine fallback. Next uses the existing
-plugin filename; legacy uses a separate frozen binary. Post e(fereg_engine)
-or e(feppml_engine); diagnostics identify the selected engine. Legacy calls
-print a concise note. The engine switch has no scheduled removal date.
-
-The comparator is frozen native plugin plus current shared ado. Preserve its
-native protocol and record both frontend and binary identity. Any necessary
-next-specific frontend behavior fix must prove legacy behavior unchanged.
+Both commands load one platform-native fereg plugin. The former engine() option,
+developer engine selector and engine-identity results are removed. Unsupported
+engine() requests return r(198); a missing plugin returns r(601). Diagnostics
+identify the native plugin and build.
 
 The model capabilities below are preserved. IV/GMM, new categorical-continuous
 or continuous-continuous RHS interactions, group outcomes with individual FEs,
@@ -82,9 +60,8 @@ interfaces, not additions to the public options above.
 
 `within` names the pinned modified-LSMR library, not a fourth public solver.
 All supported backends must honor the same scientific model and accuracy
-contract. A common internal interface and removal of memory-mode restrictions
-are future consolidation tasks, not M0–M1 prerequisites. Preserve existing
-explicit support; unsupported requests fail clearly.
+contract. Shared internal operations preserve explicit solver and storage support;
+unsupported requests fail clearly.
 
 | Request | OLS support to preserve | PPML support to preserve |
 |---|---|---|
@@ -92,7 +69,7 @@ explicit support; unsupported requests fail clearly.
 | lsmr | General supported FE grammar, including slopes and multiple RHSs | At least two categorical intercept FEs, including more than three; no absorbed slopes |
 | cmg | Categorical intercept graph: two largest effects as bipartite core, additional effects with at most 64 non-base nuisance columns; no slopes | Exactly two or three categorical intercept effects; third-effect nuisance width at most 64; no slopes |
 
-The legacy OLS CMG adapter also handles zero/one categorical effects by exact
+The OLS CMG adapter also handles zero/one categorical effects by exact
 no-work/direct projection; preserve this degenerate support and identify that
 no graph iteration occurred. PPML explicit requests outside its supported
 envelope return r(498), including zero/one FE. A valid graph formulation,
@@ -112,7 +89,7 @@ unsupported explicit requests must not silently become auto.
 Tests: `tests/model_wire_{roundtrip,adversarial}.rs`, `parser/`,
 `parity_ppmlhdfe/feppml_command_contract.do`,
 `development/ols_cmg_raw_residual_oracle.do`, `tests/prepared_fit_oracle.rs`.
-The M0 feature matrix maps existing support/rejection, exhaustion and fallback checks.
+Retain mapped support/rejection, exhaustion and fallback checks.
 
 ## 2. Sample construction, missingness and restrictions
 
@@ -130,8 +107,8 @@ these exclusions but before singleton pruning, separation or rank decisions.
 They must be nonnegative integers; otherwise fail with r(452), including for
 omitted/base terms. Invalid factor values on excluded rows do not cause an
 error. This follows built-in Stata `regress`; it intentionally supersedes the
-legacy candidate-wide ordinary-factor check and differs from pinned reghdfe
-6.14.1 in excluded-row cases (rebuild ADR 0009). FE and cluster identifiers
+former candidate-wide ordinary-factor check and differs from pinned reghdfe
+6.14.1 in excluded-row cases. FE and cluster identifiers
 retain their existing numeric/string domains.
 
 Rust owns classification, collision-safe factorization and stable compaction.
@@ -218,9 +195,8 @@ the same normalization to all backends. The distinct bias anchor in §15 must
 not replace this ordinary saved-FE gauge.
 
 Output recovery reconstructs the declared FE sum from coefficients, checks
-each row, and certifies at the requested tolerance. M0–M1 retain existing
-output recovery and any automatic tighter re-solve. Simplifying that work
-requires a later scoped change. Independent tighter test oracles remain required; reducing output work cannot relax their accuracy
+each row, and certifies at the requested tolerance. Output recovery and automatic
+tighter re-solves require declared affected scope before changes. Independent tighter test oracles remain required; reducing output work cannot relax their accuracy
 envelopes. No output request may change the sample, rank, VCE or coefficient
 status. Unsupported explicit backend structures fail before publication.
 
@@ -345,8 +321,7 @@ CGM PSD repair only after the complete multiway covariance has been formed;
 retain repair diagnostics, symmetry/finite/diagonal checks and independent
 covariance reconstruction. Johannes approved full-matrix OLS repair including
 the reported constant; never restore a separately clipped slope block afterward.
-This is a named expected difference from frozen legacy/pinned reghdfe and lands
-in M1.2b, with an independent regression; it is no longer an open policy question. Multiway repair sets negative covariance
+This intentional difference from pinned reghdfe has an independent regression. Multiway repair sets negative covariance
 eigenvalues to zero and independently checks the eigensystem and reconstructed
 matrix. Robust and one-way clustered covariance must already satisfy the
 strict PSD policy; they do not receive that multiway repair. Do not clip individual scores, coefficients or
@@ -408,7 +383,7 @@ Required OLS families include `fereg_status`, `fereg_dof`, `fereg_fe`,
   separation, adjustment, predict=feppml_p, requested output bindings and
   bias-correction results when requested (§15).
 
-M0–M1 retain the existing result layouts and frozen native protocol. Any later
+Retain the existing result layouts and native protocol. Any
 telemetry simplification needs a scoped compatibility change; scientific fields
 and solver identity/failure evidence remain required. Preserve runtime input/native/total measurements
 needed by the benchmark suite, with defined boundaries. Undefined, unavailable
@@ -471,8 +446,7 @@ exposure exactly once. Adjustments affect fit/prediction but not the
 homogeneous separation cone.
 
 Start from `c0=log(sum qy)−log(sum q exp(offset))` using stable logarithmic
-sums. M0–M1 preserve existing analytic/group/coordinate/slope start policies;
-the abandoned global/one-FE-only proposal is not an active requirement. A declined
+sums. Analytic/group/coordinate/slope start policies may improve this initial state. A declined
 or invalid start proposal restores a finite global state. Starts never certify
 rank, optimality or the final Hessian. Do not clip eta/mu to artificial bounds.
 
@@ -652,12 +626,12 @@ recovery discrepancy without posting partial matrices.
 Tests: `tests/python/test_ppml_bias_oracle.py`, `src/ppml/bias*.rs`,
 `parity_ppmlhdfe/feppml_bias_correction.do`,
 `bias/final_recovery_precision.do`, duration reconstruction and Philox vectors.
-M6.4 must carry both increments, exact/randomized and support-refusal tests.
+Retain both increments, exact/randomized and support-refusal tests.
 
 ## 16. Certificates and errors
 
 Every FE backend reconstructs r=v−Dalpha explicitly. Independently validate
-finite coefficients, row reconstruction and D'Wr. Use the legacy invariant
+finite coefficients, row reconstruction and D'Wr. Use the invariant
 weighted local-span certificate: for each level's orthonormal basis Q_g of
 sqrt(W)D_g, measure `||Q_g' sqrt(W) r_g|| / s`, where
 `s=max(||sqrt(W)v||,||sqrt(W)r||)` for that RHS. A zero scale accepts only
@@ -715,11 +689,11 @@ Any error, Break, store failure, bad receipt or missing helper restores prior
 e(), named/null estimates, data, order and output names. No correction or
 postestimation path makes an extra substantive estimation call.
 
-Retain independently versioned exact estimation handshakes. Current migration
+Retain independently versioned exact estimation handshakes. Current
 versions are action 1.6, model 2.1, OLS result 1.5, PPML request 1.8, PPML
 result 1.5, ado identity 0.5.0 and SPI 3.0. Diagnostics accept same-major,
 not-newer-minor action callers. Model 2.0 is readable only for the bounded
-no-absorbed-metadata shape. No result-v2 migration is scheduled in M0–M1;
+no-absorbed-metadata shape;
 unknown/newer identities and malformed framing fail before observation access.
 
 Use canonical byte-length/count framing inline through 4,000 payload bytes;
@@ -746,34 +720,25 @@ Honor threads(); 0 resolves the existing native default. Preserve repeatability
 at a fixed thread count with deterministic and fixed random seed/stream.
 Across worker counts require scientific agreement under §20 and stable sample,
 omission, separation and other discrete model decisions. Bitwise identity
-across different worker counts or platforms is not required. This explicitly
-supersedes rebuild ADR 0005; deterministic remains a supported option.
+across different worker counts or platforms is not required. The deterministic option remains supported.
 
-The second program's planned execution policy treats threads(n) as an available
-worker budget. Stages may use fewer workers under general work/resource rules,
-with transparent requested, resolved-budget and effective concurrency. This
-target does not claim that existing feature-specific ceilings have been removed;
-their migration and cross-platform qualification belong to M29.
-
-The one-thread deterministic initial copy must match frozen legacy scientific
-bits on the replay corpus. No-numerical-change commits preserve bits and
+threads(n) is an available worker budget. Stages may use fewer workers under
+general work/resource rules, with transparent requested, resolved-budget and
+effective concurrency. No-numerical-change commits preserve scientific bits and
 available solver/route signatures against the parent under equal build settings.
 Numerical fixes declare affected cases/fields; unaffected science remains exact.
 Exclude timing, build identity and environmental resource observations only.
 A tolerance pass cannot silently waive an unexplained exact-change failure.
 Preserve Stata processor restoration on success, error and Break.
 
-Tasks under the second program may deliberately change algorithms, arithmetic
-order and storage under active ADR 0249. Declare affected outputs, routes and
+Scoped changes may deliberately change algorithms, arithmetic order and storage. Declare affected outputs, routes and
 errors before implementation; require independent scientific acceptance and
 unchanged discrete model semantics. Unaffected outputs remain exact, and pure
 refactors retain exact route/bit checks. No post-hoc parity exception is implied.
 
 ## 19. Memory behavior
 
-M0–M1 preserve the working implementation's memory modes, admission policy and
-public controls. A single prepared representation and whole-call memory plan
-remain future simplification goals, not requirements for the copied engine.
+Preserve supported memory modes, admission policy and public controls.
 Preserve checked sizing, fallible allocation, r(909), ownership cleanup and
 transaction atomicity. Reuse existing allocation/failure tests; no new exhaustive
 memory-audit framework is required. Estimates remain estimates, not process RSS
@@ -796,8 +761,8 @@ CSV/JSON with original identity. Test chains, barbells, AKM weak mobility,
 disconnected graphs, unequal weights, slopes and multiple RHSs against the
 explicit design, with one grounded coordinate per component. Exercise every
 supported backend, not just auto. Preserve the CMG raw-residual regression
-and a legacy-only demonstration that the old CG certificate could pass a
-wrong result. Large LSMR stability comparisons include a 100-times-tighter
+and the independent witness that FE moment certification alone can accept a
+wrong CG result. Large LSMR stability comparisons include a 100-times-tighter
 solve; reference residual distance is diagnostic when independent accuracy
 and runtime certificates pass, while exact fields and coefficient/VCE/fit
 envelopes remain binding.
@@ -812,12 +777,8 @@ all score/model-space/final-Hessian checks. A reference-error exception needs
 an independent optimum enclosure proving the discrepancy; it does not alter
 runtime acceptance or rewrite historical failed pairs.
 
-Legacy performance/receipt workflows are superseded by PLAN gates and the
-new declared benchmark suite, not by weaker science. Preserve the historical
-149 pair discrepancies/eight timeouts as findings at their original source.
-Do not count missing/timeout pairs as successes. Licensed checks require
-application return codes and terminal sentinels in addition to process status.
-Tests: `tests/weak_graph_decimal_oracle.rs`,
-`tests/python/test_weak_graph_decimal_oracle.py`, the independent Python
-oracles and native/Stata parity families above. M0.4 commits the bounded
-seeded feature matrix before M1 corrections; G-M0/G-M1 replace the old gates.
+Performance workflows never weaken science. Missing or timed-out comparisons
+are not successes. Licensed checks require application return codes and terminal
+sentinels in addition to process status. Tests include the sealed weak-graph
+witness, independent Python oracles, actual-plugin replay and native/Stata parity
+families above. Current qualification and its limits are in [VALIDATION](VALIDATION.md).

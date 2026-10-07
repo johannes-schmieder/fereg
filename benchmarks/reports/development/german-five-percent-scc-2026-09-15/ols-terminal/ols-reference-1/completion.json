@@ -1,9 +1,0 @@
-{
-  "process_rc": 0,
-  "elapsed_seconds": 1319.2744464874268,
-  "accepted": true,
-  "compiled_libraries": {
-    "compiled/l/lftools.mlib": "642a6c8470efdef4dda9bcb9c8a7413a7c5cab4c2443dfec3cbb78db588d4a57"
-  },
-  "private_references_verified": true
-}

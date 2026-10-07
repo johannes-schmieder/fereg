@@ -1,8 +1,0 @@
-{
-  "case": "ols-three_fe_sparse-n960-k6-t4-slopes_low",
-  "phase": "initialization",
-  "warmup_rc": 459,
-  "log_sha256": "3c866eadf6992f4ae3599bd97a0fcb0035b1669ce1bb362246a40d92336e8d14",
-  "target_timed": false,
-  "job_id": "7745382"
-}

@@ -1,8 +1,0 @@
-{
-  "job": "7763535",
-  "run_directory": "dev/20260928-one-fe-profile-01",
-  "slots": 4,
-  "wall_minutes": 15,
-  "diagnostic_only": true,
-  "applications": 36
-}

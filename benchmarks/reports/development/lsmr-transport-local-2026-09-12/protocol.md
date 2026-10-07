@@ -1,7 +1,0 @@
-# P0/R1 LSMR transport lifetime experiment
-
-Baseline main 15bd21dd978d014bc477bac072e504b83c8f4dba and its accepted 6274ed40 plugin, using isolated snapshots. Candidate delays the overwritten dense candidate allocation until after within solve, drops RHS transport before output materialization, then drops returned demeaned storage and unrequested coefficients before independent certification. No solver, arithmetic, rank, reference-scale, budget, SPI or public-wire change.
-
-First measure weak two-FE AW clustered N30720/K10/t4 and N122880/K50/t4. If native peak falls, repeat three seeds with rotating order. Adoption requires a repeatable lower native allocation peak with unchanged complete scientific exports, and no material command regression beyond max(10ms,5%). Speed alone is not the purpose of this lifetime correction. Protect small/narrow, retained low-memory, saved coefficient recovery, strong Schur, and a PPML checkpoint consumer. Use existing independent dummy and constrained-memory fixtures. Keep full command, input/native/solver phases, scratch/native/model/RSS and fallback/retry diagnostics. Original model discrepancies remain open; this experiment must not relabel them as passes.
-
-The preceding independent allocator probe diagnoses pinned within recurrences and batch ownership. It is not a benchmark or scientific convergence test: fixed 80-step off/diagonal runs may remain unconverged. No dependency source is changed. No SCC, broad qualification or installed-dist replacement.

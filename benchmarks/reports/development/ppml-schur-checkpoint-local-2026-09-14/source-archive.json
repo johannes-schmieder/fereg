@@ -1,8 +1,0 @@
-{
-  "zip_sha256": "9ec91cac5ec954b1abb89ec7826c2a487f3463613e95df82243707f63806c7d5",
-  "changed_inputs": {
-    "crates/fereg-core/src/fe/borrowed_map.rs": "8c10549a222a091aeca5d8306d27b989f69e06f328ad9259d9e4866bc8a6f8cd",
-    "crates/fereg-core/src/fe/report.rs": "c0449b3a1d35de2984dde47b4867071e2a811213bdd79d1c5730a2dd38dce6c7"
-  },
-  "base_commit": "7996a5ebabd5ec08fd4f730e1f42214e8e1fad62"
-}

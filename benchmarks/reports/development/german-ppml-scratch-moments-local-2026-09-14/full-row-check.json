@@ -1,9 +1,0 @@
-{
-  "stage": "validated_irls_entry",
-  "original_rows": 91045290,
-  "active_rows": 88876264,
-  "trace": "FEREG_SOLVER_TRACE|phase=prepared_irls_start|original_rows=91045290|active_rows=88876264|finite_columns=19|memory=Low",
-  "observed_utc": "2026-09-14T22:52:45.058933+00:00",
-  "estimation_result_published": false,
-  "plugin_sha256": "2acecd294e35bb1ac4378c20c149987fd1b8eabb3e1eca8ec0fc250e843fcb44"
-}

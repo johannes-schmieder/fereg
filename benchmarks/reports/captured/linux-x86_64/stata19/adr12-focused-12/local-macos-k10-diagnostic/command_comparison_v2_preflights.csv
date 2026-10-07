@@ -1,2 +1,0 @@
-case_id,scale,design,controls,fe_dimensions,requested_threads,stata_processors,n,df_a,fereg_solver,fereg_bmax,fereg_vmax,fereg_rssrel,fereg_resmax,greg_bmax,greg_resmax,fereg_reconstruct_max,reghdfe_reconstruct_max,fereg_reghdfe_predmax,fereg_greg_predmax,science_fail
-one_fe_n1m_k10,n1m,one_fe,10,1,1,1,1000000,100000,2,1.1657342e-15,2.6258021e-20,2.2062000e-14,7.5495166e-15,1.4377388e-14,2.3553174e-07,1.7763568e-15,1.3322676e-15,7.5495166e-15,2.3106732,0

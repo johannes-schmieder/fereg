@@ -1,8 +1,0 @@
-{
-  "affected_report": "../two-fe-weighted-input-local-2026-09-20/README.md",
-  "correction": "The report prose says Stata/MP 18; the licensed runtime was Stata/MP 19.0. Fixture version 18.0 directives request compatibility behavior and do not identify the executable. Historical measurements and receipts remain unchanged.",
-  "evidence_run": "weighted-edges2-profile-iid-n983040-k6-s31415927-shuffle1-t16-r1-weightededges2",
-  "result_sha256": "90df9221299f7589cd869ba983220fe4390413bb3fecb81f25db9a0779481e92",
-  "stata_version": 19.0,
-  "stata_processors": 8.0
-}

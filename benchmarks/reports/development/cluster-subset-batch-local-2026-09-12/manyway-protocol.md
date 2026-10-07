@@ -1,5 +1,0 @@
-# Prospective follow-up: many-way scratch consumers
-
-The original two-/three-way primary experiment missed its >=10% command target: about 0.7% and 5.9% median paired gains. Preserve that decision separately. A single five-way protected pair (31 nonempty subsets) improved 58 to 43 ms with exact science. That observation motivates this additional bounded test before deciding the broader batch mechanism.
-
-Candidate remains the unchanged revised bank, plugin 4c83f9e86568f18420a3d77d285392cdd1f64f6c669e450ac49942df3b41650e, baseline c37686b. Require >=10% median paired complete-command gain across three fresh seeds in each of two many-way shapes, no material protected regression above max(10 ms,5%), exact scientific exports and admitted bank storage. Small unit N30720/K4/t4 and larger AW N122880/K10/t4, both low memory, five dimensions. Use distinct seed banks to avoid input-cache shape collisions. Record original pilots and primary cases separately; do not promote them into these repeat estimates. No source policy changes or relaxed science.

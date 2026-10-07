@@ -1,5 +1,0 @@
-{
-  "scripts/audit_binary.py": "4636e8e028c8e353e956d795756e3875d90cc6750d6c82eb040eb1ecb2aaad24",
-  "tests/mock_spi/run_actual_unix_plugin_test.sh": "eb742c5953d2dcdac07bb681ac3163d5004bbe1def32daff2303b3062f59b71e",
-  "tests/mock_spi/actual_plugin_loader_test.c": "26c3688b6c52fd98f5062794be51a31b0813bcaf66e2f2faf4aa0195a2532238"
-}

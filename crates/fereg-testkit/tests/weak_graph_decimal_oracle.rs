@@ -1,8 +1,7 @@
 use fereg_core::{absorb_lsmr, DenseMatrix, EffectTerm, FeDesign, LsmrConfig, LsmrPreconditioner};
 use fereg_testkit::explicit_dummy::fe_remaining_projection_with_reference;
 
-const ORACLE_CSV: &str =
-    include_str!("../../../benchmarks/expected/weak_graph_decimal_oracle_v1.csv");
+const ORACLE_CSV: &str = include_str!("../../../tests/reference/weak_graph_decimal_oracle_v1.csv");
 const ATOL: f64 = 1e-9;
 const RTOL: f64 = 1e-7;
 const REQUESTED_TOLERANCE: f64 = 1e-8;

@@ -1,8 +1,6 @@
 version 18.0
 clear all
 set more off
-args before
-macro drop FEREG_ENGINE
 foreach command in fereg feppml {
     foreach bad in -1 1.5 {
         foreach scenario in eligible missing_y missing_x missing_fe missing_cluster missing_slope missing_weight excluded_if omitted base {
@@ -28,20 +26,17 @@ foreach command in fereg feppml {
             if "`scenario'" == "omitted" local factor 1o.g
             if "`scenario'" == "base" local factor ib0.g
             local options absorb(firm##c.z) vce(cluster cluster) threads(1) deterministic
-            foreach engine in legacy next {
-                capture noisily `command' y `factor' x `restriction' [fw=w], `options' engine(`engine')
-                local rc = _rc
-                local expect = cond(inlist("`scenario'", "eligible", "omitted", "base"), 452, 0)
-                if ("`engine'" == "legacy" | "`before'" == "before") & "`scenario'" != "excluded_if" local expect 452
-                assert `rc' == `expect'
-                if !`rc' {
-                    assert e(N) == 119
-                    assert e(sample) == (_n > 1)
-                    matrix result_b = e(b)
-                    matrix result_v = e(V)
-                    quietly `command' y `factor' x if _n > 1 [fw=w], `options' engine(`engine')
-                    assert mreldif(e(b), result_b) == 0 & mreldif(e(V), result_v) == 0
-                }
+            capture noisily `command' y `factor' x `restriction' [fw=w], `options'
+            local rc = _rc
+            local expect = cond(inlist("`scenario'", "eligible", "omitted", "base"), 452, 0)
+            assert `rc' == `expect'
+            if !`rc' {
+                assert e(N) == 119
+                assert e(sample) == (_n > 1)
+                matrix result_b = e(b)
+                matrix result_v = e(V)
+                quietly `command' y `factor' x if _n > 1 [fw=w], `options'
+                assert mreldif(e(b), result_b) == 0 & mreldif(e(V), result_v) == 0
             }
         }
     }
@@ -59,44 +54,41 @@ generate double w = 1
 generate double adjustment = 1
 quietly replace g = -1 in 1
 foreach command in fereg feppml {
-    quietly `command' y i.g L.x, absorb(firm) engine(next)
+    quietly `command' y i.g L.x, absorb(firm)
     assert e(N) == 119
     assert e(sample) == (_n > 1)
-    capture noisily `command' y i.g L.x, absorb(firm) engine(legacy)
-    assert _rc == 452
+
 }
 * Current missing x must not exclude a row whose lag is available.
 quietly replace x = . in 120
-quietly fereg y i.g L.x if _n > 1, absorb(firm) engine(next)
+quietly fereg y i.g L.x if _n > 1, absorb(firm)
 assert e(sample) == (_n > 1)
 quietly replace x = 1 in 120
 quietly replace adjustment = .a in 1
 foreach option in offset exposure {
-    quietly feppml y i.g x, absorb(firm) `option'(adjustment) engine(next)
+    quietly feppml y i.g x, absorb(firm) `option'(adjustment)
     assert e(N) == 119
-    capture noisily feppml y i.g x, absorb(firm) `option'(adjustment) engine(legacy)
-    assert _rc == 452
+
 }
 quietly replace w = 0 in 1
-quietly fereg y i.g x [aw=w], absorb(firm) engine(next)
+quietly fereg y i.g x [aw=w], absorb(firm)
 assert e(N) == 119
-capture noisily fereg y i.g x [aw=w], absorb(firm) engine(legacy)
-assert _rc == 452
+
 * Excluding a factor does not turn a weight-domain failure into a dropped row.
 quietly replace y = . in 1
 quietly replace w = -1 in 1
-capture noisily fereg y i.g x [aw=w], absorb(firm) engine(next)
+capture noisily fereg y i.g x [aw=w], absorb(firm)
 assert _rc == 402
 
 * Compare a successful corrected fit with an independent explicit dummy model.
 quietly replace w = 1 in 1
 quietly regress y i.g x i.firm
 scalar reference_x = _b[x]
-quietly fereg y i.g x, absorb(firm) engine(next)
+quietly fereg y i.g x, absorb(firm)
 assert abs(_b[x] - reference_x) < 1e-10
 quietly poisson y i.g x i.firm, nolog
 scalar reference_x = _b[x]
-quietly feppml y i.g x, absorb(firm) engine(next)
+quietly feppml y i.g x, absorb(firm)
 assert abs(_b[x] - reference_x) < 1e-8
 
 di as result "END_FIXTURE|factor_availability|rc=0"

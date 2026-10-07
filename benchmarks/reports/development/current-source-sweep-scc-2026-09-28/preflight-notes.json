@@ -1,8 +1,0 @@
-{
-  "local_registration_tests_passed": 4,
-  "linux_controller_tests_passed": 31,
-  "local_full_discovery": "Could not import four modules because the bundled local runtime lacks scipy and matplotlib; no estimator ran.",
-  "login_collector": "An initial read-only collection used the old system Python, which rejected future annotations. It was rerun with the established python3/3.12.4 module; no compute job or evidence was replaced.",
-  "local_syntax_check": "py_compile hit the protected system cache; AST parsing succeeded without writing bytecode.",
-  "accounting": "Transient not-found responses were treated as pending; no job was resubmitted."
-}

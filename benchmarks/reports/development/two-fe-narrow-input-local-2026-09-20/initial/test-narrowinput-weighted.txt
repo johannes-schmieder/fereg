@@ -1,5 +1,0 @@
-running 1 test
-thread 'estimate::tests::weighted_loaded_rhs_preserves_sample_domains_and_inference' panicked at crates/fereg-plugin/src/estimate.rs:5743:95:
-called `Result::unwrap()` on an `Err` value: FeregError { code: InvalidArgument, message: "source ids must be contiguous and ordered" }
-test estimate::tests::weighted_loaded_rhs_preserves_sample_domains_and_inference ... FAILED
-test result: FAILED. 0 passed; 1 failed; 0 ignored; 0 measured; 163 filtered out; finished in 0.02s

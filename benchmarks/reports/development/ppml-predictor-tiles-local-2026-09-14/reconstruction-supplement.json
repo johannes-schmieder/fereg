@@ -1,7 +1,0 @@
-{
-  "command_filter": "reconstruction_",
-  "passed": 5,
-  "new_distinct_core_total": 20,
-  "log_sha256": "e5826902474f0a1efa6432bad73d9613d04644c90f56980dc6a6c8f4d5d8bdb5",
-  "reason": "Initial reconstruction selector used ::tests but the actual module is ::reconstruction_tests and ran zero tests. Corrected selector also includes two existing FE recovery checks; no initial zero-match pass is counted."
-}

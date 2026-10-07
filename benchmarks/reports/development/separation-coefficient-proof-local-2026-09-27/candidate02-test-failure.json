@@ -1,8 +1,0 @@
-{
-  "passed": 38,
-  "failed": 1,
-  "fixture": "admitted_graph_direction_passes_full_span_and_terminal_ledger_checks",
-  "failure": "New direct-call test used the OLS default collinearity setting instead of the governing PPML setting. Production derives the correct setting. The expected MAP exhaustion was not reached.",
-  "correction": "Construct the test projection config with the PPML collinearity policy; retain the expected error and unchanged scientific tolerances.",
-  "artifact_built": false
-}

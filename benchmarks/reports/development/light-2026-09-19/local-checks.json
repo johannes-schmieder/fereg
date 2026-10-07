@@ -1,8 +1,0 @@
-{
-  "suite": "benchmarks/light/test_light.py",
-  "test_count": 8,
-  "status": "pass",
-  "shell_syntax": "pass",
-  "git_diff_check": "pass",
-  "date": "2026-09-19"
-}

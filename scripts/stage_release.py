@@ -22,14 +22,7 @@ PLATFORM_PLUGINS = {
     "windows": "fereg_windows.plugin",
     "macos": "fereg_macos.plugin",
 }
-LEGACY_PLUGINS = {platform: name.replace("fereg_", "fereg_legacy_", 1)
-                  for platform, name in PLATFORM_PLUGINS.items()}
-EXPECTED_PLUGINS = tuple(name for platform in PLATFORM_PLUGINS
-                         for name in (PLATFORM_PLUGINS[platform], LEGACY_PLUGINS[platform]))
-
-
-def legacy_baseline(source: Path) -> dict:
-    return json.loads((source / "legacy/baseline.json").read_text())
+EXPECTED_PLUGINS = tuple(PLATFORM_PLUGINS.values())
 
 
 PRODUCTION_STATA_FILES = (
@@ -63,7 +56,6 @@ PRODUCTION_STATA_FILES = (
 )
 ROOT_FILES = (
     "README.md",
-    "MILESTONES.md",
     "CHANGELOG.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
@@ -124,10 +116,7 @@ def expected_digest(checksum_path: Path) -> str:
 
 def verify_plugins(
     directory: Path, names: tuple[str, ...] = EXPECTED_PLUGINS,
-    *, baseline: Optional[dict] = None,
 ) -> list[tuple[Path, Path]]:
-    baseline = baseline or legacy_baseline(Path(__file__).resolve().parents[1])
-    canonical = {asset['filename']: asset['sha256'] for asset in baseline['assets'].values()}
     verified: list[tuple[Path, Path]] = []
     for name in names:
         plugin = directory / name
@@ -142,8 +131,6 @@ def verify_plugins(
             raise RuntimeError(
                 f"native checksum mismatch for {name}: expected {expected}, got {actual}"
             )
-        if name in LEGACY_PLUGINS.values() and canonical.get(name) != actual:
-            raise RuntimeError(f"frozen comparator identity mismatch for {name}")
         verified.append((plugin, checksum))
     return verified
 
@@ -287,7 +274,6 @@ def copy_release_files(
     plugins: list[tuple[Path, Path]],
 ) -> None:
     validate_ppml_mata_objects(source / "stata")
-    shutil.copy2(source / "legacy/baseline.json", staging / "LEGACY_COMPARATOR.json")
     for name in PRODUCTION_STATA_FILES:
         path = source / "stata" / name
         if not path.is_file():
@@ -319,7 +305,6 @@ def write_manifest(
     *, review_platforms: Optional[tuple[str, ...]] = None,
 ) -> None:
     plugin_names = selected_plugins(review_platforms)
-    baseline = json.loads((staging / "LEGACY_COMPARATOR.json").read_text())
     records = file_records(
         staging, {"MANIFEST.sha256", "RELEASE_MANIFEST.json"}
     )
@@ -341,13 +326,10 @@ def write_manifest(
         "ppml_request_wire": "1.8",
         "ppml_result_wire": "1.5",
         "model_wire": "2.1",
-        "default_engine": "next",
-        "legacy_comparator_tag": baseline["tag"],
         "plugins": [
             {
                 "path": plugin,
-                "engine": "legacy" if plugin in LEGACY_PLUGINS.values() else "next",
-                "source_sha": baseline["source_commit"] if plugin in LEGACY_PLUGINS.values() else source_sha,
+                "source_sha": source_sha,
                 "sha256": expected_digest(staging / f"{plugin}.sha256"),
             }
             for plugin in plugin_names
@@ -381,8 +363,8 @@ def selected_plugins(review_platforms: Optional[tuple[str, ...]]) -> tuple[str, 
     if (not review_platforms or len(set(review_platforms)) != len(review_platforms)
             or not set(review_platforms) <= PLATFORM_PLUGINS.keys()):
         raise RuntimeError("review platforms must be a nonempty unique supported selection")
-    return tuple(name for platform in PLATFORM_PLUGINS if platform in review_platforms
-                 for name in (PLATFORM_PLUGINS[platform], LEGACY_PLUGINS[platform]))
+    return tuple(name for platform, name in PLATFORM_PLUGINS.items()
+                 if platform in review_platforms)
 
 
 def write_zip(staging: Path, output: Path, package_name: str = PACKAGE_NAME) -> None:
@@ -414,7 +396,7 @@ def create(
     source_sha, source_dirty = source_identity(source)
     if source_dirty and not allow_dirty:
         raise RuntimeError("tracked source is dirty; commit before staging a release")
-    plugins = verify_plugins(plugin_directory, selected_plugins(review_platforms), baseline=legacy_baseline(source))
+    plugins = verify_plugins(plugin_directory, selected_plugins(review_platforms))
     validate_dependency_audit(source, audit_path, source_sha)
     with tempfile.TemporaryDirectory(prefix="fereg-release-") as temporary:
         package_name = PACKAGE_NAME if review_platforms is None else f"{PACKAGE_NAME}-review"

@@ -28,11 +28,11 @@ class GenerateFeppmlOracleFixturesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             document = GENERATOR.compile_fixtures(
-                ROOT / "benchmarks/manifests/ppml_memory_performance_v1.json", root
+                ROOT / "tests/fixtures/ppml_oracle_models.json", root
             )
             GENERATOR.validate_compiled_fixtures(
                 document,
-                ROOT / "benchmarks/manifests/ppml_memory_performance_v1.json",
+                ROOT / "tests/fixtures/ppml_oracle_models.json",
                 root,
             )
             self.assertEqual(document["oracle_cell_ids"], list(GENERATOR.ORACLE_CELL_IDS))
@@ -64,7 +64,7 @@ class GenerateFeppmlOracleFixturesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             document = GENERATOR.compile_fixtures(
-                ROOT / "benchmarks/manifests/ppml_memory_performance_v1.json", root
+                ROOT / "tests/fixtures/ppml_oracle_models.json", root
             )
             models = [ORACLE.load_model(root / record["model"]) for record in document["cells"]]
         self.assertEqual({len(item["fixed_effects"]) for item in models}, {0, 1, 2, 3})
@@ -79,7 +79,7 @@ class GenerateFeppmlOracleFixturesTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as first, tempfile.TemporaryDirectory() as second:
             left = Path(first)
             right = Path(second)
-            manifest = ROOT / "benchmarks/manifests/ppml_memory_performance_v1.json"
+            manifest = ROOT / "tests/fixtures/ppml_oracle_models.json"
             GENERATOR.compile_fixtures(manifest, left)
             GENERATOR.compile_fixtures(manifest, right)
             left_files = {
@@ -99,7 +99,7 @@ class GenerateFeppmlOracleFixturesTests(unittest.TestCase):
         import json
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            manifest = ROOT / "benchmarks/manifests/ppml_memory_performance_v1.json"
+            manifest = ROOT / "tests/fixtures/ppml_oracle_models.json"
             document = GENERATOR.compile_fixtures(manifest, root)
             for field, value in (("cell_id", "easy"), ("seed", 1), ("row_count", 1)):
                 mutated = copy.deepcopy(document)

@@ -1,8 +1,0 @@
-{
-  "reason": "User redirected remaining benchmark to SCC",
-  "at_utc": "2026-09-11T17:59:47.325667+00:00",
-  "completed_invocations": 4,
-  "interrupted_work_directories": [
-    "ols-t1-r0-pyfixest"
-  ]
-}

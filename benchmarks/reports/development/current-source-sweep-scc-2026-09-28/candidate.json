@@ -1,6 +1,0 @@
-{
-  "commit": "161b9491b2df535ae88f7a38dbc83c9875a30861",
-  "description": "Exact accepted package inputs; Linux artifact reused after source/hash verification.",
-  "sha256": "9e5a9ba5cc916481c846c213b121105c72ad92fb7bd7da20c08f629164674e25",
-  "source_snapshot": "c09eeab353a8445aae85f75891f112964246e876c4865ec9e2f757d83922e236"
-}

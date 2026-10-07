@@ -1,2 +1,0 @@
-year_levels,nuisance_columns,arm_id,successful_orders,requested_orders,min_median_seconds,max_median_seconds,max_over_min_runtime,max_abs_coefficient_difference,max_relative_rss_difference
-5,4,auto,6,6,0.084,0.089,1.0595238095238093,0.0,0.0

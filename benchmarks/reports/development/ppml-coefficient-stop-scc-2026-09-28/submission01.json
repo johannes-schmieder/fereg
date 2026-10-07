@@ -1,8 +1,0 @@
-{
-  "job": "7763383",
-  "run_directory": "dev/20260928-coefficient-stop-01",
-  "slots": 4,
-  "wall_minutes": 30,
-  "dependency": null,
-  "deployment_sha256": "bc1d52723b99f874438d14c644d6de3acb90e9ff141719b141cd0b63395ae19f"
-}

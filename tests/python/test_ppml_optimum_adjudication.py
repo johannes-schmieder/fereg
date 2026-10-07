@@ -13,18 +13,6 @@ from ppml_auto_science import compare_optimum_intervals
 
 
 class OptimumAdjudicationTests(unittest.TestCase):
-    def test_prospective_manifest_preserves_scope_and_strict_tolerances(self):
-        root = Path(__file__).resolve().parents[2] / 'benchmarks/manifests'
-        old = json.loads((root/'feppml_auto_science_admission_v1.json').read_text())
-        new = json.loads((root/'feppml_auto_science_admission_v2.json').read_text())
-        for key in ('datasets', 'expected_scopes', 'seconds', 'scheduler', 'monitor_minutes'):
-            self.assertEqual(old[key], new[key])
-        policy = new['reference_policy']['independent_accuracy_exception']
-        self.assertEqual(policy['covariance_tolerances'], {'rtol': 1e-6, 'atol': 1e-10})
-        self.assertFalse(policy['fixed_mean_covariance_alone_sufficient'])
-        self.assertFalse(policy['unresolved_is_pass'])
-        self.assertFalse(new['qualification_eligible'])
-        self.assertFalse(new['policy_refit'])
 
     def compare(self, candidate, reference, intervals):
         return compare_optimum_intervals(candidate, reference, intervals, rtol='1e-6', atol='1e-10')

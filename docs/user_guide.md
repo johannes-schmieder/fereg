@@ -294,11 +294,9 @@ IID inference, the default pairwise policy in `fereg` and `reghdfe`, and
 session and checks coefficients and RSS before printing times. It is a
 reproducible local comparison, not release qualification.
 
-Rebuild performance claims follow the declared benchmark suite and scientific
-gates in the [approved plan](cleanup/PLAN.md). Current progress and limitations
-are in [MILESTONES.md](../MILESTONES.md); [STATUS.md](../STATUS.md) preserves
-the legacy source-bound findings. The documented public commands use the
-legacy engine until their respective cutover gates pass.
+Use the [maintained local benchmark](../bench/README.md) for descriptive development
+measurements. [Validation](VALIDATION.md) records scientific evidence and timing
+limits. Both public commands use the same sole native runtime.
 
 ## Examples and limitations
 
@@ -315,5 +313,5 @@ Fixed-width string categorical sources are supported, but
 `strL` sources are not. When `absorb()` contains an interaction or absorbed
 slope, explicit RHS base operators such as `ib2.region` and `fvset` base
 overrides are not yet supported by final-sample factor rebasing. See
-[`compatibility_matrix.md`](compatibility_matrix.md) for the current public and
+[`SPEC.md`](SPEC.md) for the current public and
 platform boundary.

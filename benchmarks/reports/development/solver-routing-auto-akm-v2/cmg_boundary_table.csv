@@ -1,9 +1,0 @@
-case_id,test_id,topology,topology_detail,n,controls,rhs,threads,absorb_order,best_certified_explicit_solver,best_explicit_seconds,auto_used_solver_code,auto_selected_solver,auto_seconds,auto_fallback,auto_pilot_contraction,auto_regret_percent
-boundary_dense_p4_r10_n0,cmg_boundary,cmg_eligibility_boundary,obs_per_largest4_ratio10_nuisance0_dense,16000,4,5,8,worker firm,cmg,0.024,7.0,CMG,0.025,0.0,0.0,4.166666666666674
-boundary_dense_p8_r10_n19,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio10_nuisance19_dense,32000,4,5,8,year worker firm,lsmr_schwarz_1e8,0.046,3.0,LSMR,0.036,0.0,0.0,-21.739130434782616
-boundary_dense_p8_r10_n9,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio10_nuisance9_dense,32000,4,5,8,year worker firm,lsmr_schwarz_1e8,0.046,7.0,CMG,0.048,0.0,0.0,4.347826086956519
-boundary_sparse_p4_r10_n0,cmg_boundary,cmg_eligibility_boundary,obs_per_largest4_ratio10_nuisance0_sparse,16000,4,5,8,worker firm,cmg,0.014,7.0,CMG,0.014,0.0,0.0,0.0
-boundary_sparse_p8_r10_n19,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio10_nuisance19_sparse,32000,4,5,8,year worker firm,lsmr_schwarz_1e8,0.042,3.0,LSMR,0.034,0.0,0.0,-19.047619047619047
-boundary_sparse_p8_r10_n9,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio10_nuisance9_sparse,32000,4,5,8,year worker firm,cmg,0.04,7.0,CMG,0.04,0.0,0.0,0.0
-boundary_sparse_p8_r2_n0,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio2_nuisance0_sparse,32000,4,5,8,worker firm,cmg,0.033,3.0,LSMR,0.041,0.0,0.0,24.242424242424242
-boundary_sparse_p8_r5_n0,cmg_boundary,cmg_eligibility_boundary,obs_per_largest8_ratio5_nuisance0_sparse,32000,4,5,8,worker firm,cmg,0.02,3.0,LSMR,0.033,0.0,0.0,65.00000000000001

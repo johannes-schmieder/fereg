@@ -1,3 +1,0 @@
-baseline feppml_one_fe_dummy_oracle PASS
-candidate ols_saved_schur PASS
-candidate feppml_one_fe_dummy_oracle PASS

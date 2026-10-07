@@ -219,20 +219,6 @@ class AdmissionInventoryTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 AUDIT.compare_reference_coefficients([0.004], ['0.004'], radius)
 
-    def test_fixed_missing_datasets_and_budgets(self):
-        path = Path(__file__).resolve().parents[2] / 'benchmarks/manifests/feppml_auto_science_admission_v1.json'
-        manifest = json.loads(path.read_text())
-        self.assertEqual(len(manifest['datasets']), 9)
-        self.assertEqual(sum(len(d['threads']) for d in manifest['datasets']), 21)
-        known = [d for d in manifest['datasets'] if d.get('known_original_coefficient_discrepancy')]
-        self.assertEqual([d['seed'] for d in known], [2026091421])
-        self.assertFalse(manifest['qualification_eligible'])
-        self.assertFalse(manifest['policy_refit'])
-        self.assertFalse(manifest['reference_policy']['timeout_is_scientific_pass'])
-        self.assertEqual(manifest['scheduler']['slots'], 28)
-        self.assertEqual(manifest['monitor_minutes'], 30)
-        self.assertLessEqual(manifest['seconds']['scope'], 43200)
-        self.assertLessEqual(manifest['seconds']['local_total'], 14400)
 
 
 class CaptureTests(unittest.TestCase):

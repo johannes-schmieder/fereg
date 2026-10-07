@@ -1,8 +1,0 @@
-numeric n 1048576 k 1 allocated_growth -11915 data_growth 0 per_n -0.011 sec 0.2
-factor2 n 1048576 k 1 allocated_growth 20953491 data_growth 20971520 per_n 19.983 sec 0.45
-factor9 n 1048576 k 1 allocated_growth 20949683 data_growth 20971520 per_n 19.979 sec 0.55
-factor9_2n n 2097152 k 1 allocated_growth 41921203 data_growth 41943040 per_n 19.99 sec 1.02
-factor9_4n n 4194304 k 1 allocated_growth 83865059 data_growth 83886080 per_n 19.995 sec 1.93
-factor9_k50 n 1048576 k 50 allocated_growth 44959049 data_growth 45088768 per_n 42.876 sec 4.46
-factor2_32m n 1048576 k 1 allocated_growth 33536403 data_growth 33554432 per_n 31.983 sec 0.43
-factor9_32m n 1048576 k 1 allocated_growth 33532595 data_growth 33554432 per_n 31.979 sec 0.55

@@ -77,22 +77,6 @@ class ReferenceRootResolverContractTests(unittest.TestCase):
         self.assertIn('f"{name}_object_stores=', text)
         self.assertIn("for name in REQUIRED_CHILDREN", text)
 
-    def test_workflow_passes_the_root_without_logging_or_artifacting_it(self) -> None:
-        text = WORKFLOW.read_text(encoding="utf-8")
-        self.assertIn("Resolve or materialize offline pinned reference root", text)
-        for token in (
-            "scripts/resolve_reference_root.py",
-            "--output",
-            "--materialize-parent",
-        ):
-            self.assertIn(token, text)
-        self.assertIn('FEREG_REFERENCE_ROOT="$(cat "$REFERENCE_ROOT_FILE")"', text)
-        self.assertIn("REFERENCE_ROOT_OUTCOME", text)
-        self.assertIn("offline_reference_root_unresolved", text)
-        self.assertNotIn("echo $FEREG_REFERENCE_ROOT", text)
-        self.assertNotIn("cat $REFERENCE_ROOT_FILE", text)
-        self.assertNotIn("fereg-reference-root.path/", text)
-        self.assertNotIn("fereg-reference-materialized/", text)
 
 
 if __name__ == "__main__":

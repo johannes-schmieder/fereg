@@ -1,1 +1,0 @@
-One complete serial plugin suite per accepted/candidate test binary, with the original assertions unchanged. This separates test-process concurrency from the intermittent allocation audit. Preserve the failed concurrent suite and all twenty fixed exact-test follow-ups. Do not repeat either full serial suite after failure.

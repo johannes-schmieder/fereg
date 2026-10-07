@@ -1,9 +1,0 @@
---- a/stata/_fereg_estimate_ols.ado
-+++ b/stata/_fereg_estimate_ols.ado
-@@ -1,5 +1,5 @@
- *! fereg guarded prepared OLS eclass transaction 0.5.0 24aug2026
--program define _fereg_estimate_ols, eclass sortpreserve
-+program define _fereg_estimate_ols, eclass
-     version 18.0
-     local hidden_cmdline `"_fereg_estimate_ols `0'"'
- 

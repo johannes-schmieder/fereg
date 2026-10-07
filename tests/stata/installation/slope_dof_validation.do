@@ -12,10 +12,8 @@ scalar reference_v = _se[x]^2
 scalar reference_df = e(df_r)
 predict double reference_resid, residuals
 
-capture noisily fereg y x, absorb(g##c.z) dof(continuous) engine(legacy)
-assert _rc == 498
 foreach memory in fast low {
-    quietly fereg y x, absorb(g##c.z) dof(continuous) engine(next) ///
+    quietly fereg y x, absorb(g##c.z) dof(continuous) ///
         memory(`memory') residuals(actual_resid) threads(1) deterministic
     assert abs(_b[x] - reference_b) < 1e-10
     assert abs(_se[x]^2 - reference_v) < 1e-10

@@ -20,7 +20,7 @@ request/result layouts are independently versioned:
 Estimation requires the exact action and estimator-specific request/result
 versions. Diagnostic `doctor` and `selftest` callers retain the action
 protocol's same-major, not-newer-minor compatibility rule. ADO identity must be
-exactly 0.5.0. Model wire 2.0 remains readable only for the bounded legacy
+exactly 0.5.0. Model wire 2.0 remains readable only for the bounded older
 no-absorbed-metadata case; model wire v1, unknown majors, and newer minors are
 rejected. The additive PPML wires do not alter or alias the OLS result wire.
 
@@ -56,7 +56,7 @@ truncation, plus a separate terminator byte. Exact NUL position, UTF-8 and the
 unchanged canonical request decoder are checked before observations are read.
 The buffer is dropped after parsing. Malformed/over-cap transport cannot complete
 a receipt; scientific request/result versions and the one-call transaction are
-unchanged. See [ADR 0055](adr/0055-bounded-local-request-transport.md).
+unchanged. See [SPEC](SPEC.md).
 
 ## Public OLS transaction
 
@@ -114,7 +114,7 @@ are excluded from those digests. The receipt does not alias the OLS receipt,
 and its column 33 `COMPLETE` cell is the final native operation.
 
 Checkpoint family code 3 identifies the current-weight LSMR accelerator
-accepted by ADR 0027; individual no-work or fallback checkpoint frames remain
+accepted by the scientific contract; individual no-work or fallback checkpoint frames remain
 attributed to the MAP row when MAP produced their returned projection. Solver
 fallback codes are 0 for none, 1 for CMG ordinary-frame numerical
 nonconvergence, 2 for checkpoint LSMR numerical nonconvergence, and 3 when
@@ -162,7 +162,7 @@ Rows are `schema_version`, `estimate_status`, `stata_used_before`,
 `safety_headroom`, `model_gap_bits`. Schema 2 retains status 0 unavailable,
 1 partial, 2 estimated-complete-practical. Status 2 requires a known Stata-19
 baseline, an expected native forecast and every action stage. It describes
-the empirical engineering model in ADR 0074, not a strict allocation or RSS
+the empirical engineering model in the scientific contract, not a strict allocation or RSS
 bound. Other Stata versions, unknown baselines (including unmeasured frames)
 and unknown attempt storage remain partial, without a combined peak or reserve.
 
@@ -171,7 +171,7 @@ allocation plus the larger of native execution and subsequent posting growth,
 with the preexisting native owner added once. The additional reserve excludes
 resident baselines. Solver admission and safety headroom remain separate.
 The estimate's calibrated scope and extrapolation limits are described in
-[the memory model](memory_model.md#practical-whole-action-reporting).
+[the memory model](ARCHITECTURE.md#preparation-and-storage).
 
 The low 16 gap bits retain strict proof limitations even at practical status 2.
 Bits 17/18 mark unknown expected use/Stata growth, bit 16 an unavailable

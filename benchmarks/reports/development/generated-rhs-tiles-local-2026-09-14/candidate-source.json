@@ -1,8 +1,0 @@
-{
-  "zip_sha256": "8ca913a56b5733d98077a224a5bec5efa34c2f6bacf0f3a60517c0bda1335a06",
-  "files": {
-    "crates/fereg-core/src/ols/prepared_categorical_data.rs": "62b3f22c0a1ae456a8b8dabfb73dfffca20dd8edcdef7d1c57c4ce1ef9335dfa",
-    "crates/fereg-core/src/ols/prepared_fit_view.rs": "3ce517453e1344921357824b6ee32c6c8407dd066755d5ee6e41d9806707e99c",
-    "crates/fereg-core/src/ols/prepared_rhs.rs": "2dc708e899d3bcafd03c99f63b51db912dfe9a4b8e23c08ec44715b6ad7b6eb6"
-  }
-}

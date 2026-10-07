@@ -1,2 +1,0 @@
-action allocation inventory: PASS
-fereg allocation source contract: PASS

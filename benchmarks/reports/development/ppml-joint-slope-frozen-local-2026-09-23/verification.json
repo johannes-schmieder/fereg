@@ -1,8 +1,0 @@
-{
-  "status": "pass",
-  "logical_receipts": 2323,
-  "container_sha256": "9a29de4aded72296438cc7ad8213504b07577717db5449912db950d9652634c3",
-  "current_computational_inputs_matching_accepted_scrread1": 534,
-  "production_changed": false,
-  "restore_message": "Verified and restored 2323 logical receipts"
-}

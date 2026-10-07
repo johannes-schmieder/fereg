@@ -9,7 +9,7 @@ assert substr(`"`ado_path'"', -strlen(`"`suffix'"'), .) == `"`suffix'"'
 local root = substr(`"`ado_path'"', 1, strlen(`"`ado_path'"') - strlen(`"`suffix'"'))
 
 * These are transport/eclass checks against the immutable licensed Stata 18
-* receipt at benchmarks/reports/captured/darwin-arm64/stata18/ols/
+* historical Git receipt under benchmarks/reports/captured/darwin-arm64/stata18/ols/
 * 20260821T030000Z-a5181f9. Internal scientific tolerances remain in Rust;
 * the absolute receipt caps below only characterize pinned DEFAULT reghdfe.
 import delimited using `"`root'/tests/fixtures/ols/ols_core.csv"', clear
@@ -74,43 +74,53 @@ assert abs(e(V)[1,3] - -1.aacc28464cca4X-00c) <= 3e-6
 assert abs(e(V)[1,4] - -1.661d37ef6b7e8X-00a) <= 3e-6
 assert abs(e(V)[5,5] - +1.31b4b891013a3X-009) <= 3e-6
 
-* Full frozen multi_fe_interactions case: the ordinary factor interaction,
-* absorbed categorical tuple, final-sample rebase, omission axis, and
-* reference e(indepvars) contract must hold together in the hidden adapter.
+* Interacted absorption preserves original slots/base flags after pruning.
+* The independent dummy fit checks the identified fitted values and residuals.
 _fereg_ols_hidden_numeric_v1 y c.x1 i.industry##i.year, ///
-    absorb(worker firm#year)
+    absorb(worker firm#year) residuals(interaction_residual)
 assert e(N) == 8
 assert e(df_m) == 1
 assert e(df_a) == 6
 assert e(df_r) == 1
 assert e(N_hdfe) == 2
 assert `"`e(absvars)'"' == "worker firm#year"
-assert `"`e(indepvars)'"' == ///
-    "x1 3bn.industry 2022bn.year 3bn.industry#2022bn.year _cons"
+assert colsof(e(b)) == 21
 local interaction_names : colfullnames e(b)
 assert `"`interaction_names'"' == ///
-    "o.x1 2b.industry 3o.industry 2021b.year 2022o.year 2b.industry#2021b.year 2b.industry#2022o.year 3o.industry#2021b.year 3.industry#2022.year _cons"
+    "o.x1 1b.industry 2o.industry 3o.industry 2019b.year 2020o.year 2021o.year 2022o.year 1b.industry#2019b.year 1b.industry#2020o.year 1b.industry#2021o.year 1b.industry#2022o.year 2o.industry#2019b.year 2o.industry#2020o.year 2.industry#2021.year 2o.industry#2022o.year 3o.industry#2019b.year 3o.industry#2020o.year 3o.industry#2021o.year 3o.industry#2022o.year _cons"
+foreach slot in 2 5 9 10 11 12 13 17 {
+    assert e(fereg_status)[`slot',2] == 2
+    assert e(b)[1,`slot'] == 0
+    forvalues other=1/21 {
+        assert e(V)[`slot',`other'] == 0 & e(V)[`other',`slot'] == 0
+    }
+}
 assert e(fereg_status)[1,2] == 3
-assert e(fereg_status)[2,2] == 2
-assert e(fereg_status)[3,2] == 3
-assert e(fereg_status)[4,2] == 2
-assert e(fereg_status)[5,2] == 3
-assert e(fereg_status)[6,2] == 2
-assert e(fereg_status)[7,2] == 2
-assert e(fereg_status)[8,2] == 2
-assert e(fereg_status)[9,2] == 1
-assert e(fereg_status)[10,2] == 5
-assert abs(e(b)[1,9] - +1.ffffffdcf4f1eX-017) <= 1e-7
-assert abs(e(b)[1,10] - +1.b999998000000X+002) <= 1e-7
-assert abs(e(V)[9,9] - +1.47ae1eb851fc4X-005) <= 1e-6
-assert abs(e(V)[9,10] - -1.47ae1eb851fc4X-007) <= 1e-6
-assert abs(e(V)[10,10] - +1.47ae1eb851fc5X-008) <= 1e-6
+assert e(b)[1,1] == 0
+assert e(fereg_status)[15,2] == 1
+assert e(fereg_status)[21,2] == 5
 local interaction_dof_rows : rowfullnames e(dof_table)
 assert `"`interaction_dof_rows'"' == "1.worker 1.firm#1.year"
 assert e(dof_table)[1,1] == 4 & e(dof_table)[1,2] == 0
 assert e(dof_table)[1,3] == 4
 assert e(dof_table)[2,1] == 4 & e(dof_table)[2,2] == 2
 assert e(dof_table)[2,3] == 2
+
+generate byte interaction_sample = e(sample)
+scalar interaction_rss = e(rss)
+scalar interaction_df = e(df_r)
+* Pin the retained basis independently; never select it from native output.
+* x1 is nearly FE-collinear in this float-imported fixture and is declared omitted.
+scalar interaction_b = e(b)[1,15]
+scalar interaction_v = e(V)[15,15]
+generate byte interaction_z = (industry==2 & year==2021)
+quietly regress y interaction_z i.worker i.firm#i.year if interaction_sample
+assert abs(_b[interaction_z]-interaction_b) <= 1e-10+1e-7*abs(_b[interaction_z])
+assert abs(_se[interaction_z]^2-interaction_v) <= 1e-10+1e-6*_se[interaction_z]^2
+predict double independent_residual if interaction_sample, residuals
+assert e(df_r) == interaction_df
+assert abs(e(rss)-interaction_rss) < 1e-9
+assert abs(independent_residual-interaction_residual) < 1e-8 if interaction_sample
 
 _fereg_estimate_ols_test y c.x1, absorb(worker firm) cluster(cluster_a)
 assert e(df_r) == 7
@@ -126,78 +136,29 @@ assert abs(e(V)[1,1] - +1.55d7b24d54e16X-006) <= 1e-7
 assert abs(e(V)[1,2] - -1.8ed0faa7131f0X-008) <= 1e-7
 assert abs(e(V)[2,2] - +1.d1492463b1f98X-00a) <= 1e-7
 
-_fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
-    cluster(cluster_a cluster_b) engine(legacy) threads(1) deterministic
-assert e(df_r) == 3
-assert e(df_a) == 0
-assert e(N_clustervars) == 2
-assert e(N_clust1) == 8 & e(N_clust2) == 4 & e(N_clust) == 4
-assert e(fereg_subset)[1,1] == 1 & e(fereg_subset)[1,3] == 1
-assert e(fereg_subset)[2,1] == 2 & e(fereg_subset)[2,3] == 1
-assert e(fereg_subset)[3,1] == 3 & e(fereg_subset)[3,3] == -1
-assert e(fereg_certificate)[25,2] == 4
-assert e(fereg_certificate)[26,2] == 1
-assert e(fereg_certificate)[27,2] == 1
-assert e(fereg_certificate)[28,2] < 0
-assert e(fereg_certificate)[29,2] == 0
-* The historical bit receipt predates the canonical comparator build and also
-* fails on that unchanged frozen binary. Keep its scientific reference caps;
-* fixed-thread exactness is checked against a fresh canonical repeat below.
-assert det(e(V)) < 0
-assert e(fereg_certificate)[31,2] == det(e(V))
-assert abs(e(V)[1,1] - +1.0202f4787935bX-005) <= 2e-6
-assert abs(e(V)[1,2] - -1.2c88da1cac911X-007) <= 2e-6
-assert abs(e(V)[2,2] - +1.5e0658149d738X-009) <= 2e-6
-
-* Next intentionally departs from this legacy/reference covariance policy.
-matrix legacy_b = e(b)
-matrix legacy_v = e(V)
-_fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
-    cluster(cluster_a cluster_b) engine(legacy) threads(1) deterministic
-assert mreldif(e(b), legacy_b) == 0 & mreldif(e(V), legacy_v) == 0
-_fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
-    cluster(cluster_a cluster_b) engine(next) threads(1) deterministic
-assert mreldif(e(b), legacy_b) == 0
-assert mreldif(e(V), legacy_v) > 0
-assert e(fereg_certificate)[25,2] == 3
-assert e(fereg_certificate)[27,2] == 0
-assert e(fereg_certificate)[29,2] == 1
-assert e(V)[1,1] >= 0 & e(V)[2,2] >= 0
-assert det(e(V)) >= -1e-16
-
-_fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
-    cluster(cluster_a cluster_b cluster_c) engine(legacy) threads(1) deterministic
-assert e(df_r) == 2
-assert e(df_a) == 0
-assert e(N_clustervars) == 3
-assert e(N_clust1) == 8 & e(N_clust2) == 4 & e(N_clust3) == 3
-assert rowsof(e(fereg_subset)) == 7
-assert e(fereg_certificate)[25,2] == 4
-assert e(fereg_certificate)[26,2] == 1
-assert e(fereg_certificate)[27,2] == 1
-assert e(fereg_certificate)[28,2] < 0
-assert e(fereg_certificate)[29,2] == 0
-assert det(e(V)) < 0
-assert e(fereg_certificate)[31,2] == det(e(V))
-assert abs(e(V)[1,1] - +1.337c143e3831eX-006) <= 4e-6
-assert abs(e(V)[1,2] - -1.6a5e0063700aaX-008) <= 4e-6
-assert abs(e(V)[2,2] - +1.aae99ff9c51f2X-00a) <= 4e-6
-
-* Next intentionally departs from this legacy/reference covariance policy.
-matrix legacy_b = e(b)
-matrix legacy_v = e(V)
-_fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
-    cluster(cluster_a cluster_b cluster_c) engine(legacy) threads(1) deterministic
-assert mreldif(e(b), legacy_b) == 0 & mreldif(e(V), legacy_v) == 0
-_fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
-    cluster(cluster_a cluster_b cluster_c) engine(next) threads(1) deterministic
-assert mreldif(e(b), legacy_b) == 0
-assert mreldif(e(V), legacy_v) > 0
-assert e(fereg_certificate)[25,2] == 3
-assert e(fereg_certificate)[27,2] == 0
-assert e(fereg_certificate)[29,2] == 1
-assert e(V)[1,1] >= 0 & e(V)[2,2] >= 0
-assert det(e(V)) >= -1e-16
+* Multiway inference uses the full-matrix PSD policy. Independent numerical
+* targets also run through the actual-plugin dense oracle replay.
+foreach clusters in "cluster_a cluster_b" "cluster_a cluster_b cluster_c" {
+    _fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
+        cluster(`clusters') threads(1) deterministic
+    local count : word count `clusters'
+    assert e(df_r) == cond(`count'==2,3,2)
+    assert e(df_a) == 0
+    assert e(N_clustervars) == `count'
+    assert e(N_clust1) == 8 & e(N_clust2) == 4
+    if `count'==3 assert e(N_clust3)==3
+    assert rowsof(e(fereg_subset)) == 2^`count'-1
+    assert e(fereg_certificate)[25,2] == 3
+    assert e(fereg_certificate)[27,2] == 0
+    assert e(fereg_certificate)[29,2] == 1
+    assert e(V)[1,1] >= 0 & e(V)[2,2] >= 0
+    assert det(e(V)) >= -1e-16
+    matrix repeat_b=e(b)
+    matrix repeat_v=e(V)
+    _fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
+        cluster(`clusters') threads(1) deterministic
+    assert mreldif(e(b),repeat_b)==0 & mreldif(e(V),repeat_v)==0
+}
 
 * Four-way inclusion--exclusion exercises all fifteen common-path subsets and
 * guards the deterministic radix ordering used by the optimized VCE route.
@@ -213,7 +174,11 @@ assert e(fereg_certificate)[27,2] == 0
 assert e(fereg_certificate)[29,2] == 1
 assert e(V)[1,1] >= 0 & e(V)[2,2] >= 0
 assert det(e(V)) >= -1e-16
-assert e(fereg_certificate)[31,2] == det(e(V))
+* Independently compare the direct determinant using cancellation-scaled roundoff.
+scalar determinant_products = abs(e(V)[1,1]*e(V)[2,2])+abs(e(V)[1,2]*e(V)[2,1])
+scalar determinant_direct = e(V)[1,1]*e(V)[2,2]-e(V)[1,2]*e(V)[2,1]
+assert abs(e(fereg_certificate)[31,2]-determinant_direct) <= 32*c(epsdouble)*determinant_products
+assert abs(det(e(V))-determinant_direct) <= 32*c(epsdouble)*determinant_products
 
 _fereg_estimate_ols_test y c.x1, absorb(worker firm) ///
     cluster(cluster_a#cluster_b)

@@ -1,6 +1,0 @@
-{
-  "candidate-source.json": "6bacb78b3a6e680083785398898017fab59a4e4474cbec21a3c32f416d9c8ed2",
-  "overlay/tests/licensed_stata/estimate_ppml_eclass_break.do": "559b419b47f40b72c95d22f66310b06d7681718606f95b15d2bf9208be57667b",
-  "overlay/tests/stata/development/feppml_host_processors.do": "c1e266a6e88fb7933db13f342cdc1ddd45667a9e8bc01dd87b519d7af3724490",
-  "overlay/stata/_fereg_estimate_ppml.ado": "b31efac1097f9cae190ca900010e06163139d88e38e5eefcb3b6e0e3d0243ab5"
-}

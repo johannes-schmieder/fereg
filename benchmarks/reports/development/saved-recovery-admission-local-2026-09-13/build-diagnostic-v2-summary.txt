@@ -1,6 +1,0 @@
-   Compiling fereg-plugin v0.5.0 (EXPERIMENT/diagnostic-v2/crates/fereg-plugin)
-    Finished `release` profile [optimized] target(s) in 6.86s
-   Compiling fereg-plugin v0.5.0 (EXPERIMENT/diagnostic-v2/crates/fereg-plugin)
-    Finished `release` profile [optimized] target(s) in 6.66s
-actual-plugin ABI/self-test harness: PASS
-Built universal EXPERIMENT/diagnostic-v2/dist/fereg_macos.plugin

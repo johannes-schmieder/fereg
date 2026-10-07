@@ -1,9 +1,0 @@
-{
-  "job": "7763502",
-  "run_directory": "dev/20260928-publication-target-zero06",
-  "scope": "No positive refit: bind and check all prior positive numerical outputs, run the missing zero case, then write a composite completion receipt.",
-  "prior_partial_positive_job": "7763492",
-  "source_snapshot": "5c0d4685f7e10f126f140d8bfe9a6177ffc8ce73dc00f51f1845cd319800b7e0",
-  "slots": 4,
-  "wall_minutes": 30
-}

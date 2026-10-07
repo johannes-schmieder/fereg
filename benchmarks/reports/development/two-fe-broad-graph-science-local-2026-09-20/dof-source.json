@@ -1,8 +1,0 @@
-{
-  "archive_sha256": "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9",
-  "full_rank_formula": "nparams + (n_fe - 1) - sum(fixef_references)",
-  "function": "ssc_compute_K",
-  "nonnested_no_nesting_formula": "nparams - sum(fixef_references)",
-  "path": "R/VCOV.R",
-  "sha256": "9c4b8ec73302632a5f42ced64de93d3b8441299af8deda8f1d83195d0a818596"
-}

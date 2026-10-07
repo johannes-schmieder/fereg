@@ -1,9 +1,0 @@
-{
-  "baseline_science": false,
-  "candidate_science": true,
-  "complete": true,
-  "current_native": 3,
-  "diagnostic_only": true,
-  "no_timing_rank": true,
-  "oracle_pass": true
-}

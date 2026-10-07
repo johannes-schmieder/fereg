@@ -1,5 +1,0 @@
-{
-  "initial_snapshot_failure": "FileNotFoundError for tests/stata/development/local_request_transport_oracle.do before build; copied the missing identity-listed fixture inputs and verified all inputs.",
-  "baseline_inputs_verified": 176,
-  "candidate_inputs_verified": 176
-}

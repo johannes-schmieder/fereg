@@ -1,5 +1,0 @@
-{
-  "correction": "Rebuild each arm with its isolated tree as cwd and verify Cargo compilation origins",
-  "disposition": "Excluded before any estimator comparison",
-  "reason": "Build script invoked with repository working directory instead of isolated source cwd; Cargo compiled working-tree production source in both attempts"
-}

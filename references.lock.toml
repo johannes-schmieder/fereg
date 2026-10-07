@@ -2,21 +2,6 @@ schema_version = 2
 pinned_at_utc = "2026-09-29"
 policy = "Exact immutable commits and local SHA-256 hashes; no floating branch is a parity oracle."
 
-[ols_v1_capture]
-manifest = "benchmarks/manifests/ols_v1.json"
-reference_root_layout = "<absolute-root>/reghdfe, <absolute-root>/ftools, and <absolute-root>/require must be clean direct-child git checkouts"
-network_policy = "offline-only; the runner never installs or fetches reference commands"
-eligibility = "exact source pins are resolved; capture requires all three matching clean local checkouts, and candidate performance may pass only after exact scientific parity"
-raw_log_policy = "Stata logs and machine capture streams are temporary licensed artifacts and must not be committed"
-
-[ppml_v1_capture]
-manifest = "benchmarks/manifests/feppml_qualification_v1.json"
-reference_closure = "ppmlhdfe, reghdfe, ftools, and require are staged outside the repository from exact digest-bound sources"
-network_policy = "offline-only during staging, capture, and SCC execution; acquisition is a separate explicit step"
-installation_policy = "never inspect or mutate user PLUS/PERSONAL installations"
-receipt_policy = "the runtime bundle, each source archive, every Git tree, and the closed required-file inventory are SHA-bound"
-git_archive_reproduction = "with GIT_CONFIG_NOSYSTEM=1, GIT_CONFIG_GLOBAL=/dev/null, and GIT_TERMINAL_PROMPT=0, run git -C <clean-checkout> archive --format=tar <pinned-commit> -- src; SHA-256 and byte-count the raw stdout"
-
 [[reference]]
 name = "pyfixest"
 repository = "https://github.com/py-econometrics/pyfixest"
@@ -34,27 +19,17 @@ use = "Development reference for model-matrix, OLS, PPML, and tests; not a runti
 [[reference]]
 name = "within"
 repository = "https://github.com/johannes-schmieder/within"
-commit = "268a1f5d4fe71ec3521cb02ef977620389a2cf40"
+commit = "803a4feacef526f55e1520f22be4409779b7d8ff"
 version = "commit-pinned development tree"
 license = "MIT"
 relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
 relevant_test_paths = ["crates/within/tests/", "crates/schwarz-precond/src/lsmr/tests/", "bench/history/"]
-use = "New-engine LSMR runtime and oracle dependency: current-parent port, fixed arithmetic for explicit ParallelReduction, compensated weighted Gram assembly, raw-coordinate construction that leaves rank authority with fereg, and optional cooperative iteration polls. Draft upstream PR 441; automatic solver policy unchanged."
-
-[[reference]]
-name = "within-legacy"
-repository = "https://github.com/johannes-schmieder/within"
-commit = "1ac3522a251c2622dbeab451415924f9ebe117b9"
-version = "commit-pinned legacy tree"
-license = "MIT"
-relevant_source_paths = ["crates/within/src/", "crates/schwarz-precond/src/"]
-relevant_test_paths = ["crates/within/src/**/tests/", "benchmarks/"]
-use = "Frozen legacy core and comparator only, preserved unchanged until M7; not the new engine's LSMR adapter."
+use = "Runtime LSMR runtime and oracle dependency: current-parent port, fixed arithmetic for explicit ParallelReduction, compensated weighted Gram assembly, raw-coordinate construction that leaves rank authority with fereg, and optional cooperative iteration polls. Deterministic execution is propagated to numerical consumers."
 
 [[reference]]
 name = "cmg"
 repository = "https://github.com/johannes-schmieder/CMG"
-commit = "980064c30b02f6e403f9739619e31ab7bcfa3d9d"
+commit = "1d39c113f0c397f29653d92672090e5a42f80921"
 version = "0.1.0"
 license = "GPL-3.0-only"
 relevant_source_paths = ["src/", "Cargo.toml"]
@@ -184,13 +159,3 @@ source_archive_url = "https://cran.r-project.org/src/contrib/fixest_0.14.2.tar.g
 source_archive_fallback_url = "https://cran.r-project.org/src/contrib/Archive/fixest/fixest_0.14.2.tar.gz"
 source_archive_sha256 = "17372a789aaf9a3b04e8e0324feaf0f3c3c16f517baeb75e46289340332f0ee9"
 use = "Benchmark comparator at defaults and matched accuracy; installed from the verified archive into the private run library, never called by fereg."
-
-[[reference]]
-name = "cmg-legacy"
-version = "0.1.0"
-relevant_source_paths = ["src/", "Cargo.toml"]
-relevant_test_paths = ["tests/", "src/**/tests/"]
-repository = "https://github.com/johannes-schmieder/CMG"
-commit = "1d39c113f0c397f29653d92672090e5a42f80921"
-license = "GPL-3.0-only"
-use = "Frozen legacy runtime dependency until M7; its numerical and API identity is unchanged."

@@ -1,9 +1,0 @@
-{
-  "branch": "codex/categorical-interactions",
-  "failure_kind": "bundled_reference_finalization_failure",
-  "schema": 1,
-  "staging_sha": "f961d43f8ad7a8513045e3fef0c09d866a1b8b2d",
-  "status": "failure",
-  "workflow_run_attempt": 1,
-  "workflow_run_id": 32656054257
-}

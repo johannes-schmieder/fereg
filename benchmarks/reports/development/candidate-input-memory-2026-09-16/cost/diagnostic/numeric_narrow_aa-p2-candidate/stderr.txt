@@ -1,5 +1,0 @@
-OMP: Info #266: OMP_NESTED variable deprecated, please use OMP_MAX_ACTIVE_LEVELS instead.
-FEREG_PHASE|ols_prepare|seconds=0.000254528
-FEREG_PHASE|fit|rhs=0.000363608|raw_moments=0.000514128|initial_absorb=0.000853444|within_norms=0.000000283|finite_solve=0.000338388|score_cache=0.000000126|bread_raw_residual=0.000173882|residual_absorb=0.000173547|score=0.000206675|finalize=0.000001593|total=0.002626176
-FEREG_PHASE|iid|setup_statistics=0.000337672|covariance=0.000006260|wald=0.000001440|certificate=0.000005489|total=0.000351102
-FEREG_PHASE|iid_plugin|prepare=0.000268213|inference=0.003286449|outputs=0.000010836|shadow=0.000013208|prestore_total=0.003578939

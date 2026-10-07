@@ -1,8 +1,0 @@
-{
-  "logical_receipts": 10792,
-  "payloads": 2646,
-  "bytes": 13333461,
-  "sha256": "114b4581aadbeea2af20a3b20ac1798fcb50e25e052c8bad4d5dfbc8762b3296",
-  "omitted_files": 931,
-  "omission_policy": "Hash but omit generated DTA, binary row outputs and saved_outputs.csv; retain controllers, input fingerprints, complete scientific summaries and all attempt outcomes. Raw generated outputs remain local."
-}

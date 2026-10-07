@@ -1,8 +1,0 @@
-   Compiling fereg-core v0.5.0 (EXPERIMENT/candidate-v2/crates/fereg-core)
-   Compiling fereg-plugin v0.5.0 (EXPERIMENT/candidate-v2/crates/fereg-plugin)
-    Finished `release` profile [optimized] target(s) in 48.21s
-   Compiling fereg-core v0.5.0 (EXPERIMENT/candidate-v2/crates/fereg-core)
-   Compiling fereg-plugin v0.5.0 (EXPERIMENT/candidate-v2/crates/fereg-plugin)
-    Finished `release` profile [optimized] target(s) in 47.76s
-actual-plugin ABI/self-test harness: PASS
-Built universal EXPERIMENT/candidate-v2/dist/fereg_macos.plugin

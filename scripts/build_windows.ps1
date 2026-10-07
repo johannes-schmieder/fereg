@@ -7,11 +7,7 @@ param(
     [string]$ExpectedSourceCommit,
 
     [Parameter(Mandatory = $false)]
-    [string]$ExpectedBuildDate,
-
-    [Parameter(Mandatory = $false)]
-    [ValidateSet("candidate", "f0-baseline")]
-    [string]$ExpectedMode = "candidate"
+    [string]$ExpectedBuildDate
 )
 
 $ErrorActionPreference = "Stop"
@@ -43,13 +39,9 @@ if ($SourceRoot) {
         throw "pre-existing build date differs from the exact target commit"
     }
     $env:FEREG_BUILD_DATE = $ExpectedBuildDate
-    if ($ExpectedMode -notin @("candidate", "f0-baseline")) {
-        throw "materialized Windows build mode is invalid"
-    }
 }
 elseif (
-    $ExpectedSourceCommit -or $ExpectedBuildDate -or
-    $ExpectedMode -cne "candidate"
+    $ExpectedSourceCommit -or $ExpectedBuildDate
 ) {
     throw "expected source identity requires SourceRoot"
 }
@@ -127,7 +119,7 @@ if (
 python "$ControllerRoot\scripts\audit_binary.py" $Plugin
 if ($LASTEXITCODE -ne 0) { throw "binary audit failed" }
 & "$ControllerRoot\tests\mock_spi\run_actual_windows_plugin_test.ps1" `
-    -Plugin $Plugin -Mode $ExpectedMode
+    -Plugin $Plugin
 $Hash = (Get-FileHash -Algorithm SHA256 $Plugin).Hash.ToLowerInvariant()
 "$Hash  fereg_windows.plugin" | Set-Content -Encoding ascii "$Plugin.sha256"
 Write-Host "Built $Plugin"

@@ -1,7 +1,0 @@
-{
-  "passed": true,
-  "parallel_processes": 2,
-  "threads_per_process": 1,
-  "private_compilation": true,
-  "shared_libraries_unchanged": true
-}

@@ -1,9 +1,0 @@
-{
-  "job_id": "7763686",
-  "run_root": "/projectnb/welfgr/fereg/dev/20260928-public-host-01",
-  "source_snapshot": "14c753ede241d94812a25b52f06325cb81d5a08d5465efe0a343ec8b9c4bfad9",
-  "slots": 4,
-  "mem_per_core": "3G",
-  "walltime": "00:15:00",
-  "deployment_sha256": "481b29dc6147d50912e8f3ad8edc627048a347dc5c380a6a1dad2a03166f6687"
-}

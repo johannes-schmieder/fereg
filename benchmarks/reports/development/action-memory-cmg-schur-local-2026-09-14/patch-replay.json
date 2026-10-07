@@ -1,8 +1,0 @@
-{
-  "implementation_patch_sha256": "2e03030b9150fd0c9aa945344330afc0be4ab06e6d9822c0de5740b213268445",
-  "incremental_patch_sha256": "d02e385b4a6a5e36065d1c319d7ab05a19641e45e1a670a4c46d7bfa7abaf5ba",
-  "candidate_inputs": 179,
-  "all_replayed_inputs_match": true,
-  "replay_base": "accepted native 25bf610; evidence HEAD 2739915",
-  "foundation_patch_sha256": "082e1625ce6cdfdbbb553efd5128a7872ead52aec1ed87be1264c8b3b6eeb233"
-}

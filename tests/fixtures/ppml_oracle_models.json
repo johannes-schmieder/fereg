@@ -1,0 +1,291 @@
+{
+  "cells": [
+    {
+      "id": "dev_n100k_no_fe_k0",
+      "profile": "development",
+      "scale": "n100k",
+      "design": "no_fe",
+      "controls": 0,
+      "outcome": "easy_low_zero",
+      "finite_design": "full_rank",
+      "weight": "none",
+      "vce": "robust",
+      "threads": [
+        1
+      ],
+      "memory": "auto",
+      "output": "fit",
+      "performance_role": "diagnostic",
+      "oracle_required": true,
+      "scaling_group": null,
+      "scaling_thread": null,
+      "equivalence_group": null,
+      "paired_fit_case": null,
+      "cell_id": "dev_n100k_no_fe_k0_t1",
+      "requested_threads": 1,
+      "scale_spec": {
+        "id": "n100k",
+        "n": 100000
+      },
+      "design_spec": {
+        "id": "no_fe",
+        "fe_dimensions": 0,
+        "slope_channels": 0,
+        "connectivity": "none"
+      },
+      "outcome_spec": {
+        "id": "easy_low_zero",
+        "zero_share": 0.1,
+        "adjustment": "none",
+        "separated_share": 0.0,
+        "irls_path": "easy"
+      }
+    },
+    {
+      "id": "dev_n100k_one_fe_offset_fw_c1",
+      "profile": "development",
+      "scale": "n100k",
+      "design": "one_fe",
+      "controls": 10,
+      "outcome": "easy_high_zero_offset",
+      "finite_design": "full_rank",
+      "weight": "fweight",
+      "vce": "cluster1",
+      "threads": [
+        2
+      ],
+      "memory": "low",
+      "output": "fit",
+      "performance_role": "diagnostic",
+      "oracle_required": true,
+      "scaling_group": null,
+      "scaling_thread": null,
+      "equivalence_group": null,
+      "paired_fit_case": null,
+      "cell_id": "dev_n100k_one_fe_offset_fw_c1_t2",
+      "requested_threads": 2,
+      "scale_spec": {
+        "id": "n100k",
+        "n": 100000
+      },
+      "design_spec": {
+        "id": "one_fe",
+        "fe_dimensions": 1,
+        "slope_channels": 0,
+        "connectivity": "standard"
+      },
+      "outcome_spec": {
+        "id": "easy_high_zero_offset",
+        "zero_share": 0.8,
+        "adjustment": "offset",
+        "separated_share": 0.0,
+        "irls_path": "easy"
+      }
+    },
+    {
+      "id": "dev_n100k_lowmob_exposure_pw_c2",
+      "profile": "development",
+      "scale": "n100k",
+      "design": "two_fe_lowmob",
+      "controls": 50,
+      "outcome": "long_exposure",
+      "finite_design": "ill_conditioned",
+      "weight": "pweight",
+      "vce": "cluster2",
+      "threads": [
+        4
+      ],
+      "memory": "fast",
+      "output": "fit",
+      "performance_role": "diagnostic",
+      "oracle_required": true,
+      "scaling_group": null,
+      "scaling_thread": null,
+      "equivalence_group": null,
+      "paired_fit_case": null,
+      "cell_id": "dev_n100k_lowmob_exposure_pw_c2_t4",
+      "requested_threads": 4,
+      "scale_spec": {
+        "id": "n100k",
+        "n": 100000
+      },
+      "design_spec": {
+        "id": "two_fe_lowmob",
+        "fe_dimensions": 2,
+        "slope_channels": 0,
+        "connectivity": "low_mobility"
+      },
+      "outcome_spec": {
+        "id": "long_exposure",
+        "zero_share": 0.35,
+        "adjustment": "exposure",
+        "separated_share": 0.0,
+        "irls_path": "long"
+      }
+    },
+    {
+      "id": "dev_n100k_three_fe_separated_c3",
+      "profile": "development",
+      "scale": "n100k",
+      "design": "three_fe_standard",
+      "controls": 10,
+      "outcome": "separated_high_zero",
+      "finite_design": "full_rank",
+      "weight": "none",
+      "vce": "cluster3",
+      "threads": [
+        8
+      ],
+      "memory": "auto",
+      "output": "fit",
+      "performance_role": "diagnostic",
+      "oracle_required": true,
+      "scaling_group": null,
+      "scaling_thread": null,
+      "equivalence_group": null,
+      "paired_fit_case": null,
+      "cell_id": "dev_n100k_three_fe_separated_c3_t8",
+      "requested_threads": 8,
+      "scale_spec": {
+        "id": "n100k",
+        "n": 100000
+      },
+      "design_spec": {
+        "id": "three_fe_standard",
+        "fe_dimensions": 3,
+        "slope_channels": 0,
+        "connectivity": "standard"
+      },
+      "outcome_spec": {
+        "id": "separated_high_zero",
+        "zero_share": 0.8,
+        "adjustment": "none",
+        "separated_share": 0.2,
+        "irls_path": "long"
+      }
+    },
+    {
+      "id": "dev_n100k_slopes_collinear_c4",
+      "profile": "development",
+      "scale": "n100k",
+      "design": "two_fe_slopes",
+      "controls": 10,
+      "outcome": "long_offset",
+      "finite_design": "collinear",
+      "weight": "fweight",
+      "vce": "cluster4",
+      "threads": [
+        16
+      ],
+      "memory": "low",
+      "output": "total_absorbed_effect",
+      "performance_role": "diagnostic",
+      "oracle_required": true,
+      "scaling_group": null,
+      "scaling_thread": null,
+      "equivalence_group": null,
+      "paired_fit_case": null,
+      "cell_id": "dev_n100k_slopes_collinear_c4_t16",
+      "requested_threads": 16,
+      "scale_spec": {
+        "id": "n100k",
+        "n": 100000
+      },
+      "design_spec": {
+        "id": "two_fe_slopes",
+        "fe_dimensions": 2,
+        "slope_channels": 2,
+        "connectivity": "low_mobility"
+      },
+      "outcome_spec": {
+        "id": "long_offset",
+        "zero_share": 0.55,
+        "adjustment": "offset",
+        "separated_share": 0.05,
+        "irls_path": "long"
+      }
+    },
+    {
+      "id": "dev_n100k_disconnected_illcond_c5",
+      "profile": "development",
+      "scale": "n100k",
+      "design": "two_fe_disconnected",
+      "controls": 50,
+      "outcome": "separated_high_zero",
+      "finite_design": "ill_conditioned",
+      "weight": "pweight",
+      "vce": "cluster5",
+      "threads": [
+        1
+      ],
+      "memory": "fast",
+      "output": "individual_fe",
+      "performance_role": "diagnostic",
+      "oracle_required": true,
+      "scaling_group": null,
+      "scaling_thread": null,
+      "equivalence_group": null,
+      "paired_fit_case": null,
+      "cell_id": "dev_n100k_disconnected_illcond_c5_t1",
+      "requested_threads": 1,
+      "scale_spec": {
+        "id": "n100k",
+        "n": 100000
+      },
+      "design_spec": {
+        "id": "two_fe_disconnected",
+        "fe_dimensions": 2,
+        "slope_channels": 0,
+        "connectivity": "disconnected"
+      },
+      "outcome_spec": {
+        "id": "separated_high_zero",
+        "zero_share": 0.8,
+        "adjustment": "none",
+        "separated_share": 0.2,
+        "irls_path": "long"
+      }
+    },
+    {
+      "id": "scale_n100k_two_fe_fast",
+      "profile": "development",
+      "scale": "n100k",
+      "design": "two_fe_standard",
+      "controls": 10,
+      "outcome": "easy_low_zero",
+      "finite_design": "full_rank",
+      "weight": "none",
+      "vce": "robust",
+      "threads": [
+        8
+      ],
+      "memory": "fast",
+      "output": "fit",
+      "performance_role": "diagnostic",
+      "oracle_required": true,
+      "scaling_group": "standard_two_fe_t8",
+      "scaling_thread": 8,
+      "equivalence_group": null,
+      "paired_fit_case": null,
+      "cell_id": "scale_n100k_two_fe_fast_t8",
+      "requested_threads": 8,
+      "scale_spec": {
+        "id": "n100k",
+        "n": 100000
+      },
+      "design_spec": {
+        "id": "two_fe_standard",
+        "fe_dimensions": 2,
+        "slope_channels": 0,
+        "connectivity": "standard"
+      },
+      "outcome_spec": {
+        "id": "easy_low_zero",
+        "zero_share": 0.1,
+        "adjustment": "none",
+        "separated_share": 0.0,
+        "irls_path": "easy"
+      }
+    }
+  ]
+}

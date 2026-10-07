@@ -1,6 +1,0 @@
-job_id=7358415
-hostname=scc-ei3
-slots=4
-task_receipts=12
-successful_shards=12
-job_rc=0

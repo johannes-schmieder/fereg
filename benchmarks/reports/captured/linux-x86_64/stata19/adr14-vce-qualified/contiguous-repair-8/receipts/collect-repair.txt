@@ -1,6 +1,0 @@
-job_id=7367528
-hostname=scc-gd4
-slots=2
-scope_receipts=8
-successful_shards=8
-job_rc=0

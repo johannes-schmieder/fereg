@@ -1,3 +1,0 @@
-mach_rc=0 drop_rc=0 count=62 expected_count=62 page_size_rc=0 page_size=16384
-mach_free_including_speculative=4869197 mach_inactive=3432165 mach_speculative=52347 available_bytes=136009515008
-sysctl_free_rc=-1 free=0 inactive_rc=-1 inactive=0 speculative_rc=-1 speculative=0 old_available_bytes=0

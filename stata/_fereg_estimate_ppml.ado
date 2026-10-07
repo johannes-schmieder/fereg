@@ -22,7 +22,7 @@ program define _fereg_estimate_ppml, eclass
          SIMPLEXITERate(integer 100000) SIMPLEXCELLS(integer 1000000) ///
          ALLOCATIONAUDIT INJECT(string) PUBLICMode ///
          PUBLICCMDLINE(string) PUBLICTIMEIT PUBLICDISPlay ///
-         PUBLICWEXP(string) ENGINE(string)]
+         PUBLICWEXP(string)]
 
     local bias_method = lower(strtrim(`"`biascorrection'"'))
     local has_bias = (`"`bias_method'"' != "")
@@ -255,9 +255,6 @@ program define _fereg_estimate_ppml, eclass
         }
     }
 
-    _fereg_load, action(resolve) engine(`"`engine'"')
-    local native_engine "`r(engine)'"
-
     marksample touse, novarlist
     local candidate_all = (strtrim(`"`if'"') == "" & strtrim(`"`in'"') == "")
     gettoken depvar indepvars : varlist
@@ -267,7 +264,7 @@ program define _fereg_estimate_ppml, eclass
     if strtrim(`"`cluster'"') != "" local cluster_option `"cluster(`cluster')"'
 
     * PPML's categorical FE and cluster owners accept original sources only.
-    * The shared fereg parser intentionally has broader legacy behavior, so
+    * The shared fereg parser intentionally has broader parsing behavior, so
     * reject time-series aliases here before it can strip r(ts_op).
     local ppml_absorb_rest `"`absorb'"'
     while strtrim(`"`ppml_absorb_rest'"') != "" {
@@ -298,7 +295,7 @@ program define _fereg_estimate_ppml, eclass
     }
 
     local factor_sample "`touse'"
-    if "`native_engine'" == "next" & strtrim(`"`indepvars'"') != "" {
+    if strtrim(`"`indepvars'"') != "" {
         tempvar factor_available
         local availability_options
         foreach option in fweight pweight offset exposure {
@@ -510,7 +507,7 @@ program define _fereg_estimate_ppml, eclass
                 local has_absorb_interaction 1
         }
     }
-    if "`native_engine'" == "next" & `has_absorb_interaction' {
+    if `has_absorb_interaction' {
         if regexm(lower(`"`indepvars'"'), "(^|[ #])ib[^ #]*[.]") {
             di as error "categorical PPML does not support explicit RHS base operators with interacted or sloped absorption"
             exit 498
@@ -729,7 +726,7 @@ program define _fereg_estimate_ppml, eclass
     * transport hint, not sample authority. No ado copy/markout pass is needed.
     local input_complete 0
 
-    _fereg_load, action(loadonly) engine(`native_engine')
+    _fereg_load, action(loadonly)
     local plugin_handle "`r(handle)'"
     local plugin_file `"`r(plugin_file)'"'
     // Stata plugin registrations are scoped to the calling ado program.
@@ -1402,7 +1399,7 @@ program define _fereg_estimate_ppml, eclass
     ereturn local feppml_request_wire "1.8"
     ereturn local feppml_result_wire "1.5"
     ereturn local feppml_plugin "0.5.0"
-    ereturn local feppml_engine "`native_engine'"
+
     if `"`inject'"' == "breakpostpublic" {
         di as result "FEPPML_BREAK_ARMED"
         sleep 30000
@@ -1443,7 +1440,6 @@ program define _fereg_estimate_ppml, eclass
         if `"`publicdisplay'"' != "" ereturn display
     }
 end
-
 
 program define _fereg_eppml_validate, rclass
     version 18.0

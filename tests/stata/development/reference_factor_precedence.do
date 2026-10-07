@@ -6,7 +6,7 @@ args compare_reghdfe
 
 * The optional comparator requires the isolated references.lock.toml runtime:
 * reghdfe 6.14.1, commit 29b2b203f534413369d675d0c0f674d61291f536.
-* This fixture qualifies reference behavior; engine(next) integration is M5.
+* This fixture qualifies reference behavior; integration is M5.
 local estimators regress
 if "`compare_reghdfe'" == "1" local estimators regress reghdfe
 foreach estimator of local estimators {

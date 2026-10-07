@@ -1,4 +1,0 @@
-status=success
-scopes=12
-timing_rows=432
-preflights=12

@@ -1,8 +1,0 @@
-job_id=7367527
-task_id=4
-scope_name=n1m-k30-cluster1-t16-none
-hostname=scc-x07
-slots=16
-source_commit=490e03a3e2458d8bc463c3f60389062e2f8fae42
-plugin_sha256=9cbe00b6c5a0d5c47af3d5d1fd32166a200d27202d335a602d584a3d5b48a4a2
-job_rc=0

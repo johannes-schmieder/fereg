@@ -1,2 +1,0 @@
-population,direct_cmg_cells,comparable_direct_cells,rejected_to_lsmr,retained_cmg,lsmr_ineligible_cells,rejected_without_certified_lsmr,false_rejected_cmg_wins_over_5pct,harmful_accepts_over_5pct,severe_accepts_over_2x,geometric_mean_regret,p90_regret,maximum_regret,reason_depth_work,reason_nuisance_work,reason_retain_cmg,reason_rhs_batches,reason_wide_factor_work
-holdout,48,34,32,16,14,12,0,7,0,1.0548168521724703,1.1194029850746268,1.3148148148148147,12,6,16,10,4

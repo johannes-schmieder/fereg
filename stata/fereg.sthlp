@@ -32,13 +32,13 @@ observations are removed to a fixed point.
 {marker syntax}
 {title:Syntax}
 
-{p 8 16 2}{cmd:fereg,} {cmd:version} [{cmd:engine(next|legacy)}]
+{p 8 16 2}{cmd:fereg,} {cmd:version}
 
 {p 8 16 2}{cmd:fereg,} {cmd:doctor}
-[{cmd:threads(}{it:#}{cmd:)} {cmd:verbose} {cmd:engine(next|legacy)}]
+[{cmd:threads(}{it:#}{cmd:)} {cmd:verbose}]
 
 {p 8 16 2}{cmd:fereg,} {cmd:selftest}
-[{cmd:threads(}{it:#}{cmd:)} {cmd:engine(next|legacy)}]
+[{cmd:threads(}{it:#}{cmd:)}]
 
 {p 8 16 2}
 {cmd:fereg} {it:depvar} [{it:indepvars}] {ifin} {weight},
@@ -59,7 +59,6 @@ observations are removed to a fixed point.
     {cmd:dof(continuous|none)}{col 38}slope-only or no redundancy adjustment
 
   {ul:Solver and execution}
-    {cmd:engine(next|legacy)}{col 38}native engine; default next
     {cmd:solver(auto|map|it|squarem|lsmr|cmg)}{col 38}fixed-effect solver
     {cmd:preconditioner(auto|off|diagonal|schwarz)}{col 38}LSMR preconditioner
     {cmd:threads(}{it:#}{cmd:)}{col 38}native threads; default 0 (automatic)
@@ -77,27 +76,13 @@ The public weight forms are {cmd:[aw=}{it:exp}{cmd:]},
 {cmd:[fw=}{it:exp}{cmd:]}, and {cmd:[pw=}{it:exp}{cmd:]}. The command
 recognizes {cmd:iweight} only to return the pinned {cmd:r(101)} rejection.
 
-{marker engines}
-{title:Engine selection}
+{marker runtime}
+{title:Native runtime}
 
 {pstd}
-{cmd:engine(next)} selects the maintained engine and is the default for OLS
-and PPML. {cmd:engine(legacy)} selects a separate frozen plugin and prints a
-short note on every call. An explicit option takes precedence over the
-{cmd:FEREG_ENGINE} global; an unset global defaults to {cmd:next}. Invalid
-selections return {cmd:r(198)}. A missing selected binary returns {cmd:r(601)};
-the command never switches engines automatically.
-
-{pstd}
-The legacy comparator is the frozen native artifact from
-{cmd:legacy-comparator-v1} with the current shared ado files. It is useful for
-comparison but can contain bugs; it does not define correct results. Next
-corrects factor availability, full-matrix OLS multiway covariance, continuous
-slope DoF validation and an exactly absorbed frequency-singleton factor.
-Numerical agreement does not require identical bits across engines or thread
-counts. Engine identity is stored in {cmd:e(fereg_engine)}; stored estimates retain it.
-Use {cmd:fereg, version engine(legacy)}, {cmd:doctor}, or {cmd:selftest} to inspect
-the selected plugin.
+Both estimators use the installed fereg native plugin. Use {cmd:fereg, version},
+{cmd:fereg, doctor}, or {cmd:fereg, selftest} to inspect it. A missing binary
+returns {cmd:r(601)}. The former {cmd:engine()} option has been removed.
 
 {marker description}
 {title:Description}
@@ -767,18 +752,15 @@ the frozen exact-SHA benchmark suite, not this example.
 {title:Requirements and development status}
 
 {pstd}
-{cmd:fereg} requires Stata 18 or newer. The development package bundles two
-self-contained plugins per platform: {cmd:fereg_macos.plugin} and
-{cmd:fereg_legacy_macos.plugin} on macOS, with corresponding {cmd:linux} and
-{cmd:windows} filenames. Each binary has a checksum; the package includes the
-frozen comparator identity. Users do not need a compiler or separate runtime.
+{cmd:fereg} requires Stata 18 or newer and one self-contained plugin for its
+platform: {cmd:fereg_macos.plugin}, {cmd:fereg_linux.plugin}, or
+{cmd:fereg_windows.plugin}. Users do not need a compiler or separate runtime.
+There is one maintained engine and no engine selector.
 
 {pstd}
-Version 0.5.0 remains unreleased development source. The default is next;
-legacy remains available for comparison. Linux/Windows native builds, audits
-and mock SPI checks do not constitute licensed Windows Stata qualification.
-See {cmd:MILESTONES.md} for qualification progress. Public native distribution
-remains subject to the existing licensing gate.
+Version 0.5.0 remains unreleased development source. Current qualification is
+Mac-only; see {cmd:docs/VALIDATION.md} for scope and limitations. Public native
+distribution remains subject to the separate licensing decision.
 
 {marker sources}
 {title:Sources and acknowledgements}

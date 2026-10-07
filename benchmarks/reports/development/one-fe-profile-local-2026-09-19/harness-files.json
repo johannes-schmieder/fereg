@@ -1,8 +1,0 @@
-{
-  "README.md": "0b1ddac2acdcaa50a72b8a717118158aca5c82f80e82b1721ad2c9efa2971a11",
-  "archive.py": "d33d8c49590f3dca9437848a902f29fa92e19cba3aabac23052140e70f2ba31b",
-  "collect.py": "77a014af20187a7e3a627a3158d7ea9ea526aef28a62bacf0100f763a03e7003",
-  "instrument.py": "05bc05fe633496b1c318ecda937b2f0628536e86d15f93d596be4acf8d9cbc88",
-  "instrument_fereg.py": "be197435d6b64e926500fa0a89f61d307871aa4c8b1ddbcfd1893dd85e2a061a",
-  "run.py": "e6f5f87237edac790ebe9c7014046db622e2c5f5787809d6f564e1420ccd1bff"
-}

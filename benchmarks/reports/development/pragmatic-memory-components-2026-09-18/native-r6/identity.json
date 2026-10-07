@@ -1,5 +1,0 @@
-{
-  "base_commit": "8dc40a241e57bef03e9d8a6d5ed95262a97e0d74",
-  "snapshot_sha256": "cda9b7987429eff6a6d9a36a82a99b71d7b02bc0dde83f1c37d08bb873272c1e",
-  "scope": "preserved memory overlay plus whole-action reporting; development only"
-}

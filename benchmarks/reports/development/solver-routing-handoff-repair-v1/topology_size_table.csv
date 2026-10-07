@@ -1,2 +1,0 @@
-case_id,test_id,topology,topology_detail,n,controls,rhs,threads,absorb_order,best_certified_explicit_solver,best_explicit_seconds,auto_used_solver_code,auto_selected_solver,auto_seconds,auto_fallback,auto_pilot_contraction,auto_regret_percent
-topology_wfy5_n50000,topology,worker_firm_year5,periods5_mobility0.02,50000,4,5,8,worker firm year,none,,3.0,LSMR,0.087,0.0,0.012699062,

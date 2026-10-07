@@ -1,5 +1,0 @@
-{
-  "production_commit": "ded4f95b2d875605c96f2c496ff74bd084107385",
-  "change": "Adopt the existing focused inference-parent test from the preserved worktree; production code unchanged.",
-  "source_manifest_sha256": "784efa59733db4e9e69cd6aa33ac4b1f337447329bd8cbea99e4b3aba97b95f4"
-}

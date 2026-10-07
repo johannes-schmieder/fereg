@@ -1,7 +1,0 @@
-FEREG_PHASE|ols_prepare|seconds=0.005970583
-FEREG_PHASE|fit|rhs=0.002086292|raw_moments=0.000602000|initial_absorb=0.024126792|within_norms=0.002288000|finite_solve=0.003865000|score_cache=0.000000000|bread_raw_residual=0.003475333|residual_absorb=0.000315042|score=0.000078917|finalize=0.000117750|total=0.036955625
-FEREG_PHASE|score_design|setup=0.000002542|storage=0.000000375|certificate=0.006591541|finalize=0.000000292|strided=0|reabsorbed=0|total=0.006594875
-FEREG_PHASE|ols_prepare|seconds=0.174217333
-FEREG_PHASE|cg_energy_audit|rhs=51|previous=1.39583428571428522e5|decrease=1.39583428571428580e5|before=1.39583428571428551e5|after=0.00000000000000000e0
-FEREG_PHASE|fit|rhs=0.015113125|raw_moments=0.009310916|initial_absorb=2.971982000|within_norms=0.016711458|finite_solve=0.010749083|score_cache=0.000000666|bread_raw_residual=0.004235792|residual_absorb=0.006997459|score=0.001778833|finalize=0.003244583|total=3.040124375
-FEREG_PHASE|score_design|setup=0.000001625|storage=0.000000208|certificate=0.028329958|finalize=0.000000208|strided=1|reabsorbed=0|total=0.028332208

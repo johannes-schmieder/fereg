@@ -1,5 +1,0 @@
-{
-  "original_archive_log_sha256": "b51255fcf6737e8bfdefc5dc257d3507a96ef771c121e9c4c7088b1fd6e7d1cd",
-  "corrected_archive_script_sha256": "9b0622b6639b4f4feb299736138c5285c8804a8a60e81766d96056c402bc6a28",
-  "correction": "Fixture lookup used the isolated source, which deliberately excludes external Stata fixtures. Resolved original main test files and required their hashes to match executed validation receipts. The first metadata-resume attempt needed its existing identities loaded. Completed remaining metadata only; 34 existing captures were neither rerun nor replaced."
-}

@@ -1,9 +1,0 @@
-{
-  "peak_rss_bytes": 16318251008,
-  "returncode": 0,
-  "timeout": false,
-  "elapsed_seconds": 94.61231516604312,
-  "audit_source_sha256": "eabf3c003a1530704617d7340049e7121ee81db2fa5b8c14885e918f611546be",
-  "source_commit": "e6ae50e",
-  "qualification_eligible": false
-}

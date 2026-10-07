@@ -1,9 +1,0 @@
-{
-  "status": "pass",
-  "tests": 10,
-  "test_source_sha256": "2f16513f2ed2a98ec29f2ed25bc48e8aab28838b91f1daf2693933b05cd62d6a",
-  "git_diff_check": "pass",
-  "latex_compile": "pass",
-  "layout_review": "partial-data preview pages 3, 4, 6 checked; final full review pending",
-  "partial_aggregate_sha256": "ff5af2c3ed1170715e5c71b53ecb8c6b4bcdacf96f0fc874ed52a69140fee2c6"
-}

@@ -1,1 +1,0 @@
-The first test command copied a relative source path from the isolated candidate cwd to itself. It ran zero matching tests and is retained as setup-no-test.log, not evidence. The next command copied the absolute main source and ran one failing regression (red.log). A read-only git diff from the non-git candidate cwd printed usage and changed no source.

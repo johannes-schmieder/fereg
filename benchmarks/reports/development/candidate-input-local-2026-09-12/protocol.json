@@ -1,7 +1,0 @@
-{
-  "baseline": "5411b9b4d37aab1a856b12431db84ecfce1c6f22",
-  "experiment": "P1 candidate-run/mixed-source numeric loading and PPML adjustment batching",
-  "adoption": "10% paired full-command gain on a newly covered wide loading target; investigate protected changes exceeding max(10ms,5%)",
-  "measurement": "same-machine isolated plugins; 3 rotated seed pairs each for wide OLS contiguous restrictions/mixed string clusters, PPML offset with contiguous restriction; separate PPML complete adjustment probe; stratified existing graphs, narrow, sparse restriction and low-memory controls",
-  "science": "exact full scientific outputs and original sample/weights/domain precedence; explicit dummy/Poisson oracles; no reads outside candidate; all missing codes; short run and chunk boundaries; fallible model-sized metadata and no additional observation-sized storage"
-}

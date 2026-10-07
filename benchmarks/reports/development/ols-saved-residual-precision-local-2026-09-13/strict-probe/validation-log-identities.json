@@ -1,6 +1,0 @@
-{
-  "validation/saved-oracle/run.log": "85823a140e2bc0a9e98a4846fe28dc986e7ce1db25bc4853abd262bf06fb0922",
-  "validation/omission-oracle/run.log": "902995d8a7b69f0395180c8fac1a82765ec820e9d2f689e9ee6cc6d4defa2de4",
-  "validation/cg-exact/run.log": "919ef5a24f085c7d0e099c4a83bd14cce16808e57b0b2db516b1330d4b14b83e",
-  "validation/cg-below/run.log": "425af27a8f0072354580d832806cce10bbcab8a36b41893ceacca16243f22fd9"
-}

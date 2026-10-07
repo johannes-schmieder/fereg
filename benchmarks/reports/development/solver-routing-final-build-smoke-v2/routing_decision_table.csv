@@ -1,5 +1,0 @@
-case_id,test_id,topology,topology_detail,n,controls,rhs,threads,absorb_order,best_certified_explicit_solver,best_explicit_seconds,auto_used_solver_code,auto_selected_solver,auto_seconds,auto_fallback,auto_pilot_contraction,auto_regret_percent
-cliff_n25000,cliff,worker_firm_county_sparse,periods5_mobility002_manual_generator,25000,4,5,8,worker firm county,none,,3.0,LSMR,0.032,0.0,0.0,
-val_p5r5_m02_s1,akm_validation,akm_out_of_sample,p5r5_m02_seed1_ratio5,50000,4,5,8,worker firm,none,,3.0,LSMR,0.05,0.0,0.0,
-val_year10_s1,akm_validation,akm_out_of_sample,year10_seed1_ratio20,50000,4,5,8,worker firm year,none,,7.0,CMG,0.065,0.0,0.0,
-val_year20_s1,akm_validation,akm_out_of_sample,year20_seed1_ratio20,50000,4,5,8,worker firm year,none,,3.0,LSMR,0.055,0.0,0.0,

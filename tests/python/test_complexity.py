@@ -6,7 +6,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 from check_complexity import file_metrics, modules, growth_errors
-from fereg_allocation_source_contract import _production_tokens
+from rust_source import _production_tokens
 
 
 class ComplexityTests(unittest.TestCase):
@@ -49,6 +49,24 @@ if chunk_size > 2 { work(); }
         new = {'metrics':{'core':{'production_lines':40}},'files':{}}
         self.assertEqual(growth_errors(old,new,[]), [])
         self.assertTrue(growth_errors(old,new,[{'metric':'core/production_lines','before':50,'after':53,'reason':'stale'}]))
+
+    def test_test_comparison_and_char_do_not_hide_production(self):
+        source = "#[cfg(test)] const T: bool = 1 < 2;\n#[cfg(test)] const C: char = 'x';\nfn production() {}"
+        values = [t.value for t in _production_tokens(source)]
+        self.assertIn('production', values)
+        self.assertNotIn('T', values)
+        self.assertNotIn('C', values)
+
+    def test_test_only_attributes_and_variants_do_not_hide_following_items(self):
+        source = "#[derive(Debug)] #[cfg(test)] pub struct Hidden {}\nenum Route { #[cfg(test)] TestOnly, Public, }\npub enum Visible { Value }"
+        values = [t.value for t in _production_tokens(source)]
+        for absent in ['Hidden','TestOnly','Debug']:self.assertNotIn(absent,values)
+        for present in ['Public','Visible','Value']:self.assertIn(present,values)
+
+    def test_non_test_cfg_variants_and_literals_remain_counted(self):
+        source = '#[cfg(any(test, feature="ffi"))] fn active() { let s = r#"{ hi }"#; /* braces { } */ }'
+        item = file_metrics(source, _production_tokens(source))
+        self.assertIn('active#1', item['functions'])
 
 
 if __name__ == '__main__': unittest.main()

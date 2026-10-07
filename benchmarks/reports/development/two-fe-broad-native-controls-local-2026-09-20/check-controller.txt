@@ -1,1 +1,0 @@
-CONTROLLER_IDENTITY_CHECK_PASS fresh, missing, modified worker, stale source

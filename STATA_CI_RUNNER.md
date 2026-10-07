@@ -1,5 +1,4 @@
-# Licensed Stata/Rust Mac runner
+# Licensed Stata checks
 
-Runner setup and usage moved to [ci/README.md](ci/README.md).
-Historical qualification details remain at the legacy-v0.5.0-beta tag.
-This redirect remains until the M7 link/coverage cleanup.
+See [ci/README](ci/README.md) and [development checks](docs/development_workflow.md).
+GitHub testing remains paused; current qualification runs locally on the Mac.

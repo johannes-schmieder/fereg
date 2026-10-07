@@ -17,7 +17,7 @@ program define _fereg_estimate_ols, eclass
          SOLVer(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
-         INJECT(string) ENGINE(string)]
+         INJECT(string)]
 
     local memory_mode = lower(strtrim(`"`memory'"'))
     if `"`memory_mode'"' == "" local memory_mode "fast"
@@ -107,9 +107,6 @@ program define _fereg_estimate_ols, eclass
         exit 198
     }
 
-    _fereg_load, action(resolve) engine(`"`engine'"')
-    local native_engine "`r(engine)'"
-
     marksample touse, novarlist
     local candidate_all = (strtrim(`"`if'"') == "" & strtrim(`"`in'"') == "")
     gettoken depvar indepvars : varlist
@@ -119,7 +116,7 @@ program define _fereg_estimate_ols, eclass
     if strtrim(`"`cluster'"') != "" local cluster_option `"cluster(`cluster')"'
 
     local factor_sample "`touse'"
-    if "`native_engine'" == "next" & strtrim(`"`indepvars'"') != "" {
+    if strtrim(`"`indepvars'"') != "" {
         tempvar factor_available
         local availability_options
         foreach option in aweight fweight pweight {
@@ -499,8 +496,8 @@ program define _fereg_estimate_ols, eclass
     local vce_code = cond(`"`vce_wire'"' == "iid", 1, ///
         cond(`"`vce_wire'"' == "robust", 2, 3))
 
-    // Keep diagnostics and the complete transaction on the selected binary.
-    _fereg_load, action(loadonly) engine(`native_engine')
+    // Keep diagnostics and the transaction on the same native handle.
+    _fereg_load, action(loadonly)
     local plugin_handle "`r(handle)'"
     local plugin_file `"`r(plugin_file)'"'
     // Stata plugin registrations are scoped to the calling ado program.
@@ -569,19 +566,7 @@ program define _fereg_estimate_ols, eclass
         matrix `marker_v_shadow' = `marker_v_shadow'[1..`coefficient_count', 1..`coefficient_count']
     }
 
-    // Next retains the parser's original slots and base flags. Frozen legacy
-    // keeps its historical final-sample name expansion and failure behavior.
-    local requires_final_fvexpand 0
-    if "`native_engine'" == "legacy" & `receipt_shadow'[1,8] != `receipt_shadow'[1,9] & `n_components' > 0 {
-        forvalues component = 1/`n_components' {
-            if `model_components'[`component',4] == 2 local requires_final_fvexpand 1
-        }
-    }
-    if `requires_final_fvexpand' & strtrim(`"`indepvars'"') != "" {
-        local coefficient_names
-        fvexpand `indepvars' if `sample_shadow'
-        local coefficient_names `"`r(varlist)'"'
-    }
+    // Preserve the parser's original factor slots and base flags.
     local n_terms : word count `coefficient_names'
     local posted_names `"`coefficient_names'"'
     if `include_intercept' local posted_names `"`posted_names' _cons"'
@@ -771,7 +756,7 @@ program define _fereg_estimate_ols, eclass
     ereturn local fereg_model_wire "2.1"
     ereturn local fereg_result_wire "1.5"
     ereturn local fereg_plugin "0.5.0"
-    ereturn local fereg_engine "`native_engine'"
+
     if `"`inject'"' == "postdiagnostics" exit 3498
     if `"`inject'"' == "precommit" exit 3498
 
@@ -791,7 +776,6 @@ program define _fereg_estimate_ols, eclass
         _estimates unhold `held_estimates', not
     }
 end
-
 
 program define _fereg_eols_validate, rclass
     version 18.0

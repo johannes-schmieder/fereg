@@ -11,7 +11,7 @@ SPEC = importlib.util.spec_from_file_location("weak_graph_decimal_oracle", MODUL
 ORACLE = importlib.util.module_from_spec(SPEC)
 assert SPEC.loader is not None
 SPEC.loader.exec_module(ORACLE)
-SEALED = ROOT / "benchmarks" / "expected" / "weak_graph_decimal_oracle_v1.json"
+SEALED = ROOT / "tests" / "reference" / "weak_graph_decimal_oracle_v1.json"
 
 
 class WeakGraphDecimalOracleTests(unittest.TestCase):

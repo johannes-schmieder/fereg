@@ -1,8 +1,0 @@
-{
-  "plugin_sha256": "32c74e9c590270c464123f863025279cf68437b726237ccf3125919ce2e419d3",
-  "changed_inputs": {
-    "crates/fereg-plugin/src/estimate.rs": "a172040ae957c172a6c057c4214c70f24e9781f9c4d473ad6aca7cb405c1bee2"
-  },
-  "diagnostic_patch_sha256": "83a2590eb8e02ba5ee70327082ad147864f523a1bf55776730e5cd29ce82ca41",
-  "kind": "allocation/timing diagnostic; excluded from performance aggregates"
-}

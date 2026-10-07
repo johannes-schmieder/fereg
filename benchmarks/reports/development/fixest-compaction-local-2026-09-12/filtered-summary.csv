@@ -1,5 +1,0 @@
-design,threads,variant,runs,median_seconds,min_seconds,max_seconds,median_input_seconds,median_native_seconds,median_outer_seconds,median_native_peak_bytes
-one_fe_paired_missing,4,baseline,1,0.176,0.176,0.176,0.0742164579999999,0.0719774589999999,0.029420583,220448053.0
-one_fe_paired_missing,4,candidate,1,0.135,0.135,0.135,0.073693583,0.0324244169999999,0.028518042,120419044.0
-one_fe_paired_missing,16,baseline,1,0.18,0.18,0.18,0.0761968749999999,0.07585625,0.0275541659999999,220448053.0
-one_fe_paired_missing,16,candidate,1,0.133,0.133,0.133,0.0750183749999999,0.028042708,0.029521833,120419044.0

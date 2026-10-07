@@ -1,6 +1,0 @@
-{
-  "accepted_baseline": "bc5a6ae88f9db5427e577923a8b618af3e4e3c26",
-  "original_patch": "${RANK_ORACLE_ROOT}/implementation.patch",
-  "first_check": "Original patch context overlaps the now-adopted final_residual_tolerance field. No changes applied by failed check. Preserved accepted field, adapted its adjacent context and kept recovery permission separate from precision intent.",
-  "precision_policy": "accepted 1e-14 output intent unchanged; no deferred-precision flag added"
-}

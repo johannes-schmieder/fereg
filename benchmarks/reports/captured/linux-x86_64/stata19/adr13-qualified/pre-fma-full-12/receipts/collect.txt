@@ -1,6 +1,0 @@
-job_id=7359557
-hostname=scc-pi4
-slots=4
-task_receipts=12
-successful_shards=12
-job_rc=0

@@ -1,6 +1,0 @@
-baseline ols_saved_schur PASS
-Traceback (most recent call last):
-  File "EXPERIMENT/run_oracles.py", line 26, in <module>
-    assert p.returncode==0 and all(s.replace(' ','') in log.replace(' ','') for s in sentinels),(arm,name,p.returncode)
-           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-AssertionError: ('baseline', 'feppml_one_fe_dummy_oracle', 0)

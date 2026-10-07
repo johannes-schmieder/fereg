@@ -1,6 +1,0 @@
-{
-  "attempt": "ppmlprep-fw_exposure_missing-s104729-candidate",
-  "stage": "after measured command, during result extraction",
-  "reason": "Parent edited shared Stata do-file while Stata was reading it incrementally; later byte offsets corrupted a metadata-writing line, yielding r(198).",
-  "disposition": "No timing or science claim uses this attempt. Raw logs retained locally. Per-run worker copies and hashes now prevent this race; repeat both arms."
-}

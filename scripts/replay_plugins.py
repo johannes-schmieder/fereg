@@ -210,8 +210,8 @@ def check_threads(args, case: Path, expected: dict, one_thread: dict) -> list[di
         modified = args.output / f'{case.stem}-threads-{threads}.case'
         modified.write_text(contents.replace(needle, f'{len(argument)}\n{argument}\n'))
         output = args.output / f'{case.stem}-threads-{threads}.json'
-        candidate = run_case(args.harness, args.next.resolve(), modified, output)
-        repeated = run_case(args.harness, args.next.resolve(), modified,
+        candidate = run_case(args.harness, args.plugin.resolve(), modified, output)
+        repeated = run_case(args.harness, args.plugin.resolve(), modified,
                             args.output / f'{case.stem}-threads-{threads}-repeat.json')
         science = scientific_errors(candidate, expected)
         repeat = differences(exact_view(candidate, expected['poisson']),
@@ -266,12 +266,12 @@ def affected_prefixes(scope: dict, case: Path, expected: dict) -> list[str]:
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--next', type=Path, required=True)
-    parser.add_argument('--baseline', type=Path, required=True)
+    parser.add_argument('--plugin', type=Path, required=True)
+    parser.add_argument('--baseline', type=Path, help='optional prior plugin for exact unaffected-result checks')
     parser.add_argument('--cases', type=Path, default=ROOT / 'target/replay/cases')
     parser.add_argument('--output', type=Path, default=ROOT / 'target/replay/results')
     parser.add_argument('--harness', type=Path, default=ROOT / 'target/actual-plugin-harness/actual_plugin_loader_test')
-    parser.add_argument('--baseline-fixes', default='', help='comma-separated accepted fixes in the identified parent; empty means frozen legacy')
+    parser.add_argument('--baseline-fixes', default=None, help='comma-separated accepted fixes in an older parent; defaults to current fixes')
     parser.add_argument('--policy', type=Path, default=ROOT / 'tests/replay/intentional_changes.json')
     parser.add_argument('--affected-scope', type=Path, help='predeclared input-bound numerical scope; science/discrete/repeats remain mandatory')
     parser.add_argument('--thread-counts', type=int, nargs='*', default=[],
@@ -282,7 +282,7 @@ def main() -> int:
     scope = json.loads(args.affected_scope.read_text()) if args.affected_scope else {}
     policy = json.loads(args.policy.read_text())
     candidate_fixes = set(policy['active'])
-    baseline_fixes = set(filter(None, args.baseline_fixes.split(',')))
+    baseline_fixes = candidate_fixes if args.baseline_fixes is None else set(filter(None, args.baseline_fixes.split(',')))
     if not baseline_fixes <= candidate_fixes or not candidate_fixes <= policy['repairs'].keys():
         raise RuntimeError('unknown or unapproved replay repair policy')
     transitions = candidate_fixes - baseline_fixes
@@ -293,15 +293,17 @@ def main() -> int:
         raise RuntimeError('replay corpus differs from the declared bounded matrix')
     if set(scope.get('cases', {})) - {case.stem for case in cases}:
         raise RuntimeError('affected scope contains an unknown replay input')
+    artifacts = [args.plugin] + ([args.baseline] if args.baseline else [])
+    identities = {str(p): digest(p) for p in artifacts}
     records = []
     for case in cases:
         expected = json.loads(case.with_suffix('.json').read_text())
         scoped = affected_prefixes(scope, case, expected)
-        candidate = run_case(args.harness, args.next.resolve(), case, args.output / (case.stem + '-next.json'))
-        baseline = run_case(args.harness, args.baseline.resolve(), case, args.output / (case.stem + '-baseline.json'))
-        repeated = run_case(args.harness, args.next.resolve(), case, args.output / (case.stem + '-repeat.json'))
+        candidate = run_case(args.harness, args.plugin.resolve(), case, args.output / (case.stem + '-plugin.json'))
+        baseline = run_case(args.harness, args.baseline.resolve(), case, args.output / (case.stem + '-baseline.json')) if args.baseline else None
+        repeated = run_case(args.harness, args.plugin.resolve(), case, args.output / (case.stem + '-repeat.json'))
         repeat_changes = differences(exact_view(candidate, expected['poisson']), exact_view(repeated, expected['poisson']))
-        changed = differences(exact_view(candidate, expected['poisson']), exact_view(baseline, expected['poisson']))
+        changed = differences(exact_view(candidate, expected['poisson']), exact_view(baseline, expected['poisson'])) if baseline is not None else []
         if repeat_changes:
             changed.extend('fixed-thread-repeat' + path for path in repeat_changes)
         prefixes = [path for fix in transitions
@@ -312,8 +314,8 @@ def main() -> int:
         changed = [path for path in changed if not allowed_difference(path, prefixes)]
         candidate_expected = expected_for_fixes(expected, candidate_fixes)
         science = scientific_errors(candidate, candidate_expected)
-        baseline_science = scientific_errors(baseline, expected_for_fixes(expected, baseline_fixes))
-        discrete = differences(discrete_view(candidate, candidate_expected), discrete_view(baseline, expected_for_fixes(expected, baseline_fixes))) if scoped else []
+        baseline_science = scientific_errors(baseline, expected_for_fixes(expected, baseline_fixes)) if baseline is not None else []
+        discrete = differences(discrete_view(candidate, candidate_expected), discrete_view(baseline, expected_for_fixes(expected, baseline_fixes))) if scoped and baseline is not None else []
         record = {'case': case.stem, 'input_sha256': digest(case), 'exact_differences': changed,
                   'science_errors': science, 'known_defect': candidate_expected.get('known_defect'), 'repaired_defect': candidate_expected.get('repaired_defect'), 'intentional_differences': intentional, 'baseline_science_errors': baseline_science, 'discrete_differences': discrete, 'affected_scope': bool(scoped), 'return_code': candidate['return_code']}
         record['thread_checks'] = check_threads(args, case, candidate_expected, candidate) if args.thread_counts else []
@@ -321,10 +323,12 @@ def main() -> int:
         print(f"{case.stem}: rc={candidate['return_code']} exact={len(changed)} science={science} repair={candidate_expected.get('repaired_defect')} intentional={len(intentional)} baseline_science={baseline_science}")
         if changed:
             print('  ' + ', '.join(changed[:5]))
-    summary = {'schema': 1, 'next_sha256': digest(args.next), 'baseline_sha256': digest(args.baseline),
+    summary = {'schema': 1, 'plugin_sha256': digest(args.plugin), 'baseline_sha256': digest(args.baseline) if args.baseline else None,
                'known_defect_cases': sum(bool(r['known_defect']) for r in records),
                'scientific_pass_cases': sum(not r['known_defect'] and not r['science_errors'] for r in records),
                'candidate_fixes': sorted(candidate_fixes), 'baseline_fixes': sorted(baseline_fixes), 'policy_sha256': digest(args.policy), 'affected_scope_sha256': digest(args.affected_scope) if args.affected_scope else None, 'cases': records, 'passed': all(not r['exact_differences'] and not r['science_errors'] and not r['baseline_science_errors'] and not r['discrete_differences'] and all(not t['science_errors'] and not t['repeat_differences'] and not t['discrete_differences'] for t in r['thread_checks']) for r in records)}
+    if {str(p): digest(p) for p in artifacts} != identities:
+        raise RuntimeError('replay native artifact changed during execution')
     (args.output / 'summary.json').write_text(json.dumps(summary, indent=2) + '\n')
     return 0 if summary['passed'] else 1
 

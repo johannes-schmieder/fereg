@@ -144,7 +144,7 @@ foreach effects in g#h g##c.z {
             local rhs i.q
         }
         capture noisily feppml y x `rhs', absorb(`effects') separation(none) ///
-            engine(next) mu(should_not_exist)
+            mu(should_not_exist)
         assert _rc == 498
         assert "`e(cmd)'" == "regress"
         assert mreldif(e(b),old_b) == 0 & mreldif(e(V),old_V) == 0
