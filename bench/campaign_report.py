@@ -353,7 +353,7 @@ def render(campaign, frame, output):
     pdf.text('OLS &amp; PPML · AKM baseline · 16 controls', 'SectionCustom')
     pdf.text(f"October 2026 · Frozen source <b>{source}</b> · Boston University SCC")
     pdf.table([['Configurations', 'Timed fits', 'Primary cores', 'Whole-node reservations'],
-               [len(manifest['cells']), len(campaign['records']), '4; selected 1 / 8 / 16', '4 production nodes × 28 cores']],
+               [len(manifest['cells']), len(campaign['records']), '4; selected 1 / 8 / 16', '4 tasks × 28 reserved cores']],
               [115, 105, 165, 155])
     pdf.text(f"<b>{len(eligible)} of {len(pairs)} primary package comparisons</b> meet the scientific gates in all three paired repetitions. "
              f"{statuses.get('ok', 0)} of {len(campaign['records'])} application captures succeeded. "
@@ -515,18 +515,11 @@ def render(campaign, frame, output):
              'Datasets and full row captures remain in the owner-only SCC run directory. '
              'Job accounting, application sentinels, exact manifest coverage and the independent native smoke all precede this report.')
     if context.get('failed_jobs'):
-        pdf.text('Before measurement, an offline build attempt lacked a locked dependency. Its logs were preserved, '
-                 'and the exact locked revision was fetched. A later qualification attempt exposed a reference-cache '
-                 'integrity defect on rapid file rewrites; content hashes and independent mutation tests repaired the guard. '
-                 'Failed attempts were retained before fresh qualification. '
-                 'Missing package manifests were restored from hash-verified pinned sources, and the ftools library '
-                 'was compiled before freezing the comparator inventory. '
-                 'A batch-log path correction then reused the unchanged, hash-verified native binary in a focused '
-                 'finalization job that reran ABI and harness checks. '
-                 'The first scientific smoke exposed an unsupported Mata CSV numeric format; the exporter was corrected '
-                 'and qualification repeated without changing the native binary or scientific policy. '
-                 'The scheduler request also removed an unconfigured exclusive consumable; reserving all 28 slots on an exactly 28-core host '
-                 'provides isolation under SCC’s per-host slot limit. These corrections did not change the estimator source or scientific tolerances.',
+        pdf.text('Preparation failures were resolved before production. Repairs completed the locked dependency and '
+                 'comparator closure, strengthened capture integrity, and corrected scheduling and Stata log/CSV formats. '
+                 'The unchanged native binary was hash-verified and reused for focused ABI and harness requalification. '
+                 'Failed evidence was preserved; estimator code and scientific tolerances were unchanged. '
+                 'All 28 reserved slots provide isolation under SCC’s per-host slot limit.',
                  'SmallCustom')
     pdf.text('The previous comparable September 2026 campaigns used the former runtime and different coverage. '
              'They supplied the scheduling pattern and pinned comparator closure, but their timings are not a before/after baseline for this implementation. '
