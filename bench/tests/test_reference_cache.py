@@ -117,6 +117,33 @@ class ReferenceCacheTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 ReferenceCache().read(temp, 'sample.csv', changing)
 
+    def test_first_read_detects_changed_bytes_with_unchanged_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp)/'sample.csv'
+            path.write_text('obs_id\n1\n')
+            metadata = path.stat()
+            def changing(directory):
+                result = sample(directory)
+                path.write_text('obs_id\n2\n')
+                return result
+            # Network filesystems can expose identical metadata for rapid,
+            # same-size rewrites. Content integrity must not depend on the clock.
+            with patch.object(Path, 'stat', return_value=metadata):
+                with self.assertRaises(ValueError):
+                    ReferenceCache().read(temp, 'sample.csv', changing)
+
+    def test_reuse_detects_changed_bytes_with_unchanged_metadata(self):
+        with tempfile.TemporaryDirectory() as temp:
+            path = Path(temp)/'sample.csv'
+            path.write_text('obs_id\n1\n')
+            metadata = path.stat()
+            cache = ReferenceCache()
+            with patch.object(Path, 'stat', return_value=metadata):
+                self.assertEqual(cache.read(temp, 'sample.csv', sample), (1,))
+                path.write_text('obs_id\n2\n')
+                with self.assertRaises(ValueError):
+                    cache.read(temp, 'sample.csv', sample)
+
 
 if __name__ == '__main__':
     unittest.main()

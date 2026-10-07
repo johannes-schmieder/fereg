@@ -515,7 +515,9 @@ def render(campaign, frame, output):
              'Job accounting, application sentinels, exact manifest coverage and the independent native smoke all precede this report.')
     if context.get('failed_jobs'):
         pdf.text('Before measurement, an offline build attempt lacked a locked dependency. Its logs were preserved, '
-                 'the exact locked revision was fetched, and the setup and smoke were retried once. '
+                 'and the exact locked revision was fetched. A later qualification attempt exposed a reference-cache '
+                 'integrity defect on rapid file rewrites; content hashes and independent mutation tests repaired the guard. '
+                 'Failed attempts were retained before fresh qualification. '
                  'The scheduler request also removed an unconfigured exclusive consumable; reserving all 28 slots on an exactly 28-core host '
                  'provides isolation under SCC’s per-host slot limit. These corrections did not change the estimator source or scientific tolerances.',
                  'SmallCustom')

@@ -95,8 +95,8 @@ def sample(directory):
 class ReferenceCache:
     """Analysis-local immutable reference bank; actual captures are always read.
 
-    Retained entries are bounded, including their directory and metadata. Stat checks
-    surround a first read and every reuse; a changed reference is an integrity
+    Retained entries are bounded, including their directory and metadata. Metadata
+    and content checks surround a first read and every reuse; a changed reference is an integrity
     failure rather than a stale successful comparison. Eviction only costs I/O.
     """
     def __init__(self, maximum_bytes=64*1024*1024):
@@ -110,8 +110,17 @@ class ReferenceCache:
     @staticmethod
     def fingerprint(path):
         value = path.stat()
-        return (value.st_dev, value.st_ino, value.st_size,
-                value.st_mtime_ns, value.st_ctime_ns)
+        metadata = (value.st_dev, value.st_ino, value.st_size,
+                    value.st_mtime_ns, value.st_ctime_ns)
+        digest = hashlib.sha256()
+        with path.open('rb') as stream:
+            for block in iter(lambda: stream.read(1024*1024), b''):
+                digest.update(block)
+        after = path.stat()
+        if metadata != (after.st_dev, after.st_ino, after.st_size,
+                        after.st_mtime_ns, after.st_ctime_ns):
+            raise ValueError('reference capture changed during hashing')
+        return (*metadata, digest.digest())
 
     def read(self, directory, filename, reader):
         path = Path(directory) / filename
