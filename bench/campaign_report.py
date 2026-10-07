@@ -513,6 +513,12 @@ def render(campaign, frame, output):
              'DTA files are round-trip verified; R verifies every imported numeric column against IEEE-double hashes. '
              'Datasets and full row captures remain in the owner-only SCC run directory. '
              'Job accounting, application sentinels, exact manifest coverage and the independent native smoke all precede this report.')
+    if context.get('failed_jobs'):
+        pdf.text('Before measurement, an offline build attempt lacked a locked dependency. Its logs were preserved, '
+                 'the exact locked revision was fetched, and the setup and smoke were retried once. '
+                 'The scheduler request also removed an unconfigured exclusive consumable; reserving all 28 slots on an exactly 28-core host '
+                 'provides isolation under SCC’s per-host slot limit. These corrections did not change the estimator source or scientific tolerances.',
+                 'SmallCustom')
     pdf.text('The previous comparable September 2026 campaigns used the former runtime and different coverage. '
              'They supplied the scheduling pattern and pinned comparator closure, but their timings are not a before/after baseline for this implementation. '
              'Three repetitions at one seed do not establish confidence intervals or cross-machine reproducibility. '

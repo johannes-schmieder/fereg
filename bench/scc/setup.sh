@@ -22,13 +22,15 @@ module load python3/3.12.4 stata-mp/19 R/4.5.2
 export CARGO_HOME=/projectnb/welfgr/johannes/fereg-rust-1.85.1/cargo
 export RUSTUP_HOME=/projectnb/welfgr/johannes/fereg-rust-1.85.1/rustup
 export RUSTUP_TOOLCHAIN=1.85.1-x86_64-unknown-linux-gnu
-export CARGO_NET_OFFLINE=true CARGO_BUILD_JOBS=8
+export CARGO_NET_OFFLINE=false CARGO_BUILD_JOBS=8
 export PATH="$CARGO_HOME/bin:$PATH"
 export OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 OMP_NUM_THREADS=1
 export R_LIBS_USER="$RUN_ROOT/environment/r-library"
 export FEREG_GIT_COMMIT
 FEREG_GIT_COMMIT=$(python3 -c 'import json;print(json.load(open("input/source.json"))["commit"])')
 cd source
+cargo fetch --locked --target x86_64-unknown-linux-gnu > "$RUN_ROOT/logs/dependency-fetch.log" 2>&1
+export CARGO_NET_OFFLINE=true
 bash scripts/build_linux.sh > "$RUN_ROOT/logs/build.log" 2>&1
 python3 bench/build_clock.py --output "$RUN_ROOT/environment/command-clock.plugin" > "$RUN_ROOT/logs/clock-build.log" 2>&1
 python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1
