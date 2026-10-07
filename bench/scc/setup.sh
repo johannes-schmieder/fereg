@@ -47,7 +47,7 @@ python3 bench/build_clock.py --output "$RUN_ROOT/environment/command-clock.plugi
 python3 -m unittest discover -s bench/tests > "$RUN_ROOT/logs/harness-tests.log" 2>&1
 cd "$RUN_ROOT/environment/references"
 stata-mp -b do "$RUN_ROOT/source/bench/scc/prepare_references.do" "$RUN_ROOT/environment/references"
-mv prepare_references.log "$RUN_ROOT/logs/reference-prepare.log"
+mv references.log "$RUN_ROOT/logs/reference-prepare.log"
 python3 - "$RUN_ROOT/logs/reference-prepare.log" <<'PY'
 import pathlib,sys
 assert 'CAMPAIGN_REFERENCES_COMPLETE rc=0' in pathlib.Path(sys.argv[1]).read_text()

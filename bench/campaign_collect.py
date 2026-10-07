@@ -67,6 +67,9 @@ def collect(context_path, output):
              'logs/build.log', 'logs/dependency-fetch.log', 'logs/clock-build.log', 'logs/harness-tests.log',
              'logs/reference-prepare.log']
     files += [f'task-{i}/{name}' for i in range(1, 5) for name in ['results.json', 'COMPLETE']]
+    files += [name for name in context.get('launcher_sha256', {}) if name not in files]
+    if context.get('reused_build_job'):
+        files.append('logs/abi-retest.log')
     listing = remote('find '+shlex.quote(root+'/logs')+" -maxdepth 1 -type f -name 'production.*.sge'").decode().splitlines()
     files.extend(str(Path(path).relative_to(root)) for path in listing)
     archive = remote('cd '+shlex.quote(root)+' && tar -cf - '+' '.join(shlex.quote(x) for x in files))

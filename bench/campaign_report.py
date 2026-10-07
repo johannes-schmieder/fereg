@@ -520,6 +520,8 @@ def render(campaign, frame, output):
                  'Failed attempts were retained before fresh qualification. '
                  'Missing package manifests were restored from hash-verified pinned sources, and the ftools library '
                  'was compiled before freezing the comparator inventory. '
+                 'A batch-log path correction then reused the unchanged, hash-verified native binary in a focused '
+                 'finalization job that reran ABI and harness checks. '
                  'The scheduler request also removed an unconfigured exclusive consumable; reserving all 28 slots on an exactly 28-core host '
                  'provides isolation under SCC’s per-host slot limit. These corrections did not change the estimator source or scientific tolerances.',
                  'SmallCustom')
