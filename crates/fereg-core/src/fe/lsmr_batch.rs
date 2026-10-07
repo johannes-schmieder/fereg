@@ -24,6 +24,13 @@ impl BatchError {
     pub(super) fn into_fereg(self, context: &str) -> FeregError {
         match self {
             Self::Allocation(error) => error,
+            Self::Upstream(WithinError::Build(within::BuildError::Allocation { .. }))
+            | Self::Upstream(WithinError::Solve(within::SolveError::Allocation { .. })) => {
+                FeregError::new(
+                    ErrorCode::Allocation,
+                    format!("{context}: allocation failed"),
+                )
+            }
             Self::Upstream(error) => {
                 FeregError::new(ErrorCode::Internal, format!("{context}: {error}"))
             }
@@ -161,10 +168,11 @@ pub(super) fn solve_batch(
     weights: Option<&[f64]>,
     options: &LsmrOptions,
     preconditioner: PreconditionerConfig,
+    deterministic: bool,
 ) -> Result<BatchSolveResult, BatchError> {
     // Keep the upstream construction/transport lifetime for narrow batches.
     // Only a windowed batch needs to retain its solver across several calls.
-    if rhs.len() <= lsmr_rhs_window(rhs.len(), rayon::current_num_threads()) {
+    if !deterministic && rhs.len() <= lsmr_rhs_window(rhs.len(), rayon::current_num_threads()) {
         return within::solve_batch(effects, rhs, weights, options, preconditioner)
             .map_err(BatchError::Upstream);
     }
@@ -179,6 +187,13 @@ pub(super) fn solve_batch(
         .transpose()?;
     let solver = Solver::new(effects, weights, preconditioner)
         .map_err(|error| BatchError::Upstream(error.into()))?;
+    let solver = if deterministic {
+        solver
+            .with_reproducible()
+            .map_err(|error| BatchError::Upstream(error.into()))?
+    } else {
+        solver
+    };
     let setup = started.elapsed().as_secs_f64();
     let mut result = solve_prepared_batch(&solver, rhs, options)?;
     result.time_setup += setup;
@@ -452,6 +467,7 @@ mod tests {
                                         w,
                                         &options,
                                         preconditioner.clone(),
+                                        false,
                                     )
                                     .unwrap(),
                                 ] {
@@ -478,6 +494,7 @@ mod tests {
                                         w,
                                         &options,
                                         preconditioner.clone(),
+                                        false,
                                     ),
                                 ] {
                                     assert!(matches!(attempt, Err(BatchError::Upstream(_))));

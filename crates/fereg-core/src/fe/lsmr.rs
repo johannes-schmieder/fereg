@@ -154,6 +154,7 @@ pub fn absorb_lsmr(
         Some(weights),
         &options,
         preconditioner,
+        config.threads.deterministic,
     );
     let (solved, preconditioner_fallback) = match initial {
         Ok(solved) => (solved, false),
@@ -167,6 +168,7 @@ pub fn absorb_lsmr(
                 Some(weights),
                 &options,
                 PreconditionerConfig::Off,
+                config.threads.deterministic,
             )
             .map_err(|fallback_error| {
                 fallback_error.into_fereg("modified LSMR failed after unpreconditioned fallback")

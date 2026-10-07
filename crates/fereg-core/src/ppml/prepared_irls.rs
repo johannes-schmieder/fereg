@@ -1333,7 +1333,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     session.fe_design().effects().len(),
                 )
             {
-                session.enable_checkpoint_lsmr();
+                session.enable_checkpoint_lsmr(config.linear.execution.threads.deterministic);
                 initial_solver_report.enable_lsmr_checkpoint();
             }
             solver_report = Some(initial_solver_report);

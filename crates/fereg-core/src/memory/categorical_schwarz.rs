@@ -159,7 +159,9 @@ pub(super) fn estimate_schwarz_memory(
         )?,
         bytes_for_memory::<u32>(rows, "categorical LSMR observation permutation")?,
     ])?;
+    let stable_index_bytes = stable_adjoint_index_bytes(rows, effects, levels)?;
     let solver_frame_bytes = checked_sum(&[
+        stable_index_bytes,
         categorical_copy_bytes,
         bytes_for_memory::<f64>(rows, "categorical LSMR square-root weights")?,
         bytes_for_memory::<usize>(
@@ -190,6 +192,7 @@ pub(super) fn estimate_schwarz_memory(
     )?;
     let build_peak_bytes = checked_sum(&[
         solver_frame_bytes,
+        checked_mul(maximum_levels, 8, "LSMR stable index construction cursor")?,
         bytes_for_memory::<f64>(rows, "categorical LSMR source weight copy")?,
         sort_scratch_bytes,
         build_edge_bytes,
@@ -203,6 +206,26 @@ pub(super) fn estimate_schwarz_memory(
         apply_peak_bytes,
         solver_frame_bytes,
     })
+}
+
+/// Reproducible indices are shared across RHS; sorted terms need less storage.
+fn stable_adjoint_index_bytes(rows: u128, effects: u128, levels: u128) -> Result<u128> {
+    // Reproducible adjoints share one stable level index across every live RHS.
+    // Charge every term as unsorted and every channel as a term, conservatively.
+    // Keeping this reserve in the shared frame covers retained Off/Diagonal too.
+    checked_sum(&[
+        checked_mul(
+            checked_mul(rows, effects, "LSMR stable row indices")?,
+            8,
+            "LSMR stable index bytes",
+        )?,
+        checked_mul(
+            checked_sum(&[levels, effects])?,
+            8,
+            "LSMR stable level offsets",
+        )?,
+        checked_mul(effects, 64, "LSMR stable term descriptors")?,
+    ])
 }
 
 fn checked_add_memory(left: u128, right: u128, context: &'static str) -> Result<u128> {

@@ -7015,7 +7015,7 @@ mod tests {
             prepared.fit_owned_fe_design().expect("LSMR FE design"),
         )
         .expect("LSMR initial session");
-        lsmr.enable_checkpoint_lsmr();
+        lsmr.enable_checkpoint_lsmr(true);
         let expected = map.solve_fresh().expect("MAP initial solve");
         let actual = lsmr.solve_fresh().expect("LSMR initial solve");
         assert!(actual.certified());
@@ -10713,7 +10713,7 @@ mod tests {
             prepared.fit_owned_fe_design().expect("fallback FE design"),
         )
         .expect("fallback initial session");
-        fallback_session.enable_checkpoint_lsmr();
+        fallback_session.enable_checkpoint_lsmr(true);
         fallback_session.inject_checkpoint_lsmr_certificate_failure();
         let fallback = fallback_session
             .solve_fresh()
@@ -10760,7 +10760,7 @@ mod tests {
                 prepared.fit_owned_fe_design().expect("fatal FE design"),
             )
             .expect("fatal initial session");
-            session.enable_checkpoint_lsmr();
+            session.enable_checkpoint_lsmr(true);
             session.inject_checkpoint_lsmr_fatal_failure(code);
             let error = match session.solve_fresh() {
                 Ok(_) => panic!("fatal LSMR failure must not fall back"),
@@ -10794,7 +10794,7 @@ mod tests {
                 prepared.fit_owned_fe_design().expect("rank FE design"),
             )
             .expect("rank initial session");
-            session.enable_checkpoint_lsmr();
+            session.enable_checkpoint_lsmr(true);
             session.inject_fresh_rank_failure(code);
             let error = match session.solve_fresh() {
                 Ok(_) => panic!("canonical rank failure must remain fatal"),

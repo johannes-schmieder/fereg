@@ -2,11 +2,11 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M35 Mac qualification; PPML repair passes. Inherited4FE deterministic repeats block integrated science; performance/scaling open.
+Current task: M35 fresh integrated Mac science; deterministic repair passes mapped gates/Astra high. Clean performance/scaling and final review open.
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 Accepted runtime: M34.1 host boundary; production109589, net vsM26 -11807; native70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e.
-Recoverable M35 repair: production109684,+95/M34,-11712/M26; science-qualified, unpromoted; [evidence](bench/history/2026-10-06-m35-recovery-qualification.json).
+Current M35 candidate: core/host109761,+172/M34,-11635/M26; dependency+262 makes combined-11373; [repair](bench/history/2026-10-06-m35-reproducible-qualification.json).
 ## Tasks and prerequisites
 - [x] M0.1 Governance, ADR dispositions, resolved covariance decision and new ledger.
 - [x] M0.2 Frozen/tagged baseline; all three canonical platforms built/stored; Mac 34 Stata fixtures pass.
@@ -82,7 +82,7 @@ Recoverable M35 repair: production109684,+95/M34,-11712/M26; science-qualified, 
 - [x] M34 Audited integration/architecture accepted;11807 net retirement and revised budgets approved; [decision](bench/history/2026-10-06-m34-budget-revision.json).
 - [ ] M35 Held-out, cross-platform, scaling and final independent acceptance.
 - [x] M35.2 Strict PPML recovery repair locally qualified/recoverable; full/MacABI/replay73/Stata60/fresh1309/Astra high pass; final acceptance open.
-- [ ] M35.3 General dependency determinism: ordered-Schwarz prototype40 passes; execution policy, large-scatter and memory admission remain.
+- [x] M35.4 General reproducible dependency repair: pin/full/MacABI/exact73/Stata63/oracle96/large40/Astra high pass; final gates open.
 ## Gates
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
 - [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
@@ -278,3 +278,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-06 M34.3: Johannes approves11807 measured retirement/revised budgets; original3193/816 misses retained; science/performance/scaling gates unchanged; M35 begins.
 - 2026-10-06 M35.2: PPML repair+95; fresh1309/strict48/full/MacABI/replay73/Stata60/Astra high pass; original166-failure decision retained; inherited4FE repeat defect blocks final timing.
 - 2026-10-06 M35.3: Deterministic96 confirms inherited4FE failure; isolated ordered prototype40/ARM ABI passes; [diagnosis](bench/history/2026-10-06-m35-determinism-diagnosis.json); final gates open.
+- 2026-10-06 M35.4: General deterministic repair qualified; core+77/dependency+262; exact73/Stata63/oracle96/large40/Astra high pass; fresh broad6375 science running; final timing open.

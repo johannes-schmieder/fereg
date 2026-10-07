@@ -1097,6 +1097,7 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     max_level_members: usize,
     pub(crate) retain_coefficients: bool,
     checkpoint_lsmr_enabled: bool,
+    checkpoint_deterministic: bool,
     checkpoint_component_scaling: bool,
     #[cfg(test)]
     checkpoint_lsmr_certificate_failure: bool,
@@ -1490,6 +1491,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             max_level_members,
             retain_coefficients: false,
             checkpoint_lsmr_enabled: false,
+            checkpoint_deterministic: false,
             checkpoint_component_scaling: false,
             #[cfg(test)]
             checkpoint_lsmr_certificate_failure: false,
@@ -1507,8 +1509,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         Ok(owner)
     }
 
-    pub(crate) fn enable_checkpoint_lsmr(&mut self) {
+    pub(crate) fn enable_checkpoint_lsmr(&mut self, deterministic: bool) {
         self.checkpoint_lsmr_enabled = true;
+        self.checkpoint_deterministic = deterministic;
     }
 
     pub(crate) fn enable_component_checkpoint_scaling(&mut self) {
@@ -1837,7 +1840,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 max_iterations: (remaining / 3).max(1),
                 threads: crate::options::ThreadConfig::from_requested(
                     rayon::current_num_threads(),
-                    false,
+                    self.checkpoint_deterministic,
                 )?,
                 ..LsmrConfig::default()
             };
@@ -4049,6 +4052,7 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             },
             self.config.preconditioner,
             borrowed_within_preconditioner(resolved),
+            self.config.threads.deterministic,
         )?;
         #[cfg(test)]
         self.attempted_rhs.push(rhs.len());
@@ -4311,6 +4315,7 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         options: &LsmrOptions,
         requested: LsmrPreconditioner,
         preconditioner: PreconditionerConfig,
+        deterministic: bool,
     ) -> Result<(within::BatchSolveResult, bool)> {
         let levels = design
             .effects()
@@ -4331,6 +4336,14 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         );
         let started = Instant::now();
         let mut setup_seconds = 0.0;
+        if self
+            .solver
+            .as_ref()
+            .is_some_and(|solver| solver.reproducible() != deterministic)
+        {
+            self.solver = None;
+            self.retained_bytes = 0;
+        }
         if self.solver.is_none() {
             let setup = Instant::now();
             let preconditioner = if self.preconditioner_fallback {
@@ -4342,6 +4355,7 @@ impl<'a> BorrowedLsmrPrepared<'a> {
                 design,
                 weights,
                 preconditioner,
+                deterministic,
             )?);
             self.retained_bytes = memory.lsmr_retained_bytes(if self.preconditioner_fallback {
                 LsmrPreconditioner::Off
@@ -4371,6 +4385,7 @@ impl<'a> BorrowedLsmrPrepared<'a> {
                     design,
                     weights,
                     PreconditionerConfig::Off,
+                    deterministic,
                 )?);
                 self.retained_bytes = memory.lsmr_retained_bytes(LsmrPreconditioner::Off);
                 self.builds += 1;
@@ -4421,6 +4436,7 @@ fn build_retained_borrowed_lsmr<'a>(
     design: &BorrowedInterceptFeDesign<'a>,
     weights: ValidatedWeights<'_>,
     preconditioner: PreconditionerConfig,
+    deterministic: bool,
 ) -> Result<within::Solver<'a>> {
     let effects = borrowed_lsmr_effects(design)?;
     let weights = weights
@@ -4433,9 +4449,20 @@ fn build_retained_borrowed_lsmr<'a>(
             Ok(copy)
         })
         .transpose()?;
-    within::Solver::new(effects, weights, preconditioner).map_err(|error| {
+    let solver = within::Solver::new(effects, weights, preconditioner).and_then(|solver| {
+        if deterministic {
+            solver.with_reproducible()
+        } else {
+            Ok(solver)
+        }
+    });
+    solver.map_err(|error| {
         FeregError::new(
-            ErrorCode::Internal,
+            if matches!(error, within::BuildError::Allocation { .. }) {
+                ErrorCode::Allocation
+            } else {
+                ErrorCode::Internal
+            },
             format!("borrowed modified LSMR failed: {error}"),
         )
     })
@@ -4542,6 +4569,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             &options,
             lsmr_config.preconditioner,
             preconditioner,
+            lsmr_config.threads.deterministic,
         )?
     } else {
         let effects = borrowed_lsmr_effects(design)?;
@@ -4551,6 +4579,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
             weights.values,
             &options,
             preconditioner,
+            lsmr_config.threads.deterministic,
         );
         match initial {
             Ok(solved) => (solved, false),
@@ -4564,6 +4593,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
                     weights.values,
                     &options,
                     PreconditionerConfig::Off,
+                    lsmr_config.threads.deterministic,
                 )
                 .map_err(|fallback_error| {
                     fallback_error
@@ -7831,7 +7861,7 @@ mod tests {
                 .install(|| {
                     let mut reusable =
                         ReusableCategoricalMapAbsorber::new(design(), 64, threads).unwrap();
-                    reusable.enable_checkpoint_lsmr();
+                    reusable.enable_checkpoint_lsmr(true);
                     let capacities = reusable.capacities();
                     for raw in [
                         BorrowedMapWeights::Unit,
@@ -7867,7 +7897,7 @@ mod tests {
                         let mut baseline =
                             ReusableCategoricalMapAbsorber::new(design(), 65, threads).unwrap();
                         baseline.two_fe_pcg = None; // Independent LSMR witness, without the graph attempt.
-                        baseline.enable_checkpoint_lsmr();
+                        baseline.enable_checkpoint_lsmr(true);
                         let original_lsmr = baseline.absorb(raw, values.clone(), config).unwrap();
                         for reject_certificate in [false, true] {
                             if reject_certificate {
@@ -7972,7 +8002,7 @@ mod tests {
             .map(|r| if r % 4 < 2 { 1.0 } else { 1e-10 })
             .collect::<Vec<_>>();
         let mut reusable = ReusableCategoricalMapAbsorber::new(design, 17, 4).unwrap();
-        reusable.enable_checkpoint_lsmr();
+        reusable.enable_checkpoint_lsmr(true);
         let capacities = reusable.capacities();
         let (result, cost) = reusable
             .try_checkpoint_schur(
@@ -8927,7 +8957,7 @@ mod tests {
             };
             let design = BorrowedInterceptFeDesign::new(codes.len(), effects).unwrap();
             let mut reusable = ReusableCategoricalMapAbsorber::new(design, 2, 1).unwrap();
-            reusable.enable_checkpoint_lsmr();
+            reusable.enable_checkpoint_lsmr(true);
             let mut norms = [-1.0];
             for scale in [8.0, 4.0] {
                 let saved = norms;
@@ -9188,7 +9218,7 @@ mod tests {
                     );
                     assert_eq!(owner.ppml_operator_work(), Some(0));
                     if checkpoint {
-                        owner.enable_checkpoint_lsmr();
+                        owner.enable_checkpoint_lsmr(true);
                     }
                     let capacities = owner.capacities();
                     for (frame, width) in [65, 3, 1, 67].into_iter().enumerate() {
@@ -9407,7 +9437,7 @@ mod tests {
                         .unwrap();
                         let mut projector =
                             ReusableCategoricalMapAbsorber::new(design, 2, threads).unwrap();
-                        projector.enable_checkpoint_lsmr();
+                        projector.enable_checkpoint_lsmr(true);
                         projector.enable_component_checkpoint_scaling();
                         for hot in [0, 1, 0] {
                             let weights: Vec<_> = (0..16)
@@ -9495,7 +9525,7 @@ mod tests {
                     .unwrap();
                     let mut projector =
                         ReusableCategoricalMapAbsorber::new(design, 2, threads).unwrap();
-                    projector.enable_checkpoint_lsmr();
+                    projector.enable_checkpoint_lsmr(true);
                     projector.enable_component_checkpoint_scaling();
                     for frame in 0..3 {
                         let weights: Vec<_> = (0..rows)
@@ -9753,7 +9783,7 @@ mod tests {
         let mut reusable = ReusableCategoricalMapAbsorber::new(design, columns.len(), 1)
             .expect("reusable projector");
         reusable.two_fe_pcg = None; // Isolate LSMR recertification; graph progress has its own witness.
-        reusable.enable_checkpoint_lsmr();
+        reusable.enable_checkpoint_lsmr(true);
 
         reusable.inject_checkpoint_lsmr_certificate_failure();
         let fallback = reusable

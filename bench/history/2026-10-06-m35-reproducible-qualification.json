@@ -1,0 +1,251 @@
+{
+  "milestone": "M35.4",
+  "responsibility": "Restore public deterministic LSMR repeatability through pinned general dependency execution",
+  "disposition": "Mac-only local scientific acceptance of bounded repair; final M35 integrated science/performance/scaling remain open",
+  "dependency": {
+    "base": "1ac3522a251c2622dbeab451415924f9ebe117b9",
+    "candidate": "803a4feacef526f55e1520f22be4409779b7d8ff",
+    "source_branch": "codex/reproducible-reductions",
+    "reviewed_tested_file_count": 107,
+    "pin_verification": "Every reviewed/tested dependency file byte-identical to actual Cargo Git checkout; local full entrypoint evidence reused across source-equivalent repin. Universal native built with actual pin."
+  },
+  "native": {
+    "source": {
+      "commit": "96f19624c52fbf139a8c2a6b83734cfd6bf93099",
+      "archive_sha256": "3ceaddc4f62b9536ba84adb68072f5e000e1b37570e647812a2326f352d095de",
+      "paths": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "clippy.toml",
+        "references.lock.toml",
+        "crates",
+        "legacy",
+        "vendor",
+        "plugin",
+        "stata",
+        "scripts",
+        "ci/reference-bundles",
+        "tests/mock_spi",
+        "bench",
+        "AGENTS.md",
+        "docs/SPEC.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "scope": "bounded native/frontend snapshot, not full repository",
+      "patch_sha256": "9566d8e7cbba862045b343e79910c128c1835da57ac4904444426a6b8a9b36cf"
+    },
+    "plugins": [
+      {
+        "path": "fereg_macos.plugin",
+        "engine": "next",
+        "source_sha": "96f19624c52fbf139a8c2a6b83734cfd6bf93099",
+        "sha256": "20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826",
+        "bytes": 16440816,
+        "source_patch_sha256": "9566d8e7cbba862045b343e79910c128c1835da57ac4904444426a6b8a9b36cf",
+        "source_archive_sha256": "3ceaddc4f62b9536ba84adb68072f5e000e1b37570e647812a2326f352d095de",
+        "identity_kind": "identified precommit bounded source"
+      },
+      {
+        "path": "fereg_legacy_macos.plugin",
+        "engine": "legacy",
+        "source_sha": "15a57ba285a3afede2e3337fe8598e72529a4090",
+        "sha256": "80329f51159990740425171c3457304f303272cfe55943c0afb412b54454c105",
+        "bytes": 18251808
+      }
+    ]
+  },
+  "complexity": {
+    "accepted_M34_core_host_production": 109589,
+    "accepted_net_vs_M26": -11807,
+    "candidate_core": 95731,
+    "candidate_host": 14030,
+    "candidate_core_host_production": 109761,
+    "candidate_core_host_delta_M34": 172,
+    "candidate_core_host_delta_PPML_repair": 77,
+    "candidate_core_host_net_M26": -11635,
+    "new_dependency_production": {
+      "within": 147,
+      "schwarz-precond": 112,
+      "within-py": 3,
+      "total": 262
+    },
+    "candidate_combined_net_M26": -11373,
+    "new_long_functions_files_dispatch": 0,
+    "retirement_credit": "None for this correctness repair. All additions count against retirement; earlier retired owners remain absent."
+  },
+  "checks": {
+    "full_local_entrypoint": "pass: fmt, both strict clippy paths, workspace/30 independent oracles, serial FFI and isolated allocator audits, ratchet, mock bridge; Linux linker audit skipped on Mac",
+    "dependency": "within/schwarz tests and doctests, ordered errors/cache/allocation witnesses and stable adjoint witness pass; strict production-lib clippy pass; alltargets clippy permits inherited useless_vec only; within-py cargo check pass",
+    "native": "Universal Mac ABI, imports and panic containment pass",
+    "replay": {
+      "science_cases": 73,
+      "exact_parent_differences": 0,
+      "cross_worker_checks": 511,
+      "worker_budgets": [
+        1,
+        2,
+        4,
+        7,
+        8,
+        9,
+        15,
+        16
+      ],
+      "independent_science_and_exact_fixed_repeats": "pass"
+    },
+    "stata": "46 licensed +10 mapped product/oracle +4 failure/transaction fixtures pass; new dense four-FE fixture passes96 OLS/PPML estimates across unit/fw,auto/fast/low,1/4/8/16,2 repeats; saved and65-RHS deterministic fixtures pass",
+    "large_actual_native": {
+      "commands": 40,
+      "groups": 20,
+      "fixed_worker_repeats": "exact science/scalars/coefficient/sample/solver signatures",
+      "strict_reference_agreement": "within unchanged SPEC tolerance",
+      "max_normalized_error": {
+        "science.hex": 6.643211726475249e-06,
+        "scalars.hex": 1.0487959459466676e-05
+      },
+      "unaffected_PPML_MAP": "exact against qualified M34"
+    }
+  },
+  "scientific_scope": "Declare before implementation: deterministic LSMR arithmetic and continuous outputs/certificates; shared all-mode memory admission. Default upstream arithmetic unchanged; fixed-worker repeats and scientific/discrete stability required; exact unaffected results. No frontend protocol change or tolerance relaxation.",
+  "preserved_findings": {
+    "stale_replay": "Initial scratch known66 hash6f494edd requested13slots/include_intercept1 for slope-only FE; both M34/candidate fail498. SPEC/currentfrontend require12slots/intercept0. Source regeneration exactly reproduces all73 qualified input hashes including d854cc77; failed variant/verdict preserved. Astra confirmed current generator already corrected.",
+    "sentinels": "Two copied fixtures passed assertions but had old completion names; failed metadata runs preserved and only those two rerun after marker fixes.",
+    "development_setup": "First40-command helper failed before estimation because frozen source path was relative; raw setup attempt retained; absolute-source run separately retained.",
+    "anchor_assumption": "Initial analysis misclassified OLS3FE as unaffected MAP. Original/current trace identifies LSMR code3, already inside upfront scope; erroneous analysis retained, numerical/repeat checks unchanged.",
+    "historical": "Original integrated166-failure and interrupted timing/calibration decisions remain unchanged."
+  },
+  "astra_high_review": {
+    "reviewer": "m35_reproducible_acceptance_astra",
+    "decision": "No blocking issue; supports commit/push of bounded repair. Verified frozen13 changed native files,107 dependency files, scope/lifetimes/scratch/allocation/default behavior/API caveat and mapped evidence. Mac only; final integrated gates open.",
+    "read_only": true
+  },
+  "open_gates": [
+    "Fresh375-family deterministic integrated science campaign:6375 declared commands; separate development/holdout; running, no passing claim",
+    "Calibrated clean integrated performance versus qualified M34 and fixed M26, complete envelope and scaling",
+    "Final independent M35 acceptance review and milestone closure"
+  ],
+  "platform_scope": "This Mac only; GitHub test workflows remain paused; no new Linux/SCC/Windows or portability qualification",
+  "evidence": [
+    {
+      "path": "target/m35-integrated/reproducible-full-local-02.log",
+      "sha256": "e21f0a43237cae64c6cbff58b584272287c824dbad40def8990669389f57e005"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-native-build.log",
+      "sha256": "e9c9979b1f093c083d1191be6cc994ceacb0a49ab76398c091c5c4d21f80f162"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-dependency-checked-source.json",
+      "sha256": "e91a920c2dfc792e27760ca94133a9b6799b7f1056e418f5877be0684120dd55"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-upstream-02.log",
+      "sha256": "afbd07549fbd24c7263e6973d3a0a82ce52d5c558430cb6b38504d5f3f5c5dcc"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-upstream-final-lib.log",
+      "sha256": "24392640f332bb33204d0e6a512b9b42089cd5446a9a84ae9dd62ebc1f92d469"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-ordered-final.log",
+      "sha256": "17139b99f024f446962b754019f7124a571b786d7a8fb03a3a70dd49810dd075"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-ordered-pool.log",
+      "sha256": "88926f0b3abd58283e141592f38581d1cb34b48ce7e0463f34d9199cfd4742bd"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-upstream-clippy-lib-final.log",
+      "sha256": "7df1fb333ab14a0582f5a904aac42687641b68d337c12776d15c633e17693fe3"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-upstream-clippy-final.log",
+      "sha256": "79a1d0871c561cd3c682bb0bef18ba3ea7203a484ed79e1526010a0169d3984a"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-python-api.log",
+      "sha256": "12987e97e547ce9e6b246ca8b237372640eebd962d4c58bcc414ed63685e6a8b"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-pin-resolution-02.log",
+      "sha256": "581950bf7222e6d12c27645a9b8392db2b88b356a5abf4d7f0c5b30df3bd06f9"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-native-identity.json",
+      "sha256": "7a53955156414a320129eb50211935caa39ee32c58cee4415ad13ad3e0a29d3f"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-candidate-source.tar",
+      "sha256": "3ceaddc4f62b9536ba84adb68072f5e000e1b37570e647812a2326f352d095de"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-candidate-source.patch",
+      "sha256": "9566d8e7cbba862045b343e79910c128c1835da57ac4904444426a6b8a9b36cf"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-qualified-replay-scope.json",
+      "sha256": "124076546ffa97f7a1f958895edd707cab31e789e9c4bef5582b66b8be0eb62b"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-qualified-replay/summary.json",
+      "sha256": "47e7911b5d01ba9ba46baf6ac88acc0597bc660c6d5b32c28d4645a3d6bb420b"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-replay/summary.json",
+      "sha256": "e439d5ade572eaa69b0f54f56ff3aff2782e6a4b15deefd1daddd645c378d483"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-replay-scope.json",
+      "sha256": "68f64993bfb22102a37d45e6127258db057c711f4108337da038796592114b46"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-native/native-freeze.json",
+      "sha256": "11416bfc13f4e714cd95fa7d130ec38f1545361fb6186284ec1ee8a6a2fc08c5"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-native/native-results.json",
+      "sha256": "7b2aaac0ae4b34385c9252ff55c8d6b8b150215a10692ca9097681d5b779ed98"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-native/native-analysis.json",
+      "sha256": "58b93929336ec13b253818370564cbd941ef5d987eb981149ff900730bb01506"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-native/native-analysis-anchor-assumption.json",
+      "sha256": "e954de9b9988e67c12c4a6667cdfdf78fc99fdef33a9fd23932e28b22023b07f"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-native/native-results-setup-failure.json",
+      "sha256": "94555adb5e8c9a5bc183fc3422beecb3b23bc1091d341a1286647766febf204b"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-science-declaration.json",
+      "sha256": "c716805ab4eee6cfc603f954d66af6ef52f3424db7dd6d122e49a9f2e73ff184"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-science-manifest.json",
+      "sha256": "0f680c23129645f8109683085eab8e30f4ec061fc4a582edd7986a5e860bacd0"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-stata/licensed46/summary.json",
+      "sha256": "1483a3e3d086a077861dfcc714d8595dbfd415764d1c805cb5d3a1b5db05c876"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-stata/mapped-products/summary.json",
+      "sha256": "991af9dc6fc22dfb2fd9db0c775b9a990ad7f0e40fdd2dfa82a2fb4e2660a101"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-stata/failure-contract/summary.json",
+      "sha256": "8518da9e3772658ec91c33d56e9a504b78327bd362b91d98d1d101b8f13c5e38"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-stata/reproducible-witnesses/summary.json",
+      "sha256": "cd3b8216246c8bddb01b9417141548f43094cb57c2b07f75b0d3b3bbc5978593"
+    },
+    {
+      "path": "target/m35-integrated/reproducible-stata/corrected-markers/summary.json",
+      "sha256": "d480117489dc79a77a591712f39f28f4a59357e68e994279b9f7d8a8070fadb0"
+    }
+  ]
+}

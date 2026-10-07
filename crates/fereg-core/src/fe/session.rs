@@ -100,9 +100,9 @@ impl<'a> FeSession<'a> {
     pub(crate) fn is_ppml_categorical(&self) -> bool {
         self.categorical.is_some() && !self.coefficients
     }
-    pub(crate) fn enable_checkpoint_lsmr(&mut self) {
+    pub(crate) fn enable_checkpoint_lsmr(&mut self, deterministic: bool) {
         if let Some(p) = self.categorical.as_mut() {
-            p.enable_checkpoint_lsmr();
+            p.enable_checkpoint_lsmr(deterministic);
         }
     }
     #[cfg(test)]

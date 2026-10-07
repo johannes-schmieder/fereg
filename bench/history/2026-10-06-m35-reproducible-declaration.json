@@ -1,0 +1,15 @@
+{
+  "milestone": "M35",
+  "responsibility": "General reproducible LSMR dependency execution and integrated qualification",
+  "declared_before_implementation": true,
+  "parent": "96f19624c52fbf139a8c2a6b83734cfd6bf93099",
+  "dependency_base": "1ac3522a251c2622dbeab451415924f9ebe117b9",
+  "replacement": "Existing deterministic option selects shared stable coefficient-owned adjoints and ordered Schwarz local-solve windows. Preserve default upstream API/arithmetic; migrate direct, windowed, retained and retry consumers. No benchmark routing fences.",
+  "retirement_scope": "Replace ineffective deterministic LSMR flag propagation with one reproducible dependency mode; retire diagnostic always-ordered adaptation. No new architectural retirement credit; this correctness repair adds code and counts against the candidate net reduction.",
+  "expected_production_delta": "Approximately +400 to +700 dependency lines and +50 to +150 fereg lines including admission/adapters; measure actual totals and retain external-dependency additions explicitly.",
+  "affected_scope": "LSMR scientific coefficients, covariance, continuous solver certificates and outputs when deterministic is requested, including OLS/PPML, weights, intercept/slopes, explicit/default preconditioners and retained/retry execution. Arithmetic order changes deliberately; estimator meaning, tolerances and iteration caps unchanged. All-mode LSMR admission/retained estimates gain a conservative shared index reserve: tight-budget acceptance and resulting routes may change, with unchanged default arithmetic when the same route is admitted. Unsorted indices use usize to retain general observation-count support.",
+  "exact_unaffected": "Default non-deterministic dependency execution, non-LSMR mathematical paths, original slots/base flags, samples and unaffected fields retain exact results. Instrumented timing/build identity excluded. Original failed campaigns remain failed.",
+  "qualification": "Independent dense adjoint and weighted projection witnesses, stable fixed-worker repeats and cross-worker science/discrete decisions, sorted/unsorted large layouts and slopes, prebuilt/retained handles, bounded concurrent RHS, ordered errors and partial-output clearing, checked allocation/admission. Full local entrypoint, Mac native ABI, replay and mapped Stata science/transaction checks before runtime commit. Fresh integrated artifact-bound acceptance and final Astra before M35 closure.",
+  "performance": "No timings started. Preserve existing calibrated bounded protocol, both immediate qualified M34 and fixed M26 comparisons, all observations and max(5%,1ms). Reserve clean Mac windows without our agents/builds. Remote CI remains paused.",
+  "acceptance": "Pending; declaration and prototype are not qualification. Accepted M34 retirement remains11807 lines; pre-repair candidate retirement11712 lines."
+}

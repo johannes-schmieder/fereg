@@ -362,7 +362,7 @@ mod tests {
                         .unwrap();
                         let mut owner =
                             ReusableCategoricalMapAbsorber::new(design, 5, threads).unwrap();
-                        owner.enable_checkpoint_lsmr();
+                        owner.enable_checkpoint_lsmr(true);
                         for (frame, scale) in [1., 1e-100, 1e100].into_iter().enumerate() {
                             let ratio = 2. + frame as f64;
                             let weights: Vec<_> = (0..n)

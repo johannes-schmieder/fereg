@@ -256,6 +256,7 @@ impl JointLsmrFirstPassPredictor {
 /// convergence, but canonical projection still owns final rank and inference.
 pub(crate) struct ReusableCategoricalJointLsmr {
     team: InstalledThreadTeam,
+    deterministic: bool,
     active_design: DenseMatrix,
     active_slots: Vec<usize>,
     topology: FeTopologyIdentity,
@@ -391,6 +392,7 @@ impl ReusableCategoricalJointLsmr {
             .ok_or_else(|| allocation("joint PPML augmented width overflows"))?;
         Ok(Self {
             team,
+            deterministic: threads.deterministic,
             active_design,
             active_slots,
             topology,
@@ -887,10 +889,16 @@ impl ReusableCategoricalJointLsmr {
         } else {
             within_effects(fe_design)?
         };
+        let mut config = PreconditionerConfig::default();
+        if self.deterministic {
+            if let PreconditionerConfig::Additive { reduction, .. } = &mut config {
+                *reduction = within::ReductionStrategy::Ordered;
+            }
+        }
         let solver = Solver::new(
             effects,
             Some(fallible_copy(weights, "joint PPML Schwarz weights")?),
-            PreconditionerConfig::default(),
+            config,
         )
         .map_err(|error| {
             FeregError::new(
@@ -2289,7 +2297,11 @@ fn fallible_copy<T: Clone>(values: &[T], message: &'static str) -> Result<Vec<T>
 
 fn lsmr_error(error: SolveError) -> FeregError {
     FeregError::new(
-        ErrorCode::NonConvergence,
+        if matches!(error, SolveError::Allocation { .. }) {
+            ErrorCode::Allocation
+        } else {
+            ErrorCode::NonConvergence
+        },
         format!("joint PPML modified LSMR failed: {error}"),
     )
 }
@@ -2316,6 +2328,18 @@ fn nonconvergence(message: &'static str) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn ordered_scratch_allocation_keeps_the_allocation_failure_contract() {
+        let error = lsmr_error(SolveError::Allocation {
+            context: "ordered scratch",
+        });
+        assert_eq!(error.code, ErrorCode::Allocation);
+        assert_eq!(
+            lsmr_error(solve_shape_error("fixture")).code,
+            ErrorCode::NonConvergence
+        );
+    }
     use crate::fe::EffectTerm;
 
     fn predictor_frame(
@@ -3052,6 +3076,7 @@ mod tests {
         assert!(!identity.matches(&replacement));
 
         let mut solver = ReusableCategoricalJointLsmr {
+            deterministic: false,
             team: test_team(1),
             active_design: DenseMatrix::from_row_major(4, 0, Vec::new()).expect("active"),
             active_slots: Vec::new(),
@@ -3146,6 +3171,7 @@ mod tests {
                 .collect::<Vec<_>>();
             let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
             let mut solver = ReusableCategoricalJointLsmr {
+                deterministic: false,
                 team: test_team(2),
                 active_design,
                 active_slots: vec![0],
@@ -3300,6 +3326,7 @@ mod tests {
 
         for requested in [1, 4, 1] {
             let mut solver = ReusableCategoricalJointLsmr {
+                deterministic: false,
                 team: test_team(requested),
                 active_design: DenseMatrix::from_row_major(12, 1, active_values.clone())
                     .expect("active design"),
@@ -3365,6 +3392,7 @@ mod tests {
             .collect::<Vec<_>>();
         let outcome = target.iter().map(|value| 1.0 + value).collect::<Vec<_>>();
         let mut solver = ReusableCategoricalJointLsmr {
+            deterministic: false,
             team: test_team(4),
             active_design: DenseMatrix::from_row_major(rows, 0, Vec::new())
                 .expect("empty active design"),

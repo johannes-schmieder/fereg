@@ -2176,9 +2176,9 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         Ok(())
     }
 
-    pub(crate) fn enable_checkpoint_lsmr(&mut self) {
+    pub(crate) fn enable_checkpoint_lsmr(&mut self, deterministic: bool) {
         if let Some(projector) = self.fe_projector.as_mut() {
-            projector.enable_checkpoint_lsmr();
+            projector.enable_checkpoint_lsmr(deterministic);
         }
     }
 

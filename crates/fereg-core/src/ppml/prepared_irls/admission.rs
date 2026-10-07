@@ -567,7 +567,7 @@ impl LinearInstallation {
                 session.fe_design().effects().len(),
             );
         if initial_checkpoint {
-            session.enable_checkpoint_lsmr();
+            session.enable_checkpoint_lsmr(config.linear.execution.threads.deterministic);
             if let Some(allowance) = low_checkpoint {
                 session.enable_component_checkpoint_scaling(allowance, effective_threads)?;
             }
