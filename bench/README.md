@@ -59,3 +59,12 @@ values independently; it does not adjudicate every large production discrepancy.
 Generated inputs, row captures and logs remain in the remote run; collect compact
 JSON/CSV summaries and the final PDF. This descriptive campaign establishes no
 universal speed claim or platform qualification.
+
+`campaign_collect.py <context.json> --output <new-directory>` collects the
+terminal scheduler records, application sentinels, frozen inventory and compact
+task results. It leaves the datasets and row exports on SCC. With Matplotlib and
+ReportLab available, `campaign_report.py <collected-directory> --output <directory>`
+produces a PDF and two CSVs. The report rejects incomplete job evidence, requires
+all three paired repetitions for ratios, checks exact native repeatability and
+cross-worker scientific agreement, and marks unresolved results NR. Render and
+inspect every PDF page before delivery.
