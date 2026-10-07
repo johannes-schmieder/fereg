@@ -150,6 +150,43 @@ class BoundedMeasurementTests(unittest.TestCase):
     def evaluate(self, paths):
         return acceptance_envelopes(paths[:len(paths)//2],paths[len(paths)//2:],'p','f')
 
+    def test_m35_waiver_is_decision_and_artifact_bound_without_a_fake_calibration(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp).resolve()
+            plan = json.loads(self.captures(root)[0].read_text())['measurement']['plan']
+            plan.update(milestone='M35', calibration_sha256=None)
+            with self.assertRaisesRegex(ValueError, 'prior calibrated protocol'):
+                validate_measurement_plan(plan)
+            directory = root / 'bench/history'
+            directory.mkdir(parents=True)
+            path = directory / 'decision.json'
+            decision = dict(milestone='M35', authorized_by='Johannes', decision='skip_self_calibration',
+                artifacts={role:dict(source_sha='s',plugin_sha256='p',frontend_sha256='f')
+                           for role in plan['artifacts']})
+            path.write_text(json.dumps(decision))
+            plan['calibration_waiver'] = dict(decision_path='bench/history/decision.json',
+                decision_sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+            with patch('compare.ROOT', root):
+                self.assertEqual(validate_measurement_plan(plan), [('a',4,'fereg'),('b',4,'fereg')])
+                for corruption in ['hash','path','artifact','milestone','mode','fake_pass','malformed']:
+                    changed = copy.deepcopy(plan)
+                    if corruption == 'hash': changed['calibration_waiver']['decision_sha256'] = 'other'
+                    if corruption == 'path': changed['calibration_waiver']['decision_path'] = '../decision.json'
+                    if corruption == 'artifact': changed['artifacts']['parent']['native_identity']['plugin_sha256'] = 'other'
+                    if corruption == 'milestone': changed['milestone'] = 'M36'
+                    if corruption == 'mode': changed['mode'] = 'calibration'
+                    if corruption == 'fake_pass': changed['calibration_sha256'] = 'passed'
+                    if corruption == 'malformed': changed['calibration_waiver'] = {'reason':'skip'}
+                    with self.subTest(corruption=corruption), self.assertRaises(ValueError):
+                        validate_measurement_plan(changed)
+                for field,value in [('authorized_by','other'),('decision','passed'),('milestone','M36')]:
+                    changed_decision = {**decision,field:value}
+                    path.write_text(json.dumps(changed_decision))
+                    changed = copy.deepcopy(plan)
+                    changed['calibration_waiver']['decision_sha256'] = hashlib.sha256(path.read_bytes()).hexdigest()
+                    with self.subTest(field=field), self.assertRaisesRegex(ValueError, 'authorized M35 scope'):
+                        validate_measurement_plan(changed)
+
     def test_targeted_confirmation_retains_screen_and_both_comparators(self):
         with tempfile.TemporaryDirectory() as temp:
             root=Path(temp)

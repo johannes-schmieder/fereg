@@ -54,6 +54,12 @@ future migrations; this ADR does not assert that worker semantics or algorithms
 have already changed in the current runtime. ADRs 0247/0248 otherwise remain
 active, including the ratchet, evidence gates, timebox and one status ledger.
 
+Johannes's [2026-10-07 M35 waiver](../../bench/history/2026-10-07-m35-self-calibration-waiver.json)
+skips identical-binary calibration for the identified integrated artifact and
+proceeds to actual M34/M26 acceptance. Historical calibration remains unresolved;
+science, the allowance, bounded stopping, actual timing/scaling and inference
+assumptions remain binding. This does not assert calibration or final acceptance.
+
 Johannes's 2026-10-05 execution override pauses GitHub testing and restricts
 qualification to the lead's Mac until resumed. Local acceptance precedes
 dependent work; no CI or remote-platform gate applies during this period.

@@ -170,6 +170,9 @@ fresh-process measurements, with paired orders and bounded confirmation of
 flagged results. Use median command time as the primary timing statistic;
 Before each prospective protocol is used, calibrate and freeze its screening,
 confirmation, stopping and statistical rules; obtain one Astra protocol review.
+Johannes's [M35 waiver](bench/history/2026-10-07-m35-self-calibration-waiver.json)
+skips self-calibration for the identified integrated artifact; actual comparisons,
+measurement assumptions and all other acceptance gates remain binding.
 Concentrate bounded confirmation on unresolved workloads while retaining all
 observations and the unchanged allowance. Historical campaigns retain their
 frozen rule. Trace and profile separately. Verify actual

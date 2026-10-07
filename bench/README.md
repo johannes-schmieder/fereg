@@ -77,6 +77,15 @@ candidate observation, identity and decision. Astra's bounded protocol review
 approved this rule subject to successful calibration. Reserve clean timing
 periods: pause our builds and agents and coordinate around unrelated workloads.
 
+Johannes's [2026-10-07 M35 decision](history/2026-10-07-m35-self-calibration-waiver.json)
+waives the identical-binary calibration prerequisite for the identified integrated
+M35 artifacts. Acceptance plans carry `calibration_waiver` with the decision
+path/hash and `milestone: M35`; artifact-bound validation replaces that prerequisite.
+The completed calibration remains unresolved. Actual M34/M26 comparisons retain
+the existing eight screening and 32/64 additional confirmation pairs, allowance,
+two looks, accuracy, identity and measurement-assumption checks. No self-calibration
+success or revised 128-pair protocol is claimed; actual unresolved gates still block.
+
 The historical fixed-budget v1 invocation remains:
 
 For each reference artifact, run a forward and reverse block in separate roots:

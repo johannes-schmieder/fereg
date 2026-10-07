@@ -252,6 +252,29 @@ def median_order_envelope(parent, candidate, policy, tail_probability=.00625):
                 reverse_upper_excess_seconds=pu-cl-allowance(cl), pairs=len(parent))
 
 
+def validate_calibration_waiver(plan):
+    """Bind the explicit M35 prerequisite waiver to its decision and artifacts."""
+    waiver = plan['calibration_waiver']
+    if not isinstance(waiver, dict) or set(waiver) != {'decision_path','decision_sha256'}:
+        raise ValueError('calibration waiver needs a decision path and identity')
+    path = (ROOT / waiver['decision_path']).resolve()
+    if not path.is_relative_to(ROOT / 'bench/history') or path.suffix != '.json':
+        raise ValueError('calibration waiver needs a checked-in decision path')
+    raw = path.read_bytes()
+    if hashlib.sha256(raw).hexdigest() != waiver['decision_sha256']:
+        raise ValueError('calibration waiver decision identity changed')
+    decision = json.loads(raw)
+    if (plan.get('milestone') != 'M35' or decision.get('milestone') != 'M35'
+            or decision.get('authorized_by') != 'Johannes'
+            or decision.get('decision') != 'skip_self_calibration'):
+        raise ValueError('calibration waiver outside authorized M35 scope')
+    artifacts = {role:dict(source_sha=artifact['source_sha'], **{
+        key:artifact['native_identity'][key] for key in ['plugin_sha256','frontend_sha256']})
+        for role,artifact in plan['artifacts'].items()}
+    if decision.get('artifacts') != artifacts:
+        raise ValueError('calibration waiver artifact scope changed')
+
+
 def validate_measurement_plan(plan):
     if plan.get('mode') not in ['calibration','acceptance'] or plan.get('method') != 'bounded-median-orders-v2' or plan.get('screen_pairs') != 8:
         raise ValueError('unsupported bounded measurement protocol')
@@ -267,7 +290,11 @@ def validate_measurement_plan(plan):
         raise ValueError('missing bounded wall budget')
     if set(plan.get('artifacts', {})) != {'candidate','parent','fixed_baseline'}:
         raise ValueError('missing predeclared artifacts')
-    if not plan.get('calibration_sha256') and plan.get('mode') != 'calibration':
+    if plan.get('calibration_waiver'):
+        if plan['mode'] != 'acceptance' or plan.get('calibration_sha256'):
+            raise ValueError('waived calibration cannot be relabeled as passed')
+        validate_calibration_waiver(plan)
+    elif not plan.get('calibration_sha256') and plan.get('mode') != 'calibration':
         raise ValueError('candidate measurement needs prior calibrated protocol')
     edges = list(map(tuple, plan.get('scaling_edges', [])))
     if len(set(edges)) != len(edges) or any(len(edge) != 4 for edge in edges):

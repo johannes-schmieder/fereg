@@ -1,0 +1,71 @@
+{
+  "milestone": "M35",
+  "authorized_by": "Johannes",
+  "decision": "skip_self_calibration",
+  "user_instruction": "Can we skip this calibration vs itself? And just move on?",
+  "date": "2026-10-07",
+  "scope": "This unchanged integrated M35 native/frontend/source: waive prior identical-binary calibration prerequisite and proceed to actual qualified-parent/fixed-M26 comparisons. No128-budget successor or composite calibration is authorized/needed.",
+  "artifacts": {
+    "candidate": {
+      "source_sha": "96f19624c52fbf139a8c2a6b83734cfd6bf93099",
+      "plugin_sha256": "20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826",
+      "frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667"
+    },
+    "parent": {
+      "source_sha": "8f99a93445a4c55a0295291fb228da172aabf4c0",
+      "plugin_sha256": "70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e",
+      "frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667"
+    },
+    "fixed_baseline": {
+      "source_sha": "d74199bff3c2add169e13aeb6837e4091c6744c1",
+      "plugin_sha256": "706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981",
+      "frontend_sha256": "bac7f7b4763f41dcef2a8558289368211ae2ecfebdf7aff998125be7bcfb3c5d"
+    }
+  },
+  "allowance": {
+    "fraction": 0.05,
+    "minimum_seconds": 0.001
+  },
+  "historical_calibration": {
+    "receipt": "bench/history/2026-10-07-m35-calibration-terminal.json",
+    "sha256": "dd394566573ad8fe0d58a2c5fa5dc8d4974068c54456878390ca8072ce6d2b08",
+    "status": "Complete/unresolved, rawpassedfalse,8368commands; unchanged permanently."
+  },
+  "preserved_requirements": [
+    "Science/transaction/ABI/replay/independent witnesses and exact unaffected results",
+    "Actual both M34/fixed-M26 artifact comparisons and all required timing/scaling scope",
+    "Frozen8screen+32/64additional budgets, two looks, max(5%,1ms), exact statistical rule",
+    "All observations, identities, accuracy, chronology/order/dependence diagnostics retained",
+    "Diagnosed assumptions violations, unresolved actual acceptance and established regressions remain blockers",
+    "No builds/agents during clean Mac timing; unrelated work untouched",
+    "Mac-only override, paused GitHub workflows, no release/platform claim",
+    "Fresh final Astra completion acceptance"
+  ],
+  "interpretation": "Calibration prerequisite explicitly waived, not passed. No self-comparison rerun. Actual conditional timing inference retains unresolved risk demonstrated by calibration.",
+  "source_science": "Unchanged20a9d3d9 native; scientific receipt bench/history/2026-10-06-m35-integrated-scientific-qualification.json reused.",
+  "candidate_production": {
+    "accepted_M34_minus_M26": -11807,
+    "candidate_core_host_minus_M26": -11635,
+    "added_dependency_delta": 262,
+    "combined_candidate_minus_M26": -11373
+  },
+  "prospective_proposal_disposition": "Supersedes the pending scoped8+128/composite-calibration proposal without executing or promoting it; original proposal and its review remain historical.",
+  "review": {
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "task": "m35_calibration_terminal_astra",
+    "disposition": "Read-only inspection: waiver is authority/hash/three-artifact bound; no new acceptance bypass. Budgets, allowance, accuracy, scope and stopping unchanged. Proceed after refreshing actual draft/waiver hash/tool identity and freeze. No further self-calibration or permission needed. Reviewer inspected tests; lead executed them."
+  },
+  "local_tooling_checks": {
+    "benchmark_tests": {
+      "passed": true,
+      "count": 42
+    },
+    "saved_calibration_intervals_exactly_recomputed": 96,
+    "statistical_and_accuracy_function_ASTs": "All unchanged; only validate_measurement_plan changes and validate_calibration_waiver added",
+    "historical_24class_plan_validation": "PASS",
+    "governance": "PASS286lines/max200characters",
+    "git_diff_check": "PASS",
+    "runtime": "Unchanged; prior complete local science/transaction/ABI/replay/independent evidence reused, no new build or remote qualification"
+  }
+}

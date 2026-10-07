@@ -2,7 +2,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M35 measurement decision; science6375 passes, frozen8368 calibration unresolved for2OLS classes. Actual timing/scaling and final Astra remain open.
+Current task: M35 actual M34/M26 timing; Johannes waives self-calibration; science6375 passes. Historical8368 unresolved; timing/scaling/final Astra open.
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 Accepted runtime: M34.1 host boundary; production109589, net vsM26 -11807; native70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e.
@@ -283,3 +283,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-06 M35.5: Existing benchmark accepts deterministic cell option;41tests/six native policy calls/20 exact files pass; native/science campaign unchanged; clean timing pending.
 - 2026-10-06 M35.6: 6375science/3000groups/799Moutputs pass; Astra high approves audit reuse; [evidence](bench/history/2026-10-06-m35-integrated-scientific-qualification.json).
 - 2026-10-07 M35.7: 8368complete;2OLS selfcomparisons unresolved; Astra high confirms blocker; trace32points to projection; [terminal](bench/history/2026-10-07-m35-calibration-terminal.json).
+- 2026-10-07 M35.8: Johannes waives self-calibration only; actual M34/M26 gate/science/budgets unchanged; [decision](bench/history/2026-10-07-m35-self-calibration-waiver.json).

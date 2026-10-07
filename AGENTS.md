@@ -106,6 +106,9 @@ broader checks at defined integration/platform boundaries or for relevant risk
 or unresolved concerns; reuse valid evidence tied to unchanged artifacts.
 Keep exact-copy gates separate from scientific acceptance.
 
+For the identified M35 artifact, Johannes's 2026-10-07 decision waives only
+self-calibration; see bench/history/2026-10-07-m35-self-calibration-waiver.json.
+
 Prospective timing uses a calibrated, predeclared bounded screening/confirmation
 protocol in the existing tools, targeting unresolved workloads. Preserve every
 observation, artifact check and both parent/fixed-M26 comparisons. The unchanged
