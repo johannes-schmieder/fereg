@@ -6241,6 +6241,9 @@ fn fused_group_means_by_value(
     let mut scales = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
     let mut sums = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
     let mut corrections = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
+    let scales = &mut scales[..means.len()];
+    let sums = &mut sums[..means.len()];
+    let corrections = &mut corrections[..means.len()];
     let mut weight_sum = 0.0_f64;
     let mut weight_correction = 0.0_f64;
     for &observation in members {
@@ -6250,16 +6253,17 @@ fn fused_group_means_by_value(
             ));
         }
         if weights.values.is_some() {
-            compensated_add(
+            neumaier_add(
                 weights.normalized(observation),
                 &mut weight_sum,
                 &mut weight_correction,
-            )?;
+            );
         }
-        for (rhs, scale) in scales.iter_mut().enumerate().take(means.len()) {
+        for (rhs, scale) in scales.iter_mut().enumerate() {
             *scale = scale.max(value(observation, rhs).abs());
         }
     }
+    compensated_finite(weight_sum, weight_correction)?;
     let total_weight = if weights.values.is_some() {
         weight_sum + weight_correction
     } else {
@@ -6275,11 +6279,11 @@ fn fused_group_means_by_value(
             let weight = weight_values[observation] / weights.raw_scale;
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
-                    compensated_add(
+                    neumaier_add(
                         weight * (value(observation, rhs) / scales[rhs]),
                         &mut sums[rhs],
                         &mut corrections[rhs],
-                    )?;
+                    );
                 }
             }
         }
@@ -6287,14 +6291,17 @@ fn fused_group_means_by_value(
         for &observation in members {
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
-                    compensated_add(
+                    neumaier_add(
                         value(observation, rhs) / scales[rhs],
                         &mut sums[rhs],
                         &mut corrections[rhs],
-                    )?;
+                    );
                 }
             }
         }
+    }
+    for (&sum, &correction) in sums.iter().zip(corrections.iter()) {
+        compensated_finite(sum, correction)?;
     }
     for rhs in 0..means.len() {
         let mean = if scales[rhs] == 0.0 {
@@ -6334,12 +6341,13 @@ fn group_weight_sum(members: &[usize], weights: ValidatedWeights<'_>, nrows: usi
                 "borrowed MAP membership exceeds the observation axis",
             ));
         }
-        compensated_add(
+        neumaier_add(
             weights.normalized(observation),
             &mut weight_sum,
             &mut weight_correction,
-        )?;
+        );
     }
+    compensated_finite(weight_sum, weight_correction)?;
     let total_weight = weight_sum + weight_correction;
     if total_weight.is_finite() && total_weight > 0.0 {
         Ok(total_weight)
@@ -6371,12 +6379,13 @@ fn group_mean_for_column_with_weight(
     let mut correction = 0.0_f64;
     if scale != 0.0 {
         for &observation in members {
-            compensated_add(
+            neumaier_add(
                 weights.normalized(observation) * (values[(observation, rhs)] / scale),
                 &mut normalized_sum,
                 &mut correction,
-            )?;
+            );
         }
+        compensated_finite(normalized_sum, correction)?;
     }
     let mean = if scale == 0.0 {
         0.0
@@ -6398,6 +6407,11 @@ fn group_means(
     workspace.value_scales.fill(0.0);
     workspace.group_sums.fill(0.0);
     workspace.group_corrections.fill(0.0);
+    let columns = values.ncols();
+    let data = values.as_slice();
+    let scales = &mut workspace.value_scales[..columns];
+    let sums = &mut workspace.group_sums[..columns];
+    let corrections = &mut workspace.group_corrections[..columns];
 
     let mut weight_sum = 0.0_f64;
     let mut weight_correction = 0.0_f64;
@@ -6407,16 +6421,17 @@ fn group_means(
                 "borrowed MAP membership exceeds the observation axis",
             ));
         }
-        compensated_add(
+        neumaier_add(
             weights.normalized(observation),
             &mut weight_sum,
             &mut weight_correction,
-        )?;
-        for rhs in 0..values.ncols() {
-            workspace.value_scales[rhs] =
-                workspace.value_scales[rhs].max(values[(observation, rhs)].abs());
+        );
+        let row = &data[observation * columns..(observation + 1) * columns];
+        for (scale, value) in scales.iter_mut().zip(row) {
+            *scale = scale.max(value.abs());
         }
     }
+    compensated_finite(weight_sum, weight_correction)?;
     let total_weight = weight_sum + weight_correction;
     if !total_weight.is_finite() || total_weight <= 0.0 {
         return Err(invalid_data(
@@ -6424,25 +6439,27 @@ fn group_means(
         ));
     }
 
+    // Coordinates are independent; each keeps its scalar Neumaier row order.
     for &observation in members {
         let weight = weights.normalized(observation);
-        for rhs in 0..values.ncols() {
-            let scale = workspace.value_scales[rhs];
-            if scale == 0.0 {
-                continue;
+        let row = &data[observation * columns..(observation + 1) * columns];
+        for (((value, &scale), sum), correction) in row
+            .iter()
+            .zip(scales.iter())
+            .zip(sums.iter_mut())
+            .zip(corrections.iter_mut())
+        {
+            if scale != 0.0 {
+                neumaier_add(weight * (value / scale), sum, correction);
             }
-            let term = weight * (values[(observation, rhs)] / scale);
-            compensated_add(
-                term,
-                &mut workspace.group_sums[rhs],
-                &mut workspace.group_corrections[rhs],
-            )?;
         }
     }
+    for (&sum, &correction) in sums.iter().zip(corrections.iter()) {
+        compensated_finite(sum, correction)?;
+    }
 
-    for rhs in 0..values.ncols() {
-        let scale = workspace.value_scales[rhs];
-        let normalized_sum = workspace.group_sums[rhs] + workspace.group_corrections[rhs];
+    for ((&scale, sum), &correction) in scales.iter().zip(sums.iter_mut()).zip(corrections.iter()) {
+        let normalized_sum = *sum + correction;
         let mean = if scale == 0.0 {
             0.0
         } else {
@@ -6451,7 +6468,7 @@ fn group_means(
         if !mean.is_finite() {
             return Err(invalid_data("borrowed MAP group mean is not finite"));
         }
-        workspace.group_sums[rhs] = mean;
+        *sum = mean;
     }
     Ok(total_weight)
 }
@@ -7428,6 +7445,20 @@ fn weighted_column_norms(
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
+    neumaier_add(value, sum, correction);
+    if !sum.is_finite() || !correction.is_finite() {
+        return Err(invalid_data(
+            "borrowed MAP compensated accumulation is not finite",
+        ));
+    }
+    Ok(())
+}
+
+/// One Neumaier update without the finiteness branch. A nonfinite sum or
+/// correction stays nonfinite, so checking once after a loop with
+/// [`compensated_finite`] reaches the same decision as checking every update.
+#[inline(always)]
+fn neumaier_add(value: f64, sum: &mut f64, correction: &mut f64) {
     let updated = *sum + value;
     let adjustment = if sum.abs() >= value.abs() {
         (*sum - updated) + value
@@ -7436,12 +7467,16 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
     };
     *correction += adjustment;
     *sum = updated;
-    if !sum.is_finite() || !correction.is_finite() {
-        return Err(invalid_data(
+}
+
+fn compensated_finite(sum: f64, correction: f64) -> Result<()> {
+    if sum.is_finite() && correction.is_finite() {
+        Ok(())
+    } else {
+        Err(invalid_data(
             "borrowed MAP compensated accumulation is not finite",
-        ));
+        ))
     }
-    Ok(())
 }
 
 fn certified_result(
