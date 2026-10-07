@@ -279,3 +279,4 @@ Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also
 - 2026-10-06 M35.2: PPML repair+95; fresh1309/strict48/full/MacABI/replay73/Stata60/Astra high pass; original166-failure decision retained; inherited4FE repeat defect blocks final timing.
 - 2026-10-06 M35.3: Deterministic96 confirms inherited4FE failure; isolated ordered prototype40/ARM ABI passes; [diagnosis](bench/history/2026-10-06-m35-determinism-diagnosis.json); final gates open.
 - 2026-10-06 M35.4: General deterministic repair qualified; core+77/dependency+262; exact73/Stata63/oracle96/large40/Astra high pass; fresh broad6375 science running; final timing open.
+- 2026-10-06 M35.5: Existing benchmark accepts deterministic cell option;41tests/six native policy calls/20 exact files pass; native/science campaign unchanged; clean timing pending.

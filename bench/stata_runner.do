@@ -50,6 +50,7 @@ if "`arm'" == "fereg" & "`model'" == "ppml" local command feppml
 local controls
 if "`arm'" == "fereg" {
     local controls threads(`threads')
+    if "`deterministic'" == "1" local controls `controls' deterministic
     if `engine_option' local controls `controls' engine(`engine')
     if "`tolerance'" != "" local controls `controls' tolerance(`tolerance')
     if "`solver'" != "auto" local controls `controls' solver(`solver')
@@ -104,6 +105,7 @@ file write `metadata' "stata_seconds" _tab %24.17g (`stata_seconds') _n
 if "`clock_plugin'" != "" file write `metadata' "clock_resolution_seconds" _tab %24.17g (scalar(`clock_resolution')) _n
 file write `metadata' "processors" _tab "`processors'" _n
 file write `metadata' "engine" _tab "`engine'" _n
+file write `metadata' "deterministic_requested" _tab "`deterministic'" _n
 if !`rc' {
     if "`arm'" == "fereg" {
         local actual_engine "`e(fereg_engine)'"

@@ -154,6 +154,7 @@ def measure(args, suite, cell, arm, threads, repetition, dataset, environment, r
                 "clock_plugin":str(getattr(args,'clock_plugin',None) or ''),
                 "dataset": str(dataset), "output": str(directory), "arm": arm, "model": cell["model"],
                 "k": cell["regressors"], "effects": cell["effects"], "threads": threads,
+                "deterministic": int(cell.get("deterministic", False)),
                 "processor_cap": args.stata_processors, "fixed_host_processors": int(args.fereg_only), "slopes": int(cell.get("slopes", False)),
                 "outputs": int(bool(cell["outputs"])), "output_mode": cell.get("output_mode", "combined" if cell["outputs"] else "none"),
                 "finite_factor": int(cell.get("finite_factor", False)),
