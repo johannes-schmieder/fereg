@@ -342,7 +342,7 @@ def render(campaign, frame, output):
     for model in ['ols', 'ppml']:
         breadth_plot(frame, model, output/f'{model}-breadth.png')
     context, manifest = campaign['context'], campaign['manifest']
-    source = context['source'][:12]
+    source = context.get('native_source', context['source'])[:12]
     pdf = CampaignPDF(output/'fereg-scc-benchmark.pdf', f"{context['run_id']}  |  source {source}")
     pairs = frame[(frame.arm != 'fereg') & (frame.arm != 'fixest-strict')]
     eligible = pairs[pairs.eligible]
@@ -497,7 +497,8 @@ def render(campaign, frame, output):
 
     pdf.page('Artifacts, tolerances and provenance')
     pdf.table([['Artifact', 'Identity / policy'],
-               ['fereg source', context['source']],
+               ['fereg source', context.get('native_source', context['source'])],
+               ['Benchmark source', context['source']],
                ['Run', context['run_id']],
                ['Comparators', 'Pinned reghdfe / ppmlhdfe / ftools / require; fixest 0.14.2'],
                ['Software stack', 'Stata/MP 19 (four licensed processors); R 4.5.2; Python 3.12.4'],
@@ -522,6 +523,8 @@ def render(campaign, frame, output):
                  'was compiled before freezing the comparator inventory. '
                  'A batch-log path correction then reused the unchanged, hash-verified native binary in a focused '
                  'finalization job that reran ABI and harness checks. '
+                 'The first scientific smoke exposed an unsupported Mata CSV numeric format; the exporter was corrected '
+                 'and qualification repeated without changing the native binary or scientific policy. '
                  'The scheduler request also removed an unconfigured exclusive consumable; reserving all 28 slots on an exactly 28-core host '
                  'provides isolation under SCC’s per-host slot limit. These corrections did not change the estimator source or scientific tolerances.',
                  'SmallCustom')

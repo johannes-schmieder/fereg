@@ -84,7 +84,7 @@ if !`rc' {
     file write `meta' "slope_omissions" _tab "`slope_omissions'" _n
     file write `meta' "finite_slope_rank" _tab "`k'" _n
     file write `meta' "covariance_policy" _tab "stock-`model'-`vce'" _n
-    mata: b=st_matrix("`coefficients'"); V=st_matrix("`covariance'"); stripe=st_matrixcolstripe("`coefficients'"); f=fopen(`"`output'/coefficients.csv"', "w"); fput(f,"name,value"); for(i=1;i<=cols(b);i++) fput(f,sprintf("%s,%.17g",stripe[i,2],b[i])); fclose(f); f=fopen(`"`output'/covariance.csv"',"w"); fput(f,"row,column,value"); for(i=1;i<=rows(V);i++) for(j=1;j<=cols(V);j++) fput(f,sprintf("%s,%s,%.17g",stripe[i,2],stripe[j,2],V[i,j])); fclose(f)
+    mata: b=st_matrix("`coefficients'"); V=st_matrix("`covariance'"); stripe=st_matrixcolstripe("`coefficients'"); f=fopen(`"`output'/coefficients.csv"', "w"); fput(f,"name,value"); for(i=1;i<=cols(b);i++) fput(f,sprintf("%s,%24.17g",stripe[i,2],b[i])); fclose(f); f=fopen(`"`output'/covariance.csv"',"w"); fput(f,"row,column,value"); for(i=1;i<=rows(V);i++) for(j=1;j<=cols(V);j++) fput(f,sprintf("%s,%s,%24.17g",stripe[i,2],stripe[j,2],V[i,j])); fclose(f)
     quietly generate byte retained = e(sample)
     if `save_fe' {
         quietly generate double fitted = 0
