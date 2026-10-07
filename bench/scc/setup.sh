@@ -3,7 +3,6 @@
 #$ -N fereg_bench_setup
 #$ -pe omp 28
 #$ -l num_proc=28
-#$ -l exclusive=TRUE
 #$ -l mem_per_core=3G
 #$ -l h_rt=01:00:00
 #$ -j y

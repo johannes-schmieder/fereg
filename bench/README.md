@@ -42,6 +42,10 @@ on exactly 28-core nodes, sequential fits, explicit affinity, three GB/core and
 four-hour tasks. Run an independent small explicit-design smoke before the four
 production bundles. Setup, smoke and production accounting, licensed sentinels,
 manifest coverage and frozen identities must all be checked at collection.
+SCC's `max_slots_per_host` rule caps all jobs together at the host core count;
+the exact 28-core filter and 28-slot request provide full-node isolation. Do not
+add the unconfigured `exclusive` consumable: an explicit request matches no
+queue and prevents dispatch.
 
 The stopwatch covers estimation, inference and requested individual FE recovery.
 For fixest this includes lazy extraction and observation-level materialization.

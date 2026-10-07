@@ -61,7 +61,7 @@ def collect(context_path, output):
     verify = ('export PYTHONDONTWRITEBYTECODE=1 OPENBLAS_NUM_THREADS=1; export PYTHONPATH='+
               shlex.quote(root+'/source/bench')+'; '+verify)
     remote(verify)
-    files = ['manifest.json', 'input/source.json', 'environment/runtime.json', 'environment/COMPLETE',
+    files = ['manifest.json', 'input/source.json', 'setup.sh', 'job.sh', 'environment/runtime.json', 'environment/COMPLETE',
              'environment/reference-origin.json', 'environment/r-package-paths.json',
              'smoke/results.json', 'smoke/COMPLETE', 'logs/setup.sge', 'logs/smoke.sge',
              'logs/build.log', 'logs/clock-build.log', 'logs/harness-tests.log']
