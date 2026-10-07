@@ -1,0 +1,788 @@
+{
+  "responsibility": "Prospective decision proposal for one bounded scoped successor calibration; no measurements authorized by this file",
+  "status": "PENDING Johannes decision and concrete protocol implementation/freeze; not an acceptance result",
+  "reason": "Complete24-class identical-binary calibration exhausted its frozen32/64 budgets. TwoOLS classes remain unresolved; no established regression, no diagnosed half-drift, and no justified runtime repair from32 separately retained phase traces.",
+  "authority_needed": {
+    "policy": "bench/README.md",
+    "instructions": [
+      "Calibrate once before candidate timing",
+      "Exactly two acceptance looks are permitted",
+      "No automatic retries occur"
+    ],
+    "prior_retry_scope": "bench/history/2026-10-05-m27-retry-authorization.json permits infrastructure replacement only; the current campaign completed successfully but was statistically unresolved."
+  },
+  "original_terminal": {
+    "receipt": "bench/history/2026-10-07-m35-calibration-terminal.json",
+    "receipt_sha256": "dd394566573ad8fe0d58a2c5fa5dc8d4974068c54456878390ca8072ce6d2b08",
+    "plan": "target/m35-integrated/calibration/calibration-plan.json",
+    "plan_sha256": "fdc6508f7f5987b4b51fe1d62a1f729c205e22b89e3dba9917db3f67400d3706",
+    "canonical_plan_sha256": "7ea552c9b61718f05e9ae8465d5ddd4b1d6155fbdd60a28c67b3037e121fae9d",
+    "terminal": "target/m35-integrated/calibration/terminal.json",
+    "terminal_sha256": "c18c43192306ee264fdf32d1bf5c8729de6778b6b67f4bff553464bce66e595a",
+    "raw_passed": false,
+    "commands": 8368,
+    "blocks": [
+      {
+        "path": "target/m35-integrated/calibration/calibration-confirmation-fixed_baseline-forward/results.json",
+        "sha256": "0c8979d33de90fcaee58ff5ca625394dc39bc40dfcf5ec0a8a8807a204b4b70c",
+        "records": 1612,
+        "wall_seconds": 886.3112596670107
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-confirmation-fixed_baseline-reverse/results.json",
+        "sha256": "effe2b57bed9479bae7baa248fe18dc4f2823a041e54257320cf04fbd8332f1c",
+        "records": 1612,
+        "wall_seconds": 887.2654061659996
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-confirmation-parent-forward/results.json",
+        "sha256": "33ee1658621c9d718edae0f864b50e433cec9358b2e9a5445a4bb09c7202f524",
+        "records": 1612,
+        "wall_seconds": 896.9281344169867
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-confirmation-parent-reverse/results.json",
+        "sha256": "21151c8362910208ff289712934468e031be634f849ced2f12b52f6e32e38701",
+        "records": 1612,
+        "wall_seconds": 888.2158278749848
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-screening-fixed_baseline-forward/results.json",
+        "sha256": "7e9f8c142a341a9215fb6d922e620f582566cdc0347fe1649dfa331b532e0e94",
+        "records": 480,
+        "wall_seconds": 339.08862837500055
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-screening-fixed_baseline-reverse/results.json",
+        "sha256": "5f9488fc074ab4f557645038b107b1f17d90f8098d71d9fe5983afb6a283c6d0",
+        "records": 480,
+        "wall_seconds": 342.33365683298325
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-screening-parent-forward/results.json",
+        "sha256": "d7e22f64b61aa6ef0fbdb2a2f2c3cc042283478f440bb35d6dac5776856407de",
+        "records": 480,
+        "wall_seconds": 339.2249126659881
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-screening-parent-reverse/results.json",
+        "sha256": "b163e94db5e967889251280bc41887f9915da6c1e5c5c8cc3ac8d8c253bea6b9",
+        "records": 480,
+        "wall_seconds": 340.1583775409963
+      }
+    ],
+    "preservation": "All original files/captures/observations remain unchanged and unresolved. No observations pooled into the successor; no retrospective extension/reversal."
+  },
+  "unchanged_native_and_science": {
+    "native_sha256": "20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826",
+    "frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667",
+    "source_patch_sha256": "9566d8e7cbba862045b343e79910c128c1835da57ac4904444426a6b8a9b36cf",
+    "source_archive_sha256": "3ceaddc4f62b9536ba84adb68072f5e000e1b37570e647812a2326f352d095de",
+    "science_receipt": {
+      "receipt": "bench/history/2026-10-06-m35-integrated-scientific-qualification.json",
+      "sha256": "b22f670b9d6609bd5af9b60de0d4aa2fe80c73423a053d17d6b7a64c106b0123",
+      "commands": 6375,
+      "worker_groups": 3000,
+      "passed": true,
+      "scope": "Fresh integrated Mac science and mapped local/transaction/ABI/replay/oracle gates remain bound to unchanged native/source. No rerun due solely to documentation."
+    },
+    "rule": "Verify exact source/native/frontend/dataset/configuration identity before freeze and after measurement. No production change proposed. Reuse valid unchanged scientific evidence."
+  },
+  "successor": {
+    "planned_root": "target/m35-integrated/calibration-scoped-successor",
+    "method": "Existing bounded-median-orders-v2 analysis, prospectively extend permitted additional budgets to include128; historical rules unchanged",
+    "scope": [
+      [
+        "cover-ols-2fe-n100000-k50",
+        8,
+        "fereg"
+      ],
+      [
+        "development-ols-3fe-none-robust",
+        16,
+        "fereg"
+      ]
+    ],
+    "screen_pairs": 8,
+    "additional_confirmation_pairs": 128,
+    "final_pairs_if_confirmed": 136,
+    "orders": [
+      "forward",
+      "reverse"
+    ],
+    "comparator_roles": [
+      "parent",
+      "fixed_baseline"
+    ],
+    "calibration_roles": "All three roles use the identical qualified20a9d3d9 native/source/frontend; these role labels are not actual M34/M26 comparisons.",
+    "allowance": {
+      "fraction": 0.05,
+      "minimum_seconds": 0.001
+    },
+    "statistical_rule": {
+      "marginal_tail_probability": 0.00625,
+      "one_sided_alpha_per_look": 0.0125,
+      "screen_order_positions_1_based": [
+        1,
+        8
+      ],
+      "final_order_positions_1_based": [
+        53,
+        84
+      ],
+      "expand_endpoint_seconds": 1e-06,
+      "symmetric_rule": "For each comparator and order, require both Uc-Lp-max(.001,.05*Lp)<=0 and Up-Lc-max(.001,.05*Lc)<=0 using existing exact median order intervals. No workload averaging.",
+      "conditional_model": "Independent stationary fresh-process observations. Additional precision cannot repair violated assumptions."
+    },
+    "command_budget": {
+      "screening_per_block": 40,
+      "screening_blocks": 4,
+      "confirmation_per_block_max": 520,
+      "confirmation_blocks_max": 4,
+      "total_max": 2240,
+      "includes": "All reference, warmup and timed commands"
+    },
+    "maximum_wall_seconds_per_block": 900,
+    "stopping": "One successor only. After four screening blocks, the exact union of unresolved classes across both roles/orders receives its preassigned128additional pairs in all four confirmation blocks. Other classes stop. Exactly two looks, retain all8screen observations in final136. Any command/accuracy/identity/timeout/block-budget/load failure terminates incomplete. Exhausted uncertainty or diagnosed assumption violation blocks the composite; no further measurement or actual acceptance launch.",
+    "quiet_window": "Coordinate FEVC and unrelated work, leave jobs untouched; confirm quiet twice30seconds apart. No agents/builds/tests during clean timing. Retain read-only process observations and chronology.",
+    "diagnostics": "Existing chronological-half intervals, opposite-order effects, per-role lag-one series and phase summaries. Established half-drift beyond the allowance blocks inference. Other diagnosed time/order/dependence violations also block even if intervals narrow enough. Null diagnostics are conditional support, not proof of independence.",
+    "freeze_prerequisites": [
+      "Explicit prospective authorization",
+      "Narrow existing validator/harness budget extension and relevant tooling tests",
+      "Old n40/n72 statistical and saved calibration decisions unchanged under updated tools",
+      "Bound all plan/helper/tool/manifest/clock/dataset/configuration/source/native/frontend identities",
+      "Disk/capture footprint and timeout preflight",
+      "No agents and two quiet checks"
+    ]
+  },
+  "composite_calibration_gate": {
+    "inherited_classes": [
+      {
+        "scope": [
+          "cover-ols-3fe-n100000-k128",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "cover-ppml-2fe-n100000-k50",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "cover-ppml-3fe-n100000-k128",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": false,
+          "fixed_baseline": false
+        }
+      },
+      {
+        "scope": [
+          "deterministic-cover-ols-3fe-n100000-k128",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "deterministic-cover-ols-4fe-n100000-k8",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "deterministic-cover-ppml-4fe-n100000-k8",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "deterministic-development-ols-3fe-none-robust",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "development-ols-0fe-none-robust",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "development-ols-1fe-none-robust",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "development-ols-2fe-none-robust",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "development-ppml-0fe-none-robust",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": false,
+          "fixed_baseline": false
+        }
+      },
+      {
+        "scope": [
+          "development-ppml-1fe-none-robust",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "development-ppml-2fe-none-robust",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "development-ppml-3fe-none-robust",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 32,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "holdout-ols-0fe-residual-robust",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 64,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": false,
+          "fixed_baseline": false
+        }
+      },
+      {
+        "scope": [
+          "holdout-ols-1fe-combined-multiway",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 64,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "holdout-ols-2fe-combined-multiway",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 64,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "holdout-ols-3fe-combined-multiway",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 64,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "holdout-ppml-0fe-residual-robust",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 64,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "holdout-ppml-1fe-combined-multiway",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 64,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": true,
+          "fixed_baseline": true
+        }
+      },
+      {
+        "scope": [
+          "holdout-ppml-2fe-combined-multiway",
+          8,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 64,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": false,
+          "fixed_baseline": false
+        }
+      },
+      {
+        "scope": [
+          "holdout-ppml-3fe-combined-multiway",
+          16,
+          "fereg"
+        ],
+        "original_additional_confirmation_pairs": 64,
+        "verdict_by_role": {
+          "parent": "within",
+          "fixed_baseline": "within"
+        },
+        "confirmed_by_role": {
+          "parent": false,
+          "fixed_baseline": false
+        }
+      }
+    ],
+    "original_class_mapping": [
+      {
+        "timing_cell": "development-ols-0fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "development-ols-0fe-none-robust",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "development-ols-1fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "development-ols-1fe-none-robust",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "development-ols-2fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "development-ols-2fe-none-robust",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "development-ols-3fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "development-ols-3fe-none-robust",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "development-ppml-0fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "development-ppml-0fe-none-robust",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "development-ppml-1fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "development-ppml-1fe-none-robust",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "development-ppml-2fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "development-ppml-2fe-none-robust",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "development-ppml-3fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "development-ppml-3fe-none-robust",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "cover-ols-2fe-n100000-k50",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "cover-ols-2fe-n100000-k50",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "cover-ols-3fe-n100000-k128",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "cover-ols-3fe-n100000-k128",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "cover-ppml-2fe-n100000-k50",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "cover-ppml-2fe-n100000-k50",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "cover-ppml-3fe-n100000-k128",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "cover-ppml-3fe-n100000-k128",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "holdout-ols-0fe-residual-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "holdout-ols-0fe-residual-robust",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "holdout-ols-1fe-combined-multiway",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "holdout-ols-1fe-combined-multiway",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "holdout-ols-2fe-combined-multiway",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "holdout-ols-2fe-combined-multiway",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "holdout-ols-3fe-combined-multiway",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "holdout-ols-3fe-combined-multiway",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "holdout-ppml-0fe-residual-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "holdout-ppml-0fe-residual-robust",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "holdout-ppml-1fe-combined-multiway",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "holdout-ppml-1fe-combined-multiway",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "holdout-ppml-2fe-combined-multiway",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "holdout-ppml-2fe-combined-multiway",
+        "calibration_workers": 8,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "holdout-ppml-3fe-combined-multiway",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "holdout-ppml-3fe-combined-multiway",
+        "calibration_workers": 16,
+        "reason": "Identical estimator, FE family, data, width, VCE, memory and requested-output class;8/16worker boundaries both represented prospectively."
+      },
+      {
+        "timing_cell": "deterministic-development-ols-3fe-none-robust",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "deterministic-development-ols-3fe-none-robust",
+        "calibration_workers": 8,
+        "reason": "Identical deterministic public option/data/estimator/FE/width/VCE/memory/output class;8/16 boundaries represented prospectively."
+      },
+      {
+        "timing_cell": "deterministic-cover-ols-3fe-n100000-k128",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "deterministic-cover-ols-3fe-n100000-k128",
+        "calibration_workers": 16,
+        "reason": "Identical deterministic public option/data/estimator/FE/width/VCE/memory/output class;8/16 boundaries represented prospectively."
+      },
+      {
+        "timing_cell": "deterministic-cover-ols-4fe-n100000-k8",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "deterministic-cover-ols-4fe-n100000-k8",
+        "calibration_workers": 8,
+        "reason": "Identical deterministic public option/data/estimator/FE/width/VCE/memory/output class;8/16 boundaries represented prospectively."
+      },
+      {
+        "timing_cell": "deterministic-cover-ppml-4fe-n100000-k8",
+        "timing_workers": [
+          8,
+          16
+        ],
+        "calibration_cell": "deterministic-cover-ppml-4fe-n100000-k8",
+        "calibration_workers": 16,
+        "reason": "Identical deterministic public option/data/estimator/FE/width/VCE/memory/output class;8/16 boundaries represented prospectively."
+      }
+    ],
+    "requirement": "Each of22 inherited classes remains applicable with identical scientific artifacts, datasets, configurations, measurement conditions and unchanged32/64 rule; both new classes independently satisfy symmetric successor and assumption gates. Any inapplicable inherited evidence leaves its gate open.",
+    "interpretation": "A newly declared engineering composite, not the original calibration passing. Do not claim an aggregate statistical error guarantee across selected old successes and a later successor. Do not pool old and new observations."
+  },
+  "actual_acceptance_after_composite": {
+    "state": "UNSTARTED; freeze separately only after composite passes",
+    "comparators": {
+      "immediate_qualified_parent": "M34 native70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e",
+      "fixed_M26": "native706720c4acc45314d39607b161cd287b31c103272f4b426ee8aef0702386d981"
+    },
+    "changed_budgets": "128additional pairs for the two affected timing classes at every declared worker count, including any scaling-edge endpoints; all other development/holdout assignments remain32/64. Freeze the complete budget map and connected endpoint closure before any actual screening.",
+    "scope": "First draft48groups at8/16workers plus24edges remains partial. Full interaction/holdout matrix, worker ladders/adjacent boundaries, expensive-family gains and inherited costs must all be addressed before M35 closure.",
+    "statistics": "Actual candidate campaign retains its own separately frozen two-look error allocation and complete required scope; calibration/composite evidence does not substitute for performance comparisons.",
+    "final_review": "Fresh Astra extra-high whole-M35 acceptance review after required gates; no milestone closure or new portability/release claim now."
+  },
+  "bounded_astra_review": {
+    "task": "m35_calibration_terminal_astra",
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "diagnosis": "Independently verified32commands and68phase summaries; no specific runtime repair justified.",
+    "protocol_recommendation": "One separately authorized/frozen8+128 two-class successor; [53,84] endpoints at136 verified. Explicitly reviewed composite may reuse22 unchanged resolved classes as engineering evidence, without claiming original or aggregate statistical acceptance. Dependence remains binding.",
+    "concrete_declaration_review": "Completed: no concrete blockers, ready for Johannes decision; execution remains unauthorized. Independently verified exact22 inherited classes/mappings/verdicts/confirmation/budgets/hashes, 8+128 n136 positions[53,84], maximum2240commands and900second block limit, preservation/no pooling/no aggregate composite guarantee, and actual128 worker-endpoint budget/parent-M26/full-gate conditions. Authorization/tooling/identity/applicability/quiet prerequisites remain binding."
+  },
+  "production": {
+    "accepted_M34_core_host_total": 109589,
+    "accepted_M34_minus_M26": -11807,
+    "candidate_core_host_total": 109761,
+    "candidate_core_host_minus_M34": 172,
+    "candidate_core_host_minus_M26": -11635,
+    "new_dependency_production_delta": 262,
+    "combined_candidate_minus_M26": -11373,
+    "new_retirement_credit_this_batch": 0
+  },
+  "platform": "Mac only; GitHub test workflows paused; no remote/release testing or new production retirement."
+}

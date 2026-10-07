@@ -1,0 +1,1279 @@
+{
+  "milestone": "M35.7",
+  "responsibility": "Preserve completed unsuccessful measurement calibration and bounded native-phase diagnosis",
+  "date_utc": "2026-10-07T04:42:17.652218+00:00",
+  "disposition": "Terminal complete/unresolved. Both frozen looks exhausted; actual M35 acceptance remains unstarted. No favorable retry or allowance change. Scientifically qualified repair retained.",
+  "calibration": {
+    "frozen_plan_canonical_sha256": "7ea552c9b61718f05e9ae8465d5ddd4b1d6155fbdd60a28c67b3037e121fae9d",
+    "artifacts": {
+      "candidate": {
+        "native_identity": {
+          "plugin_filename": "fereg_macos.plugin",
+          "plugin_sha256": "20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826",
+          "build_source_commit": "96f19624c52fbf139a8c2a6b83734cfd6bf93099",
+          "frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667",
+          "frontend_files": {
+            "stata/_fereg_estimate_ols.ado": "3f7cea6ce6eec3a51ea7455c0e6f60496aa31bca33119c6ee8c769bca0a73147",
+            "stata/_fereg_estimate_ols_test.ado": "c4eb2709b775d9dbd7994860f08824310c58f4dd896716df93e2cc1392807fe0",
+            "stata/_fereg_estimate_ppml.ado": "20444fc5873b19d3d28d046aeb29505c76363901ee54e9ab876c96e202e3394f",
+            "stata/_fereg_estimate_public.ado": "f0448ff5beeeea39c10a22232e56ba9f0c21f14324eb3a0379b4921073c38756",
+            "stata/_fereg_factor_sample.ado": "2ec3d383036481a738ce20cff1951df081d12bf105fd026c7caba9d7db408ef6",
+            "stata/_fereg_load.ado": "328000e98a0f1da730760e53ff664151b083d3270958e2b0b686e021ae178eee",
+            "stata/_fereg_memory_baseline.ado": "0863a60e61e9ebe7520f7afcb421cee1aee4ed494755c27aaa6386e39dc70831",
+            "stata/_fereg_memory_validate.ado": "a8392d87cd9db901666bbf5e3b1c029bfbdcbfc6455a4381a8da42f07fb14614",
+            "stata/_fereg_ols.ado": "68e35e05f23aace9999621de355be66f7ad1288ca8d5871da67678db11d1df6a",
+            "stata/_fereg_ols_hidden_numeric_v1.ado": "3693d55d42c5ce289e4ade499e55c6e14640197057b9ebb13cc8e3925d1dad9b",
+            "stata/_fereg_ppml.ado": "ea93d95dd7770286aa1dfac05ec3e5cbe77f3d7eaee8f3154a434e1239c0b8e7",
+            "stata/_fereg_ppml_post_scalars.mo": "6e5a5bafbbfb445f6dd1bcc90e01bc0c84d41e2d0863d0c11ec9b38310ee6d6a",
+            "stata/_fereg_ppml_result_mata.ado": "9c610ef8c6f18a5c4e288fdd08e2f07ac91af17a11af886db9df0d306118fc08",
+            "stata/_fereg_ppml_validate_result.mo": "54a1e9d67776b0730371b91b87aeef0c750d0fcc0eed0141df48ad1be3131588",
+            "stata/_fereg_ppml_validation_error.mo": "e36fd7b93bc94dc599d6b276add6fdf0eb611d1fc6d8369da41e63d953cf9106",
+            "stata/_fereg_prepare_ols_test.ado": "1c03a48f83795a561e729ca9f0b2c553a3375101d615d2c525d227737666e372",
+            "stata/feppml.ado": "e18af10af6406808a631069a8f9862445158122142a7142419b455d23ce0093a",
+            "stata/feppml_p.ado": "128fa09dba2207c7bf5bd65a907f3d041b5c084011b4bac3f26eefb7762e6df2",
+            "stata/fereg.ado": "adcf48ae690475f441b48ab8932bb70078c6293236108a04dcb742278705557c",
+            "stata/fereg_estat.ado": "99442eccaf96485949da297e8f4b8d0d12c320dc84a2347c52047130d4516ebb",
+            "stata/fereg_p.ado": "2a6c823749a150794b36488c4e8b5d56fc2b7600ecb44b94175729c51e612659",
+            "stata/fereg_parse.ado": "5eb6f18cd85217dad4dca216f00c1033fce0e30a16700d3a22445823fb993554",
+            "stata/fereg_run.ado": "ba7cd1c2c863a195e55c1beb6e6b2d64b392e6032859073d5b3ecde9936ec7ca"
+          }
+        },
+        "source_sha": "96f19624c52fbf139a8c2a6b83734cfd6bf93099"
+      },
+      "parent": {
+        "native_identity": {
+          "plugin_filename": "fereg_macos.plugin",
+          "plugin_sha256": "20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826",
+          "build_source_commit": "96f19624c52fbf139a8c2a6b83734cfd6bf93099",
+          "frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667",
+          "frontend_files": {
+            "stata/_fereg_estimate_ols.ado": "3f7cea6ce6eec3a51ea7455c0e6f60496aa31bca33119c6ee8c769bca0a73147",
+            "stata/_fereg_estimate_ols_test.ado": "c4eb2709b775d9dbd7994860f08824310c58f4dd896716df93e2cc1392807fe0",
+            "stata/_fereg_estimate_ppml.ado": "20444fc5873b19d3d28d046aeb29505c76363901ee54e9ab876c96e202e3394f",
+            "stata/_fereg_estimate_public.ado": "f0448ff5beeeea39c10a22232e56ba9f0c21f14324eb3a0379b4921073c38756",
+            "stata/_fereg_factor_sample.ado": "2ec3d383036481a738ce20cff1951df081d12bf105fd026c7caba9d7db408ef6",
+            "stata/_fereg_load.ado": "328000e98a0f1da730760e53ff664151b083d3270958e2b0b686e021ae178eee",
+            "stata/_fereg_memory_baseline.ado": "0863a60e61e9ebe7520f7afcb421cee1aee4ed494755c27aaa6386e39dc70831",
+            "stata/_fereg_memory_validate.ado": "a8392d87cd9db901666bbf5e3b1c029bfbdcbfc6455a4381a8da42f07fb14614",
+            "stata/_fereg_ols.ado": "68e35e05f23aace9999621de355be66f7ad1288ca8d5871da67678db11d1df6a",
+            "stata/_fereg_ols_hidden_numeric_v1.ado": "3693d55d42c5ce289e4ade499e55c6e14640197057b9ebb13cc8e3925d1dad9b",
+            "stata/_fereg_ppml.ado": "ea93d95dd7770286aa1dfac05ec3e5cbe77f3d7eaee8f3154a434e1239c0b8e7",
+            "stata/_fereg_ppml_post_scalars.mo": "6e5a5bafbbfb445f6dd1bcc90e01bc0c84d41e2d0863d0c11ec9b38310ee6d6a",
+            "stata/_fereg_ppml_result_mata.ado": "9c610ef8c6f18a5c4e288fdd08e2f07ac91af17a11af886db9df0d306118fc08",
+            "stata/_fereg_ppml_validate_result.mo": "54a1e9d67776b0730371b91b87aeef0c750d0fcc0eed0141df48ad1be3131588",
+            "stata/_fereg_ppml_validation_error.mo": "e36fd7b93bc94dc599d6b276add6fdf0eb611d1fc6d8369da41e63d953cf9106",
+            "stata/_fereg_prepare_ols_test.ado": "1c03a48f83795a561e729ca9f0b2c553a3375101d615d2c525d227737666e372",
+            "stata/feppml.ado": "e18af10af6406808a631069a8f9862445158122142a7142419b455d23ce0093a",
+            "stata/feppml_p.ado": "128fa09dba2207c7bf5bd65a907f3d041b5c084011b4bac3f26eefb7762e6df2",
+            "stata/fereg.ado": "adcf48ae690475f441b48ab8932bb70078c6293236108a04dcb742278705557c",
+            "stata/fereg_estat.ado": "99442eccaf96485949da297e8f4b8d0d12c320dc84a2347c52047130d4516ebb",
+            "stata/fereg_p.ado": "2a6c823749a150794b36488c4e8b5d56fc2b7600ecb44b94175729c51e612659",
+            "stata/fereg_parse.ado": "5eb6f18cd85217dad4dca216f00c1033fce0e30a16700d3a22445823fb993554",
+            "stata/fereg_run.ado": "ba7cd1c2c863a195e55c1beb6e6b2d64b392e6032859073d5b3ecde9936ec7ca"
+          }
+        },
+        "source_sha": "96f19624c52fbf139a8c2a6b83734cfd6bf93099"
+      },
+      "fixed_baseline": {
+        "native_identity": {
+          "plugin_filename": "fereg_macos.plugin",
+          "plugin_sha256": "20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826",
+          "build_source_commit": "96f19624c52fbf139a8c2a6b83734cfd6bf93099",
+          "frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667",
+          "frontend_files": {
+            "stata/_fereg_estimate_ols.ado": "3f7cea6ce6eec3a51ea7455c0e6f60496aa31bca33119c6ee8c769bca0a73147",
+            "stata/_fereg_estimate_ols_test.ado": "c4eb2709b775d9dbd7994860f08824310c58f4dd896716df93e2cc1392807fe0",
+            "stata/_fereg_estimate_ppml.ado": "20444fc5873b19d3d28d046aeb29505c76363901ee54e9ab876c96e202e3394f",
+            "stata/_fereg_estimate_public.ado": "f0448ff5beeeea39c10a22232e56ba9f0c21f14324eb3a0379b4921073c38756",
+            "stata/_fereg_factor_sample.ado": "2ec3d383036481a738ce20cff1951df081d12bf105fd026c7caba9d7db408ef6",
+            "stata/_fereg_load.ado": "328000e98a0f1da730760e53ff664151b083d3270958e2b0b686e021ae178eee",
+            "stata/_fereg_memory_baseline.ado": "0863a60e61e9ebe7520f7afcb421cee1aee4ed494755c27aaa6386e39dc70831",
+            "stata/_fereg_memory_validate.ado": "a8392d87cd9db901666bbf5e3b1c029bfbdcbfc6455a4381a8da42f07fb14614",
+            "stata/_fereg_ols.ado": "68e35e05f23aace9999621de355be66f7ad1288ca8d5871da67678db11d1df6a",
+            "stata/_fereg_ols_hidden_numeric_v1.ado": "3693d55d42c5ce289e4ade499e55c6e14640197057b9ebb13cc8e3925d1dad9b",
+            "stata/_fereg_ppml.ado": "ea93d95dd7770286aa1dfac05ec3e5cbe77f3d7eaee8f3154a434e1239c0b8e7",
+            "stata/_fereg_ppml_post_scalars.mo": "6e5a5bafbbfb445f6dd1bcc90e01bc0c84d41e2d0863d0c11ec9b38310ee6d6a",
+            "stata/_fereg_ppml_result_mata.ado": "9c610ef8c6f18a5c4e288fdd08e2f07ac91af17a11af886db9df0d306118fc08",
+            "stata/_fereg_ppml_validate_result.mo": "54a1e9d67776b0730371b91b87aeef0c750d0fcc0eed0141df48ad1be3131588",
+            "stata/_fereg_ppml_validation_error.mo": "e36fd7b93bc94dc599d6b276add6fdf0eb611d1fc6d8369da41e63d953cf9106",
+            "stata/_fereg_prepare_ols_test.ado": "1c03a48f83795a561e729ca9f0b2c553a3375101d615d2c525d227737666e372",
+            "stata/feppml.ado": "e18af10af6406808a631069a8f9862445158122142a7142419b455d23ce0093a",
+            "stata/feppml_p.ado": "128fa09dba2207c7bf5bd65a907f3d041b5c084011b4bac3f26eefb7762e6df2",
+            "stata/fereg.ado": "adcf48ae690475f441b48ab8932bb70078c6293236108a04dcb742278705557c",
+            "stata/fereg_estat.ado": "99442eccaf96485949da297e8f4b8d0d12c320dc84a2347c52047130d4516ebb",
+            "stata/fereg_p.ado": "2a6c823749a150794b36488c4e8b5d56fc2b7600ecb44b94175729c51e612659",
+            "stata/fereg_parse.ado": "5eb6f18cd85217dad4dca216f00c1033fce0e30a16700d3a22445823fb993554",
+            "stata/fereg_run.ado": "ba7cd1c2c863a195e55c1beb6e6b2d64b392e6032859073d5b3ecde9936ec7ca"
+          }
+        },
+        "source_sha": "96f19624c52fbf139a8c2a6b83734cfd6bf93099"
+      }
+    },
+    "tooling_identity": {
+      "bench/run.py": "695d31496b0a5126e23efc843165a7c0061d669ff09f7a067338c0b60f080b15",
+      "bench/generate.py": "96f1acd83d0227bd475e590d0903e0bd1793b4f1229d60dbb549d3b1b048691b",
+      "bench/compare.py": "c7b5ad63a22ccfa2f66544fbbc08d3fc4a67c6a3b78bb1630fc1ab2e49b3c79d",
+      "bench/stata_runner.do": "97bba79ee1cbd052d46ba0fa545e9077b2a03c0fabdd6d9a251ba26ce3145fd3",
+      "references.lock.toml": "b90c83dd767425de67304287aa2ff97c567a45f26b1dcd938dcca2b6af5197e8",
+      "bench/clock.c": "e4aa711868a1bafd0a2b07622fa1193db83c9e7dd8729ce917916efc623ed3f0",
+      "bench/build_clock.py": "7f1d371c244889f1417a3e02551051556f3af051a9e2a86ce76b785017bd0ef1",
+      "manifest": "99098c706617f950937412f7e47d2d07545820cfbd223a1608325cc73b2c4678"
+    },
+    "counts": {
+      "records": 8368,
+      "reference": 344,
+      "warmup": 344,
+      "timed": 7680
+    },
+    "blocks": [
+      {
+        "path": "target/m35-integrated/calibration/calibration-confirmation-fixed_baseline-forward/results.json",
+        "sha256": "0c8979d33de90fcaee58ff5ca625394dc39bc40dfcf5ec0a8a8807a204b4b70c",
+        "records": 1612,
+        "wall_seconds": 886.3112596670107
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-confirmation-fixed_baseline-reverse/results.json",
+        "sha256": "effe2b57bed9479bae7baa248fe18dc4f2823a041e54257320cf04fbd8332f1c",
+        "records": 1612,
+        "wall_seconds": 887.2654061659996
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-confirmation-parent-forward/results.json",
+        "sha256": "33ee1658621c9d718edae0f864b50e433cec9358b2e9a5445a4bb09c7202f524",
+        "records": 1612,
+        "wall_seconds": 896.9281344169867
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-confirmation-parent-reverse/results.json",
+        "sha256": "21151c8362910208ff289712934468e031be634f849ced2f12b52f6e32e38701",
+        "records": 1612,
+        "wall_seconds": 888.2158278749848
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-screening-fixed_baseline-forward/results.json",
+        "sha256": "7e9f8c142a341a9215fb6d922e620f582566cdc0347fe1649dfa331b532e0e94",
+        "records": 480,
+        "wall_seconds": 339.08862837500055
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-screening-fixed_baseline-reverse/results.json",
+        "sha256": "5f9488fc074ab4f557645038b107b1f17d90f8098d71d9fe5983afb6a283c6d0",
+        "records": 480,
+        "wall_seconds": 342.33365683298325
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-screening-parent-forward/results.json",
+        "sha256": "d7e22f64b61aa6ef0fbdb2a2f2c3cc042283478f440bb35d6dac5776856407de",
+        "records": 480,
+        "wall_seconds": 339.2249126659881
+      },
+      {
+        "path": "target/m35-integrated/calibration/calibration-screening-parent-reverse/results.json",
+        "sha256": "b163e94db5e967889251280bc41887f9915da6c1e5c5c8cc3ac8d8c253bea6b9",
+        "records": 480,
+        "wall_seconds": 340.1583775409963
+      }
+    ],
+    "screening_pairs": 8,
+    "confirmation_additional_pairs": {
+      "development": 32,
+      "holdout": 64
+    },
+    "confirmed_workloads": 19,
+    "workload_classes": 24,
+    "maximum_commands": 10496,
+    "prescribed_actual_commands": 8368,
+    "total_wall_seconds": 5629.200847790984,
+    "terminal_analysis_wall_seconds": 213.43034887500107,
+    "raw_passed": false,
+    "effects": {
+      "parent": {
+        "within": 22,
+        "unresolved": 2,
+        "outside": 0
+      },
+      "fixed_baseline": {
+        "within": 23,
+        "unresolved": 1,
+        "outside": 0
+      }
+    },
+    "unresolved": {
+      "parent": [
+        {
+          "cell": "cover-ols-2fe-n100000-k50",
+          "threads": 8,
+          "verdict": "unresolved",
+          "confirmed": true,
+          "orders": [
+            {
+              "verdict": "unresolved",
+              "delta_seconds": 0.0011853333333333438,
+              "allowance_seconds": 0.007317646875000004,
+              "parent_median_interval_seconds": [
+                0.1413958333333334,
+                0.1507552916666667
+              ],
+              "candidate_median_interval_seconds": [
+                0.1414057083333334,
+                0.152021
+              ],
+              "lower_excess_seconds": -0.016887347916666635,
+              "upper_excess_seconds": 0.0035553749999999327,
+              "reverse_upper_excess_seconds": 0.0022792979166666293,
+              "pairs": 40,
+              "established_regression": false
+            },
+            {
+              "verdict": "within",
+              "delta_seconds": -0.0005887083333333543,
+              "allowance_seconds": 0.006990425000000003,
+              "parent_median_interval_seconds": [
+                0.1371090416666667,
+                0.143218375
+              ],
+              "candidate_median_interval_seconds": [
+                0.13750425,
+                0.1413340833333334
+              ],
+              "lower_excess_seconds": -0.012875043750000016,
+              "upper_excess_seconds": -0.0026304104166666566,
+              "reverse_upper_excess_seconds": -0.0011610874999999857,
+              "pairs": 40,
+              "established_regression": false
+            }
+          ]
+        },
+        {
+          "cell": "development-ols-3fe-none-robust",
+          "threads": 16,
+          "verdict": "unresolved",
+          "confirmed": true,
+          "orders": [
+            {
+              "verdict": "within",
+              "delta_seconds": 0.00037816666666659615,
+              "allowance_seconds": 0.00421978854166667,
+              "parent_median_interval_seconds": [
+                0.0830057916666667,
+                0.08633575
+              ],
+              "candidate_median_interval_seconds": [
+                0.0833161666666667,
+                0.08668433333333331
+              ],
+              "lower_excess_seconds": -0.007336370833333298,
+              "upper_excess_seconds": -0.00047174791666673103,
+              "reverse_upper_excess_seconds": -0.001146225000000038,
+              "pairs": 40,
+              "established_regression": false
+            },
+            {
+              "verdict": "unresolved",
+              "delta_seconds": 0.0012689583333333476,
+              "allowance_seconds": 0.004167525,
+              "parent_median_interval_seconds": [
+                0.0814611666666667,
+                0.0871429583333334
+              ],
+              "candidate_median_interval_seconds": [
+                0.0825830416666667,
+                0.0864471666666667
+              ],
+              "lower_excess_seconds": -0.008917064583333361,
+              "upper_excess_seconds": 0.0009129416666666694,
+              "reverse_upper_excess_seconds": 0.0004307645833333557,
+              "pairs": 40,
+              "established_regression": false
+            }
+          ]
+        }
+      ],
+      "fixed_baseline": [
+        {
+          "cell": "development-ols-3fe-none-robust",
+          "threads": 16,
+          "verdict": "unresolved",
+          "confirmed": true,
+          "orders": [
+            {
+              "verdict": "unresolved",
+              "delta_seconds": 0.002273374999999994,
+              "allowance_seconds": 0.004161516666666668,
+              "parent_median_interval_seconds": [
+                0.08163820833333339,
+                0.0842883333333334
+              ],
+              "candidate_median_interval_seconds": [
+                0.0833945,
+                0.08637545833333331
+              ],
+              "lower_excess_seconds": -0.005108250000000069,
+              "upper_excess_seconds": 0.000655339583333245,
+              "reverse_upper_excess_seconds": -0.003275891666666601,
+              "pairs": 40,
+              "established_regression": false
+            },
+            {
+              "verdict": "unresolved",
+              "delta_seconds": 0.0003275625000000171,
+              "allowance_seconds": 0.004227864583333333,
+              "parent_median_interval_seconds": [
+                0.0819943333333334,
+                0.086794625
+              ],
+              "candidate_median_interval_seconds": [
+                0.0822429166666667,
+                0.0880022083333334
+              ],
+              "lower_excess_seconds": -0.008891439583333306,
+              "upper_excess_seconds": 0.0019081583333333254,
+              "reverse_upper_excess_seconds": 0.0004395624999999721,
+              "pairs": 40,
+              "established_regression": false
+            }
+          ]
+        }
+      ]
+    },
+    "allowance": "max(5%,1ms), unchanged",
+    "interpretation": "All role artifacts identical; unresolved comparison is measurement uncertainty, not a candidate-versus-parent regression. Fixed-baseline label here is an identical-binary calibration role, not an actual M26 comparison."
+  },
+  "stationarity": {
+    "diagnostics_path": "target/m35-integrated/calibration/retained-diagnostics.json",
+    "sha256": "969815d079da48f40c840497af49467f3fd0d71d4a3140853c71f2828f7b3318",
+    "confirmation_series": 152,
+    "established_confirmation_half_drift": [],
+    "all_series_lag_one_range": [
+      -0.8354272718552213,
+      0.7774952358331798
+    ],
+    "interpretation": "Null drift does not prove independence or universal stationarity. Stage/order/worker chronology and dependence retained; nominal order-statistic coverage remains conditional on the declared independent stationary model."
+  },
+  "native_diagnostic": {
+    "scope": "Diagnostic phase traces only; no timing acceptance or quiet-period claim",
+    "commands": 32,
+    "wall_seconds": 10.418094167020172,
+    "plan_sha256": "6df0ec82a5a579e2b3b7036a6bb3c1cd59814c86fec40bb0eb860fb13cb5a487",
+    "results_sha256": "29a1bacf362c017c545c5955b6faa3b8be1ffaec2ecf63dfc45fd90188151886",
+    "cells": {
+      "cover-ols-2fe-n100000-k50": {
+        "commands": 16,
+        "all_command_and_reference_accuracy_passed": true,
+        "unique_discrete_work_signatures": 1,
+        "discrete_work_signature": [
+          [
+            "ols_prepare_moments",
+            []
+          ],
+          [
+            "stage_plan",
+            [
+              [
+                "stage",
+                "two_fe_recurrence"
+              ],
+              [
+                "budget",
+                "8"
+              ],
+              [
+                "lane_limit",
+                "1"
+              ],
+              [
+                "independent_items",
+                "158"
+              ]
+            ]
+          ],
+          [
+            "schur",
+            [
+              [
+                "iterations",
+                "2"
+              ],
+              [
+                "passed",
+                "true"
+              ]
+            ]
+          ],
+          [
+            "stage_plan",
+            [
+              [
+                "stage",
+                "two_fe_recurrence"
+              ],
+              [
+                "budget",
+                "8"
+              ],
+              [
+                "lane_limit",
+                "1"
+              ],
+              [
+                "independent_items",
+                "158"
+              ]
+            ]
+          ],
+          [
+            "schur",
+            [
+              [
+                "iterations",
+                "1"
+              ],
+              [
+                "passed",
+                "true"
+              ]
+            ]
+          ],
+          [
+            "fit",
+            []
+          ],
+          [
+            "score_design",
+            [
+              [
+                "strided",
+                "1"
+              ],
+              [
+                "reabsorbed",
+                "0"
+              ]
+            ]
+          ],
+          [
+            "robust",
+            []
+          ],
+          [
+            "robust_plugin",
+            []
+          ]
+        ],
+        "phases": {
+          "metadata.seconds": {
+            "median_ms": 147.58156250000005,
+            "min_ms": 137.8010833333334,
+            "max_ms": 161.74025,
+            "standard_deviation_ms": 7.639765714877109,
+            "native_correlation": 0.9074419795220515
+          },
+          "metadata.input_seconds": {
+            "median_ms": 24.251749999999998,
+            "min_ms": 22.960500000000003,
+            "max_ms": 25.495874999999998,
+            "standard_deviation_ms": 0.6757599896438449,
+            "native_correlation": -0.13665410837328415
+          },
+          "metadata.native_seconds": {
+            "median_ms": 96.66250000000001,
+            "min_ms": 89.44054200000001,
+            "max_ms": 113.12741699999998,
+            "standard_deviation_ms": 7.673816584204508,
+            "native_correlation": 1.0
+          },
+          "metadata.total_seconds": {
+            "median_ms": 121.98262500000001,
+            "min_ms": 114.14745900000001,
+            "max_ms": 138.095375,
+            "standard_deviation_ms": 7.596364225245674,
+            "native_correlation": 0.9956757806666277
+          },
+          "ols_prepare_moments.0.seconds": {
+            "median_ms": 6.0469375,
+            "min_ms": 5.283582999999999,
+            "max_ms": 6.945166,
+            "standard_deviation_ms": 0.4084906935461934,
+            "native_correlation": 0.2064318525799901
+          },
+          "schur.0.init": {
+            "median_ms": 1.5904585,
+            "min_ms": 1.3302500000000002,
+            "max_ms": 15.634959,
+            "standard_deviation_ms": 3.51023524286277,
+            "native_correlation": 0.5201786934089695
+          },
+          "schur.0.operator": {
+            "median_ms": 1.4541875,
+            "min_ms": 1.281,
+            "max_ms": 3.23275,
+            "standard_deviation_ms": 0.460535866691107,
+            "native_correlation": -0.25510677447020824
+          },
+          "schur.0.recurrence": {
+            "median_ms": 0.0988755,
+            "min_ms": 0.095458,
+            "max_ms": 0.1285,
+            "standard_deviation_ms": 0.010773987392287345,
+            "native_correlation": -0.10860454160895103
+          },
+          "schur.0.reconstruct": {
+            "median_ms": 1.272854,
+            "min_ms": 1.0523749999999998,
+            "max_ms": 4.311958000000001,
+            "standard_deviation_ms": 0.771930215296737,
+            "native_correlation": 0.06686658601835803
+          },
+          "schur.0.certificate": {
+            "median_ms": 10.5245,
+            "min_ms": 9.169833,
+            "max_ms": 16.134584,
+            "standard_deviation_ms": 1.5924276480028106,
+            "native_correlation": 0.5354548009849852
+          },
+          "schur.1.init": {
+            "median_ms": 0.5259794999999999,
+            "min_ms": 0.47575,
+            "max_ms": 0.6654159999999999,
+            "standard_deviation_ms": 0.060800661909637135,
+            "native_correlation": 0.018463009187769667
+          },
+          "schur.1.operator": {
+            "median_ms": 0.2617915,
+            "min_ms": 0.19333299999999998,
+            "max_ms": 0.303958,
+            "standard_deviation_ms": 0.033983441299587365,
+            "native_correlation": -0.07743184284486584
+          },
+          "schur.1.recurrence": {
+            "median_ms": 0.0049785,
+            "min_ms": 0.0043749999999999995,
+            "max_ms": 0.017084000000000002,
+            "standard_deviation_ms": 0.004242069744436867,
+            "native_correlation": -0.2468330934635125
+          },
+          "schur.1.reconstruct": {
+            "median_ms": 0.19816699999999998,
+            "min_ms": 0.149417,
+            "max_ms": 0.251417,
+            "standard_deviation_ms": 0.024045786266689913,
+            "native_correlation": 0.43844449190962576
+          },
+          "schur.1.certificate": {
+            "median_ms": 0.7358334999999999,
+            "min_ms": 0.661625,
+            "max_ms": 6.450375,
+            "standard_deviation_ms": 1.4219273267599495,
+            "native_correlation": 0.4095201989413454
+          },
+          "fit.0.projection": {
+            "median_ms": 31.772062000000005,
+            "min_ms": 28.329459,
+            "max_ms": 46.481958,
+            "standard_deviation_ms": 5.368995862590234,
+            "native_correlation": 0.7501910671369235
+          },
+          "fit.0.finite_solve": {
+            "median_ms": 16.796333,
+            "min_ms": 16.329957999999998,
+            "max_ms": 20.151,
+            "standard_deviation_ms": 1.1498808669471734,
+            "native_correlation": 0.46806457206193647
+          },
+          "fit.0.bread_raw_residual": {
+            "median_ms": 2.7341040000000003,
+            "min_ms": 2.451,
+            "max_ms": 3.032542,
+            "standard_deviation_ms": 0.16456284049544465,
+            "native_correlation": 0.2207032191193213
+          },
+          "fit.0.residual_absorb": {
+            "median_ms": 3.1192505,
+            "min_ms": 2.905958,
+            "max_ms": 9.279499999999999,
+            "standard_deviation_ms": 2.0264816335039315,
+            "native_correlation": 0.4727292212116342
+          },
+          "fit.0.finalize": {
+            "median_ms": 0.5934165,
+            "min_ms": 0.49224999999999997,
+            "max_ms": 0.765583,
+            "standard_deviation_ms": 0.08517188224281141,
+            "native_correlation": -0.2758962267441519
+          },
+          "fit.0.total": {
+            "median_ms": 55.165604,
+            "min_ms": 51.706084,
+            "max_ms": 70.196416,
+            "standard_deviation_ms": 5.950035127851172,
+            "native_correlation": 0.930660058187518
+          },
+          "score_design.0.setup": {
+            "median_ms": 0.0012079999999999999,
+            "min_ms": 0.001,
+            "max_ms": 0.0014169999999999999,
+            "standard_deviation_ms": 0.00011595845161091105,
+            "native_correlation": 0.33488992117536814
+          },
+          "score_design.0.storage": {
+            "median_ms": 0.000125,
+            "min_ms": 4.2e-05,
+            "max_ms": 0.000417,
+            "standard_deviation_ms": 8.471715194299991e-05,
+            "native_correlation": 0.16350454629996236
+          },
+          "score_design.0.certificate": {
+            "median_ms": 15.43625,
+            "min_ms": 13.641708000000001,
+            "max_ms": 19.831125,
+            "standard_deviation_ms": 1.7926013477656761,
+            "native_correlation": 0.5482009477816661
+          },
+          "score_design.0.finalize": {
+            "median_ms": 0.00027100000000000003,
+            "min_ms": 4.2e-05,
+            "max_ms": 0.00045900000000000004,
+            "standard_deviation_ms": 0.00012825103963191357,
+            "native_correlation": 0.12257721341348565
+          },
+          "score_design.0.total": {
+            "median_ms": 15.438062,
+            "min_ms": 13.643334,
+            "max_ms": 19.833167,
+            "standard_deviation_ms": 1.7927151593245076,
+            "native_correlation": 0.5481983063427048
+          },
+          "robust.0.setup_statistics": {
+            "median_ms": 1.178271,
+            "min_ms": 1.1594579999999999,
+            "max_ms": 1.2007910000000002,
+            "standard_deviation_ms": 0.009773557255634554,
+            "native_correlation": -0.45345770852185757
+          },
+          "robust.0.score_design": {
+            "median_ms": 15.951416499999999,
+            "min_ms": 14.166125,
+            "max_ms": 20.321915999999998,
+            "standard_deviation_ms": 1.792093546115343,
+            "native_correlation": 0.5522151063595341
+          },
+          "robust.0.covariance": {
+            "median_ms": 12.658249999999999,
+            "min_ms": 11.336875,
+            "max_ms": 16.436290999999997,
+            "standard_deviation_ms": 1.306645225576597,
+            "native_correlation": 0.37758165638568086
+          },
+          "robust.0.covariance_certificate": {
+            "median_ms": 0.8767705,
+            "min_ms": 0.876208,
+            "max_ms": 0.899625,
+            "standard_deviation_ms": 0.006117376921524463,
+            "native_correlation": -0.16694938122086328
+          },
+          "robust.0.psd": {
+            "median_ms": 0.027271499999999997,
+            "min_ms": 0.026708,
+            "max_ms": 0.028625,
+            "standard_deviation_ms": 0.000488488514876928,
+            "native_correlation": 0.07406165920653893
+          },
+          "robust.0.wald": {
+            "median_ms": 0.0309995,
+            "min_ms": 0.029584,
+            "max_ms": 0.033958999999999996,
+            "standard_deviation_ms": 0.0013668838526614705,
+            "native_correlation": -0.22615813022458753
+          },
+          "robust.0.finalize": {
+            "median_ms": 0.0038334999999999997,
+            "min_ms": 0.003,
+            "max_ms": 0.01975,
+            "standard_deviation_ms": 0.004207059868047201,
+            "native_correlation": -0.00788713247905951
+          },
+          "robust.0.total": {
+            "median_ms": 30.4562705,
+            "min_ms": 28.558208,
+            "max_ms": 37.287667,
+            "standard_deviation_ms": 2.700830722340121,
+            "native_correlation": 0.5469308260648398
+          },
+          "robust_plugin.0.prepare": {
+            "median_ms": 6.1875625,
+            "min_ms": 5.457584,
+            "max_ms": 7.0995420000000005,
+            "standard_deviation_ms": 0.4035245253099866,
+            "native_correlation": 0.2142782519998065
+          },
+          "robust_plugin.0.inference": {
+            "median_ms": 89.72704200000001,
+            "min_ms": 83.052625,
+            "max_ms": 106.339792,
+            "standard_deviation_ms": 7.585860559076964,
+            "native_correlation": 0.9985629722015552
+          },
+          "robust_plugin.0.outputs": {
+            "median_ms": 0.022104000000000002,
+            "min_ms": 0.013333,
+            "max_ms": 0.036292,
+            "standard_deviation_ms": 0.006914506181451668,
+            "native_correlation": 0.18469034377686258
+          },
+          "robust_plugin.0.shadow": {
+            "median_ms": 0.059437500000000004,
+            "min_ms": 0.055167,
+            "max_ms": 0.06929099999999999,
+            "standard_deviation_ms": 0.0035583269798928445,
+            "native_correlation": 0.16221025320097168
+          },
+          "robust_plugin.0.prestore_total": {
+            "median_ms": 96.16624999999999,
+            "min_ms": 88.98970800000001,
+            "max_ms": 112.655333,
+            "standard_deviation_ms": 7.663941247217637,
+            "native_correlation": 0.9999140204636429
+          }
+        }
+      },
+      "development-ols-3fe-none-robust": {
+        "commands": 16,
+        "all_command_and_reference_accuracy_passed": true,
+        "unique_discrete_work_signatures": 1,
+        "discrete_work_signature": [
+          [
+            "ols_prepare_moments",
+            []
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "0"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "1"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "2"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "3"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "4"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "5"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "6"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "7"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "8"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "9"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "9"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "1"
+              ]
+            ]
+          ],
+          [
+            "lsmr_rhs",
+            [
+              [
+                "rhs",
+                "0"
+              ],
+              [
+                "converged",
+                "true"
+              ],
+              [
+                "iterations",
+                "1"
+              ]
+            ]
+          ],
+          [
+            "fit",
+            []
+          ],
+          [
+            "score_design",
+            [
+              [
+                "strided",
+                "0"
+              ],
+              [
+                "reabsorbed",
+                "0"
+              ]
+            ]
+          ],
+          [
+            "robust",
+            []
+          ],
+          [
+            "robust_plugin",
+            []
+          ]
+        ],
+        "phases": {
+          "metadata.seconds": {
+            "median_ms": 84.55350000000006,
+            "min_ms": 81.3465,
+            "max_ms": 91.0766666666667,
+            "standard_deviation_ms": 3.11425117469699,
+            "native_correlation": 0.9455197397568957
+          },
+          "metadata.input_seconds": {
+            "median_ms": 5.4919795,
+            "min_ms": 5.3017080000000005,
+            "max_ms": 8.746167000000002,
+            "standard_deviation_ms": 0.8233167401139712,
+            "native_correlation": -0.12381307842578815
+          },
+          "metadata.native_seconds": {
+            "median_ms": 67.4285415,
+            "min_ms": 64.109416,
+            "max_ms": 74.02145800000001,
+            "standard_deviation_ms": 3.0960964630754226,
+            "native_correlation": 1.0
+          },
+          "metadata.total_seconds": {
+            "median_ms": 73.2190625,
+            "min_ms": 69.692375,
+            "max_ms": 79.669958,
+            "standard_deviation_ms": 3.1052699152496013,
+            "native_correlation": 0.9649338451107445
+          },
+          "ols_prepare_moments.0.seconds": {
+            "median_ms": 4.844646,
+            "min_ms": 3.891375,
+            "max_ms": 6.373209,
+            "standard_deviation_ms": 0.6868396411980384,
+            "native_correlation": 0.40558130497113026
+          },
+          "fit.0.projection": {
+            "median_ms": 32.023166499999995,
+            "min_ms": 29.98275,
+            "max_ms": 38.753084,
+            "standard_deviation_ms": 2.7642424233879703,
+            "native_correlation": 0.9468786100559907
+          },
+          "fit.0.finite_solve": {
+            "median_ms": 5.4147505,
+            "min_ms": 4.587334,
+            "max_ms": 6.035666,
+            "standard_deviation_ms": 0.47393787355693223,
+            "native_correlation": 0.1259887770143681
+          },
+          "fit.0.bread_raw_residual": {
+            "median_ms": 3.903,
+            "min_ms": 3.799333,
+            "max_ms": 3.9379999999999997,
+            "standard_deviation_ms": 0.039051872104879065,
+            "native_correlation": -0.29858145733589814
+          },
+          "fit.0.residual_absorb": {
+            "median_ms": 11.1633125,
+            "min_ms": 10.069125,
+            "max_ms": 13.077542,
+            "standard_deviation_ms": 0.7487157557613792,
+            "native_correlation": 0.30156489634403577
+          },
+          "fit.0.finalize": {
+            "median_ms": 0.680625,
+            "min_ms": 0.6130000000000001,
+            "max_ms": 0.779375,
+            "standard_deviation_ms": 0.043373655076507374,
+            "native_correlation": -0.09693134024186971
+          },
+          "fit.0.total": {
+            "median_ms": 53.901833499999995,
+            "min_ms": 50.452625,
+            "max_ms": 59.933542,
+            "standard_deviation_ms": 2.941864485775718,
+            "native_correlation": 0.9813557696999432
+          },
+          "score_design.0.setup": {
+            "median_ms": 0.000521,
+            "min_ms": 0.000375,
+            "max_ms": 0.000875,
+            "standard_deviation_ms": 0.00015956085568417672,
+            "native_correlation": 0.05646965143800879
+          },
+          "score_design.0.storage": {
+            "median_ms": 0.00025,
+            "min_ms": 0.0,
+            "max_ms": 0.000625,
+            "standard_deviation_ms": 0.00015848752579724796,
+            "native_correlation": 0.038124952467096976
+          },
+          "score_design.0.certificate": {
+            "median_ms": 0.6422705000000001,
+            "min_ms": 0.5671660000000001,
+            "max_ms": 0.8760410000000001,
+            "standard_deviation_ms": 0.10611700605540329,
+            "native_correlation": 0.078007124614266
+          },
+          "score_design.0.finalize": {
+            "median_ms": 0.00025,
+            "min_ms": 0.0,
+            "max_ms": 0.000916,
+            "standard_deviation_ms": 0.0002734251192435204,
+            "native_correlation": 0.13021405803614297
+          },
+          "score_design.0.total": {
+            "median_ms": 0.643542,
+            "min_ms": 0.568334,
+            "max_ms": 0.877084,
+            "standard_deviation_ms": 0.10594375160383851,
+            "native_correlation": 0.07886847127772251
+          },
+          "robust.0.setup_statistics": {
+            "median_ms": 1.1772915,
+            "min_ms": 1.140417,
+            "max_ms": 1.179542,
+            "standard_deviation_ms": 0.010964136775376662,
+            "native_correlation": -0.094275994148782
+          },
+          "robust.0.score_design": {
+            "median_ms": 1.1747715,
+            "min_ms": 1.000166,
+            "max_ms": 1.350417,
+            "standard_deviation_ms": 0.1028615182163014,
+            "native_correlation": 0.10046961403506396
+          },
+          "robust.0.covariance": {
+            "median_ms": 1.4124580000000002,
+            "min_ms": 1.2043329999999999,
+            "max_ms": 1.5872080000000002,
+            "standard_deviation_ms": 0.13250692652813792,
+            "native_correlation": -0.5491422405825711
+          },
+          "robust.0.covariance_certificate": {
+            "median_ms": 0.0048330000000000005,
+            "min_ms": 0.004541,
+            "max_ms": 0.005667,
+            "standard_deviation_ms": 0.0002631290874583551,
+            "native_correlation": -0.08505177845637567
+          },
+          "robust.0.psd": {
+            "median_ms": 0.0009585,
+            "min_ms": 0.000791,
+            "max_ms": 0.001166,
+            "standard_deviation_ms": 0.00010087682257750457,
+            "native_correlation": 0.1579234854454628
+          },
+          "robust.0.wald": {
+            "median_ms": 0.0022500000000000003,
+            "min_ms": 0.001834,
+            "max_ms": 0.002792,
+            "standard_deviation_ms": 0.00027135364379348223,
+            "native_correlation": -0.05970492781843097
+          },
+          "robust.0.finalize": {
+            "median_ms": 0.002875,
+            "min_ms": 0.0022919999999999998,
+            "max_ms": 0.0037500000000000003,
+            "standard_deviation_ms": 0.0004321652027870824,
+            "native_correlation": 0.3329788441707854
+          },
+          "robust.0.total": {
+            "median_ms": 3.7661455,
+            "min_ms": 3.440375,
+            "max_ms": 3.9994999999999994,
+            "standard_deviation_ms": 0.1503441800968558,
+            "native_correlation": -0.4213975634367086
+          },
+          "robust_plugin.0.prepare": {
+            "median_ms": 4.970645500000001,
+            "min_ms": 4.014458,
+            "max_ms": 6.447666,
+            "standard_deviation_ms": 0.6780137278376172,
+            "native_correlation": 0.4110192115562762
+          },
+          "robust_plugin.0.inference": {
+            "median_ms": 61.8691245,
+            "min_ms": 58.645625,
+            "max_ms": 67.86141599999999,
+            "standard_deviation_ms": 2.8822607932565933,
+            "native_correlation": 0.977037732716044
+          },
+          "robust_plugin.0.outputs": {
+            "median_ms": 0.017708500000000002,
+            "min_ms": 0.010375,
+            "max_ms": 0.027667,
+            "standard_deviation_ms": 0.005706232637797609,
+            "native_correlation": -0.0840045137596531
+          },
+          "robust_plugin.0.shadow": {
+            "median_ms": 0.009625,
+            "min_ms": 0.007833,
+            "max_ms": 0.01275,
+            "standard_deviation_ms": 0.0013953032645271062,
+            "native_correlation": 0.20121782271662453
+          },
+          "robust_plugin.0.prestore_total": {
+            "median_ms": 66.94247950000002,
+            "min_ms": 63.62862499999999,
+            "max_ms": 73.534083,
+            "standard_deviation_ms": 3.0945729074931165,
+            "native_correlation": 0.9999928871050181
+          }
+        }
+      }
+    },
+    "interpretation": "Sixteen traced commands per workload localize observed variation but cannot identify the cause, establish stationarity or reclassify the frozen calibration. Nested phase times overlap and correlated stage intervals are not causal attribution."
+  },
+  "review": {
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "task": "m35_calibration_terminal_astra",
+    "terminal_decision": "Correct blocked disposition. Independently verified freeze/role identities, all8result hashes/statuses/orders/counts/scopes, exact19workload union and every final interval/excess bound from saved metadata. All8368complete. No established regression or declared half-drift; nominal inference remains conditional. Review did not repeat coefficient/sample verification or full science.",
+    "phase_followup": "Completed. Independently verified prospective diagnostic plan/helper/results hashes, 32-command bounds/statuses/recorded accuracy, unchanged artifact identities, every retained process.log trace, invariant discrete signatures and all68 phase summaries/correlations. Variation is localized but no cause or specific runtime repair is justified. Recommends one explicitly authorized separately frozen two-class successor with8screen+128additional pairs and a reviewed composite calibration declaration; greater precision does not remedy dependence."
+  },
+  "science": {
+    "receipt": "bench/history/2026-10-06-m35-integrated-scientific-qualification.json",
+    "sha256": "b22f670b9d6609bd5af9b60de0d4aa2fe80c73423a053d17d6b7a64c106b0123",
+    "commands": 6375,
+    "worker_groups": 3000,
+    "passed": true,
+    "scope": "Fresh integrated Mac science and mapped local/transaction/ABI/replay/oracle gates remain bound to unchanged native/source. No rerun due solely to documentation."
+  },
+  "production": {
+    "accepted_M34_core_host_total": 109589,
+    "accepted_M34_minus_M26": -11807,
+    "candidate_core_host_total": 109761,
+    "candidate_core_host_minus_M34": 172,
+    "candidate_core_host_minus_M26": -11635,
+    "new_dependency_production_delta": 262,
+    "combined_candidate_minus_M26": -11373,
+    "new_retirement_credit_this_batch": 0
+  },
+  "coordination": {
+    "quiet_start_utc": "2026-10-07T02:54:05Z",
+    "quiet_precondition": "Existing FEVC qualifier ended, two read-only quiet checks30seconds apart, no active fereg agents/builds/tests. Periodic read-only process checks during timing found only owned calibration.",
+    "window_released": "Launcher/Stata ended, final process check empty, FEVC end notice sent before native diagnostic. Unrelated jobs untouched.",
+    "diagnostic_window": "Not a clean timing window; instrumented phase observations only."
+  },
+  "remaining_gates": [
+    "Successful prospectively authorized measurement calibration/protocol",
+    "Actual integrated comparisons against qualifiedM34 and fixedM26",
+    "Full interaction/holdout timing, predeclared expensive-family gains and worker ladders/adjacent boundaries",
+    "Final Astra extra-high M35 acceptance"
+  ],
+  "next_action": "Decision required on the separately reviewed scoped prospective proposal in bench/history/2026-10-07-m35-scoped-calibration-proposal.json. No tooling policy amendment, calibration repeat or actual acceptance launch yet.",
+  "retry_authority": "Prior10retry authorization applies to infrastructure interruptions only, as preserved in bench/history/2026-10-05-m27-retry-authorization.json; this is complete statistical uncertainty.",
+  "platform": "Mac only; all five GitHub test workflows remain disabled under Johannes override. No new Linux/SCC/Windows or release claim.",
+  "evidence": [
+    {
+      "path": "target/m35-integrated/calibration/calibration-plan.json",
+      "sha256": "fdc6508f7f5987b4b51fe1d62a1f729c205e22b89e3dba9917db3f67400d3706"
+    },
+    {
+      "path": "target/m35-integrated/calibration/freeze.json",
+      "sha256": "7f2fa5cbfee7b44b3f5e41e0aaf0c89fa3e4fe5242b77c0dec43af4ff30f899c"
+    },
+    {
+      "path": "target/m35-integrated/calibration/calibration-screening-verdict.json",
+      "sha256": "4c59e05120bcb1d39ad2c82ac747927bcd2f0c53e3c9fa5fae8a97356592cbeb"
+    },
+    {
+      "path": "target/m35-integrated/calibration/calibration-verdict.json",
+      "sha256": "e174287ad4c2952ee92dbd7dbb652ab42f83a2f1d99e5178ec0cdb1c3f02fcc0"
+    },
+    {
+      "path": "target/m35-integrated/calibration/terminal.json",
+      "sha256": "c18c43192306ee264fdf32d1bf5c8729de6778b6b67f4bff553464bce66e595a"
+    },
+    {
+      "path": "target/m35-integrated/calibration/retained-diagnostics.json",
+      "sha256": "969815d079da48f40c840497af49467f3fd0d71d4a3140853c71f2828f7b3318"
+    },
+    {
+      "path": "target/m35-integrated/run-calibration.py",
+      "sha256": "9e400f196aea5e9082ded2410c224a9d85181ceb762ece720dddede3fc42266c"
+    },
+    {
+      "path": "target/m35-integrated/summarize-measurement.py",
+      "sha256": "24bb4aa20e27be3048486698955211994549a595e947daa97bc889f1d4390886"
+    },
+    {
+      "path": "target/m35-integrated/calibration-run.log",
+      "sha256": "24fa1391ec312936c44b187a90204e1a00fffd18307eba4b0beb108f233b2caa"
+    },
+    {
+      "path": "target/m35-integrated/native-variance-diagnostic/plan.json",
+      "sha256": "6df0ec82a5a579e2b3b7036a6bb3c1cd59814c86fec40bb0eb860fb13cb5a487"
+    },
+    {
+      "path": "target/m35-integrated/native-variance-diagnostic/run.py",
+      "sha256": "817ea27d2b16e200aed001550e6ade7abef9b59cefbd220bc9135bf6eaed31b9"
+    },
+    {
+      "path": "target/m35-integrated/native-variance-diagnostic/results.json",
+      "sha256": "29a1bacf362c017c545c5955b6faa3b8be1ffaec2ecf63dfc45fd90188151886"
+    },
+    {
+      "path": "target/m35-integrated/native-variance-diagnostic/summary.json",
+      "sha256": "3da2de15d3c6dff7c452f2c2013624154604324b699e04e0b990ef98849027cc"
+    },
+    {
+      "path": "target/m35-integrated/native-variance-diagnostic/run.log",
+      "sha256": "ac8721eca9eef100f3dfd4b930e2f392926b97639d4c74fa2e09bf56fea2d4e9"
+    }
+  ],
+  "proposal": "bench/history/2026-10-07-m35-scoped-calibration-proposal.json",
+  "local_documentation_checks": {
+    "json_size_no_personal_paths": "PASS",
+    "retained_evidence_hashes_verified": 22,
+    "original_science_receipt_hash": "PASS",
+    "ledger_local_links_verified": 63,
+    "governance": "PASS285lines/max200characters; initial212-character new log failure corrected before commit",
+    "git_diff_check": "PASS",
+    "frozen_source_and_native_frontend": "PASS187unchanged runtime source/build-manifest files; existing scientific gates reused without rerun"
+  }
+}
