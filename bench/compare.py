@@ -132,6 +132,8 @@ class ReferenceCache:
             size += value.storage_bytes()
         elif isinstance(value, dict):
             size += sum(sys.getsizeof(k) + sys.getsizeof(v) for k,v in value.items())
+        elif hasattr(value, 'memory_usage'):
+            size += int(value.memory_usage(deep=True).sum()) + int(value.columns.memory_usage(deep=True))
         else:
             size += sum(sys.getsizeof(v) for v in value)
         if size + sys.getsizeof(OrderedDict()) <= self.maximum_bytes:
@@ -172,6 +174,61 @@ def accuracy(record, reference, policy, cache=None):
         return ("pass" if maximum <= 1 else "disagreement"), maximum
     except (OSError, ValueError, KeyError):
         return "unavailable", None
+
+
+def scientific_accuracy(record, reference, cache):
+    """Reuse M35's scientific tolerances for VCE, scalars and saved outputs.
+
+    Named FE coordinates can be nonunique across algorithms. Their identified
+    sum, published predictions and the exact sample/layout remain targets.
+    """
+    import numpy as np
+    import pandas as pd
+    scripts = str(Path(__file__).resolve().parents[1] / 'scripts')
+    if scripts not in sys.path: sys.path.insert(0, scripts)
+    from fereg_f0_stata_capture import stata_hex_to_float
+    def numbers(directory, filename):
+        return {k:stata_hex_to_float(v) for k,v in (line.split() for line in (Path(directory)/filename).read_text().splitlines())}
+    def close(a, b, rtol):
+        a, b = np.asarray(a), np.asarray(b)
+        ma, mb = np.abs(a) >= 8e307, np.abs(b) >= 8e307
+        if (a.shape != b.shape or np.any(np.isinf(a)) or np.any(np.isinf(b)) or np.any(ma != mb)
+                or np.any(np.isnan(a) != np.isnan(b)) or np.any(a[ma] != b[mb])):
+            return False
+        mask = ~(ma | np.isnan(a))
+        return bool(np.all(np.abs(a[mask]-b[mask]) <= 1e-10 + rtol*np.maximum(np.abs(a[mask]),np.abs(b[mask]))))
+    discrete = {'N','N_full','N_drop','rank','df_m','df_r','df_a','num_singletons'}
+    for filename in ['science.hex','scalars.hex']:
+        a = numbers(record['directory'], filename)
+        b = cache.read(reference['directory'], filename, lambda p:numbers(p, filename))
+        if a.keys() != b.keys() or not a: return False
+        if filename == 'science.hex':
+            def omitted(values):
+                slots = set()
+                for key, value in values.items():
+                    if not key.startswith('b.') or value != 0: continue
+                    slot = key.split('.')[1]
+                    covariance = [k for k in values if k.startswith('V.') and slot in k.split('.')[1:]]
+                    if covariance and all(values[k] == 0 for k in covariance): slots.add(slot)
+                return slots
+            if omitted(a) != omitted(b): return False
+        for key in a:
+            if key in discrete:
+                if a[key] != b[key]: return False
+            elif not close([a[key]], [b[key]], 1e-6 if key.startswith('V.') else 1e-7):
+                return False
+    directory, target = Path(record['directory']), Path(reference['directory'])
+    if (directory/'outputs.csv').exists() != (target/'outputs.csv').exists(): return False
+    if (directory/'outputs.csv').exists():
+        reader = lambda p:pd.read_csv(Path(p)/'outputs.csv',na_values=['.'],float_precision='round_trip')
+        a, b = reader(directory), cache.read(target, 'outputs.csv', reader)
+        if list(a.columns) != list(b.columns) or a.shape != b.shape: return False
+        if not np.array_equal(a.obs_id, b.obs_id): return False
+        saved = [c for c in a.columns if c.startswith('saved')]
+        retained = [c for c in a.columns if c not in saved]
+        if not close(a[retained].to_numpy(float), b[retained].to_numpy(float), 1e-7): return False
+        if saved and not close(a[saved].sum(axis=1,skipna=False), b[saved].sum(axis=1,skipna=False), 1e-7): return False
+    return True
 
 
 def median_metadata(records, name):
@@ -290,6 +347,8 @@ def validate_measurement_plan(plan):
         raise ValueError('missing bounded wall budget')
     if set(plan.get('artifacts', {})) != {'candidate','parent','fixed_baseline'}:
         raise ValueError('missing predeclared artifacts')
+    if plan.get('scientific_reference'):
+        validate_scientific_reference(plan)
     if plan.get('calibration_waiver'):
         if plan['mode'] != 'acceptance' or plan.get('calibration_sha256'):
             raise ValueError('waived calibration cannot be relabeled as passed')
@@ -367,6 +426,37 @@ def read_bound_json(binding):
     return json.loads(raw)
 
 
+def validate_scientific_reference(plan):
+    reference = plan['scientific_reference']
+    if plan.get('milestone') != 'M35' or plan.get('mode') != 'acceptance' or reference.get('role') != 'candidate':
+        raise ValueError('common scientific reference outside M35 candidate scope')
+    for key in ['science_receipt','coverage_receipt']:
+        path = Path(reference[key]['path']).resolve()
+        if not path.is_relative_to(ROOT/'bench/history'):
+            raise ValueError('common reference needs checked-in scientific receipts')
+    science = read_bound_json(reference['science_receipt'])
+    coverage = read_bound_json(reference['coverage_receipt'])
+    artifact = plan['artifacts']['candidate']
+    if (science.get('milestone') != 'M35.6' or science.get('combined_counts', {}).get('failures') != 0
+            or science.get('candidate_native_sha256') != artifact['native_identity']['plugin_sha256']
+            or science.get('source', {}).get('commit') != artifact['source_sha']
+            or not science.get('independent_science')):
+        raise ValueError('common reference lacks matching independent scientific qualification')
+    declaration = next(b for b in science['evidence'] if b['path'].endswith('reproducible-science-declaration.json'))
+    if read_bound_json(declaration)['artifacts']['candidate'] != artifact:
+        raise ValueError('common reference scientific frontend/source identity changed')
+    if (coverage.get('artifact') != artifact or coverage.get('science_receipt') != reference['science_receipt']
+            or coverage.get('manifest_sha256') != plan['manifest_sha256'] or coverage.get('coverage_passed') is not True
+            or set(coverage['datasets']) != {c for c,t,a in plan['scope']}):
+        raise ValueError('common reference model/dataset coverage changed')
+    settings = coverage.get('reference_settings', {})
+    required = {'model','k','effects','weights','vce','memory','output_mode','slopes','finite_factor',
+                'deterministic','solver','threads','tolerance','engine','arm'}
+    if set(settings) != set(coverage['datasets']) or any(set(v) != required for v in settings.values()):
+        raise ValueError('common reference scientific configuration incomplete')
+    return coverage
+
+
 def inherited_screening(paths, campaigns, plan):
     """Validate original M35 screens, then bridge a reference-only successor.
 
@@ -382,6 +472,17 @@ def inherited_screening(paths, campaigns, plan):
         raise ValueError('unlisted inherited screening pair')
     old = read_bound_json(binding['previous_plan'])
     ignored = {'inherited_screening', 'manifest_sha256', 'tooling_identity', 'status'}
+    common = bool(plan.get('scientific_reference'))
+    if common:
+        ignored |= {'scientific_reference','command_budget'}
+        classes = len({c for c,t,a in plan['scope']})
+        budget = old['command_budget']
+        expected_budget = {**budget, 'inherited_screening_per_block':budget['screening_per_block'],
+            'screening_per_block':budget['screening_per_block']-classes,
+            'confirmation_per_block_max':budget['confirmation_per_block_max']-classes,
+            'total_max':budget['total_max']-6*classes}
+        if plan['command_budget'] != expected_budget:
+            raise ValueError('common reference changed timed command budgets')
     if (old.get('inherited_screening') or old.get('milestone') != 'M35' or old.get('mode') != 'acceptance'
             or {k:v for k,v in old.items() if k not in ignored} != {k:v for k,v in plan.items() if k not in ignored}):
         raise ValueError('inherited timing declaration changed')
@@ -392,12 +493,15 @@ def inherited_screening(paths, campaigns, plan):
     qualified = read_bound_json(binding['reference_qualification'])
     suite = read_bound_json(qualified['manifest'])
     expected_suite = {**old_suite, 'protocol': {**old_suite['protocol'], 'reference_solver_policy': 'ols-general-slopes-lsmr-v1'}}
+    if common:
+        expected_suite['protocol']['reference_artifact'] = 'candidate'
     if (suite != expected_suite or binding['previous_manifest']['sha256'] != old['manifest_sha256']
             or qualified['manifest']['sha256'] != plan['manifest_sha256']):
         raise ValueError('successor changed more than strict reference construction')
     tools, old_tools = plan['tooling_identity'], old['tooling_identity']
     allowed = {'bench/run.py', 'bench/compare.py', 'manifest'}
-    if (set(tools) != set(old_tools) or any(tools[k] != old_tools[k] for k in tools.keys() - allowed)
+    extra = {'scripts/fereg_f0_stata_capture.py'} if common else set()
+    if (set(tools) != set(old_tools) | extra or any(tools[k] != old_tools[k] for k in old_tools.keys() - allowed)
             or tools['manifest'] != plan['manifest_sha256']
             or qualified.get('tooling_identity') != tools):
         raise ValueError('undeclared inherited tooling change')
@@ -408,19 +512,25 @@ def inherited_screening(paths, campaigns, plan):
     if qualified.get('artifacts') != old['artifacts'] or qualified.get('datasets') != original['datasets']:
         raise ValueError('replacement reference scientific inputs changed')
     from run import selected_cells, read_metadata
+    from run import command_solver
+    from types import SimpleNamespace
     cells = {c['id']:c for c in selected_cells(suite, campaigns[0]['tier'])
-             if c['model'] == 'ols' and c['effects'] >= 3 and c.get('slopes', False) and c.get('solver', 'auto') == 'auto'}
+             if common or (c['model'] == 'ols' and c['effects'] >= 3 and c.get('slopes', False) and c.get('solver', 'auto') == 'auto')}
     refs = {(r['cell'], r['artifact_role']):r for r in qualified['records']}
-    if len(refs) != len(qualified['records']) or set(refs) != {(c,role) for c in cells for role in ['parent','candidate']}:
+    roles = ['candidate'] if common else ['parent','candidate']
+    if len(refs) != len(qualified['records']) or set(refs) != {(c,role) for c in cells for role in roles}:
         raise ValueError('replacement reference scope missing or duplicated')
     witness = read_bound_json(qualified['independent_witness'])
     if (witness.get('passed') is not True or any(c.get('passed') is not True for c in witness['captures'])
-            or {c['path'] for c in witness['captures']} != {r['directory'] for r in refs.values()}):
+            or (not common and {c['path'] for c in witness['captures']} != {r['directory'] for r in refs.values()})):
         raise ValueError('replacement references lack independent scientific witness')
+    if common and validate_scientific_reference(plan)['datasets'] != original['datasets']:
+        raise ValueError('inherited datasets outside independent scientific scope')
     cache = ReferenceCache()
     for key, reference in refs.items():
         native = old['artifacts'][key[1]]['native_identity']
-        if (not reference.get('reference') or reference.get('threads') != 1 or reference.get('requested_solver') != 'lsmr'
+        solver = command_solver(SimpleNamespace(solver='auto'), suite, cells[key[0]], True) if common else 'lsmr'
+        if (not reference.get('reference') or reference.get('threads') != 1 or reference.get('requested_solver') != solver
                 or reference.get('status') != 'ok' or any(reference.get(k) != native[k] for k in ['plugin_sha256','frontend_sha256'])):
             raise ValueError('replacement reference configuration/artifact changed')
         files = reference['capture_files']
@@ -434,7 +544,7 @@ def inherited_screening(paths, campaigns, plan):
         metadata = read_metadata(directory / 'metadata.tsv')
         if metadata.get('complete') != '1' or metadata.get('rc') != '0' or metadata.get('actual_engine') != reference.get('engine') or reference.get('engine') != 'next':
             raise ValueError('replacement reference completion/engine failed')
-        if (config['solver'] != 'lsmr' or config['threads'] != '1' or config['model'] != 'ols'
+        if (config['solver'] != solver or config['threads'] != '1' or config['model'] != cells[key[0]]['model']
                 or float(config['tolerance']) != suite['protocol']['reference_tolerance']
                 or hashlib.sha256(Path(config['dataset']).read_bytes()).hexdigest() != original['datasets'][key[0]]):
             raise ValueError('replacement strict reference settings changed')
@@ -450,10 +560,13 @@ def inherited_screening(paths, campaigns, plan):
     for index, campaign in enumerate(campaigns):
         if index < 2:
             campaign = {**campaign, 'suite_sha256': plan['manifest_sha256'], 'tooling_identity': tools,
-                'protocol': {**campaign['protocol'], 'reference_solver_policy': 'ols-general-slopes-lsmr-v1'},
+                'protocol': {**campaign['protocol'], 'reference_solver_policy': 'ols-general-slopes-lsmr-v1',
+                             **({'reference_artifact':'candidate'} if common else {})},
                 'measurement': {**campaign['measurement'], 'plan': plan,
                     'plan_sha256': hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest()}}
         effective.append(campaign)
+    if common:
+        refs = {(cell,role):refs[(cell,'candidate')] for cell in cells for role in ['parent','candidate']}
     return effective, refs
 
 
@@ -476,6 +589,10 @@ def bounded_pair_envelopes(paths, successor_plan=None):
     first = campaigns[0]
     plan = first['measurement']['plan']
     scope = validate_measurement_plan(plan)
+    common = bool(plan.get('scientific_reference'))
+    coverage = validate_scientific_reference(plan) if common else None
+    if common != (first['protocol'].get('reference_artifact') == 'candidate'):
+        raise ValueError('scientific reference policy differs from declaration')
     if hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest() != first['measurement']['plan_sha256']:
         raise ValueError('embedded bounded plan differs from its identity')
     comparator = first['measurement']['comparator']
@@ -519,15 +636,32 @@ def bounded_pair_envelopes(paths, successor_plan=None):
             cell,threads,arm = group
             if campaign['datasets'].get(cell) != first['datasets'].get(cell):
                 raise ValueError('bounded dataset identity changed')
+            if common and campaign['datasets'][cell] != coverage['datasets'][cell]:
+                raise ValueError('timed dataset outside qualified scientific scope')
             count = 8 if stage == 'screening' else plan['confirmation_pairs']['|'.join(map(str,group))]
             references = [r for r in campaign['records'] if r['reference'] and r['cell']==cell]
             refs = {r['artifact_role']:r for r in references}
-            if len(references)!=2 or set(refs)!={'parent','candidate'}:
+            inherited = index < 2 and bool(replacement_refs)
+            expected_roles = {'candidate'} if common and not inherited else {'parent','candidate'}
+            if len(references)!=len(expected_roles) or set(refs)!=expected_roles:
                 raise ValueError('bounded command references missing or duplicated')
             for role, reference in refs.items():
                 native = campaign['paired_artifacts'][role]['native_identity']
                 if any(reference.get(key)!=native[key] for key in ['plugin_sha256','frontend_sha256']):
                     raise ValueError('bounded reference artifact changed')
+                if common and not inherited:
+                    from run import read_metadata
+                    directory = Path(reference['directory'])
+                    settings = read_metadata(directory/'config.tsv')
+                    metadata = read_metadata(directory/'metadata.tsv')
+                    if (reference.get('threads') != 1 or reference.get('engine') != 'next'
+                            or metadata.get('complete') != '1' or metadata.get('rc') != '0' or metadata.get('actual_engine') != 'next'
+                            or any(settings.get(k) != v for k,v in coverage['reference_settings'][cell].items())):
+                        raise ValueError('common strict reference configuration/certification changed')
+                    dataset = Path(settings['dataset'])
+                    identity = cache.read(dataset.parent, dataset.name, lambda p:hashlib.sha256((Path(p)/dataset.name).read_bytes()).hexdigest())
+                    if identity != coverage['datasets'][cell]:
+                        raise ValueError('common strict reference dataset changed')
             records = [r for r in campaign['records'] if not r['reference'] and (r['cell'],r['threads'],r['arm'])==group]
             if len(records) != 2*(count+1):
                 raise ValueError('bounded pairs missing or duplicated')
@@ -544,11 +678,14 @@ def bounded_pair_envelopes(paths, successor_plan=None):
                 if metadata.get('clock_rc') != '0' or not 0<float(metadata.get('clock_resolution_seconds',math.inf))<=.0000005:
                     raise ValueError('invalid bounded command clock')
                 reference = replacement_refs.get((cell,record['artifact_role'])) if index < 2 else None
+                check_accuracy = index >= 2 or not replacement_refs or reference is not None
+                reference = reference or refs.get('candidate' if common else record['artifact_role'])
                 # Original inherited accuracy was just fully validated. Only
                 # affected references need another parse of those captures.
-                check_accuracy = index >= 2 or not replacement_refs or reference is not None
-                if check_accuracy and accuracy(record, reference or refs.get(record['artifact_role']), campaign['protocol'], cache)[0] != 'pass':
+                if check_accuracy and accuracy(record, reference, campaign['protocol'], cache)[0] != 'pass':
                     raise ValueError('bounded command failed coefficient/sample comparison')
+                if common and not scientific_accuracy(record, reference, cache):
+                    raise ValueError('bounded command failed mapped covariance/scalar/output science')
             values[(index,group)] = {role:[float(r['metadata']['seconds']) for r in records if r['artifact_role']==role and r['repetition']!='warmup'] for role in ['parent','candidate']}
     effects = []
     for group in sorted(scope):

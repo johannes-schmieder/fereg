@@ -12,11 +12,182 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-from compare import acceptance_envelopes, confirmation_scope, median_order_interval, validate_measurement_plan
+from compare import acceptance_envelopes, confirmation_scope, median_order_interval, validate_measurement_plan, scientific_accuracy, ReferenceCache
 from run import command_solver, execute_cell, measure, save_campaign
 
 
 class BoundedMeasurementTests(unittest.TestCase):
+    def test_common_reference_retires_parent_construction_without_relabeling(self):
+        args=SimpleNamespace(tier='pilot',threads_only=None,reverse_order=False,measurement_plan=Path('plan.json'),
+            measurement_stage='screening',measurement_started=time.monotonic(),
+            bounded_plan={'scientific_reference':{'role':'candidate'},'maximum_wall_seconds_per_block':1000})
+        suite=dict(tiers={'pilot':{'threads':[4]}},comparators={'ols':['fereg']},
+                   protocol={'reference_artifact':'candidate','repetitions':8})
+        artifacts=[SimpleNamespace(artifact_role=r) for r in ['parent','candidate']]
+        cell=dict(id='a',model='ols');records=[]
+        def capture(artifact,*positional,**keywords):
+            if keywords.get('reference'):
+                self.assertEqual(artifact.artifact_role,'candidate')
+            return dict(status='ok',artifact_role=artifact.artifact_role,reference=keywords.get('reference',False))
+        with patch('run.measure',side_effect=capture):
+            execute_cell(args,artifacts,suite,cell,Path('data'),{},records,lambda:None)
+        self.assertEqual(len(records),19)
+        self.assertEqual([r['artifact_role'] for r in records if r['reference']],['candidate'])
+        self.assertEqual({r['artifact_role'] for r in records if not r['reference']},{'parent','candidate'})
+
+    def test_common_science_detects_wrong_covariance_and_identified_outputs(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);reference=root/'reference';actual=root/'actual'
+            for p in [reference,actual]:
+                p.mkdir()
+                (p/'science.hex').write_text('b.1 +1.0X+0\nV.1.1 +1.0X+0\n')
+                (p/'scalars.hex').write_text('N +2.0X+0\nrank +1.0X+0\n')
+                (p/'outputs.csv').write_text('obs_id,bench_mu,saved1,saved2\n1,1,.5,.5\n2,2,.6,.4\n')
+            record={'directory':str(actual)};target={'directory':str(reference)}
+            self.assertTrue(scientific_accuracy(record,target,ReferenceCache()))
+            (actual/'outputs.csv').write_text('obs_id,bench_mu,saved1,saved2\n1,1,.75,.25\n2,2,.85,.15\n')
+            self.assertTrue(scientific_accuracy(record,target,ReferenceCache()))
+            for filename,payload in [('science.hex','b.1 +1.0X+0\nV.1.1 +2.0X+0\n'),
+                ('scalars.hex','N +3.0X+0\nrank +1.0X+0\n'),
+                ('outputs.csv','obs_id,bench_mu,saved1,saved2\n1,1,.75,.5\n2,2,.85,.4\n')]:
+                original=(actual/filename).read_bytes();(actual/filename).write_text(payload)
+                self.assertFalse(scientific_accuracy(record,target,ReferenceCache()),filename)
+                (actual/filename).write_bytes(original)
+            cache=ReferenceCache(maximum_bytes=4096)
+            self.assertTrue(scientific_accuracy(record,target,cache))
+            self.assertLessEqual(cache.retained_bytes,4096)
+
+    def test_common_science_preserves_exact_omission_in_both_directions(self):
+        with tempfile.TemporaryDirectory() as temp:
+            paths=[Path(temp)/name for name in ['actual','reference']]
+            for path in paths:
+                path.mkdir();(path/'scalars.hex').write_text('N +1.0X+0\nrank +1.0X+0\n')
+            record,target=[{'directory':str(p)} for p in paths]
+            zero='b.1 +0.0X+0\nV.1.1 +0.0X+0\n'
+            tiny='b.1 +1.0X-40\nV.1.1 +1.0X-40\n'
+            for a,b in [(zero,tiny),(tiny,zero),(zero,zero)]:
+                (paths[0]/'science.hex').write_text(a);(paths[1]/'science.hex').write_text(b)
+                self.assertEqual(scientific_accuracy(record,target,ReferenceCache()),a==b)
+
+    def common_captures(self, root, stage='screening', prefix='common', scopes=None, screening=None):
+        def bind(path,value):
+            path.write_text(json.dumps(value));return dict(path=str(path),sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+        history=root/'bench/history';history.mkdir(parents=True,exist_ok=True)
+        (root/'coefficients.csv').write_text('name,value\nx,1\n');(root/'sample.csv').write_text('obs_id\n1\n')
+        (root/'science.hex').write_text('b.1 +1.0X+0\nV.1.1 +1.0X+0\n');(root/'scalars.hex').write_text('N +1.0X+0\nrank +1.0X+0\n')
+        (root/'data.dta').write_bytes(b'data');data_hash=hashlib.sha256((root/'data.dta').read_bytes()).hexdigest()
+        settings=dict(model='ols',k='1',effects='0',weights='unit',vce='iid',memory='auto',output_mode='none',
+            slopes='0',finite_factor='0',deterministic='0',solver='auto',threads='1',tolerance='1e-12',engine='next',arm='fereg')
+        (root/'config.tsv').write_text(''.join(f'{k}\t{v}\n' for k,v in {**settings,'dataset':str(root/'data.dta')}.items()))
+        (root/'metadata.tsv').write_text('complete\t1\nrc\t0\nactual_engine\tnext\n')
+        paths=self.captures(root,stage,prefix,scopes,screening);plan=json.loads(paths[0].read_text())['measurement']['plan']
+        plan.update(milestone='M35',manifest_sha256='common-manifest')
+        artifact=plan['artifacts']['candidate']
+        declaration=bind(root/'reproducible-science-declaration.json',{'artifacts':{'candidate':artifact}})
+        science=bind(history/'science.json',dict(milestone='M35.6',combined_counts={'failures':0},candidate_native_sha256='p',
+            source={'commit':'s'},independent_science='Independent fixture',evidence=[declaration]))
+        coverage=bind(history/'coverage.json',dict(artifact=artifact,science_receipt=science,manifest_sha256='common-manifest',
+            datasets={c:data_hash for c in ['a','b']},reference_settings={c:settings for c in ['a','b']},coverage_passed=True))
+        plan['scientific_reference']=dict(role='candidate',science_receipt=science,coverage_receipt=coverage)
+        for path in paths:
+            c=json.loads(path.read_text());c.update(suite_sha256='common-manifest',datasets={x:data_hash for x in ['a','b']},
+                protocol={**c['protocol'],'reference_artifact':'candidate'})
+            c['records']=[r for r in c['records'] if not r['reference'] or r['artifact_role']=='candidate']
+            for r in c['records']:
+                if r['reference']:r.update(threads=1,engine='next',requested_solver='auto')
+            c['measurement'].update(plan=plan,plan_sha256=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+            path.write_text(json.dumps(c))
+        return paths,plan
+
+    def test_common_reference_final_look_rejects_bad_evidence_and_reference_roles(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp).resolve();screen,plan=self.common_captures(root)
+            with patch('compare.ROOT',root):
+                first=self.evaluate(screen);identity=first['parent']['blocks']+first['fixed_baseline']['blocks']
+                confirm,_=self.common_captures(root,'confirmation','common-confirm',['a'],identity)
+                paths=screen[:2]+confirm[:2]+screen[2:]+confirm[2:]
+                result=self.evaluate(paths);self.assertTrue(result['passed'])
+                self.assertEqual(result['parent']['effects'][0]['blocks'][0]['pairs'],40)
+                original=screen[0].read_bytes()
+                for error in ['missing','duplicate','wrong_artifact','role','non_strict','dataset']:
+                    c=json.loads(original);ref=next(r for r in c['records'] if r['reference'])
+                    if error=='missing':c['records'].remove(ref)
+                    if error=='duplicate':c['records'].append(ref)
+                    if error=='wrong_artifact':ref['plugin_sha256']='other'
+                    if error=='role':ref['artifact_role']='parent'
+                    if error=='non_strict':ref['threads']=8
+                    if error=='dataset':c['datasets']['a']='other'
+                    screen[0].write_text(json.dumps(c))
+                    with self.subTest(error=error),self.assertRaises(ValueError):self.evaluate(paths)
+                screen[0].write_bytes(original)
+                changed=copy.deepcopy(plan);changed['artifacts']['candidate']['native_identity']['plugin_sha256']='other'
+                with self.assertRaises(ValueError):validate_measurement_plan(changed)
+
+    def test_common_reference_inherits_original_screen_and_requires_full_confirmation(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp).resolve();screen,plan=self.common_captures(root)
+            def bind(name,value):
+                path=root/name;path.write_text(json.dumps(value))
+                return dict(path=str(path),sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+            old_suite=dict(defaults={},protocol={'reference_tolerance':1e-12},tiers={'pilot':{}},
+                cells=[dict(id=c,model='ols',effects=0) for c in ['a','b']])
+            old_manifest=bind('old-manifest.json',old_suite)
+            new_manifest=bind('new-manifest.json',{**old_suite,'protocol':{**old_suite['protocol'],
+                'reference_solver_policy':'ols-general-slopes-lsmr-v1','reference_artifact':'candidate'}})
+            old=copy.deepcopy(plan);old.pop('scientific_reference')
+            old.update(manifest_sha256=old_manifest['sha256'],
+                command_budget=dict(screening_per_block=912,confirmation_per_block_max=4240,total_max=20608,blocks=8),
+                tooling_identity={'bench/run.py':'old','bench/compare.py':'old','manifest':old_manifest['sha256']})
+            originals=[]
+            for path in screen[:2]:
+                c=json.loads(path.read_text());ref=next(r for r in c['records'] if r['reference'])
+                c['records'].insert(0,{**ref,'artifact_role':'parent'})
+                # Every historical cell has its own two actual references.
+                other=next(r for r in c['records'] if r['reference'] and r['cell']=='b')
+                c['records'].insert(0,{**other,'artifact_role':'parent'})
+                c.update(suite_sha256=old['manifest_sha256'],tooling_identity=old['tooling_identity'])
+                c['protocol'].pop('reference_artifact')
+                c['measurement'].update(plan=old,plan_sha256=hashlib.sha256(json.dumps(old,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+                path.write_text(json.dumps(c));originals.append(path.read_bytes())
+            tools={**old['tooling_identity'],'bench/run.py':'new','bench/compare.py':'new',
+                'manifest':new_manifest['sha256'],'scripts/fereg_f0_stata_capture.py':'decoder'}
+            qrefs=[{**r,'capture_files':{f:hashlib.sha256((root/f).read_bytes()).hexdigest()
+                    for f in ['coefficients.csv','sample.csv','metadata.tsv','config.tsv','science.hex','scalars.hex']}}
+                for r in json.loads(screen[0].read_text())['records'] if r['reference'] and r['artifact_role']=='candidate']
+            witness=bind('witness.json',dict(passed=True,captures=[dict(path=str(root),passed=True)]))
+            q=bind('qualification.json',dict(manifest=new_manifest,tooling_identity=tools,artifacts=old['artifacts'],
+                datasets={'a':hashlib.sha256((root/'data.dta').read_bytes()).hexdigest(),'b':hashlib.sha256((root/'data.dta').read_bytes()).hexdigest()},
+                records=qrefs,independent_witness=witness,passed=True,complete=True,identities_verified=True))
+            coverage=json.loads(Path(plan['scientific_reference']['coverage_receipt']['path']).read_text())
+            coverage['manifest_sha256']=new_manifest['sha256']
+            plan['scientific_reference']['coverage_receipt']=bind('bench/history/coverage.json',coverage)
+            plan.update(manifest_sha256=new_manifest['sha256'],tooling_identity=tools,
+                command_budget={**old['command_budget'],'inherited_screening_per_block':912,
+                    'screening_per_block':910,'confirmation_per_block_max':4238,'total_max':20596},
+                inherited_screening=dict(previous_plan=bind('old-plan.json',old),previous_manifest=old_manifest,
+                    reference_qualification=q,blocks=[dict(path=str(p),sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for p in screen[:2]]))
+            def apply(paths):
+                for path in paths:
+                    c=json.loads(path.read_text());c.update(suite_sha256=plan['manifest_sha256'],tooling_identity=tools,
+                        protocol={**c['protocol'],'reference_solver_policy':'ols-general-slopes-lsmr-v1','reference_artifact':'candidate'})
+                    c['measurement'].update(plan=plan,plan_sha256=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+                    path.write_text(json.dumps(c))
+            apply(screen[2:])
+            with patch('compare.ROOT',root):
+                first=acceptance_envelopes(screen[:2],screen[2:],'p','f',successor_plan=plan)
+                identity=first['parent']['blocks']+first['fixed_baseline']['blocks']
+                confirm,_=self.common_captures(root,'confirmation','inherited-common-confirm',['a'],identity)
+                plan['scientific_reference']['coverage_receipt']=bind('bench/history/coverage.json',coverage)
+                apply(screen[2:]+confirm)
+                parent=screen[:2]+confirm[:2];fixed=screen[2:]+confirm[2:]
+                final=acceptance_envelopes(parent,fixed,'p','f',successor_plan=plan)
+                self.assertTrue(final['passed']);self.assertEqual(final['parent']['effects'][0]['blocks'][0]['pairs'],40)
+                self.assertEqual(originals,[p.read_bytes() for p in screen[:2]])
+                with self.assertRaises(ValueError):acceptance_envelopes(parent,screen[2:],'p','f',successor_plan=plan)
+                raw=confirm[0].read_bytes();c=json.loads(raw);c['measurement']['screening_blocks'][0]['sha256']='wrong'
+                confirm[0].write_text(json.dumps(c))
+                with self.assertRaises(ValueError):acceptance_envelopes(parent,fixed,'p','f',successor_plan=plan)
+
     def test_strict_general_ols_reference_keeps_timed_and_explicit_requests(self):
         args = SimpleNamespace(solver='auto')
         suite = {'protocol': {'reference_solver_policy': 'ols-general-slopes-lsmr-v1'}}

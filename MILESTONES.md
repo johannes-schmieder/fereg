@@ -2,7 +2,7 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M35 strict-reference repair; science6375 passes, M34 screens1824 valid; M26 campaign incomplete from strict reference. Actual timing/scaling/final Astra open.
+Current task: M35 common scientific reference; science6375 passes, M34 screens1824 retained; both M26 strict-reference attempts incomplete. Actual timing/scaling/final Astra open.
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
 Accepted runtime: M34.1 host boundary; production109589, net vsM26 -11807; native70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e.
@@ -113,6 +113,7 @@ Historical v39/v24 allocation manifests predate the frozen source; do not refres
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 ## Log
 - 2026-10-07 M35.9: strict slope references/science pass; old2243 timing incomplete,1824 retained; [repair](bench/history/2026-10-07-m35-reference-construction.json).
+- 2026-10-07 M35.10: one qualified reference owner;50tests/19native/all1824 full science/Astra high pass; old419/533 failures retained; [record](bench/history/2026-10-07-m35-common-reference.json).
 - 2026-10-06 M35.1: bounded worker edges/time limits;41tests/saved4448equivalence/Astra high pass; native unchanged; [tools](bench/history/2026-10-06-m35-scaling-tool-qualification.json).
 - 2026-10-06 M31.1 accepted: net-1502/M30,-9149/M26; largeFast M26 cost accepted; broad/scaling deferred; [record](bench/history/2026-10-06-m31-architectural-acceptance.json).
 - 2026-10-06 M31 design: initial+488 extraction preserved; immutable finite owner declared; exact retainedPPML/stable public decisions bind; [scope](bench/history/2026-10-06-m31-finite-design.json).

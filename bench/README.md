@@ -98,6 +98,19 @@ Fresh M26 screens and confirmation use the successor declaration. The complete
 unresolved union, connected scaling endpoints and original screening provenance
 remain required; inherited observations and original JSON are never replaced.
 
+The M35 `reference_artifact: candidate` policy constructs one strict reference
+per workload and block from the candidate qualified by the integrated independent
+science evidence. The [common-reference receipt](history/2026-10-07-m35-common-reference.json)
+binds its source, binary, frontend and exact model/data coverage. Both timed
+artifacts retain their own identity checks and compare with that target, including
+covariance, scalars, exact sample/rank/omission decisions, published outputs and
+summed FE contributions at the existing M35 tolerances. The candidate reference
+does not replace independent witnesses. Historical two-reference captures stay
+readable; all inherited observations receive the full common-target comparison.
+Only duplicate untimed reference calls disappear; timed budgets, observations,
+statistical rules and stopping conditions remain unchanged. No fallback or
+cross-block reference cache is used.
+
 The historical fixed-budget v1 invocation remains:
 
 For each reference artifact, run a forward and reverse block in separate roots:

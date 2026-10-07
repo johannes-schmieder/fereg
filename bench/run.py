@@ -91,6 +91,8 @@ def native_identity(engine, root=None):
 def tooling_identity(manifest=None):
     paths = [ROOT / 'bench' / name for name in ['run.py', 'generate.py', 'compare.py', 'stata_runner.do']]
     paths += [ROOT / 'references.lock.toml', ROOT / 'bench/clock.c', ROOT / 'bench/build_clock.py']
+    if load_suite(manifest)['protocol'].get('reference_artifact') == 'candidate':
+        paths += [ROOT / 'scripts/fereg_f0_stata_capture.py']
     return {**{str(path.relative_to(ROOT)): sha256(path) for path in paths},
             'manifest': sha256(Path(manifest) if manifest else ROOT / 'bench/suite.toml')}
 
@@ -236,7 +238,16 @@ def execute_cell(args, artifacts, suite, cell, dataset, environment, records, sa
         if getattr(args, 'measurement_plan', None) and record['status'] != 'ok':
             raise ValueError('bounded measurement failed; capture retained at ' + record['directory'])
 
-    for artifact in artifacts:
+    references = artifacts
+    if suite['protocol'].get('reference_artifact') == 'candidate':
+        if not getattr(args, 'measurement_plan', None) or not args.bounded_plan.get('scientific_reference'):
+            raise ValueError('common reference needs qualified scientific evidence')
+        references = [a for a in artifacts if a.artifact_role == 'candidate']
+        if len(references) != 1:
+            raise ValueError('common reference requires exactly one candidate artifact')
+    elif suite['protocol'].get('reference_artifact') is not None:
+        raise ValueError('unknown scientific reference artifact')
+    for artifact in references:
         retain(measure(artifact, suite, cell, 'fereg', 1, 'reference', dataset, environment, reference=True))
     threads = selected_threads(suite, args.tier, cell, args.threads_only)
     reverse = getattr(args, 'reverse_order', False)
