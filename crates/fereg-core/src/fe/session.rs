@@ -8,7 +8,7 @@ use super::{
     ReusableCategoricalMapAbsorber, ReusableMapAbsorber, ReusableMapCapacities,
 };
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, ErrorCode, FeregError, Result};
 
 pub(crate) struct FeSession<'a> {
     pub(crate) general: Option<ReusableMapAbsorber>,
@@ -750,10 +750,6 @@ pub(crate) fn project_intercepts(
         }
     }
 }
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 /// Recovery has its own reconstruction authority. Shared ownership does not
 /// substitute a projection certificate for original-model reconstruction.
 pub(crate) struct RecoveryRequest<'a> {

@@ -3,7 +3,7 @@
 use super::prepared_scores::{reserved_filled, PreparedInferenceReservation};
 use super::prepared_unadjusted::{checked_square, compensated_add, exact_integer_as_f64};
 use super::{CertifiedPreparedOlsFit, PreparedOlsFitStatus};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{invalid_argument, invalid_data, Result};
 
 #[derive(Debug, Clone, Copy)]
 pub(super) struct WaldCalculation {
@@ -144,12 +144,4 @@ pub(super) fn fitted_coordinate_value(
         .value
         .filter(|value| value.is_finite())
         .ok_or_else(|| invalid_data("prepared Wald coefficient is not finite"))
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }

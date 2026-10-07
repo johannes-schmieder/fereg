@@ -5,7 +5,7 @@
 //! validated common summary, while each result continues to retain its exact
 //! source-bound absorbed-DoF report.
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument as invalid, ErrorCode, FeregError, Result};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::prepared_fit_view::{OrdinaryPrepared, PreparedOlsFitView};
 use crate::topology_dof::{
@@ -389,14 +389,6 @@ pub(super) const fn categorical_policy(
     policy: PreparedOlsAbsorbedDofPolicy,
 ) -> CategoricalTopologyDofPolicy {
     policy
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

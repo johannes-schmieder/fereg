@@ -17,7 +17,7 @@ use super::{
     PoissonBounds, PoissonObjective, PpmlCoefficientStatus, PpmlConfig, PpmlIterationReport,
 };
 use crate::data::DropReason;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{CategoricalCodeView, FeSolverKind, LevelIndex};
 #[cfg(test)]
 use crate::fe::{FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS};
@@ -3763,14 +3763,6 @@ fn checked_sum(values: &[u128]) -> Result<u128> {
             .checked_add(*value)
             .ok_or_else(|| allocation("PPML memory estimate overflow"))
     })
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

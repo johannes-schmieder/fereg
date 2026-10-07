@@ -1,4 +1,4 @@
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{invalid_argument, Result};
 #[cfg(test)]
 use crate::metadata::AbsorbTermId;
 
@@ -78,18 +78,13 @@ fn compute_with_nesting_reservation_validated<R: PreparedDofReservation>(
     )
 }
 
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
 #[cfg(test)]
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
+use crate::error::allocation;
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
     use crate::metadata::{AbsorbedTerm, CompiledTermGraph, SourceEntry, SourceId};
     use crate::ols::{
         prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,

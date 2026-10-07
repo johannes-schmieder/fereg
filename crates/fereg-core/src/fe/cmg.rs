@@ -18,7 +18,7 @@ use cmg::{
 };
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
 use crate::options::ThreadConfig;
 
@@ -3329,18 +3329,6 @@ fn cmg_error_code(error: &cmg::CmgError) -> ErrorCode {
 
 fn nonconvergence(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

@@ -1,4 +1,4 @@
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PpmlPsdState {
@@ -701,16 +701,8 @@ fn checked_square(dimension: usize, message: &'static str) -> Result<usize> {
         .ok_or_else(|| allocation(message))
 }
 
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
 fn numerical_nonconvergence(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

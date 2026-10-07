@@ -5,7 +5,8 @@
 //! therefore reuse one topology source. A unique interaction pays for exactly
 //! one derived `u32` code vector and one compressed membership index.
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument as invalid, Result};
+use crate::memory::push_reserved;
 
 use super::{CategoricalCodeView, CategoricalTopologySource};
 
@@ -157,25 +158,10 @@ impl TopologyRegistryReservation for SystemTopologyRegistryReservation {
     }
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
 
     #[derive(Default)]
     struct InjectedReservation {

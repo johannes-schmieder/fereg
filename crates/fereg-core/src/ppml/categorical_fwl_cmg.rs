@@ -14,7 +14,9 @@ use std::cell::Cell;
 use rayon::prelude::*;
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{
+    allocation, invalid_argument, invalid_data, unsupported, ErrorCode, FeregError, Result,
+};
 use crate::fe::{
     retained_effect_order_by_levels, BorrowedInterceptFeDesign, BorrowedMapWeights, CmgAbsorber,
     CmgConfig, CmgControlSeed, CmgTopologyProfile, CmgUnpolishedProjectionReport, FeDesign,
@@ -1401,22 +1403,6 @@ fn fallible_empty<T>(elements: usize, message: &'static str) -> Result<Vec<T>> {
         .try_reserve_exact(elements)
         .map_err(|_| allocation(message))?;
     Ok(output)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 fn nonconvergence(message: impl Into<String>) -> FeregError {

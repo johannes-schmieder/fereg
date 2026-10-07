@@ -2,11 +2,12 @@ mod finite;
 mod one_shot;
 
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
     AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap, FeCertificate, FeCoefficientBatch,
     FeSolverKind, SolveReport, SolveStopReason,
 };
+use crate::memory::push_reserved;
 use crate::metadata::CoefficientSlot;
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
@@ -4785,28 +4786,8 @@ fn reserved_filled<T: Clone, R: FitReservation>(
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
 fn checked_square(value: usize, message: &'static str) -> Result<usize> {
     value.checked_mul(value).ok_or_else(|| allocation(message))
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 fn insufficient_observations(message: &'static str) -> FeregError {

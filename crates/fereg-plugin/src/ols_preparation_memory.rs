@@ -2,7 +2,7 @@
 //! Construction scratch, solver/inference frames and dependency storage remain
 //! separate scopes; this is not a complete action-memory certificate.
 
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{allocation, Result};
 use fereg_core::MemoryEstimate;
 
 #[derive(Debug, Clone, Copy)]
@@ -243,13 +243,10 @@ fn mul(a: u128, b: u128) -> Result<u128> {
         .ok_or_else(|| allocation("OLS preparation memory size overflows"))
 }
 
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use fereg_core::error::ErrorCode;
 
     #[test]
     fn loading_masks_have_exact_and_one_byte_short_boundaries() {

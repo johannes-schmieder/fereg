@@ -9,7 +9,7 @@
 use super::canonical_products::CanonicalMoments;
 use super::implicit_centered::ImplicitCenteredDesign;
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
     BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSession, FeSolverKind,
     MapGeometryGeneration, ReusableCategoricalMapAbsorber, ReusableMapAbsorber,
@@ -6438,18 +6438,6 @@ pub(super) fn stable_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
     } else {
         Err(invalid_data("weighted-linear norm is not finite"))
     }
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 #[cfg(test)]

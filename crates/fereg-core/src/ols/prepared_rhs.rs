@@ -1,7 +1,7 @@
 #[cfg(test)]
 use crate::data::WeightKind;
 use crate::data::{DenseMatrix, PreparedWeights};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::fe::{
     absorb_borrowed_intercept_map_with_structural_constant_certified, BorrowedMapWeights,
     CertifiedBorrowedMap, MapConfig,
@@ -815,20 +815,9 @@ fn canonical_factor_value(value: f64) -> f64 {
     }
 }
 
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::error::{ErrorCode, FeregError};
 
     #[test]
     fn selected_predictor_tiles_preserve_scalar_fma_order_and_reject_invalid_inputs() {

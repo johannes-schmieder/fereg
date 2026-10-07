@@ -14,7 +14,7 @@ use std::time::{Duration, Instant};
 use std::cell::Cell;
 
 use crate::data::{DenseMatrix, DropReason, WeightKind};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{BorrowedMapWeights, FeSolverKind, LevelIndex};
 use crate::ols::{
     fit_prepared_weighted_linear_projection_once, LinearSolveFrame, PreparedOlsBreadWeightScale,
@@ -3484,10 +3484,6 @@ pub(crate) fn certify_disabled_separation_for_test(
     .seal(config, report)
 }
 
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
 fn checked_method_report_capacity(
     candidate_observations: usize,
     method_count: usize,
@@ -3549,10 +3545,6 @@ fn bounded_push<T>(
     }
     output.push(value);
     Ok(())
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

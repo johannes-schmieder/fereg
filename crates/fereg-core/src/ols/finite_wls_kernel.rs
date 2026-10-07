@@ -20,7 +20,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 
 #[cfg(test)]
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::fe::BorrowedMapWeights;
 
 use super::implicit_centered::ImplicitCenteredView;
@@ -2756,20 +2756,9 @@ fn checked_square(value: usize, message: &'static str) -> Result<usize> {
     value.checked_mul(value).ok_or_else(|| allocation(message))
 }
 
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::error::ErrorCode;
     #[test]
     fn retained_arithmetic_leaves_survive_serial_stage_admission() {
         rayon::ThreadPoolBuilder::new()

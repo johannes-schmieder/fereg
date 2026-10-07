@@ -11,7 +11,7 @@ use std::io::{Read, Seek, SeekFrom, Write};
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, ErrorCode, FeregError, Result};
 use crate::memory::Capacity;
 
 const IO_BUFFER_BYTES: usize = 1 << 20;
@@ -848,10 +848,6 @@ impl Drop for PreparedOlsScratch {
         drop(self.file.take());
         let _ = remove_file(&self.path);
     }
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 fn invalid(message: impl Into<String>) -> FeregError {

@@ -7,7 +7,8 @@
 //! categorical codes or membership and retains no candidate-scale scratch.
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
+use crate::memory::push_reserved;
 
 use super::{
     absorb_finalized_categorical_topology_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
@@ -256,29 +257,10 @@ fn extend_reserved<T: Copy>(target: &mut Vec<T>, values: &[T], label: &'static s
     Ok(())
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
     use crate::fe::{finalize_categorical_topology, CategoricalCodeView};
 
     #[derive(Default)]

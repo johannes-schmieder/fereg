@@ -11,7 +11,7 @@ use std::cell::Cell;
 use std::time::{Duration, Instant};
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
     absorb_fixed_effects, BorrowedMapWeights, CmgConfig, CmgTopologyProfile, FeDesign,
     FeSolverKind, PreparedCmgTopology, SolveReport, CMG_MAX_NUISANCE_COLUMNS,
@@ -4299,20 +4299,8 @@ fn fallible_copy<T: Copy>(source: &[T], message: &'static str) -> Result<Vec<T>>
     Ok(values)
 }
 
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
 fn internal(message: &'static str) -> FeregError {
     FeregError::new(ErrorCode::Internal, message)
-}
-
-fn invalid_data(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 fn numerical_nonconvergence(message: &'static str) -> FeregError {

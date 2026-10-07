@@ -1,4 +1,6 @@
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{
+    allocation, invalid_argument as invalid, unsupported, ErrorCode, FeregError, Result,
+};
 use crate::protocol::MODEL_WIRE_VERSION;
 use std::collections::BTreeSet;
 
@@ -1136,18 +1138,6 @@ fn checked_index(index: usize, label: &str) -> Result<u32> {
         .checked_add(1)
         .ok_or_else(|| invalid(format!("{label} index overflow")))?;
     u32::try_from(one_based).map_err(|_| invalid(format!("{label} index exceeds u32")))
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

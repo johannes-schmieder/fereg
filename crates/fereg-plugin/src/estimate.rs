@@ -19,7 +19,10 @@ use crate::result::{
     RECEIPT_COMPLETE_COLUMN, RESULT_MAGIC, RUNTIME_ROWS, SOLVER_COLUMNS, SOLVER_ROWS,
     SUBSET_COLUMNS,
 };
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{
+    allocation, invalid_argument as invalid, invalid_data, unsupported, ErrorCode, FeregError,
+    Result,
+};
 use fereg_core::fe::{AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner};
 use fereg_core::metadata::{ComponentKind, SourceId};
 #[cfg(all(test, feature = "ffi"))]
@@ -3645,20 +3648,8 @@ fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> 
 fn syntax(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Syntax, message)
 }
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
 fn protocol(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::ProtocolMismatch, message)
-}
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

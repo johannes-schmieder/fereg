@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
@@ -1150,18 +1150,6 @@ pub(super) fn reserved_filled<T: Clone, R: PreparedInferenceReservation>(
     }
     output.resize(elements, value);
     Ok(output)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 #[cfg(test)]

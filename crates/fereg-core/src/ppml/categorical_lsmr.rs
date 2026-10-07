@@ -13,7 +13,7 @@ use schwarz_precond::{mlsmr, LsmrStopReason, MlsmrOptions, Operator, SolveError,
 use within::{Effect, Preconditioner, PreconditionerConfig, Solver};
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{retained_effect_order_by_levels, FeDesign};
 use crate::memory::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
@@ -2311,14 +2311,6 @@ fn solve_shape_error(context: &'static str) -> SolveError {
         context,
         message: "joint PPML augmented operator dimensions are inconsistent".to_owned(),
     }
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 fn nonconvergence(message: &'static str) -> FeregError {

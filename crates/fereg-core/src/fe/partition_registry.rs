@@ -6,7 +6,8 @@
 //! for a second observation-scale `usize` membership array. Final topology
 //! membership is constructed only after the singleton fixed point is known.
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument as invalid, Result};
+use crate::memory::push_reserved;
 
 use super::{validate_categorical_partition, CategoricalCodeView, CategoricalPartition};
 
@@ -146,25 +147,10 @@ impl PartitionRegistryReservation for SystemPartitionRegistryReservation {
     }
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
 
     #[derive(Default)]
     struct InjectedReservation {

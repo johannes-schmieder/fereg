@@ -6,7 +6,8 @@
 
 use std::collections::VecDeque;
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, ErrorCode, FeregError, Result};
+use crate::memory::push_reserved;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum SingletonMultiplicity<'a> {
@@ -413,24 +414,12 @@ fn reserved_filled<T: Clone, R: SingletonReservation>(
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
 fn queue_push_reserved<T>(target: &mut VecDeque<T>, value: T, label: &'static str) -> Result<()> {
     if target.len() == target.capacity() {
         return Err(allocation(label));
     }
     target.push_back(value);
     Ok(())
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

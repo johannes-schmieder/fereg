@@ -2,7 +2,8 @@ use super::prepared_wald::{calculate_wald, WaldCalculation};
 #[cfg(test)]
 use std::cmp::Ordering;
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
+use crate::memory::push_reserved;
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::sandwich::{
@@ -2932,31 +2933,12 @@ fn reserved_empty<T, R: PreparedInferenceReservation>(
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit;
     use super::*;
     use crate::data::WeightKind;
+    use crate::error::ErrorCode;
     use crate::ols::prepare_ols_clustered_data;
 
     struct CountingReservation {

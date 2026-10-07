@@ -18,7 +18,7 @@ use super::prepared::{
 use crate::data::{
     DropReason, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightKind,
 };
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::ols::{
     prepare_ppml_categorical_ols_clustered_data, LoadedNumericColumn, LoadedOlsInput,
     OlsClusterTermV1, OlsClusteredRequestV1, OlsRequestV1, PreparedOlsClusterDesign,
@@ -1011,14 +1011,6 @@ fn compensated_sum(values: impl IntoIterator<Item = f64>) -> Result<f64> {
         ));
     }
     Ok(total)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

@@ -3,7 +3,7 @@ use std::io::Write;
 use std::time::Instant;
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
     BorrowedInterceptFeDesign, FeCertificate, FeSolverKind, LsmrConfig, LsmrPreconditioner,
     MapConfig, SolveReport, SolveStopReason,
@@ -7566,18 +7566,6 @@ fn reserved_zeros<R: WorkspaceReservation>(
     }
     output.resize(elements, 0.0);
     Ok(output)
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 pub(crate) const GRAPH_PROGRESS_CHECK_ITERATIONS: usize = 8;

@@ -8,7 +8,7 @@ use std::collections::hash_map::RandomState;
 use std::hash::BuildHasher;
 use std::mem::size_of;
 
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{allocation, ErrorCode, FeregError, Result};
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct InputMemory {
@@ -230,9 +230,6 @@ pub(crate) fn mul(a: usize, b: usize) -> Result<u128> {
 }
 fn overflow() -> FeregError {
     allocation("input construction memory size overflows")
-}
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

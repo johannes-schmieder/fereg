@@ -12,7 +12,7 @@ pub(crate) use model_recovery::recover_finalized_model_effects_certified;
 use std::time::Instant;
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
 use rayon::prelude::*;
 
@@ -3607,18 +3607,6 @@ fn reserved_indices<R: SlopeWorkspaceReservation>(
     }
     output.extend(0..elements);
     Ok(output)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 #[cfg(test)]

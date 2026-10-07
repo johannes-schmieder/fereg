@@ -1,5 +1,5 @@
 //! Checked element counts shared by concrete owners and admission envelopes.
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, FeregError, Result};
 use std::{marker::PhantomData, mem::size_of};
 
 #[derive(Debug, Clone, Copy)]
@@ -56,8 +56,14 @@ pub(crate) fn matrix_bytes<T>(rows: u128, columns: u128, message: &str) -> Resul
     Capacity::<T>::matrix(rows, columns, message)?.bytes(message)
 }
 
-fn allocation(message: &str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
+/// Push into a vector whose capacity its owner already reserved. Never
+/// reallocates; exhausting the reservation is an allocation error.
+pub(crate) fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
+    if target.len() == target.capacity() {
+        return Err(allocation(label));
+    }
+    target.push(value);
+    Ok(())
 }
 
 /// Optional installation consumes a conservative admitted lifetime charge.

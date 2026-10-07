@@ -4,7 +4,10 @@ use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
 
 use crate::output::OutputSink;
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{
+    allocation, invalid_argument as invalid, invalid_data, unsupported, ErrorCode, FeregError,
+    Result,
+};
 #[cfg(test)]
 use fereg_core::metadata::SourceId;
 use fereg_core::ols::{
@@ -563,22 +566,6 @@ fn validate_numeric_position(
 
 fn syntax(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Syntax, message)
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

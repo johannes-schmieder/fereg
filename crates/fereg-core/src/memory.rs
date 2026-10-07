@@ -3,7 +3,7 @@ use crate::fe::LsmrPreconditioner;
 use crate::options::MemoryMode;
 
 mod capacity;
-pub(crate) use capacity::{matrix_bytes, require_admitted_capacity, Capacity};
+pub(crate) use capacity::{matrix_bytes, push_reserved, require_admitted_capacity, Capacity};
 mod categorical_schwarz;
 mod owned_fe;
 mod slope_recovery;

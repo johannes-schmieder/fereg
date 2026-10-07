@@ -9,7 +9,7 @@ use super::constant_wald::constant_wald_columns;
 use std::time::Duration;
 
 use crate::data::{NumericColumnView, NumericSourceUse, WeightInput, WeightKind};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::FeSolverKind;
 use crate::ols::{
     LinearSessionPhaseAllocatorProbe, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
@@ -1745,14 +1745,6 @@ fn record_separation_timings(
         memory.record_phase(phase, Duration::from_secs_f64(method.elapsed_seconds));
     }
     Ok(())
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 fn fallible_copy<T: Copy>(source: &[T], message: &'static str) -> Result<Vec<T>> {

@@ -1,6 +1,8 @@
 use super::prepared_wald::fitted_coordinate_value;
 use crate::data::{PreparedWeights, WeightKind};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{
+    allocation, invalid_argument, invalid_data, unsupported, ErrorCode, FeregError, Result,
+};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 pub(super) use crate::sandwich::compensated_add_scaled_row;
 use crate::topology_dof::CategoricalTopologyDofReport;
@@ -1806,24 +1808,8 @@ fn reserved_filled<T: Clone, R: InferenceReservation>(
     Ok(output)
 }
 
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
 fn insufficient_observations(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InsufficientObservations, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
 }
 
 #[cfg(test)]

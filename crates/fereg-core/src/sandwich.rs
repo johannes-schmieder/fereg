@@ -9,7 +9,8 @@
 use rayon::prelude::*;
 use std::cmp::Ordering;
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
+use crate::memory::push_reserved;
 
 mod influence;
 mod qualified_cluster;
@@ -1562,14 +1563,6 @@ fn reserved_empty<T, R: SandwichReservation>(
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
 fn checked_square(dimension: usize, message: &'static str) -> Result<usize> {
     dimension
         .checked_mul(dimension)
@@ -1629,21 +1622,10 @@ pub(crate) fn compensated_add_scaled_row(
     }
 }
 
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
 
     #[test]
     fn cluster_boundaries_match_linear_group_ends_for_every_subset() {

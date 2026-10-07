@@ -7,7 +7,7 @@
 //! topology-specific certified absorption operation.
 
 use crate::data::{DenseMatrix, PreparedNumericSample};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, ErrorCode, FeregError, Result};
 use crate::fe::{
     borrow_categorical_topology_design, AbsorbConfig, BorrowedInterceptFeDesign,
     BorrowedMapWeights, CertifiedBorrowedMap, EffectTerm, FeDesign,
@@ -889,10 +889,6 @@ fn fallible_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> 
         .map_err(|_| allocation(label))?;
     output.resize(elements, value);
     Ok(output)
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 /// Initial K+1 RHS and the combined one-RHS result can coexist. The residual
