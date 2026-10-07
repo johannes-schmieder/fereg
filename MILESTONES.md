@@ -2,11 +2,11 @@
 Plan: [M0–M25](docs/cleanup/PLAN.md). Previous rebuild history: Git revision 15a57ba285a3afede2e3337fe8598e72529a4090.
 Second program: [M26–M35](milestones2.md); M25 is the independently scoped normalization-reuse milestone.
 Comparator source: 15a57ba285a3afede2e3337fe8598e72529a4090; tag pinned; Mac/Linux/Windows canonical assets qualified and stored.
-Current task: M35 common scientific reference; science6375 passes, M34 screens1824 retained; both M26 strict-reference attempts incomplete. Actual timing/scaling/final Astra open.
+Current task: M35 closed by Johannes's explicit acceptance; science6375 and Astra high completion pass; timing incomplete, no performance pass.
 Active qualification: Johannes's 2026-10-05 override pauses GitHub testing; lead qualifies only on this Mac. Local acceptance precedes dependent work; remote platforms deferred.
 Current runtime: next defaults for OLS/PPML; separate frozen legacy selectable.
-Accepted runtime: M34.1 host boundary; production109589, net vsM26 -11807; native70d30a268ce576b670be3da74bdd86cde3b57e21d26b1f94bd9748600a0d453e.
-Current M35 candidate: core/host109761,+172/M34,-11635/M26; dependency+262 makes combined-11373; [repair](bench/history/2026-10-06-m35-reproducible-qualification.json).
+Accepted runtime: M35; core/host109761, net vsM26 -11635; native20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826.
+Accepted combined net vsM26 -11373 including dependency+262 and core/host+172/M34; no unpromoted candidate; [record](bench/history/2026-10-07-m35-architectural-acceptance.json).
 ## Tasks and prerequisites
 - [x] M0.1 Governance, ADR dispositions, resolved covariance decision and new ledger.
 - [x] M0.2 Frozen/tagged baseline; all three canonical platforms built/stored; Mac 34 Stata fixtures pass.
@@ -67,10 +67,10 @@ Current M35 candidate: core/host109761,+172/M34,-11635/M26; dependency+262 makes
 - [x] M26.1 Fixed baseline, interaction/holdout matrix, 15,000-line target, Mac calibration, Linux CI/SCC smoke and fresh Astra high review pass.
 - [x] M27.1 Trial not promoted: 11 within/4 unresolved; production restored; retained fixture/full local and Linux CI37222999041 pass.
 - [x] M27.2 Original factor slots/base flags preserved; full local/scientific/transaction/timing/Astra high and Linux CI37227673296 pass.
-- [ ] M27.3 Scaffold trial parked: source/science passes, clean timing unavailable; qualified production restored; retirement remains open.
+- [x] M27.3 Trial closed unpromoted: source/science passes, timing unavailable; restored; superseded by accepted integrated M27.
 - [x] M27.4 Original-axis support/constant-invariant PPML Wald: local/science/exact/timing/Astra high and Linux CI37241856158 all pass.
-- [ ] M27.5 Trial not promoted: parent14within/1unresolved, fixed15within; qualified source/native restored; owning-model retirement remains open.
-- [ ] M27.6 Trial not promoted: parent15within, fixed14within/1unresolved; source/science pass; preserved for complete M27 replacement.
+- [x] M27.5 Trial closed unpromoted: parent14within/1unresolved, fixed15within; restored; superseded by accepted integrated M27.
+- [x] M27.6 Trial closed unpromoted: parent15within, fixed14within/1unresolved; source/science pass; superseded by accepted integrated M27.
 - [x] M27 Canonical owner/optional clusters; duplicated ownership/construction retired; local science/timing and Astra high completion pass.
 - [x] M28 Common storage/admission owners; local science pass; Johannes accepts architectural benefit with timing unresolved.
 - [x] M29 Common worker/stage policy retired; Mac scientific gates pass; architectural override retains interrupted timing and open final scaling.
@@ -80,10 +80,10 @@ Current M35 candidate: core/host109761,+172/M34,-11635/M26; dependency+262 makes
 - [x] M33 Frame/CMG retirement; science/Astra high pass; inherited costs accepted; [record](bench/history/2026-10-06-m33-frame-qualification.json).
 - [x] M34.1 Host/dead-policy retirement; science/Astra high pass; comparable costs accepted; [record](bench/history/2026-10-06-m34-host-qualification.json).
 - [x] M34 Audited integration/architecture accepted;11807 net retirement and revised budgets approved; [decision](bench/history/2026-10-06-m34-budget-revision.json).
-- [ ] M35 Held-out, cross-platform, scaling and final independent acceptance.
-- [x] M35.2 Strict PPML recovery repair locally qualified/recoverable; full/MacABI/replay73/Stata60/fresh1309/Astra high pass; final acceptance open.
-- [x] M35.4 General reproducible dependency repair: pin/full/MacABI/exact73/Stata63/oracle96/large40/Astra high pass; final gates open.
-- [x] M35.6 Integrated375-family Mac science:6375commands/eight budgets; development/holdout/repeats/discretes/unaffected exact pass; timing open.
+- [x] M35 Accepted by Johannes: integrated Mac science passes; Astra high completion passes; timing incomplete, remote platforms deferred.
+- [x] M35.2 Strict PPML recovery repair: full/MacABI/replay73/Stata60/fresh1309/Astra high pass; included in accepted M35.
+- [x] M35.4 General reproducible dependency repair: pin/full/MacABI/exact73/Stata63/oracle96/large40/Astra high pass; included in accepted M35.
+- [x] M35.6 Integrated375-family Mac science:6375commands/eight budgets; development/holdout/repeats/discretes/unaffected exact pass; no timing claim.
 ## Gates
 - [x] G-M0: canonical comparators, copied implementation, real OLS/PPML replay on Linux CI, exact-copy pass, explicit matrix/exceptions and baselines.
 - [x] G-M1: defaults/selection, corrections, exact unaffected outputs, mapped qualification, installation and summaries.
@@ -94,7 +94,7 @@ Current M35 candidate: core/host109761,+172/M34,-11635/M26; dependency+262 makes
 - [x] G-M12–M21: ten scoped refactors, parent science, clean tranches/timings, Linux CI and separate Astra review complete.
 - [x] G-M26: contract/inventory, unchanged runtime, Mac calibration, Linux CI37217034343 and SCC tooling smoke pass; fresh Astra high accepts.
 - [x] G-M27: integrated canonical retirement, unchanged science/transactions, calibrated parent/fixed-M26 timing and Astra high; Mac-only override.
-- [ ] G-M26–M35: architectural retirements, substantial measured simplification and broad scientific/performance acceptance.
+- [x] G-M26–M35: architecture/science accepted under explicit decisions and revised scope; incomplete performance/scaling and deferred platforms retained.
 - [ ] G-LICENSE: existing native-distribution gate; draft development assets do not establish release permission.
 ## Decisions
 - Full-matrix OLS multiway PSD repair including the reported constant is approved; it is not an open question.
@@ -102,7 +102,7 @@ Current M35 candidate: core/host109761,+172/M34,-11635/M26; dependency+262 makes
 - 2026-10-04 Johannes: preserve original factor slots/base flags as SPEC requires; repair next and conflicting tests, with legacy behavior unchanged.
 - Bundle separate plugins; legacy/source policies are historical except retained SPEC/active ADR requirements.
 ## Blockers
-M35 integrated performance/scaling/holdouts remain; accepted11807 net retirement; original3193/816 misses approved as measured scope, not deleted lines.
+No implementation milestone remains under Johannes's M35 acceptance. Performance/scaling remain incomplete; remote platforms deferred; combined net retirement11373.
 [Remaining-scope audit](bench/history/2026-10-06-m34-remaining-scope-review.json): required live numerical owners retained; no further source retirement promised by forecast.
 M28 accepted architecturally: +96 vsM27/-1627 vsM26; timing unresolved for three workloads, with no established regression; full local/science pass.
 All4720 commands retained; FE-cluster timing drifts in both roles. Optimization remains open; [acceptance](bench/history/2026-10-05-m28-capacity-owner-acceptance.json).
@@ -112,6 +112,7 @@ Prior unqualified snapshot: [evidence](bench/history/2026-10-03-m22-numerical-wi
 Historical v39/v24 allocation manifests predate the frozen source; do not refresh them as proof.
 Old source-string assertions for fit_absorb_matrix and shadow.retained_rows also fail against frozen code; runtime checks remain required.
 ## Log
+- 2026-10-07 M35.11: Johannes accepts M35;8760records+1raw retained; timing incomplete; Astra high approves; [closure](bench/history/2026-10-07-m35-architectural-acceptance.json).
 - 2026-10-07 M35.9: strict slope references/science pass; old2243 timing incomplete,1824 retained; [repair](bench/history/2026-10-07-m35-reference-construction.json).
 - 2026-10-07 M35.10: one qualified reference owner;50tests/19native/all1824 full science/Astra high pass; old419/533 failures retained; [record](bench/history/2026-10-07-m35-common-reference.json).
 - 2026-10-06 M35.1: bounded worker edges/time limits;41tests/saved4448equivalence/Astra high pass; native unchanged; [tools](bench/history/2026-10-06-m35-scaling-tool-qualification.json).

@@ -488,6 +488,13 @@ Gate: the audited target architecture and approved measured retirement scope hol
 predeclared expensive families improve; covered scaling/option cliffs are
 resolved within the envelope; required evidence is complete. Otherwise keep
 the corresponding gate open with a reproducer and bounded next action.
+
+Johannes's explicit [2026-10-07 M35 acceptance](bench/history/2026-10-07-m35-architectural-acceptance.json)
+closes this campaign and the revised architectural program. Integrated Mac
+science and holdouts pass; unfinished performance/scaling and deferred remote
+platform evidence remain incomplete, rather than passing the original gate.
+Historical failures, observations and the unchanged future allowance survive.
+Further optimization and platform qualification require separately scoped work.
 This is engineering completion, not permission to publish native release assets.
 
 ## Execution and reporting discipline

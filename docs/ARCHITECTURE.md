@@ -5,7 +5,9 @@ M0–M25. [MILESTONES](../MILESTONES.md) distinguishes planned from completed wo
 The [second program](../milestones2.md) and [replacement contract](cleanup/REPLACEMENTS.md)
 define the remaining scoped retirements; M27–M33 are accepted with the measured
 tradeoffs recorded in MILESTONES. M34's audited architecture and measured scope
-are accepted after the approved budget revision; M35 integrated acceptance is open.
+are accepted after the approved budget revision. Johannes explicitly accepts
+M35's integrated Mac science and architecture while closing unfinished timing;
+performance/scaling and remote-platform evidence remain incomplete.
 The previous clean-core engine is abandoned, not a future integration target.
 
 ## Module map
@@ -500,3 +502,35 @@ The CMG certificate/fallback boundary is a mathematical responsibility, not an
 arbitrary forwarding layer. Public raw OLS rank/statistics/VCE APIs remain live
 and were outside M26's named M31/M34 pools. Retained physical kernels and
 independent certificates cannot be counted as superseded code.
+
+## M35 accepted integrated runtime
+
+The [specific acceptance](../bench/history/2026-10-07-m35-architectural-acceptance.json)
+binds Mac native `20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826`.
+Core/host production is 109,761 lines: 172 above M34 and 11,635 below M26.
+The deterministic dependency repair adds 262 production lines, leaving an
+11,373-line combined net retirement versus the M26 predecessor of next.
+These figures include replacements and correctness repairs; they do not compare
+next's size with frozen legacy or claim the original 15,000-line target was met.
+
+The strict PPML recovery boundary now enforces the caller's per-row requested
+reconstruction tolerance before publication. The deterministic dependency mode
+uses stable adjoints, indexed scatter and ordered Schwarz accumulation with
+admitted scratch; every supported consumer propagates that mode. Default
+arithmetic and exact unaffected paths retain their declared protections.
+
+[Integrated science](../bench/history/2026-10-06-m35-integrated-scientific-qualification.json)
+passes 375 families, including 98 holdouts, at worker budgets 1/2/4/7/8/9/15/16:
+6,375 native commands with exact repeats, exact unaffected results and stable
+scientific decisions. Independent witnesses, full local entrypoint, Mac ABI and
+transaction checks remain bound to this source and artifact. These are scientific
+and functionality checks, not proof of throughput or complete path coverage.
+
+The final timing campaign is terminal incomplete by Johannes's decision. Its
+8,760 checkpointed commands and one additional raw capture remain intact;
+no complete final performance/scaling verdict exists. Historical M1 next/legacy
+ranges overlap in all 34 paired groups, but that comparison does not measure
+this M35 runtime. Recent mixed costs/gains concern prior next artifacts, including
+fixed M26. No universal speed advantage over legacy follows from those results.
+Current qualification is Mac only; fresh Linux/SCC/Windows evidence is deferred
+and the native-distribution gate remains separate.

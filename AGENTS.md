@@ -108,6 +108,10 @@ Keep exact-copy gates separate from scientific acceptance.
 
 For the identified M35 artifact, Johannes's 2026-10-07 decision waives only
 self-calibration; see bench/history/2026-10-07-m35-self-calibration-waiver.json.
+His separate M35 acceptance closes that campaign and the revised architectural
+program; see bench/history/2026-10-07-m35-architectural-acceptance.json. Keep
+unfinished performance/scaling and deferred platforms incomplete; preserve raw
+verdicts, scientific requirements and the unchanged future timing allowance.
 
 Prospective timing uses a calibrated, predeclared bounded screening/confirmation
 protocol in the existing tools, targeting unresolved workloads. Preserve every

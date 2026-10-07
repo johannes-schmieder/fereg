@@ -1,0 +1,518 @@
+{
+  "milestone": "M35.11",
+  "responsibility": "Close integrated campaign and accept the scientifically qualified next architecture by explicit owner decision",
+  "decision": {
+    "authority": "Johannes, direct instruction, 2026-10-07",
+    "instruction": "let's close this campaign. Accept M35.",
+    "accepted": true,
+    "kind": "architectural/scientific acceptance with incomplete performance and deferred platform evidence",
+    "performance_pass_claim": false,
+    "future_allowance_changed": false,
+    "release_authorization": false
+  },
+  "runtime": {
+    "candidate_native_sha256": "20a9d3d9234fa9faed9338e384c6d3987a6c0d2371d2066242f96e1a1ffa6826",
+    "source": {
+      "commit": "96f19624c52fbf139a8c2a6b83734cfd6bf93099",
+      "archive_sha256": "3ceaddc4f62b9536ba84adb68072f5e000e1b37570e647812a2326f352d095de",
+      "paths": [
+        "Cargo.toml",
+        "Cargo.lock",
+        "rust-toolchain.toml",
+        "clippy.toml",
+        "references.lock.toml",
+        "crates",
+        "legacy",
+        "vendor",
+        "plugin",
+        "stata",
+        "scripts",
+        "ci/reference-bundles",
+        "tests/mock_spi",
+        "bench",
+        "AGENTS.md",
+        "docs/SPEC.md",
+        "docs/ARCHITECTURE.md"
+      ],
+      "scope": "bounded native/frontend snapshot, not full repository",
+      "patch_sha256": "9566d8e7cbba862045b343e79910c128c1835da57ac4904444426a6b8a9b36cf"
+    },
+    "dependency": {
+      "base": "1ac3522a251c2622dbeab451415924f9ebe117b9",
+      "candidate": "803a4feacef526f55e1520f22be4409779b7d8ff",
+      "source_branch": "codex/reproducible-reductions",
+      "reviewed_tested_file_count": 107,
+      "pin_verification": "Every reviewed/tested dependency file byte-identical to actual Cargo Git checkout; local full entrypoint evidence reused across source-equivalent repin. Universal native built with actual pin."
+    },
+    "frontend_sha256": "3991bfb56cdd1b0d349de76f2a6aa5dc77184de19a4082f60010acb3b71bd667",
+    "identity_verification": "All three actual native/frontend/source identities match the frozen campaign at closure; no runtime change in this commit",
+    "legacy_source": "15a57ba285a3afede2e3337fe8598e72529a4090",
+    "legacy_role": "Frozen independent selectable historical comparator; no next fallback"
+  },
+  "production": {
+    "accepted_core": 95731,
+    "accepted_host": 14030,
+    "accepted_core_host": 109761,
+    "delta_vs_M34": 172,
+    "core_host_net_vs_M26": -11635,
+    "new_dependency_production": 262,
+    "combined_net_vs_M26": -11373,
+    "unpromoted_candidate": null,
+    "documentation_tooling_retirement_credit": 0,
+    "original_target": 15000,
+    "original_budget_revision": {
+      "path": "bench/history/2026-10-06-m34-budget-revision.json",
+      "sha256": "3fee0aa6fd9ace0a640ba2c0cfc843779c00fbf1f9c047db10b59b614331f410"
+    },
+    "interpretation": "Net includes every repair and replacement; M26 is a predecessor of next, not frozen legacy. Approved scope rebudgeting is preserved; no 15000-line delivery claim."
+  },
+  "science": {
+    "receipt": {
+      "path": "bench/history/2026-10-06-m35-integrated-scientific-qualification.json",
+      "sha256": "b22f670b9d6609bd5af9b60de0d4aa2fe80c73423a053d17d6b7a64c106b0123"
+    },
+    "families": 375,
+    "development_families": 277,
+    "holdout_families": 98,
+    "native_commands": 6375,
+    "worker_budgets": [
+      1,
+      2,
+      4,
+      7,
+      8,
+      9,
+      15,
+      16
+    ],
+    "counts": {
+      "role_budget_groups": 3000,
+      "commands_checked": 6000,
+      "failures": 0,
+      "exact_repeat_files": 13792,
+      "unaffected_groups": 2760,
+      "exact_parent_samples": 3000,
+      "exact_parent_coefficient_layouts": 3000,
+      "parent_discrete_fields_checked": 24000,
+      "exact_unaffected_parent_files": 12688,
+      "scientific_values_checked": 790512,
+      "parent_omitted_slots_checked": 1672,
+      "output_values_checked": 799202032,
+      "affected_lsmr_groups": 240
+    },
+    "passing_scope": "Integrated Mac development/holdout science, fixed-configuration repeats, exact unaffected results, stable sample/layout/discrete decisions; retained independent witnesses/full entrypoint/ABI/transaction evidence",
+    "reused_local_receipt": {
+      "path": "bench/history/2026-10-06-m35-reproducible-qualification.json",
+      "sha256": "5bd1742b756e6d694de059fd4030f68315c55fc7513c2ddc04e5a1225222b98a"
+    },
+    "rerun_required": "No runtime/source/fixture change; reuse artifact-bound valid evidence rather than repeat native checks"
+  },
+  "retired_responsibilities": [
+    "M27 canonical preparation owner and optional cluster metadata: duplicated model/topology ownership and construction",
+    "M28 common storage/admission/capacity authority: duplicated memory owners and estimators",
+    "M29 common worker/stage policy: plugin ceiling, special worker exceptions and overlapping phase policy",
+    "M30 common FE lifecycle and structural automatic families: duplicated setup/recovery/eligibility owners",
+    "M31 shared finite operations and one-shot Fast/Low lifecycle: duplicate end-to-end fitting, standardized QR and transpose pipeline",
+    "M32 accepted-fit inference/output products: duplicate DoF topology, score reabsorption and final-output construction",
+    "M33 generation-bound linear frames and shared CMG operations: PPML publication owner and redundant numerical product ownership",
+    "M34 host preparation/wire/publication: duplicate developer loading, PreparedPipeline/result_view and dead solver policies"
+  ],
+  "retained_scientific_responsibilities": "Distinct physical kernels, explicit solvers, public memory modes, independent rank/covariance/reconstruction certificates, accepted/speculative states, both bias modes, original factor slots/base flags and transactions remain",
+  "campaign": {
+    "root": "target/m35-integrated/acceptance-common-reference",
+    "status": "terminal interrupted/incomplete by explicit user closure; never restart or relabel as passed",
+    "freeze": {
+      "path": "target/m35-integrated/acceptance-common-reference/freeze.json",
+      "sha256": "1bf61f6ed035e0423db6131121de0ce6e8e306cbbbd63feb9275d4b7c9660cf2"
+    },
+    "plan": {
+      "path": "target/m35-integrated/acceptance-common-reference/acceptance-plan.json",
+      "sha256": "42b04a091522d607f5a59ed10fe4f30109167df208fe950a40185599028f5087"
+    },
+    "canonical_plan_sha256": "b0e0824596341374b19518a1fa1b7b42f0c746b784c70dfe4c9d6afa6951cfa2",
+    "allowance": "max(5%,1 ms), against both qualified M34 and fixed M26; unchanged",
+    "blocks": [
+      {
+        "path": "target/m35-integrated/acceptance/acceptance-screening-parent-forward/results.json",
+        "sha256": "16e1609871201bf6718756a14d647b711109680822aa4feb5157d7738a6db293",
+        "recorded_commands": 912,
+        "recorded_native_statuses": {
+          "ok": 912
+        },
+        "complete": true,
+        "post_block_identities_verified": true,
+        "disposition": "complete"
+      },
+      {
+        "path": "target/m35-integrated/acceptance/acceptance-screening-parent-reverse/results.json",
+        "sha256": "d328b6615f5008a02ee782210f2a41c3cdd2aa4b390d3358d5d4c3fe7c94f733",
+        "recorded_commands": 912,
+        "recorded_native_statuses": {
+          "ok": 912
+        },
+        "complete": true,
+        "post_block_identities_verified": true,
+        "disposition": "complete"
+      },
+      {
+        "path": "target/m35-integrated/acceptance-common-reference/acceptance-confirmation-parent-forward/results.json",
+        "sha256": "7f952aa0f3fd27c1a4a2660bec34a94f5c19fdc2f0b993c3fecb08765c2d716a",
+        "recorded_commands": 3822,
+        "recorded_native_statuses": {
+          "ok": 3822
+        },
+        "complete": true,
+        "post_block_identities_verified": true,
+        "disposition": "complete"
+      },
+      {
+        "path": "target/m35-integrated/acceptance-common-reference/acceptance-confirmation-parent-reverse/results.json",
+        "sha256": "503a2321f2580be060d2dc9930a8e5daba73cd8403b9a35a54990b5990eee3aa",
+        "recorded_commands": 1338,
+        "recorded_native_statuses": {
+          "ok": 1338
+        },
+        "complete": false,
+        "post_block_identities_verified": false,
+        "disposition": "interrupted_by_user_closure"
+      },
+      {
+        "path": "target/m35-integrated/acceptance-common-reference/acceptance-screening-fixed_baseline-forward/results.json",
+        "sha256": "f978e45e054c8d629ba53bcd08c27694f2fbd3304fa4c83dde46d0066f75ddd9",
+        "recorded_commands": 888,
+        "recorded_native_statuses": {
+          "ok": 888
+        },
+        "complete": true,
+        "post_block_identities_verified": true,
+        "disposition": "complete"
+      },
+      {
+        "path": "target/m35-integrated/acceptance-common-reference/acceptance-screening-fixed_baseline-reverse/results.json",
+        "sha256": "3e4885a78aa704f4245d73013d4051e3914c7e433eda2e5531f7ad378baff2de",
+        "recorded_commands": 888,
+        "recorded_native_statuses": {
+          "ok": 888
+        },
+        "complete": true,
+        "post_block_identities_verified": true,
+        "disposition": "complete"
+      }
+    ],
+    "recorded_commands": 8760,
+    "uncheckpointed_raw_captures": [
+      {
+        "directory": "target/m35-integrated/acceptance-common-reference/acceptance-confirmation-parent-reverse/commands/holdout-ppml-1fe-combined-multiway/parent-fereg-t8-7",
+        "files": [
+          {
+            "name": "coefficients.csv",
+            "bytes": 235,
+            "sha256": "3674b17e28ea7a053c456fa56ee86398ee1c4e2af30de03c4abe527050457d50"
+          },
+          {
+            "name": "command.do",
+            "bytes": 242,
+            "sha256": "ad447c31b0e615adcd10621989e7ab7d6b4d22b287ab794d891f64534d8ed205"
+          },
+          {
+            "name": "command.log",
+            "bytes": 13409,
+            "sha256": "2e431d5905d82bd441cae945e6aabd1ceefc797bf9867c8d166fb9ba16646fb6"
+          },
+          {
+            "name": "config.do",
+            "bytes": 1169,
+            "sha256": "c7eb999f03706c22714c27fd680869044b46effbb7741bbe5e9a386f2b6f33a8"
+          },
+          {
+            "name": "config.tsv",
+            "bytes": 945,
+            "sha256": "4ea75d4cc542faa3bedca2274f722926d315b6dc7573913e17079faab8ccd573"
+          },
+          {
+            "name": "metadata.tsv",
+            "bytes": 301,
+            "sha256": "7b4239f91a9a0653484635888e20431e5861b02d7c995e72bcce0d3f00691842"
+          },
+          {
+            "name": "outputs.csv",
+            "bytes": 8729053,
+            "sha256": "b3aadebba26ac09fe3889f9d0b2229625536d08ad9d367059a5d0dd667af4f3d"
+          },
+          {
+            "name": "process.log",
+            "bytes": 0,
+            "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+          },
+          {
+            "name": "sample.csv",
+            "bytes": 849435,
+            "sha256": "5394954709f402545f7f0c786e9f18643b0975840b34d69bb2439bf3fb6b7381"
+          },
+          {
+            "name": "scalars.hex",
+            "bytes": 439,
+            "sha256": "1b8d04ba70388140f98886886cca0548bfd0e88441e792741c49d70442fec475"
+          },
+          {
+            "name": "science.hex",
+            "bytes": 2502,
+            "sha256": "661f126e055fc11c5c8f798fa66ffc58631e91cfb730679175cf08271e5316a5"
+          },
+          {
+            "name": "telemetry.tsv",
+            "bytes": 12700,
+            "sha256": "098968cfc107b4012a74f9727007604233de705dad113e977282456311ef2a4e"
+          }
+        ],
+        "disposition": "raw capture retained; absent from checkpoint; no added record or passing gate"
+      }
+    ],
+    "screening": {
+      "receipt": {
+        "path": "target/m35-integrated/acceptance-common-reference/acceptance-screening-verdict.json",
+        "sha256": "b1ff8db5875cbf66476c4cb4321431532ffae02e8ca2310c28dab9c6890e0974"
+      },
+      "raw_passed": false,
+      "comparison_counts": {
+        "parent": {
+          "artifact_effects": {
+            "unresolved": 23,
+            "within": 25
+          },
+          "scaling_effects": {
+            "unresolved": 17,
+            "within": 7
+          },
+          "raw_passed": false
+        },
+        "fixed_baseline": {
+          "artifact_effects": {
+            "unresolved": 33,
+            "within": 15
+          },
+          "scaling_effects": {
+            "unresolved": 17,
+            "within": 7
+          },
+          "raw_passed": false
+        }
+      },
+      "prescribed_confirmation_groups": 44,
+      "interpretation": "Science checked for complete screens; timing/scaling unresolved screen findings require prescribed confirmation; no final verdict exists"
+    },
+    "unexecuted": [
+      "Both fixed-M26 confirmation orders",
+      "Remainder of reverse M34 confirmation",
+      "Full integrated option/performance envelope and other worker-boundary timing"
+    ],
+    "confirmation_science": "Recorded native statuses are successful; final full confirmation scientific/statistical analysis was not completed. Missing analysis is not passing.",
+    "last_uncheckpointed_capture": "Preserved verbatim, including all files and hashes; no retrospective record reconstruction",
+    "owned_processes": "Verified wrapper14557 and runner29162 terminated; subsequent filtered ps found no active owned runner/Stata. Unrelated jobs untouched; FEVC quiet-window reservation released"
+  },
+  "preserved_history": [
+    {
+      "path": "bench/history/2026-10-07-m35-calibration-terminal.json",
+      "sha256": "dd394566573ad8fe0d58a2c5fa5dc8d4974068c54456878390ca8072ce6d2b08"
+    },
+    {
+      "path": "bench/history/2026-10-07-m35-self-calibration-waiver.json",
+      "sha256": "26a542c4e9aad4169c08fbbc135c7afd90f933b423ed4dd6ebacd17b7427a2a5"
+    },
+    {
+      "path": "bench/history/2026-10-07-m35-reference-construction.json",
+      "sha256": "3387a5210d6ad20f73035d6d39cd11d2eefe2417f34230cd8468619523eaed55"
+    },
+    {
+      "path": "bench/history/2026-10-07-m35-common-reference.json",
+      "sha256": "7ce8aa33d8767c606be3d3c2adf4ce663dff01cea3f929ceabf1635fdedc916d"
+    }
+  ],
+  "performance_interpretation": {
+    "current": "Mixed gains/costs versus previous next versions; incomplete current campaign cannot support a full timing/scaling pass or universal speed claim",
+    "inherited_costs": "M30 three fixed-M26 regressions and M31 large Fast OLS 8.2\u20138.6% cost were explicitly accepted; their original failed verdicts remain",
+    "legacy_comparison": {
+      "receipt": {
+        "path": "bench/history/2026-10-02-m1-performance.json",
+        "sha256": "7ec477fe98c131cee2c68a69cb68ed4def6a0f67a51d7e41b15457027df300c8"
+      },
+      "scope": "Historical M1 Mac matrix only:34 paired groups/214 exact coefficient/sample comparisons; all timing ranges overlap. This is not current M35 timing evidence."
+    },
+    "descriptive_screen_examples": {
+      "scope": "Examples showing gains and costs versus fixed M26 next, never frozen legacy; both orders shown separately, no discarded observations",
+      "method": "Median of each role/group/order eight screening durations; descriptive only, not confirmation or statistical acceptance",
+      "rows": [
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "workers": 8,
+          "order": "forward",
+          "candidate_median_seconds": 0.1588139791666667,
+          "M26_median_seconds": 0.19707660416666672,
+          "change_percent": -19.415102650967896,
+          "pairs": 8
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "workers": 16,
+          "order": "forward",
+          "candidate_median_seconds": 0.160210125,
+          "M26_median_seconds": 0.20277381250000004,
+          "change_percent": -20.990722113093383,
+          "pairs": 8
+        },
+        {
+          "cell": "deterministic-cover-ols-3fe-n100000-k128",
+          "workers": 8,
+          "order": "forward",
+          "candidate_median_seconds": 0.7356209791666668,
+          "M26_median_seconds": 0.8357958333333335,
+          "change_percent": -11.98556515496707,
+          "pairs": 8
+        },
+        {
+          "cell": "deterministic-cover-ols-3fe-n100000-k128",
+          "workers": 16,
+          "order": "forward",
+          "candidate_median_seconds": 0.7092264791666668,
+          "M26_median_seconds": 0.7492206041666669,
+          "change_percent": -5.338097321079982,
+          "pairs": 8
+        },
+        {
+          "cell": "cover-ols-2fe-n100000-k50",
+          "workers": 8,
+          "order": "forward",
+          "candidate_median_seconds": 0.14427225000000005,
+          "M26_median_seconds": 0.1108274166666667,
+          "change_percent": 30.17740044769306,
+          "pairs": 8
+        },
+        {
+          "cell": "cover-ols-2fe-n100000-k50",
+          "workers": 16,
+          "order": "forward",
+          "candidate_median_seconds": 0.1477869166666667,
+          "M26_median_seconds": 0.1149734791666667,
+          "change_percent": 28.540005693341964,
+          "pairs": 8
+        },
+        {
+          "cell": "holdout-ols-3fe-combined-multiway",
+          "workers": 8,
+          "order": "forward",
+          "candidate_median_seconds": 0.24210129166666672,
+          "M26_median_seconds": 0.19615414583333335,
+          "change_percent": 23.423999344053303,
+          "pairs": 8
+        },
+        {
+          "cell": "holdout-ols-3fe-combined-multiway",
+          "workers": 16,
+          "order": "forward",
+          "candidate_median_seconds": 0.2552118750000001,
+          "M26_median_seconds": 0.2258992083333334,
+          "change_percent": 12.975993533989438,
+          "pairs": 8
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "workers": 8,
+          "order": "reverse",
+          "candidate_median_seconds": 0.1587363541666667,
+          "M26_median_seconds": 0.1973369166666667,
+          "change_percent": -19.560740662226138,
+          "pairs": 8
+        },
+        {
+          "cell": "development-ppml-0fe-none-robust",
+          "workers": 16,
+          "order": "reverse",
+          "candidate_median_seconds": 0.15965897916666671,
+          "M26_median_seconds": 0.2033188541666667,
+          "change_percent": -21.47359878597911,
+          "pairs": 8
+        },
+        {
+          "cell": "deterministic-cover-ols-3fe-n100000-k128",
+          "workers": 8,
+          "order": "reverse",
+          "candidate_median_seconds": 0.7377006666666668,
+          "M26_median_seconds": 0.8255611666666669,
+          "change_percent": -10.6425185131649,
+          "pairs": 8
+        },
+        {
+          "cell": "deterministic-cover-ols-3fe-n100000-k128",
+          "workers": 16,
+          "order": "reverse",
+          "candidate_median_seconds": 0.7095295625000002,
+          "M26_median_seconds": 0.7613125625000001,
+          "change_percent": -6.801805533059213,
+          "pairs": 8
+        },
+        {
+          "cell": "cover-ols-2fe-n100000-k50",
+          "workers": 8,
+          "order": "reverse",
+          "candidate_median_seconds": 0.14397745833333342,
+          "M26_median_seconds": 0.106108125,
+          "change_percent": 35.689381311123356,
+          "pairs": 8
+        },
+        {
+          "cell": "cover-ols-2fe-n100000-k50",
+          "workers": 16,
+          "order": "reverse",
+          "candidate_median_seconds": 0.1374413541666667,
+          "M26_median_seconds": 0.10809556250000005,
+          "change_percent": 27.148007733126533,
+          "pairs": 8
+        },
+        {
+          "cell": "holdout-ols-3fe-combined-multiway",
+          "workers": 8,
+          "order": "reverse",
+          "candidate_median_seconds": 0.2418072083333334,
+          "M26_median_seconds": 0.19587070833333337,
+          "change_percent": 23.452460243225936,
+          "pairs": 8
+        },
+        {
+          "cell": "holdout-ols-3fe-combined-multiway",
+          "workers": 16,
+          "order": "reverse",
+          "candidate_median_seconds": 0.2566920208333334,
+          "M26_median_seconds": 0.22781981250000005,
+          "change_percent": 12.673264900230464,
+          "pairs": 8
+        }
+      ]
+    }
+  },
+  "advisory_tool_finding": {
+    "summary": "Generic summarize() still uses artifact-local references; fresh common-reference parent CSV accuracy may say unavailable. Full bounded acceptance comparator uses candidate reference and full science; no gate impact.",
+    "action": "Retained as optional focused tooling follow-up; no runtime blocker or altered raw CSV/results"
+  },
+  "platform": "Current acceptance is Mac only; GitHub tests remain paused. No fresh Linux/SCC/Windows, large-node scaling, portability or native-release claim.",
+  "remaining_program": "M26\u2013M35 architecturally complete under explicit owner decisions and revised scope; optimization, complete performance/scaling and deferred platforms remain separate follow-up work, not passing gates.",
+  "astra_high_completion_review": {
+    "status": "completed",
+    "reviewer": "m35_owner_acceptance_completion_astra",
+    "model": "gpt-6-astra",
+    "effort": "high",
+    "mode": "Read-only; no edits/builds/tests/timing/additional agents",
+    "decision": "No blocking issue; supports recording explicit owner acceptance and commit/push after documentation checks and completing pending fields",
+    "verified": "18 linked receipt/result/plan hashes and final raw capture hashes; source/native/frontend binding;8760+1 counts;375families/98holdouts/6375commands/eightbudgets;net accounting and complete retirements; no scientific weakening; honest incomplete performance/platforms and current-vs-historical legacy distinction",
+    "advisory": "Artifact-local CSV summary reference finding remains nonblocking tooling follow-up"
+  },
+  "closure_checks": {
+    "status": "pass",
+    "scope": "Documentation/evidence only; runtime, source, native and tooling unchanged",
+    "governance": "289 ledger lines, every line <=200 characters",
+    "local_links": "137 existing documentation links checked; newly linked receipt exists",
+    "evidence": "All compact receipt SHA bindings and raw capture hashes verified; three actual frozen native/frontend/source identities verified",
+    "accounting": "Core+host and dependency-adjusted net counts verified; no final timing verdict exists",
+    "git_diff_check": "pass",
+    "remote_testing": "Remains paused; no CI or remote tests run"
+  }
+}

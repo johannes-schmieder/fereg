@@ -91,3 +91,10 @@ the allowance and raw verdict. New or worsened established regressions require a
 separate decision; final integrated performance remains open. The
 [M32 acceptance](../../bench/history/2026-10-06-m32-architectural-acceptance.json)
 records the identified artifact and scope.
+
+Johannes explicitly [accepts M35 and closes its campaign](../../bench/history/2026-10-07-m35-architectural-acceptance.json)
+on 2026-10-07. Integrated Mac science passes; unfinished timing/scaling and
+deferred platforms remain incomplete. This specific architectural acceptance
+closes the program under its revised scope without asserting a performance
+pass, changing future allowances or authorizing native distribution. Preserve
+all observations and historical failed/unresolved verdicts.

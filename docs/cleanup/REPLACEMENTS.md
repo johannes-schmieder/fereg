@@ -18,6 +18,13 @@ The 3,193 aggregate shortfall and 816 named overrun remain recorded; the origina
 line-count targets cease to block completion. M35's science, performance,
 holdout, scaling and final review requirements remain binding.
 
+Johannes's specific [M35 acceptance](../../bench/history/2026-10-07-m35-architectural-acceptance.json)
+subsequently closes the architectural program with integrated Mac science and
+holdouts passing, and performance/scaling incomplete and remote platforms
+deferred. Net delivered retirement is 11,373 production lines versus M26 after
+all runtime and dependency repairs; the original target is not claimed met.
+The original allocations below remain historical forecasts.
+
 The [disjoint inventory](../../bench/history/2026-10-04-m26-retirement-inventory.json)
 names the frozen files and reassigned function slices. The [M28 design review](../../bench/history/2026-10-05-m28-capacity-design.json)
 prospectively reassigns 1,119 disjoint baseline lines and their successor budgets.
