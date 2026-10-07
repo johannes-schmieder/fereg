@@ -86,6 +86,18 @@ the existing eight screening and 32/64 additional confirmation pairs, allowance,
 two looks, accuracy, identity and measurement-assumption checks. No self-calibration
 success or revised 128-pair protocol is claimed; actual unresolved gates still block.
 
+The optional `ols-general-slopes-lsmr-v1` reference policy selects explicit LSMR
+for strict auto OLS references with at least three FE and absorbed slopes. It
+preserves explicit requests, one worker, strict tolerance and all timed options.
+The [M35 reference repair](history/2026-10-07-m35-reference-construction.json)
+retains the failed original campaign and broader reference trial. An explicit
+`--successor-plan` may inherit only its two named, hash-bound M34 screens:
+validate the original evidence first, allow only this reference/tooling delta,
+and recheck affected captures against qualified, bound replacement references.
+Fresh M26 screens and confirmation use the successor declaration. The complete
+unresolved union, connected scaling endpoints and original screening provenance
+remain required; inherited observations and original JSON are never replaced.
+
 The historical fixed-budget v1 invocation remains:
 
 For each reference artifact, run a forward and reverse block in separate roots:

@@ -13,10 +13,27 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from compare import acceptance_envelopes, confirmation_scope, median_order_interval, validate_measurement_plan
-from run import execute_cell, measure, save_campaign
+from run import command_solver, execute_cell, measure, save_campaign
 
 
 class BoundedMeasurementTests(unittest.TestCase):
+    def test_strict_general_ols_reference_keeps_timed_and_explicit_requests(self):
+        args = SimpleNamespace(solver='auto')
+        suite = {'protocol': {'reference_solver_policy': 'ols-general-slopes-lsmr-v1'}}
+        for model in ['ols', 'ppml']:
+            for effects in range(5):
+                cell = dict(model=model, effects=effects, slopes=True)
+                self.assertEqual(command_solver(args, suite, cell, True),
+                                 'lsmr' if model == 'ols' and effects >= 3 else 'auto')
+                self.assertEqual(command_solver(args, suite, cell, False), 'auto')
+                self.assertEqual(command_solver(args, suite, {**cell, 'slopes':False}, True), 'auto')
+                for solver in ['lsmr', 'cmg', 'map']:
+                    self.assertEqual(command_solver(args, suite, {**cell, 'solver': solver}, True), solver)
+                    self.assertEqual(command_solver(SimpleNamespace(solver=solver), suite, cell, True), solver)
+        self.assertEqual(command_solver(args, {'protocol': {}}, dict(model='ols', effects=3), True), 'auto')
+        with self.assertRaises(ValueError):
+            command_solver(args, {'protocol': {'reference_solver_policy': 'unknown'}}, dict(model='ols', effects=3), False)
+
     def test_reference_and_timed_commands_cannot_run_past_remaining_block_budget(self):
         with tempfile.TemporaryDirectory() as temp:
             args = SimpleNamespace(root=Path(temp), tier='pilot', engine='next', stata='fake-stata',
@@ -149,6 +166,108 @@ class BoundedMeasurementTests(unittest.TestCase):
 
     def evaluate(self, paths):
         return acceptance_envelopes(paths[:len(paths)//2],paths[len(paths)//2:],'p','f')
+
+    def reference_successor(self, root):
+        def save(path, value):
+            path.write_text(json.dumps(value))
+            return dict(path=str(path), sha256=hashlib.sha256(path.read_bytes()).hexdigest())
+        (root/'coefficients.csv').write_text('name,value\nx,1\n')
+        (root/'sample.csv').write_text('obs_id\n1\n')
+        dataset=root/'data.dta';dataset.write_bytes(b'immutable data')
+        data_hash=hashlib.sha256(dataset.read_bytes()).hexdigest()
+        config=dict(solver='auto',threads='1',model='ols',tolerance='1e-12',dataset=str(dataset),vce='robust')
+        (root/'config.tsv').write_text(''.join(f'{k}\t{v}\n' for k,v in config.items()))
+        old_suite=dict(defaults={},protocol={'reference_tolerance':1e-12},
+            tiers={'pilot':{}},cells=[dict(id='a',model='ols',effects=3,slopes=True),dict(id='b',model='ppml',effects=3)])
+        old_manifest=save(root/'old-manifest.json',old_suite)
+        paths=self.captures(root)
+        old=json.loads(paths[0].read_text())['measurement']['plan']
+        old.update(milestone='M35',manifest_sha256=old_manifest['sha256'],
+            tooling_identity={'bench/run.py':'old-run','bench/compare.py':'old-compare','manifest':old_manifest['sha256'],'bench/generate.py':'unchanged'})
+        for path in paths:
+            c=json.loads(path.read_text());c.update(suite_sha256=old['manifest_sha256'],tooling_identity=old['tooling_identity'],datasets={'a':data_hash,'b':data_hash})
+            c['measurement'].update(plan=old,plan_sha256=hashlib.sha256(json.dumps(old,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+            save(path,c)
+        previous_plan=save(root/'old-plan.json',old)
+        suite={**old_suite,'protocol':{**old_suite['protocol'],'reference_solver_policy':'ols-general-slopes-lsmr-v1'}}
+        manifest=save(root/'new-manifest.json',suite)
+        tools={**old['tooling_identity'],'bench/run.py':'new-run','bench/compare.py':'new-compare','manifest':manifest['sha256']}
+        records=[]
+        for role in ['parent','candidate']:
+            directory=root/role;directory.mkdir()
+            for filename in ['coefficients.csv','sample.csv']:(directory/filename).write_bytes((root/filename).read_bytes())
+            (directory/'metadata.tsv').write_text('complete\t1\nrc\t0\nactual_engine\tnext\n')
+            (directory/'config.tsv').write_text(''.join(f'{k}\t{v}\n' for k,v in {**config,'solver':'lsmr'}.items()))
+            records.append(dict(cell='a',artifact_role=role,reference=True,threads=1,requested_solver='lsmr',status='ok',
+                plugin_sha256='p',frontend_sha256='f',engine='next',directory=str(directory),
+                capture_files={p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in directory.iterdir()}))
+        witness=save(root/'witness.json',dict(passed=True,captures=[dict(path=r['directory'],passed=True) for r in records]))
+        qualification=save(root/'qualification.json',dict(manifest=manifest,tooling_identity=tools,artifacts=old['artifacts'],independent_witness=witness,
+            datasets={'a':data_hash,'b':data_hash},records=records,passed=True,complete=True,identities_verified=True))
+        successor={**old,'manifest_sha256':manifest['sha256'],'tooling_identity':tools,
+            'inherited_screening':dict(previous_plan=previous_plan,previous_manifest=old_manifest,reference_qualification=qualification,
+                blocks=[dict(path=str(p),sha256=hashlib.sha256(p.read_bytes()).hexdigest()) for p in paths[:2]])}
+        for path in paths[2:]:
+            c=json.loads(path.read_text());c.update(suite_sha256=successor['manifest_sha256'],tooling_identity=tools,
+                protocol={**c['protocol'],'reference_solver_policy':'ols-general-slopes-lsmr-v1'})
+            c['measurement'].update(plan=successor,plan_sha256=hashlib.sha256(json.dumps(successor,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+            save(path,c)
+        return paths,successor
+
+    def test_reference_successor_preserves_statistics_and_rejects_other_changes(self):
+        from compare import bounded_pair_envelopes
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);paths,plan=self.reference_successor(root)
+            original=[p.read_bytes() for p in paths[:2]]
+            before=bounded_pair_envelopes(paths[:2])
+            result=acceptance_envelopes(paths[:2],paths[2:],'p','f',successor_plan=plan)
+            self.assertEqual(result['parent']['effects'],before['effects'])
+            self.assertEqual(result['parent']['blocks'],before['blocks'])
+            self.assertEqual([p.read_bytes() for p in paths[:2]],original)
+            for corruption in ['budget','allowance','tool','unlisted','source','reference_hash']:
+                changed=copy.deepcopy(plan)
+                if corruption=='budget':changed['confirmation_pairs']['a|4|fereg']=64
+                if corruption=='allowance':changed['short_workload_allowance_seconds']=.002
+                if corruption=='tool':changed['tooling_identity']['bench/generate.py']='other'
+                if corruption=='unlisted':changed['inherited_screening']['blocks'][0]['sha256']='other'
+                if corruption=='source':changed['artifacts']['candidate']['source_sha']='other'
+                if corruption=='reference_hash':changed['inherited_screening']['reference_qualification']['sha256']='other'
+                with self.subTest(corruption=corruption),self.assertRaises(ValueError):
+                    acceptance_envelopes(paths[:2],paths[2:],'p','f',successor_plan=changed)
+            # Updating the binding cannot disguise a changed reference model or sample.
+            binding=plan['inherited_screening']['reference_qualification']
+            q_path=Path(binding['path']);q=json.loads(q_path.read_text())
+            for filename,payload in [('config.tsv','solver\tlsmr\nthreads\t1\nmodel\tols\ntolerance\t1e-12\ndataset\t'+str(root/'data.dta')+'\nvce\tiid\n'),
+                                     ('sample.csv','obs_id\n2\n'),('metadata.tsv','complete\t1\nrc\t459\nactual_engine\tnext\n')]:
+                ref=q['records'][0];path=Path(ref['directory'])/filename;raw=path.read_bytes()
+                path.write_text(payload);ref['capture_files'][filename]=hashlib.sha256(path.read_bytes()).hexdigest()
+                q_path.write_text(json.dumps(q));binding['sha256']=hashlib.sha256(q_path.read_bytes()).hexdigest()
+                with self.subTest(filename=filename),self.assertRaises(ValueError):
+                    acceptance_envelopes(paths[:2],paths[2:],'p','f',successor_plan=plan)
+                path.write_bytes(raw);ref['capture_files'][filename]=hashlib.sha256(raw).hexdigest()
+
+    def test_inherited_screening_final_look_requires_both_comparators_and_provenance(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root=Path(temp);screen,plan=self.reference_successor(root)
+            first=acceptance_envelopes(screen[:2],screen[2:],'p','f',successor_plan=plan)
+            self.assertEqual(confirmation_scope([first['parent'],first['fixed_baseline']]),{('a',4,'fereg')})
+            identity=first['parent']['blocks']+first['fixed_baseline']['blocks']
+            confirm=self.captures(root,'confirmation','inherit-confirm',['a'],identity)
+            for path in confirm:
+                c=json.loads(path.read_text());c.update(suite_sha256=plan['manifest_sha256'],tooling_identity=plan['tooling_identity'],
+                    protocol={**c['protocol'],'reference_solver_policy':'ols-general-slopes-lsmr-v1'},datasets=first['parent']['datasets'])
+                c['measurement'].update(plan=plan,plan_sha256=hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest())
+                path.write_text(json.dumps(c))
+            parent=screen[:2]+confirm[:2];fixed=screen[2:]+confirm[2:]
+            final=acceptance_envelopes(parent,fixed,'p','f',successor_plan=plan)
+            self.assertTrue(final['passed'])
+            self.assertEqual([b['pairs'] for b in final['parent']['effects'][0]['blocks']],[40,40])
+            raw=confirm[0].read_bytes();c=json.loads(raw)
+            c['measurement']['screening_blocks'][0]['sha256']='wrong'
+            confirm[0].write_text(json.dumps(c))
+            with self.assertRaises(ValueError):acceptance_envelopes(parent,fixed,'p','f',successor_plan=plan)
+            confirm[0].write_bytes(raw)
+            with self.assertRaises(ValueError):acceptance_envelopes(parent,screen[2:],'p','f',successor_plan=plan)
 
     def test_m35_waiver_is_decision_and_artifact_bound_without_a_fake_calibration(self):
         with tempfile.TemporaryDirectory() as temp:

@@ -143,6 +143,18 @@ def write_configuration(directory, settings):
     (directory / "config.do").write_text("".join(f'local {key} "{value}"\n' for key, value in settings.items()))
 
 
+def command_solver(args, suite, cell, reference):
+    policy = suite['protocol'].get('reference_solver_policy')
+    if policy not in [None, 'ols-general-slopes-lsmr-v1']:
+        raise ValueError('unknown strict reference solver policy')
+    solver = cell.get('solver', 'auto' if reference else args.solver)
+    if reference and policy:
+        solver = cell.get('solver', args.solver)
+        if solver == 'auto' and cell['model'] == 'ols' and cell['effects'] >= 3 and cell.get('slopes', False):
+            solver = 'lsmr'
+    return solver
+
+
 def measure(args, suite, cell, arm, threads, repetition, dataset, environment, reference=False):
     label = "reference" if reference else f"{arm}-t{threads}-{repetition}"
     role = getattr(args, 'artifact_role', '')
@@ -161,7 +173,7 @@ def measure(args, suite, cell, arm, threads, repetition, dataset, environment, r
                 "weights": cell["weights"], "vce": cell["vce"],
                 "engine": args.engine, "engine_option": int(suite["engine_option"]),
                 "plugin_name": args.native_identity["plugin_filename"],
-                "solver": cell.get("solver", "auto" if reference else args.solver), "memory": cell.get("memory", "auto"),
+                "solver": command_solver(args, suite, cell, reference), "memory": cell.get("memory", "auto"),
                 "bias": cell.get("bias", ""), "separation": cell.get("separation_method", ""),
                 "tolerance": suite["protocol"]["reference_tolerance"] if reference else cell.get("tolerance", "")}
     write_configuration(directory, settings)
@@ -296,7 +308,8 @@ def run(args):
             if not args.screening_blocks:
                 raise ValueError('confirmation needs all four completed screening blocks')
             fixed = args.bounded_plan['artifacts']['fixed_baseline']['native_identity']
-            result = acceptance_envelopes(args.screening_blocks[:2],args.screening_blocks[2:],fixed['plugin_sha256'],fixed['frontend_sha256'])
+            result = acceptance_envelopes(args.screening_blocks[:2],args.screening_blocks[2:],fixed['plugin_sha256'],fixed['frontend_sha256'],
+                                          successor_plan=args.bounded_plan)
             if result['parent']['measurement_plan'] != args.bounded_plan:
                 raise ValueError('confirmation plan differs from screening')
             unresolved = confirmation_scope([result['parent'], result['fixed_baseline']])

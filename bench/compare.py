@@ -360,7 +360,104 @@ def confirmation_scope(comparisons):
     return groups
 
 
-def bounded_pair_envelopes(paths):
+def read_bound_json(binding):
+    raw = Path(binding['path']).read_bytes()
+    if hashlib.sha256(raw).hexdigest() != binding['sha256']:
+        raise ValueError('inherited evidence identity changed')
+    return json.loads(raw)
+
+
+def inherited_screening(paths, campaigns, plan):
+    """Validate original M35 screens, then bridge a reference-only successor.
+
+    Only the named M34 screening pair can inherit its context. Original records
+    and files remain untouched; every original accuracy check runs first, and
+    changed references are separately bound and used for fresh accuracy checks.
+    """
+    binding = plan.get('inherited_screening')
+    if not binding or campaigns[0]['measurement']['comparator'] != 'parent':
+        return campaigns, {}
+    observed = [dict(path=str(p), sha256=hashlib.sha256(Path(p).read_bytes()).hexdigest()) for p in paths[:2]]
+    if observed != binding['blocks']:
+        raise ValueError('unlisted inherited screening pair')
+    old = read_bound_json(binding['previous_plan'])
+    ignored = {'inherited_screening', 'manifest_sha256', 'tooling_identity', 'status'}
+    if (old.get('inherited_screening') or old.get('milestone') != 'M35' or old.get('mode') != 'acceptance'
+            or {k:v for k,v in old.items() if k not in ignored} != {k:v for k,v in plan.items() if k not in ignored}):
+        raise ValueError('inherited timing declaration changed')
+    if any(c['measurement']['plan'] != old for c in campaigns[:2]):
+        raise ValueError('inherited original plan changed')
+    original = bounded_pair_envelopes(paths[:2])
+    old_suite = read_bound_json(binding['previous_manifest'])
+    qualified = read_bound_json(binding['reference_qualification'])
+    suite = read_bound_json(qualified['manifest'])
+    expected_suite = {**old_suite, 'protocol': {**old_suite['protocol'], 'reference_solver_policy': 'ols-general-slopes-lsmr-v1'}}
+    if (suite != expected_suite or binding['previous_manifest']['sha256'] != old['manifest_sha256']
+            or qualified['manifest']['sha256'] != plan['manifest_sha256']):
+        raise ValueError('successor changed more than strict reference construction')
+    tools, old_tools = plan['tooling_identity'], old['tooling_identity']
+    allowed = {'bench/run.py', 'bench/compare.py', 'manifest'}
+    if (set(tools) != set(old_tools) or any(tools[k] != old_tools[k] for k in tools.keys() - allowed)
+            or tools['manifest'] != plan['manifest_sha256']
+            or qualified.get('tooling_identity') != tools):
+        raise ValueError('undeclared inherited tooling change')
+    if any(c['suite_sha256'] != old['manifest_sha256'] or c['tooling_identity'] != old_tools for c in campaigns[:2]):
+        raise ValueError('inherited original harness identity changed')
+    if not all(qualified.get(k) is True for k in ['passed', 'complete', 'identities_verified']):
+        raise ValueError('replacement references lack qualification')
+    if qualified.get('artifacts') != old['artifacts'] or qualified.get('datasets') != original['datasets']:
+        raise ValueError('replacement reference scientific inputs changed')
+    from run import selected_cells, read_metadata
+    cells = {c['id']:c for c in selected_cells(suite, campaigns[0]['tier'])
+             if c['model'] == 'ols' and c['effects'] >= 3 and c.get('slopes', False) and c.get('solver', 'auto') == 'auto'}
+    refs = {(r['cell'], r['artifact_role']):r for r in qualified['records']}
+    if len(refs) != len(qualified['records']) or set(refs) != {(c,role) for c in cells for role in ['parent','candidate']}:
+        raise ValueError('replacement reference scope missing or duplicated')
+    witness = read_bound_json(qualified['independent_witness'])
+    if (witness.get('passed') is not True or any(c.get('passed') is not True for c in witness['captures'])
+            or {c['path'] for c in witness['captures']} != {r['directory'] for r in refs.values()}):
+        raise ValueError('replacement references lack independent scientific witness')
+    cache = ReferenceCache()
+    for key, reference in refs.items():
+        native = old['artifacts'][key[1]]['native_identity']
+        if (not reference.get('reference') or reference.get('threads') != 1 or reference.get('requested_solver') != 'lsmr'
+                or reference.get('status') != 'ok' or any(reference.get(k) != native[k] for k in ['plugin_sha256','frontend_sha256'])):
+            raise ValueError('replacement reference configuration/artifact changed')
+        files = reference['capture_files']
+        if not {'coefficients.csv','sample.csv','metadata.tsv','config.tsv'} <= files.keys():
+            raise ValueError('replacement reference captures unbound')
+        directory = Path(reference['directory'])
+        for filename, identity in files.items():
+            if Path(filename).name != filename or hashlib.sha256((directory / filename).read_bytes()).hexdigest() != identity:
+                raise ValueError('replacement reference capture identity changed')
+        config = read_metadata(directory / 'config.tsv')
+        metadata = read_metadata(directory / 'metadata.tsv')
+        if metadata.get('complete') != '1' or metadata.get('rc') != '0' or metadata.get('actual_engine') != reference.get('engine') or reference.get('engine') != 'next':
+            raise ValueError('replacement reference completion/engine failed')
+        if (config['solver'] != 'lsmr' or config['threads'] != '1' or config['model'] != 'ols'
+                or float(config['tolerance']) != suite['protocol']['reference_tolerance']
+                or hashlib.sha256(Path(config['dataset']).read_bytes()).hexdigest() != original['datasets'][key[0]]):
+            raise ValueError('replacement strict reference settings changed')
+        for campaign in campaigns[:2]:
+            original_ref = next(r for r in campaign['records'] if r['reference'] and (r['cell'],r['artifact_role']) == key)
+            original_config = read_metadata(Path(original_ref['directory']) / 'config.tsv')
+            ignored_config = {'solver', 'output', 'dataset'}
+            if {k:v for k,v in config.items() if k not in ignored_config} != {k:v for k,v in original_config.items() if k not in ignored_config}:
+                raise ValueError('replacement reference changed scientific configuration')
+            if accuracy(original_ref, reference, campaign['protocol'], cache)[0] != 'pass':
+                raise ValueError('replacement reference disagrees with original science')
+    effective = []
+    for index, campaign in enumerate(campaigns):
+        if index < 2:
+            campaign = {**campaign, 'suite_sha256': plan['manifest_sha256'], 'tooling_identity': tools,
+                'protocol': {**campaign['protocol'], 'reference_solver_policy': 'ols-general-slopes-lsmr-v1'},
+                'measurement': {**campaign['measurement'], 'plan': plan,
+                    'plan_sha256': hashlib.sha256(json.dumps(plan,sort_keys=True,separators=(',',':')).encode()).hexdigest()}}
+        effective.append(campaign)
+    return effective, refs
+
+
+def bounded_pair_envelopes(paths, successor_plan=None):
     """Two screening orders and, if required, both targeted confirmation orders.
 
     Every observation remains in the final interval. The screen and final look
@@ -370,6 +467,12 @@ def bounded_pair_envelopes(paths):
     campaigns = [json.loads(Path(path).read_text()) for path in paths]
     if len(campaigns) not in [2,4] or [c.get('reverse_order') for c in campaigns] != [False,True]*(len(campaigns)//2):
         raise ValueError('bounded campaign needs opposite screening/confirmation orders')
+    replacement_refs = {}
+    if successor_plan is not None:
+        validate_measurement_plan(successor_plan)
+        campaigns, replacement_refs = inherited_screening(paths, campaigns, successor_plan)
+        if any(c['measurement']['plan'] != successor_plan for c in campaigns):
+            raise ValueError('campaign differs from explicit successor plan')
     first = campaigns[0]
     plan = first['measurement']['plan']
     scope = validate_measurement_plan(plan)
@@ -440,7 +543,11 @@ def bounded_pair_envelopes(paths):
                 metadata = record.get('metadata', {})
                 if metadata.get('clock_rc') != '0' or not 0<float(metadata.get('clock_resolution_seconds',math.inf))<=.0000005:
                     raise ValueError('invalid bounded command clock')
-                if accuracy(record, refs.get(record['artifact_role']), campaign['protocol'], cache)[0] != 'pass':
+                reference = replacement_refs.get((cell,record['artifact_role'])) if index < 2 else None
+                # Original inherited accuracy was just fully validated. Only
+                # affected references need another parse of those captures.
+                check_accuracy = index >= 2 or not replacement_refs or reference is not None
+                if check_accuracy and accuracy(record, reference or refs.get(record['artifact_role']), campaign['protocol'], cache)[0] != 'pass':
                     raise ValueError('bounded command failed coefficient/sample comparison')
             values[(index,group)] = {role:[float(r['metadata']['seconds']) for r in records if r['artifact_role']==role and r['repetition']!='warmup'] for role in ['parent','candidate']}
     effects = []
@@ -473,10 +580,12 @@ def bounded_pair_envelopes(paths):
     return result
 
 
-def paired_envelopes(paths):
+def paired_envelopes(paths, successor_plan=None):
     """Validate two bounded, opposite-order blocks before evaluating effects."""
     if paths and json.loads(Path(paths[0]).read_text()).get('measurement'):
-        return bounded_pair_envelopes(paths)
+        return bounded_pair_envelopes(paths, successor_plan)
+    if successor_plan is not None:
+        raise ValueError('successor requires bounded measurement evidence')
     if len(paths) != 2:
         raise ValueError('exactly two paired blocks are required')
     campaigns = [json.loads(Path(path).read_text()) for path in paths]
@@ -546,8 +655,10 @@ def paired_envelopes(paths):
             'blocks':[{'path':str(p),'sha256':hashlib.sha256(Path(p).read_bytes()).hexdigest()} for p in paths]}
 
 
-def acceptance_envelopes(parent_paths, baseline_paths, fixed_plugin_sha256, fixed_frontend_sha256, calibrate=False):
-    parent, baseline = paired_envelopes(parent_paths), paired_envelopes(baseline_paths)
+def acceptance_envelopes(parent_paths, baseline_paths, fixed_plugin_sha256, fixed_frontend_sha256, calibrate=False, successor_plan=None):
+    if calibrate and successor_plan is not None:
+        raise ValueError('screening inheritance cannot replace calibration')
+    parent, baseline = paired_envelopes(parent_paths, successor_plan), paired_envelopes(baseline_paths, successor_plan)
     for key in ['manifest_sha256', 'datasets', 'context']:
         if parent[key] != baseline[key]:
             raise ValueError('parent and fixed baseline comparisons have different inputs')
@@ -699,11 +810,13 @@ if __name__ == "__main__":
     parser.add_argument('--fixed-plugin-sha256')
     parser.add_argument('--fixed-frontend-sha256')
     parser.add_argument('--calibrate',action='store_true')
+    parser.add_argument('--successor-plan',type=Path,help='explicit reference-only M35 screening inheritance declaration')
     args = parser.parse_args()
     if args.parent_blocks or args.baseline_blocks:
         if not args.parent_blocks or not args.baseline_blocks or not args.fixed_plugin_sha256 or not args.fixed_frontend_sha256 or not args.output:
             parser.error('acceptance needs parent/baseline block pairs, frozen plugin/frontend SHA-256 and output')
-        result = acceptance_envelopes(args.parent_blocks,args.baseline_blocks,args.fixed_plugin_sha256,args.fixed_frontend_sha256,args.calibrate)
+        plan = json.loads(args.successor_plan.read_text()) if args.successor_plan else None
+        result = acceptance_envelopes(args.parent_blocks,args.baseline_blocks,args.fixed_plugin_sha256,args.fixed_frontend_sha256,args.calibrate,plan)
         with args.output.open('x') as stream:
             json.dump(result,stream,indent=2)
             stream.write('\n')
