@@ -8,7 +8,7 @@ edition = "2021"
 cargo-fuzz = true
 
 [dependencies]
-fereg-core = { path = "../legacy/fereg-core" }
+fereg-core = { path = "../crates/fereg-core" }
 fereg-plugin = { path = "../crates/fereg-plugin", default-features = false }
 libfuzzer-sys = "0.4"
 
