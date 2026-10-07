@@ -40,3 +40,4 @@ file open `status' using `"`root'/windows-ci.status"', write text replace
 file write `status' "WINDOWS_CI=PASS" _n
 file close `status'
 display as result "WINDOWS_CI=PASS"
+exit 0

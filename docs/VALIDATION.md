@@ -26,9 +26,11 @@ The completed cleanup checks are recorded below. Old raw captures and
 builds are deleted with Johannes's explicit authorization; ignored raw files are
 not recoverable through Git. Historical tracked source and summaries remain there.
 
-Qualification is local Mac only. GitHub tests remain paused. No new Linux/SCC,
-Windows or native Intel-host Stata evidence is implied. Native distribution still
-requires the separate [licensing decision](licensing.md).
+The integrated scientific qualification above is local Mac only. GitHub tests
+remain paused. The bounded platform build checks requested on 2026-10-07 are
+recorded separately below and do not imply full platform scientific or timing
+qualification. Native distribution still requires the separate
+[licensing decision](licensing.md).
 
 ## Single-runtime cleanup checks
 
@@ -74,3 +76,24 @@ The working tree previously occupied about 1.20 TiB, primarily generated target
 artifacts. The authorized purge removes those builds/captures and old binaries,
 retaining current source, tests, Git history and one current Mac plugin. Ignored
 raw captures are intentionally discarded, not archived elsewhere.
+
+## Requested Linux and Windows build checks
+
+The first private Windows build/load and Stata smoke run,
+`win-20261007T160507Z-9b10570b`, failed with `STATA_DRIVER_FAILED` on exact source
+`f80fbc23554e62477c946b046fbe35b4338261b5`. Its transferred archive SHA-256 was
+`357a2c9fd2674dbbaac078617bad73efbf985bd907d24cd532a25cbcea19cda4`;
+the sanitized receipt SHA-256 was
+`5dacca9be37b66ebe28d6e2d24ceb2c5d3886165b56d762b53e3ed655362b160`.
+The aggregate receipt does not establish which build or smoke step failed.
+It verified source identity; the wrapper confirmed stopped state, deleted
+transient transfers and released the lock. No individual Windows gate is claimed
+as passing from that run.
+
+Astra's high-effort review identified a missing private-driver prerequisite:
+the build invoked the C compiler/linker and dumpbin without initializing the
+MSVC developer environment. The build now initializes and validates the x64
+environment before Cargo. This is a concrete repair, not proof of the observed
+failure's cause; its native retest is pending. Linux source transfer and execution
+are pending specific SCC transfer approval. Local binary-audit tests (19), loader
+tests (3), shell syntax and changed-document links passed.

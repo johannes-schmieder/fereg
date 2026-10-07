@@ -55,9 +55,11 @@ run broad suites at integration boundaries or when concrete risks require them.
 After ten substantive unsuccessful repairs or one working day on one blocker,
 record the reproducer and findings and ask Johannes for direction.
 
-GitHub testing remains paused by Johannes's 2026-10-05 instruction. Qualify on
-this Mac until he resumes remote testing. No Linux/SCC/Windows claim follows
-from Mac checks. See `docs/development_workflow.md` for local entrypoints.
+GitHub testing remains paused by Johannes's 2026-10-05 instruction. Mac remains
+the default qualification host; his 2026-10-07 request additionally authorizes
+bounded Linux and Windows build/load checks without resuming GitHub workflows.
+No platform claim follows from another host's checks. See
+`docs/development_workflow.md` for entrypoints.
 Performance claims require identified artifacts, quiet measurements and preserved
 observations; the default per-workload allowance remains max(5%, 1 ms).
 Inconclusive results are not passes. New experiments need bounded stopping rules.

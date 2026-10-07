@@ -11,6 +11,24 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+# The private controller uses ordinary PowerShell, not a VS developer shell.
+# Cargo can locate MSVC itself; the C bridge and dumpbin also need its SDK paths.
+$VsWhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio\Installer\vswhere.exe"
+$VsRoot = & $VsWhere -latest -products '*' `
+    -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+if ($LASTEXITCODE -ne 0 -or -not $VsRoot) { throw "MSVC installation unavailable" }
+$VsDevCmd = Join-Path $VsRoot "Common7\Tools\VsDevCmd.bat"
+$MsvcEnvironment = & cmd.exe /d /s /c "`"$VsDevCmd`" -arch=x64 -host_arch=x64 >nul && set"
+if ($LASTEXITCODE -ne 0) { throw "MSVC environment initialization failed" }
+foreach ($MsvcLine in $MsvcEnvironment) {
+    if ($MsvcLine -match '^([A-Za-z_][A-Za-z0-9_]*)=(.*)$') {
+        [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+    }
+}
+if ($env:VSCMD_ARG_TGT_ARCH -ne 'x64') { throw "MSVC must target x64" }
+foreach ($MsvcTool in @('cl.exe', 'link.exe', 'dumpbin.exe')) {
+    Get-Command $MsvcTool -CommandType Application -ErrorAction Stop | Out-Null
+}
 $ControllerRoot = (Resolve-Path (Join-Path $PSScriptRoot "..")).Path
 $Root = if ($SourceRoot) {
     (Resolve-Path -LiteralPath $SourceRoot).Path

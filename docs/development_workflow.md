@@ -20,8 +20,15 @@ and the mock SPI bridge. Licensed Stata profiles also include `smoke`,
 `differential`, `fereg-regression`, `ppml-scientific` and `ppml-hidden`.
 See [the Stata runner](../STATA_CI_RUNNER.md). Target mapped tests during development;
 run the applicable integration checks before committing runtime changes.
-GitHub testing is paused; current qualification is Mac only until Johannes
-resumes remote testing. Existing remote build definitions remain inactive.
+GitHub testing is paused. Mac remains the default qualification host; Johannes
+additionally requested bounded Linux and Windows build checks on 2026-10-07.
+Existing GitHub build definitions remain inactive.
+
+`scripts/build_linux.sh` and `scripts/build_windows.ps1` build the native plugins
+and run their binary audits and actual-plugin loader checks. The private Windows
+controller's `stata-do` profile uses `windows-ci.do` for an exact-source build,
+checksum verification and licensed OLS/PPML smoke checks. A successful build is
+not a full scientific or performance qualification for that platform.
 
 Use `scripts/run_plugin_replay.sh` for real-plugin independent dense science and
 fixed-thread repeat checks. A prior binary may additionally serve as an exact
