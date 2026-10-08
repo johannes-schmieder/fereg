@@ -2,10 +2,10 @@
   "definition": "docs/cleanup/complexity.md#version-1",
   "growth": [
     {
-      "after": 14074,
-      "before": 14030,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Merge runtime-detected FMA/AVX moment and group-mean wrappers plus their guarded installation. Shared error/allocation helpers offset most added plugin code; net growth versus main is 44 production lines. Core cleanup reduces the inventory and all other ratchets stay level or decline."
+      "after": 95023,
+      "before": 95022,
+      "metric": "fereg-core/production_lines",
+      "reason": "Restrict Unix scratch-file creation to owner read/write permissions with a platform-gated OpenOptionsExt import and creation mode; file contents, arithmetic, admission, and non-Unix behavior are unchanged."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -11435,214 +11435,214 @@
         "chunk_candidates": [
           {
             "condition": "tile_rows == 0",
-            "line": 763
+            "line": 764
           }
         ],
         "dispatch_candidates": [
           {
             "condition": "rows != 0",
-            "line": 38
+            "line": 40
           },
           {
             "condition": "columns == 0",
-            "line": 59
+            "line": 61
           },
           {
             "condition": "io_buffer . capacity ( ) < plan . buffer . len ( <string> ) ?",
-            "line": 184
+            "line": 186
           },
           {
             "condition": "let Err ( error ) = file . set_len ( bytes )",
-            "line": 207
+            "line": 208
           },
           {
             "condition": "self . poisoned || maximum_rows == 0",
-            "line": 291
+            "line": 292
           },
           {
             "condition": "self . rows == 0 || self . columns == 0",
-            "line": 296
+            "line": 297
           },
           {
             "condition": "self . rows == 0 || block_columns == 0",
-            "line": 368
+            "line": 369
           },
           {
             "condition": "new_columns == old_columns",
-            "line": 513
+            "line": 514
           },
           {
             "condition": "self . rows != 0 && new_columns != 0",
-            "line": 525
+            "line": 526
           },
           {
             "condition": "byte_count > self . io_buffer . len ( )",
-            "line": 633
+            "line": 634
           },
           {
             "condition": "byte_count > self . io_buffer . len ( )",
-            "line": 652
+            "line": 653
           },
           {
             "condition": "end_column > self . columns || values != expected_values",
-            "line": 716
+            "line": 717
           },
           {
             "condition": "selected_columns . iter ( ) . copied ( ) . any ( | column | column >= self . columns ) || selected_columns . windows ( 2 ) . any ( | columns | columns [ 0 ] >= columns [ 1 ] )",
-            "line": 725
+            "line": 726
           }
         ],
         "functions": {
           "bytes#1": {
-            "line": 253,
+            "line": 254,
             "lines": 3
           },
           "columns#1": {
-            "line": 249,
+            "line": 250,
             "lines": 3
           },
           "compact_row_major_columns_forward#1": {
-            "line": 505,
+            "line": 506,
             "lines": 81
           },
           "concrete#1": {
-            "line": 27,
+            "line": 29,
             "lines": 27
           },
           "conservative_scratch_io_bytes#1": {
-            "line": 66,
+            "line": 68,
             "lines": 10
           },
           "create_row_major#1": {
-            "line": 174,
+            "line": 176,
             "lines": 3
           },
           "create_with_buffer#1": {
-            "line": 178,
-            "lines": 66
+            "line": 180,
+            "lines": 65
           },
           "drop#1": {
-            "line": 847,
+            "line": 848,
             "lines": 4
           },
           "file_mut#1": {
-            "line": 799,
+            "line": 800,
             "lines": 5
           },
           "file_ref#1": {
-            "line": 805,
+            "line": 806,
             "lines": 5
           },
           "invalid#1": {
-            "line": 853,
+            "line": 854,
             "lines": 3
           },
           "io_buffer_capacity#1": {
-            "line": 257,
+            "line": 258,
             "lines": 3
           },
           "io_error#1": {
-            "line": 857,
+            "line": 858,
             "lines": 3
           },
           "ols_scratch_transpose_reserve#1": {
-            "line": 58,
+            "line": 60,
             "lines": 7
           },
           "patch_row_major_block#1": {
-            "line": 330,
+            "line": 331,
             "lines": 8
           },
           "read_encoded_tile#1": {
-            "line": 632,
+            "line": 633,
             "lines": 18
           },
           "read_exact_at#1": {
-            "line": 813,
+            "line": 814,
             "lines": 15
           },
           "read_exact_at#2": {
-            "line": 830,
+            "line": 831,
             "lines": 15
           },
           "read_linear#1": {
-            "line": 135,
+            "line": 137,
             "lines": 27
           },
           "read_linear#2": {
-            "line": 604,
+            "line": 605,
             "lines": 4
           },
           "read_linear_shared#1": {
-            "line": 611,
+            "line": 612,
             "lines": 15
           },
           "read_row_major_block#1": {
-            "line": 341,
+            "line": 342,
             "lines": 8
           },
           "read_values_at#1": {
-            "line": 670,
+            "line": 671,
             "lines": 31
           },
           "refill#1": {
-            "line": 110,
+            "line": 112,
             "lines": 24
           },
           "require_healthy#1": {
-            "line": 740,
+            "line": 741,
             "lines": 9
           },
           "rewrite_row_major_prepared_with#1": {
-            "line": 284,
+            "line": 285,
             "lines": 42
           },
           "rewrite_row_major_with#1": {
-            "line": 269,
+            "line": 270,
             "lines": 11
           },
           "row_bytes#1": {
-            "line": 750,
+            "line": 751,
             "lines": 5
           },
           "row_major_tile_rows#1": {
-            "line": 756,
+            "line": 757,
             "lines": 14
           },
           "rows#1": {
-            "line": 245,
+            "line": 246,
             "lines": 3
           },
           "seek_element#1": {
-            "line": 788,
+            "line": 789,
             "lines": 10
           },
           "shared_reader#1": {
-            "line": 165,
+            "line": 167,
             "lines": 8
           },
           "transfer_row_major_block#1": {
-            "line": 350,
+            "line": 351,
             "lines": 85
           },
           "validate_linear_range#1": {
-            "line": 771,
+            "line": 772,
             "lines": 16
           },
           "validate_row_major_block#1": {
-            "line": 702,
+            "line": 703,
             "lines": 21
           },
           "validate_selected_columns#1": {
-            "line": 724,
+            "line": 725,
             "lines": 15
           },
           "write_encoded_tile#1": {
-            "line": 651,
+            "line": 652,
             "lines": 18
           }
         },
-        "production_lines": 659
+        "production_lines": 660
       },
       "crates/fereg-core/src/ols/prepared_topology.rs": {
         "chunk_candidates": [
@@ -20477,7 +20477,7 @@
         "dispatch_candidates": 1265,
         "files_over_1500": 16,
         "functions_over_150": 67,
-        "production_lines": 95022
+        "production_lines": 95023
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

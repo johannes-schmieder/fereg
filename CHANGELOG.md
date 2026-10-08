@@ -6,6 +6,8 @@
   accepting mixed-case VCE keywords. Previously an uppercase identifier could
   incorrectly select a lowercase variable or fail when only the uppercase name
   existed.
+- Create Unix low-memory scratch files with owner-only permissions, independent
+  of a permissive umask; retain exclusive creation and automatic cleanup.
 
 - x86-64 plugins detect FMA and AVX at runtime and then run the standardized
   OLS moment (Gram) row updates with hardware fused multiply-add instead of a

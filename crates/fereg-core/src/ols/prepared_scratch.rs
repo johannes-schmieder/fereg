@@ -8,6 +8,8 @@
 use rayon::prelude::*;
 use std::fs::{remove_file, File, OpenOptions};
 use std::io::{Read, Seek, SeekFrom, Write};
+#[cfg(unix)]
+use std::os::unix::fs::OpenOptionsExt;
 use std::path::PathBuf;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -194,15 +196,14 @@ impl PreparedOlsScratch {
         let directory = std::env::temp_dir();
         let process = std::process::id();
         let mut last_error = None;
+        let mut options = OpenOptions::new();
+        options.read(true).write(true).create_new(true);
+        #[cfg(unix)]
+        options.mode(0o600);
         for _ in 0..128 {
             let sequence = SCRATCH_SEQUENCE.fetch_add(1, Ordering::Relaxed);
             let path = directory.join(format!("fereg-ols-{process}-{sequence}.scratch"));
-            match OpenOptions::new()
-                .read(true)
-                .write(true)
-                .create_new(true)
-                .open(&path)
-            {
+            match options.open(&path) {
                 Ok(file) => {
                     if let Err(error) = file.set_len(bytes) {
                         drop(file);
@@ -861,6 +862,88 @@ fn io_error(context: &str, error: std::io::Error) -> FeregError {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(unix)]
+    #[test]
+    fn scratch_creation_is_private_and_exclusive_under_permissive_umask() {
+        use std::os::unix::fs::PermissionsExt;
+
+        const CHILD_ENV: &str = "FEREG_SCRATCH_PERMISSIONS_CHILD";
+        if std::env::var_os(CHILD_ENV).is_none() {
+            let directory = std::env::temp_dir().join(format!(
+                "fereg-scratch-permissions-{}-{}",
+                std::process::id(),
+                SCRATCH_SEQUENCE.fetch_add(1, Ordering::Relaxed)
+            ));
+            std::fs::create_dir(&directory).expect("isolated scratch directory");
+            // Change umask only in this shell and its single-test child.
+            let output = std::process::Command::new("sh")
+                .args(["-c", "umask 000; exec \"$@\"", "scratch-permissions"])
+                .arg(std::env::current_exe().expect("current test executable"))
+                .args([
+                    "ols::prepared_scratch::tests::scratch_creation_is_private_and_exclusive_under_permissive_umask",
+                    "--exact",
+                    "--nocapture",
+                ])
+                .env(CHILD_ENV, "1")
+                .env("TMPDIR", &directory)
+                .output();
+            std::fs::remove_dir_all(&directory).expect("remove isolated scratch directory");
+            let output = output.expect("spawn isolated umask test");
+            assert!(
+                output.status.success(),
+                "scratch permission child failed:\n{}\n{}",
+                String::from_utf8_lossy(&output.stdout),
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return;
+        }
+
+        let collision = std::env::temp_dir().join(format!(
+            "fereg-ols-{}-{}.scratch",
+            std::process::id(),
+            SCRATCH_SEQUENCE.load(Ordering::Relaxed)
+        ));
+        std::fs::write(&collision, b"existing file").expect("seed collision");
+        let path = {
+            let mut scratch = PreparedOlsScratch::create_row_major(2, 1).unwrap();
+            assert_ne!(scratch.path, collision);
+            let mode = scratch.file_ref().metadata().unwrap().permissions().mode();
+            assert_eq!(mode & 0o777, 0o600);
+            assert_eq!(std::fs::read(&collision).unwrap(), b"existing file");
+            scratch.write_linear(0, &[1.0, -2.0]).unwrap();
+            let mut values = [0.0; 2];
+            scratch.read_linear(0, &mut values).unwrap();
+            assert_eq!(values, [1.0, -2.0]);
+            scratch.path.clone()
+        };
+        assert!(!path.exists());
+        remove_file(collision).unwrap();
+    }
+
+    #[test]
+    fn scratch_cleanup_survives_error_cancellation_and_unwinding() {
+        for code in [ErrorCode::InvalidData, ErrorCode::Interrupted] {
+            let mut path = PathBuf::new();
+            let result = (|| -> Result<()> {
+                let scratch = PreparedOlsScratch::create_row_major(2, 1)?;
+                path = scratch.path.clone();
+                Err(FeregError::new(code, "injected caller failure"))
+            })();
+            assert_eq!(result.unwrap_err().code, code);
+            assert!(!path.as_os_str().is_empty());
+            assert!(!path.exists());
+        }
+        let mut path = PathBuf::new();
+        let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            let scratch = PreparedOlsScratch::create_row_major(2, 1).unwrap();
+            path = scratch.path.clone();
+            panic!("injected caller panic");
+        }));
+        assert!(result.is_err());
+        assert!(!path.as_os_str().is_empty());
+        assert!(!path.exists());
+    }
 
     #[test]
     fn complete_row_rewrite_has_no_reads_and_poisoned_failure_cleans_up() {
