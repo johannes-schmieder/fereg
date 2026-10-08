@@ -100,3 +100,58 @@ discrepancies `*`. Unavailable times and unvalidated ratios remain NR. Optional
 `--saved-fe-retests <accepted-diagnostic-directory>` adds a separate single-fit
 retest panel and CSV; it does not replace production medians. Render and inspect
 every PDF page before delivery.
+
+## Stata-free native A/B observations
+
+`replay_large` creates numeric replay cases from the existing oracle designs;
+`native.py` compiles the actual-plugin C harness with explicit raised bounds and
+runs two supplied plugins in alternating A/B, B/A order. Inputs, plugins and the
+harness are hash-bound. Every repetition must pass native return-code,
+completion/certificate, exact replay metadata and streamed output-column checks.
+A later repeat mismatch fails the run; timings never substitute for scientific
+qualification. Output is a fresh directory under `target/`, including `run.json`,
+compact result heads, logs and the harness. Raw result JSON is removed after
+successful checks unless `--keep-outputs` is requested. Failed partial runs remain
+visible. No licensed Stata installation is required.
+
+```sh
+mkdir -p target/native-cases
+cargo run -p fereg-oracle --example replay_large --profile ci -- \
+  --output target/native-cases/ols.case --rows 100000 --levels 10000,1000 \
+  --regressors 5 --weights unit --vce robust --graph akm-strong \
+  --solver auto --seed 20261008
+python3 bench/native.py --plugin-a /path/to/baseline.plugin \
+  --plugin-b /path/to/candidate.plugin --cases target/native-cases/ols.case \
+  --threads 1 4 --repeats 3 --timeout 120 --budget 1800 \
+  --output target/native-observation
+python3 -m unittest discover -s bench/tests -p 'test_native*.py'
+```
+
+Declare cases, worker counts, repeats, per-process timeout and total stopping
+budget before running. The generator also accepts `--ppml`, two or more comma
+separated FE levels (including three-FE designs), weights `unit|aw|fw|pw`,
+VCE `iid|robust|cluster`, `--tolerance`, `--iterations`, `--threads`, and explicit
+row/cell/edge admission bounds. PPML rejects analytic weights and IID here;
+probability weights require robust/cluster. Cluster VCE uses the oracle's cluster
+partition. `akm-strong`, `akm-weak`, `chain`, and `barbell` preserve the oracle
+algorithms; `akm-strong` means adjacent-firm mobility, not the cloud prototype's
+random-mobility override. The generator requires at least one complete edge cycle.
+The existing barbell generator enumerates dense halves, so large worker/firm
+barbells may exceed the edge budget or omit the bridge at the requested row
+count and are rejected. Scalable barbell generation remains separate work.
+
+OLS reports RRUNTIME's load/native/total seconds; PPML reports its total native
+transaction seconds and does not label that as OLS native-only timing. Full
+RSOLVER rows and unrounded seconds are retained. Wall time includes harness I/O;
+per-child RSS is bytes (macOS `ru_maxrss` already uses bytes, Linux uses KiB).
+These are descriptive observations, not release performance claims. Quiet Mac
+qualification and the declared scientific witnesses remain required.
+
+On Linux, add `--cachegrind --threads 1` with explicit 50,000–200,000-row cases.
+Valgrind must be installed; instrumentation stays inside the same bounded
+interleaved protocol. Each run reports total and per-function self instruction
+counts (`Ir`), including harness/I/O costs, in `run.json`; raw Cachegrind files
+remain for inspection. Cachegrind on a Mac requires a Linux arm64 container or
+VM and Linux plugins. Instrumented runtime measurements are not native wall-time
+qualification, and instruction counts from such a guest are not Mac performance
+claims. The CLI currently supports macOS/Linux harnesses, not Windows.

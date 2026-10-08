@@ -2,7 +2,11 @@ use fereg_core::{
     CompiledModelSpecification, ModelWireV2, NumericWireTable, OlsInputRole, SourceEntry, SourceId,
 };
 use fereg_oracle::designs::Design;
-use std::{fs::File, io::Write, path::Path};
+use std::{
+    fs::File,
+    io::{BufWriter, Write},
+    path::Path,
+};
 
 pub struct Request {
     args: Vec<String>,
@@ -108,7 +112,7 @@ impl Request {
         entry.3 = vec![0.; rows * 14];
     }
     pub fn write(&self, path: &Path) {
-        let mut file = File::create(path).unwrap();
+        let mut file = BufWriter::new(File::create(path).unwrap());
         writeln!(
             file,
             "FEREG_REPLAY_V1\n{} {} {} {} 0",
@@ -133,6 +137,7 @@ impl Request {
                 writeln!(file, "{:016x}", value.to_bits()).unwrap();
             }
         }
+        file.flush().unwrap();
     }
 }
 
