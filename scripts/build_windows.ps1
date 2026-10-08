@@ -110,6 +110,17 @@ cargo build --manifest-path "$Root\Cargo.toml" --locked --release `
     -p fereg-plugin --target $Target
 if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
 
+# Exercise the baseline UCRT mul_add path, including true double-rounding
+# witnesses, before accepting the runtime-FMA bit-identity assumption.
+$ArithmeticOutput = & cargo test --manifest-path "$Root\Cargo.toml" --locked `
+    --profile ci -p fereg-core --target $Target --lib `
+    kernels::tests::platform_mul_add_is_exactly_rounded -- --exact 2>&1
+if ($LASTEXITCODE -ne 0 -or
+    -not (($ArithmeticOutput -join "`n") -match 'test result: ok\. 1 passed; 0 failed;')) {
+    throw "Windows exact-FMA arithmetic check failed or did not run"
+}
+Write-Host "Windows exact-FMA arithmetic check: PASS"
+
 $StpluginObj = Join-Path $Build "stplugin.obj"
 $BridgeObj = Join-Path $Build "stata_bridge.obj"
 cl.exe /nologo /c /O2 /MT /W4 /WX /TC /DSYSTEM=STWIN32 /I"$Root\plugin" `

@@ -185,3 +185,95 @@ pub fn scaled_group_sums(
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::hint::black_box;
+
+    // Each row is [a, b, c, R53(a*b+c), R53(R53(a*b)+c), R53(R64(a*b+c))]
+    // in IEEE binary64 bits. R53/R64 use round-to-nearest, ties-to-even;
+    // R64 has a 64-bit significand and an extended exponent range.
+    // Independently derived and checked without host floating point by
+    // scripts/check_fma_rounding_vectors.py (Fraction + integer rounding).
+    const EXACT_FMA_VECTORS: [[u64; 6]; 6] = [
+        // (1+2^-52)*1.5 - 2^-105 lies just below an odd/even midpoint.
+        // R64 loses the tiny subtraction, so the second rounding goes up.
+        [
+            0x3ff0_0000_0000_0001,
+            0x3ff8_0000_0000_0000,
+            0xb960_0000_0000_0000,
+            0x3ff8_0000_0000_0001,
+            0x3ff8_0000_0000_0002,
+            0x3ff8_0000_0000_0002,
+        ],
+        // (1+3*2^-52)*1.5 + 2^-105 lies just above an even/odd midpoint.
+        [
+            0x3ff0_0000_0000_0003,
+            0x3ff8_0000_0000_0000,
+            0x3960_0000_0000_0000,
+            0x3ff8_0000_0000_0005,
+            0x3ff8_0000_0000_0004,
+            0x3ff8_0000_0000_0004,
+        ],
+        // Negative counterparts exercise both rounding directions by sign.
+        [
+            0xbff0_0000_0000_0001,
+            0x3ff8_0000_0000_0000,
+            0x3960_0000_0000_0000,
+            0xbff8_0000_0000_0001,
+            0xbff8_0000_0000_0002,
+            0xbff8_0000_0000_0002,
+        ],
+        [
+            0xbff0_0000_0000_0003,
+            0x3ff8_0000_0000_0000,
+            0xb960_0000_0000_0000,
+            0xbff8_0000_0000_0005,
+            0xbff8_0000_0000_0004,
+            0xbff8_0000_0000_0004,
+        ],
+        // Exact cancellation: (1+2^-27)*(1-2^-27)-1 = -2^-54.
+        [
+            0x3ff0_0000_0200_0000,
+            0x3fef_ffff_fc00_0000,
+            0xbff0_0000_0000_0000,
+            0xbc90_0000_0000_0000,
+            0x0000_0000_0000_0000,
+            0xbc90_0000_0000_0000,
+        ],
+        // Exact cancellation all the way down to the product's low bit.
+        // (1+2^-52)*(1-2^-52)-1 = -2^-104.
+        [
+            0x3ff0_0000_0000_0001,
+            0x3fef_ffff_ffff_fffe,
+            0xbff0_0000_0000_0000,
+            0xb970_0000_0000_0000,
+            0x0000_0000_0000_0000,
+            0xb970_0000_0000_0000,
+        ],
+    ];
+
+    #[test]
+    fn platform_mul_add_is_exactly_rounded() {
+        for (index, [a, b, c, expected, nonfused, _double]) in
+            EXACT_FMA_VECTORS.into_iter().enumerate()
+        {
+            let a = black_box(f64::from_bits(a));
+            let b = black_box(f64::from_bits(b));
+            let c = black_box(f64::from_bits(c));
+            assert_eq!(
+                a.mul_add(b, c).to_bits(),
+                expected,
+                "platform mul_add failed exact-rounding vector {index}"
+            );
+            // Prevent contraction of the deliberately non-fused comparison.
+            let product = black_box(a * b);
+            assert_eq!(
+                (product + c).to_bits(),
+                nonfused,
+                "non-fused vector {index}"
+            );
+            assert_ne!(expected, nonfused);
+        }
+    }
+}
