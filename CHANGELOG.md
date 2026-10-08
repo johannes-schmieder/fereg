@@ -6,6 +6,9 @@
   PPML reference path and independent explicit-dummy scientific witnesses.
 - Reject unavailable model components that claim an available omission flag;
   continuous, plain-factor and interaction omission metadata remain accepted.
+- Extend guarded numeric batch loading and the admitted row pipeline to Linux
+  and Windows. Bounds, numeric types, main-thread ownership and first-error
+  propagation are checked before direct SDK reads.
 - Add bounded Stata-free native benchmarks with streamed exact-output checks,
   solver diagnostics and Linux Cachegrind instruction counts. Freeze the small
   PPML bias replay inputs and add independent exact/Philox correction witnesses.
@@ -20,8 +23,11 @@
   OLS moment (Gram) row updates with hardware fused multiply-add instead of a
   library call per element; other processors keep the portable path inline.
   Both paths are exactly rounded, so results match wherever the platform `fma`
-  is exactly rounded (checked against glibc's software `fma` on Linux; not yet
-  checked on Windows or Intel macOS). `fereg, doctor` now reports the active
+  is exactly rounded. Exact-rational rounding witnesses pass on ARM macOS and
+  the x86-64 macOS slice under Rosetta and native Windows x86-64; Windows also
+  enforces a mandatory build gate. The prior glibc software-FMA check remains
+  applicable.
+  `fereg, doctor` now reports the active
   arithmetic path (`x86_64-fma`, `x86_64-portable` or `aarch64-fma`) rather than
   a processor capability probe.
 - The two borrowed-MAP group-mean passes use the same runtime kernel table,
