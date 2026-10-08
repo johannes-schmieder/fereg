@@ -65,9 +65,10 @@ program define _fereg_estimate_public, eclass
     local weight_option
     local memory_option `"memory(`memory_mode')"'
     if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
-    local vce_text = lower(strtrim(`"`vce'"'))
+    local vce_text = strtrim(`"`vce'"')
     if `"`vce_text'"' != "" {
         gettoken vce_kind vce_rest : vce_text
+        local vce_kind = lower(`"`vce_kind'"')
         if `"`vce_kind'"' == "cluster" {
             local vce_rest = strtrim(`"`vce_rest'"')
             if `"`vce_rest'"' == "" {

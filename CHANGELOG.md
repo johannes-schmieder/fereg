@@ -2,6 +2,11 @@
 
 ## 0.5.0 beta — unreleased
 
+- Preserve case-sensitive cluster identifiers in OLS `vce(cluster ...)` while
+  accepting mixed-case VCE keywords. Previously an uppercase identifier could
+  incorrectly select a lowercase variable or fail when only the uppercase name
+  existed.
+
 - x86-64 plugins detect FMA and AVX at runtime and then run the standardized
   OLS moment (Gram) row updates with hardware fused multiply-add instead of a
   library call per element; other processors keep the portable path inline.
