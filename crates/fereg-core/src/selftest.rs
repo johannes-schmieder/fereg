@@ -4,6 +4,7 @@ use crate::metadata::{CompiledTermGraph, ModelWireV2};
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
 use crate::protocol::Handshake;
+use rayon::prelude::*;
 use std::fmt::Write;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -111,12 +112,53 @@ pub fn run_native_selftest(threads: usize) -> SelfTestReport {
             let config = ThreadConfig::from_requested(threads.max(1), true)?;
             let team = ThreadTeam::new(config);
             let values: Vec<u64> = (0_u64..100_000).collect();
-            let first = team.xor_checksum(&values);
-            let second = team.xor_checksum(&values);
-            require(first == second, "parallel checksum is not repeatable")
+            let expected = chunk_checksum(&values, false);
+            // Exercise the cached Rayon team that estimation actions install.
+            let (first, workers) =
+                team.install(|| (chunk_checksum(&values, true), rayon::current_num_threads()))?;
+            let second = team.install(|| chunk_checksum(&values, true))?;
+            require(
+                workers == team.threads(),
+                "worker team has the wrong thread count",
+            )?;
+            require(
+                first == expected && second == expected,
+                "parallel checksum differs from the serial checksum",
+            )
         }),
     ];
     SelfTestReport { cases }
+}
+
+const CHECKSUM_CHUNK: usize = 1_024;
+
+/// Chunk partials depend only on chunk position and are XOR-combined, so the
+/// result cannot depend on how a worker team schedules the chunks.
+fn chunk_checksum(values: &[u64], parallel: bool) -> u64 {
+    let partial = |(chunk, block): (usize, &[u64])| {
+        let mut state = 0x9e37_79b9_7f4a_7c15_u64 ^ chunk as u64;
+        for (index, value) in block.iter().enumerate() {
+            let absolute = chunk * CHECKSUM_CHUNK + index;
+            state ^= value
+                .wrapping_add((absolute as u64).rotate_left((absolute % 63) as u32))
+                .rotate_left((absolute % 61) as u32);
+        }
+        state.rotate_left((chunk % 63) as u32)
+    };
+    let partials: Vec<u64> = if parallel {
+        values
+            .par_chunks(CHECKSUM_CHUNK)
+            .enumerate()
+            .map(partial)
+            .collect()
+    } else {
+        values
+            .chunks(CHECKSUM_CHUNK)
+            .enumerate()
+            .map(partial)
+            .collect()
+    };
+    partials.into_iter().fold(0, |state, value| state ^ value)
 }
 
 fn run_case<F>(name: &'static str, function: F) -> SelfTestCase

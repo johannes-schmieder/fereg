@@ -4,8 +4,6 @@
 //! LSMR diagnostics alone never authorize an IRLS step.
 
 use crate::memory::{fallible_copy, fallible_filled};
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -150,21 +148,11 @@ fn joint_lsmr_frame_trace_line(frame: JointLsmrFrameDiagnostic) -> String {
 }
 
 fn emit_joint_lsmr_frame_trace(frame: JointLsmrFrameDiagnostic) {
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_none() {
+    if !crate::diagnostics::solver_trace_enabled() {
         return;
     }
     let line = joint_lsmr_frame_trace_line(frame);
-    emit_solver_trace_line(&line);
-}
-
-pub(super) fn emit_solver_trace_line(line: &str) {
-    eprintln!("{line}");
-    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
-        return;
-    };
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(file, "{line}");
-    }
+    crate::diagnostics::emit_solver_trace(&line);
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]

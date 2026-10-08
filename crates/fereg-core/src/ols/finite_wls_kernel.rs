@@ -2027,7 +2027,6 @@ fn fill_retained_partitioned(
     match source {
         FixedBlockMomentSource::Dense {
             values,
-            stored_columns,
             selected_columns,
             response,
             weights,
@@ -2036,7 +2035,6 @@ fn fill_retained_partitioned(
             ..
         } => fill_retained_dense_partitioned(
             values,
-            stored_columns,
             selected_columns,
             response,
             weights,
@@ -2133,7 +2131,6 @@ fn fill_retained_partitioned(
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_partitioned(
     values: FiniteDenseRows<'_>,
-    stored_columns: usize,
     selected_columns: Option<&[usize]>,
     response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -2148,7 +2145,6 @@ fn fill_retained_dense_partitioned(
         if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
             return fill_retained_dense_standardized_rows(
                 values,
-                stored_columns,
                 selected_columns,
                 response,
                 weights,
@@ -2162,7 +2158,6 @@ fn fill_retained_dense_partitioned(
         if layout.columns_per_partition > 1 {
             return fill_retained_dense_standardized_tiles(
                 values,
-                stored_columns,
                 selected_columns,
                 response,
                 weights,
@@ -2230,7 +2225,6 @@ fn with_private_retained_moments(
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_standardized_rows(
     values: FiniteDenseRows<'_>,
-    _stored_columns: usize,
     selected_columns: Option<&[usize]>,
     response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -2281,7 +2275,6 @@ fn fill_retained_dense_standardized_rows(
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_standardized_tiles(
     values: FiniteDenseRows<'_>,
-    _stored_columns: usize,
     selected_columns: Option<&[usize]>,
     response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,

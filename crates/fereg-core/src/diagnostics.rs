@@ -3,6 +3,32 @@ use crate::protocol::{
     ACTION_PROTOCOL_VERSION, ADO_VERSION, MINIMUM_STATA_MAJOR, MODEL_WIRE_VERSION,
     OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, SPI_MAJOR, SPI_MINOR,
 };
+use std::fs::OpenOptions;
+use std::io::Write;
+
+/// Developer solver tracing (`FEREG_SOLVER_TRACE`), read at each use.
+#[must_use]
+pub fn solver_trace_enabled() -> bool {
+    std::env::var_os("FEREG_SOLVER_TRACE").is_some()
+}
+
+/// Developer phase timing (`FEREG_PHASE_TIMING`), read at each use.
+#[must_use]
+pub fn phase_timing_enabled() -> bool {
+    std::env::var_os("FEREG_PHASE_TIMING").is_some()
+}
+
+/// Write one solver-trace line to standard error and, when
+/// `FEREG_SOLVER_TRACE_FILE` names a file, append it there as well.
+pub(crate) fn emit_solver_trace(line: &str) {
+    eprintln!("{line}");
+    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
+        return;
+    };
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{line}");
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildInfo {

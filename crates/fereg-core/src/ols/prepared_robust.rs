@@ -386,7 +386,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     perturbations: RobustPerturbations,
     score_scratch: PreparedOlsScoreProduct,
 ) -> Result<PreparedOlsRobustComponents> {
-    let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let phase_timing = crate::diagnostics::phase_timing_enabled();
     let total_started = Instant::now();
     let phase_started = Instant::now();
     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;

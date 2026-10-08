@@ -290,7 +290,7 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     });
     let trace_enabled = !categorical
         && action.vce != OlsVceKind::Clustered
-        && std::env::var_os("FEREG_PHASE_TIMING").is_some();
+        && fereg_core::diagnostics::phase_timing_enabled();
     let trace_started = Instant::now();
     let (prepared, loaded_rows) =
         prepare_ols_pipeline(loaded, loaded_rhs, &mut action, categorical)?;
@@ -425,7 +425,7 @@ fn prepare_loaded_ols_with_moments<T: Send>(
         })?;
         Ok((prepared, loaded_rhs.map(LoadedOlsRows::from)))
     };
-    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+    if fereg_core::diagnostics::phase_timing_enabled() {
         eprintln!(
             "FEREG_PHASE|ols_prepare_moments|seconds={:.9}",
             started.elapsed().as_secs_f64()
@@ -454,7 +454,7 @@ fn prepare_loaded_ols<T: Send>(
     } else {
         prepare(loaded)?
     };
-    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+    if fereg_core::diagnostics::phase_timing_enabled() {
         eprintln!(
             "FEREG_PHASE|ols_prepare|seconds={:.9}",
             started.elapsed().as_secs_f64()
@@ -2434,7 +2434,7 @@ fn build_derived_observation_outputs_in_team(
     } else {
         None
     };
-    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+    if fereg_core::diagnostics::phase_timing_enabled() {
         eprintln!("FEREG_PHASE|ols_outputs|target={target_seconds:.9}|recovery={recovery_seconds:.9}|total={:.9}", started.elapsed().as_secs_f64());
     }
     Ok(DerivedObservationOutputs {

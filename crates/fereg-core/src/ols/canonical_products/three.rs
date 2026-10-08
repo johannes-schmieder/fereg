@@ -390,7 +390,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
             *out = coefficients.residual(&design, &columns, &scales, row, 0)?;
             Ok(())
         })?;
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+    if crate::diagnostics::solver_trace_enabled() {
         eprintln!("FEREG_SOLVER_TRACE|phase=canonical_three_products|rows={n}|rhs={width}|iterations={iterations}|workspace={bytes}");
     }
     let report = SolveReport {

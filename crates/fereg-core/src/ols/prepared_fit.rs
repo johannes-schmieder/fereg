@@ -4,8 +4,8 @@ mod one_shot;
 use crate::data::{DenseMatrix, PreparedWeights, WeightKind};
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
-    AbsorbConfig, BorrowedMapWeights, CertifiedBorrowedMap, FeCertificate, FeCoefficientBatch,
-    FeSolverKind, SolveReport, SolveStopReason,
+    AbsorbConfig, BorrowedMapWeights, FeCertificate, FeCoefficientBatch, FeSolverKind, SolveReport,
+    SolveStopReason,
 };
 use crate::memory::push_reserved;
 use crate::metadata::CoefficientSlot;
@@ -695,7 +695,7 @@ impl PhaseTrace {
     fn new() -> Self {
         let now = Instant::now();
         Self {
-            enabled: std::env::var_os("FEREG_PHASE_TIMING").is_some(),
+            enabled: crate::diagnostics::phase_timing_enabled(),
             started: now,
             mark: now,
         }
@@ -1547,16 +1547,7 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     for (column, norm) in reference_norms.iter_mut().enumerate() {
         *norm = weighted_matrix_column_norm(&raw, column + 1, weights)?;
     }
-    let absorbed = absorb_fit_matrix(
-        None,
-        prepared,
-        weights.borrowed(),
-        raw,
-        config.absorb,
-        &mut cmg,
-        true,
-        false,
-    )?;
+    let absorbed = cmg.project_ols(weights.borrowed(), raw, config.absorb, false, false)?;
     if !absorbed.report().certified() {
         return Err(invalid_data(
             "prepared projection initial absorption did not certify",
@@ -1606,15 +1597,12 @@ fn fit_projection_only_internal<P: PreparedOlsFitView + ?Sized, R: FitReservatio
     })?;
     let residual_matrix =
         DenseMatrix::from_row_major(prepared.fit_sample().n_active(), 1, within_residuals)?;
-    let residual_absorbed = absorb_fit_matrix(
-        None,
-        prepared,
+    let residual_absorbed = cmg.project_ols(
         weights.borrowed(),
         residual_matrix,
         config.final_absorb_config(),
-        &mut cmg,
-        false,
         true,
+        false,
     )?;
     if !residual_absorbed.report().certified() {
         return Err(invalid_data(
@@ -1789,19 +1777,6 @@ fn fit_for_inference_with_scratch<P: PreparedOlsFitView + Sync + ?Sized>(
 
 // The immutable FE binding spans initial blocks and the terminal residual.
 #[allow(clippy::too_many_arguments)]
-fn absorb_fit_matrix<'a, P: PreparedOlsFitView + ?Sized>(
-    _original_norms: Option<&[f64]>,
-    _prepared: &'a P,
-    weights: BorrowedMapWeights<'a>,
-    values: DenseMatrix,
-    config: AbsorbConfig,
-    session: &mut crate::fe::FeSession<'a>,
-    _initial: bool,
-    final_residual: bool,
-) -> Result<CertifiedBorrowedMap> {
-    session.project_ols(weights, values, config, final_residual, false)
-}
-
 fn fit_with_controls_internal<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     config: PreparedOlsFitConfig,
@@ -5229,17 +5204,15 @@ mod tests {
                 crate::fe::FeSession::for_ols(&data, BorrowedMapWeights::Unit, config).unwrap();
             session.peak = discarded;
             for _ in 0..2 {
-                let result = absorb_fit_matrix(
-                    None,
-                    &data,
-                    BorrowedMapWeights::Unit,
-                    DenseMatrix::from_columns(&[y.to_vec()]).unwrap(),
-                    config.absorb,
-                    &mut session,
-                    false,
-                    false,
-                )
-                .unwrap();
+                let result = session
+                    .project_ols(
+                        BorrowedMapWeights::Unit,
+                        DenseMatrix::from_columns(&[y.to_vec()]).unwrap(),
+                        config.absorb,
+                        false,
+                        false,
+                    )
+                    .unwrap();
                 assert!(result.report().certified());
                 assert_eq!(result.residualized().as_slice(), &y);
                 assert_eq!(result.report().solver_workspace_peak, discarded);
@@ -5555,16 +5528,8 @@ mod tests {
                                                     ..PreparedOlsFitConfig::default()
                                                 },
                                             )?;
-                                            absorb_fit_matrix(
-                                                None,
-                                                view,
-                                                weights,
-                                                values,
-                                                config,
-                                                &mut session,
-                                                true,
-                                                false,
-                                            )
+                                            session
+                                                .project_ols(weights, values, config, false, false)
                                         }
                                     }
                                 };
@@ -6149,17 +6114,9 @@ mod tests {
                                 crate::fe::FeSession::for_ols(&data, weights, config).unwrap();
 
                             let raw = DenseMatrix::from_row_major(n, 1, outcome.clone()).unwrap();
-                            let actual = absorb_fit_matrix(
-                                None,
-                                &data,
-                                weights,
-                                raw,
-                                config.absorb,
-                                &mut session,
-                                true,
-                                false,
-                            )
-                            .unwrap();
+                            let actual = session
+                                .project_ols(weights, raw, config.absorb, false, false)
+                                .unwrap();
                             assert!(actual.report().certified());
                             assert!(actual
                                 .residualized()
@@ -6189,17 +6146,9 @@ mod tests {
                                 });
 
                             let residual = DenseMatrix::from_row_major(n, 1, vec![0.; n]).unwrap();
-                            let actual = absorb_fit_matrix(
-                                None,
-                                &data,
-                                weights,
-                                residual,
-                                config.absorb,
-                                &mut session,
-                                false,
-                                true,
-                            )
-                            .unwrap();
+                            let actual = session
+                                .project_ols(weights, residual, config.absorb, true, false)
+                                .unwrap();
                             assert_eq!(actual.report().iterations, 0);
                         })
                         .unwrap();
@@ -6404,17 +6353,15 @@ mod tests {
                     let pending = (0..n)
                         .map(|row| residuals[row] + if row % 512 == 0 { 2e-9 } else { 0.0 })
                         .collect();
-                    let projected = absorb_fit_matrix(
-                        None,
-                        &prepared,
-                        weights,
-                        DenseMatrix::from_row_major(n, 1, pending).unwrap(),
-                        config.final_absorb_config(),
-                        &mut session,
-                        false,
-                        true,
-                    )
-                    .unwrap();
+                    let projected = session
+                        .project_ols(
+                            weights,
+                            DenseMatrix::from_row_major(n, 1, pending).unwrap(),
+                            config.final_absorb_config(),
+                            true,
+                            false,
+                        )
+                        .unwrap();
                     assert!(projected.report().certified());
                     let (actual, _, _) = projected.into_full_parts();
                     let error = actual

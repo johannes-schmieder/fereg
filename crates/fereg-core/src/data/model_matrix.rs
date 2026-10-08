@@ -131,12 +131,15 @@ impl std::ops::Index<(usize, usize)> for DenseMatrix {
     type Output = f64;
 
     fn index(&self, (row, column): (usize, usize)) -> &Self::Output {
+        // Storage bounds alone would accept a column that wraps into the next row.
+        debug_assert!(column < self.ncols, "dense matrix column is out of bounds");
         &self.data[row * self.ncols + column]
     }
 }
 
 impl std::ops::IndexMut<(usize, usize)> for DenseMatrix {
     fn index_mut(&mut self, (row, column): (usize, usize)) -> &mut Self::Output {
+        debug_assert!(column < self.ncols, "dense matrix column is out of bounds");
         &mut self.data[row * self.ncols + column]
     }
 }

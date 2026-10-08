@@ -174,17 +174,14 @@ fn project_dense<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         max_fast_score_cache_bytes,
         loaded_rows,
     )?;
-    let mut absorbed = absorb_fit_matrix(
-        raw.moments.as_ref().map(|cache| cache.norms.as_slice()),
-        prepared,
+    let mut absorbed = cmg.project_ols(
         weights.borrowed(),
         std::mem::replace(
             &mut raw.values,
             DenseMatrix::from_row_major(0, 0, Vec::new())?,
         ),
         config.absorb,
-        cmg,
-        true,
+        false,
         false,
     )?;
     if !absorbed.report().certified() {
@@ -307,16 +304,8 @@ fn project_scratch<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     let generated_columns = prepared.fit_model().columns.len();
     let weights = frame.weights();
     let raw_outcome = prepared.fit_build_rhs_block_with_response(0, 0, true, frame.response())?;
-    let mut absorbed_outcome = absorb_fit_matrix(
-        None,
-        prepared,
-        weights.borrowed(),
-        raw_outcome,
-        config.absorb,
-        cmg,
-        true,
-        false,
-    )?;
+    let mut absorbed_outcome =
+        cmg.project_ols(weights.borrowed(), raw_outcome, config.absorb, false, false)?;
     if !absorbed_outcome.report().certified() {
         return Err(invalid_data(
             "prepared OLS low-memory outcome absorption was not certified",
@@ -418,16 +407,8 @@ fn project_scratch_columns<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation
             }
             *reference_norm = weighted_slice_norm(&column_buffer, weights)?;
         }
-        let mut absorbed_block = absorb_fit_matrix(
-            None,
-            prepared,
-            weights.borrowed(),
-            raw_block,
-            config.absorb,
-            cmg,
-            true,
-            false,
-        )?;
+        let mut absorbed_block =
+            cmg.project_ols(weights.borrowed(), raw_block, config.absorb, false, false)?;
         if !absorbed_block.report().certified() {
             return Err(invalid_data(
                 "prepared OLS low-memory regressor-block absorption was not certified",

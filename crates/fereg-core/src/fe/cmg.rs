@@ -1154,7 +1154,7 @@ impl<'a> CmgAbsorber<'a> {
     /// matrix to the caller; a valid partial CMG projection can still seed the
     /// existing certified CG fallback.
     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
-        let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+        let phase_started = crate::diagnostics::phase_timing_enabled().then(Instant::now);
         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
             return Err(invalid_argument(
                 "CMG design and matrix dimensions are inconsistent",
@@ -1702,7 +1702,7 @@ impl GraphCmg {
         let mut metrics = CmgSolveMetrics::default();
         let batch_width = self.pcg_batch_width(config.batch_size);
         let trace_ols = matches!(self.workspace, GraphCmgWorkspace::OlsBuffers(_))
-            && std::env::var_os("FEREG_PHASE_TIMING").is_some();
+            && crate::diagnostics::phase_timing_enabled();
         let mut start = 0;
         while start < values.ncols() {
             let seed_end = if seed.as_ref().is_some_and(|(_, enabled)| *enabled)
@@ -1861,7 +1861,7 @@ fn build_graph_route(
     profile: &CmgTopologyProfile,
     memory: &mut CmgWorkspacePlan,
 ) -> Result<GraphCmg> {
-    let trace_enabled = std::env::var_os("FEREG_SOLVER_TRACE").is_some();
+    let trace_enabled = crate::diagnostics::solver_trace_enabled();
     let core_effects = profile
         .core_effects
         .ok_or_else(|| invalid_argument("CMG graph route requires two absorbed effects"))?;
@@ -1924,7 +1924,7 @@ fn build_prepared_graph_route(
     prepared: &mut PreparedCmgTopology,
     memory: &mut CmgWorkspacePlan,
 ) -> Result<GraphCmg> {
-    let trace_enabled = std::env::var_os("FEREG_SOLVER_TRACE").is_some();
+    let trace_enabled = crate::diagnostics::solver_trace_enabled();
     let parallel = ParallelOptions {
         threads: config.threads.resolved(),
         ..ParallelOptions::default()

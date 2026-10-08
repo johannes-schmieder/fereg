@@ -371,7 +371,7 @@ pub(super) fn build_prepared_ols_score_design<
     reservation: &mut R,
     score_product: PreparedOlsScoreProduct,
 ) -> Result<CertifiedPreparedOlsScoreDesign<'a>> {
-    let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let phase_timing = crate::diagnostics::phase_timing_enabled();
     let total_started = Instant::now();
     let phase_started = Instant::now();
     let nrows = prepared.fit_sample().n_active();

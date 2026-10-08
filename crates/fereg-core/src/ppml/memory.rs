@@ -967,7 +967,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
     // Emit outside the begin/decision allocator observation window. This
     // private diagnostic adds no retained state and never changes admission.
     if std::env::var_os("FEREG_PPML_MEMORY_TRACE").is_some() {
-        super::categorical_lsmr::emit_solver_trace_line(&format!(
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_PPML_MEMORY_TRACE|dimensions={dimensions:?}|fast={:?}|low={:?}",
             estimate.fast, estimate.low,
         ));

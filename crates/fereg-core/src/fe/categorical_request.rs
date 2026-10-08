@@ -1,10 +1,10 @@
 //! Source-role planning borrows the original request. No fabricated model,
 //! input bindings or intercept partitions are constructed for availability.
 
-use crate::error::{allocation, ErrorCode, FeregError, invalid_argument as invalid, Result, unsupported};
+use crate::error::{allocation, invalid_argument as invalid, unsupported, Result};
 use crate::memory::push_reserved;
-use crate::metadata::{AbsorbTermId, AbsorbedTerm, SourceId};
-use crate::ols::{OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedCategoricalSource};
+use crate::metadata::{AbsorbedTerm, SourceId};
+use crate::ols::{OlsInputRole, OlsRequestV1, PreparedCategoricalSource};
 
 /// Metadata-only plan that separates source availability from true FE topology.
 #[derive(Debug, PartialEq)]
@@ -332,12 +332,13 @@ fn checked_increment(value: u8) -> Result<u8> {
         .ok_or_else(|| invalid("categorical request binding multiplicity exceeds u8"))
 }
 
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
     use crate::factorize::EncodedFactor;
-    use crate::metadata::{CompiledTermGraph, SourceEntry, SourceId};
+    use crate::metadata::{AbsorbTermId, CompiledTermGraph, SourceEntry, SourceId};
+    use crate::ols::OlsInputBinding;
 
     #[derive(Default)]
     struct InjectedReservation {

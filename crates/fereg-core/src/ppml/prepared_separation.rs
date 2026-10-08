@@ -2320,8 +2320,8 @@ fn prepared_project(
     }
     let weight_sum = compensated_sum(weights.iter().copied())?;
     let divisor = weights.iter().copied().fold(0.0_f64, f64::max);
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-        super::categorical_lsmr::emit_solver_trace_line(&format!(
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=separation_projection|generation={}|rows={}|solver={:?}|minimum_weight={:.17e}",
             generation.generation(), response.len(), fit_config.absorb.solver,
             weights.iter().copied().fold(f64::INFINITY, f64::min)));

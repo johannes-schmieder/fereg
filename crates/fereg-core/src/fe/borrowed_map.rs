@@ -1,5 +1,3 @@
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::time::Instant;
 
 use crate::data::DenseMatrix;
@@ -24,16 +22,6 @@ pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = 64;
 // leave the deterministic reduction under-parallelized.
 pub(crate) const PARALLEL_DOT_CHUNK_ROWS: usize = 512;
 const PARALLEL_GROUP_MAX_RHS: usize = FUSED_PARALLEL_MAX_RHS;
-fn emit_solver_trace(line: &str) {
-    eprintln!("{line}");
-    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
-        return;
-    };
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(file, "{line}");
-    }
-}
-
 /// Objective weights for the strict borrowed-intercept MAP path.
 ///
 /// Unit weights remain structural: the solver never materializes an
@@ -1874,8 +1862,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 )?;
                 canonical_certificate.passed &= !force_rejection;
                 report.certification_seconds += certification_started.elapsed().as_secs_f64();
-                if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-                    emit_solver_trace(&format!(
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(&format!(
                         "FEREG_SOLVER_TRACE|phase=checkpoint_lsmr_attempt|retry={}|recurrence_tolerance={:.17e}|canonical_tolerance={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|certificate_seconds={:.17e}|canonical_relinf={:.17e}|canonical_passed={}|rhs={}|batch_window={}|threads={}|rows={}",
                         u8::from(accumulated.is_some()), recurrence_tolerance, config.tolerance,
                         report.iterations, report.setup_seconds, report.solve_seconds,
@@ -2205,7 +2193,7 @@ fn absorb_two_fe_pcg_reusing(
     work_limit: SchurWorkLimit,
     retain_coefficients: bool,
 ) -> Result<SchurAttempt> {
-    let trace = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let trace = crate::diagnostics::phase_timing_enabled();
     let phase_start = Instant::now();
     let mut operator_seconds = 0.0;
     let mut recurrence_seconds = 0.0;
@@ -2635,8 +2623,8 @@ fn absorb_two_fe_pcg_reusing(
                 })
                 .fold(0.0_f64, f64::max);
             progress_contraction = Some(contraction);
-            if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-                emit_solver_trace(&format!(
+            if crate::diagnostics::solver_trace_enabled() {
+                crate::diagnostics::emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=checkpoint_schur_progress|iterations={iterations}|rhs={rhs_count}|contraction={contraction:.17e}|admitted={}",
                     u8::from(contraction <= GRAPH_MAX_PROGRESS_CONTRACTION),
                 ));
@@ -4056,15 +4044,15 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
         )?;
         #[cfg(test)]
         self.attempted_rhs.push(rhs.len());
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-            emit_solver_trace(&format!(
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=checkpoint_batch|rhs={}|full_rhs={}|selective={}|builds={}|batches={}",
                 rhs.len(), self.values.ncols(), u8::from(selected.is_some()),
                 self.prepared.builds, self.prepared.batches,
             ));
             for rhs in 0..solved.iterations.len() {
                 let position = selected.as_ref().map_or(rhs, |positions| positions[rhs]);
-                emit_solver_trace(&format!(
+                crate::diagnostics::emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=checkpoint_batch_rhs|rhs={position}|converged={}|iterations={}|within_normal={:.17e}",
                     solved.converged[rhs], solved.iterations[rhs], solved.residual[rhs],
                 ));
@@ -4408,8 +4396,8 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         self.batches += 1;
         solved.time_setup += setup_seconds;
         solved.time_total = started.elapsed().as_secs_f64();
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-            emit_solver_trace(&format!(
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=lsmr_session|builds={}|batches={}|rhs={}|setup={setup_seconds:.9}",
                 self.builds, self.batches, rhs.len(),
             ));
@@ -4683,9 +4671,9 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         &mut certificate_workspace,
     )?;
     let certification_seconds = certification_started.elapsed().as_secs_f64();
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+    if crate::diagnostics::solver_trace_enabled() {
         for rhs in 0..lsmr_values.ncols() {
-            emit_solver_trace(&format!(
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=lsmr_rhs|rhs={rhs}|converged={}|iterations={}|within_normal={:.17e}|fereg_relinf={:.17e}",
                 solved.converged[rhs],
                 solved.iterations[rhs],
@@ -7262,7 +7250,7 @@ fn cg_audit_remaining_energy(
             "borrowed CG Hestenes step disagrees with independent weighted energy",
         ));
     }
-    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+    if crate::diagnostics::phase_timing_enabled() {
         eprintln!("FEREG_PHASE|cg_energy_audit|rhs={rhs}|previous={previous:.17e}|decrease={decrease:.17e}|before={before:.17e}|after={after:.17e}");
     }
     Ok(after)
@@ -7603,8 +7591,8 @@ impl CheckpointSchurCost {
     }
 
     fn trace(&self, values: &DenseMatrix, outcome: &str) {
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-            emit_solver_trace(&format!(
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=checkpoint_schur_attempt|outcome={outcome}|rows={}|rhs={}|probe_budget=0|contraction={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}",
                 values.nrows(), values.ncols(), self.contraction,
                 self.iterations, self.setup_seconds, self.solve_seconds,

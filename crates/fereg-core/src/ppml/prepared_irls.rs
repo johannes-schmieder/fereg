@@ -1027,7 +1027,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     let preparation_clock = PpmlPhaseClock::start();
     validate_inputs(prepared, outcome, prior_weights, offset, config)?;
     validate_memory_dimensions(prepared, memory_plan.dimensions, config)?;
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+    if crate::diagnostics::solver_trace_enabled() {
         eprintln!(
             "FEREG_SOLVER_TRACE|phase=prepared_irls_start|original_rows={}|active_rows={}|finite_columns={}|memory={:?}",
             memory_plan.dimensions.original_observations,
@@ -1736,8 +1736,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             }
         }
         let iteration_converged = relative_change <= config.ppml.tolerance && final_score.passed;
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-            super::categorical_lsmr::emit_solver_trace_line(&format!(
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=irls_convergence|iteration={iteration}|deviance_change={relative_change:.17e}|score={:.17e}|passed={}|step={:.17e}",
                 final_score.relative_infinity_norm, u8::from(iteration_converged), accepted.step,
             ));
@@ -2529,8 +2529,8 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
             Ok(report) => report,
             Err(error) if error.code == ErrorCode::NonConvergence => {
                 joint.reset_warm_start();
-                if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-                    super::categorical_lsmr::emit_solver_trace_line(
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(
                         "FEREG_SOLVER_TRACE|phase=joint_strict_direction|refusal=lsmr_nonconvergence",
                     );
                 }
@@ -2604,8 +2604,8 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
         config.ppml,
         coefficient_slots,
     ) == FinalHessianSynchronization::Certified;
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-        super::categorical_lsmr::emit_solver_trace_line(&format!(
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=joint_strict_direction|consistent={}|eta_change={:.17e}|beta_change={:.17e}",
             u8::from(consistent), relative_infinity_difference(workspace.eta(), workspace.candidate_eta()),
             relative_infinity_difference(workspace.coefficients(), workspace.candidate_coefficients())));
@@ -2682,8 +2682,8 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
                 )
             },
         ) <= config.ppml.tolerance;
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-        super::categorical_lsmr::emit_solver_trace_line(&format!(
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=joint_strict_final|accepted={}|basis_unchanged={}",
             u8::from(accepted),
             u8::from(unchanged)
@@ -2789,8 +2789,8 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
     if absorbed_scale > 0.0
         && 8.0 * f64::EPSILON * working_scale > strict_inner_tolerance(config.ppml) * absorbed_scale
     {
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-            super::categorical_lsmr::emit_solver_trace_line(
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(
                 "FEREG_SOLVER_TRACE|phase=profile_final_products|accepted=0|reason=working_response_cancellation",
             );
         }
@@ -2798,8 +2798,8 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
     }
     #[cfg(test)]
     PROFILE_FINAL_ACCEPTED.set(PROFILE_FINAL_ACCEPTED.get() + 1);
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-        super::categorical_lsmr::emit_solver_trace_line(
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(
             "FEREG_SOLVER_TRACE|phase=profile_final_products|accepted=1",
         );
     }
@@ -2913,8 +2913,8 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     } else {
         decision
     };
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-        super::categorical_lsmr::emit_solver_trace_line(&format!(
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=final_hessian_decision|eta_change={predictor_difference:.17e}|beta_change={coefficient_difference:.17e}|decision={decision:?}",
         ));
     }

@@ -28,8 +28,9 @@ use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
-use super::categorical_lsmr::{emit_solver_trace_line, JointLsmrCertificate};
+use super::categorical_lsmr::JointLsmrCertificate;
 use super::PpmlIterationWorkspace;
+use crate::diagnostics::emit_solver_trace;
 
 pub(crate) fn fused_cmg_batch_size(poolsize: usize, rhs: usize, nuisance: usize) -> usize {
     // Nuisance Schur columns are independent current-weight graph solves too.
@@ -764,11 +765,11 @@ impl ReusableCategoricalFwlCmg {
                 - solve_seconds
                 - finish_seconds)
                 .max(0.0);
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        if crate::diagnostics::solver_trace_enabled() {
             for (attempt, work) in std::iter::once(("first", first.projection_work))
                 .chain(retry_report.map(|report| ("retry", report.projection_work)))
             {
-                emit_solver_trace_line(&format!(
+                emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=cmg_projection|attempt={attempt}|warm_rhs={}|warm_iterations_sum={}|iterations_sum={}|restarts={}|extra_restarts={}|initial_relative_residual={:.17e}|pcg_seconds={:.17e}|rhs_seconds={:.17e}",
                     work.warm_right_hand_sides, work.warm_iterations, work.iterations, work.restarts, work.extra_restarts,
                     work.initial_relative_residual, work.pcg_seconds, work.rhs_seconds,
@@ -777,14 +778,14 @@ impl ReusableCategoricalFwlCmg {
             for (attempt, setup) in std::iter::once(("first", first.nuisance_setup))
                 .chain(retry_report.map(|report| ("retry", report.nuisance_setup)))
             {
-                emit_solver_trace_line(&format!(
+                emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=cmg_nuisance|attempt={attempt}|warm_rhs={}|iterations_sum={}|restarts={}|extra_restarts={}|initial_relative_residual={:.17e}|weight_ratio={:.17e}|pcg_seconds={:.17e}|rhs_seconds={:.17e}|schur_seconds={:.17e}",
                     setup.warm_right_hand_sides, setup.iterations, setup.restarts, setup.extra_restarts,
                     setup.initial_relative_residual, setup.weight_ratio,
                     setup.pcg_seconds, setup.rhs_seconds, setup.schur_seconds,
                 ));
             }
-            emit_solver_trace_line(&format!(
+            emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|redundant_effect={}|batch_capacity={}|pcg_batch_width={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|graph_rhs={}|graph_batches={}|nuisance_reused_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
                 self.active_columns + 1, first.nuisance_columns,
                 self.redundant_nuisance.map_or(0, |effect| effect + 1),
