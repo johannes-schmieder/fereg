@@ -13,7 +13,7 @@ use std::sync::OnceLock;
 /// rhs, gram)`; see [`weighted_upper_rank_one`].
 pub type UpperRankOne = fn(f64, &[f64], f64, usize, &mut [f64], &mut [f64]);
 
-/// The kernel table used by the numerical core.
+/// Hardware-compiled instantiations of the kernels below.
 #[derive(Clone, Copy, Debug)]
 pub struct FusedKernels {
     /// Doctor label for the arithmetic path these entries compile to.
@@ -21,20 +21,15 @@ pub struct FusedKernels {
     pub upper_rank_one: UpperRankOne,
 }
 
-impl FusedKernels {
-    pub const PORTABLE: Self = Self {
-        name: if cfg!(target_arch = "aarch64") {
-            "aarch64-fma"
-        } else if cfg!(all(target_arch = "x86_64", target_feature = "fma")) {
-            "x86_64-fma"
-        } else if cfg!(target_arch = "x86_64") {
-            "x86_64-portable"
-        } else {
-            "portable"
-        },
-        upper_rank_one: weighted_upper_rank_one,
-    };
-}
+const PORTABLE_NAME: &str = if cfg!(target_arch = "aarch64") {
+    "aarch64-fma"
+} else if cfg!(all(target_arch = "x86_64", target_feature = "fma")) {
+    "x86_64-fma"
+} else if cfg!(target_arch = "x86_64") {
+    "x86_64-portable"
+} else {
+    "portable"
+};
 
 static INSTALLED: OnceLock<FusedKernels> = OnceLock::new();
 
@@ -45,10 +40,35 @@ pub fn install(kernels: FusedKernels) {
     let _ = INSTALLED.set(kernels);
 }
 
-/// The installed table, or the portable one.
+/// The installed hardware table, if any. Without one, callers run the
+/// portable bodies inline rather than through a per-row function pointer.
 #[must_use]
-pub fn active() -> &'static FusedKernels {
-    INSTALLED.get().unwrap_or(&FusedKernels::PORTABLE)
+pub fn installed() -> Option<&'static FusedKernels> {
+    INSTALLED.get()
+}
+
+/// Doctor label for the arithmetic path currently in use.
+#[must_use]
+pub fn active_name() -> &'static str {
+    installed().map_or(PORTABLE_NAME, |kernels| kernels.name)
+}
+
+/// Run an installed hardware entry, or the portable body inline. Callers read
+/// `installed()` once per loop so the choice is loop-invariant.
+#[inline(always)]
+pub(crate) fn upper_rank_one(
+    hardware: Option<UpperRankOne>,
+    weight: f64,
+    row: &[f64],
+    response: f64,
+    left_start: usize,
+    rhs: &mut [f64],
+    gram: &mut [f64],
+) {
+    match hardware {
+        Some(update) => update(weight, row, response, left_start, rhs, gram),
+        None => weighted_upper_rank_one(weight, row, response, left_start, rhs, gram),
+    }
 }
 
 /// Add one weighted observation to partition rows of the upper Gram triangle.

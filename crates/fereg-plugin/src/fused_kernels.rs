@@ -1,15 +1,16 @@
 //! Hardware-FMA instantiations of fereg-core's fused kernels.
 //!
-//! Each entry compiles the same core body with FMA enabled. The table is
-//! installed only after runtime detection, so processors without FMA keep the
-//! portable path. `mul_add` is exactly rounded on both paths, so results are
-//! bit-identical; only the instruction selection changes.
+//! Each entry compiles the same core body with FMA (which implies AVX)
+//! enabled. The table exists only after runtime detection, so processors
+//! without both keep the portable path inline. `mul_add` is exactly rounded,
+//! so results match wherever the platform `fma` is exactly rounded too; only
+//! instruction selection changes.
 
 /// Install the hardware table for this process when the processor supports it.
 pub(crate) fn install() {
     #[cfg(target_arch = "x86_64")]
-    if std::is_x86_feature_detected!("fma") {
-        fereg_core::kernels::install(x86_64::HARDWARE);
+    if let Some(kernels) = x86_64::hardware() {
+        fereg_core::kernels::install(kernels);
     }
 }
 
@@ -17,10 +18,17 @@ pub(crate) fn install() {
 mod x86_64 {
     use fereg_core::kernels::{weighted_upper_rank_one, FusedKernels};
 
-    pub(super) const HARDWARE: FusedKernels = FusedKernels {
+    const HARDWARE: FusedKernels = FusedKernels {
         name: "x86_64-fma",
         upper_rank_one,
     };
+
+    /// The hardware table, only when the processor and OS provide FMA and AVX.
+    /// Its safe entries rely on this check, so it is the only way to reach them.
+    pub(super) fn hardware() -> Option<FusedKernels> {
+        (std::is_x86_feature_detected!("fma") && std::is_x86_feature_detected!("avx"))
+            .then_some(HARDWARE)
+    }
 
     #[target_feature(enable = "fma")]
     unsafe fn upper_rank_one_fma(
@@ -42,7 +50,7 @@ mod x86_64 {
         rhs: &mut [f64],
         gram: &mut [f64],
     ) {
-        // SAFETY: `HARDWARE` is installed only after runtime FMA detection.
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
         unsafe { upper_rank_one_fma(weight, row, response, left_start, rhs, gram) }
     }
 
@@ -66,9 +74,10 @@ mod x86_64 {
 
         #[test]
         fn hardware_upper_rank_one_matches_portable_bits() {
-            if !std::is_x86_feature_detected!("fma") {
+            let Some(hardware) = hardware() else {
+                eprintln!("skipped: this processor has no FMA/AVX hardware path");
                 return;
-            }
+            };
             for dimension in [1, 2, 7, 8, 21, 64] {
                 for left_start in [0, dimension / 2, dimension - 1] {
                     let rows = dimension - left_start;
@@ -88,7 +97,7 @@ mod x86_64 {
                             &mut portable_rhs,
                             &mut portable_gram,
                         );
-                        (HARDWARE.upper_rank_one)(
+                        (hardware.upper_rank_one)(
                             weight,
                             &row,
                             response,

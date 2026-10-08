@@ -68,7 +68,7 @@ impl BuildInfo {
             architecture: std::env::consts::ARCH,
             plugin_abi_major: SPI_MAJOR,
             plugin_abi_minor: SPI_MINOR,
-            cpu_dispatch_path: crate::kernels::active().name,
+            cpu_dispatch_path: crate::kernels::active_name(),
             available_threads: ThreadConfig::available(),
         }
     }

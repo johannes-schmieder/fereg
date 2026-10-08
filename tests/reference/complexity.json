@@ -1,6 +1,25 @@
 {
   "definition": "docs/cleanup/complexity.md#version-1",
-  "growth": [],
+  "growth": [
+    {
+      "after": 94968,
+      "before": 94950,
+      "metric": "fereg-core/production_lines",
+      "reason": "Detection accessor in fereg-plugin and the inline portable dispatch helper in fereg-core."
+    },
+    {
+      "after": 14023,
+      "before": 14019,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "Detection accessor in fereg-plugin and the inline portable dispatch helper in fereg-core."
+    },
+    {
+      "after": 1999,
+      "before": 1995,
+      "metric": "file/crates/fereg-core/src/ols/finite_wls_kernel.rs",
+      "reason": "Detection accessor in fereg-plugin and the inline portable dispatch helper in fereg-core."
+    }
+  ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -5431,20 +5450,28 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {
-          "active#1": {
-            "line": 50,
+          "active_name#1": {
+            "line": 52,
             "lines": 3
           },
           "install#1": {
-            "line": 44,
+            "line": 39,
             "lines": 3
           },
+          "installed#1": {
+            "line": 46,
+            "lines": 3
+          },
+          "upper_rank_one#1": {
+            "line": 59,
+            "lines": 14
+          },
           "weighted_upper_rank_one#1": {
-            "line": 63,
+            "line": 83,
             "lines": 19
           }
         },
-        "production_lines": 49
+        "production_lines": 63
       },
       "crates/fereg-core/src/lib.rs": {
         "chunk_candidates": [],
@@ -6447,19 +6474,19 @@
         "chunk_candidates": [
           {
             "condition": "layout . columns_per_partition > 1",
-            "line": 2159
+            "line": 2160
           },
           {
             "condition": "dimension == 0 || stored < dimension || rows == 0 || layout . columns_per_partition == 0 || layout . columns_per_partition > dimension",
-            "line": 2360
+            "line": 2362
           },
           {
             "condition": "rows . div_ceil ( partitions ) as u128 * total_work >= rows as u128 * old_critical_work",
-            "line": 2380
+            "line": 2382
           },
           {
             "condition": "fill_retained_scratch_row_partitions ( values , selected_columns , response , weights , divisor , scales , layout , partials , rhs , gram , ) ?",
-            "line": 2474
+            "line": 2477
           }
         ],
         "dispatch_candidates": [
@@ -6545,15 +6572,15 @@
           },
           {
             "condition": "rows == 0 || stored_columns == 0 || dimension == 0 || elements != rows . saturating_mul ( stored_columns ) || response . len ( ) != rows || response . iter ( ) . any ( | value | ! value . is_finite ( ) ) || ! divisor . is_finite ( ) || divisor <= 0.0 || selected_columns . is_some_and ( | selected |",
-            "line": 2586
+            "line": 2590
           },
           {
             "condition": "weights",
-            "line": 2605
+            "line": 2609
           },
           {
             "condition": "weights",
-            "line": 2623
+            "line": 2627
           }
         ],
         "functions": {
@@ -6578,11 +6605,11 @@
             "lines": 119
           },
           "checked_square#1": {
-            "line": 2731,
+            "line": 2735,
             "lines": 3
           },
           "compensated_add#1": {
-            "line": 2720,
+            "line": 2724,
             "lines": 10
           },
           "dimension#1": {
@@ -6606,39 +6633,39 @@
             "lines": 25
           },
           "fill_retained_dense_partitioned#1": {
-            "line": 2133,
+            "line": 2134,
             "lines": 71
           },
           "fill_retained_dense_standardized_rows#1": {
-            "line": 2227,
-            "lines": 45
+            "line": 2228,
+            "lines": 46
           },
           "fill_retained_dense_standardized_tiles#1": {
-            "line": 2277,
+            "line": 2279,
             "lines": 72
           },
           "fill_retained_partitioned#1": {
             "line": 2021,
-            "lines": 110
+            "lines": 111
           },
           "fill_retained_qr_row#1": {
             "line": 779,
             "lines": 84
           },
           "fill_retained_scratch_partitioned#1": {
-            "line": 2462,
-            "lines": 73
+            "line": 2465,
+            "lines": 74
           },
           "fill_retained_scratch_row_partitions#1": {
-            "line": 2387,
-            "lines": 73
+            "line": 2389,
+            "lines": 74
           },
           "finite_wls_moment_layout#1": {
             "line": 207,
             "lines": 10
           },
           "identities_are_unique#1": {
-            "line": 2672,
+            "line": 2676,
             "lines": 6
           },
           "inverse_relative_infinity_norm#1": {
@@ -6662,7 +6689,7 @@
             "lines": 6
           },
           "normalized_weight#1": {
-            "line": 2622,
+            "line": 2626,
             "lines": 19
           },
           "passed#1": {
@@ -6674,7 +6701,7 @@
             "lines": 14
           },
           "record_retained_moment_worker#1": {
-            "line": 2560,
+            "line": 2564,
             "lines": 12
           },
           "retained_scratch_moment_envelope#1": {
@@ -6690,11 +6717,11 @@
             "lines": 7
           },
           "scaled_column#1": {
-            "line": 2642,
+            "line": 2646,
             "lines": 8
           },
           "scratch_row_partition_plan#1": {
-            "line": 2354,
+            "line": 2356,
             "lines": 31
           },
           "solve_finite_cholesky#1": {
@@ -6710,11 +6737,11 @@
             "lines": 45
           },
           "sort_selected_inverse#1": {
-            "line": 2696,
+            "line": 2700,
             "lines": 11
           },
           "sort_selected_solution#1": {
-            "line": 2685,
+            "line": 2689,
             "lines": 10
           },
           "stable_qr_column_norm#1": {
@@ -6722,11 +6749,11 @@
             "lines": 24
           },
           "swap_symmetric_block#1": {
-            "line": 2708,
+            "line": 2712,
             "lines": 11
           },
           "valid_permutation#1": {
-            "line": 2679,
+            "line": 2683,
             "lines": 5
           },
           "validate#1": {
@@ -6734,15 +6761,15 @@
             "lines": 78
           },
           "validate_retained_source#1": {
-            "line": 2575,
+            "line": 2579,
             "lines": 46
           },
           "with_private_retained_moments#1": {
-            "line": 2208,
+            "line": 2209,
             "lines": 17
           }
         },
-        "production_lines": 1995
+        "production_lines": 1999
       },
       "crates/fereg-core/src/ols/finite_wls_kernel/axis.rs": {
         "chunk_candidates": [],
@@ -18724,20 +18751,24 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {
+          "hardware#1": {
+            "line": 28,
+            "lines": 4
+          },
           "install#1": {
-            "line": 9,
+            "line": 10,
             "lines": 6
           },
           "upper_rank_one#1": {
-            "line": 37,
+            "line": 45,
             "lines": 11
           },
           "upper_rank_one_fma#1": {
-            "line": 26,
+            "line": 34,
             "lines": 10
           }
         },
-        "production_lines": 35
+        "production_lines": 39
       },
       "crates/fereg-plugin/src/input.rs": {
         "chunk_candidates": [],
@@ -20429,17 +20460,17 @@
         "dispatch_candidates": 1265,
         "files_over_1500": 16,
         "functions_over_150": 67,
-        "production_lines": 94950
+        "production_lines": 94968
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
         "dispatch_candidates": 136,
         "files_over_1500": 3,
         "functions_over_150": 14,
-        "production_lines": 14019
+        "production_lines": 14023
       }
     },
     "schema": 1
   },
-  "reason": "Removed ignored parameters from CMG retained-bound and separation commit helpers."
+  "reason": "Hardware kernel table reachable only after FMA/AVX detection; portable bodies run inline when none is installed."
 }

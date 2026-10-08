@@ -2,10 +2,12 @@
 
 ## 0.5.0 beta — unreleased
 
-- x86-64 plugins detect FMA at runtime and then build OLS moment (Gram)
-  matrices with hardware fused multiply-add instead of a library call per
-  element; processors without FMA keep the portable path. Results are
-  bit-identical on both paths. `fereg, doctor` now reports the active
+- x86-64 plugins detect FMA and AVX at runtime and then run the standardized
+  OLS moment (Gram) row updates with hardware fused multiply-add instead of a
+  library call per element; other processors keep the portable path inline.
+  Both paths are exactly rounded, so results match wherever the platform `fma`
+  is exactly rounded (checked against glibc's software `fma` on Linux; not yet
+  checked on Windows or Intel macOS). `fereg, doctor` now reports the active
   arithmetic path (`x86_64-fma`, `x86_64-portable` or `aarch64-fma`) rather than
   a processor capability probe.
 
