@@ -40,7 +40,7 @@ Declare intentional numerical scope before changes; preserve unaffected results.
 The replay harness bounds the corpus at one million rows and ten million cells;
 local large-case profiling may compile it with larger `REPLAY_MAX_ROWS` and
 `REPLAY_MAX_CELLS` (see `tests/mock_spi/replay_io.h`). Such timings are local
-observations, not performance qualification.
+observations unless qualified under the evidence rules below.
 
 ## Native and frontend boundaries
 
@@ -48,7 +48,20 @@ SPI runs on the main thread. Rust workers use owned memory. Keep panic containme
 fallible allocation, Break handling, validation-before-publication and rollback.
 Original factor slots/base flags, independent certificates and both bias modes
 remain mandatory. Different workers need scientific agreement and stable decisions;
-a fixed deterministic worker configuration must repeat exactly.
+a fixed deterministic worker configuration must repeat exactly. Bitwise identity
+across platforms or processor features is not required. Processor-dependent
+fast paths retain independent certificates, scientific witnesses and stable
+discrete decisions; the portable path remains supported and tested.
+
+Delete production code reachable only from its own tests instead of hiding it
+behind test configuration. Keep independent reference implementations and their
+consumers in fereg-oracle or fereg-testkit; preserve unique scientific witnesses
+when removing an obsolete production pipeline.
+
+The three-FE LSMR hot path is in the pinned `within`/`schwarz-precond` dependency
+from `johannes-schmieder/within`. Its changes follow the same scientific and
+evidence requirements and enter this repository through a reviewed pinned
+revision bump.
 
 After editing `_fereg_ppml_result_mata.ado`, rebuild its three `.mo` files and
 receipt using the actual Stata 18 compiler with `scripts/build_ppml_mata.py`.
@@ -62,12 +75,26 @@ Remove temporary captures, profiles, copied source and obsolete builds after
 recording useful results. Keep large generated inputs and outputs out of Git.
 The compact benchmark entrypoint is documented in [bench](../bench/README.md).
 
-Time identified artifacts during quiet periods without our builds or agents.
-Coordinate unrelated workloads without terminating them. Predetermine workloads,
-measurement budgets and stopping rules for acceptance claims. Retain unsuccessful
-observations until the experiment is closed; missing or uncertain results are
-not successes. The default per-workload allowance is max(5%, 1 ms); report costs
-as well as gains. No ongoing obligation to rerun retired historical campaigns exists.
+Use two evidence tiers, with identified artifacts, predeclared workloads,
+measurement budgets and stopping rules:
+
+- Arithmetic-preserving changes require zero exact replay differences and
+  unchanged solver signatures. Instruction counts or function-level CPU samples
+  may establish reduced computational cost, together with no wall-time regression
+  beyond max(5%, 1 ms) on the standard workloads. Instruction counts are
+  deterministic for a fixed execution; CPU samples are statistical observations
+  and must report uncertainty. Wall-time gains smaller than the allowance remain
+  observations and do not by themselves fail an otherwise supported change.
+- Result-changing changes require declared numerical scope, independent witnesses
+  and the full quiet-timing protocol on the qualification host. Unaffected
+  scientific results remain exact; affected results must satisfy SPEC.
+
+Release performance claims require quiet Mac timing. For clean wall timings,
+run no builds or agents and coordinate unrelated workloads without terminating
+them. Retain unsuccessful observations until the experiment is closed. Missing
+or inconclusive evidence never passes a claim it cannot support. Report costs
+as well as gains; the per-workload allowance remains max(5%, 1 ms).
+No ongoing obligation to rerun retired historical campaigns exists.
 
 Native distribution remains subject to [licensing](licensing.md).
 

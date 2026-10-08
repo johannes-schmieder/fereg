@@ -720,7 +720,13 @@ Honor threads(); 0 resolves the existing native default. Preserve repeatability
 at a fixed thread count with deterministic and fixed random seed/stream.
 Across worker counts require scientific agreement under §20 and stable sample,
 omission, separation and other discrete model decisions. Bitwise identity
-across different worker counts or platforms is not required. The deterministic option remains supported.
+across different worker counts, platforms or processor features is not required.
+Processor-dependent fast paths, including runtime FMA dispatch, may select the
+fastest supported arithmetic when the same independent certificates and §20
+scientific witnesses accept their results and discrete decisions stay stable.
+The portable path remains supported and tested. Same-machine repeatability at
+a fixed worker count and seed remains required. The deterministic option
+remains supported.
 
 threads(n) is an available worker budget. Stages may use fewer workers under
 general work/resource rules, with transparent requested, resolved-budget and

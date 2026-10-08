@@ -28,6 +28,11 @@ for parity. Keep pinned references and independent numerical witnesses.
 
 Preserve deterministic repeatability at fixed worker count and seed; require
 scientific agreement and stable discrete decisions across worker counts.
+Bitwise identity across platforms or processor features is not required.
+Processor-dependent fast paths may use the fastest supported arithmetic when
+independent certificates and scientific witnesses pass and discrete decisions
+stay stable. Keep the portable path supported and tested; same-machine
+repeatability at fixed worker count and seed remains required.
 Arithmetic-preserving changes retain scientific bits and solver signatures.
 Declare affected scope and independent witnesses before algorithm/arithmetic/
 storage changes; unaffected scientific results remain exact. Timing, build
@@ -60,9 +65,19 @@ the default qualification host; his 2026-10-07 request additionally authorizes
 bounded Linux and Windows build/load checks without resuming GitHub workflows.
 No platform claim follows from another host's checks. See
 `docs/development_workflow.md` for entrypoints.
-Performance claims require identified artifacts, quiet measurements and preserved
-observations; the default per-workload allowance remains max(5%, 1 ms).
-Inconclusive results are not passes. New experiments need bounded stopping rules.
+Arithmetic-preserving changes with zero exact replay differences and unchanged
+solver signatures may use instruction counts or function-level CPU samples on
+predeclared workloads, plus no wall-time regression beyond max(5%, 1 ms) on the
+standard workloads. Report sampling uncertainty; gains below the allowance are
+observations, not failures. Result-changing work requires declared scope,
+independent witnesses and quiet qualification-host timing. Release performance
+claims require quiet Mac timing. Identify artifacts and preserve observations;
+inconclusive evidence never passes a claim it cannot support. Experiments need
+bounded stopping rules.
+
+The three-FE LSMR hot path lives in pinned `within`/`schwarz-precond` dependencies
+from `johannes-schmieder/within`. Apply these scientific and evidence rules there;
+integrate changes through a pinned revision bump.
 
 ## Repository hygiene
 
@@ -75,7 +90,9 @@ historical committed source/documents remain in Git, ignored raw data does not.
 
 Retain the runtime complexity ratchet at `tests/reference/complexity.json`;
 explain scoped increases and lower it for reductions. Do not minify or move code
-into exclusions. No arbitrary coverage percentage is a gate.
+into exclusions. Code reachable only from its own tests is deleted, not gated;
+independent reference implementations belong in fereg-oracle or fereg-testkit.
+No arbitrary coverage percentage is a gate.
 Do not introduce planning/status ledgers or receipt-folder proliferation.
 Never commit credentials, licenses, personal paths, raw logs, datasets or new
 files above 1 MB (existing reference bundles excepted). Paper work belongs in

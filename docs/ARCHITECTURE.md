@@ -63,6 +63,13 @@ Baseline x86-64 code calls the library
 instantiations of the same bodies when it detects FMA and AVX at runtime;
 otherwise callers run the portable bodies inline. FMA is exactly rounded, so
 results match wherever the platform `fma` is exactly rounded.
+Processor features may select different arithmetic under SPEC's independent
+scientific checks; both the portable and accelerated paths remain tested.
+
+The general three-FE LSMR gather, elimination, sparse products and Schwarz setup
+live in the pinned `within`/`schwarz-precond` dependency. Changes there obey the
+same scientific and performance evidence rules and enter through a pinned
+revision bump.
 
 Thread counts are worker budgets. Shared planned lanes retain deterministic
 arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms
