@@ -56,6 +56,33 @@ pub(crate) fn matrix_bytes<T>(rows: u128, columns: u128, message: &str) -> Resul
     Capacity::<T>::matrix(rows, columns, message)?.bytes(message)
 }
 
+/// Exactly reserve an empty vector; reservation failure is an allocation error.
+pub(crate) fn fallible_empty<T>(capacity: usize, message: &'static str) -> Result<Vec<T>> {
+    let mut values = Vec::new();
+    values
+        .try_reserve_exact(capacity)
+        .map_err(|_| allocation(message))?;
+    Ok(values)
+}
+
+/// Exactly reserved vector holding `length` copies of `value`.
+pub(crate) fn fallible_filled<T: Clone>(
+    length: usize,
+    value: T,
+    message: &'static str,
+) -> Result<Vec<T>> {
+    let mut values = fallible_empty(length, message)?;
+    values.resize(length, value);
+    Ok(values)
+}
+
+/// Exactly reserved copy of `source`.
+pub(crate) fn fallible_copy<T: Clone>(source: &[T], message: &'static str) -> Result<Vec<T>> {
+    let mut values = fallible_empty(source.len(), message)?;
+    values.extend_from_slice(source);
+    Ok(values)
+}
+
 /// Push into a vector whose capacity its owner already reserved. Never
 /// reallocates; exhausting the reservation is an allocation error.
 pub(crate) fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {

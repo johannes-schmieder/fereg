@@ -15,6 +15,7 @@ use crate::fe::{
     MapGeometryGeneration, ReusableCategoricalMapAbsorber, ReusableMapAbsorber,
     ReusableMapCapacities, SolveReport,
 };
+use crate::memory::{fallible_copy, fallible_empty, fallible_filled};
 use crate::metadata::CoefficientSlot;
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
@@ -6331,26 +6332,6 @@ fn checked_elements(rows: usize, columns: usize) -> Result<usize> {
         "weighted-linear dimensions overflow",
     )?
     .len("weighted-linear dimensions overflow")
-}
-
-fn fallible_empty<T>(capacity: usize, message: &'static str) -> Result<Vec<T>> {
-    let mut values = Vec::new();
-    values
-        .try_reserve_exact(capacity)
-        .map_err(|_| allocation(message))?;
-    Ok(values)
-}
-
-fn fallible_copy<T: Copy>(values: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut copied = fallible_empty(values.len(), message)?;
-    copied.extend_from_slice(values);
-    Ok(copied)
-}
-
-fn fallible_filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut values = fallible_empty(length, message)?;
-    values.resize(length, value);
-    Ok(values)
 }
 
 fn resize_zeroed(target: &mut Vec<f64>, length: usize, message: &'static str) -> Result<()> {

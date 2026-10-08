@@ -13,7 +13,10 @@ use std::time::Instant;
 
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
-use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
+use crate::memory::{
+    fallible_copy, fallible_empty as fallible_with_capacity, fallible_filled, FeSolverMemoryBudget,
+    SolverWorkspacePeak,
+};
 use rayon::prelude::*;
 
 use super::{
@@ -3555,26 +3558,6 @@ fn update_scaled_sum(value: f64, scale: &mut f64, sum: &mut f64) {
         let ratio = absolute / *scale;
         *sum += ratio * ratio;
     }
-}
-
-fn fallible_with_capacity<T>(elements: usize, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(label))?;
-    Ok(output)
-}
-
-fn fallible_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = fallible_with_capacity(elements, label)?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(source: &[T], label: &'static str) -> Result<Vec<T>> {
-    let mut output = fallible_with_capacity(source.len(), label)?;
-    output.extend_from_slice(source);
-    Ok(output)
 }
 
 fn reserved_zeros<R: SlopeWorkspaceReservation>(

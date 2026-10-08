@@ -7,6 +7,7 @@
 //! design, including absorbed slope channels. Comprehensive projection uses
 //! the shared certified prepared weighted-linear boundary.
 
+use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -3491,24 +3492,6 @@ fn checked_method_report_capacity(
     candidate_observations
         .checked_mul(method_count)
         .ok_or_else(|| allocation("prepared separation method-report capacity overflowed"))
-}
-
-fn fallible_filled<T: Clone>(len: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(len)
-        .map_err(|_| allocation(message))?;
-    output.resize(len, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(values: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(values.len())
-        .map_err(|_| allocation(message))?;
-    output.extend_from_slice(values);
-    Ok(output)
 }
 
 fn fallible_collect<T>(

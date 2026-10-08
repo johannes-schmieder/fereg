@@ -16,7 +16,7 @@ use crate::fe::{
     absorb_fixed_effects, BorrowedMapWeights, CmgConfig, CmgTopologyProfile, FeDesign,
     FeSolverKind, PreparedCmgTopology, SolveReport, CMG_MAX_NUISANCE_COLUMNS,
 };
-use crate::memory::FeSolverMemoryBudget;
+use crate::memory::{fallible_copy, fallible_filled, FeSolverMemoryBudget};
 use crate::ols::{
     classify_frozen_linear_fallback, CertifiedLinearSession, CertifiedLinearSessionOutput,
     CertifiedLinearSessionProducts, FrozenLinearFallbackKind, LinearSessionGenerations,
@@ -4279,24 +4279,6 @@ fn log_weighted_offset_sum(offset: &[f64], weights: &[f64]) -> Result<f64> {
 
 fn finite_unit(value: f64) -> bool {
     value.is_finite() && value > 0.0 && value < 1.0
-}
-
-fn fallible_filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut values = Vec::new();
-    values
-        .try_reserve_exact(length)
-        .map_err(|_| allocation(message))?;
-    values.resize(length, value);
-    Ok(values)
-}
-
-fn fallible_copy<T: Copy>(source: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut values = Vec::new();
-    values
-        .try_reserve_exact(source.len())
-        .map_err(|_| allocation(message))?;
-    values.extend_from_slice(source);
-    Ok(values)
 }
 
 fn internal(message: &'static str) -> FeregError {

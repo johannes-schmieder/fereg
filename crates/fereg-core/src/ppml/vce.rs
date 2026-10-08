@@ -1460,14 +1460,7 @@ pub(super) fn filled<T: Clone>(elements: usize, value: T, message: &'static str)
     Ok(output)
 }
 
-pub(super) fn fallible_copy<T: Clone>(source: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(source.len())
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
-    output.extend_from_slice(source);
-    Ok(output)
-}
+pub(super) use crate::memory::fallible_copy;
 
 #[cfg(test)]
 pub(crate) struct PpmlVceInput<'a> {

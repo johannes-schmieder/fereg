@@ -23,7 +23,7 @@ use crate::fe::{
     FeSolverKind, MapConfig, PreparedCmgTopology, ValidatedBorrowedInterceptSource,
     CMG_MAX_NUISANCE_COLUMNS,
 };
-use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
+use crate::memory::{fallible_empty, fallible_filled, FeSolverMemoryBudget, SolverWorkspacePeak};
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
@@ -1385,24 +1385,6 @@ impl ScaledSquareSum {
             self.scale * self.square_sum.sqrt()
         }
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(message))?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn fallible_empty<T>(elements: usize, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(message))?;
-    Ok(output)
 }
 
 fn nonconvergence(message: impl Into<String>) -> FeregError {

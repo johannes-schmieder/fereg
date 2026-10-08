@@ -12,8 +12,8 @@ use crate::fe::{
     borrow_categorical_topology_design, AbsorbConfig, BorrowedInterceptFeDesign,
     BorrowedMapWeights, CertifiedBorrowedMap, EffectTerm, FeDesign,
 };
-use crate::memory::OwnedFeDesignMemoryEstimate;
 use crate::memory::SolverWorkspacePeak;
+use crate::memory::{fallible_copy, fallible_filled, OwnedFeDesignMemoryEstimate};
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use rayon::prelude::*;
 
@@ -871,24 +871,6 @@ impl PreparedOlsFitView for PreparedCategoricalOlsData {
             topology.effect_to_topology(),
         )
     }
-}
-
-fn fallible_copy<T: Copy>(values: &[T], label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(values.len())
-        .map_err(|_| allocation(label))?;
-    output.extend_from_slice(values);
-    Ok(output)
-}
-
-fn fallible_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(label))?;
-    output.resize(elements, value);
-    Ok(output)
 }
 
 /// Initial K+1 RHS and the combined one-RHS result can coexist. The residual

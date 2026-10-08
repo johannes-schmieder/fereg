@@ -1,4 +1,5 @@
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::memory::fallible_filled;
 use std::collections::BTreeMap;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -317,15 +318,6 @@ fn connected_components_inner_fallible(
         n_components: next_label,
         component_by_effect_level,
     })
-}
-
-fn fallible_filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(length)
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
-    output.resize(length, value);
-    Ok(output)
 }
 
 #[cfg(test)]

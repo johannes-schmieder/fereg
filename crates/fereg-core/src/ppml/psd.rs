@@ -1,4 +1,5 @@
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
+use crate::memory::fallible_copy;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PpmlPsdState {
@@ -683,15 +684,6 @@ fn filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<
         .try_reserve_exact(elements)
         .map_err(|_| allocation(message))?;
     output.resize(elements, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(source: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(source.len())
-        .map_err(|_| allocation(message))?;
-    output.extend_from_slice(source);
     Ok(output)
 }
 

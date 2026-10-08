@@ -1,6 +1,7 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
+use crate::memory::{fallible_empty, fallible_filled};
 
 /// Final weighted fixed-effect orthogonality certificate.
 #[derive(Debug, Clone, PartialEq)]
@@ -13,23 +14,6 @@ pub struct FeCertificate {
     /// Root-mean-square of the basis-invariant local projection ratios.
     pub relative_two_norm: f64,
     pub passed: bool,
-}
-
-fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn fallible_empty<T>(elements: usize, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
-    Ok(output)
 }
 
 /// Weighted Euclidean norm of each matrix column.

@@ -7,6 +7,7 @@
 //! categorical preparation seam with singleton deletion disabled.  PPML's
 //! separation coordinator is the sole owner of singleton/separation deletion.
 
+use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 
 #[cfg(test)]
@@ -958,30 +959,6 @@ fn original_axis_mask(rows: usize, retained: &[usize], label: &'static str) -> R
     for &row in retained {
         output[row] = true;
     }
-    Ok(output)
-}
-
-fn fallible_filled<T: Clone>(len: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(len)
-        .map_err(|_| allocation(label))?;
-    if output.capacity() < len {
-        return Err(allocation(label));
-    }
-    output.resize(len, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Copy>(input: &[T], label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(input.len())
-        .map_err(|_| allocation(label))?;
-    if output.capacity() < input.len() {
-        return Err(allocation(label));
-    }
-    output.extend_from_slice(input);
     Ok(output)
 }
 

@@ -3,6 +3,7 @@
 //! Exact normal-equation moments are recomputed after every recurrence stop;
 //! LSMR diagnostics alone never authorize an IRLS step.
 
+use crate::memory::{fallible_copy, fallible_filled};
 use std::fs::OpenOptions;
 use std::io::Write;
 use std::sync::Mutex;
@@ -2275,24 +2276,6 @@ pub(super) fn checked_sum_memory(values: &[u128]) -> Result<u128> {
 
 pub(super) fn bytes_for_memory<T>(elements: u128, context: &'static str) -> Result<u128> {
     checked_mul_memory(elements, std::mem::size_of::<T>() as u128, context)
-}
-
-fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(message))?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(values: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(values.len())
-        .map_err(|_| allocation(message))?;
-    output.extend_from_slice(values);
-    Ok(output)
 }
 
 fn lsmr_error(error: SolveError) -> FeregError {
