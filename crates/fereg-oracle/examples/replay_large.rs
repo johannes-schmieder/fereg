@@ -50,6 +50,7 @@ fn run() -> Result<(), String> {
             "--seed",
             "--threads",
             "--tolerance",
+            "--iterations",
             "--max-cells",
             "--max-edges",
         ]
