@@ -2288,6 +2288,7 @@ fn fill_retained_dense_standardized_tiles(
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
+    let hardware = crate::kernels::installed().map(|kernels| kernels.upper_tile);
     crate::parallel::stage_try_for_each(
         rhs.par_chunks_mut(layout.columns_per_partition)
             .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
@@ -2326,21 +2327,15 @@ fn fill_retained_dense_standardized_tiles(
                                 selected_columns.map_or(right, |selected| selected[right]);
                             *value = scaled_column(source[source_right], Some(scales), right)?;
                         }
-                        for (offset, &weighted_left) in
-                            weighted_left_tile[..left_count].iter().enumerate()
-                        {
-                            let left = left_base + offset;
-                            let first_right = left.max(right_start);
-                            let gram_row = &mut gram_rows[(local_start + offset) * dimension
-                                ..(local_start + offset + 1) * dimension];
-                            for (entry, &right_value) in gram_row
-                                [first_right..right_start + right_count]
-                                .iter_mut()
-                                .zip(&right_tile[first_right - right_start..right_count])
-                            {
-                                *entry = weighted_left.mul_add(right_value, *entry);
-                            }
-                        }
+                        crate::kernels::upper_tile(
+                            hardware,
+                            &weighted_left_tile[..left_count],
+                            &right_tile[..right_count],
+                            left_base,
+                            right_start,
+                            dimension,
+                            &mut gram_rows[local_start * dimension..],
+                        );
                     }
                 }
             }

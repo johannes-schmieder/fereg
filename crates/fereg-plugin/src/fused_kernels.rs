@@ -19,12 +19,13 @@ pub(crate) fn install() {
 mod x86_64 {
     use fereg_core::kernels::{
         group_scales as portable_group_scales, scaled_group_sums as portable_scaled_group_sums,
-        weighted_upper_rank_one, FusedKernels,
+        weighted_upper_rank_one, weighted_upper_tile, FusedKernels,
     };
 
     const HARDWARE: FusedKernels = FusedKernels {
         name: "x86_64-fma",
         upper_rank_one,
+        upper_tile,
         group_scales,
         scaled_group_sums,
     };
@@ -58,6 +59,30 @@ mod x86_64 {
     ) {
         // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
         unsafe { upper_rank_one_fma(weight, row, response, left_start, rhs, gram) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn upper_tile_fma(
+        left: &[f64],
+        right: &[f64],
+        left_start: usize,
+        right_start: usize,
+        dimension: usize,
+        gram: &mut [f64],
+    ) {
+        weighted_upper_tile(left, right, left_start, right_start, dimension, gram);
+    }
+
+    fn upper_tile(
+        left: &[f64],
+        right: &[f64],
+        left_start: usize,
+        right_start: usize,
+        dimension: usize,
+        gram: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { upper_tile_fma(left, right, left_start, right_start, dimension, gram) }
     }
 
     #[target_feature(enable = "fma")]
@@ -172,6 +197,46 @@ mod x86_64 {
 
         fn bits(values: &[f64]) -> Vec<u64> {
             values.iter().map(|value| value.to_bits()).collect()
+        }
+
+        #[test]
+        fn hardware_upper_tiles_match_scalar_order_and_preserve_other_entries() {
+            let Some(hardware) = hardware() else {
+                eprintln!("skipped: this processor has no FMA/AVX hardware path");
+                return;
+            };
+            for dimension in [65, 129, 257] {
+                for left_start in [0, 1, 63, dimension - 1] {
+                    let count = (dimension - left_start).min(64);
+                    let mut expected = values(3, count * dimension);
+                    let mut actual = expected.clone();
+                    for observation in 0..17 {
+                        let row = values(7 + observation, dimension);
+                        let weight = values(11 + observation, 1)[0].abs();
+                        let left: Vec<_> = row[left_start..left_start + count]
+                            .iter()
+                            .map(|value| weight * value)
+                            .collect();
+                        for (offset, &value) in left.iter().enumerate() {
+                            for right in left_start + offset..dimension {
+                                let entry = &mut expected[offset * dimension + right];
+                                *entry = value.mul_add(row[right], *entry);
+                            }
+                        }
+                        for right_start in (left_start..dimension).step_by(64) {
+                            (hardware.upper_tile)(
+                                &left,
+                                &row[right_start..(right_start + 64).min(dimension)],
+                                left_start,
+                                right_start,
+                                dimension,
+                                &mut actual,
+                            );
+                        }
+                    }
+                    assert_eq!(bits(&actual), bits(&expected));
+                }
+            }
         }
 
         #[test]

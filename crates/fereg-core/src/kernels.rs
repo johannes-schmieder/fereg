@@ -16,6 +16,10 @@ use std::sync::OnceLock;
 /// rhs, gram)`; see [`weighted_upper_rank_one`].
 pub type UpperRankOne = fn(f64, &[f64], f64, usize, &mut [f64], &mut [f64]);
 
+/// One observation's upper-Gram tile: weighted left values, right values,
+/// their global column starts, full dimension and dimension-strided Gram rows.
+pub type UpperTile = fn(&[f64], &[f64], usize, usize, usize, &mut [f64]);
+
 /// Column scales and compensated weight sum over one group's members:
 /// `(weights, raw_scale, data, rows, members, scales)`; see [`group_scales`].
 pub type GroupScales =
@@ -33,6 +37,7 @@ pub struct FusedKernels {
     /// Doctor label for the arithmetic path these entries compile to.
     pub name: &'static str,
     pub upper_rank_one: UpperRankOne,
+    pub upper_tile: UpperTile,
     pub group_scales: GroupScales,
     pub scaled_group_sums: ScaledGroupSums,
 }
@@ -113,6 +118,49 @@ pub fn weighted_upper_rank_one(
         for (entry, &right_value) in gram_row[left..].iter_mut().zip(&row[left..]) {
             *entry = weighted_left.mul_add(right_value, *entry);
         }
+    }
+}
+
+/// Update an already standardized upper-Gram tile without changing row order.
+/// Left values already include the observation weight. Only entries on or
+/// above the diagonal are touched; the caller retains all input validation.
+/// `gram` contains at least `weighted_left.len()` dimension-strided rows.
+/// Every left column must lie before the right tile's endpoint, and that
+/// endpoint must not exceed `dimension`.
+#[inline(always)]
+pub fn weighted_upper_tile(
+    weighted_left: &[f64],
+    right: &[f64],
+    left_start: usize,
+    right_start: usize,
+    dimension: usize,
+    gram: &mut [f64],
+) {
+    for (offset, &left_value) in weighted_left.iter().enumerate() {
+        let first_right = (left_start + offset).max(right_start);
+        let gram_row = &mut gram[offset * dimension..(offset + 1) * dimension];
+        for (entry, &right_value) in gram_row[first_right..right_start + right.len()]
+            .iter_mut()
+            .zip(&right[first_right - right_start..])
+        {
+            *entry = left_value.mul_add(right_value, *entry);
+        }
+    }
+}
+
+#[inline(always)]
+pub(crate) fn upper_tile(
+    hardware: Option<UpperTile>,
+    left: &[f64],
+    right: &[f64],
+    left_start: usize,
+    right_start: usize,
+    dimension: usize,
+    gram: &mut [f64],
+) {
+    match hardware {
+        Some(update) => update(left, right, left_start, right_start, dimension, gram),
+        None => weighted_upper_tile(left, right, left_start, right_start, dimension, gram),
     }
 }
 

@@ -124,6 +124,16 @@ if ($LASTEXITCODE -ne 0 -or
 }
 Write-Host "Windows exact-FMA arithmetic check: PASS"
 
+$KernelOutput = & cargo test --manifest-path "$Root\Cargo.toml" --locked `
+    --profile ci -p fereg-plugin --target $Target --lib `
+    fused_kernels::x86_64::tests -- --show-output
+if ($LASTEXITCODE -ne 0 -or
+    -not (($KernelOutput -join "`n") -match 'test result: ok\. 3 passed; 0 failed;')) {
+    $KernelOutput | ForEach-Object { Write-Host $_ }
+    throw "Windows fused-kernel checks failed or did not run"
+}
+Write-Host "Windows fused-kernel checks: PASS"
+
 $StpluginObj = Join-Path $Build "stplugin.obj"
 $BridgeObj = Join-Path $Build "stata_bridge.obj"
 cl.exe /nologo /c /O2 /MT /W4 /WX /TC /DSYSTEM=STWIN32 /I"$Root\plugin" `

@@ -436,3 +436,21 @@ and performance adoption remain unqualified. The temporary local Cargo override
 was removed, both dependencies retain their original pin, and the local patch,
 candidate artifacts and compact evidence remain under ignored
 `target/optimization-followup/`.
+
+### Quiet Mac retry
+
+The October 8 retry used the same frozen artifacts and inputs after the competing
+Stata jobs ended. All agents were idle and no builds ran on the qualification
+host. Sampled OS background activity was retained with the observations. Each
+cell used one warmup and seven alternating baseline/candidate repetitions;
+native-call times exclude input parsing and output writing. The decision uses
+the upper bound of a paired-median 95% bootstrap interval, with 10,000 resamples
+and a fixed seed, against the unchanged max(5%, 1 ms) allowance.
+
+Wide-Gram dispatch passed all twelve standard cells and six K=64/65/129 cells
+at one/four workers. All 288 observations were exact, including solver
+signatures. Median candidate/baseline native-time ratios ranged from 0.986 to
+1.022; the largest upper confidence bound was 1.035. The campaign finished in
+500 seconds within its 30-minute limit. This supplies the missing Mac
+nonregression evidence; the previously isolated Linux instruction-count and
+timing evidence remains the basis for the x86 performance benefit.
