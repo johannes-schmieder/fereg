@@ -330,3 +330,109 @@ process. Compact observations and source probes were retained; completed raw
 datasets, profiles and temporary source/build copies were retired.
 SCC job 7969744 on `scc-gr4` finished with `failed=0`, `exit_status=0`,
 811 seconds, 2.673 GB maximum virtual memory and the application success marker.
+
+### Automatic PCG continuation investigation
+
+The October 8 follow-up tested an automatic OLS two-FE continuation using the
+existing PPML progress criterion: after eight PCG iterations, restart LSMR from
+untouched inputs when the maximum active preconditioned residual contraction
+exceeds 0.01. The prototype charged the retained PCG owner against continuation
+memory, shared the remaining iteration allowance, refreshed the original-frame
+certificate and norm handoff, and preserved explicit solver and PPML routes.
+The LSMR recurrence used the existing 100-times-tighter target while publication
+required the original requested tolerance. Existing callers were unchanged.
+
+Paired-observation witnesses with exact residuals of plus/minus 1/8 on 512-level
+chain and weak graphs certified in nine total iterations, while the original
+policy exhausted a 100-iteration budget. A barbell retained exact outputs and
+its three-iteration solver signature. Independent weighted dummy OLS witnesses
+also passed across unit/analytic weights, Fast/Low storage and one/four workers.
+Memory admission boundaries, tiny iteration budgets, deterministic repeats,
+structural routing and checkpoint tests passed.
+
+However, an 80-level chain needed 79 iterations under the existing PCG policy
+and 167/168 under the prototype. With `iterate(128)`, the existing policy
+succeeded and matched the independent dummy oracle, while the prototype failed
+in all eight weight/storage/worker combinations. At `iterate(100)`, both failed:
+the existing policy reserves one quarter of the allowance for MAP, leaving
+fewer than 79 PCG iterations. The distinguishing 128-budget result rejects the
+proposed routing rule without requiring timing. Slow early PCG contraction alone
+does not establish that the selected LSMR preconditioner will improve convergence.
+No graph-size fence was added and the prototype was removed.
+
+Independent architectural review also identified a pre-existing retry-accounting
+limitation in the LSMR helper: a positive-definiteness breakdown can occur after
+iterations have been spent, yet the unpreconditioned retry retains the full
+allowance and reports only its own work. The rejected continuation would have
+inherited that limitation; this investigation does not fix or qualify it.
+Compact experiment logs and the rejected patch are retained under the ignored
+`target/optimization-followup/` directory. No performance claim is made for the
+fallback and the default solver policy remains unchanged.
+
+### Wide Gram and CSR follow-up qualification
+
+The isolated wide-Gram dispatch was restored on `dc2d575c`. Its runtime source
+matches the previously tested Linux proposal; the hardware test now reports an
+unavailable FMA/AVX path explicitly. The full Mac entrypoint passed 1,647 native
+test executions, formatting, Clippy, allocation/FFI audits, the complexity ratchet
+and both numeric guard configurations. The universal build and ABI audit passed,
+as did all 73 exact replay cases against the production artifact and five mapped
+licensed Stata 19 transaction/public-contract fixtures. The restored candidate
+plugin SHA-256 is
+`629e0169603213fcc3ac49ed97630dd856caf0bca140a0f03544c3eda6748dcf`;
+its production comparator is
+`66e35883bdb88bd859d20af313375463877d2b281d6a48e21815ec9de442df98`.
+
+A separate `within` candidate, local commit
+`297f32d9c4f83cc7d814ea778cd28c1f976e68d0` based on the existing `803a4fe` pin,
+replaces per-entry CSR indexing in back-substitution with checked row slices.
+It preserves entry order, separate multiplication/addition, source-vector bounds
+checks and parallel partitioning. Independent hand-computed witnesses cover
+10,017 rows across four workers, empty/singleton/multiple-entry rows, cancellation,
+FMA-sensitive operands, zero kept columns and signed zero. Focused tests and the
+full `within`/`schwarz-precond` library suites passed. Disassembly of the actual
+ARM plugins confirms a 15-instruction steady-state stored-entry loop becomes
+nine instructions, with CSR slice checks outside it. This is code-generation
+evidence, not a measured whole-estimation speedup.
+
+The combined local candidate passed the same 1,647-execution fereg entrypoint,
+universal build/ABI audit and 73-case replay, with zero exact scientific or solver
+signature differences against the wide-only candidate. Its plugin SHA-256 is
+`f286ff49d89ffe6146ab1664a71ff02da49484a7ec1f68c1e383b479ce7a1696`.
+Nine mapped Stata fixtures passed, including weighted Schwarz, three-FE low-memory
+operator reuse, deterministic four-FE OLS/PPML, saved outputs and transactions.
+An additional `ols_three_fe_batch_oracle.do` check failed with `r(459)` and an
+uncertified-result error on the combined, wide-only and untouched production
+binaries. That fixture's default 64-slot LSMR uses diagonal preconditioning;
+the modified Schwarz back-substitution is outside this failing route. The common
+failure is preserved and is not counted as a pass or repaired by these changes.
+
+A separate bounded large-input science check compared production, wide-only and
+combined binaries on all twelve frozen standard cases, six K=64/65/129 cases
+at one/four workers and four one-million-row three-FE LSMR cases at 1/4/8/16
+workers. All 66 observations had exact scientific outputs and solver signatures.
+The run had a five-minute total cap and 60 seconds per process. It ran on the
+busy host solely to test results; its durations are not performance evidence.
+
+The pre-commit Windows diagnostic (`win-20261008T213049Z-a29f1256`) failed with
+`STATA_DRIVER_FAILED`. Its sanitized aggregate does not identify the failed
+stage, so no native gate is inferred to have passed. The transferred source
+was dirty, whereas inspection of `build_windows.ps1` confirms that its manifest
+binding requires a clean source commit. This attempt therefore cannot supply
+formal Windows qualification; a clean-commit rerun remains required. The archive
+SHA-256 is `7bc0e871b6e3ef19ebf8eb975dcaefefd8581bf060bf3a1d4642c80f1c424d99`
+and receipt SHA-256 is
+`516ce7a7d67415ed570da70168ce7e3d5969dd027c679ec897e5329e8546b051`.
+The wrapper confirmed stopped state, deleted transient objects and released its
+lock. GitHub testing was not resumed.
+
+Unrelated Stata processes and background CPU activity prevented a clean Mac
+timing run. No follow-up timing was started and neither candidate has a new Mac
+nonregression pass. The twelve frozen standard cases and K=64/65/129 cases are
+prepared for one warmup and seven interleaved repetitions, a 90-second per-fit
+cap and a 30-minute campaign cap; the CSR screen additionally covers three-FE
+LSMR at 1/4/8/16 workers. The allowance remains max(5%, 1 ms). Dependency integration
+and performance adoption remain unqualified. The temporary local Cargo override
+was removed, both dependencies retain their original pin, and the local patch,
+candidate artifacts and compact evidence remain under ignored
+`target/optimization-followup/`.
