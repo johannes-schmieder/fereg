@@ -10,6 +10,7 @@ use crate::fe::{
     weighted_column_norms, CertifiedBorrowedMap, FeCertificate, FeDesign, FeSolverKind,
     SolveReport, SolveStopReason,
 };
+use crate::linalg::neumaier_add;
 use rayon::prelude::*;
 use std::time::Instant;
 
@@ -1614,14 +1615,7 @@ pub(super) fn certify_reusable_group(
                         continue;
                     }
                     let scaled = (left * values[column]) / raw_scales[column];
-                    let sum = sums[column];
-                    let updated = sum + scaled;
-                    corrections[column] += if sum.abs() >= scaled.abs() {
-                        (sum - updated) + scaled
-                    } else {
-                        (scaled - updated) + sum
-                    };
-                    sums[column] = updated;
+                    neumaier_add(scaled, &mut sums[column], &mut corrections[column]);
                 }
             }
             for column in 0..width {
@@ -1794,13 +1788,7 @@ fn reusable_weighted_norms(
 }
 
 fn reusable_compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let updated = *sum + value;
-    *correction += if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *sum = updated;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {
@@ -1880,13 +1868,7 @@ fn reusable_scaled_moment(members: &[usize], value: impl Fn(usize) -> f64) -> f6
     let mut correction = 0.0_f64;
     for &row in members {
         let scaled = value(row) / scale;
-        let updated = sum + scaled;
-        correction += if sum.abs() >= scaled.abs() {
-            (sum - updated) + scaled
-        } else {
-            (scaled - updated) + sum
-        };
-        sum = updated;
+        neumaier_add(scaled, &mut sum, &mut correction);
     }
     (sum + correction) * scale
 }

@@ -1,4 +1,5 @@
 use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
+use crate::linalg::neumaier_add;
 use crate::memory::fallible_copy;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -662,13 +663,7 @@ fn symmetrize(matrix: &mut [f64], dimension: usize) -> Result<()> {
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let next = *sum + value;
-    if sum.abs() >= value.abs() {
-        *correction += (*sum - next) + value;
-    } else {
-        *correction += (value - next) + *sum;
-    }
-    *sum = next;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {

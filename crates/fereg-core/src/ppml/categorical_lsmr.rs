@@ -3,6 +3,7 @@
 //! Exact normal-equation moments are recomputed after every recurrence stop;
 //! LSMR diagnostics alone never authorize an IRLS step.
 
+use crate::linalg::neumaier_add;
 use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Mutex;
 use std::time::Instant;
@@ -1915,13 +1916,7 @@ impl FiniteCompensatedSum {
                 "PPML LSMR certificate accumulation is nonfinite",
             ));
         }
-        let updated = self.sum + value;
-        self.correction += if self.sum.abs() >= value.abs() {
-            (self.sum - updated) + value
-        } else {
-            (value - updated) + self.sum
-        };
-        self.sum = updated;
+        neumaier_add(value, &mut self.sum, &mut self.correction);
         if self.sum.is_finite() && self.correction.is_finite() {
             Ok(())
         } else {

@@ -13,6 +13,7 @@ use std::time::Instant;
 
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
+use crate::linalg::neumaier_add;
 use crate::memory::{
     fallible_copy, fallible_empty as fallible_with_capacity, fallible_filled, FeSolverMemoryBudget,
     SolverWorkspacePeak,
@@ -3529,14 +3530,7 @@ fn finish(
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let updated = *sum + value;
-    let adjustment = if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *sum = updated;
-    *correction += adjustment;
+    neumaier_add(value, sum, correction);
     if !sum.is_finite() || !correction.is_finite() {
         return Err(invalid_data(
             "intercept-slope MAP compensated accumulation is not finite",

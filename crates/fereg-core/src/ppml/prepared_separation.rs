@@ -7,6 +7,7 @@
 //! design, including absorbed slope channels. Comprehensive projection uses
 //! the shared certified prepared weighted-linear boundary.
 
+use crate::linalg::neumaier_add;
 use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -3118,13 +3119,7 @@ fn compensated_sum(values: impl IntoIterator<Item = f64>) -> Result<f64> {
                 "prepared separation projection weights must be finite and positive",
             ));
         }
-        let next = sum + value;
-        correction += if sum.abs() >= value.abs() {
-            (sum - next) + value
-        } else {
-            (value - next) + sum
-        };
-        sum = next;
+        neumaier_add(value, &mut sum, &mut correction);
     }
     let total = sum + correction;
     if !total.is_finite() || total <= 0.0 {

@@ -3,6 +3,7 @@ use crate::data::{PreparedWeights, WeightKind};
 use crate::error::{
     allocation, invalid_argument, invalid_data, unsupported, ErrorCode, FeregError, Result,
 };
+use crate::linalg::neumaier_add;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 pub(super) use crate::sandwich::compensated_add_scaled_row;
 use crate::topology_dof::CategoricalTopologyDofReport;
@@ -1760,14 +1761,7 @@ pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -
     if !value.is_finite() {
         return Err(invalid_data("prepared iid compensated term is not finite"));
     }
-    let updated = *sum + value;
-    let adjustment = if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *sum = updated;
-    *correction += adjustment;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {

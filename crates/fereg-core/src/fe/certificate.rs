@@ -1,6 +1,7 @@
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::FeDesign;
+use crate::linalg::neumaier_add;
 use crate::memory::{fallible_empty, fallible_filled};
 
 /// Final weighted fixed-effect orthogonality certificate.
@@ -647,13 +648,7 @@ fn scaled_raw_moment(
     let mut correction = 0.0_f64;
     for &observation in observations {
         let product = (left(observation) / left_scale) * (right(observation) / right_scale);
-        let updated = sum + product;
-        correction += if sum.abs() >= product.abs() {
-            (sum - updated) + product
-        } else {
-            (product - updated) + sum
-        };
-        sum = updated;
+        neumaier_add(product, &mut sum, &mut correction);
     }
     rescale_raw_moment(sum + correction, left_scale, right_scale)
 }
@@ -717,14 +712,7 @@ fn raw_moment_maximum(
                         continue;
                     }
                     let product = left * ((root * row[rhs]) / right_scales[rhs]);
-                    let sum = sums[rhs];
-                    let updated = sum + product;
-                    corrections[rhs] += if sum.abs() >= product.abs() {
-                        (sum - updated) + product
-                    } else {
-                        (product - updated) + sum
-                    };
-                    sums[rhs] = updated;
+                    neumaier_add(product, &mut sums[rhs], &mut corrections[rhs]);
                 }
             }
             for rhs in 0..width {

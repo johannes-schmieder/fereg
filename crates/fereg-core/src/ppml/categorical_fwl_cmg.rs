@@ -6,6 +6,7 @@
 //! CG polish, retrying only uncertified right-hand sides, and retaining every
 //! fereg-owned dense workspace across frames.
 
+use crate::linalg::neumaier_add;
 use std::time::Instant;
 
 #[cfg(test)]
@@ -1328,13 +1329,7 @@ struct CompensatedSum {
 
 impl CompensatedSum {
     fn add(&mut self, value: f64) -> Result<()> {
-        let updated = self.sum + value;
-        self.correction += if self.sum.abs() >= value.abs() {
-            (self.sum - updated) + value
-        } else {
-            (value - updated) + self.sum
-        };
-        self.sum = updated;
+        neumaier_add(value, &mut self.sum, &mut self.correction);
         if self.sum.is_finite() && self.correction.is_finite() {
             Ok(())
         } else {

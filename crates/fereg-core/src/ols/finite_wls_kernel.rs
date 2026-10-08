@@ -22,6 +22,7 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 use crate::data::DenseMatrix;
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::fe::BorrowedMapWeights;
+use crate::linalg::neumaier_add;
 
 use super::implicit_centered::ImplicitCenteredView;
 use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
@@ -2717,13 +2718,7 @@ fn swap_symmetric_block(matrix: &mut [f64], dimension: usize, left: usize, right
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let next = *sum + value;
-    if sum.abs() >= value.abs() {
-        *correction += (*sum - next) + value;
-    } else {
-        *correction += (value - next) + *sum;
-    }
-    *sum = next;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {

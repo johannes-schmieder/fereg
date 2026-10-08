@@ -7,6 +7,7 @@
 //! categorical preparation seam with singleton deletion disabled.  PPML's
 //! separation coordinator is the sole owner of singleton/separation deletion.
 
+use crate::linalg::neumaier_add;
 use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 
@@ -972,13 +973,7 @@ fn compensated_sum(values: impl IntoIterator<Item = f64>) -> Result<f64> {
                 "prepared PPML generation weights must be finite and positive",
             ));
         }
-        let next = sum + value;
-        correction += if sum.abs() >= value.abs() {
-            (sum - next) + value
-        } else {
-            (value - next) + sum
-        };
-        sum = next;
+        neumaier_add(value, &mut sum, &mut correction);
     }
     let total = sum + correction;
     if !total.is_finite() || total <= 0.0 {

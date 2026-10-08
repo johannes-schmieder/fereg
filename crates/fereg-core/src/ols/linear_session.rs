@@ -15,6 +15,7 @@ use crate::fe::{
     MapGeometryGeneration, ReusableCategoricalMapAbsorber, ReusableMapAbsorber,
     ReusableMapCapacities, SolveReport,
 };
+use crate::linalg::neumaier_add;
 use crate::memory::{fallible_copy, fallible_empty, fallible_filled};
 use crate::metadata::CoefficientSlot;
 use crate::parallel::ThreadTeam;
@@ -6368,13 +6369,7 @@ pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -
             "weighted-linear compensated sum input is not finite",
         ));
     }
-    let next = *sum + value;
-    if sum.abs() >= value.abs() {
-        *correction += (*sum - next) + value;
-    } else {
-        *correction += (value - next) + *sum;
-    }
-    *sum = next;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {

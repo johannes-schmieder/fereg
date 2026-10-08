@@ -1,6 +1,7 @@
 use super::{normalized_solver_weight, RetainedWithinStorage};
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::BorrowedMapWeights;
+use crate::linalg::neumaier_add;
 use crate::ols::PreparedOlsBreadWeightScale;
 
 pub(super) struct RefinementFrame<'a> {
@@ -96,14 +97,11 @@ pub(super) fn refine_retained_coefficients(
             for (column, &position) in frame.active_positions.iter().enumerate() {
                 let value =
                     weight * (workspace.row[position] / frame.reference_norms[position]) * residual;
-                let sum = workspace.scores[column];
-                let next = sum + value;
-                workspace.corrections[column] += if sum.abs() >= value.abs() {
-                    (sum - next) + value
-                } else {
-                    (value - next) + sum
-                };
-                workspace.scores[column] = next;
+                neumaier_add(
+                    value,
+                    &mut workspace.scores[column],
+                    &mut workspace.corrections[column],
+                );
             }
         }
         for (score, &correction) in workspace
@@ -121,13 +119,7 @@ pub(super) fn refine_retained_coefficients(
                 .zip(workspace.scores.iter())
             {
                 let value = entry * score;
-                let next = sum + value;
-                correction += if sum.abs() >= value.abs() {
-                    (sum - next) + value
-                } else {
-                    (value - next) + sum
-                };
-                sum = next;
+                neumaier_add(value, &mut sum, &mut correction);
             }
             let delta = sum + correction;
             let before = workspace.coefficients[column] / frame.reference_norms[position];

@@ -6,6 +6,7 @@ use crate::fe::{
     BorrowedInterceptFeDesign, FeCertificate, FeSolverKind, LsmrConfig, LsmrPreconditioner,
     MapConfig, SolveReport, SolveStopReason,
 };
+use crate::linalg::neumaier_add;
 use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
 use rayon::prelude::*;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
@@ -7440,21 +7441,6 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
         ));
     }
     Ok(())
-}
-
-/// One Neumaier update without the finiteness branch. A nonfinite sum or
-/// correction stays nonfinite, so checking once after a loop with
-/// [`compensated_finite`] reaches the same decision as checking every update.
-#[inline(always)]
-fn neumaier_add(value: f64, sum: &mut f64, correction: &mut f64) {
-    let updated = *sum + value;
-    let adjustment = if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *correction += adjustment;
-    *sum = updated;
 }
 
 fn compensated_finite(sum: f64, correction: f64) -> Result<()> {

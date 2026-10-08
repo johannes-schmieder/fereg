@@ -4,6 +4,7 @@ use super::wald::{compute_ppml_wald, validate_reference, PpmlWaldReference};
 use crate::data::DenseMatrix;
 use crate::data::WeightKind;
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::linalg::neumaier_add;
 use crate::ols::CertifiedLinearWithinDesign;
 #[cfg(test)]
 use crate::ols::{ClusterSubsetReport, VceKind, VceReport};
@@ -1072,13 +1073,7 @@ fn compensated_positive_sum(values: &[f64]) -> Result<f64> {
                 "PPML prepared weight is not finite and positive",
             ));
         }
-        let next = sum + value;
-        if sum.abs() >= value.abs() {
-            correction += (sum - next) + value;
-        } else {
-            correction += (value - next) + sum;
-        }
-        sum = next;
+        neumaier_add(value, &mut sum, &mut correction);
         if !sum.is_finite() || !correction.is_finite() {
             return Err(FeregError::new(
                 ErrorCode::InvalidData,

@@ -7,6 +7,7 @@ use crate::fe::{
     AbsorbConfig, BorrowedMapWeights, FeCertificate, FeCoefficientBatch, FeSolverKind, SolveReport,
     SolveStopReason,
 };
+use crate::linalg::neumaier_add;
 use crate::memory::push_reserved;
 use crate::metadata::CoefficientSlot;
 use crate::options::ThreadConfig;
@@ -4664,14 +4665,7 @@ fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()
             "prepared OLS compensated score term is not finite",
         ));
     }
-    let updated = *sum + value;
-    let adjustment = if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *sum = updated;
-    *correction += adjustment;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {

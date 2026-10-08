@@ -10,6 +10,7 @@ use rayon::prelude::*;
 use std::cmp::Ordering;
 
 use crate::error::{allocation, invalid_argument, invalid_data, Result};
+use crate::linalg::neumaier_add;
 use crate::memory::push_reserved;
 
 mod influence;
@@ -1570,13 +1571,7 @@ fn checked_square(dimension: usize, message: &'static str) -> Result<usize> {
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let next = *sum + value;
-    if sum.abs() >= value.abs() {
-        *correction += (*sum - next) + value;
-    } else {
-        *correction += (value - next) + *sum;
-    }
-    *sum = next;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {
@@ -1603,14 +1598,7 @@ pub(crate) fn compensated_add_scaled_row(
     let mut finite = true;
     for ((value, sum), correction) in values.iter().zip(sums).zip(corrections) {
         let term = scale * value;
-        let updated = *sum + term;
-        let adjustment = if sum.abs() >= term.abs() {
-            (*sum - updated) + term
-        } else {
-            (term - updated) + *sum
-        };
-        *sum = updated;
-        *correction += adjustment;
+        neumaier_add(term, sum, correction);
         finite &= term.is_finite() & sum.is_finite() & correction.is_finite();
     }
     if finite {
