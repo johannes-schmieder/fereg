@@ -57,6 +57,12 @@ publication. `publication.rs` supplies ordered scalar/matrix/output publication;
 completion is written last. Workers only touch Rust-owned memory. FFI catches
 panics; SPI stays on Stata's main thread.
 
+`kernels.rs` holds hot `mul_add` loops as portable function-pointer entries.
+Baseline x86-64 code calls the library `fma` per element, so the plugin's
+`fused_kernels.rs` installs FMA-compiled instantiations of the same bodies when
+it detects FMA at runtime. FMA is exactly rounded, so both paths give identical
+bits and processors without FMA keep the portable table.
+
 Thread counts are worker budgets. Shared planned lanes retain deterministic
 arithmetic leaves and ordered merges. One-FE, two-FE and general-FE algorithms
 remain distinct where mathematics warrants them; benchmark-specific route fences

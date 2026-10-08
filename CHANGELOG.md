@@ -2,6 +2,13 @@
 
 ## 0.5.0 beta — unreleased
 
+- x86-64 plugins detect FMA at runtime and then build OLS moment (Gram)
+  matrices with hardware fused multiply-add instead of a library call per
+  element; processors without FMA keep the portable path. Results are
+  bit-identical on both paths. `fereg, doctor` now reports the active
+  arithmetic path (`x86_64-fma`, `x86_64-portable` or `aarch64-fma`) rather than
+  a processor capability probe.
+
 - Refine finite PPML bias-effect reconstruction failures with the accepted
   weighted native solver, preserving component anchors and the original
   certificate. Report the failing channel, block and measured discrepancy.

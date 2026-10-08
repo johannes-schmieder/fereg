@@ -20,7 +20,7 @@ pub struct BuildInfo {
     pub architecture: &'static str,
     pub plugin_abi_major: u16,
     pub plugin_abi_minor: u16,
-    pub cpu_dispatch_path: String,
+    pub cpu_dispatch_path: &'static str,
     pub available_threads: usize,
 }
 
@@ -42,7 +42,7 @@ impl BuildInfo {
             architecture: std::env::consts::ARCH,
             plugin_abi_major: SPI_MAJOR,
             plugin_abi_minor: SPI_MINOR,
-            cpu_dispatch_path: cpu_dispatch_path(),
+            cpu_dispatch_path: crate::kernels::active().name,
             available_threads: ThreadConfig::available(),
         }
     }
@@ -124,27 +124,6 @@ const fn yes_no(value: bool) -> &'static str {
     } else {
         "no"
     }
-}
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn cpu_dispatch_path() -> String {
-    if std::is_x86_feature_detected!("avx2") && std::is_x86_feature_detected!("fma") {
-        "x86-avx2-fma".to_owned()
-    } else if std::is_x86_feature_detected!("sse2") {
-        "x86-sse2".to_owned()
-    } else {
-        "x86-baseline".to_owned()
-    }
-}
-
-#[cfg(target_arch = "aarch64")]
-fn cpu_dispatch_path() -> String {
-    "aarch64-neon-baseline".to_owned()
-}
-
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-fn cpu_dispatch_path() -> String {
-    "portable-baseline".to_owned()
 }
 
 #[cfg(test)]

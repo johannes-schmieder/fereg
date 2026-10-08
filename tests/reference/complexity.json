@@ -1,6 +1,19 @@
 {
   "definition": "docs/cleanup/complexity.md#version-1",
-  "growth": [],
+  "growth": [
+    {
+      "after": 95173,
+      "before": 95153,
+      "metric": "fereg-core/production_lines",
+      "reason": "One portable kernel table in fereg-core and its FMA-compiled instantiation in fereg-plugin; inner Gram loops move into the shared kernel."
+    },
+    {
+      "after": 14019,
+      "before": 13981,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "One portable kernel table in fereg-core and its FMA-compiled instantiation in fereg-plugin; inner Gram loops move into the shared kernel."
+    }
+  ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -357,18 +370,6 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {
-          "cpu_dispatch_path#1": {
-            "line": 130,
-            "lines": 9
-          },
-          "cpu_dispatch_path#2": {
-            "line": 141,
-            "lines": 3
-          },
-          "cpu_dispatch_path#3": {
-            "line": 146,
-            "lines": 3
-          },
           "current#1": {
             "line": 29,
             "lines": 20
@@ -382,7 +383,7 @@
             "lines": 7
           }
         },
-        "production_lines": 139
+        "production_lines": 121
       },
       "crates/fereg-core/src/error.rs": {
         "chunk_candidates": [],
@@ -5443,11 +5444,30 @@
         },
         "production_lines": 130
       },
+      "crates/fereg-core/src/kernels.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [],
+        "functions": {
+          "active#1": {
+            "line": 50,
+            "lines": 3
+          },
+          "install#1": {
+            "line": 44,
+            "lines": 3
+          },
+          "weighted_upper_rank_one#1": {
+            "line": 63,
+            "lines": 19
+          }
+        },
+        "production_lines": 49
+      },
       "crates/fereg-core/src/lib.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {},
-        "production_lines": 125
+        "production_lines": 126
       },
       "crates/fereg-core/src/linalg/mod.rs": {
         "chunk_candidates": [],
@@ -6439,19 +6459,19 @@
         "chunk_candidates": [
           {
             "condition": "layout . columns_per_partition > 1",
-            "line": 2165
+            "line": 2162
           },
           {
             "condition": "dimension == 0 || stored < dimension || rows == 0 || layout . columns_per_partition == 0 || layout . columns_per_partition > dimension",
-            "line": 2373
+            "line": 2366
           },
           {
             "condition": "rows . div_ceil ( partitions ) as u128 * total_work >= rows as u128 * old_critical_work",
-            "line": 2393
+            "line": 2386
           },
           {
             "condition": "fill_retained_scratch_row_partitions ( values , selected_columns , response , weights , divisor , scales , layout , partials , rhs , gram , ) ?",
-            "line": 2488
+            "line": 2480
           }
         ],
         "dispatch_candidates": [
@@ -6537,15 +6557,15 @@
           },
           {
             "condition": "rows == 0 || stored_columns == 0 || dimension == 0 || elements != rows . saturating_mul ( stored_columns ) || response . len ( ) != rows || response . iter ( ) . any ( | value | ! value . is_finite ( ) ) || ! divisor . is_finite ( ) || divisor <= 0.0 || selected_columns . is_some_and ( | selected |",
-            "line": 2604
+            "line": 2592
           },
           {
             "condition": "weights",
-            "line": 2623
+            "line": 2611
           },
           {
             "condition": "weights",
-            "line": 2641
+            "line": 2629
           }
         ],
         "functions": {
@@ -6570,11 +6590,11 @@
             "lines": 119
           },
           "checked_square#1": {
-            "line": 2755,
+            "line": 2743,
             "lines": 3
           },
           "compensated_add#1": {
-            "line": 2738,
+            "line": 2726,
             "lines": 16
           },
           "dimension#1": {
@@ -6598,39 +6618,39 @@
             "lines": 25
           },
           "fill_retained_dense_partitioned#1": {
-            "line": 2137,
+            "line": 2134,
             "lines": 74
           },
           "fill_retained_dense_standardized_rows#1": {
-            "line": 2234,
-            "lines": 50
+            "line": 2231,
+            "lines": 46
           },
           "fill_retained_dense_standardized_tiles#1": {
-            "line": 2289,
+            "line": 2282,
             "lines": 73
           },
           "fill_retained_partitioned#1": {
             "line": 2020,
-            "lines": 115
+            "lines": 112
           },
           "fill_retained_qr_row#1": {
             "line": 778,
             "lines": 84
           },
           "fill_retained_scratch_partitioned#1": {
-            "line": 2476,
-            "lines": 77
+            "line": 2468,
+            "lines": 73
           },
           "fill_retained_scratch_row_partitions#1": {
-            "line": 2400,
-            "lines": 74
+            "line": 2393,
+            "lines": 73
           },
           "finite_wls_moment_layout#1": {
             "line": 206,
             "lines": 10
           },
           "identities_are_unique#1": {
-            "line": 2690,
+            "line": 2678,
             "lines": 6
           },
           "inverse_relative_infinity_norm#1": {
@@ -6654,7 +6674,7 @@
             "lines": 6
           },
           "normalized_weight#1": {
-            "line": 2640,
+            "line": 2628,
             "lines": 19
           },
           "passed#1": {
@@ -6666,7 +6686,7 @@
             "lines": 14
           },
           "record_retained_moment_worker#1": {
-            "line": 2578,
+            "line": 2566,
             "lines": 12
           },
           "retained_scratch_moment_envelope#1": {
@@ -6682,11 +6702,11 @@
             "lines": 7
           },
           "scaled_column#1": {
-            "line": 2660,
+            "line": 2648,
             "lines": 8
           },
           "scratch_row_partition_plan#1": {
-            "line": 2367,
+            "line": 2360,
             "lines": 31
           },
           "solve_finite_cholesky#1": {
@@ -6702,11 +6722,11 @@
             "lines": 45
           },
           "sort_selected_inverse#1": {
-            "line": 2714,
+            "line": 2702,
             "lines": 11
           },
           "sort_selected_solution#1": {
-            "line": 2703,
+            "line": 2691,
             "lines": 10
           },
           "stable_qr_column_norm#1": {
@@ -6714,11 +6734,11 @@
             "lines": 24
           },
           "swap_symmetric_block#1": {
-            "line": 2726,
+            "line": 2714,
             "lines": 11
           },
           "valid_permutation#1": {
-            "line": 2697,
+            "line": 2685,
             "lines": 5
           },
           "validate#1": {
@@ -6726,15 +6746,15 @@
             "lines": 78
           },
           "validate_retained_source#1": {
-            "line": 2593,
+            "line": 2581,
             "lines": 46
           },
           "with_private_retained_moments#1": {
-            "line": 2215,
+            "line": 2212,
             "lines": 17
           }
         },
-        "production_lines": 2019
+        "production_lines": 2007
       },
       "crates/fereg-core/src/ols/finite_wls_kernel/axis.rs": {
         "chunk_candidates": [],
@@ -18470,7 +18490,7 @@
             "lines": 4
           },
           "action_memory_audit_estimator#1": {
-            "line": 1416,
+            "line": 1417,
             "lines": 8
           },
           "alloc#1": {
@@ -18535,7 +18555,7 @@
           },
           "fereg_dispatch#1": {
             "line": 1330,
-            "lines": 83
+            "lines": 84
           },
           "finish_abi_memory_observation#1": {
             "line": 1312,
@@ -18570,7 +18590,7 @@
             "lines": 8
           },
           "panic_message#1": {
-            "line": 1554,
+            "line": 1555,
             "lines": 9
           },
           "parse_linux_memory_field#1": {
@@ -18590,7 +18610,7 @@
             "lines": 49
           },
           "prepared_store_error_report#1": {
-            "line": 1533,
+            "line": 1534,
             "lines": 11
           },
           "process_rss_bytes#1": {
@@ -18610,7 +18630,7 @@
             "lines": 3
           },
           "read_arguments#1": {
-            "line": 1425,
+            "line": 1426,
             "lines": 91
           },
           "read_estimate_bundle#1": {
@@ -18666,11 +18686,11 @@
             "lines": 5
           },
           "report_error#1": {
-            "line": 1517,
+            "line": 1518,
             "lines": 15
           },
           "sanitize_c_string#1": {
-            "line": 1545,
+            "line": 1546,
             "lines": 8
           },
           "should_inject_ppml_allocation_failure#1": {
@@ -18730,7 +18750,26 @@
             "lines": 12
           }
         },
-        "production_lines": 1173
+        "production_lines": 1174
+      },
+      "crates/fereg-plugin/src/fused_kernels.rs": {
+        "chunk_candidates": [],
+        "dispatch_candidates": [],
+        "functions": {
+          "install#1": {
+            "line": 9,
+            "lines": 6
+          },
+          "upper_rank_one#1": {
+            "line": 37,
+            "lines": 11
+          },
+          "upper_rank_one_fma#1": {
+            "line": 26,
+            "lines": 10
+          }
+        },
+        "production_lines": 35
       },
       "crates/fereg-plugin/src/input.rs": {
         "chunk_candidates": [],
@@ -19047,7 +19086,7 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {},
-        "production_lines": 30
+        "production_lines": 32
       },
       "crates/fereg-plugin/src/memory_forecast.rs": {
         "chunk_candidates": [],
@@ -20422,17 +20461,17 @@
         "dispatch_candidates": 1266,
         "files_over_1500": 16,
         "functions_over_150": 67,
-        "production_lines": 95153
+        "production_lines": 95173
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
         "dispatch_candidates": 136,
         "files_over_1500": 3,
         "functions_over_150": 14,
-        "production_lines": 13981
+        "production_lines": 14019
       }
     },
     "schema": 1
   },
-  "reason": "Share exact-reservation vector helpers through crate::memory; module-local copies are removed."
+  "reason": "Runtime-dispatched hardware-FMA kernel table for the OLS moment row update."
 }

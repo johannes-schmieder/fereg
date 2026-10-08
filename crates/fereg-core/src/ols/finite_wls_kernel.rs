@@ -2075,6 +2075,7 @@ fn fill_retained_partitioned(
         } => {
             let bound = values.bind_columns()?;
             let dimension = rhs.len();
+            let upper_rank_one = crate::kernels::active().upper_rank_one;
             crate::parallel::stage_try_for_each(
                 gram.par_chunks_mut(dimension * layout.columns_per_partition)
                     .zip(rhs.par_chunks_mut(layout.columns_per_partition))
@@ -2096,18 +2097,14 @@ fn fill_retained_partitioned(
                                     - values.center(column, group))
                                     / column_scales.map_or(1.0, |scales| scales[j]);
                             }
-                            for (local, target) in rhs.iter_mut().enumerate() {
-                                let j = first + local;
-                                let left = weight * row[j];
-                                *target = left.mul_add(response[observation], *target);
-                                for (entry, &right) in gram
-                                    [local * dimension + j..(local + 1) * dimension]
-                                    .iter_mut()
-                                    .zip(&row[j..dimension])
-                                {
-                                    *entry = left.mul_add(right, *entry);
-                                }
-                            }
+                            upper_rank_one(
+                                weight,
+                                &row[..dimension],
+                                response[observation],
+                                first,
+                                rhs,
+                                gram,
+                            );
                         }
                         Ok(())
                     };
@@ -2244,6 +2241,7 @@ fn fill_retained_dense_standardized_rows(
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
+    let upper_rank_one = crate::kernels::active().upper_rank_one;
     crate::parallel::stage_try_for_each(
         rhs.par_chunks_mut(layout.columns_per_partition)
             .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
@@ -2262,19 +2260,14 @@ fn fill_retained_dense_standardized_rows(
                         standardized[column] =
                             scaled_column(source[source_column], Some(scales), column)?;
                     }
-                    for (local_left, destination) in rhs.iter_mut().enumerate() {
-                        let left = left_start + local_left;
-                        let weighted_left = weight * standardized[left];
-                        *destination = weighted_left.mul_add(response_value, *destination);
-                        let gram_row =
-                            &mut gram[local_left * dimension..(local_left + 1) * dimension];
-                        for (entry, &right_value) in gram_row[left..]
-                            .iter_mut()
-                            .zip(&standardized[left..dimension])
-                        {
-                            *entry = weighted_left.mul_add(right_value, *entry);
-                        }
-                    }
+                    upper_rank_one(
+                        weight,
+                        &standardized[..dimension],
+                        response_value,
+                        left_start,
+                        rhs,
+                        gram,
+                    );
                 }
                 Ok(())
             })
@@ -2416,6 +2409,7 @@ fn fill_retained_scratch_row_partitions(
         return Ok(false);
     };
     let used = &mut partials[..partitions * stride];
+    let upper_rank_one = crate::kernels::active().upper_rank_one;
     crate::parallel::stage_try_for_each(
         used.par_chunks_mut(stride).enumerate(),
         moment_lane_work(response.len(), dimension),
@@ -2438,16 +2432,14 @@ fn fill_retained_scratch_row_partitions(
                 for j in 0..dimension {
                     row[j] = scaled_column(row[selected.map_or(j, |ids| ids[j])], scales, j)?;
                 }
-                for j in 0..dimension {
-                    let left = weight * row[j];
-                    out_rhs[j] = left.mul_add(response[observation], out_rhs[j]);
-                    for (entry, &right) in out_gram[j * dimension + j..(j + 1) * dimension]
-                        .iter_mut()
-                        .zip(&row[j..dimension])
-                    {
-                        *entry = left.mul_add(right, *entry);
-                    }
-                }
+                upper_rank_one(
+                    weight,
+                    &row[..dimension],
+                    response[observation],
+                    0,
+                    out_rhs,
+                    out_gram,
+                );
             }
             if out_rhs.iter().chain(out_gram.iter()).all(|v| v.is_finite()) {
                 Ok(())
@@ -2501,6 +2493,7 @@ fn fill_retained_scratch_partitioned(
     }
     let dimension = rhs.len();
     let stored_columns = values.columns();
+    let upper_rank_one = crate::kernels::active().upper_rank_one;
     crate::parallel::stage_try_for_each(
         partials
             .par_chunks_mut(layout.partial_stride)
@@ -2531,19 +2524,14 @@ fn fill_retained_scratch_partitioned(
                         let source = selected_columns.map_or(column, |selected| selected[column]);
                         stored_row[column] = scaled_column(stored_row[source], scales, column)?;
                     }
-                    for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
-                        let left = left_start + local_left;
-                        let weighted_left = weight * stored_row[left];
-                        *destination = weighted_left.mul_add(response_value, *destination);
-                        let gram_row =
-                            &mut gram_rows[local_left * dimension..(local_left + 1) * dimension];
-                        for (entry, &right_value) in gram_row[left..]
-                            .iter_mut()
-                            .zip(&stored_row[left..dimension])
-                        {
-                            *entry = weighted_left.mul_add(right_value, *entry);
-                        }
-                    }
+                    upper_rank_one(
+                        weight,
+                        &stored_row[..dimension],
+                        response_value,
+                        left_start,
+                        rhs_rows,
+                        gram_rows,
+                    );
                 }
             }
             Ok(())

@@ -6,6 +6,7 @@ pub mod diagnostics;
 pub mod error;
 pub mod factorize;
 pub mod fe;
+pub mod kernels;
 pub mod linalg;
 pub mod memory;
 pub mod metadata;

@@ -3,6 +3,8 @@
 mod action_memory;
 mod dispatch;
 mod estimate;
+#[cfg_attr(not(feature = "ffi"), allow(dead_code))]
+mod fused_kernels;
 mod input;
 mod input_memory;
 mod instrumentation;
