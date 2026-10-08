@@ -206,6 +206,26 @@ def number(value, digits=2):
     return f'{value:.{digits}f}'
 
 
+def unresolved_detail(campaign, row):
+    """Explain unavailable captures without attributing wrapper defects to estimators."""
+    runs = [r for r in campaign['records'] if r['cell'] == row.cell and r['arm'] == row.arm]
+    details = set()
+    for run in runs:
+        if run['status'] == 'command-timeout':
+            details.add('600 s command limit; later repetitions skipped')
+        elif run['status'] == 'capture-error':
+            details.add(run.get('error', 'capture validation failed'))
+        elif run['status'] == 'error':
+            error = run.get('error', run.get('metadata', {}).get('error', 'application error'))
+            if 'vapply(saved' in error:
+                details.add('R saved-FE lookup produced nonfinite values; capture limitation')
+            else:
+                details.add(error)
+    if not details:
+        details.add(row.reasons.replace('_', ' '))
+    return '; '.join(sorted(details))
+
+
 def size_label(n):
     return f'{n/1e6:g}m' if n >= 1e6 else f'{n/1e3:g}k'
 
@@ -269,6 +289,7 @@ class CampaignPDF:
                                        leading=10, textColor=colors.HexColor(INK), alignment=TA_LEFT))
 
     def text(self, value, style='BodyText'):
+        value = value.translate(str.maketrans({'\u2013': '-', '\u2014': '-', '\u2011': '-', '\u2212': '-'}))
         self.story.extend([Paragraph(value, self.styles[style]), Spacer(1, 8)])
 
     def page(self, title):
@@ -276,14 +297,15 @@ class CampaignPDF:
             self.story.append(PageBreak())
         self.text(title, 'SectionCustom')
 
-    def table(self, rows, widths=None):
-        data = [[Paragraph(str(value), self.styles['CellCustom']) for value in row] for row in rows]
+    def table(self, rows, widths=None, padding=6):
+        data = [[Paragraph(str(value).translate(str.maketrans({'\u2013': '-', '\u2014': '-', '\u2011': '-', '\u2212': '-'})),
+                           self.styles['CellCustom']) for value in row] for row in rows]
         table = Table(data, colWidths=widths, repeatRows=1, hAlign='LEFT')
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor(LIGHT)),
             ('VALIGN', (0, 0), (-1, -1), 'TOP'), ('LEFTPADDING', (0, 0), (-1, -1), 7),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 7), ('TOPPADDING', (0, 0), (-1, -1), 6),
-            ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
+            ('RIGHTPADDING', (0, 0), (-1, -1), 7), ('TOPPADDING', (0, 0), (-1, -1), padding),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), padding),
             ('LINEBELOW', (0, 0), (-1, 0), .7, colors.HexColor('#B7C9D4')),
             ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F7F9FA')]),
             ('LINEBELOW', (0, -1), (-1, -1), .5, colors.HexColor('#D9E2E7'))]))
@@ -352,11 +374,11 @@ def render(campaign, frame, output):
     pdf.text('A focused comparison<br/>of high-dimensional<br/>fixed-effect estimators', 'TitleCustom')
     pdf.text('OLS &amp; PPML · AKM baseline · 16 controls', 'SectionCustom')
     pdf.text(f"October 2026 · Frozen source <b>{source}</b> · Boston University SCC")
-    pdf.table([['Configurations', 'Timed fits', 'Primary cores', 'Whole-node reservations'],
+    pdf.table([['Configurations', 'Planned fits', 'Primary cores', 'Whole-node reservations'],
                [len(manifest['cells']), len(campaign['records']), '4; selected 1 / 8 / 16', '4 tasks × 28 reserved cores']],
               [115, 105, 165, 155])
     pdf.text(f"<b>{len(eligible)} of {len(pairs)} primary package comparisons</b> meet the scientific gates in all three paired repetitions. "
-             f"{statuses.get('ok', 0)} of {len(campaign['records'])} application captures succeeded. "
+             f"{statuses.get('ok', 0)} captures succeeded; {statuses.get('skipped-after-failure', 0)} planned repetitions were skipped after an earlier failure. "
              "Unresolved results are marked NR and do not enter speed comparisons.")
     if not eligible.empty:
         byarm = []
@@ -369,6 +391,45 @@ def render(campaign, frame, output):
     pdf.text('This is a descriptive, fixed-seed campaign. The selected workloads cover distinct dimensions; '
              'the results do not establish a universal package ranking. Comparisons use the same data and physical-core budget within each cell.',
              'SmallCustom')
+
+    pdf.page('The main findings')
+    for model in ['ols', 'ppml']:
+        baseline = frame[(frame.model == model) & (frame.section == 'baseline') & (~frame.save_fe) & frame.eligible]
+        native = baseline[baseline.arm == 'fereg']
+        detail = []
+        for arm in ['fixest', 'reghdfe' if model == 'ols' else 'ppmlhdfe']:
+            ratios = baseline[baseline.arm == arm].speedup
+            if not ratios.empty:
+                detail.append(f"{arm}/fereg paired ratios {number(ratios.min())}-{number(ratios.max())}")
+        if not native.empty:
+            pdf.text(f"<b>{model.upper()}, four-core AKM baseline.</b> Fereg medians span "
+                     f"{number(native.seconds.min())}-{number(native.seconds.max())} seconds without saved FE. "+'; '.join(detail)+'.')
+        high = frame[(frame.model == model) & (frame.design == 'akm-baseline') & (frame.rows == 1000000) &
+                     (frame.threads == 16) & (~frame.save_fe) & (frame.vce == ('iid' if model == 'ols' else 'robust'))]
+        if not high.empty:
+            cell = high.cell.iloc[0]
+            pdf.text(f"At 16 cores, {model.upper()} took {comparison_cell(frame, cell, 'fereg')} seconds in fereg and "
+                     f"{comparison_cell(frame, cell, 'fixest')} seconds in fixest. The paired fixest/fereg ratio is "
+                     f"{comparison_cell(frame, cell, 'fixest', 'speedup')}.")
+    native = frame[frame.arm == 'fereg']
+    worker_failures = sum(bool(v) for v in check_workers(campaign).values())
+    pdf.text(f"<b>Native coverage.</b> {int(native.eligible.sum())} of {len(native)} configurations have three successful, exactly repeating native captures. "
+             f"Cross-core witness checks have {worker_failures} unresolved configurations. "
+             'The NR appendix separates command timeouts, capture limitations and scientific mismatches.')
+    for model in ['ols', 'ppml']:
+        overheads = []
+        selected = native[(native.model == model) & (native.section == 'baseline')]
+        for _, group in selected.groupby('vce'):
+            if len(group) == 2 and group.eligible.all():
+                overheads.append(100*(group[group.save_fe].seconds.iloc[0]/group[~group.save_fe].seconds.iloc[0]-1))
+        if overheads:
+            pdf.text(f"Fereg saved-FE overhead spans {min(overheads):.0f}-{max(overheads):.0f}% in baseline {model.upper()}. "
+                     'Comparator recovery costs require eligible saved and unsaved captures; unresolved pairs remain NR.')
+    if any('vapply(saved' in r.get('metadata', {}).get('error', '') for r in campaign['records']):
+        pdf.text('A confirmed R capture limitation affects large numeric FE labels: as.character formats some labels in scientific notation, '
+                 'while saved-effect names use integer strings. Those lookup errors are harness failures, not evidence of a fixest estimation failure. '
+                 'Stock Stata saved predictions fail the independent model-score check and require further adjudication. '
+                 'The original evidence and stopping rules are retained.', 'SmallCustom')
 
     pdf.page('The comparison protocol')
     pdf.text('The main panel uses a two-way worker–firm AKM design with one million observations and 16 continuous controls. '
@@ -472,6 +533,10 @@ def render(campaign, frame, output):
     pdf.text('The accounting file preserves scheduler memory and CPU metrics separately. Reserved node-hours include preparation, export and checks; '
              'they differ from the sum of estimation stopwatches. Full-node reservation removes competing scheduled jobs, '
              'but this campaign does not claim that operating-system activity was zero.', 'SmallCustom')
+    pdf.text(f"Production totals: {sum(float(j['ru_wallclock']) for j in production)/3600:.2f} reserved node-hours, "
+             f"{sum(float(j['ru_wallclock'])*int(j['slots']) for j in production)/3600:.2f} reserved core-hours, "
+             f"and {sum(float(j['cpu']) for j in production)/3600:.2f} observed CPU-hours. "
+             'These totals exclude queued time and the earlier preparation attempts.', 'SmallCustom')
 
     pdf.page('Scientific coverage and unresolved results')
     oracle_results = campaign['smoke']['independent_science']
@@ -479,10 +544,13 @@ def render(campaign, frame, output):
     pdf.text(f"The independent small-data oracle accepted {sum(x['pass'] for x in native_oracle)} of {len(native_oracle)} fereg smoke cases. "
              f"Across all smoke arms it accepted {sum(x['pass'] for x in oracle_results)} of {len(oracle_results)} captures. "
              'The production gate depends on the independent native results. Large-input discrepancies remain unresolved unless independently adjudicated.')
-    pdf.table([['Application status', 'Timed fits']]+[[key, value] for key, value in sorted(statuses.items())], [380, 160])
+    pdf.table([['Capture / planned-repetition status', 'Count']]+[[key, value] for key, value in sorted(statuses.items())], [380, 160], padding=4)
+    pdf.text(f"{len(campaign['records'])-statuses.get('skipped-after-failure', 0)} fits were attempted. "
+             'All manifest positions are accounted for; failed commands were not automatically retried. '
+             'NR includes capture limitations, preplanned timeouts and successful fits that fail the comparison gates.', 'SmallCustom')
     failures = pairs[~pairs.eligible]
     reason_counts = Counter(reason for value in failures.reasons for reason in value.split('; ') if reason)
-    pdf.table([['Primary comparison gate', 'Configurations']]+[[key, value] for key, value in reason_counts.most_common()], [380, 160])
+    pdf.table([['Primary comparison gate (counts overlap)', 'Configurations']]+[[key, value] for key, value in reason_counts.most_common()], [380, 160], padding=4)
     strict = frame[frame.arm == 'fixest-strict']
     if not strict.empty:
         pdf.text(f"The supplementary stricter fixest profile has {int(strict.eligible.sum())} eligible cells out of {len(strict)}. "
@@ -492,14 +560,17 @@ def render(campaign, frame, output):
             rows.append([DESIGNS[row.design]+' / '+VCE_NAMES[row.vce]+(' / saved' if row.save_fe else ''),
                          number(row.seconds) if row.eligible else 'NR', number(row.speedup) if row.eligible else 'NR',
                          'eligible' if row.eligible else row.reasons or row.statuses])
-        pdf.table(rows, [225, 75, 90, 150])
+        pdf.table(rows, [225, 75, 90, 150], padding=4)
     pdf.text('NR cells remain in the appendix and CSVs. Successful raw runtimes in an unresolved cell are observations, '
              'not validated package comparisons. No tolerance was loosened to make a timing eligible.', 'SmallCustom')
 
     pdf.page('Artifacts, tolerances and provenance')
     pdf.table([['Artifact', 'Identity / policy'],
                ['fereg source', context.get('native_source', context['source'])],
+               ['Native binary SHA256', context.get('reused_binary_sha256', 'See frozen runtime inventory')],
+               ['Unchanged estimator source', context.get('estimator_source', context['source'])],
                ['Benchmark source', context['source']],
+               ['Report renderer SHA256', hashlib.sha256(Path(__file__).read_bytes()).hexdigest()],
                ['Run', context['run_id']],
                ['Comparators', 'Pinned reghdfe / ppmlhdfe / ftools / require; fixest 0.14.2'],
                ['Software stack', 'Stata/MP 19 (four licensed processors); R 4.5.2; Python 3.12.4'],
@@ -526,6 +597,18 @@ def render(campaign, frame, output):
              'They supplied the scheduling pattern and pinned comparator closure, but their timings are not a before/after baseline for this implementation. '
              'Three repetitions at one seed do not establish confidence intervals or cross-machine reproducibility. '
              'The wider three-way panel measures selected categorical structures, not arbitrary FE hypergraphs.', 'SmallCustom')
+
+    unresolved = frame[~frame.eligible]
+    for start in range(0, len(unresolved), 12):
+        pdf.page(f'Unresolved configuration details ({start//12+1}/{(len(unresolved)+11)//12})')
+        pdf.text('Every entry below is NR in the corresponding timing panel. Scientific mismatches use unchanged SPEC tolerances. '
+                 'A capture limitation is not an estimator ranking; later repetitions were skipped after failed commands.', 'SmallCustom')
+        rows = [['Configuration', 'Package', 'Reason']]
+        for row in unresolved.iloc[start:start+12].itertuples():
+            label = (f"{row.model.upper()} / {DESIGNS[row.design]} / {size_label(row.rows)}<br/>"
+                     f"{row.threads} cores / {VCE_NAMES[row.vce]} / {'saved FE' if row.save_fe else 'no saved FE'}")
+            rows.append([label, ARM_NAMES[row.arm], unresolved_detail(campaign, row)])
+        pdf.table(rows, [215, 85, 240])
 
     for model in ['ols', 'ppml']:
         comparator = 'reghdfe' if model == 'ols' else 'ppmlhdfe'
@@ -559,7 +642,7 @@ def render(campaign, frame, output):
         seen.add((design, n)); graph = data['topology']
         rows.append([DESIGNS[design]+' / '+size_label(n), ' / '.join(f'{x:,}' for x in graph['levels']),
                      f"{graph['components']:,}", f"{graph['distinct_first_pair_links']:,}" if 'distinct_first_pair_links' in graph else '-',
-                     number(graph.get('first_pair_mean_worker_degree'))])
+                     number(graph['first_pair_mean_worker_degree']) if 'first_pair_mean_worker_degree' in graph else '-'])
     pdf.table(rows, [165, 135, 70, 95, 75])
     pdf.build()
     return pdf.path
