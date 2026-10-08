@@ -200,6 +200,26 @@ def execute(command, directory, cpus, timeout):
                 estimator_tree_rss_bytes=peak,memory_sweeps=sweeps)
 
 
+def absorbed_rank(metadata, cell, frame):
+    """Put categorical PPML nuisance counts in the common full FE span.
+
+    Native PPML transfers one intercept direction to structural coordinates
+    (ppml/result.rs); clustered Stata counts exclude the nested worker FE.
+    fixest's PPML count retains the full nuisance span with K.adj disabled.
+    Raw published counts remain in every observation's metadata and capture.
+    """
+    rank=float(metadata['df_a'])
+    if cell['model']!='ppml':return rank
+    native=metadata.get('native_arm')=='1'
+    stata=native or metadata['covariance_policy'].startswith('stock-ppml-')
+    if native:rank+=1
+    if stata and cell['vce']=='cluster':
+        if cell['effects']!=2 or not np.array_equal(frame.cluster,frame.g1):
+            raise ValueError('unverified PPML nested-FE count convention')
+        rank+=frame.g1.nunique()
+    return rank
+
+
 def capture(directory, cell, frame, metadata):
     names=[f'x{i}' for i in range(1,17)]
     b={r['name']:float(r['value']) for r in csv.DictReader((directory/'coefficients.csv').open())}
@@ -223,9 +243,11 @@ def capture(directory, cell, frame, metadata):
     if cell['vce']=='cluster' and float(metadata['N_clust'])!=frame.cluster.nunique():raise ValueError('cluster count mismatch')
     result=dict(beta=beta.tolist(),covariance=cov.tolist(),N=int(selected.sum()),
                 sample_sha256=hashlib.sha256(rows.obs_id.to_numpy(dtype='<i8')[selected].tobytes()).hexdigest(),
-                omitted=[name for name in b if name.startswith('o.')],retained_all=bool(selected.all()),
+                omitted=[name for name in b if name.startswith('o.') and name!='o._cons'],
+                publication_omitted=[name for name in b if name.startswith('o.')],retained_all=bool(selected.all()),
                 finite_slope_rank=int(float(metadata['finite_slope_rank'])),singleton_deletions=0,separation_deletions=0,
-                covariance_policy=metadata['covariance_policy'],absorbed_dof=float(metadata['df_a']),
+                covariance_policy=metadata['covariance_policy'],absorbed_dof=absorbed_rank(metadata,cell,frame),
+                reported_absorbed_dof=float(metadata['df_a']),
                 clusters=int(frame.cluster.nunique()) if cell['vce']=='cluster' else None)
     if cell['model']=='ols':
         if not metadata.get('df_r') or metadata['df_r']=='.':raise ValueError('missing residual DoF')

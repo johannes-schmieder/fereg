@@ -76,6 +76,7 @@ def validate_smoke(result):
             p=np.load(Path(record['directory'])/'fitted.npz')['fitted']
             checks['fitted']=close_values(p,e['fitted'],POLICY['fitted_rtol'],POLICY['fitted_atol'])
             checks['sample']=a['retained_all'] and a['N']==cell['rows']
+            if cell['model']=='ppml':checks['absorbed_rank']=a['absorbed_dof']==e['rank']
         rows.append(dict(cell=cell['id'],arm=record['arm'],checks=checks,
                          **{'pass':bool(checks) and all(checks.values())}))
     return rows

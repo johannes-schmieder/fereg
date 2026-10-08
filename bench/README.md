@@ -54,6 +54,11 @@ The PPML fixest profile disables its K correction, applies the declared robust
 N/(N-1) correction inside timing, and preserves its original covariance alongside
 the aligned covariance. Default and stricter convergence profiles remain separate.
 Stock Stata covariance differences remain explicit failed comparisons.
+PPML absorbed counts are normalized to the full categorical FE-span rank:
+fereg transfers one intercept direction to structural coordinates, clustered
+Stata counts exclude nested workers, and fixest retains the full nuisance count.
+Raw counts and nuisance-constant omission flags are retained; the small explicit
+dummy-design oracle independently checks the normalized rank before production.
 Samples, all finite coefficient/covariance coordinates, objectives and saved
 predictions are checked at SPEC tolerances. Only three valid paired repetitions
 enter timing ratios; failed, timed-out, skipped and unattempted cells remain visible.

@@ -5,7 +5,7 @@ import tempfile
 import unittest
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
-from campaign import configurations, arms, make_dataset, compare_records, prepare
+from campaign import configurations, arms, make_dataset, compare_records, prepare, absorbed_rank
 from campaign_oracle import oracle
 
 
@@ -53,6 +53,21 @@ class CampaignTests(unittest.TestCase):
                 self.assertLess(expected['residual_score'],1e-9)
                 self.assertTrue(np.isfinite(expected['covariance']).all())
                 self.assertGreater(meta['topology']['first_pair_rank'],0)
+
+    def test_ppml_count_conventions_match_independent_fe_rank(self):
+        with tempfile.TemporaryDirectory() as d:
+            cell=next(c for c in configurations(True) if c['model']=='ppml')
+            frame,_=make_dataset(cell,Path(d)/'input.dta')
+            expected=oracle(frame,cell)['rank']
+            self.assertEqual(expected,251)
+            # Published counts observed in the SCC smoke, with identical data.
+            for raw,native,vce,policy in [(250,'1','robust','stock-ppml-robust'),
+                                         (10,'1','cluster','stock-ppml-cluster'),
+                                         (251,'0','robust','stock-ppml-robust'),
+                                         (11,'0','cluster','stock-ppml-cluster'),
+                                         (251,'0','cluster','ppml-cluster-K.adj=FALSE')]:
+                meta=dict(df_a=raw,native_arm=native,covariance_policy=policy)
+                self.assertEqual(absorbed_rank(meta,dict(cell,vce=vce),frame),expected)
 
 
 if __name__=='__main__':unittest.main()

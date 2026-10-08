@@ -79,7 +79,7 @@ if !`rc' {
     local names : colnames e(b)
     forvalues j=1/`=colsof(e(b))' {
         local name : word `j' of `names'
-        if "`name'" != "_cons" local slope_omissions = `slope_omissions' + el(`omitted',1,`j')
+        if !inlist("`name'", "_cons", "o._cons") local slope_omissions = `slope_omissions' + el(`omitted',1,`j')
     }
     file write `meta' "slope_omissions" _tab "`slope_omissions'" _n
     file write `meta' "finite_slope_rank" _tab "`k'" _n

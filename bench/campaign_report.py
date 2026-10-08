@@ -141,7 +141,7 @@ def check_native_repetitions(campaign):
         if any(r['status'] != 'ok' for r in records):
             reasons.add('native application unavailable')
         else:
-            keys = ['N', 'sample_sha256', 'finite_slope_rank', 'omitted', 'singleton_deletions',
+            keys = ['N', 'sample_sha256', 'finite_slope_rank', 'omitted', 'publication_omitted', 'singleton_deletions',
                     'separation_deletions', 'absorbed_dof', 'clusters', 'covariance_policy', 'beta', 'covariance']
             metric = 'rss' if cell['model'] == 'ols' else 'll'
             budget_key = 'fereg_threads' if cell['model'] == 'ols' else 'feppml_threads'
@@ -183,7 +183,7 @@ def check_workers(campaign):
             budget_key = 'fereg_threads' if cell['model'] == 'ols' else 'feppml_threads'
             if float(a['metadata'].get(budget_key, 'nan')) != cell['threads']:
                 reasons.add('unverified native worker budget')
-            for key in ['N', 'sample_sha256', 'finite_slope_rank', 'omitted', 'singleton_deletions',
+            for key in ['N', 'sample_sha256', 'finite_slope_rank', 'omitted', 'publication_omitted', 'singleton_deletions',
                         'separation_deletions', 'absorbed_dof', 'clusters', 'covariance_policy']:
                 if x.get(key) != y.get(key):
                     reasons.add('worker '+key)
@@ -391,6 +391,7 @@ def render(campaign, frame, output):
              'Native coordinates and objectives repeat exactly at fixed worker count; higher-core cells require agreement with their four-core scientific witness. '
              'A bounded independent dummy-design oracle checks the small smoke cases before production.')
     pdf.text('<b>Conventions.</b> PPML fixest disables its K correction and applies N/(N−1) to robust covariance; stock covariance is retained. '
+             'PPML absorbed counts are compared as the full FE-span rank, checked by the dummy-design oracle; raw counts are retained. '
              'Its default and stricter convergence profiles are separate. Stock Stata differences remain visible. '
              'NR means unavailable or unresolved; a displayed ratio requires a successful scientific comparison. '
              'A ratio above 1 means the comparator took longer than fereg.', 'SmallCustom')
