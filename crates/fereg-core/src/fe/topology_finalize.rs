@@ -7,7 +7,10 @@
 //! constructs compressed solver membership. Unreferenced source columns are not
 //! copied.
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{
+    allocation, invalid_argument as invalid, invalid_data, ErrorCode, FeregError, Result,
+};
+use crate::memory::push_reserved;
 
 use super::topology_axis::FinalizedAxis;
 use super::{CategoricalCodeView, CategoricalTopologyRegistry};
@@ -798,26 +801,6 @@ fn reserved_filled<T: Clone, R: TopologyFinalizeReservation>(
     }
     output.resize(elements, value);
     Ok(output)
-}
-
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

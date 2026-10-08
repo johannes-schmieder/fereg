@@ -18,7 +18,8 @@ use cmg::{
 };
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
+use crate::linalg::neumaier_add;
 use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
 use crate::options::ThreadConfig;
 
@@ -663,7 +664,7 @@ impl PreparedCmgTopology {
         let profile = CmgTopologyProfile::analyze(design)?;
         validate_nuisance_limit(&profile)?;
         let problem = conservative_prepared_problem(&profile, config.batch_size);
-        let retained_topology = conservative_prepared_topology_retained_bytes(design, &profile)?;
+        let retained_topology = PreparedCmgTopology::conservative_prepare_peak_bytes(design)?;
         let frame = conservative_prepared_cmg_frame_bytes(design, &profile, config, problem)?;
         retained_topology
             .checked_add(frame)
@@ -1138,7 +1139,7 @@ impl<'a> CmgAbsorber<'a> {
             CmgRoute::Graph(graph)
                 if matches!(graph.workspace, GraphCmgWorkspace::OlsBuffers(_)) =>
             {
-                let admitted = cmg_retained_workspace_bound_bytes(graph, self.config, None)?;
+                let admitted = cmg_retained_workspace_bound_bytes(graph, None)?;
                 SolverWorkspacePeak::from_bytes(admitted)?.with_expected_heap(Some(
                     admitted - admission::runtime_extra(graph.runtime_estimate),
                 ))
@@ -1154,7 +1155,7 @@ impl<'a> CmgAbsorber<'a> {
     /// matrix to the caller; a valid partial CMG projection can still seed the
     /// existing certified CG fallback.
     pub(crate) fn absorb(&mut self, values: DenseMatrix) -> Result<CertifiedBorrowedMap> {
-        let phase_started = std::env::var_os("FEREG_PHASE_TIMING").map(|_| Instant::now());
+        let phase_started = crate::diagnostics::phase_timing_enabled().then(Instant::now);
         if values.nrows() != self.design.nobs() || values.ncols() == 0 {
             return Err(invalid_argument(
                 "CMG design and matrix dimensions are inconsistent",
@@ -1702,7 +1703,7 @@ impl GraphCmg {
         let mut metrics = CmgSolveMetrics::default();
         let batch_width = self.pcg_batch_width(config.batch_size);
         let trace_ols = matches!(self.workspace, GraphCmgWorkspace::OlsBuffers(_))
-            && std::env::var_os("FEREG_PHASE_TIMING").is_some();
+            && crate::diagnostics::phase_timing_enabled();
         let mut start = 0;
         while start < values.ncols() {
             let seed_end = if seed.as_ref().is_some_and(|(_, enabled)| *enabled)
@@ -1861,7 +1862,7 @@ fn build_graph_route(
     profile: &CmgTopologyProfile,
     memory: &mut CmgWorkspacePlan,
 ) -> Result<GraphCmg> {
-    let trace_enabled = std::env::var_os("FEREG_SOLVER_TRACE").is_some();
+    let trace_enabled = crate::diagnostics::solver_trace_enabled();
     let core_effects = profile
         .core_effects
         .ok_or_else(|| invalid_argument("CMG graph route requires two absorbed effects"))?;
@@ -1924,7 +1925,7 @@ fn build_prepared_graph_route(
     prepared: &mut PreparedCmgTopology,
     memory: &mut CmgWorkspacePlan,
 ) -> Result<GraphCmg> {
-    let trace_enabled = std::env::var_os("FEREG_SOLVER_TRACE").is_some();
+    let trace_enabled = crate::diagnostics::solver_trace_enabled();
     let parallel = ParallelOptions {
         threads: config.threads.resolved(),
         ..ParallelOptions::default()
@@ -2134,7 +2135,7 @@ fn build_graph_route_from_numeric(
         .checked_mul(profile.nuisance_columns)
         .and_then(|cells| cells.checked_mul(32))
         .ok_or_else(|| allocation("CMG nuisance factor overflows"))?;
-    let parents = cmg_retained_workspace_bound_bytes(&route, config, prepared)?;
+    let parents = cmg_retained_workspace_bound_bytes(&route, prepared)?;
     admission::admit(config, parents, nuisance_bound, memory)?;
     memory.record_expected_heap(
         parents - admission::runtime_extra(runtime_estimate) + nuisance_bound as u128,
@@ -2153,7 +2154,7 @@ fn build_graph_route_from_numeric(
     let nuisance_seconds = nuisance_started.map_or(0.0, |started| started.elapsed().as_secs_f64());
     route.nuisance_factor = factor;
     ensure_cmg_exact_retained_memory_fits(&route, config, prepared)?;
-    let retained = cmg_retained_workspace_bound_bytes(&route, config, prepared)?;
+    let retained = cmg_retained_workspace_bound_bytes(&route, prepared)?;
     let projection = nuisance_projection_workspace_bytes(
         design.nobs(),
         profile.nuisance_columns,
@@ -2433,13 +2434,6 @@ fn conservative_prepared_problem(
     }
 }
 
-fn conservative_prepared_topology_retained_bytes(
-    design: &BorrowedInterceptFeDesign<'_>,
-    _profile: &CmgTopologyProfile,
-) -> Result<u128> {
-    PreparedCmgTopology::conservative_prepare_peak_bytes(design)
-}
-
 fn nuisance_seed_bytes(profile: &CmgTopologyProfile) -> Result<u128> {
     (profile.vertices as u128)
         .checked_mul(profile.nuisance_columns as u128)
@@ -2571,7 +2565,7 @@ fn ensure_cmg_exact_retained_memory_fits(
     let Some(budget) = config.solver_memory_budget else {
         return Ok(());
     };
-    let required = cmg_retained_workspace_bound_bytes(graph, config, prepared)?;
+    let required = cmg_retained_workspace_bound_bytes(graph, prepared)?;
     if budget.fits(required) {
         Ok(())
     } else {
@@ -2583,7 +2577,6 @@ fn ensure_cmg_exact_retained_memory_fits(
 
 fn cmg_retained_workspace_bound_bytes(
     graph: &GraphCmg,
-    _config: CmgConfig,
     prepared: Option<&PreparedCmgTopology>,
 ) -> Result<u128> {
     let caller = match &graph.workspace {
@@ -3274,14 +3267,7 @@ fn validate_finite_slice(values: &[f64], message: &'static str) -> Result<()> {
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let updated = *sum + value;
-    let adjustment = if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *sum = updated;
-    *correction += adjustment;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {
@@ -3329,18 +3315,6 @@ fn cmg_error_code(error: &cmg::CmgError) -> ErrorCode {
 
 fn nonconvergence(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

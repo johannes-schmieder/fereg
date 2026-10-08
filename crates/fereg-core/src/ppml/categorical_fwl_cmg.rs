@@ -6,6 +6,7 @@
 //! CG polish, retrying only uncertified right-hand sides, and retaining every
 //! fereg-owned dense workspace across frames.
 
+use crate::linalg::neumaier_add;
 use std::time::Instant;
 
 #[cfg(test)]
@@ -14,20 +15,23 @@ use std::cell::Cell;
 use rayon::prelude::*;
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{
+    allocation, invalid_argument, invalid_data, unsupported, ErrorCode, FeregError, Result,
+};
 use crate::fe::{
     retained_effect_order_by_levels, BorrowedInterceptFeDesign, BorrowedMapWeights, CmgAbsorber,
     CmgConfig, CmgControlSeed, CmgTopologyProfile, CmgUnpolishedProjectionReport, FeDesign,
     FeSolverKind, MapConfig, PreparedCmgTopology, ValidatedBorrowedInterceptSource,
     CMG_MAX_NUISANCE_COLUMNS,
 };
-use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
+use crate::memory::{fallible_empty, fallible_filled, FeSolverMemoryBudget, SolverWorkspacePeak};
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use crate::prepared_fit_view::PreparedOlsFitView;
 
-use super::categorical_lsmr::{emit_solver_trace_line, JointLsmrCertificate};
+use super::categorical_lsmr::JointLsmrCertificate;
 use super::PpmlIterationWorkspace;
+use crate::diagnostics::emit_solver_trace;
 
 pub(crate) fn fused_cmg_batch_size(poolsize: usize, rhs: usize, nuisance: usize) -> usize {
     // Nuisance Schur columns are independent current-weight graph solves too.
@@ -762,11 +766,11 @@ impl ReusableCategoricalFwlCmg {
                 - solve_seconds
                 - finish_seconds)
                 .max(0.0);
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        if crate::diagnostics::solver_trace_enabled() {
             for (attempt, work) in std::iter::once(("first", first.projection_work))
                 .chain(retry_report.map(|report| ("retry", report.projection_work)))
             {
-                emit_solver_trace_line(&format!(
+                emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=cmg_projection|attempt={attempt}|warm_rhs={}|warm_iterations_sum={}|iterations_sum={}|restarts={}|extra_restarts={}|initial_relative_residual={:.17e}|pcg_seconds={:.17e}|rhs_seconds={:.17e}",
                     work.warm_right_hand_sides, work.warm_iterations, work.iterations, work.restarts, work.extra_restarts,
                     work.initial_relative_residual, work.pcg_seconds, work.rhs_seconds,
@@ -775,14 +779,14 @@ impl ReusableCategoricalFwlCmg {
             for (attempt, setup) in std::iter::once(("first", first.nuisance_setup))
                 .chain(retry_report.map(|report| ("retry", report.nuisance_setup)))
             {
-                emit_solver_trace_line(&format!(
+                emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=cmg_nuisance|attempt={attempt}|warm_rhs={}|iterations_sum={}|restarts={}|extra_restarts={}|initial_relative_residual={:.17e}|weight_ratio={:.17e}|pcg_seconds={:.17e}|rhs_seconds={:.17e}|schur_seconds={:.17e}",
                     setup.warm_right_hand_sides, setup.iterations, setup.restarts, setup.extra_restarts,
                     setup.initial_relative_residual, setup.weight_ratio,
                     setup.pcg_seconds, setup.rhs_seconds, setup.schur_seconds,
                 ));
             }
-            emit_solver_trace_line(&format!(
+            emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=cmg_frame|rhs={}|nuisance={}|redundant_effect={}|batch_capacity={}|pcg_batch_width={}|scheduled={:.17e}|first_tolerance={:.17e}|effective={:.17e}|first_iterations={}|continuation_iterations={}|retried_rhs={}|graph_rhs={}|graph_batches={}|nuisance_reused_rhs={}|setup_seconds={:.17e}|solve_seconds={:.17e}|projection_certificate_seconds={:.17e}|finite_seconds={:.17e}|reconstruction_seconds={:.17e}|joint_certificate_seconds={:.17e}",
                 self.active_columns + 1, first.nuisance_columns,
                 self.redundant_nuisance.map_or(0, |effect| effect + 1),
@@ -1325,13 +1329,7 @@ struct CompensatedSum {
 
 impl CompensatedSum {
     fn add(&mut self, value: f64) -> Result<()> {
-        let updated = self.sum + value;
-        self.correction += if self.sum.abs() >= value.abs() {
-            (self.sum - updated) + value
-        } else {
-            (value - updated) + self.sum
-        };
-        self.sum = updated;
+        neumaier_add(value, &mut self.sum, &mut self.correction);
         if self.sum.is_finite() && self.correction.is_finite() {
             Ok(())
         } else {
@@ -1383,40 +1381,6 @@ impl ScaledSquareSum {
             self.scale * self.square_sum.sqrt()
         }
     }
-}
-
-#[allow(clippy::too_many_arguments)]
-fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(message))?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn fallible_empty<T>(elements: usize, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(message))?;
-    Ok(output)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 fn nonconvergence(message: impl Into<String>) -> FeregError {

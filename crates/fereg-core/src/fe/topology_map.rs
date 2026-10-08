@@ -4,7 +4,7 @@ use super::{
     FinalizedCategoricalTopology, MapConfig,
 };
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, Result};
 
 trait TopologyMapReservation {
     fn reserve_vec<T>(
@@ -56,9 +56,6 @@ fn bind_with_reservation<'a, R: TopologyMapReservation>(
         &sources,
         topology.effect_to_topology(),
     )
-}
-fn allocation(s: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, s)
 }
 fn absorb_finalized_categorical_topology_map_with_reservation<R: TopologyMapReservation>(
     topology: &FinalizedCategoricalTopology,
@@ -139,6 +136,7 @@ pub fn absorb_finalized_categorical_topology_auto_certified(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
     use crate::fe::finalize_categorical_topology;
     use crate::fe::CategoricalCodeView;
 

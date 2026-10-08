@@ -9,12 +9,14 @@
 use super::canonical_products::CanonicalMoments;
 use super::implicit_centered::ImplicitCenteredDesign;
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
     BorrowedMapWeights, CertifiedBorrowedMap, FeDesign, FeSession, FeSolverKind,
     MapGeometryGeneration, ReusableCategoricalMapAbsorber, ReusableMapAbsorber,
     ReusableMapCapacities, SolveReport,
 };
+use crate::linalg::neumaier_add;
+use crate::memory::{fallible_copy, fallible_empty, fallible_filled};
 use crate::metadata::CoefficientSlot;
 use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
@@ -6333,26 +6335,6 @@ fn checked_elements(rows: usize, columns: usize) -> Result<usize> {
     .len("weighted-linear dimensions overflow")
 }
 
-fn fallible_empty<T>(capacity: usize, message: &'static str) -> Result<Vec<T>> {
-    let mut values = Vec::new();
-    values
-        .try_reserve_exact(capacity)
-        .map_err(|_| allocation(message))?;
-    Ok(values)
-}
-
-fn fallible_copy<T: Copy>(values: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut copied = fallible_empty(values.len(), message)?;
-    copied.extend_from_slice(values);
-    Ok(copied)
-}
-
-fn fallible_filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut values = fallible_empty(length, message)?;
-    values.resize(length, value);
-    Ok(values)
-}
-
 fn resize_zeroed(target: &mut Vec<f64>, length: usize, message: &'static str) -> Result<()> {
     target.clear();
     target
@@ -6387,13 +6369,7 @@ pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -
             "weighted-linear compensated sum input is not finite",
         ));
     }
-    let next = *sum + value;
-    if sum.abs() >= value.abs() {
-        *correction += (*sum - next) + value;
-    } else {
-        *correction += (value - next) + *sum;
-    }
-    *sum = next;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {
@@ -6438,18 +6414,6 @@ pub(super) fn stable_norm(scale: f64, scaled_square_sum: f64) -> Result<f64> {
     } else {
         Err(invalid_data("weighted-linear norm is not finite"))
     }
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 #[cfg(test)]

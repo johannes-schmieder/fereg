@@ -9,8 +9,9 @@
 
 use std::cmp::Ordering;
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::fe::{CategoricalCodeView, CategoricalTopologySource, FinalizedCategoricalTopology};
+use crate::memory::push_reserved;
 use crate::metadata::{AbsorbTermId, SourceId};
 
 /// Reference-compatible absorbed-degree-of-freedom policy.
@@ -933,29 +934,10 @@ fn fallible_string_copy<R: TopologyDofReservation>(
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
     use crate::fe::finalize_categorical_topology;
 
     #[test]

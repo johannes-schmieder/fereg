@@ -1,4 +1,4 @@
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{allocation, ErrorCode, FeregError, Result};
 use fereg_core::ppml::{
     CertifiedPpmlResult, PpmlAllocatorSnapshot, PpmlClusterDimensionResult, PpmlCoefficientStatus,
     PpmlDofReport, PpmlFixedEffectChannelKind, PpmlFixedEffectResult, PpmlMemoryRoute,
@@ -2090,10 +2090,6 @@ fn invalid(message: impl Into<String>) -> FeregError {
 
 fn numerical_nonconvergence(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::NonConvergence, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

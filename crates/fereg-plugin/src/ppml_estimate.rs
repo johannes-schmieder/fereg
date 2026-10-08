@@ -28,7 +28,9 @@ use crate::ppml_result::{
     FIT_ROWS, INFERENCE_ROWS, RUNTIME_ROWS, SEPARATION_COLUMNS, SEPARATION_SEQUENCE_COLUMNS,
     SEPARATION_SEQUENCE_ROWS, SOLVER_COLUMNS, SOLVER_ROWS, SUBSET_COLUMNS,
 };
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{
+    allocation, invalid_argument as invalid, unsupported, ErrorCode, FeregError, Result,
+};
 use fereg_core::metadata::{
     AbsorbedTerm, CompiledTermGraph, ExpandedTerm, MetadataFlag, SourceEntry, SourceId,
     TermComponent,
@@ -3062,20 +3064,8 @@ fn syntax(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Syntax, message)
 }
 
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
 fn protocol(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::ProtocolMismatch, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 fn internal(message: impl Into<String>) -> FeregError {

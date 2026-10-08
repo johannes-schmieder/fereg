@@ -2,7 +2,7 @@
 use super::prepared_inference_view::compute_canonical_prepared_ols_absorbed_dof;
 use super::prepared_wald::{calculate_wald, WaldCalculation};
 use crate::data::WeightKind;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, unsupported, Result};
 use crate::parallel::ThreadTeam;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 use crate::sandwich::{
@@ -386,7 +386,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: PreparedInfere
     perturbations: RobustPerturbations,
     score_scratch: PreparedOlsScoreProduct,
 ) -> Result<PreparedOlsRobustComponents> {
-    let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let phase_timing = crate::diagnostics::phase_timing_enabled();
     let total_started = Instant::now();
     let phase_started = Instant::now();
     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
@@ -1360,24 +1360,9 @@ fn perturb_optional(value: &mut Option<f64>) -> Result<()> {
     Ok(())
 }
 
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::error::ErrorCode;
     use crate::metadata::{
         AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
         ComponentOrder, ExpandedTerm, LevelState, MetadataFlag, RawTermKind, SourceEntry, SourceId,

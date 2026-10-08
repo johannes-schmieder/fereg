@@ -1,4 +1,4 @@
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, ErrorCode, FeregError, Result};
 
 trait LevelIndexReservation {
     fn reserve_vec<T>(
@@ -468,10 +468,6 @@ fn reserved_filled<T: Clone, R: LevelIndexReservation>(
     reservation.reserve_vec(&mut output, elements, label)?;
     output.resize(elements, value);
     Ok(output)
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 /// One categorical fixed-effect term with optional group-specific slopes.

@@ -17,7 +17,7 @@ use super::{
     PoissonBounds, PoissonObjective, PpmlCoefficientStatus, PpmlConfig, PpmlIterationReport,
 };
 use crate::data::DropReason;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{CategoricalCodeView, FeSolverKind, LevelIndex};
 #[cfg(test)]
 use crate::fe::{FUSED_PARALLEL_MAX_RHS, PARALLEL_DOT_CHUNK_ROWS};
@@ -967,7 +967,7 @@ pub(crate) fn plan_ppml_memory_with_probe(
     // Emit outside the begin/decision allocator observation window. This
     // private diagnostic adds no retained state and never changes admission.
     if std::env::var_os("FEREG_PPML_MEMORY_TRACE").is_some() {
-        super::categorical_lsmr::emit_solver_trace_line(&format!(
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_PPML_MEMORY_TRACE|dimensions={dimensions:?}|fast={:?}|low={:?}",
             estimate.fast, estimate.low,
         ));
@@ -3763,14 +3763,6 @@ fn checked_sum(values: &[u128]) -> Result<u128> {
             .checked_add(*value)
             .ok_or_else(|| allocation("PPML memory estimate overflow"))
     })
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

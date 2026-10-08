@@ -9,7 +9,9 @@
 use rayon::prelude::*;
 use std::cmp::Ordering;
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
+use crate::linalg::neumaier_add;
+use crate::memory::push_reserved;
 
 mod influence;
 mod qualified_cluster;
@@ -1562,14 +1564,6 @@ fn reserved_empty<T, R: SandwichReservation>(
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
 fn checked_square(dimension: usize, message: &'static str) -> Result<usize> {
     dimension
         .checked_mul(dimension)
@@ -1577,13 +1571,7 @@ fn checked_square(dimension: usize, message: &'static str) -> Result<usize> {
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let next = *sum + value;
-    if sum.abs() >= value.abs() {
-        *correction += (*sum - next) + value;
-    } else {
-        *correction += (value - next) + *sum;
-    }
-    *sum = next;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {
@@ -1610,14 +1598,7 @@ pub(crate) fn compensated_add_scaled_row(
     let mut finite = true;
     for ((value, sum), correction) in values.iter().zip(sums).zip(corrections) {
         let term = scale * value;
-        let updated = *sum + term;
-        let adjustment = if sum.abs() >= term.abs() {
-            (*sum - updated) + term
-        } else {
-            (term - updated) + *sum
-        };
-        *sum = updated;
-        *correction += adjustment;
+        neumaier_add(term, sum, correction);
         finite &= term.is_finite() & sum.is_finite() & correction.is_finite();
     }
     if finite {
@@ -1629,21 +1610,10 @@ pub(crate) fn compensated_add_scaled_row(
     }
 }
 
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
 
     #[test]
     fn cluster_boundaries_match_linear_group_ends_for_every_subset() {

@@ -1,6 +1,9 @@
 use super::prepared_wald::fitted_coordinate_value;
 use crate::data::{PreparedWeights, WeightKind};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{
+    allocation, invalid_argument, invalid_data, unsupported, ErrorCode, FeregError, Result,
+};
+use crate::linalg::neumaier_add;
 use crate::prepared_categorical_data::PreparedCategoricalOlsData;
 pub(super) use crate::sandwich::compensated_add_scaled_row;
 use crate::topology_dof::CategoricalTopologyDofReport;
@@ -442,7 +445,7 @@ fn compose_view_internal<P: PreparedOlsInferenceView + ?Sized, R: InferenceReser
     reservation: &mut R,
     perturbations: InferencePerturbations,
 ) -> Result<PreparedOlsUnadjustedComponents> {
-    let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let phase_timing = crate::diagnostics::phase_timing_enabled();
     let total_started = Instant::now();
     let phase_started = Instant::now();
     validate_fit_and_absorbed_dof_view(prepared, &fit, absorbed_dof)?;
@@ -1758,14 +1761,7 @@ pub(super) fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -
     if !value.is_finite() {
         return Err(invalid_data("prepared iid compensated term is not finite"));
     }
-    let updated = *sum + value;
-    let adjustment = if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *sum = updated;
-    *correction += adjustment;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {
@@ -1806,24 +1802,8 @@ fn reserved_filled<T: Clone, R: InferenceReservation>(
     Ok(output)
 }
 
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
 fn insufficient_observations(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InsufficientObservations, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
 }
 
 #[cfg(test)]

@@ -3,6 +3,32 @@ use crate::protocol::{
     ACTION_PROTOCOL_VERSION, ADO_VERSION, MINIMUM_STATA_MAJOR, MODEL_WIRE_VERSION,
     OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION, SPI_MAJOR, SPI_MINOR,
 };
+use std::fs::OpenOptions;
+use std::io::Write;
+
+/// Developer solver tracing (`FEREG_SOLVER_TRACE`), read at each use.
+#[must_use]
+pub fn solver_trace_enabled() -> bool {
+    std::env::var_os("FEREG_SOLVER_TRACE").is_some()
+}
+
+/// Developer phase timing (`FEREG_PHASE_TIMING`), read at each use.
+#[must_use]
+pub fn phase_timing_enabled() -> bool {
+    std::env::var_os("FEREG_PHASE_TIMING").is_some()
+}
+
+/// Write one solver-trace line to standard error and, when
+/// `FEREG_SOLVER_TRACE_FILE` names a file, append it there as well.
+pub(crate) fn emit_solver_trace(line: &str) {
+    eprintln!("{line}");
+    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
+        return;
+    };
+    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
+        let _ = writeln!(file, "{line}");
+    }
+}
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct BuildInfo {
@@ -20,7 +46,7 @@ pub struct BuildInfo {
     pub architecture: &'static str,
     pub plugin_abi_major: u16,
     pub plugin_abi_minor: u16,
-    pub cpu_dispatch_path: String,
+    pub cpu_dispatch_path: &'static str,
     pub available_threads: usize,
 }
 
@@ -42,7 +68,7 @@ impl BuildInfo {
             architecture: std::env::consts::ARCH,
             plugin_abi_major: SPI_MAJOR,
             plugin_abi_minor: SPI_MINOR,
-            cpu_dispatch_path: cpu_dispatch_path(),
+            cpu_dispatch_path: crate::kernels::active_name(),
             available_threads: ThreadConfig::available(),
         }
     }
@@ -124,27 +150,6 @@ const fn yes_no(value: bool) -> &'static str {
     } else {
         "no"
     }
-}
-
-#[cfg(any(target_arch = "x86", target_arch = "x86_64"))]
-fn cpu_dispatch_path() -> String {
-    if std::is_x86_feature_detected!("avx2") && std::is_x86_feature_detected!("fma") {
-        "x86-avx2-fma".to_owned()
-    } else if std::is_x86_feature_detected!("sse2") {
-        "x86-sse2".to_owned()
-    } else {
-        "x86-baseline".to_owned()
-    }
-}
-
-#[cfg(target_arch = "aarch64")]
-fn cpu_dispatch_path() -> String {
-    "aarch64-neon-baseline".to_owned()
-}
-
-#[cfg(not(any(target_arch = "x86", target_arch = "x86_64", target_arch = "aarch64")))]
-fn cpu_dispatch_path() -> String {
-    "portable-baseline".to_owned()
 }
 
 #[cfg(test)]

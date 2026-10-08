@@ -3,6 +3,15 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+/* Corpus bounds. Local large-case profiling may raise them at compile time,
+   for example -DREPLAY_MAX_ROWS=4000000 -DREPLAY_MAX_CELLS=100000000U. */
+#ifndef REPLAY_MAX_ROWS
+#define REPLAY_MAX_ROWS 1000000
+#endif
+#ifndef REPLAY_MAX_CELLS
+#define REPLAY_MAX_CELLS 10000000U
+#endif
+
 typedef struct { char *name; int rows, cols; double *values; } ReplayMatrix;
 typedef struct { char *name, *value; } ReplayMacro;
 static int replay_rows, replay_columns, replay_argc, replay_matrix_count, replay_macro_count;
@@ -22,7 +31,7 @@ static void replay_die(const char *message)
 static void *replay_allocate(size_t count, size_t size)
 {
     void *value;
-    if (count > 10000000U || size > 1000000U) replay_die("allocation bound");
+    if (count > REPLAY_MAX_CELLS || size > 1000000U) replay_die("allocation bound");
     value = calloc(count == 0U ? 1U : count, size);
     if (value == NULL) replay_die("allocation failed");
     return value;
@@ -61,12 +70,12 @@ static void replay_read(const char *path)
     int i, j;
     if (file == NULL || fgets(magic, sizeof(magic), file) == NULL ||
         strcmp(magic, "FEREG_REPLAY_V1\n") != 0) replay_die("input version");
-    replay_rows = replay_integer(file, 1000000);
+    replay_rows = replay_integer(file, REPLAY_MAX_ROWS);
     replay_columns = replay_integer(file, 10000);
     replay_argc = replay_integer(file, 1000);
     replay_matrix_count = replay_integer(file, 200);
     replay_macro_count = replay_integer(file, 100);
-    if ((size_t) replay_rows * (size_t) replay_columns > 10000000U) replay_die("data bound");
+    if ((size_t) replay_rows * (size_t) replay_columns > REPLAY_MAX_CELLS) replay_die("data bound");
     replay_arguments = replay_allocate((size_t) replay_argc, sizeof(char *));
     for (i = 0; i < replay_argc; ++i) replay_arguments[i] = replay_text(file);
     replay_data = replay_allocate((size_t) replay_columns, sizeof(double *));

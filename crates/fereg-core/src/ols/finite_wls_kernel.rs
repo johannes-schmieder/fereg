@@ -20,8 +20,9 @@ use std::sync::atomic::{AtomicBool, AtomicU64, AtomicUsize, Ordering};
 
 #[cfg(test)]
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::fe::BorrowedMapWeights;
+use crate::linalg::neumaier_add;
 
 use super::implicit_centered::ImplicitCenteredView;
 use super::prepared_scratch::{PreparedOlsScratch, PreparedOlsScratchReader};
@@ -2027,7 +2028,6 @@ fn fill_retained_partitioned(
     match source {
         FixedBlockMomentSource::Dense {
             values,
-            stored_columns,
             selected_columns,
             response,
             weights,
@@ -2036,7 +2036,6 @@ fn fill_retained_partitioned(
             ..
         } => fill_retained_dense_partitioned(
             values,
-            stored_columns,
             selected_columns,
             response,
             weights,
@@ -2075,6 +2074,7 @@ fn fill_retained_partitioned(
         } => {
             let bound = values.bind_columns()?;
             let dimension = rhs.len();
+            let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
             crate::parallel::stage_try_for_each(
                 gram.par_chunks_mut(dimension * layout.columns_per_partition)
                     .zip(rhs.par_chunks_mut(layout.columns_per_partition))
@@ -2096,18 +2096,15 @@ fn fill_retained_partitioned(
                                     - values.center(column, group))
                                     / column_scales.map_or(1.0, |scales| scales[j]);
                             }
-                            for (local, target) in rhs.iter_mut().enumerate() {
-                                let j = first + local;
-                                let left = weight * row[j];
-                                *target = left.mul_add(response[observation], *target);
-                                for (entry, &right) in gram
-                                    [local * dimension + j..(local + 1) * dimension]
-                                    .iter_mut()
-                                    .zip(&row[j..dimension])
-                                {
-                                    *entry = left.mul_add(right, *entry);
-                                }
-                            }
+                            crate::kernels::upper_rank_one(
+                                hardware,
+                                weight,
+                                &row[..dimension],
+                                response[observation],
+                                first,
+                                rhs,
+                                gram,
+                            );
                         }
                         Ok(())
                     };
@@ -2136,7 +2133,6 @@ fn fill_retained_partitioned(
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_partitioned(
     values: FiniteDenseRows<'_>,
-    stored_columns: usize,
     selected_columns: Option<&[usize]>,
     response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -2151,7 +2147,6 @@ fn fill_retained_dense_partitioned(
         if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
             return fill_retained_dense_standardized_rows(
                 values,
-                stored_columns,
                 selected_columns,
                 response,
                 weights,
@@ -2165,7 +2160,6 @@ fn fill_retained_dense_partitioned(
         if layout.columns_per_partition > 1 {
             return fill_retained_dense_standardized_tiles(
                 values,
-                stored_columns,
                 selected_columns,
                 response,
                 weights,
@@ -2233,7 +2227,6 @@ fn with_private_retained_moments(
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_standardized_rows(
     values: FiniteDenseRows<'_>,
-    _stored_columns: usize,
     selected_columns: Option<&[usize]>,
     response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -2244,6 +2237,7 @@ fn fill_retained_dense_standardized_rows(
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
+    let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
     crate::parallel::stage_try_for_each(
         rhs.par_chunks_mut(layout.columns_per_partition)
             .zip(gram.par_chunks_mut(layout.columns_per_partition * dimension))
@@ -2262,19 +2256,15 @@ fn fill_retained_dense_standardized_rows(
                         standardized[column] =
                             scaled_column(source[source_column], Some(scales), column)?;
                     }
-                    for (local_left, destination) in rhs.iter_mut().enumerate() {
-                        let left = left_start + local_left;
-                        let weighted_left = weight * standardized[left];
-                        *destination = weighted_left.mul_add(response_value, *destination);
-                        let gram_row =
-                            &mut gram[local_left * dimension..(local_left + 1) * dimension];
-                        for (entry, &right_value) in gram_row[left..]
-                            .iter_mut()
-                            .zip(&standardized[left..dimension])
-                        {
-                            *entry = weighted_left.mul_add(right_value, *entry);
-                        }
-                    }
+                    crate::kernels::upper_rank_one(
+                        hardware,
+                        weight,
+                        &standardized[..dimension],
+                        response_value,
+                        left_start,
+                        rhs,
+                        gram,
+                    );
                 }
                 Ok(())
             })
@@ -2288,7 +2278,6 @@ fn fill_retained_dense_standardized_rows(
 #[allow(clippy::too_many_arguments)]
 fn fill_retained_dense_standardized_tiles(
     values: FiniteDenseRows<'_>,
-    _stored_columns: usize,
     selected_columns: Option<&[usize]>,
     response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
@@ -2416,6 +2405,7 @@ fn fill_retained_scratch_row_partitions(
         return Ok(false);
     };
     let used = &mut partials[..partitions * stride];
+    let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
     crate::parallel::stage_try_for_each(
         used.par_chunks_mut(stride).enumerate(),
         moment_lane_work(response.len(), dimension),
@@ -2438,16 +2428,15 @@ fn fill_retained_scratch_row_partitions(
                 for j in 0..dimension {
                     row[j] = scaled_column(row[selected.map_or(j, |ids| ids[j])], scales, j)?;
                 }
-                for j in 0..dimension {
-                    let left = weight * row[j];
-                    out_rhs[j] = left.mul_add(response[observation], out_rhs[j]);
-                    for (entry, &right) in out_gram[j * dimension + j..(j + 1) * dimension]
-                        .iter_mut()
-                        .zip(&row[j..dimension])
-                    {
-                        *entry = left.mul_add(right, *entry);
-                    }
-                }
+                crate::kernels::upper_rank_one(
+                    hardware,
+                    weight,
+                    &row[..dimension],
+                    response[observation],
+                    0,
+                    out_rhs,
+                    out_gram,
+                );
             }
             if out_rhs.iter().chain(out_gram.iter()).all(|v| v.is_finite()) {
                 Ok(())
@@ -2501,6 +2490,7 @@ fn fill_retained_scratch_partitioned(
     }
     let dimension = rhs.len();
     let stored_columns = values.columns();
+    let hardware = crate::kernels::installed().map(|kernels| kernels.upper_rank_one);
     crate::parallel::stage_try_for_each(
         partials
             .par_chunks_mut(layout.partial_stride)
@@ -2531,19 +2521,15 @@ fn fill_retained_scratch_partitioned(
                         let source = selected_columns.map_or(column, |selected| selected[column]);
                         stored_row[column] = scaled_column(stored_row[source], scales, column)?;
                     }
-                    for (local_left, destination) in rhs_rows.iter_mut().enumerate() {
-                        let left = left_start + local_left;
-                        let weighted_left = weight * stored_row[left];
-                        *destination = weighted_left.mul_add(response_value, *destination);
-                        let gram_row =
-                            &mut gram_rows[local_left * dimension..(local_left + 1) * dimension];
-                        for (entry, &right_value) in gram_row[left..]
-                            .iter_mut()
-                            .zip(&stored_row[left..dimension])
-                        {
-                            *entry = weighted_left.mul_add(right_value, *entry);
-                        }
-                    }
+                    crate::kernels::upper_rank_one(
+                        hardware,
+                        weight,
+                        &stored_row[..dimension],
+                        response_value,
+                        left_start,
+                        rhs_rows,
+                        gram_rows,
+                    );
                 }
             }
             Ok(())
@@ -2736,13 +2722,7 @@ fn swap_symmetric_block(matrix: &mut [f64], dimension: usize, left: usize, right
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let next = *sum + value;
-    if sum.abs() >= value.abs() {
-        *correction += (*sum - next) + value;
-    } else {
-        *correction += (value - next) + *sum;
-    }
-    *sum = next;
+    neumaier_add(value, sum, correction);
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {
@@ -2756,20 +2736,9 @@ fn checked_square(value: usize, message: &'static str) -> Result<usize> {
     value.checked_mul(value).ok_or_else(|| allocation(message))
 }
 
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
 #[cfg(test)]
 mod tests {
+    use crate::error::ErrorCode;
     #[test]
     fn retained_arithmetic_leaves_survive_serial_stage_admission() {
         rayon::ThreadPoolBuilder::new()

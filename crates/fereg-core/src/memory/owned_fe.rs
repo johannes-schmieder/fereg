@@ -1,6 +1,6 @@
 //! Incremental storage for generic owned intercept/slope absorption.
 use super::{checked_mul, checked_sum, estimate_fe_solver_memory_for_channels};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, ErrorCode, FeregError, Result};
 use crate::fe::{EffectTerm, FeDesign, FeSolverKind, LsmrConfig};
 
 #[derive(Debug, Default, Clone, Copy)]
@@ -274,10 +274,6 @@ fn bytes<T>(elements: u128) -> Result<u128> {
         std::mem::size_of::<T>() as u128,
         "generic FE byte count overflows",
     )
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

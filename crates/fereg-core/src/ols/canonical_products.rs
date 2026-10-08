@@ -1247,7 +1247,7 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
                 Ok(())
             })?;
     }
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+    if crate::diagnostics::solver_trace_enabled() {
         eprintln!("FEREG_SOLVER_TRACE|phase=canonical_reduced_solve|rows={n}|iterative={}|implicit={}|iterations={}",
             u8::from(iterative), u8::from(implicit), iterations.load(Ordering::Relaxed));
     }

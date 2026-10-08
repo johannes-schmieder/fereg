@@ -3,8 +3,8 @@
 //! Exact normal-equation moments are recomputed after every recurrence stop;
 //! LSMR diagnostics alone never authorize an IRLS step.
 
-use std::fs::OpenOptions;
-use std::io::Write;
+use crate::linalg::neumaier_add;
+use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Mutex;
 use std::time::Instant;
 
@@ -13,7 +13,7 @@ use schwarz_precond::{mlsmr, LsmrStopReason, MlsmrOptions, Operator, SolveError,
 use within::{Effect, Preconditioner, PreconditionerConfig, Solver};
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{retained_effect_order_by_levels, FeDesign};
 use crate::memory::{
     categorical_dense_cross_tab_bytes, estimate_categorical_schwarz_memory,
@@ -149,21 +149,11 @@ fn joint_lsmr_frame_trace_line(frame: JointLsmrFrameDiagnostic) -> String {
 }
 
 fn emit_joint_lsmr_frame_trace(frame: JointLsmrFrameDiagnostic) {
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_none() {
+    if !crate::diagnostics::solver_trace_enabled() {
         return;
     }
     let line = joint_lsmr_frame_trace_line(frame);
-    emit_solver_trace_line(&line);
-}
-
-pub(super) fn emit_solver_trace_line(line: &str) {
-    eprintln!("{line}");
-    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
-        return;
-    };
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(file, "{line}");
-    }
+    crate::diagnostics::emit_solver_trace(&line);
 }
 
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
@@ -1926,13 +1916,7 @@ impl FiniteCompensatedSum {
                 "PPML LSMR certificate accumulation is nonfinite",
             ));
         }
-        let updated = self.sum + value;
-        self.correction += if self.sum.abs() >= value.abs() {
-            (self.sum - updated) + value
-        } else {
-            (value - updated) + self.sum
-        };
-        self.sum = updated;
+        neumaier_add(value, &mut self.sum, &mut self.correction);
         if self.sum.is_finite() && self.correction.is_finite() {
             Ok(())
         } else {
@@ -2277,24 +2261,6 @@ pub(super) fn bytes_for_memory<T>(elements: u128, context: &'static str) -> Resu
     checked_mul_memory(elements, std::mem::size_of::<T>() as u128, context)
 }
 
-fn fallible_filled<T: Clone>(elements: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(message))?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(values: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(values.len())
-        .map_err(|_| allocation(message))?;
-    output.extend_from_slice(values);
-    Ok(output)
-}
-
 fn lsmr_error(error: SolveError) -> FeregError {
     FeregError::new(
         if matches!(error, SolveError::Allocation { .. }) {
@@ -2311,14 +2277,6 @@ fn solve_shape_error(context: &'static str) -> SolveError {
         context,
         message: "joint PPML augmented operator dimensions are inconsistent".to_owned(),
     }
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 fn nonconvergence(message: &'static str) -> FeregError {

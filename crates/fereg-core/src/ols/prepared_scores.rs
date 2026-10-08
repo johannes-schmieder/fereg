@@ -1,7 +1,7 @@
 use std::cell::RefCell;
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
 use crate::prepared_fit_view::PreparedOlsFitView;
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
@@ -371,7 +371,7 @@ pub(super) fn build_prepared_ols_score_design<
     reservation: &mut R,
     score_product: PreparedOlsScoreProduct,
 ) -> Result<CertifiedPreparedOlsScoreDesign<'a>> {
-    let phase_timing = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let phase_timing = crate::diagnostics::phase_timing_enabled();
     let total_started = Instant::now();
     let phase_started = Instant::now();
     let nrows = prepared.fit_sample().n_active();
@@ -1150,18 +1150,6 @@ pub(super) fn reserved_filled<T: Clone, R: PreparedInferenceReservation>(
     }
     output.resize(elements, value);
     Ok(output)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 #[cfg(test)]

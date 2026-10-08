@@ -98,10 +98,10 @@ impl StrictCheckpointControl {
                 PendingCheckpointWork::None
             };
             if self.pending == PendingCheckpointWork::Refinement
-                && std::env::var_os("FEREG_SOLVER_TRACE").is_some()
+                && crate::diagnostics::solver_trace_enabled()
             {
                 let checkpoint_tolerance = self.tolerance;
-                super::super::categorical_lsmr::emit_solver_trace_line(&format!(
+                crate::diagnostics::emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=checkpoint_profile_refinement|previous={checkpoint_tolerance:.17e}|next={refined:.17e}",
                 ));
             }
@@ -117,13 +117,11 @@ impl StrictCheckpointControl {
             facts.basis_unchanged && facts.rank == candidate.finite_rank,
             assessment.difference,
         );
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some()
-            && action != ProfileRecoveryAction::Continue
-        {
+        if crate::diagnostics::solver_trace_enabled() && action != ProfileRecoveryAction::Continue {
             let recovery_action = action;
             let profile_difference = assessment.difference;
             let checkpoint_tolerance = self.tolerance;
-            super::super::categorical_lsmr::emit_solver_trace_line(&format!(
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=profile_recovery|iteration={iteration}|action={recovery_action:?}|difference={profile_difference:.17e}|tolerance={checkpoint_tolerance:.17e}",
             ));
         }
@@ -324,7 +322,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         iteration: usize,
         clock: &PpmlPhaseClock,
     ) {
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_none() {
+        if !crate::diagnostics::solver_trace_enabled() {
             return;
         }
         let mut worst_row = 0_usize;
@@ -352,7 +350,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         }
         let strict = transaction.candidate();
         let row = worst_row;
-        super::super::categorical_lsmr::emit_solver_trace_line(&format!(
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=strict_worst_row|iteration={iteration}|seconds={:.6}|original_row={}|failing_rows={failing_rows}|tolerance={tolerance:.17e}|accepted_eta={:.17e}|candidate_eta={:.17e}|working_response={:.17e}|residual={:.17e}|finite_predictor={:.17e}|absorbed_predictor={:.17e}|outcome={:.17e}|mean={:.17e}|hessian_weight={:.17e}|deviance_change={:.17e}|ll_change={:.17e}",
             clock.elapsed().as_secs_f64(), self.prepared.fit_sample().retained_rows()[row] + 1,
             self.workspace.eta()[row], self.workspace.candidate_eta()[row], strict.response()[row],
@@ -362,7 +360,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
             objective.map_or(f64::INFINITY, |candidate| relative_scalar_difference(self.objective.log_likelihood, candidate.log_likelihood)),
         ));
         let strict_rank = facts.rank;
-        super::super::categorical_lsmr::emit_solver_trace_line(&format!(
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=strict_decision|iteration={iteration}|certified={}|basis_unchanged={}|rank={strict_rank}|eta_change={:.17e}|beta_change={:.17e}|consistent={}",
             u8::from(facts.certified), u8::from(facts.basis_unchanged),
             relative_infinity_difference(self.workspace.eta(), self.workspace.candidate_eta()),
@@ -695,9 +693,9 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> StrictCycle<'_, '_, P> {
         if assessment.consistent && self.candidate.final_score.passed {
             self.synchronize(&facts, &mut assessment)?;
         }
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+        if crate::diagnostics::solver_trace_enabled() {
             let iteration = self.iteration;
-            super::super::categorical_lsmr::emit_solver_trace_line(&format!(
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=strict_result|iteration={iteration}|committed={}|score={:.17e}|score_passed={}|converged={}",
                 u8::from(resolution != CandidateResolution::Rollback), self.candidate.final_score.relative_infinity_norm,
                 u8::from(self.candidate.final_score.passed), u8::from(self.control.accepted.is_some()),

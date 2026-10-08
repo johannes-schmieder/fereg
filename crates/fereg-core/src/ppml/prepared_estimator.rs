@@ -6,10 +6,11 @@
 //! never calls the legacy dense PPML fitter or its legacy covariance path.
 
 use super::constant_wald::constant_wald_columns;
+use crate::memory::{fallible_copy, fallible_filled};
 use std::time::Duration;
 
 use crate::data::{NumericColumnView, NumericSourceUse, WeightInput, WeightKind};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::FeSolverKind;
 use crate::ols::{
     LinearSessionPhaseAllocatorProbe, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
@@ -1745,32 +1746,6 @@ fn record_separation_timings(
         memory.record_phase(phase, Duration::from_secs_f64(method.elapsed_seconds));
     }
     Ok(())
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn fallible_copy<T: Copy>(source: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(source.len())
-        .map_err(|_| allocation(message))?;
-    output.extend_from_slice(source);
-    Ok(output)
-}
-
-fn fallible_filled<T: Copy>(length: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(length)
-        .map_err(|_| allocation(message))?;
-    output.resize(length, value);
-    Ok(output)
 }
 
 fn fallible_string_copy(source: &str, message: &'static str) -> Result<String> {

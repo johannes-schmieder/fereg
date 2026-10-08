@@ -1,6 +1,7 @@
 use std::cmp::Ordering;
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, Result};
+use crate::memory::push_reserved;
 use crate::metadata::SourceId;
 
 use super::prepared::{
@@ -579,14 +580,6 @@ fn reserved_filled<T: Clone, R: ClusterReservation>(
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
 fn fallible_string_copy<R: ClusterReservation>(
     value: &str,
     reservation: &mut R,
@@ -601,18 +594,6 @@ fn fallible_string_copy<R: ClusterReservation>(
     }
     output.push_str(value);
     Ok(output)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 /// Direct host construction from borrowed grammar and optional cluster terms.
@@ -779,6 +760,7 @@ fn resolve_source_indices<R: ClusterReservation>(
 #[cfg(test)]
 pub(super) mod tests {
     use super::*;
+    use crate::error::ErrorCode;
     use crate::metadata::{
         AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
         ComponentOrder, ExpandedTerm, LevelState, MetadataFlag, RawTermKind, SourceEntry,

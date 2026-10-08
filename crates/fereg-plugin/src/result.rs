@@ -1,4 +1,4 @@
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{allocation, invalid_argument as invalid, Result};
 use fereg_core::fe::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
 use fereg_core::ols::{
     CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
@@ -1159,14 +1159,6 @@ fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> 
     }
     output.resize(elements, value);
     Ok(output)
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

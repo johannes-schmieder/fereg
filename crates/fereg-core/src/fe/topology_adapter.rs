@@ -6,7 +6,8 @@
 //! allocates only O(U + G) small tables for U unique sources and G requested
 //! effects; it never copies observation-scale codes or membership.
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument as invalid, Result};
+use crate::memory::push_reserved;
 
 use super::design::{
     BorrowedInterceptEffect, BorrowedInterceptFeDesign, ValidatedBorrowedInterceptSource,
@@ -105,25 +106,10 @@ fn borrow_categorical_topology_design_with_reservation<'a, R: TopologyAdapterRes
     BorrowedInterceptFeDesign::new(nobs, effects)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
 
     #[derive(Default)]
     struct InjectedReservation {

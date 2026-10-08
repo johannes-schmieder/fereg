@@ -6,7 +6,8 @@
 //! checks exact equality. Numerical kernels may then borrow the certified codes
 //! without paying this O(A N log N) validation cost on every iteration.
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
+use crate::memory::push_reserved;
 
 use super::{factorize_code_interaction, CategoricalCodeView, CategoricalPartition};
 
@@ -91,29 +92,10 @@ fn validate_categorical_partition_with_reservation<R: PartitionValidationReserva
     Ok(())
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
 
     #[derive(Default)]
     struct InjectedReservation {

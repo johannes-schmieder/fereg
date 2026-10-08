@@ -7,6 +7,8 @@
 //! categorical preparation seam with singleton deletion disabled.  PPML's
 //! separation coordinator is the sole owner of singleton/separation deletion.
 
+use crate::linalg::neumaier_add;
+use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 
 #[cfg(test)]
@@ -18,7 +20,7 @@ use super::prepared::{
 use crate::data::{
     DropReason, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightKind,
 };
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::ols::{
     prepare_ppml_categorical_ols_clustered_data, LoadedNumericColumn, LoadedOlsInput,
     OlsClusterTermV1, OlsClusteredRequestV1, OlsRequestV1, PreparedOlsClusterDesign,
@@ -961,30 +963,6 @@ fn original_axis_mask(rows: usize, retained: &[usize], label: &'static str) -> R
     Ok(output)
 }
 
-fn fallible_filled<T: Clone>(len: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(len)
-        .map_err(|_| allocation(label))?;
-    if output.capacity() < len {
-        return Err(allocation(label));
-    }
-    output.resize(len, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Copy>(input: &[T], label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(input.len())
-        .map_err(|_| allocation(label))?;
-    if output.capacity() < input.len() {
-        return Err(allocation(label));
-    }
-    output.extend_from_slice(input);
-    Ok(output)
-}
-
 fn compensated_sum(values: impl IntoIterator<Item = f64>) -> Result<f64> {
     let mut sum = 0.0_f64;
     let mut correction = 0.0_f64;
@@ -995,13 +973,7 @@ fn compensated_sum(values: impl IntoIterator<Item = f64>) -> Result<f64> {
                 "prepared PPML generation weights must be finite and positive",
             ));
         }
-        let next = sum + value;
-        correction += if sum.abs() >= value.abs() {
-            (sum - next) + value
-        } else {
-            (value - next) + sum
-        };
-        sum = next;
+        neumaier_add(value, &mut sum, &mut correction);
     }
     let total = sum + correction;
     if !total.is_finite() || total <= 0.0 {
@@ -1011,14 +983,6 @@ fn compensated_sum(values: impl IntoIterator<Item = f64>) -> Result<f64> {
         ));
     }
     Ok(total)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

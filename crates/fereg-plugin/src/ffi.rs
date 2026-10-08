@@ -1332,6 +1332,7 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
     let initial_sequence = ACTION_OBSERVATION_SEQUENCE.load(Ordering::Relaxed);
     let mut audited_estimator = None;
     let outcome = catch_unwind(AssertUnwindSafe(|| {
+        crate::fused_kernels::install();
         // SAFETY: the exported ABI validates argc/argv before dereferencing.
         let args = unsafe { read_arguments(argc, argv) }?;
         audited_estimator = action_memory_audit_estimator(&args);

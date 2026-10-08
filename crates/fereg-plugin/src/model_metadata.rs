@@ -1,7 +1,7 @@
 //! One host model descriptor; transport framing and registry transfer are explicit.
 use crate::input::SpiApi;
 const BINDING_ROW_WIDTH: usize = 3;
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{allocation, invalid_argument as invalid, ErrorCode, FeregError, Result};
 use fereg_core::metadata::{
     ModelWireV2, NumericWireTable, SourceId, ABSORB_COMPONENT_ROW_WIDTH, ABSORB_TERM_ROW_WIDTH,
     COMPONENT_ROW_WIDTH, SOURCE_ROW_WIDTH, TERM_ROW_WIDTH,
@@ -414,10 +414,4 @@ pub(crate) fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static st
 
 fn syntax(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Syntax, message)
-}
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }

@@ -1,9 +1,10 @@
 //! Source-role planning borrows the original request. No fabricated model,
 //! input bindings or intercept partitions are constructed for availability.
 
-use crate::error::{ErrorCode, FeregError, Result};
-use crate::metadata::{AbsorbTermId, AbsorbedTerm, SourceId};
-use crate::ols::{OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedCategoricalSource};
+use crate::error::{allocation, invalid_argument as invalid, unsupported, Result};
+use crate::memory::push_reserved;
+use crate::metadata::{AbsorbedTerm, SourceId};
+use crate::ols::{OlsInputRole, OlsRequestV1, PreparedCategoricalSource};
 
 /// Metadata-only plan that separates source availability from true FE topology.
 #[derive(Debug, PartialEq)]
@@ -314,14 +315,6 @@ fn reserved_filled<T: Clone, R: RequestPlanReservation>(
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
 fn source_index(source: SourceId, source_count: usize) -> Result<usize> {
     let index = usize::try_from(source.get() - 1)
         .map_err(|_| invalid("categorical source id does not fit usize"))?;
@@ -339,23 +332,13 @@ fn checked_increment(value: u8) -> Result<u8> {
         .ok_or_else(|| invalid("categorical request binding multiplicity exceeds u8"))
 }
 
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
     use crate::factorize::EncodedFactor;
-    use crate::metadata::{CompiledTermGraph, SourceEntry, SourceId};
+    use crate::metadata::{AbsorbTermId, CompiledTermGraph, SourceEntry, SourceId};
+    use crate::ols::OlsInputBinding;
 
     #[derive(Default)]
     struct InjectedReservation {

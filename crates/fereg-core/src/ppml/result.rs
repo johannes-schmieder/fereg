@@ -25,6 +25,7 @@ use crate::fe::{
     connected_components_all_fallible, BorrowedMapWeights, FeCoefficientBatch, LsmrConfig,
     MapConfig,
 };
+use crate::memory::{fallible_copy, fallible_filled};
 use crate::ppml_separation::{
     separation_method_count, separation_workspace_requirements, MethodStatus,
     SeparationCertificate, SeparationConfig, SeparationDropReason, SeparationMethod,
@@ -3601,24 +3602,6 @@ fn relative_scalar_error(left: f64, right: f64) -> f64 {
     } else {
         (left - right).abs() / left.abs().max(right.abs()).max(1.0)
     }
-}
-
-fn fallible_filled<T: Clone>(length: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(length)
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
-    output.resize(length, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(source: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(source.len())
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
-    output.extend_from_slice(source);
-    Ok(output)
 }
 
 #[allow(clippy::too_many_arguments)]

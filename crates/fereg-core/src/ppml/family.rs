@@ -1,4 +1,5 @@
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::linalg::neumaier_add;
 use crate::options::ThreadConfig;
 use crate::parallel::{InstalledThreadTeam, ThreadTeam};
 use rayon::prelude::*;
@@ -968,13 +969,7 @@ pub(crate) struct CompensatedSum {
 
 impl CompensatedSum {
     pub(crate) fn add(&mut self, value: f64) {
-        let next = self.sum + value;
-        self.correction += if self.sum.abs() >= value.abs() {
-            (self.sum - next) + value
-        } else {
-            (value - next) + self.sum
-        };
-        self.sum = next;
+        neumaier_add(value, &mut self.sum, &mut self.correction);
     }
 
     pub(crate) fn total(self) -> f64 {

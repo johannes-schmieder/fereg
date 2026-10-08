@@ -7,7 +7,7 @@
 //! produces a zero column for the existing rank machinery. This never allocates
 //! an observation-scale column or chooses a replacement base.
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument as invalid, unsupported, Result};
 use crate::fe::FinalizedCategoricalTopology;
 use crate::metadata::{
     CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState, MetadataFlag, RawTermKind,
@@ -362,21 +362,10 @@ fn canonical_factor_value(value: f64) -> f64 {
     }
 }
 
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
     use crate::metadata::{
         ComponentOrder, ExpandedTerm, SourceEntry, TermComponent, TermId, TermOrder,
     };

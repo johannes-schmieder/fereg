@@ -2,7 +2,7 @@
 //!
 //! Admission bounds and empirical estimates have distinct coverage: a practical
 //! estimate may eventually be calibrated without claiming a strict runtime proof.
-use fereg_core::error::{ErrorCode, FeregError, Result};
+use fereg_core::error::{invalid_argument as invalid, Result};
 use std::collections::BTreeMap;
 
 pub(crate) const ROWS: usize = 11;
@@ -146,9 +146,6 @@ impl Report {
         }
         Ok(Self(values))
     }
-}
-fn invalid(message: &str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
 }
 
 #[cfg(test)]

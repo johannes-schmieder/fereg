@@ -5,6 +5,7 @@ use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
     weighted_column_norms, FeDesign, FeSolverKind, MapConfig, SolveReport, SolveStopReason,
 };
+use crate::linalg::neumaier_add;
 use std::time::Instant;
 
 /// Residualize with a safeguarded acceleration of symmetric MAP.
@@ -326,13 +327,7 @@ fn weighted_dot_columns(
                     "CG weighted inner product produced a nonfinite term",
                 ));
             }
-            let updated = output[rhs] + term;
-            corrections[rhs] += if output[rhs].abs() >= term.abs() {
-                (output[rhs] - updated) + term
-            } else {
-                (term - updated) + output[rhs]
-            };
-            output[rhs] = updated;
+            neumaier_add(term, &mut output[rhs], &mut corrections[rhs]);
         }
     }
     for rhs in 0..output.len() {

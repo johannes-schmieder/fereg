@@ -5,6 +5,7 @@ use crate::data::{
     PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
 };
 use crate::error::{ErrorCode, FeregError, Result};
+use crate::linalg::neumaier_add;
 
 /// Borrowed PPML inputs before authoritative sample construction.
 ///
@@ -868,13 +869,7 @@ fn compensated_scaled_probability_sum(
                 "PPML probability-weight normalization underflowed outside the finite computational scale",
             )
         })?;
-        let next = sum + normalized;
-        correction += if sum.abs() >= normalized.abs() {
-            (sum - next) + normalized
-        } else {
-            (normalized - next) + sum
-        };
-        sum = next;
+        neumaier_add(normalized, &mut sum, &mut correction);
     }
     let total = sum + correction;
     if total.is_finite() && total > 0.0 {
@@ -915,13 +910,7 @@ fn compensated_nonnegative_sum(values: impl IntoIterator<Item = f64>) -> Result<
                 "PPML scaled probability-weight sum received an invalid value",
             ));
         }
-        let next = sum + value;
-        correction += if sum.abs() >= value.abs() {
-            (sum - next) + value
-        } else {
-            (value - next) + sum
-        };
-        sum = next;
+        neumaier_add(value, &mut sum, &mut correction);
     }
     let total = sum + correction;
     if total.is_finite() && total > 0.0 {

@@ -7,7 +7,7 @@
 //! MAP, DoF, singleton, and cluster-nesting consumers without rebuilding or
 //! copying observation-scale state.
 
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{invalid_argument as invalid, Result};
 
 use super::design::{LevelIndex, ValidatedBorrowedInterceptSource};
 use super::partition::CategoricalPartition;
@@ -120,13 +120,10 @@ impl CategoricalTopologySource {
     }
 }
 
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::error::ErrorCode;
 
     #[test]
     fn single_topology_source_borrows_codes_and_builds_exact_membership() {

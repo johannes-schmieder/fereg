@@ -9,7 +9,7 @@
 //! topology. This boundary is shared by public estimation and developer gates.
 
 use crate::data::{DenseMatrix, DropReason, PreparedNumericSample, PreparedWeights, WeightKind};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{
     absorb_finalized_categorical_slope_map_certified,
@@ -20,6 +20,7 @@ use crate::fe::{
     FinalizedCategoricalTopology, LsmrConfig, MapConfig, RecoveredCategoricalEffects,
     SingletonMultiplicity, SingletonResult,
 };
+use crate::memory::push_reserved;
 use crate::memory::{estimate_intercept_recovery_memory, FeSolverMemoryBudget};
 use crate::metadata::SourceId;
 use crate::prepared_categorical_rebase::{rebase_prepared_model, PreparedCategoricalOlsReportPlan};
@@ -1628,32 +1629,12 @@ fn fallible_string_copy(value: &str, label: &'static str) -> Result<String> {
     Ok(output)
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
 fn canonical_factor_value(value: f64) -> f64 {
     if value == 0.0 {
         0.0
     } else {
         value
     }
-}
-
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

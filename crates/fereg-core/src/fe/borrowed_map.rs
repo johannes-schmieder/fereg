@@ -1,13 +1,12 @@
-use std::fs::OpenOptions;
-use std::io::Write;
 use std::time::Instant;
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
 use crate::fe::{
     BorrowedInterceptFeDesign, FeCertificate, FeSolverKind, LsmrConfig, LsmrPreconditioner,
     MapConfig, SolveReport, SolveStopReason,
 };
+use crate::linalg::neumaier_add;
 use crate::memory::{estimate_fe_solver_memory, FeSolverMemoryBudget, SolverWorkspacePeak};
 use rayon::prelude::*;
 use within::{Effect, LsmrOptions, PreconditionerConfig};
@@ -24,16 +23,6 @@ pub(crate) const FUSED_PARALLEL_MAX_RHS: usize = 64;
 // leave the deterministic reduction under-parallelized.
 pub(crate) const PARALLEL_DOT_CHUNK_ROWS: usize = 512;
 const PARALLEL_GROUP_MAX_RHS: usize = FUSED_PARALLEL_MAX_RHS;
-fn emit_solver_trace(line: &str) {
-    eprintln!("{line}");
-    let Some(path) = std::env::var_os("FEREG_SOLVER_TRACE_FILE") else {
-        return;
-    };
-    if let Ok(mut file) = OpenOptions::new().create(true).append(true).open(path) {
-        let _ = writeln!(file, "{line}");
-    }
-}
-
 /// Objective weights for the strict borrowed-intercept MAP path.
 ///
 /// Unit weights remain structural: the solver never materializes an
@@ -1874,8 +1863,8 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 )?;
                 canonical_certificate.passed &= !force_rejection;
                 report.certification_seconds += certification_started.elapsed().as_secs_f64();
-                if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-                    emit_solver_trace(&format!(
+                if crate::diagnostics::solver_trace_enabled() {
+                    crate::diagnostics::emit_solver_trace(&format!(
                         "FEREG_SOLVER_TRACE|phase=checkpoint_lsmr_attempt|retry={}|recurrence_tolerance={:.17e}|canonical_tolerance={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}|certificate_seconds={:.17e}|canonical_relinf={:.17e}|canonical_passed={}|rhs={}|batch_window={}|threads={}|rows={}",
                         u8::from(accumulated.is_some()), recurrence_tolerance, config.tolerance,
                         report.iterations, report.setup_seconds, report.solve_seconds,
@@ -2205,7 +2194,7 @@ fn absorb_two_fe_pcg_reusing(
     work_limit: SchurWorkLimit,
     retain_coefficients: bool,
 ) -> Result<SchurAttempt> {
-    let trace = std::env::var_os("FEREG_PHASE_TIMING").is_some();
+    let trace = crate::diagnostics::phase_timing_enabled();
     let phase_start = Instant::now();
     let mut operator_seconds = 0.0;
     let mut recurrence_seconds = 0.0;
@@ -2635,8 +2624,8 @@ fn absorb_two_fe_pcg_reusing(
                 })
                 .fold(0.0_f64, f64::max);
             progress_contraction = Some(contraction);
-            if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-                emit_solver_trace(&format!(
+            if crate::diagnostics::solver_trace_enabled() {
+                crate::diagnostics::emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=checkpoint_schur_progress|iterations={iterations}|rhs={rhs_count}|contraction={contraction:.17e}|admitted={}",
                     u8::from(contraction <= GRAPH_MAX_PROGRESS_CONTRACTION),
                 ));
@@ -4056,15 +4045,15 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
         )?;
         #[cfg(test)]
         self.attempted_rhs.push(rhs.len());
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-            emit_solver_trace(&format!(
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=checkpoint_batch|rhs={}|full_rhs={}|selective={}|builds={}|batches={}",
                 rhs.len(), self.values.ncols(), u8::from(selected.is_some()),
                 self.prepared.builds, self.prepared.batches,
             ));
             for rhs in 0..solved.iterations.len() {
                 let position = selected.as_ref().map_or(rhs, |positions| positions[rhs]);
-                emit_solver_trace(&format!(
+                crate::diagnostics::emit_solver_trace(&format!(
                     "FEREG_SOLVER_TRACE|phase=checkpoint_batch_rhs|rhs={position}|converged={}|iterations={}|within_normal={:.17e}",
                     solved.converged[rhs], solved.iterations[rhs], solved.residual[rhs],
                 ));
@@ -4408,8 +4397,8 @@ impl<'a> BorrowedLsmrPrepared<'a> {
         self.batches += 1;
         solved.time_setup += setup_seconds;
         solved.time_total = started.elapsed().as_secs_f64();
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-            emit_solver_trace(&format!(
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=lsmr_session|builds={}|batches={}|rhs={}|setup={setup_seconds:.9}",
                 self.builds, self.batches, rhs.len(),
             ));
@@ -4683,9 +4672,9 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         &mut certificate_workspace,
     )?;
     let certification_seconds = certification_started.elapsed().as_secs_f64();
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
+    if crate::diagnostics::solver_trace_enabled() {
         for rhs in 0..lsmr_values.ncols() {
-            emit_solver_trace(&format!(
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=lsmr_rhs|rhs={rhs}|converged={}|iterations={}|within_normal={:.17e}|fereg_relinf={:.17e}",
                 solved.converged[rhs],
                 solved.iterations[rhs],
@@ -6241,6 +6230,9 @@ fn fused_group_means_by_value(
     let mut scales = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
     let mut sums = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
     let mut corrections = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
+    let scales = &mut scales[..means.len()];
+    let sums = &mut sums[..means.len()];
+    let corrections = &mut corrections[..means.len()];
     let mut weight_sum = 0.0_f64;
     let mut weight_correction = 0.0_f64;
     for &observation in members {
@@ -6250,16 +6242,17 @@ fn fused_group_means_by_value(
             ));
         }
         if weights.values.is_some() {
-            compensated_add(
+            neumaier_add(
                 weights.normalized(observation),
                 &mut weight_sum,
                 &mut weight_correction,
-            )?;
+            );
         }
-        for (rhs, scale) in scales.iter_mut().enumerate().take(means.len()) {
+        for (rhs, scale) in scales.iter_mut().enumerate() {
             *scale = scale.max(value(observation, rhs).abs());
         }
     }
+    compensated_finite(weight_sum, weight_correction)?;
     let total_weight = if weights.values.is_some() {
         weight_sum + weight_correction
     } else {
@@ -6275,11 +6268,11 @@ fn fused_group_means_by_value(
             let weight = weight_values[observation] / weights.raw_scale;
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
-                    compensated_add(
+                    neumaier_add(
                         weight * (value(observation, rhs) / scales[rhs]),
                         &mut sums[rhs],
                         &mut corrections[rhs],
-                    )?;
+                    );
                 }
             }
         }
@@ -6287,14 +6280,17 @@ fn fused_group_means_by_value(
         for &observation in members {
             for rhs in 0..means.len() {
                 if scales[rhs] != 0.0 {
-                    compensated_add(
+                    neumaier_add(
                         value(observation, rhs) / scales[rhs],
                         &mut sums[rhs],
                         &mut corrections[rhs],
-                    )?;
+                    );
                 }
             }
         }
+    }
+    for (&sum, &correction) in sums.iter().zip(corrections.iter()) {
+        compensated_finite(sum, correction)?;
     }
     for rhs in 0..means.len() {
         let mean = if scales[rhs] == 0.0 {
@@ -6334,12 +6330,13 @@ fn group_weight_sum(members: &[usize], weights: ValidatedWeights<'_>, nrows: usi
                 "borrowed MAP membership exceeds the observation axis",
             ));
         }
-        compensated_add(
+        neumaier_add(
             weights.normalized(observation),
             &mut weight_sum,
             &mut weight_correction,
-        )?;
+        );
     }
+    compensated_finite(weight_sum, weight_correction)?;
     let total_weight = weight_sum + weight_correction;
     if total_weight.is_finite() && total_weight > 0.0 {
         Ok(total_weight)
@@ -6371,12 +6368,13 @@ fn group_mean_for_column_with_weight(
     let mut correction = 0.0_f64;
     if scale != 0.0 {
         for &observation in members {
-            compensated_add(
+            neumaier_add(
                 weights.normalized(observation) * (values[(observation, rhs)] / scale),
                 &mut normalized_sum,
                 &mut correction,
-            )?;
+            );
         }
+        compensated_finite(normalized_sum, correction)?;
     }
     let mean = if scale == 0.0 {
         0.0
@@ -6398,25 +6396,22 @@ fn group_means(
     workspace.value_scales.fill(0.0);
     workspace.group_sums.fill(0.0);
     workspace.group_corrections.fill(0.0);
+    let columns = values.ncols();
+    let data = values.as_slice();
+    let scales = &mut workspace.value_scales[..columns];
+    let sums = &mut workspace.group_sums[..columns];
+    let corrections = &mut workspace.group_corrections[..columns];
 
-    let mut weight_sum = 0.0_f64;
-    let mut weight_correction = 0.0_f64;
-    for &observation in members {
-        if observation >= values.nrows() {
-            return Err(invalid_argument(
-                "borrowed MAP membership exceeds the observation axis",
-            ));
-        }
-        compensated_add(
-            weights.normalized(observation),
-            &mut weight_sum,
-            &mut weight_correction,
-        )?;
-        for rhs in 0..values.ncols() {
-            workspace.value_scales[rhs] =
-                workspace.value_scales[rhs].max(values[(observation, rhs)].abs());
-        }
-    }
+    // An installed hardware table runs the same bodies; otherwise they inline.
+    let hardware = crate::kernels::installed();
+    let (rows, raw) = (values.nrows(), weights.raw_scale);
+    let first_pass = match hardware {
+        Some(kernels) => (kernels.group_scales)(weights.values, raw, data, rows, members, scales),
+        None => crate::kernels::group_scales(weights.values, raw, data, rows, members, scales),
+    };
+    let (weight_sum, weight_correction) = first_pass
+        .ok_or_else(|| invalid_argument("borrowed MAP membership exceeds the observation axis"))?;
+    compensated_finite(weight_sum, weight_correction)?;
     let total_weight = weight_sum + weight_correction;
     if !total_weight.is_finite() || total_weight <= 0.0 {
         return Err(invalid_data(
@@ -6424,25 +6419,26 @@ fn group_means(
         ));
     }
 
-    for &observation in members {
-        let weight = weights.normalized(observation);
-        for rhs in 0..values.ncols() {
-            let scale = workspace.value_scales[rhs];
-            if scale == 0.0 {
-                continue;
-            }
-            let term = weight * (values[(observation, rhs)] / scale);
-            compensated_add(
-                term,
-                &mut workspace.group_sums[rhs],
-                &mut workspace.group_corrections[rhs],
-            )?;
-        }
+    // Coordinates are independent; each keeps its scalar Neumaier row order.
+    let second_pass = hardware.map_or(
+        crate::kernels::scaled_group_sums as crate::kernels::ScaledGroupSums,
+        |kernels| kernels.scaled_group_sums,
+    );
+    second_pass(
+        weights.values,
+        raw,
+        data,
+        members,
+        scales,
+        sums,
+        corrections,
+    );
+    for (&sum, &correction) in sums.iter().zip(corrections.iter()) {
+        compensated_finite(sum, correction)?;
     }
 
-    for rhs in 0..values.ncols() {
-        let scale = workspace.value_scales[rhs];
-        let normalized_sum = workspace.group_sums[rhs] + workspace.group_corrections[rhs];
+    for ((&scale, sum), &correction) in scales.iter().zip(sums.iter_mut()).zip(corrections.iter()) {
+        let normalized_sum = *sum + correction;
         let mean = if scale == 0.0 {
             0.0
         } else {
@@ -6451,7 +6447,7 @@ fn group_means(
         if !mean.is_finite() {
             return Err(invalid_data("borrowed MAP group mean is not finite"));
         }
-        workspace.group_sums[rhs] = mean;
+        *sum = mean;
     }
     Ok(total_weight)
 }
@@ -7245,7 +7241,7 @@ fn cg_audit_remaining_energy(
             "borrowed CG Hestenes step disagrees with independent weighted energy",
         ));
     }
-    if std::env::var_os("FEREG_PHASE_TIMING").is_some() {
+    if crate::diagnostics::phase_timing_enabled() {
         eprintln!("FEREG_PHASE|cg_energy_audit|rhs={rhs}|previous={previous:.17e}|decrease={decrease:.17e}|before={before:.17e}|after={after:.17e}");
     }
     Ok(after)
@@ -7428,20 +7424,23 @@ fn weighted_column_norms(
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let updated = *sum + value;
-    let adjustment = if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *correction += adjustment;
-    *sum = updated;
+    neumaier_add(value, sum, correction);
     if !sum.is_finite() || !correction.is_finite() {
         return Err(invalid_data(
             "borrowed MAP compensated accumulation is not finite",
         ));
     }
     Ok(())
+}
+
+fn compensated_finite(sum: f64, correction: f64) -> Result<()> {
+    if sum.is_finite() && correction.is_finite() {
+        Ok(())
+    } else {
+        Err(invalid_data(
+            "borrowed MAP compensated accumulation is not finite",
+        ))
+    }
 }
 
 fn certified_result(
@@ -7533,18 +7532,6 @@ fn reserved_zeros<R: WorkspaceReservation>(
     Ok(output)
 }
 
-fn allocation(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: &'static str) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
 pub(crate) const GRAPH_PROGRESS_CHECK_ITERATIONS: usize = 8;
 pub(crate) const GRAPH_ATTEMPT_MAX_ITERATIONS: usize = 64;
 pub(crate) const GRAPH_MAX_PROGRESS_CONTRACTION: f64 = 0.01;
@@ -7580,8 +7567,8 @@ impl CheckpointSchurCost {
     }
 
     fn trace(&self, values: &DenseMatrix, outcome: &str) {
-        if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-            emit_solver_trace(&format!(
+        if crate::diagnostics::solver_trace_enabled() {
+            crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=checkpoint_schur_attempt|outcome={outcome}|rows={}|rhs={}|probe_budget=0|contraction={:.17e}|iterations={}|setup_seconds={:.17e}|solve_seconds={:.17e}",
                 values.nrows(), values.ncols(), self.contraction,
                 self.iterations, self.setup_seconds, self.solve_seconds,

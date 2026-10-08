@@ -88,6 +88,30 @@ impl FeregError {
     }
 }
 
+/// Allocation, admission or capacity failure.
+#[must_use]
+pub fn allocation(message: impl Into<String>) -> FeregError {
+    FeregError::new(ErrorCode::Allocation, message)
+}
+
+/// Invalid argument or inconsistent dimensions.
+#[must_use]
+pub fn invalid_argument(message: impl Into<String>) -> FeregError {
+    FeregError::new(ErrorCode::InvalidArgument, message)
+}
+
+/// Invalid data value or numerical state.
+#[must_use]
+pub fn invalid_data(message: impl Into<String>) -> FeregError {
+    FeregError::new(ErrorCode::InvalidData, message)
+}
+
+/// Unsupported request.
+#[must_use]
+pub fn unsupported(message: impl Into<String>) -> FeregError {
+    FeregError::new(ErrorCode::Unsupported, message)
+}
+
 impl Display for FeregError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         write!(f, "{}: {}", self.code.label(), self.message)

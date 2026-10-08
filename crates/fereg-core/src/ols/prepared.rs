@@ -10,9 +10,13 @@ use crate::data::{
     DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
     NumericSourceUse, PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
 };
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{
+    allocation, invalid_argument as invalid, invalid_data, unsupported, ErrorCode, FeregError,
+    Result,
+};
 use crate::factorize::{factorize_f64, EncodedFactor};
 use crate::fe::{BorrowedInterceptFeDesign, ValidatedBorrowedInterceptSource};
+use crate::memory::push_reserved;
 use crate::metadata::{
     AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, LevelState, MetadataFlag,
     RawTermKind, SourceId, TimeSeriesState,
@@ -1056,14 +1060,6 @@ impl FeTopologyReservation for SystemFeTopologyReservation {
     }
 }
 
-fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static str) -> Result<()> {
-    if target.len() == target.capacity() {
-        return Err(allocation(label));
-    }
-    target.push(value);
-    Ok(())
-}
-
 fn source_index(source: SourceId) -> Result<usize> {
     usize::try_from(source.get() - 1).map_err(|_| invalid("source id does not fit usize"))
 }
@@ -1342,28 +1338,12 @@ impl NumericDomainPolicy for OlsPreparationPolicy {
     }
 }
 
-fn invalid(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
-}
-
 fn negative_weight(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::NegativeWeight, message)
 }
 
 fn invalid_frequency_weight(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::InvalidFrequencyWeight, message)
-}
-
-fn unsupported(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Unsupported, message)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]

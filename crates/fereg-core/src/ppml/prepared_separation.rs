@@ -7,6 +7,8 @@
 //! design, including absorbed slope channels. Comprehensive projection uses
 //! the shared certified prepared weighted-linear boundary.
 
+use crate::linalg::neumaier_add;
+use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -14,7 +16,7 @@ use std::time::{Duration, Instant};
 use std::cell::Cell;
 
 use crate::data::{DenseMatrix, DropReason, WeightKind};
-use crate::error::{ErrorCode, FeregError, Result};
+use crate::error::{allocation, invalid_argument, ErrorCode, FeregError, Result};
 use crate::fe::{BorrowedMapWeights, FeSolverKind, LevelIndex};
 use crate::ols::{
     fit_prepared_weighted_linear_projection_once, LinearSolveFrame, PreparedOlsBreadWeightScale,
@@ -886,7 +888,6 @@ where
                         &candidate_original_rows,
                         certified,
                         started,
-                        ppml,
                         config,
                     )?;
                     return Ok((simplex_unresolved, true));
@@ -951,7 +952,6 @@ where
                         &candidate_original_rows,
                         certified,
                         started,
-                        ppml,
                         config,
                     )?;
                     return Ok((false, true));
@@ -1054,7 +1054,6 @@ where
                         &candidate_original_rows,
                         certified,
                         started,
-                        ppml,
                         config,
                     )?;
                     return Ok(true);
@@ -1197,7 +1196,6 @@ fn commit_numerical(
     candidate_original_rows: &[usize],
     validated: ValidatedNumericalProposal,
     started: Instant,
-    _ppml: PpmlConfig,
     config: SeparationConfig,
 ) -> Result<()> {
     let ValidatedNumericalProposal {
@@ -2319,8 +2317,8 @@ fn prepared_project(
     }
     let weight_sum = compensated_sum(weights.iter().copied())?;
     let divisor = weights.iter().copied().fold(0.0_f64, f64::max);
-    if std::env::var_os("FEREG_SOLVER_TRACE").is_some() {
-        super::categorical_lsmr::emit_solver_trace_line(&format!(
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
             "FEREG_SOLVER_TRACE|phase=separation_projection|generation={}|rows={}|solver={:?}|minimum_weight={:.17e}",
             generation.generation(), response.len(), fit_config.absorb.solver,
             weights.iter().copied().fold(f64::INFINITY, f64::min)));
@@ -3117,13 +3115,7 @@ fn compensated_sum(values: impl IntoIterator<Item = f64>) -> Result<f64> {
                 "prepared separation projection weights must be finite and positive",
             ));
         }
-        let next = sum + value;
-        correction += if sum.abs() >= value.abs() {
-            (sum - next) + value
-        } else {
-            (value - next) + sum
-        };
-        sum = next;
+        neumaier_add(value, &mut sum, &mut correction);
     }
     let total = sum + correction;
     if !total.is_finite() || total <= 0.0 {
@@ -3484,10 +3476,6 @@ pub(crate) fn certify_disabled_separation_for_test(
     .seal(config, report)
 }
 
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
 fn checked_method_report_capacity(
     candidate_observations: usize,
     method_count: usize,
@@ -3495,24 +3483,6 @@ fn checked_method_report_capacity(
     candidate_observations
         .checked_mul(method_count)
         .ok_or_else(|| allocation("prepared separation method-report capacity overflowed"))
-}
-
-fn fallible_filled<T: Clone>(len: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(len)
-        .map_err(|_| allocation(message))?;
-    output.resize(len, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(values: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(values.len())
-        .map_err(|_| allocation(message))?;
-    output.extend_from_slice(values);
-    Ok(output)
 }
 
 fn fallible_collect<T>(
@@ -3549,10 +3519,6 @@ fn bounded_push<T>(
     }
     output.push(value);
     Ok(())
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
 }
 
 #[cfg(test)]
@@ -4198,7 +4164,6 @@ mod tests {
                 &candidate_rows,
                 wrong_token,
                 Instant::now(),
-                ppml,
                 config,
             )
             .expect_err("mismatched validation capability must fail");

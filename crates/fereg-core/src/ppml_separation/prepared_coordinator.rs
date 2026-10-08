@@ -6,6 +6,7 @@
 //! proposals are cascaded and rebased as one transaction before the method
 //! chain restarts.
 
+use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 
 use crate::error::{ErrorCode, FeregError, Result};
@@ -248,24 +249,6 @@ impl<R: PreparedSeparationRebuilder> PreparedSeparationCoordinator<R> {
             generation: self.generation,
         }
     }
-}
-
-fn fallible_filled<T: Clone>(len: usize, value: T, message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(len)
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
-    output.resize(len, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(values: &[T], message: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(values.len())
-        .map_err(|_| FeregError::new(ErrorCode::Allocation, message))?;
-    output.extend_from_slice(values);
-    Ok(output)
 }
 
 fn validate_sorted_active_rows(rows: &[usize], active: &[bool], label: &str) -> Result<()> {

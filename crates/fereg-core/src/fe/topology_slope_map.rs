@@ -12,8 +12,12 @@ pub(crate) use model_recovery::recover_finalized_model_effects_certified;
 use std::time::Instant;
 
 use crate::data::DenseMatrix;
-use crate::error::{ErrorCode, FeregError, Result};
-use crate::memory::{FeSolverMemoryBudget, SolverWorkspacePeak};
+use crate::error::{allocation, invalid_argument, invalid_data, ErrorCode, FeregError, Result};
+use crate::linalg::neumaier_add;
+use crate::memory::{
+    fallible_copy, fallible_empty as fallible_with_capacity, fallible_filled, FeSolverMemoryBudget,
+    SolverWorkspacePeak,
+};
 use rayon::prelude::*;
 
 use super::{
@@ -3526,14 +3530,7 @@ fn finish(
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
-    let updated = *sum + value;
-    let adjustment = if sum.abs() >= value.abs() {
-        (*sum - updated) + value
-    } else {
-        (value - updated) + *sum
-    };
-    *sum = updated;
-    *correction += adjustment;
+    neumaier_add(value, sum, correction);
     if !sum.is_finite() || !correction.is_finite() {
         return Err(invalid_data(
             "intercept-slope MAP compensated accumulation is not finite",
@@ -3555,26 +3552,6 @@ fn update_scaled_sum(value: f64, scale: &mut f64, sum: &mut f64) {
         let ratio = absolute / *scale;
         *sum += ratio * ratio;
     }
-}
-
-fn fallible_with_capacity<T>(elements: usize, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(label))?;
-    Ok(output)
-}
-
-fn fallible_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = fallible_with_capacity(elements, label)?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn fallible_copy<T: Clone>(source: &[T], label: &'static str) -> Result<Vec<T>> {
-    let mut output = fallible_with_capacity(source.len(), label)?;
-    output.extend_from_slice(source);
-    Ok(output)
 }
 
 fn reserved_zeros<R: SlopeWorkspaceReservation>(
@@ -3607,18 +3584,6 @@ fn reserved_indices<R: SlopeWorkspaceReservation>(
     }
     output.extend(0..elements);
     Ok(output)
-}
-
-fn allocation(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Allocation, message)
-}
-
-fn invalid_argument(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidArgument, message)
-}
-
-fn invalid_data(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::InvalidData, message)
 }
 
 #[cfg(test)]
