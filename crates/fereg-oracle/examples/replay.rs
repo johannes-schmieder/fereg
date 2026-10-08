@@ -1,5 +1,7 @@
 #![deny(clippy::too_many_lines)]
 //! Generate bounded actual-binary cases and independently calculated targets.
+#[path = "replay/bias.rs"]
+mod bias;
 #[allow(dead_code)]
 #[path = "../tests/support/ols_complete_oracle.rs"]
 mod dense;
@@ -100,32 +102,7 @@ fn main() {
             );
         }
     }
-    for randomized in [false, true] {
-        let design = generate(
-            823,
-            &DesignSpec {
-                rows: 120,
-                poisson: true,
-                ..DesignSpec::default()
-            },
-        )
-        .unwrap();
-        let mut request = wire::make(&design, true, "robust", "auto", false);
-        request.bias(&design, randomized);
-        let name = if randomized {
-            "ppml-bias-randomized"
-        } else {
-            "ppml-bias-exact"
-        };
-        request.write(&directory.join(format!("{name}.case")));
-        expected::write(
-            &directory.join(format!("{name}.json")),
-            &design,
-            true,
-            "robust",
-            &request,
-        );
-    }
+    bias::generate(&directory);
     for method in ["fe", "simplex", "ir", "mu"] {
         let design = generate(
             954,

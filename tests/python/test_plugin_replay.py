@@ -1,6 +1,8 @@
 """Acceptance checks must detect numerical/routing drift and distinct harness errors."""
 import copy
 import math
+import json
+import struct
 from pathlib import Path
 import sys
 import unittest
@@ -8,6 +10,7 @@ import tempfile
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'scripts'))
 from replay_plugins import scientific_errors, affected_prefixes, digest, allowed_difference, differences, discrete_view, exact_view, expected_for_fixes
 from replay_psd import eigensystem
+from replay_bias_reference import enrich_expected, REFERENCE, NAMES
 
 
 class ReplayChecks(unittest.TestCase):
@@ -128,3 +131,74 @@ class AffectedScopeChecks(unittest.TestCase):
             bad = copy.deepcopy(changed)
             bad['matrices'][table]['bits'][index] = 'changed decision'
             self.assertNotEqual(discrete_view(result, expected), discrete_view(bad, expected))
+
+
+class IndependentBiasReferenceChecks(unittest.TestCase):
+    def test_input_and_derivation_sources_are_bound_before_scope_is_allowed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            pinned = json.loads(REFERENCE.read_text())
+            reference = root / 'reference.json'
+            for name in NAMES:
+                case = root / (name + '.case')
+                case.write_text('synthetic frozen input for binding validation')
+                pinned['cases'][name]['input_sha256'] = digest(case)
+                reference.write_text(json.dumps(pinned))
+                original = {'outputs': {'sample': 0, 'drop_reason': 1}}
+                expected = enrich_expected(case, original, reference)
+                self.assertNotIn('bias', original)
+                path = '/matrices/RBIAS/bits/3'
+                entry = {'input_sha256': digest(case), 'reason': 'declared arithmetic change',
+                         'allowed_paths': [path]}
+                self.assertEqual(affected_prefixes({'cases': {name: entry}}, case, expected), [path])
+                with self.assertRaises(RuntimeError):
+                    affected_prefixes({'cases': {name: entry}}, case, original)
+                case.write_text('changed input')
+                with self.assertRaisesRegex(RuntimeError, 'input differs'):
+                    enrich_expected(case, original, reference)
+            pinned['sources']['scripts/ppml_bias_oracle.py'] = 'changed source'
+            reference.write_text(json.dumps(pinned))
+            with self.assertRaisesRegex(RuntimeError, 'source changed'):
+                enrich_expected(case, original, reference)
+
+    def bias_fixture(self, name):
+        bias = json.loads(REFERENCE.read_text())['cases'][name]['bias']
+        expected = {'return_code': 0, 'poisson': True, 'beta': [0.], 'covariance': [[1.]],
+                    'outputs': {'sample': 0, 'residual': 1, 'mean': 2},
+                    'sample': [1.], 'rows': [0], 'residual': [0.], 'fitted': [1.], 'bias': bias}
+        diagnostic = [0.] * 21
+        for index, value in {**bias['controls'], **bias['diagnostics']}.items():
+            diagnostic[int(index)] = value
+        def table(values, columns=1):
+            return {'columns': columns, 'bits': [struct.pack('>d', x).hex() for x in values]}
+        result = {'return_code': 0, 'matrices': {
+            'RREC': table([1.]), 'RCERT': table([1.]), 'RB': table([0.]), 'RV': table([1.]),
+            'RBIAS': table(bias['coefficients'], 3), 'RBDIAG': table(diagnostic),
+            'RBSUPPORT': table(bias['support'], 11)},
+            'columns': [['3ff0000000000000'], ['0000000000000000'], ['3ff0000000000000']]}
+        return expected, result
+
+    def test_every_bias_channel_support_and_numerical_diagnostic_is_checked(self):
+        for name in NAMES:
+            expected, result = self.bias_fixture(name)
+            self.assertEqual(scientific_errors(result, expected), [])
+            positions = ([('RBIAS', 3 * row) for row in range(9)] +
+                         [('RBSUPPORT', i) for i in range(22)] +
+                         [('RBDIAG', int(i)) for i in expected['bias']['diagnostics']] +
+                         [('RBDIAG', int(i)) for i in expected['bias']['controls']])
+            for table, index in positions:
+                bad = copy.deepcopy(result)
+                bad['matrices'][table]['bits'][index] = struct.pack('>d', 1000.).hex()
+                self.assertTrue(scientific_errors(bad, expected), (name, table, index))
+
+    def test_zero_slots_support_counts_and_controls_have_exact_checks(self):
+        for name in NAMES:
+            expected, result = self.bias_fixture(name)
+            # Changes below the floating-point comparison allowance must still fail.
+            for table, index in [('RBIAS', 2), ('RBSUPPORT', 6), ('RBDIAG', 4)]:
+                bad = copy.deepcopy(result)
+                bad['matrices'][table]['bits'][index] = struct.pack('>d', 1e-15).hex()
+                self.assertTrue(scientific_errors(bad, expected), (name, table, index))
+        expected, result = self.bias_fixture('ppml-bias-exact')
+        result['matrices']['RBIAS']['bits'][15] = struct.pack('>d', 1e-15).hex()
+        self.assertIn('exact bias uncertainty is nonzero', scientific_errors(result, expected))

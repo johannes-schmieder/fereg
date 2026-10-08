@@ -12,6 +12,7 @@ from pathlib import Path
 import struct
 import subprocess
 from replay_psd import eigensystem
+from replay_bias_reference import enrich_expected
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -297,7 +298,7 @@ def main() -> int:
     identities = {str(p): digest(p) for p in artifacts}
     records = []
     for case in cases:
-        expected = json.loads(case.with_suffix('.json').read_text())
+        expected = enrich_expected(case, json.loads(case.with_suffix('.json').read_text()))
         scoped = affected_prefixes(scope, case, expected)
         candidate = run_case(args.harness, args.plugin.resolve(), case, args.output / (case.stem + '-plugin.json'))
         baseline = run_case(args.harness, args.baseline.resolve(), case, args.output / (case.stem + '-baseline.json')) if args.baseline else None
