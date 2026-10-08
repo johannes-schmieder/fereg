@@ -921,7 +921,7 @@ impl SpiApi for SpiSession {
     }
 
     fn supports_numeric_rows(&self) -> bool {
-        cfg!(target_os = "macos")
+        true
     }
 
     fn read_numeric_rows(

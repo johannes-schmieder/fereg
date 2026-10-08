@@ -112,11 +112,14 @@ if ($LASTEXITCODE -ne 0) { throw "cargo build failed" }
 
 # Exercise the baseline UCRT mul_add path, including true double-rounding
 # witnesses, before accepting the runtime-FMA bit-identity assumption.
+# Capture stdout only: PowerShell 5.1 can treat redirected native stderr as
+# terminating errors even for Cargo's ordinary compilation progress.
 $ArithmeticOutput = & cargo test --manifest-path "$Root\Cargo.toml" --locked `
     --profile ci -p fereg-core --target $Target --lib `
-    kernels::tests::platform_mul_add_is_exactly_rounded -- --exact 2>&1
+    kernels::tests::platform_mul_add_is_exactly_rounded -- --exact
 if ($LASTEXITCODE -ne 0 -or
     -not (($ArithmeticOutput -join "`n") -match 'test result: ok\. 1 passed; 0 failed;')) {
+    $ArithmeticOutput | ForEach-Object { Write-Host $_ }
     throw "Windows exact-FMA arithmetic check failed or did not run"
 }
 Write-Host "Windows exact-FMA arithmetic check: PASS"
@@ -129,6 +132,21 @@ if ($LASTEXITCODE -ne 0) { throw "stplugin.c compilation failed" }
 cl.exe /nologo /c /O2 /MT /W4 /WX /TC /DSYSTEM=STWIN32 /I"$Root\plugin" `
     /Fo$BridgeObj "$Root\plugin\stata_bridge.c"
 if ($LASTEXITCODE -ne 0) { throw "stata_bridge.c compilation failed" }
+
+$GuardObj = Join-Path $Build "numeric_batch_guard_test.obj"
+$GuardExe = Join-Path $Build "numeric_batch_guard_test.exe"
+cl.exe /nologo /c /std:c11 /O2 /MT /W4 /WX /TC /DSYSTEM=STWIN32 /I"$Root\plugin" `
+    /Fo$GuardObj "$Root\tests\mock_spi\numeric_batch_guard_test.c"
+if ($LASTEXITCODE -ne 0) { throw "numeric batch guard compilation failed" }
+link.exe /NOLOGO /OUT:$GuardExe $StpluginObj $BridgeObj $GuardObj kernel32.lib
+if ($LASTEXITCODE -ne 0) { throw "numeric batch guard link failed" }
+$GuardOutput = & $GuardExe
+if ($LASTEXITCODE -ne 0 -or
+    $GuardOutput -cnotcontains 'INPUT_GUARD_PASS' -or
+    $GuardOutput -cnotcontains 'OUTPUT_GUARD_PASS') {
+    throw "Windows numeric batch guard check failed or did not run"
+}
+Write-Host "Windows numeric batch guard check: PASS"
 
 $RustLib = Join-Path $Root "target\$Target\release\fereg_plugin.lib"
 $Plugin = Join-Path $Dist "fereg_windows.plugin"

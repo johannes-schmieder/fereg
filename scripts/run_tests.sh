@@ -38,6 +38,7 @@ if [[ -f scripts/check_sizes.sh ]]; then
   bash scripts/check_sizes.sh
 fi
 tests/mock_spi/run_mock_bridge_test.sh
+bash tests/mock_spi/run_numeric_batch_guard_test.sh
 if [[ "$(uname -s)" == Linux ]]; then
   tests/mock_spi/run_mock_linux_plugin_audit.sh
 else

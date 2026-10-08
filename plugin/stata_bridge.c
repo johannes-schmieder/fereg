@@ -188,11 +188,9 @@ ST_int fereg_spi_vdata_columns(
     ST_int observation;
     ST_int variable;
     ST_int rc;
-#if SYSTEM==APPLEMAC
     ST_int (*reader)(ST_int, ST_int, ST_double *);
     ST_int observations;
     ST_int variables_available;
-#endif
     if (variables == NULL || columns == NULL || missing_value == NULL || variable_count <= 0 ||
         first_observation <= 0 || observation_count <= 0) {
         return FEREG_SPI_RC_SYNTAX;
@@ -200,9 +198,8 @@ ST_int fereg_spi_vdata_columns(
     if (fereg_bridge_require_main_thread() != 0) {
         return FEREG_SPI_RC_UNAVAILABLE;
     }
-#if SYSTEM==APPLEMAC
     /* Numeric batch addresses are checked once before using the SDK's direct
-       accessor. Scalar reads and other platforms retain SF_vdata checks. */
+       accessor. Scalar reads retain SF_vdata checks on every platform. */
     observations = SF_nobs();
     variables_available = SF_nvars();
     if (first_observation > observations ||
@@ -218,21 +215,11 @@ ST_int fereg_spi_vdata_columns(
     }
     reader = _stata_->vdata;
     if (reader == NULL) return FEREG_SPI_RC_UNAVAILABLE;
-#endif
     *missing_value = SV_missval;
     for (observation = 0; observation < observation_count; ++observation) {
         for (variable = 0; variable < variable_count; ++variable) {
-#if SYSTEM==APPLEMAC
             rc = reader(variables[variable], first_observation + observation,
                         &columns[variable][observation]);
-#else
-            if (columns[variable] == NULL) return FEREG_SPI_RC_SYNTAX;
-            rc = SF_vdata(
-                variables[variable],
-                first_observation + observation,
-                &columns[variable][observation]
-            );
-#endif
             if (rc != 0) return rc;
         }
     }
@@ -248,7 +235,6 @@ ST_int fereg_spi_vdata_rows(
     ST_double *missing_value
 )
 {
-#if SYSTEM==APPLEMAC
     ST_int observation, variable, rc;
     ST_int observations, variables_available;
     ST_int (*reader)(ST_int, ST_int, ST_double *);
@@ -290,11 +276,6 @@ ST_int fereg_spi_vdata_rows(
         }
     }
     return 0;
-#else
-    (void)variables; (void)variable_count; (void)first_observation;
-    (void)observation_count; (void)values; (void)missing_value;
-    return FEREG_SPI_RC_UNAVAILABLE;
-#endif
 }
 
 ST_int fereg_spi_vstore(ST_int variable, ST_int observation, ST_double value)

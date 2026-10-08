@@ -1,9 +1,13 @@
-/* Exercise the Mac numeric batch with a callback that must never receive
+/* Exercise the guarded numeric batch with a callback that must never receive
    an invalid address; no invalid access is attempted against live Stata. */
 #include "stata_bridge.h"
 #include <assert.h>
 #include <limits.h>
+#if SYSTEM == STWIN32
+#include <windows.h>
+#else
 #include <pthread.h>
+#endif
 #include <stdio.h>
 #include <string.h>
 
@@ -34,7 +38,7 @@ static ST_int read_value(ST_int v, ST_int o, ST_double *d)
 static ST_int checked_read(ST_int v, ST_int o, ST_double *d)
 {
     (void)v; (void)o; (void)d;
-    assert(0 && "Mac numeric batches must select the guarded direct accessor");
+    assert(0 && "Numeric batches must select the guarded direct accessor");
     return 498;
 }
 
@@ -43,24 +47,37 @@ ST_int fereg_dispatch(ST_int argc, const char *const *argv)
     (void)argc; (void)argv; return 0;
 }
 
-static void *worker(void *unused)
+static void worker_checks(void)
 {
     int vars[] = {1};
     double data[1], *cols[] = {data}, missing;
-    (void)unused;
     assert(fereg_spi_vdata_columns(vars, 1, 1, 1, cols, &missing) == 498);
     assert(fereg_spi_vdata_rows(vars, 1, 1, 1, data, &missing) == 498);
     const double *outputs[] = {data};
     assert(fereg_spi_vstore_columns(vars, 1, 1, outputs) == 498);
+}
+
+#if SYSTEM == STWIN32
+static DWORD WINAPI worker(LPVOID unused)
+{
+    (void)unused;
+    worker_checks();
+    return 0;
+}
+#else
+static void *worker(void *unused)
+{
+    (void)unused;
+    worker_checks();
     return NULL;
 }
+#endif
 
 int main(void)
 {
     ST_plugin plugin;
     int vars[] = {4, 1, 2};
     double a[4] = {0}, b[4] = {0}, c[4] = {0}, *cols[] = {a, b, c}, missing;
-    pthread_t thread;
     memset(&plugin, 0, sizeof(plugin));
     plugin.nobs = nobs; plugin.nvars = nvars; plugin.isstr = isstr;
     plugin.safevdata = checked_read; plugin.vdata = read_value;
@@ -70,8 +87,16 @@ int main(void)
     assert(pginit(&plugin) == SD_PLUGINVER);
     assert(fereg_spi_vdata_columns(vars, 3, 1, 4, cols, &missing) == 498);
     assert(stata_call(0, NULL) == 0);
+#if SYSTEM == STWIN32
+    HANDLE thread = CreateThread(NULL, 0, worker, NULL, 0, NULL);
+    assert(thread != NULL);
+    assert(WaitForSingleObject(thread, INFINITE) == WAIT_OBJECT_0);
+    assert(CloseHandle(thread));
+#else
+    pthread_t thread;
     assert(pthread_create(&thread, NULL, worker, NULL) == 0);
     assert(pthread_join(thread, NULL) == 0);
+#endif
     assert(calls == 0);
     assert(fereg_spi_vdata_columns(vars, 3, 65537, 4, cols, &missing) == 0);
     assert(calls == 12 && a[0] == 465537 && b[3] == 165540 && c[3] == 265540);
