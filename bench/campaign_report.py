@@ -34,6 +34,10 @@ DESIGNS = {'akm-baseline': 'AKM baseline', 'one-fe': 'One FE',
            'two-dense': 'Two FE / dense', 'two-sparse': 'Two FE / sparse',
            'three-dense': 'Three FE / dense', 'three-sparse': 'Three FE / sparse'}
 VCE_NAMES = {'iid': 'Regular', 'robust': 'Robust', 'cluster': 'Worker cluster'}
+TIMING_FOOTNOTE = ('* Descriptive timing outside the three-repetition scientific comparison. '
+                   'Discrepancies include precision, FE degrees of freedom and saved-prediction scores; '
+                   'see the discrepancy appendix. n=1 denotes one completed fit. '
+                   'Time ratios require scientific agreement.')
 
 
 def planned_arms(cell):
@@ -117,6 +121,7 @@ def summarize(campaign):
             reasons.update(repeat_checks.get(cell['id'], []))
             eligible = valid and not reasons if arm == 'fereg' else valid and not reasons and len(paired) == count
             times = [float(r['metadata']['seconds']) for r in runs if r['status'] == 'ok']
+            observed = [value for r in runs if (value := completed_seconds(r)) is not None]
             resolved_memory = valid and all(r.get('memory_sweeps', 0) >= 10 for r in runs)
             memory = median(r['estimator_tree_rss_bytes'] for r in runs)/2**30 if resolved_memory else None
             rows.append(dict(cell=cell['id'], model=cell['model'], design=cell['design'], rows=cell['rows'],
@@ -125,10 +130,70 @@ def summarize(campaign):
                              eligible=eligible, reasons='; '.join(sorted(reasons)),
                              seconds=median(times) if valid else None,
                              seconds_min=min(times) if valid else None, seconds_max=max(times) if valid else None,
+                             timed_repetitions=len(observed), observed_seconds=median(observed) if observed else None,
+                             timing_discrepancy=bool(observed) and not eligible,
                              speedup=median(paired) if eligible and paired else None,
                              rss_gib=memory, memory_resolved=resolved_memory,
                              host=runs[0].get('host'), statuses='; '.join(r['status'] for r in runs)))
     return pd.DataFrame(rows)
+
+
+def completed_seconds(record):
+    """A finished command can supply descriptive timing despite a science failure."""
+    meta = record.get('metadata', {})
+    if (record.get('status') not in ['ok', 'capture-error'] or record.get('process_rc') != 0
+            or str(meta.get('rc', '')).strip() != '0' or str(meta.get('complete', '')).strip() != '1'):
+        return None
+    try:
+        seconds = float(meta['seconds'])
+        if record['arm'] in ['fereg', 'reghdfe', 'ppmlhdfe']:
+            resolution = float(meta['clock_resolution'])
+            if not 0 < resolution <= 5e-7:
+                return None
+    except (KeyError, TypeError, ValueError):
+        return None
+    return seconds if np.isfinite(seconds) and seconds > 0 else None
+
+
+def timing_cell(row):
+    if not row.timed_repetitions:
+        return 'NR'
+    value = number(row.observed_seconds)
+    if row.timing_discrepancy:
+        value += '*'
+    if row.timed_repetitions != 3:
+        value += f'<br/><font size="6">n={row.timed_repetitions}</font>'
+    return value
+
+
+def load_saved_retests(root):
+    """Keep the accepted repair experiment separate from production medians."""
+    from campaign_collect import accounting_records
+    result = json.loads((root/'results.json').read_text())
+    if not result.get('complete') or not result.get('frozen_original_inventory_pass') or not (root/'COMPLETE').is_file():
+        raise ValueError('saved-FE retest is incomplete')
+    for line in (root/'code/SHA256SUMS').read_text().splitlines():
+        expected, name = line.split('  ', 1)
+        path = Path(name)
+        if path.is_absolute() or '..' in path.parts or hashlib.sha256((root/'code'/path).read_bytes()).hexdigest() != expected:
+            raise ValueError('saved-FE retest code identity changed')
+    jobs = accounting_records((root/'accounting.txt').read_text())
+    if (len(jobs) != 1 or str(jobs[0]['jobnumber']) != str(result['job']) or
+            int(jobs[0]['failed']) != 0 or int(jobs[0]['exit_status']) != 0 or int(jobs[0]['slots']) != 28):
+        raise ValueError('saved-FE retest accounting is unsuccessful')
+    log = (root/'logs/job.sge').read_text()
+    if 'SAVED_FE_JOB_COMPLETE' not in log or 'SAVED_FE_FIXEST_TEST_PASS' not in log:
+        raise ValueError('saved-FE retest application evidence is incomplete')
+    for record in result['wrapper_retests']:
+        directory = root/'wrapper'/record['cell']/record['arm']
+        if ('CAMPAIGN_COMPLETE rc=0' not in (directory/'process.log').read_text()
+                or str(record['metadata'].get('rc')).strip() != '0'
+                or str(record['metadata'].get('complete')).strip() != '1'
+                or not np.isfinite(float(record['metadata']['seconds']))
+                or float(record['metadata']['seconds']) <= 0):
+            raise ValueError('saved-FE wrapper timing is incomplete')
+    result['accounting'] = jobs[0]
+    return result
 
 
 def check_native_repetitions(campaign):
@@ -246,8 +311,10 @@ def scaling_plot(frame, output):
                        (frame.rows == 1000000) & (~frame.save_fe) &
                        (frame.vce == ('iid' if model == 'ols' else 'robust'))]
         for arm in ['fereg', 'fixest', 'reghdfe' if model == 'ols' else 'ppmlhdfe']:
-            selected = subset[(subset.arm == arm) & subset.eligible].sort_values('threads')
-            ax.plot(selected.threads, selected.seconds, marker='o', color=ARM_COLORS[arm], label=ARM_NAMES[arm])
+            selected = subset[(subset.arm == arm) & (subset.timed_repetitions == 3)].sort_values('threads')
+            ax.plot(selected.threads, selected.observed_seconds, marker='o', color=ARM_COLORS[arm], label=ARM_NAMES[arm])
+            flagged = selected[selected.timing_discrepancy]
+            ax.scatter(flagged.threads, flagged.observed_seconds, marker='*', s=100, color=ARM_COLORS[arm], zorder=4)
         ax.set(title=model.upper(), xlabel='Physical cores', ylabel='Median estimation seconds')
         ax.set_xticks([1, 4, 8, 16]); ax.set_yscale('log'); ax.grid(axis='y', alpha=.6)
     axes[1].legend(frameon=False, fontsize=8)
@@ -260,8 +327,10 @@ def breadth_plot(frame, model, output):
         subset = frame[(frame.model == model) & (frame.design == design) & (frame.threads == 4) &
                        (~frame.save_fe) & (frame.vce == ('iid' if model == 'ols' else 'robust'))]
         for arm in ['fereg', 'fixest', 'reghdfe' if model == 'ols' else 'ppmlhdfe']:
-            selected = subset[(subset.arm == arm) & subset.eligible].sort_values('rows')
-            ax.plot(selected.rows, selected.seconds, marker='o', color=ARM_COLORS[arm], label=ARM_NAMES[arm])
+            selected = subset[(subset.arm == arm) & (subset.timed_repetitions == 3)].sort_values('rows')
+            ax.plot(selected.rows, selected.observed_seconds, marker='o', color=ARM_COLORS[arm], label=ARM_NAMES[arm])
+            flagged = selected[selected.timing_discrepancy]
+            ax.scatter(flagged.rows, flagged.observed_seconds, marker='*', s=100, color=ARM_COLORS[arm], zorder=4)
         ax.set_title(DESIGNS[design], loc='left', fontsize=10)
         ax.set_xscale('log'); ax.set_yscale('log')
         ax.set_xticks([100000, 1000000, 4000000], labels=['100k', '1m', '4m'])
@@ -287,6 +356,8 @@ class CampaignPDF:
                                        leading=11, textColor=colors.HexColor(INK)))
         self.styles.add(ParagraphStyle('CellCustom', fontName='CampaignSans', fontSize=8,
                                        leading=10, textColor=colors.HexColor(INK), alignment=TA_LEFT))
+        self.styles.add(ParagraphStyle('FootnoteCustom', fontName='CampaignSans', fontSize=7,
+                                       leading=9, textColor=colors.HexColor(INK)))
 
     def text(self, value, style='BodyText'):
         value = value.translate(str.maketrans({'\u2013': '-', '\u2014': '-', '\u2011': '-', '\u2212': '-'}))
@@ -323,11 +394,14 @@ class CampaignPDF:
             canvas.drawString(36, 775, 'FEREG  /  SCC BENCHMARK CAMPAIGN')
             canvas.drawString(36, 23, self.identity)
             canvas.drawRightString(576, 23, str(doc.page))
+            note = Paragraph(TIMING_FOOTNOTE, self.styles['FootnoteCustom'])
+            note.wrap(540, 40)
+            note.drawOn(canvas, 36, 33)
             canvas.restoreState()
         doc = BaseDocTemplate(str(self.path), pagesize=(612, 792),
                               title='fereg SCC benchmark campaign', author='fereg project',
-                              leftMargin=36, rightMargin=36, topMargin=50, bottomMargin=40)
-        doc.addPageTemplates(PageTemplate(id='campaign', frames=[Frame(36, 40, 540, 700,
+                              leftMargin=36, rightMargin=36, topMargin=50, bottomMargin=66)
+        doc.addPageTemplates(PageTemplate(id='campaign', frames=[Frame(36, 66, 540, 674,
                                                  leftPadding=0, rightPadding=0,
                                                  topPadding=0, bottomPadding=0)], onPage=decoration))
         doc.build(self.story)
@@ -338,12 +412,14 @@ def comparison_cell(frame, cell, arm, metric='seconds'):
     if selected.empty:
         return '-'
     row = selected.iloc[0]
+    if metric == 'seconds':
+        return timing_cell(row)
     if not row.eligible:
         return 'NR'
     return number(row[metric])
 
 
-def render(campaign, frame, output):
+def render(campaign, frame, output, saved_retests=None):
     output.mkdir(parents=True, exist_ok=True)
     frame.to_csv(output/'configuration-summary.csv', index=False)
     flat_records = []
@@ -379,7 +455,8 @@ def render(campaign, frame, output):
               [115, 105, 165, 155])
     pdf.text(f"<b>{len(eligible)} of {len(pairs)} primary package comparisons</b> meet the scientific gates in all three paired repetitions. "
              f"{statuses.get('ok', 0)} captures succeeded; {statuses.get('skipped-after-failure', 0)} planned repetitions were skipped after an earlier failure. "
-             "Unresolved results are marked NR and do not enter speed comparisons.")
+             "Completed timings with result discrepancies are shown with an asterisk. "
+             "Failed or incomplete commands remain NR; only validated comparisons enter time ratios.")
     if not eligible.empty:
         byarm = []
         for arm, group in eligible.groupby('arm'):
@@ -428,7 +505,8 @@ def render(campaign, frame, output):
     if any('vapply(saved' in r.get('metadata', {}).get('error', '') for r in campaign['records']):
         pdf.text('A confirmed R capture limitation affects large numeric FE labels: as.character formats some labels in scientific notation, '
                  'while saved-effect names use integer strings. Those lookup errors are harness failures, not evidence of a fixest estimation failure. '
-                 'Stock Stata saved predictions fail the independent model-score check and require further adjudication. '
+                 'Repaired one-fit measurements appear in a separate retest panel. '
+                 'Stock Stata saved predictions fail the independent model-score check; completed command times are marked *. '
                  'The original evidence and stopping rules are retained.', 'SmallCustom')
 
     pdf.page('The comparison protocol')
@@ -456,10 +534,13 @@ def render(campaign, frame, output):
              'Its default and stricter convergence profiles are separate. Stock Stata differences remain visible. '
              'NR means unavailable or unresolved; a displayed ratio requires a successful scientific comparison. '
              'A ratio above 1 means the comparator took longer than fereg.', 'SmallCustom')
+    pdf.text('<b>Descriptive timings.</b> A completed command can supply an observed time even when its results fail comparison checks. '
+             'Those values carry *. Three completed commands give a median; n=1 labels a single observation after later repetitions were skipped. '
+             'Scientific eligibility and tolerances are unchanged. Failed FE lookup calls and timeouts do not supply completed timings.', 'SmallCustom')
 
     for model in ['ols', 'ppml']:
         pdf.page(f'{model.upper()}: the four-core AKM baseline')
-        pdf.text('1,000,000 observations · worker and firm FE · 16 controls · three paired repetitions')
+        pdf.text('1,000,000 observations · worker and firm FE · 16 controls · three planned repetitions; n=1 labels a single completed fit')
         cells = [c for c in manifest['cells'] if c['model'] == model and c['section'] == 'baseline']
         comparator = 'reghdfe' if model == 'ols' else 'ppmlhdfe'
         rows = [['Covariance / output', 'fereg<br/>seconds', 'fixest<br/>seconds', f'{comparator}<br/>seconds',
@@ -501,13 +582,13 @@ def render(campaign, frame, output):
             rows.append([f'{model.upper()} / {row.threads}', comparison_cell(frame, row.cell, 'fereg'),
                          comparison_cell(frame, row.cell, 'fixest'), comparison_cell(frame, row.cell, 'fixest', 'speedup')])
     pdf.table(rows, [150, 130, 130, 130])
-    pdf.text('Logarithmic seconds axis. A missing comparator point is an unresolved scientific comparison. '
+    pdf.text('Logarithmic seconds axis. Star markers identify result discrepancies; curves use three completed repetitions. '
              'Selected 16-core clustered/saved and dense/sparse cases appear in the configuration appendix.', 'SmallCustom')
 
     for model in ['ols', 'ppml']:
         pdf.page(f'{model.upper()}: size and graph structure')
         pdf.text('Four-core fits · no saved FE · '+('regular covariance' if model == 'ols' else 'robust covariance')+
-                 ' · logarithmic axes. Comparator points require three eligible repetitions; missing points are NR.')
+                 ' · logarithmic axes. Points require three completed repetitions; star markers identify result discrepancies.')
         pdf.figure(output/f'{model}-breadth.png', 5.65)
         pdf.text('Dense designs repeat Cartesian combinations. Sparse designs use 2% worker mobility; the three-way design adds a 32-level categorical FE. '
                  'Observation counts change the number of workers and firms as well as data volume. Actual graph counts are recorded below.', 'SmallCustom')
@@ -547,7 +628,7 @@ def render(campaign, frame, output):
     pdf.table([['Capture / planned-repetition status', 'Count']]+[[key, value] for key, value in sorted(statuses.items())], [380, 160], padding=4)
     pdf.text(f"{len(campaign['records'])-statuses.get('skipped-after-failure', 0)} fits were attempted. "
              'All manifest positions are accounted for; failed commands were not automatically retried. '
-             'NR includes capture limitations, preplanned timeouts and successful fits that fail the comparison gates.', 'SmallCustom')
+             'Incomplete command timings remain NR. Scientific failures retain their flags and are shown with * when command timings are complete.', 'SmallCustom')
     failures = pairs[~pairs.eligible]
     reason_counts = Counter(reason for value in failures.reasons for reason in value.split('; ') if reason)
     pdf.table([['Primary comparison gate (counts overlap)', 'Configurations']]+[[key, value] for key, value in reason_counts.most_common()], [380, 160], padding=4)
@@ -558,11 +639,42 @@ def render(campaign, frame, output):
         rows = [['PPML stricter profile', 'Seconds', 'strict / fereg', 'Result']]
         for row in strict.itertuples():
             rows.append([DESIGNS[row.design]+' / '+VCE_NAMES[row.vce]+(' / saved' if row.save_fe else ''),
-                         number(row.seconds) if row.eligible else 'NR', number(row.speedup) if row.eligible else 'NR',
+                         timing_cell(row), number(row.speedup) if row.eligible else 'NR',
                          'eligible' if row.eligible else row.reasons or row.statuses])
         pdf.table(rows, [225, 75, 90, 150], padding=4)
-    pdf.text('NR cells remain in the appendix and CSVs. Successful raw runtimes in an unresolved cell are observations, '
+    pdf.text('Discrepancies remain in the appendix and CSVs. Starred runtimes in an unresolved cell are observations, '
              'not validated package comparisons. No tolerance was loosened to make a timing eligible.', 'SmallCustom')
+
+    if saved_retests is not None:
+        pdf.page('Repaired fixest saved-FE retests')
+        pdf.text('One million observations / AKM baseline / 16 controls. Numeric ID lookup was repaired and all nine wrapper calls completed. '
+                 'These are separate single-fit measurements from a later reserved node; they are not substituted into production medians or paired ratios.')
+        rows = [['Model / cores / covariance', 'Profile', 'Seconds', 'Single-fit result checks']]
+        for record in saved_retests['wrapper_retests']:
+            cell = next(c for c in manifest['cells'] if c['id'] == record['cell'])
+            reasons = record['comparison'].get('reasons', [])
+            result = ('Matched native witness' if record['comparison']['eligible'] else
+                      'Model score failed' if record.get('error') == 'saved predictor fails independent model score' else
+                      '; '.join(reasons).replace('_', ' '))
+            rows.append([f"{cell['model'].upper()} / {cell['threads']} / {VCE_NAMES[cell['vce']]}",
+                         'Strict' if record['arm'] == 'fixest-strict' else 'Default',
+                         number(float(record['metadata']['seconds']))+'*<br/><font size="6">n=1</font>', result])
+        pdf.table(rows, [190, 65, 70, 215])
+        pdf.text('Saved reconstructions agree with fixest built-in predictions within 1.1e-13. '
+                 'Default OLS retests pass the score check but fail the fitted-value comparison; default PPML retests fail the score check. '
+                 'Both stricter PPML saved-output retests match the native scientific witness.')
+        pdf.text('The Stata investigation exactly reproduced all original saved predictions. In million-row OLS, reghdfe saved recovery had '
+                 'a score of 3.91e-6 versus 3.66e-8 for its built-in residual-based predictor; tightening tolerance reduced the saved score to 7.44e-10. '
+                 'ppmlhdfe built-in predictions also failed the score gate. The precise PPML convergence/postestimation cause remains unresolved.', 'SmallCustom')
+        job = saved_retests['accounting']
+        pdf.text(f"Retest job {saved_retests['job']} / {job['hostname']} / 28 reserved cores / "
+                 f"{float(job['ru_wallclock'])/60:.1f} wall minutes / exit=0, failed=0. "
+                 'Estimator artifacts and original scientific tolerances were unchanged. '
+                 'The diagnostic experiment checked 40 fits in addition to these nine wrapper calls.', 'SmallCustom')
+        pd.DataFrame([{'cell':r['cell'],'arm':r['arm'],'seconds':float(r['metadata']['seconds']),
+                       'repetitions':1,'comparison_pass':r['comparison']['eligible'],
+                       'reasons':'; '.join(r['comparison'].get('reasons',[])),'job':saved_retests['job']}
+                      for r in saved_retests['wrapper_retests']]).to_csv(output/'saved-fe-retests.csv',index=False)
 
     pdf.page('Artifacts, tolerances and provenance')
     pdf.table([['Artifact', 'Identity / policy'],
@@ -600,8 +712,8 @@ def render(campaign, frame, output):
 
     unresolved = frame[~frame.eligible]
     for start in range(0, len(unresolved), 12):
-        pdf.page(f'Unresolved configuration details ({start//12+1}/{(len(unresolved)+11)//12})')
-        pdf.text('Every entry below is NR in the corresponding timing panel. Scientific mismatches use unchanged SPEC tolerances. '
+        pdf.page(f'Result discrepancies and unavailable timings ({start//12+1}/{(len(unresolved)+11)//12})')
+        pdf.text('Every entry below fails scientific eligibility. Completed times carry *; unavailable times remain NR. Scientific mismatches use unchanged SPEC tolerances. '
                  'A capture limitation is not an estimator ranking; later repetitions were skipped after failed commands.', 'SmallCustom')
         rows = [['Configuration', 'Package', 'Reason']]
         for row in unresolved.iloc[start:start+12].itertuples():
@@ -617,7 +729,7 @@ def render(campaign, frame, output):
         midpoint = (len(cells)+1)//2
         for part, chunk in enumerate([cells[:midpoint], cells[midpoint:]], 1):
             pdf.page(f'Configuration appendix: {model.upper()} ({part}/2)')
-            pdf.text('Median seconds and comparator/fereg ratios. NR means the full scientific/timing gate is not met; “–” means the comparator was not scheduled. '
+            pdf.text('Median seconds, with * for result discrepancies and n=1 for a single completed fit. NR means no completed timing or no validated ratio; “–” means the comparator was not scheduled. '
                      'K=16 in every cell.', 'SmallCustom')
             rows = [['Design / N', 'Cores / VCE / saved', 'fereg s', 'fixest s', f'{comparator} s', 'fixest ×', 'Stata ×']]
             for c in chunk:
@@ -652,6 +764,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('root', type=Path)
     parser.add_argument('--output', type=Path, required=True)
+    parser.add_argument('--saved-fe-retests', type=Path)
     args = parser.parse_args()
     campaign = load_campaign(args.root)
-    print(render(campaign, summarize(campaign), args.output))
+    retests = load_saved_retests(args.saved_fe_retests) if args.saved_fe_retests else None
+    print(render(campaign, summarize(campaign), args.output, retests))

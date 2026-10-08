@@ -7,7 +7,7 @@ import unittest
 import numpy as np
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from campaign import POLICY
-from campaign_report import summarize, planned_arms
+from campaign_report import summarize, planned_arms, comparison_cell, completed_seconds
 from campaign_collect import accounting_records
 
 
@@ -25,7 +25,8 @@ def fixture():
             for rep in [1, 2, 3]:
                 records.append(dict(cell=cell['id'], arm=arm, repetition=rep, status='ok',
                                     metadata=dict(seconds=2 if arm == 'fereg' else 6, rss=1,
-                                                  fereg_threads=cell['threads']),
+                                                  fereg_threads=cell['threads'],rc='0',complete='1',clock_resolution=1e-9),
+                                    process_rc=0,
                                     capture=copy.deepcopy(capture), host='same',
                                     estimator_tree_rss_bytes=2**30, memory_sweeps=20))
                 if arm != 'fereg':
@@ -46,6 +47,35 @@ class CampaignReportTests(unittest.TestCase):
         self.assertFalse(row.eligible)
         self.assertTrue(np.isnan(row.speedup))
         self.assertIn('covariance', row.reasons)
+        self.assertEqual(row.timed_repetitions,3)
+        self.assertEqual(comparison_cell(result,'cell-4','fixest'),'6.00*')
+        self.assertEqual(comparison_cell(result,'cell-4','fixest','speedup'),'NR')
+
+    def test_completed_science_failure_can_show_one_timing(self):
+        campaign=fixture()
+        runs=[r for r in campaign['records'] if r['cell']=='cell-4' and r['arm']=='reghdfe']
+        runs[0].update(status='capture-error',error='saved predictor fails independent model score')
+        for run in runs[1:]:run.update(status='skipped-after-failure',metadata={})
+        result=summarize(campaign)
+        row=result[(result.cell=='cell-4') & (result.arm=='reghdfe')].iloc[0]
+        self.assertFalse(row.eligible)
+        self.assertEqual(row.timed_repetitions,1)
+        self.assertEqual(row.observed_seconds,6)
+        self.assertTrue(np.isnan(row.seconds))
+        self.assertIn('6.00*',comparison_cell(result,'cell-4','reghdfe'))
+        self.assertIn('n=1',comparison_cell(result,'cell-4','reghdfe'))
+        self.assertEqual(comparison_cell(result,'cell-4','reghdfe','speedup'),'NR')
+
+    def test_failed_commands_do_not_supply_completed_timings(self):
+        record=fixture()['records'][0]
+        self.assertEqual(completed_seconds(record),2)
+        for update in [dict(status='error'),dict(status='timeout'),dict(status='command-timeout'),
+                       dict(process_rc=1),dict(metadata=dict(record['metadata'],rc='1')),
+                       dict(metadata=dict(record['metadata'],complete='0')),
+                       dict(metadata=dict(record['metadata'],seconds=float('nan'))),
+                       dict(metadata=dict(record['metadata'],clock_resolution=.01))]:
+            candidate=copy.deepcopy(record);candidate.update(update)
+            self.assertIsNone(completed_seconds(candidate))
 
     def test_worker_drift_excludes_higher_core_comparison(self):
         campaign = fixture()

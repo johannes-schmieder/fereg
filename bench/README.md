@@ -66,6 +66,10 @@ dummy-design oracle independently checks the normalized rank before production.
 Samples, all finite coefficient/covariance coordinates, objectives and saved
 predictions are checked at SPEC tolerances. Only three valid paired repetitions
 enter timing ratios; failed, timed-out, skipped and unattempted cells remain visible.
+Completed command times may also be displayed with an asterisk when result checks
+fail; these are descriptive observations with unchanged scientific failure flags.
+Three completed commands give a median, and a single completed command is labelled
+`n=1`. Errors during requested FE recovery and timeouts supply no completed timing.
 The small dummy-design oracle validates coefficients, full covariance and fitted
 values independently; it does not adjudicate every large production discrepancy.
 
@@ -91,5 +95,8 @@ task results. It leaves the datasets and row exports on SCC. With Matplotlib and
 ReportLab available, `campaign_report.py <collected-directory> --output <directory>`
 produces a PDF and two CSVs. The report rejects incomplete job evidence, requires
 all three paired repetitions for ratios, checks exact native repeatability and
-cross-worker scientific agreement, and marks unresolved results NR. Render and
-inspect every PDF page before delivery.
+cross-worker scientific agreement, and marks descriptive timings with result
+discrepancies `*`. Unavailable times and unvalidated ratios remain NR. Optional
+`--saved-fe-retests <accepted-diagnostic-directory>` adds a separate single-fit
+retest panel and CSV; it does not replace production medians. Render and inspect
+every PDF page before delivery.
