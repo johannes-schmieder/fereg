@@ -2,6 +2,13 @@
 
 ## 0.5.0 beta — unreleased
 
+- Remove the unused standalone OLS pipeline while retaining the prepared runtime,
+  PPML reference path and independent explicit-dummy scientific witnesses.
+- Reject unavailable model components that claim an available omission flag;
+  continuous, plain-factor and interaction omission metadata remain accepted.
+- Add bounded Stata-free native benchmarks with streamed exact-output checks,
+  solver diagnostics and Linux Cachegrind instruction counts. Freeze the small
+  PPML bias replay inputs and add independent exact/Philox correction witnesses.
 - Preserve case-sensitive cluster identifiers in OLS `vce(cluster ...)` while
   accepting mixed-case VCE keywords. Previously an uppercase identifier could
   incorrectly select a lowercase variable or fail when only the uppercase name
