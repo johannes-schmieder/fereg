@@ -2,6 +2,14 @@ use super::{DesignSpec, Graph, Rng};
 
 pub(super) fn codes(spec: &DesignSpec, rng: &mut Rng) -> Vec<Vec<u32>> {
     let mut codes = vec![vec![0; spec.rows]; spec.levels.len()];
+    if spec.graph == Graph::RandomMobility {
+        for (column, &levels) in codes.iter_mut().zip(&spec.levels) {
+            for code in column {
+                *code = (rng.next() % levels as u64) as u32;
+            }
+        }
+        return codes;
+    }
     if spec.levels.len() < 2 {
         if let Some(first) = codes.first_mut() {
             for (i, code) in first.iter_mut().enumerate() {
@@ -40,6 +48,7 @@ fn edges(left: usize, right: usize, graph: Graph) -> Vec<(usize, usize)> {
             .collect();
     }
     match graph {
+        Graph::RandomMobility => unreachable!("random mobility generates row codes directly"),
         Graph::DensePanel => (0..left)
             .flat_map(|a| (0..right).map(move |b| (a, b)))
             .collect(),

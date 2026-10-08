@@ -13,6 +13,7 @@ fn seeded_designs_cover_graphs_weights_slopes_missingness_and_collinearity() {
         Graph::Chain,
         Graph::Barbell,
         Graph::Disconnected,
+        Graph::RandomMobility,
     ]
     .into_iter()
     .enumerate()

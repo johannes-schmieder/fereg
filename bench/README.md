@@ -135,7 +135,10 @@ row/cell/edge admission bounds. PPML rejects analytic weights and IID here;
 probability weights require robust/cluster. Cluster VCE uses the oracle's cluster
 partition. `akm-strong`, `akm-weak`, `chain`, and `barbell` preserve the oracle
 algorithms; `akm-strong` means adjacent-firm mobility, not the cloud prototype's
-random-mobility override. The generator requires at least one complete edge cycle.
+random-mobility override. `random-mobility` draws each row's FE codes independently
+before generating outcomes, preserving the
+design's coefficient and fixed-effect truth. The other graph families require
+at least one complete edge cycle.
 The existing barbell generator enumerates dense halves, so large worker/firm
 barbells may exceed the edge budget or omit the bridge at the requested row
 count and are rejected. Scalable barbell generation remains separate work.

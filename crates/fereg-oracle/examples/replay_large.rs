@@ -12,7 +12,7 @@ use std::{collections::BTreeMap, path::PathBuf};
 
 const HELP: &str = "replay_large --output target/NAME.case --rows N --levels L1,L2[,L3] \
 --regressors K --weights unit|aw|fw|pw --vce iid|robust|cluster \
---graph akm-strong|akm-weak|chain|barbell --solver auto|map|lsmr|cmg \
+--graph akm-strong|akm-weak|chain|barbell|random-mobility --solver auto|map|lsmr|cmg \
 --seed N [--ppml] [--threads N] [--tolerance T] [--iterations N] [--max-cells N] [--max-edges N]\n\
 Defaults: threads=1 tolerance=1e-8 iterations=16000 max-cells=100000000 max-edges=10000000.\n\
 Cluster VCE uses one cluster dimension from the oracle design. Graph labels retain\n\
@@ -107,11 +107,13 @@ fn run() -> Result<(), String> {
         "akm-weak" => Graph::AkmWeak,
         "chain" => Graph::Chain,
         "barbell" => Graph::Barbell,
+        "random-mobility" => Graph::RandomMobility,
         _ => return Err("unsupported --graph".into()),
     };
     // The oracle enumerates barbell halves densely. Refuse accidental huge
     // allocations and prefixes that omit the bridge instead of relabelling them.
     let edges = match graph {
+        Graph::RandomMobility => Some(rows),
         Graph::AkmStrong => levels[0].checked_mul(4),
         Graph::AkmWeak => levels[0].checked_mul(17),
         Graph::Chain => levels[0].max(levels[1]).checked_mul(2),

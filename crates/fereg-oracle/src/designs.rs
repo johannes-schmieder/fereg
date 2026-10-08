@@ -12,6 +12,7 @@ pub enum Graph {
     Chain,
     Barbell,
     Disconnected,
+    RandomMobility,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
