@@ -888,7 +888,6 @@ where
                         &candidate_original_rows,
                         certified,
                         started,
-                        ppml,
                         config,
                     )?;
                     return Ok((simplex_unresolved, true));
@@ -953,7 +952,6 @@ where
                         &candidate_original_rows,
                         certified,
                         started,
-                        ppml,
                         config,
                     )?;
                     return Ok((false, true));
@@ -1056,7 +1054,6 @@ where
                         &candidate_original_rows,
                         certified,
                         started,
-                        ppml,
                         config,
                     )?;
                     return Ok(true);
@@ -1199,7 +1196,6 @@ fn commit_numerical(
     candidate_original_rows: &[usize],
     validated: ValidatedNumericalProposal,
     started: Instant,
-    _ppml: PpmlConfig,
     config: SeparationConfig,
 ) -> Result<()> {
     let ValidatedNumericalProposal {
@@ -4168,7 +4164,6 @@ mod tests {
                 &candidate_rows,
                 wrong_token,
                 Instant::now(),
-                ppml,
                 config,
             )
             .expect_err("mismatched validation capability must fail");
