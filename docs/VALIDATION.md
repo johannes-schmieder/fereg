@@ -419,22 +419,22 @@ The pre-commit Windows diagnostic (`win-20261008T213049Z-a29f1256`) failed with
 stage, so no native gate is inferred to have passed. The transferred source
 was dirty, whereas inspection of `build_windows.ps1` confirms that its manifest
 binding requires a clean source commit. This attempt therefore cannot supply
-formal Windows qualification; a clean-commit rerun remains required. The archive
+formal Windows qualification; a clean-commit rerun was required. The archive
 SHA-256 is `7bc0e871b6e3ef19ebf8eb975dcaefefd8581bf060bf3a1d4642c80f1c424d99`
 and receipt SHA-256 is
 `516ce7a7d67415ed570da70168ce7e3d5969dd027c679ec897e5329e8546b051`.
 The wrapper confirmed stopped state, deleted transient objects and released its
 lock. GitHub testing was not resumed.
 
-Unrelated Stata processes and background CPU activity prevented a clean Mac
-timing run. No follow-up timing was started and neither candidate has a new Mac
-nonregression pass. The twelve frozen standard cases and K=64/65/129 cases are
-prepared for one warmup and seven interleaved repetitions, a 90-second per-fit
-cap and a 30-minute campaign cap; the CSR screen additionally covers three-FE
+Unrelated Stata processes and background CPU activity prevented the first Mac
+timing attempt. No follow-up timing was started then, and neither candidate had
+a new Mac nonregression pass. The twelve frozen standard cases and K=64/65/129
+cases were prepared for one warmup and seven interleaved repetitions, a 90-second
+per-fit cap and a 30-minute campaign cap; the CSR screen additionally covers three-FE
 LSMR at 1/4/8/16 workers. The allowance remains max(5%, 1 ms). At that point,
 dependency integration and performance adoption remained unqualified. The local
-Cargo override was removed, both dependencies retained their original pin, and the patch,
-candidate artifacts and compact evidence remain under ignored
+Cargo override was removed, both dependencies retained their original pin, and
+the patch, candidate artifacts and compact evidence were retained under ignored
 `target/optimization-followup/`.
 
 ### Quiet Mac retry
@@ -482,3 +482,45 @@ reviewed loop and its witnesses relative to the old pin. The source branch was
 pushed after qualification; its push does not match the dependency repository's
 main/tag workflow triggers, and the commit also carries `[skip ci]`. No GitHub
 workflow was requested.
+
+The integrated clean source `c1a9470ad3a1fa35ddf1d2dd153eb2d39ff98ca3`
+passed the full Mac entrypoint again: 1,647 native test executions, formatting,
+Clippy, allocation/FFI audits, complexity and numeric guards. Its universal
+build and actual-plugin ABI check passed. The resulting plugin SHA-256 is
+`5eb9302427f8d1be9d005677449098afecc09c53d506dd67f633457624fde4e5`.
+All 73 replay cases passed with zero exact scientific or solver-signature
+differences against the combined local-path candidate. The final mapped Stata
+run again passed nine fixtures and reproduced only the existing diagonal-LSMR
+`ols_three_fe_batch_oracle.do` failure described above.
+
+A final bounded comparison of that Git-pinned artifact against production used
+all 22 prepared workloads, one warmup and seven alternating measured pairs,
+with the same 90-second per-fit and 30-minute total limits. Builds and agents
+were idle; five-second host samples retained observed OS indexing/background
+activity. All 352 outputs and solver signatures were exact. Every workload
+passed the unchanged allowance: median candidate/production ratios ranged from
+0.972 to 1.011, with a largest upper 95% bound of 1.044. The run took 702 seconds.
+The one-million-row three-FE LSMR median ratios at 1/4/8/16 workers were
+0.972/0.997/0.986/1.004. These are bounded native-call observations, not a claim
+of a large Mac or end-to-end Stata speedup.
+
+The clean-source Windows retry (`win-20261008T233610Z-3c89924a`) also failed
+with `STATA_DRIVER_FAILED`. Its source archive SHA-256 is
+`63f57f2ce38a105dc857105ce6d06008440f9b7974882aaa75243d204b3ab676`
+and original sanitized receipt SHA-256 is
+`0d34cc7dcb4008d6389480e35a8b70d47109e8b6d81dae6dc9aca315d2c9ed27`.
+The receipt verifies the clean source manifest, source hash and controller
+safeguards, but neither the Stata nor project-test gate passed. It does not
+identify the failing native-build or Stata stage, so the earlier dirty-source
+limitation cannot explain this second result and no native Windows gate is
+inferred to have passed. The instance was stopped, transient objects deleted
+and lock released. Windows qualification remains open; further diagnosis needs
+stage-specific sanitized evidence from the guarded controller. No controller
+boundary was bypassed, no GitHub testing resumed, and no native distribution
+was published.
+
+Completed generated datasets, raw replay files, temporary source copies and
+intermediate plugins were retired after recording the results. Compact timing
+observations, input hashes/headers, harness/source patches, failed evidence,
+replay summaries and production/final comparator plugins remain in the ignored
+follow-up directory; the current build cache and development plugin are retained.
