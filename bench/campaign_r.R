@@ -1,4 +1,6 @@
 args <- commandArgs(trailingOnly=TRUE)
+script <- sub("^--file=", "", commandArgs()[grepl("^--file=", commandArgs())])
+source(file.path(dirname(script), "campaign_fixest.R"))
 s <- read.delim(args[[1]], header=FALSE, sep="\t", quote="", col.names=c("key","value"), colClasses="character")
 c <- setNames(as.list(s$value), s$key)
 .libPaths(c(c$r_library, .libPaths()))
@@ -39,7 +41,7 @@ fit <- tryCatch({
     if (c$save_fe=="1") {
         effects <- fixef(fit,nthreads=threads,fixef.tol=1e-11)
         selected <- obs(fit)
-        saved <- lapply(seq_len(q),function(j) unname(effects[[paste0("g",j)]][as.character(data[[paste0("g",j)]][selected])]))
+        saved <- lapply(seq_len(q),function(j) campaign_fe_values(effects[[paste0("g",j)]],data[[paste0("g",j)]][selected]))
         stopifnot(all(vapply(saved,function(x) all(is.finite(x)),logical(1))))
     }
     Vstock <- vcov(fit,attr=TRUE,nthreads=threads)

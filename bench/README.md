@@ -49,6 +49,10 @@ queue and prevents dispatch.
 
 The stopwatch covers estimation, inference and requested individual FE recovery.
 For fixest this includes lazy extraction and observation-level materialization.
+Numeric FE IDs are matched by value to fixest's named effects, avoiding R's
+scientific-notation formatting of large IDs. The regression witness checks
+reordered labels above the 32-bit integer limit against both built-in predictions
+and explicit-dummy OLS/Poisson fits.
 Data preparation/import, small initialization and disk export are excluded.
 The PPML fixest profile disables its K correction, applies the declared robust
 N/(N-1) correction inside timing, and preserves its original covariance alongside
@@ -64,6 +68,18 @@ predictions are checked at SPEC tolerances. Only three valid paired repetitions
 enter timing ratios; failed, timed-out, skipped and unattempted cells remain visible.
 The small dummy-design oracle validates coefficients, full covariance and fitted
 values independently; it does not adjudicate every large production discrepancy.
+
+The 2026-10-08 saved-output investigation requalified the numeric-ID repair in
+all nine affected wrapper calls. Fixest's reconstructed and built-in predictions
+agreed within 1.1e-13; default convergence still failed fitted-value comparisons,
+while the separate strict profile passed both million-row PPML saved cases.
+For million-row OLS, reghdfe's individual FE recovery had a score of 3.91e-6
+versus 3.66e-8 for its residual-based built-in predictor; `tolerance(1e-12)`
+reduced the saved score to 7.44e-10. ppmlhdfe's built-in predictor also failed
+the score gate, including some tighter-tolerance diagnostics. These failures
+are not explained by our row export or intercept assembly. The precise PPML
+convergence/postestimation cause remains unresolved. Original captures are
+preserved; single-fit diagnostics supply no replacement campaign timing ratios.
 
 Generated inputs, row captures and logs remain in the remote run; collect compact
 JSON/CSV summaries and the final PDF. This descriptive campaign establishes no

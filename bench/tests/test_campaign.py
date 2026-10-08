@@ -3,6 +3,8 @@ import sys
 from pathlib import Path
 import tempfile
 import unittest
+import shutil
+import subprocess
 import numpy as np
 sys.path.insert(0,str(Path(__file__).resolve().parents[1]))
 from campaign import configurations, arms, make_dataset, compare_records, prepare, absorbed_rank
@@ -10,6 +12,17 @@ from campaign_oracle import oracle
 
 
 class CampaignTests(unittest.TestCase):
+    def test_fixest_saved_fe_large_numeric_ids(self):
+        executable=shutil.which('Rscript')
+        if not executable:self.skipTest('Rscript unavailable; SCC setup runs this with pinned fixest')
+        available=subprocess.run([executable,'-e','quit(status=if(requireNamespace("fixest",quietly=TRUE)) 0 else 2)'],capture_output=True,timeout=30)
+        if available.returncode==2:self.skipTest('fixest unavailable; SCC setup runs this with pinned fixest')
+        self.assertEqual(available.returncode,0,available.stderr.decode())
+        root=Path(__file__).resolve().parents[1]
+        result=subprocess.run([executable,str(root/'tests/saved_fe_fixest.R'),str(root)],capture_output=True,text=True,timeout=60)
+        self.assertEqual(result.returncode,0,result.stdout+result.stderr)
+        self.assertIn('SAVED_FE_FIXEST_TEST_PASS',result.stdout)
+
     def test_license_and_matrix(self):
         cells=configurations()
         self.assertEqual(len(cells),len({c['id'] for c in cells}))
