@@ -1,13 +1,6 @@
 {
   "definition": "docs/cleanup/complexity.md#version-1",
-  "growth": [
-    {
-      "after": 95023,
-      "before": 95022,
-      "metric": "fereg-core/production_lines",
-      "reason": "Restrict Unix scratch-file creation to owner read/write permissions with a platform-gated OpenOptionsExt import and creation mode; file contents, arithmetic, admission, and non-Unix behavior are unchanged."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -5861,32 +5854,32 @@
           },
           {
             "condition": "rows . is_empty ( )",
-            "line": 1020
+            "line": 1021
           },
           {
             "condition": "table . rows . iter ( ) . any ( | row | row . len ( ) != width )",
-            "line": 1035
+            "line": 1036
           },
           {
             "condition": "table . rows . len ( ) != 1 || table . rows [ 0 ] . iter ( ) . any ( | value | * value != 0.0 )",
-            "line": 1041
+            "line": 1042
           },
           {
             "condition": "table . rows . len ( ) != count",
-            "line": 1047
+            "line": 1048
           },
           {
             "condition": "table . rows . iter ( ) . flatten ( ) . any ( | value | ! value . is_finite ( ) )",
-            "line": 1053
+            "line": 1054
           },
           {
             "condition": "values . len ( ) == count",
-            "line": 1063
+            "line": 1064
           }
         ],
         "functions": {
           "checked_index#1": {
-            "line": 1136,
+            "line": 1137,
             "lines": 6
           },
           "code#1": {
@@ -5926,11 +5919,11 @@
             "lines": 196
           },
           "encode_table#1": {
-            "line": 1018,
+            "line": 1019,
             "lines": 10
           },
           "finite#1": {
-            "line": 1073,
+            "line": 1074,
             "lines": 7
           },
           "from_code#1": {
@@ -5974,47 +5967,47 @@
             "lines": 10
           },
           "nonnegative_u16#1": {
-            "line": 1102,
+            "line": 1103,
             "lines": 4
           },
           "nonnegative_u32#1": {
-            "line": 1116,
+            "line": 1117,
             "lines": 9
           },
           "nonnegative_usize#1": {
-            "line": 1131,
+            "line": 1132,
             "lines": 4
           },
           "normalized_rows#1": {
-            "line": 1029,
+            "line": 1030,
             "lines": 32
           },
           "positive_u16#1": {
-            "line": 1097,
+            "line": 1098,
             "lines": 4
           },
           "positive_u32#1": {
-            "line": 1107,
+            "line": 1108,
             "lines": 8
           },
           "positive_usize#1": {
-            "line": 1126,
+            "line": 1127,
             "lines": 4
           },
           "require_registry#1": {
-            "line": 1062,
+            "line": 1063,
             "lines": 10
           },
           "require_zero#1": {
-            "line": 1089,
+            "line": 1090,
             "lines": 7
           },
           "strict_bool#1": {
-            "line": 1081,
+            "line": 1082,
             "lines": 7
           },
           "valid_categorical_operator#1": {
-            "line": 1009,
+            "line": 1010,
             "lines": 8
           },
           "validate#1": {
@@ -6035,7 +6028,7 @@
           },
           "validate_component_semantics#1": {
             "line": 929,
-            "lines": 79
+            "lines": 80
           },
           "validate_executable_metadata#1": {
             "line": 247,
@@ -6054,7 +6047,7 @@
             "lines": 3
           }
         },
-        "production_lines": 1059
+        "production_lines": 1060
       },
       "crates/fereg-core/src/ols/bias_dense.rs": {
         "chunk_candidates": [],
@@ -6853,42 +6846,6 @@
           }
         },
         "production_lines": 47
-      },
-      "crates/fereg-core/src/ols/fit.rs": {
-        "chunk_candidates": [],
-        "dispatch_candidates": [
-          {
-            "condition": "observations > 1 && weighted_tss > 0.0",
-            "line": 30
-          },
-          {
-            "condition": "weighted_rss > 0.0 && observations > 0",
-            "line": 37
-          },
-          {
-            "condition": "weighted_rss == 0.0",
-            "line": 40
-          }
-        ],
-        "functions": {
-          "compute_fit_statistics#1": {
-            "line": 15,
-            "lines": 42
-          },
-          "ratio_r_squared#1": {
-            "line": 78,
-            "lines": 9
-          },
-          "weighted_mean#1": {
-            "line": 58,
-            "lines": 9
-          },
-          "weighted_sum_of_squares#1": {
-            "line": 68,
-            "lines": 9
-          }
-        },
-        "production_lines": 81
       },
       "crates/fereg-core/src/ols/implicit_centered.rs": {
         "chunk_candidates": [],
@@ -8051,59 +8008,9 @@
       },
       "crates/fereg-core/src/ols/mod.rs": {
         "chunk_candidates": [],
-        "dispatch_candidates": [
-          {
-            "condition": "candidate_columns . is_empty ( )",
-            "line": 270
-          },
-          {
-            "condition": "regressors . nrows ( ) != outcome . len ( ) || weights . len ( ) != outcome . len ( )",
-            "line": 365
-          },
-          {
-            "condition": "design . nobs ( ) != outcome . len ( )",
-            "line": 372
-          },
-          {
-            "condition": "clusters . iter ( ) . any ( | cluster | cluster . len ( ) != outcome . len ( ) )",
-            "line": 379
-          },
-          {
-            "condition": "outcome . iter ( ) . any ( | value | ! value . is_finite ( ) ) || regressors . as_slice ( ) . iter ( ) . any ( | value | ! value . is_finite ( ) ) || weights . iter ( ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 )",
-            "line": 388
-          },
-          {
-            "condition": "matrix . ncols ( ) <= 1",
-            "line": 438
-          }
-        ],
-        "functions": {
-          "default#1": {
-            "line": 168,
-            "lines": 11
-          },
-          "fit_ols#1": {
-            "line": 205,
-            "lines": 145
-          },
-          "matrix_without_first_column#1": {
-            "line": 437,
-            "lines": 9
-          },
-          "validate_inputs#1": {
-            "line": 351,
-            "lines": 62
-          },
-          "weighted_regressor_norms#1": {
-            "line": 414,
-            "lines": 12
-          },
-          "weighted_vector_norm#1": {
-            "line": 427,
-            "lines": 9
-          }
-        },
-        "production_lines": 416
+        "dispatch_candidates": [],
+        "functions": {},
+        "production_lines": 135
       },
       "crates/fereg-core/src/ols/prepared.rs": {
         "chunk_candidates": [],
@@ -12186,63 +12093,9 @@
       },
       "crates/fereg-core/src/ols/vce.rs": {
         "chunk_candidates": [],
-        "dispatch_candidates": [
-          {
-            "condition": "input . residuals . len ( ) != nrows || input . weights . len ( ) != nrows || input . bread . len ( ) != ncols . saturating_mul ( ncols ) || input . residual_dof == 0",
-            "line": 107
-          },
-          {
-            "condition": "input . kept . iter ( ) . any ( | index | * index >= ncols )",
-            "line": 117
-          },
-          {
-            "condition": "input . clusters . iter ( ) . any ( | column | column . len ( ) != nrows )",
-            "line": 123
-          },
-          {
-            "condition": "input . clusters . len ( ) > 4",
-            "line": 136
-          },
-          {
-            "condition": "subset . len ( ) % 2 == 1",
-            "line": 210
-          }
-        ],
-        "functions": {
-          "add_outer_product#1": {
-            "line": 229,
-            "lines": 9
-          },
-          "clustered_covariance#1": {
-            "line": 173,
-            "lines": 55
-          },
-          "compute_vce#1": {
-            "line": 43,
-            "lines": 60
-          },
-          "sandwich#1": {
-            "line": 250,
-            "lines": 25
-          },
-          "score_meat#1": {
-            "line": 155,
-            "lines": 17
-          },
-          "select_square#1": {
-            "line": 239,
-            "lines": 10
-          },
-          "validate#1": {
-            "line": 104,
-            "lines": 41
-          },
-          "weighted_rss#1": {
-            "line": 146,
-            "lines": 8
-          }
-        },
-        "production_lines": 258
+        "dispatch_candidates": [],
+        "functions": {},
+        "production_lines": 19
       },
       "crates/fereg-core/src/options.rs": {
         "chunk_candidates": [],
@@ -20474,10 +20327,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 11,
-        "dispatch_candidates": 1265,
+        "dispatch_candidates": 1251,
         "files_over_1500": 16,
         "functions_over_150": 67,
-        "production_lines": 95023
+        "production_lines": 94423
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

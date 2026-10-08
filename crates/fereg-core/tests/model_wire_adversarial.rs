@@ -283,6 +283,50 @@ fn generic_interaction_and_unavailable_metadata_remain_distinct() {
     );
 }
 
+#[test]
+fn component_omission_flags_preserve_frontend_shapes_and_reject_false_availability() {
+    let continuous = minimal_wire();
+    assert_eq!(continuous.components.rows[0][7], 2.0);
+    continuous.decode().unwrap();
+
+    for omitted in [MetadataFlag::False, MetadataFlag::True] {
+        let mut graph = continuous.decode().unwrap();
+        let term = &mut graph.terms[0];
+        term.raw_kind = RawTermKind::Factor;
+        term.canonical_token = "2.x".into();
+        let component = &mut term.components[0];
+        component.kind = ComponentKind::Categorical;
+        component.level_state = LevelState::Present;
+        component.level_value = 2.0;
+        component.raw_operator = "2".into();
+        component.omitted = omitted;
+        let decoded = ModelWireV2::from_graph(&graph).unwrap().decode().unwrap();
+        assert_eq!(decoded, graph);
+    }
+
+    // Interaction categorical components with unavailable omission metadata
+    // are covered by generic_interaction_and_unavailable_metadata_remain_distinct.
+    let mut graph = continuous.decode().unwrap();
+    let component = &mut graph.terms[0].components[0];
+    component.kind = ComponentKind::Unavailable;
+    component.level_state = LevelState::Unavailable;
+    component.base = MetadataFlag::Unavailable;
+    let wire = ModelWireV2::from_graph(&graph).unwrap();
+    assert_eq!(wire.decode().unwrap(), graph);
+    for omitted in [0.0, 1.0] {
+        let mut malformed = wire.clone();
+        malformed.components.rows[0][7] = omitted;
+        assert_code(&malformed, ErrorCode::InvalidArgument);
+    }
+    for omitted in [MetadataFlag::False, MetadataFlag::True] {
+        graph.terms[0].components[0].omitted = omitted;
+        assert_eq!(
+            ModelWireV2::from_graph(&graph).unwrap_err().code,
+            ErrorCode::InvalidArgument
+        );
+    }
+}
+
 fn minimal_wire() -> ModelWireV2 {
     ModelWireV2::from_graph(&CompiledTermGraph {
         sources: vec![SourceEntry {

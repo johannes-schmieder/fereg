@@ -65,7 +65,7 @@ pub use metadata::{
 };
 pub use ols::{
     absorb_prepared_ols_rhs_map, build_prepared_ols_rhs, compute_dof,
-    compute_prepared_ols_absorbed_dof, fit_ols, fit_prepared_categorical_ols_clustered_map,
+    compute_prepared_ols_absorbed_dof, fit_prepared_categorical_ols_clustered_map,
     fit_prepared_categorical_ols_coefficients_map, fit_prepared_categorical_ols_robust_map,
     fit_prepared_categorical_ols_unadjusted_map, fit_prepared_ols_clustered_map,
     fit_prepared_ols_coefficients_map, fit_prepared_ols_robust_map,
@@ -75,9 +75,9 @@ pub use ols::{
     CertifiedPreparedCategoricalOlsRobust, CertifiedPreparedCategoricalOlsUnadjusted,
     CertifiedPreparedOlsClustered, CertifiedPreparedOlsFit, CertifiedPreparedOlsRobust,
     CertifiedPreparedOlsUnadjusted, ClusterSubsetReport, DofConfig, DofMethod, DofReport,
-    FiniteSolver, FitStatistics, LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
+    FiniteSolver, LinearSessionAllocationPhase, LinearSessionPhaseAllocationEvent,
     LinearSessionPhaseAllocatorProbe, LoadedNumericColumn, LoadedOlsInput, OlsClusterTermV1,
-    OlsClusteredRequestV1, OlsConfig, OlsInputBinding, OlsInputRole, OlsRequestV1, OlsResult,
+    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
     PreparedCategoricalOlsClusteredData, PreparedCategoricalSource, PreparedOlsAbsorbedDofEffect,
     PreparedOlsAbsorbedDofEffectIdentity, PreparedOlsAbsorbedDofPolicy,
     PreparedOlsAbsorbedDofReport, PreparedOlsBread, PreparedOlsBreadCertificate,

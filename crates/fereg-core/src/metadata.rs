@@ -931,7 +931,7 @@ fn validate_component_semantics(
     level_state: LevelState,
     level_value: f64,
     base: MetadataFlag,
-    _omitted: MetadataFlag,
+    omitted: MetadataFlag,
     raw_operator: &str,
     ts_state: TimeSeriesState,
     raw_ts_operator: &str,
@@ -972,6 +972,7 @@ fn validate_component_semantics(
         ComponentKind::Unavailable => {
             if level_state != LevelState::Unavailable
                 || base != MetadataFlag::Unavailable
+                || omitted != MetadataFlag::Unavailable
                 || !raw_operator.is_empty()
             {
                 return Err(invalid(
