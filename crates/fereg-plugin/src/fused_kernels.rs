@@ -2,9 +2,10 @@
 //!
 //! Each entry compiles the same core body with FMA (which implies AVX)
 //! enabled. The table exists only after runtime detection, so processors
-//! without both keep the portable path inline. `mul_add` is exactly rounded,
-//! so results match wherever the platform `fma` is exactly rounded too; only
-//! instruction selection changes.
+//! without both keep the portable path inline. The bodies use only exactly
+//! rounded operations in a fixed per-element order, so results match
+//! wherever the platform `fma` is exactly rounded too; only instruction
+//! selection and vector width change.
 
 /// Install the hardware table for this process when the processor supports it.
 pub(crate) fn install() {
@@ -16,11 +17,16 @@ pub(crate) fn install() {
 
 #[cfg(target_arch = "x86_64")]
 mod x86_64 {
-    use fereg_core::kernels::{weighted_upper_rank_one, FusedKernels};
+    use fereg_core::kernels::{
+        group_scales as portable_group_scales, scaled_group_sums as portable_scaled_group_sums,
+        weighted_upper_rank_one, FusedKernels,
+    };
 
     const HARDWARE: FusedKernels = FusedKernels {
         name: "x86_64-fma",
         upper_rank_one,
+        group_scales,
+        scaled_group_sums,
     };
 
     /// The hardware table, only when the processor and OS provide FMA and AVX.
@@ -52,6 +58,58 @@ mod x86_64 {
     ) {
         // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
         unsafe { upper_rank_one_fma(weight, row, response, left_start, rhs, gram) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn group_scales_fma(
+        weights: Option<&[f64]>,
+        raw_scale: f64,
+        data: &[f64],
+        rows: usize,
+        members: &[usize],
+        scales: &mut [f64],
+    ) -> Option<(f64, f64)> {
+        portable_group_scales(weights, raw_scale, data, rows, members, scales)
+    }
+
+    fn group_scales(
+        weights: Option<&[f64]>,
+        raw_scale: f64,
+        data: &[f64],
+        rows: usize,
+        members: &[usize],
+        scales: &mut [f64],
+    ) -> Option<(f64, f64)> {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe { group_scales_fma(weights, raw_scale, data, rows, members, scales) }
+    }
+
+    #[target_feature(enable = "fma")]
+    unsafe fn scaled_group_sums_fma(
+        weights: Option<&[f64]>,
+        raw_scale: f64,
+        data: &[f64],
+        members: &[usize],
+        scales: &[f64],
+        sums: &mut [f64],
+        corrections: &mut [f64],
+    ) {
+        portable_scaled_group_sums(weights, raw_scale, data, members, scales, sums, corrections);
+    }
+
+    fn scaled_group_sums(
+        weights: Option<&[f64]>,
+        raw_scale: f64,
+        data: &[f64],
+        members: &[usize],
+        scales: &[f64],
+        sums: &mut [f64],
+        corrections: &mut [f64],
+    ) {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe {
+            scaled_group_sums_fma(weights, raw_scale, data, members, scales, sums, corrections)
+        }
     }
 
     #[cfg(test)]
@@ -106,12 +164,85 @@ mod x86_64 {
                             &mut hardware_gram,
                         );
                     }
-                    let bits =
-                        |values: &[f64]| values.iter().map(|v| v.to_bits()).collect::<Vec<_>>();
                     assert_eq!(bits(&portable_rhs), bits(&hardware_rhs));
                     assert_eq!(bits(&portable_gram), bits(&hardware_gram));
                 }
             }
+        }
+
+        fn bits(values: &[f64]) -> Vec<u64> {
+            values.iter().map(|value| value.to_bits()).collect()
+        }
+
+        #[test]
+        fn hardware_group_passes_match_portable_bits() {
+            let Some(hardware) = hardware() else {
+                eprintln!("skipped: this processor has no FMA/AVX hardware path");
+                return;
+            };
+            let rows = 97;
+            for columns in [1, 3, 4, 12, 17] {
+                let mut data = values(13, rows * columns);
+                // Zero columns and signed zeros exercise the skipped-scale branch.
+                for row in 0..rows {
+                    data[row * columns] = if row % 2 == 0 { 0.0 } else { -0.0 };
+                }
+                let raw: Vec<f64> = values(17, rows).iter().map(|v| v.abs() + 0.5).collect();
+                let members: Vec<usize> = (0..rows).rev().step_by(3).collect();
+                for weights in [None, Some(raw.as_slice())] {
+                    let mut portable_scales = vec![0.0; columns];
+                    let mut hardware_scales = vec![0.0; columns];
+                    let portable_weight = portable_group_scales(
+                        weights,
+                        3.0,
+                        &data,
+                        rows,
+                        &members,
+                        &mut portable_scales,
+                    )
+                    .expect("valid members");
+                    let hardware_weight = (hardware.group_scales)(
+                        weights,
+                        3.0,
+                        &data,
+                        rows,
+                        &members,
+                        &mut hardware_scales,
+                    )
+                    .expect("valid members");
+                    assert_eq!(
+                        [portable_weight.0.to_bits(), portable_weight.1.to_bits()],
+                        [hardware_weight.0.to_bits(), hardware_weight.1.to_bits()]
+                    );
+                    assert_eq!(bits(&portable_scales), bits(&hardware_scales));
+                    let mut portable_sums = vec![0.0; columns];
+                    let mut portable_corrections = vec![0.0; columns];
+                    let mut hardware_sums = vec![0.0; columns];
+                    let mut hardware_corrections = vec![0.0; columns];
+                    portable_scaled_group_sums(
+                        weights,
+                        3.0,
+                        &data,
+                        &members,
+                        &portable_scales,
+                        &mut portable_sums,
+                        &mut portable_corrections,
+                    );
+                    (hardware.scaled_group_sums)(
+                        weights,
+                        3.0,
+                        &data,
+                        &members,
+                        &hardware_scales,
+                        &mut hardware_sums,
+                        &mut hardware_corrections,
+                    );
+                    assert_eq!(bits(&portable_sums), bits(&hardware_sums));
+                    assert_eq!(bits(&portable_corrections), bits(&hardware_corrections));
+                }
+            }
+            let mut scales = [0.0];
+            assert!((hardware.group_scales)(None, 1.0, &[1.0], 1, &[1], &mut scales).is_none());
         }
     }
 }

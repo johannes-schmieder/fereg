@@ -57,7 +57,8 @@ publication. `publication.rs` supplies ordered scalar/matrix/output publication;
 completion is written last. Workers only touch Rust-owned memory. FFI catches
 panics; SPI stays on Stata's main thread.
 
-`kernels.rs` holds hot `mul_add` loops. Baseline x86-64 code calls the library
+`kernels.rs` holds hot `mul_add` loops and the borrowed-MAP group-mean passes.
+Baseline x86-64 code calls the library
 `fma` per element, so the plugin's `fused_kernels.rs` installs FMA-compiled
 instantiations of the same bodies when it detects FMA and AVX at runtime;
 otherwise callers run the portable bodies inline. FMA is exactly rounded, so

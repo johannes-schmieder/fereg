@@ -10,6 +10,10 @@
   checked on Windows or Intel macOS). `fereg, doctor` now reports the active
   arithmetic path (`x86_64-fma`, `x86_64-portable` or `aarch64-fma`) rather than
   a processor capability probe.
+- Pending timing qualification: the two borrowed-MAP group-mean passes use the
+  same runtime kernel table, so FMA/AVX processors run them vectorized. Results
+  are unchanged; local profiles showed 9-16% less group-mean CPU time
+  (about 2-3% of two-FE OLS), below the noise of the local host.
 
 - Refine finite PPML bias-effect reconstruction failures with the accepted
   weighted native solver, preserving component anchors and the original

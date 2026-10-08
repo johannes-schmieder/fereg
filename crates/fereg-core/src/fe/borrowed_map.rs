@@ -6402,24 +6402,15 @@ fn group_means(
     let sums = &mut workspace.group_sums[..columns];
     let corrections = &mut workspace.group_corrections[..columns];
 
-    let mut weight_sum = 0.0_f64;
-    let mut weight_correction = 0.0_f64;
-    for &observation in members {
-        if observation >= values.nrows() {
-            return Err(invalid_argument(
-                "borrowed MAP membership exceeds the observation axis",
-            ));
-        }
-        neumaier_add(
-            weights.normalized(observation),
-            &mut weight_sum,
-            &mut weight_correction,
-        );
-        let row = &data[observation * columns..(observation + 1) * columns];
-        for (scale, value) in scales.iter_mut().zip(row) {
-            *scale = scale.max(value.abs());
-        }
-    }
+    // An installed hardware table runs the same bodies; otherwise they inline.
+    let hardware = crate::kernels::installed();
+    let (rows, raw) = (values.nrows(), weights.raw_scale);
+    let first_pass = match hardware {
+        Some(kernels) => (kernels.group_scales)(weights.values, raw, data, rows, members, scales),
+        None => crate::kernels::group_scales(weights.values, raw, data, rows, members, scales),
+    };
+    let (weight_sum, weight_correction) = first_pass
+        .ok_or_else(|| invalid_argument("borrowed MAP membership exceeds the observation axis"))?;
     compensated_finite(weight_sum, weight_correction)?;
     let total_weight = weight_sum + weight_correction;
     if !total_weight.is_finite() || total_weight <= 0.0 {
@@ -6429,20 +6420,19 @@ fn group_means(
     }
 
     // Coordinates are independent; each keeps its scalar Neumaier row order.
-    for &observation in members {
-        let weight = weights.normalized(observation);
-        let row = &data[observation * columns..(observation + 1) * columns];
-        for (((value, &scale), sum), correction) in row
-            .iter()
-            .zip(scales.iter())
-            .zip(sums.iter_mut())
-            .zip(corrections.iter_mut())
-        {
-            if scale != 0.0 {
-                neumaier_add(weight * (value / scale), sum, correction);
-            }
-        }
-    }
+    let second_pass = hardware.map_or(
+        crate::kernels::scaled_group_sums as crate::kernels::ScaledGroupSums,
+        |kernels| kernels.scaled_group_sums,
+    );
+    second_pass(
+        weights.values,
+        raw,
+        data,
+        members,
+        scales,
+        sums,
+        corrections,
+    );
     for (&sum, &correction) in sums.iter().zip(corrections.iter()) {
         compensated_finite(sum, correction)?;
     }
