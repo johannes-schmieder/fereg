@@ -6,6 +6,9 @@
   than 64 columns, preserving arithmetic order, portable execution and exact
   scientific outputs. The isolated Linux speedup now has a passing Mac
   nonregression check on all twelve standard and six wide-matrix cases.
+- Pin `within`/`schwarz-precond` to the checked-CSR-slice back-substitution
+  update. It removes repeated inner-loop index/data bounds checks while
+  preserving arithmetic order and exact outputs; Mac nonregression passes.
 - Remove the unused standalone OLS pipeline while retaining the prepared runtime,
   PPML reference path and independent explicit-dummy scientific witnesses.
 - Reject unavailable model components that claim an available omission flag;

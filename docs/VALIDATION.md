@@ -431,9 +431,9 @@ timing run. No follow-up timing was started and neither candidate has a new Mac
 nonregression pass. The twelve frozen standard cases and K=64/65/129 cases are
 prepared for one warmup and seven interleaved repetitions, a 90-second per-fit
 cap and a 30-minute campaign cap; the CSR screen additionally covers three-FE
-LSMR at 1/4/8/16 workers. The allowance remains max(5%, 1 ms). Dependency integration
-and performance adoption remain unqualified. The temporary local Cargo override
-was removed, both dependencies retain their original pin, and the local patch,
+LSMR at 1/4/8/16 workers. The allowance remains max(5%, 1 ms). At that point,
+dependency integration and performance adoption remained unqualified. The local
+Cargo override was removed, both dependencies retained their original pin, and the patch,
 candidate artifacts and compact evidence remain under ignored
 `target/optimization-followup/`.
 
@@ -454,3 +454,31 @@ signatures. Median candidate/baseline native-time ratios ranged from 0.986 to
 500 seconds within its 30-minute limit. This supplies the missing Mac
 nonregression evidence; the previously isolated Linux instruction-count and
 timing evidence remains the basis for the x86 performance benefit.
+
+The isolated CSR comparison passed all twelve standard cells and the
+one-million-row three-FE LSMR cells at one/four/eight workers. The initial
+sixteen-worker cell was inconclusive: two early pairs had large timing spikes
+affecting both binaries, and its upper confidence bound was 1.193 despite a
+median ratio of 0.952. These observations were retained. One bounded follow-up
+added fifteen paired repetitions at eight/sixteen workers, with a ten-minute
+limit and five-second host-activity samples. No competing estimator or compiler
+was observed during that follow-up. All 320 initial/follow-up outputs were exact.
+
+Pooling all 22 measured pairs at each of those worker counts gives:
+
+| Three-FE LSMR workers | Median CSR/wide-only time | Paired-median 95% interval |
+| --- | --- | --- |
+| 1 | 0.987 | 0.971–1.002 |
+| 4 | 0.979 | 0.949–0.988 |
+| 8 | 0.991 | 0.984–1.001 |
+| 16 | 0.983 | 0.966–1.006 |
+
+The one/four-worker rows retain the original seven pairs. All final bounds pass
+the allowance; observed whole-estimation gains are modest. Together with the
+actual-plugin instruction reduction and independent scientific witnesses, this
+qualifies the arithmetic-preserving change for integration. Both dependency
+pins now select `297f32d9c4f83cc7d814ea778cd28c1f976e68d0`, containing only the
+reviewed loop and its witnesses relative to the old pin. The source branch was
+pushed after qualification; its push does not match the dependency repository's
+main/tag workflow triggers, and the commit also carries `[skip ci]`. No GitHub
+workflow was requested.
