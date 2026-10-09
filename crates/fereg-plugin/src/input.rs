@@ -1,4 +1,5 @@
 use crate::estimate::{parse_bool, parse_positive_u32, parse_usize, read_bindings, required};
+use crate::model_metadata::syntax;
 use std::collections::BTreeSet;
 use std::ffi::{CStr, CString};
 use std::os::raw::c_int;
@@ -567,10 +568,6 @@ fn validate_numeric_position(
         )));
     }
     Ok(())
-}
-
-fn syntax(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Syntax, message)
 }
 
 #[cfg(test)]

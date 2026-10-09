@@ -1,3 +1,4 @@
+use crate::model_metadata::{checked_product, reserved_filled};
 use fereg_core::error::{allocation, ErrorCode, FeregError, Result};
 use fereg_core::ppml::{
     CertifiedPpmlResult, PpmlAllocatorSnapshot, PpmlClusterDimensionResult, PpmlCoefficientStatus,
@@ -2059,20 +2060,6 @@ const fn method_status_code(status: MethodStatus) -> f64 {
         MethodStatus::MaximumIterations => 6.0,
         MethodStatus::Uncertified => 7.0,
     }
-}
-
-fn checked_product(left: usize, right: usize, label: &'static str) -> Result<usize> {
-    left.checked_mul(right)
-        .ok_or_else(|| allocation(format!("{label} element count overflows")))
-}
-
-fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
-    output.resize(elements, value);
-    Ok(output)
 }
 
 fn fallible_copy<T: Copy>(values: &[T], label: &'static str) -> Result<Vec<T>> {

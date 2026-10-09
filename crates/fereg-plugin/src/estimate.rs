@@ -3,7 +3,7 @@ use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS
 pub(crate) use crate::model_metadata::{
     exact_positive_u32, exact_usize, parse_bool, parse_nonnegative_u32, parse_positive_f64,
     parse_positive_u32, parse_positive_usize, parse_u16, parse_usize, push_reserved, read_bindings,
-    read_table, required, reserved_empty,
+    read_table, required, reserved_empty, reserved_filled, syntax,
 };
 use crate::publication::store_matrix;
 #[cfg(test)]
@@ -3694,12 +3694,6 @@ pub(crate) fn imposed_memory_limit_bytes() -> Result<Option<u128>> {
     }
 }
 
-fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = reserved_empty(elements, label)?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
 /// Hidden-adapter OLS injection: only `breaknative`, which holds the numerical
 /// phase at a cancellation checkpoint until Stata reports Break.
 fn parse_native_break(values: &BTreeMap<String, String>) -> Result<Option<String>> {
@@ -3717,9 +3711,6 @@ fn parse_native_break(values: &BTreeMap<String, String>) -> Result<Option<String
     Ok(break_native.then(|| token.to_owned()))
 }
 
-fn syntax(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Syntax, message)
-}
 fn protocol(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::ProtocolMismatch, message)
 }

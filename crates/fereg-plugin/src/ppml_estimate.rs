@@ -1,3 +1,4 @@
+use crate::model_metadata::{exact_usize, reserved_filled, syntax};
 use crate::publication::store_matrix;
 #[cfg(test)]
 use fereg_core::metadata::ModelWireV2;
@@ -2882,16 +2883,6 @@ fn optional_position(values: &BTreeMap<String, String>, key: &str) -> Result<Opt
     Ok((position != 0).then_some(position))
 }
 
-fn exact_usize(value: f64, label: &str) -> Result<usize> {
-    if !value.is_finite() || value < 0.0 || value.fract() != 0.0 || value > usize::MAX as f64 {
-        Err(invalid(format!(
-            "{label} is not an exact nonnegative integer"
-        )))
-    } else {
-        Ok(value as usize)
-    }
-}
-
 fn fallible_string(value: &str, label: &'static str) -> Result<String> {
     let mut output = String::new();
     output
@@ -3013,19 +3004,6 @@ fn fallible_clone_clusters(values: &[OlsClusterTermV1]) -> Result<Vec<OlsCluster
         });
     }
     Ok(output)
-}
-
-fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
-    output.resize(elements, value);
-    Ok(output)
-}
-
-fn syntax(message: impl Into<String>) -> FeregError {
-    FeregError::new(ErrorCode::Syntax, message)
 }
 
 fn protocol(message: impl Into<String>) -> FeregError {

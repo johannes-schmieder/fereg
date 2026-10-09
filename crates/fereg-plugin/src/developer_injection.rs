@@ -4,6 +4,7 @@
 //! only from the hidden `_fereg_estimate_*` adapters, never from public
 //! `fereg`/`feppml` syntax. They never change arithmetic; they let licensed
 //! fixtures exercise the shipped binary's Break, panic and allocation paths.
+use crate::model_metadata::syntax;
 use fereg_core::error::{ErrorCode, FeregError, Result};
 use std::io::Write;
 
@@ -50,10 +51,6 @@ pub(crate) fn create_native_break_marker(prefix: &str, marker: &str, token: &str
     file.write_all(marker.as_bytes())
         .and_then(|_| file.sync_all())
         .map_err(|error| internal(format!("unable to commit hidden Break marker: {error}")))
-}
-
-fn syntax(message: &str) -> FeregError {
-    FeregError::new(ErrorCode::Syntax, message)
 }
 
 fn internal(message: String) -> FeregError {

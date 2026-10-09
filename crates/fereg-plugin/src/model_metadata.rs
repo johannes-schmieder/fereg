@@ -412,6 +412,22 @@ pub(crate) fn push_reserved<T>(target: &mut Vec<T>, value: T, label: &'static st
     Ok(())
 }
 
-fn syntax(message: impl Into<String>) -> FeregError {
+pub(crate) fn syntax(message: impl Into<String>) -> FeregError {
     FeregError::new(ErrorCode::Syntax, message)
+}
+
+/// An exactly reserved vector of `elements` copies of `value`.
+pub(crate) fn reserved_filled<T: Clone>(
+    elements: usize,
+    value: T,
+    label: &'static str,
+) -> Result<Vec<T>> {
+    let mut output = reserved_empty(elements, label)?;
+    output.resize(elements, value);
+    Ok(output)
+}
+
+pub(crate) fn checked_product(left: usize, right: usize, label: &'static str) -> Result<usize> {
+    left.checked_mul(right)
+        .ok_or_else(|| allocation(format!("{label} size overflows")))
 }

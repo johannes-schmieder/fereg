@@ -1,3 +1,4 @@
+use crate::model_metadata::{checked_product, reserved_filled};
 use fereg_core::error::{allocation, invalid_argument as invalid, Result};
 use fereg_core::fe::{FeSolverKind, LsmrPreconditioner, SolveReport, SolveStopReason};
 use fereg_core::ols::{
@@ -1142,23 +1143,6 @@ fn psd_state_code(value: PreparedOlsClusteredPsdState) -> f64 {
         PreparedOlsClusteredPsdState::MultiwayFullClipped => 3.0,
         PreparedOlsClusteredPsdState::MultiwayFullClippedSlopeRestored => 4.0,
     }
-}
-
-fn checked_product(left: usize, right: usize, label: &'static str) -> Result<usize> {
-    left.checked_mul(right)
-        .ok_or_else(|| allocation(format!("{label} size overflows")))
-}
-
-fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> Result<Vec<T>> {
-    let mut output = Vec::new();
-    output
-        .try_reserve_exact(elements)
-        .map_err(|_| allocation(format!("unable to reserve {label}")))?;
-    if output.capacity() < elements {
-        return Err(allocation(format!("{label} reservation was undersized")));
-    }
-    output.resize(elements, value);
-    Ok(output)
 }
 
 #[cfg(test)]
