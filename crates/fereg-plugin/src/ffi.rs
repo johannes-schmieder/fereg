@@ -1188,7 +1188,10 @@ impl SpiApi for SpiSession {
 
     fn try_store_numeric_columns(&mut self, columns: &[(u32, &[f64])]) -> Result<bool, FeregError> {
         const MAX: usize = crate::input::MAX_NUMERIC_STORE_COLUMNS;
-        if !cfg!(target_os = "macos") || columns.is_empty() || columns.len() > MAX {
+        // The bridge's checked batch store is platform-neutral; its guard test
+        // runs for APPLEMAC and OPUNIX in run_tests.sh and for Windows in
+        // build_windows.ps1.
+        if columns.is_empty() || columns.len() > MAX {
             return Ok(false);
         }
         let rows = columns[0].1.len();

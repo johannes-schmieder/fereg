@@ -29,5 +29,6 @@ COMMON_CFLAGS=(-std=c11 -O3 -fPIC -Wall -Wextra -Wpedantic -Wconversion -Wshadow
 
 python3 "$ROOT/scripts/audit_binary.py" "$DIST/fereg_linux.plugin"
 "$ROOT/tests/mock_spi/run_actual_unix_plugin_test.sh" "$DIST/fereg_linux.plugin"
+bash "$ROOT/tests/mock_spi/run_numeric_batch_guard_test.sh"
 sha256sum "$DIST/fereg_linux.plugin" > "$DIST/fereg_linux.plugin.sha256"
 printf 'Built %s\n' "$DIST/fereg_linux.plugin"

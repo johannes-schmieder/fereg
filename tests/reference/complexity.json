@@ -1,31 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 14240,
-      "before": 14193,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Hidden OLS breaknative injection for the licensed native Break fixture and one shared developer_injection module (token validation, marker creation) for both estimators."
-    },
-    {
-      "after": 3509,
-      "before": 3471,
-      "metric": "file/crates/fereg-plugin/src/estimate.rs",
-      "reason": "Hidden OLS breaknative injection for the licensed native Break fixture and one shared developer_injection module (token validation, marker creation) for both estimators."
-    },
-    {
-      "after": 242,
-      "before": 241,
-      "metric": "function/crates/fereg-plugin/src/estimate.rs/decode_with_memory_limit#1",
-      "reason": "Hidden OLS breaknative injection for the licensed native Break fixture and one shared developer_injection module (token validation, marker creation) for both estimators."
-    },
-    {
-      "after": 245,
-      "before": 241,
-      "metric": "function/crates/fereg-plugin/src/ppml_estimate.rs/estimate_ppml_test#1",
-      "reason": "Hidden OLS breaknative injection for the licensed native Break fixture and one shared developer_injection module (token validation, marker creation) for both estimators."
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -18304,21 +18279,21 @@
             "line": 1041
           },
           {
-            "condition": "! cfg ! ( target_os = <string> ) || columns . is_empty ( ) || columns . len ( ) > MAX",
-            "line": 1191
+            "condition": "columns . is_empty ( ) || columns . len ( ) > MAX",
+            "line": 1194
           },
           {
             "condition": "rows == 0 || rows > c_int :: MAX as usize || columns . iter ( ) . any ( | ( position , values ) |",
-            "line": 1195
+            "line": 1198
           }
         ],
         "functions": {
           "abi_memory_baseline#1": {
-            "line": 1300,
+            "line": 1303,
             "lines": 4
           },
           "action_memory_audit_estimator#1": {
-            "line": 1417,
+            "line": 1420,
             "lines": 8
           },
           "alloc#1": {
@@ -18346,7 +18321,7 @@
             "lines": 40
           },
           "begin_abi_memory_observation#1": {
-            "line": 1305,
+            "line": 1308,
             "lines": 6
           },
           "begin_allocation_observation#1": {
@@ -18362,7 +18337,7 @@
             "lines": 3
           },
           "check_interrupted#1": {
-            "line": 1253,
+            "line": 1256,
             "lines": 14
           },
           "dealloc#1": {
@@ -18370,23 +18345,23 @@
             "lines": 6
           },
           "display#1": {
-            "line": 1246,
+            "line": 1249,
             "lines": 6
           },
           "display#2": {
-            "line": 1270,
+            "line": 1273,
             "lines": 11
           },
           "error#1": {
-            "line": 1282,
+            "line": 1285,
             "lines": 9
           },
           "fereg_dispatch#1": {
-            "line": 1330,
+            "line": 1333,
             "lines": 84
           },
           "finish_abi_memory_observation#1": {
-            "line": 1312,
+            "line": 1315,
             "lines": 8
           },
           "matrix_dimensions#1": {
@@ -18418,7 +18393,7 @@
             "lines": 8
           },
           "panic_message#1": {
-            "line": 1555,
+            "line": 1558,
             "lines": 9
           },
           "parse_linux_memory_field#1": {
@@ -18438,7 +18413,7 @@
             "lines": 49
           },
           "prepared_store_error_report#1": {
-            "line": 1534,
+            "line": 1537,
             "lines": 11
           },
           "process_rss_bytes#1": {
@@ -18458,7 +18433,7 @@
             "lines": 3
           },
           "read_arguments#1": {
-            "line": 1426,
+            "line": 1429,
             "lines": 91
           },
           "read_estimate_bundle#1": {
@@ -18514,11 +18489,11 @@
             "lines": 5
           },
           "report_error#1": {
-            "line": 1518,
+            "line": 1521,
             "lines": 15
           },
           "sanitize_c_string#1": {
-            "line": 1546,
+            "line": 1549,
             "lines": 8
           },
           "should_inject_ppml_allocation_failure#1": {
@@ -18530,11 +18505,11 @@
             "lines": 10
           },
           "stata_output_chunks#1": {
-            "line": 1295,
+            "line": 1298,
             "lines": 3
           },
           "store_matrix#1": {
-            "line": 1226,
+            "line": 1229,
             "lines": 19
           },
           "store_numeric#1": {
@@ -18567,7 +18542,7 @@
           },
           "try_store_numeric_columns#1": {
             "line": 1189,
-            "lines": 36
+            "lines": 39
           },
           "variable_is_string#1": {
             "line": 871,
@@ -20321,5 +20296,5 @@
     },
     "schema": 1
   },
-  "reason": "Shared developer injections and OLS native Break qualification."
+  "reason": "Batched output stores on every platform."
 }
