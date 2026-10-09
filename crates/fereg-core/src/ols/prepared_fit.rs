@@ -798,7 +798,6 @@ impl<'a> LinearSolveFrame<'a> {
     /// Construct a frame from caller-owned response and raw solver weights.
     /// The supplied scale states how raw weights are normalized for the solve
     /// and how normalized cross-products map back to the reference Hessian.
-    #[cfg_attr(not(test), allow(dead_code))]
     pub(crate) fn from_parts(
         response: &'a [f64],
         weights: BorrowedMapWeights<'a>,
@@ -1214,67 +1213,6 @@ pub(crate) fn fit_prepared_ols_coefficients_view_map<P: PreparedOlsFitView + Syn
                 config,
                 &mut reservation,
                 FitPerturbations::default(),
-                None,
-            ),
-        }
-    })?
-}
-
-/// Run the unchanged prepared OLS finalization around explicitly borrowed
-/// weighted-linear inputs. This is crate-private until estimator-neutral
-/// result ownership is extracted; public OLS entrypoints continue to build
-/// their frame from `PreparedNumericSample` above.
-#[cfg_attr(not(test), allow(dead_code))]
-pub(crate) fn fit_prepared_ols_coefficients_view_map_with_frame<
-    'a,
-    P: PreparedOlsFitView + Sync + ?Sized,
->(
-    prepared: &'a P,
-    frame: LinearSolveFrame<'a>,
-    config: PreparedOlsFitConfig,
-) -> Result<CertifiedPreparedOlsFit> {
-    fit_prepared_weighted_linear_once(prepared, frame, config, false, None, None)
-}
-
-pub(crate) fn fit_prepared_weighted_linear_once<'a, P: PreparedOlsFitView + Sync + ?Sized>(
-    prepared: &'a P,
-    frame: LinearSolveFrame<'a>,
-    config: PreparedOlsFitConfig,
-    retain_fast_score_cache: bool,
-    phase_probe: Option<LinearSessionPhaseAllocatorProbe>,
-    mut phase_observation: Option<&mut LinearSessionPhaseAllocationObservation>,
-) -> Result<CertifiedPreparedOlsFit> {
-    if phase_probe.is_some() != phase_observation.is_some() {
-        return Err(invalid_argument(
-            "weighted-linear phase probe and observation must be installed together",
-        ));
-    }
-    let team = ThreadTeam::new(config.execution.threads);
-    team.install(|| {
-        validate_config(prepared, config)?;
-        frame.validate_for(prepared)?;
-        let mut reservation = SystemFitReservation;
-        match config.execution.mode {
-            PreparedOlsExecutionMode::Fast => fit_with_controls_internal_mode_with_frame(
-                prepared,
-                frame,
-                config,
-                &mut reservation,
-                FitPerturbations::default(),
-                retain_fast_score_cache,
-                MAX_FAST_SCORE_CACHE_BYTES,
-                phase_probe,
-                phase_observation.as_deref_mut(),
-                None,
-            ),
-            PreparedOlsExecutionMode::Low => fit_with_controls_low_internal_with_frame(
-                prepared,
-                frame,
-                config,
-                &mut reservation,
-                FitPerturbations::default(),
-                phase_probe,
-                phase_observation,
                 None,
             ),
         }
@@ -4766,6 +4704,44 @@ fn insufficient_observations(message: &'static str) -> FeregError {
 #[cfg(test)]
 mod tests {
 
+    /// Fit a prepared OLS model around an explicitly borrowed frame through
+    /// the production Fast/Low frame entries (test comparator for sessions).
+    fn fit_prepared_weighted_linear_once<'a, P: PreparedOlsFitView + Sync + ?Sized>(
+        prepared: &'a P,
+        frame: LinearSolveFrame<'a>,
+        config: PreparedOlsFitConfig,
+    ) -> Result<CertifiedPreparedOlsFit> {
+        ThreadTeam::new(config.execution.threads).install(|| {
+            validate_config(prepared, config)?;
+            frame.validate_for(prepared)?;
+            let mut reservation = SystemFitReservation;
+            match config.execution.mode {
+                PreparedOlsExecutionMode::Fast => fit_with_controls_internal_mode_with_frame(
+                    prepared,
+                    frame,
+                    config,
+                    &mut reservation,
+                    FitPerturbations::default(),
+                    false,
+                    MAX_FAST_SCORE_CACHE_BYTES,
+                    None,
+                    None,
+                    None,
+                ),
+                PreparedOlsExecutionMode::Low => fit_with_controls_low_internal_with_frame(
+                    prepared,
+                    frame,
+                    config,
+                    &mut reservation,
+                    FitPerturbations::default(),
+                    None,
+                    None,
+                    None,
+                ),
+            }
+        })?
+    }
+
     use super::*;
     use crate::metadata::{
         AbsorbTermId, AbsorbedTerm, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
@@ -7316,7 +7292,9 @@ mod tests {
                 true,
                 TestWeights::Unit,
             );
-            let raw = data.fit_build_rhs().unwrap();
+            let raw = data
+                .fit_build_rhs_with_response(&data.fit_sample().outcome)
+                .unwrap();
             let required = LoadedOlsRows::moment_workspace_bytes(n, raw.ncols());
             for threads in [4, 8, 16] {
                 let mut config = PreparedOlsFitConfig::default();
@@ -7388,7 +7366,9 @@ mod tests {
                 true,
                 TestWeights::Unit,
             );
-            let raw = data.fit_build_rhs().unwrap();
+            let raw = data
+                .fit_build_rhs_with_response(&data.fit_sample().outcome)
+                .unwrap();
             let mut config = PreparedOlsFitConfig::default();
             config.execution.threads = ThreadConfig::from_requested(workers, true).unwrap();
             let error = invalid_data("deferred raw moment error");
@@ -8168,7 +8148,9 @@ mod tests {
                     .build()
                     .unwrap()
                     .install(|| {
-                        let actual = prepared.fit_build_rhs().unwrap();
+                        let actual = prepared
+                            .fit_build_rhs_with_response(&prepared.fit_sample().outcome)
+                            .unwrap();
                         assert_eq!(
                             actual
                                 .as_slice()
@@ -8319,7 +8301,10 @@ mod tests {
         }
         numeric.sample.regressors[1][200] = f64::NAN;
         assert_eq!(
-            numeric.fit_build_rhs().unwrap_err().code,
+            numeric
+                .fit_build_rhs_with_response(&numeric.fit_sample().outcome)
+                .unwrap_err()
+                .code,
             ErrorCode::InvalidData
         );
         numeric.sample.regressors[1][200] = 0.0;
@@ -9764,9 +9749,7 @@ mod tests {
                         },
                         ..PreparedOlsFitConfig::default()
                     };
-                    let low =
-                        fit_prepared_ols_coefficients_view_map_with_frame(&data, frame, config)
-                            .unwrap();
+                    let low = fit_prepared_weighted_linear_once(&data, frame, config).unwrap();
                     assert_eq!(low.kept_generated_columns(), fast.kept_generated_columns());
                     assert_eq!(
                         low.dropped_generated_columns(),
@@ -10235,9 +10218,8 @@ mod tests {
                     derived.bread_weight_scale(),
                 )
                 .expect("explicit borrowed frame");
-                let framed =
-                    fit_prepared_ols_coefficients_view_map_with_frame(&prepared, explicit, config)
-                        .expect("explicit-frame fit");
+                let framed = fit_prepared_weighted_linear_once(&prepared, explicit, config)
+                    .expect("explicit-frame fit");
                 assert_eq!(
                     without_solve_timings(framed),
                     without_solve_timings(adapter)
@@ -10472,7 +10454,7 @@ mod tests {
             derived.bread_weight_scale(),
         )
         .expect("explicit categorical frame");
-        let framed = fit_prepared_ols_coefficients_view_map_with_frame(&prepared, explicit, config)
+        let framed = fit_prepared_weighted_linear_once(&prepared, explicit, config)
             .expect("categorical explicit-frame fit");
         assert_eq!(
             without_solve_timings(framed),
@@ -10984,7 +10966,7 @@ mod tests {
                     1,
                 )
                 .expect("weight refresh");
-            let expected = fit_prepared_ols_coefficients_view_map_with_frame(
+            let expected = fit_prepared_weighted_linear_once(
                 &prepared,
                 LinearSolveFrame::from_parts(
                     &refreshed_y,
@@ -11104,9 +11086,8 @@ mod tests {
                 },
                 ..PreparedOlsFitConfig::default()
             };
-            let expected =
-                fit_prepared_ols_coefficients_view_map_with_frame(&prepared, frame, config)
-                    .expect("slope-only one-shot fit");
+            let expected = fit_prepared_weighted_linear_once(&prepared, frame, config)
+                .expect("slope-only one-shot fit");
             let mut session = CertifiedLinearSession::new(
                 &prepared,
                 frame,
@@ -11135,8 +11116,8 @@ mod tests {
         );
         let config = PreparedOlsFitConfig::default();
         let frame = LinearSolveFrame::from_prepared_ols(&prepared_data).expect("frame");
-        let full = fit_prepared_ols_coefficients_view_map_with_frame(&prepared_data, frame, config)
-            .expect("full fit");
+        let full =
+            fit_prepared_weighted_linear_once(&prepared_data, frame, config).expect("full fit");
         let projection =
             fit_prepared_weighted_linear_projection_once(&prepared_data, frame, config)
                 .expect("projection-only fit");
@@ -11931,9 +11912,8 @@ mod tests {
                 },
                 ..PreparedOlsFitConfig::default()
             };
-            let expected =
-                fit_prepared_ols_coefficients_view_map_with_frame(&prepared_data, frame, config)
-                    .expect("wide one-shot reference");
+            let expected = fit_prepared_weighted_linear_once(&prepared_data, frame, config)
+                .expect("wide one-shot reference");
             assert_eq!(expected.finite_rank(), 65);
             assert_eq!(expected.dropped_generated_columns(), &[65]);
 
@@ -12003,9 +11983,8 @@ mod tests {
                 },
                 ..PreparedOlsFitConfig::default()
             };
-            let expected =
-                fit_prepared_ols_coefficients_view_map_with_frame(&prepared_data, frame, config)
-                    .expect("exact-combination one-shot fit");
+            let expected = fit_prepared_weighted_linear_once(&prepared_data, frame, config)
+                .expect("exact-combination one-shot fit");
             assert_eq!(expected.finite_rank(), 2);
             let mut session = CertifiedLinearSession::new(
                 &prepared_data,
@@ -12057,12 +12036,8 @@ mod tests {
                 };
                 let frame =
                     LinearSolveFrame::from_prepared_ols(&prepared_data).expect("rank edge frame");
-                let expected = fit_prepared_ols_coefficients_view_map_with_frame(
-                    &prepared_data,
-                    frame,
-                    config,
-                )
-                .expect("rank edge one-shot");
+                let expected = fit_prepared_weighted_linear_once(&prepared_data, frame, config)
+                    .expect("rank edge one-shot");
                 assert_eq!(expected.finite_rank(), finite_columns);
                 let mut session = CertifiedLinearSession::new(
                     &prepared_data,
@@ -12134,9 +12109,8 @@ mod tests {
                 },
                 ..PreparedOlsFitConfig::default()
             };
-            let expected =
-                fit_prepared_ols_coefficients_view_map_with_frame(&prepared_data, frame, config)
-                    .expect("weak-rank one-shot");
+            let expected = fit_prepared_weighted_linear_once(&prepared_data, frame, config)
+                .expect("weak-rank one-shot");
             assert_eq!(expected.finite_rank(), 2);
             let mut session = CertifiedLinearSession::new(
                 &prepared_data,
@@ -12478,12 +12452,9 @@ mod tests {
                         initial_frame.bread_weight_scale(),
                     )
                     .expect("response frame");
-                    let response_expected = fit_prepared_ols_coefficients_view_map_with_frame(
-                        &prepared_data,
-                        response_frame,
-                        config,
-                    )
-                    .expect("response reference");
+                    let response_expected =
+                        fit_prepared_weighted_linear_once(&prepared_data, response_frame, config)
+                            .expect("response reference");
                     let response_warm = session.solve_warm().expect("response warm solve");
                     assert_fit_science_equal(&response_warm, &response_expected);
                     let response_frozen = session.solve_frozen().expect("response frozen solve");
@@ -12515,12 +12486,9 @@ mod tests {
                         refreshed_frame.bread_weight_scale(),
                     )
                     .expect("weighted reference frame");
-                    let weighted_expected = fit_prepared_ols_coefficients_view_map_with_frame(
-                        &prepared_data,
-                        weighted_frame,
-                        config,
-                    )
-                    .expect("weighted reference");
+                    let weighted_expected =
+                        fit_prepared_weighted_linear_once(&prepared_data, weighted_frame, config)
+                            .expect("weighted reference");
                     let weighted_frozen = session.solve_frozen().expect("weighted frozen solve");
                     assert_frozen_matches_fit(&weighted_frozen, &weighted_expected);
                     let warmed_capacities = session.workspace_capacities();
@@ -12576,7 +12544,7 @@ mod tests {
                                 2 + iteration,
                             )
                             .expect("alternating weight refresh");
-                        let expected = fit_prepared_ols_coefficients_view_map_with_frame(
+                        let expected = fit_prepared_weighted_linear_once(
                             &prepared_data,
                             LinearSolveFrame::from_parts(
                                 response,
@@ -12629,7 +12597,7 @@ mod tests {
                     );
                     let final_frame = LinearSolveFrame::from_prepared_ols(&final_prepared)
                         .expect("final strict frame");
-                    let final_expected = fit_prepared_ols_coefficients_view_map_with_frame(
+                    let final_expected = fit_prepared_weighted_linear_once(
                         &prepared_data,
                         LinearSolveFrame::from_parts(
                             &refreshed_y,
@@ -13792,7 +13760,9 @@ mod tests {
         // norm from iterative MAP roundoff. Its score remains a raw intercept
         // moment, not a moment normalized by that numerical noise.
         let weights = normalized_weights(&fe_prepared).expect("weights");
-        let rhs = fe_prepared.fit_build_rhs().expect("rhs");
+        let rhs = fe_prepared
+            .fit_build_rhs_with_response(&fe_prepared.fit_sample().outcome)
+            .expect("rhs");
         let reference_norm =
             weighted_matrix_column_norm(&rhs, 1, weights).expect("reference intercept norm");
         let mut roundoff_residuals = control.residuals().to_vec();

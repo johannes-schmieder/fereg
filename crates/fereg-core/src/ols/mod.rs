@@ -98,7 +98,6 @@ pub use prepared_fit::{
 };
 #[allow(unused_imports)]
 pub(crate) use prepared_fit::{
-    fit_prepared_ols_coefficients_view_map_with_frame,
     fit_prepared_weighted_linear_projection_once, CertifiedPreparedLinearProjection,
     LinearSolveFrame, PreparedLinearProjectionReconstructionCertificate,
 };

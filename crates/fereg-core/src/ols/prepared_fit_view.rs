@@ -246,11 +246,6 @@ pub(crate) trait PreparedOlsFitView: Sync {
         fit_subtract_raw_column_generic(self, column, coefficient, residuals)
     }
 
-    #[allow(dead_code)]
-    fn fit_build_rhs(&self) -> Result<DenseMatrix> {
-        self.fit_build_rhs_with_response(&self.fit_sample().outcome)
-    }
-
     /// Build the complete generated design beside a borrowed working
     /// response. Implementations retain their layout-specific hot path.
     fn fit_build_rhs_with_response(&self, response: &[f64]) -> Result<DenseMatrix>;
@@ -261,23 +256,6 @@ pub(crate) trait PreparedOlsFitView: Sync {
         rows: Option<Vec<f64>>,
     ) -> Result<(DenseMatrix, bool)> {
         fit_build_rhs_with_loaded_rows_generic(self, response, rows)
-    }
-
-    /// Build a bounded contiguous block of generated columns. The outcome is
-    /// included as column zero only when requested.
-    #[allow(dead_code)]
-    fn fit_build_rhs_block(
-        &self,
-        start: usize,
-        end: usize,
-        include_outcome: bool,
-    ) -> Result<DenseMatrix> {
-        self.fit_build_rhs_block_with_response(
-            start,
-            end,
-            include_outcome,
-            &self.fit_sample().outcome,
-        )
     }
 
     /// Build a bounded generated-column block beside a borrowed response.
