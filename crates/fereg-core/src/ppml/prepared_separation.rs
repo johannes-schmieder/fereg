@@ -40,8 +40,6 @@ use super::prepared_irls::PreparedPpmlMuExploration;
 use super::prepared_model::{
     PreparedPpmlModel, PreparedPpmlModelGeneration, PreparedPpmlModelOwner,
 };
-#[cfg(test)]
-use super::PpmlStart;
 use super::{PpmlConfig, PpmlMemoryPlan, PpmlPhase, PpmlPhaseAllocatorProbe};
 
 const SEPARATION_PHASES: [PpmlPhase; 4] = [
@@ -327,62 +325,6 @@ fn measure_separation_phase<T>(
     let result = operation();
     peaks.observe(phase, end_phase_allocation(probe, phase))?;
     result
-}
-
-/// Separation-only adapter retained for focused detector tests. Production
-/// uses `fit_with_prepared_ppml_separation`, so a requested Mu method without
-/// an explicit fitted start fails instead of silently publishing a skip.
-#[cfg(test)]
-pub(crate) fn detect_prepared_ppml_separation(
-    owner: PreparedPpmlModelOwner,
-    ppml: PpmlConfig,
-    config: SeparationConfig,
-    phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
-    start: Option<&PpmlStart>,
-) -> Result<PreparedPpmlSeparationOutcome> {
-    let supplied_start = start.cloned();
-    validate_config(config)?;
-    let coordinator = PreparedSeparationCoordinator::new(owner)?;
-    let linear = PreparedOlsFitConfig {
-        absorb: ppml.absorb,
-        fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
-        ..PreparedOlsFitConfig::default()
-    };
-    let mut interrupt = |_| Ok(());
-    let (outcome, ()) = coordinate_prepared_ppml_separation(
-        coordinator,
-        ppml,
-        config,
-        phase_allocation_probe,
-        linear,
-        ppml.absorb.solver_memory_budget.is_some(),
-        &mut interrupt,
-        |generation, _| {
-            let fitted_start = match &supplied_start {
-                Some(start) => start,
-                None if config.methods.mu => {
-                    return Err(FeregError::new(
-                        ErrorCode::Unsupported,
-                        "requested prepared Mu separation requires a fitted generation start",
-                    ));
-                }
-                None => unreachable!("Mu exploration is disabled"),
-            };
-            if fitted_start.linear_predictor.len() != generation.original_observations() {
-                return Err(invalid_argument(
-                    "prepared Mu test start does not match the original axis",
-                ));
-            }
-            let eta = generation
-                .original_rows()
-                .iter()
-                .map(|row| fitted_start.linear_predictor[*row])
-                .collect();
-            PreparedPpmlMuExploration::from_test_eta(eta, generation, ppml.bounds)
-        },
-        |_, _| Ok(()),
-    )?;
-    Ok(outcome)
 }
 
 /// Execute singleton -> exact FE -> simplex -> IR, then run a private fitted-
@@ -3524,6 +3466,70 @@ fn bounded_push<T>(
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Explicit fitted start for focused Mu detector tests (original axis).
+    #[derive(Debug, Clone, PartialEq)]
+    struct PpmlStart {
+        coefficients: Vec<f64>,
+        /// Includes the offset.
+        linear_predictor: Vec<f64>,
+    }
+
+    /// Separation-only adapter retained for focused detector tests. Production
+    /// uses `fit_with_prepared_ppml_separation`, so a requested Mu method without
+    /// an explicit fitted start fails instead of silently publishing a skip.
+    fn detect_prepared_ppml_separation(
+        owner: PreparedPpmlModelOwner,
+        ppml: PpmlConfig,
+        config: SeparationConfig,
+        phase_allocation_probe: Option<PpmlPhaseAllocatorProbe>,
+        start: Option<&PpmlStart>,
+    ) -> Result<PreparedPpmlSeparationOutcome> {
+        let supplied_start = start.cloned();
+        validate_config(config)?;
+        let coordinator = PreparedSeparationCoordinator::new(owner)?;
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..PreparedOlsFitConfig::default()
+        };
+        let mut interrupt = |_| Ok(());
+        let (outcome, ()) = coordinate_prepared_ppml_separation(
+            coordinator,
+            ppml,
+            config,
+            phase_allocation_probe,
+            linear,
+            ppml.absorb.solver_memory_budget.is_some(),
+            &mut interrupt,
+            |generation, _| {
+                let fitted_start = match &supplied_start {
+                    Some(start) => start,
+                    None if config.methods.mu => {
+                        return Err(FeregError::new(
+                            ErrorCode::Unsupported,
+                            "requested prepared Mu separation requires a fitted generation start",
+                        ));
+                    }
+                    None => unreachable!("Mu exploration is disabled"),
+                };
+                if fitted_start.linear_predictor.len() != generation.original_observations() {
+                    return Err(invalid_argument(
+                        "prepared Mu test start does not match the original axis",
+                    ));
+                }
+                let eta = generation
+                    .original_rows()
+                    .iter()
+                    .map(|row| fitted_start.linear_predictor[*row])
+                    .collect();
+                PreparedPpmlMuExploration::from_test_eta(eta, generation, ppml.bounds)
+            },
+            |_, _| Ok(()),
+        )?;
+        Ok(outcome)
+    }
+
     use crate::data::{NumericColumnView, NumericSourceUse, WeightInput};
     use crate::metadata::{
         AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,

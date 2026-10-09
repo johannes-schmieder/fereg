@@ -470,7 +470,7 @@ Warm starts are guesses, never certificates. Final inference and correction
 use this same accepted state. Output tolerance (§5) does not remove the
 strict PPML/final-Hessian requirements.
 
-Tests: `src/ppml/{family,certificate}.rs`,
+Tests: `src/ppml/family.rs`, `fereg-oracle/tests/seeded_dense_ppml_differential.rs`,
 `tests/oracles/ppml_explicit_dummy_oracle.py`,
 `parity_ppmlhdfe/feppml_one_fe_dummy_oracle.do`,
 `feppml_multipartition_slope_oracle.do`, final-Hessian/line-search fixtures.
@@ -517,7 +517,8 @@ trace digest independently of timing. Bound public diagnostic tables; no
 observation-sized trace crosses the result wire. Separation proves a sample
 decision, not estimator convergence.
 
-Tests: `src/ppml_separation/`,
+Tests: `src/ppml/prepared_separation.rs`, `fereg-oracle/tests/ppml_separation_primers.rs`,
+`tests/python/test_ppml_recession_cone_primers.py`,
 `tests/oracles/ppml_recession_cone_oracle.py`,
 `parity_ppmlhdfe/feppml_separation_methods.do`,
 `feppml_separation_outputs.do`, full-model simplex capacity/oracle fixtures.

@@ -259,7 +259,11 @@ def _item_end(tokens: Sequence[Token], start: int) -> int:
         elif value in {";", ","} and round_depth == square_depth == 0:
             return index
         elif value == "{" and round_depth == square_depth == 0:
-            return _matching(tokens, index, "{", "}")
+            end = _matching(tokens, index, "{", "}")
+            # `use a::{b, c};` and braced initializers end at their semicolon.
+            if end + 1 < len(tokens) and tokens[end + 1].value == ";":
+                end += 1
+            return end
     raise ContractError("unable to find end of cfg(test) Rust item")
 
 def _without_cfg_test_items(tokens: Sequence[Token]) -> list[Token]:

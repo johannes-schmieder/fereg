@@ -6,8 +6,6 @@ use crate::data::WeightKind;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::linalg::neumaier_add;
 use crate::ols::CertifiedLinearWithinDesign;
-#[cfg(test)]
-use crate::ols::{ClusterSubsetReport, VceKind, VceReport};
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
 use crate::sandwich::{
@@ -1286,60 +1284,6 @@ fn mask_dimensions(mask: u16, dimensions: usize) -> Result<Vec<usize>> {
     Ok(output)
 }
 
-/// Temporary bridge for the pre-prepared PPML prototype. New production
-/// callers already own the compact frozen design and never enter this path.
-#[cfg(test)]
-fn select_design_columns(matrix: &DenseMatrix, kept: &[usize]) -> Result<DenseMatrix> {
-    if kept
-        .iter()
-        .enumerate()
-        .any(|(position, column)| *column >= matrix.ncols() || kept[..position].contains(column))
-    {
-        return Err(FeregError::new(
-            ErrorCode::InvalidArgument,
-            "legacy PPML kept columns are duplicated or out of range",
-        ));
-    }
-    let elements = matrix.nrows().checked_mul(kept.len()).ok_or_else(|| {
-        FeregError::new(
-            ErrorCode::Allocation,
-            "legacy PPML compact design dimensions overflow usize",
-        )
-    })?;
-    let mut values = filled(
-        elements,
-        0.0_f64,
-        "unable to reserve legacy PPML compact design",
-    )?;
-    for row in 0..matrix.nrows() {
-        for (compact_column, &source_column) in kept.iter().enumerate() {
-            values[row * kept.len() + compact_column] = matrix[(row, source_column)];
-        }
-    }
-    DenseMatrix::from_row_major(matrix.nrows(), kept.len(), values)
-}
-
-#[cfg(test)]
-fn select_identified_square(
-    matrix: &[f64],
-    full_dimension: usize,
-    kept: &[usize],
-) -> Result<Vec<f64>> {
-    let mut selected = filled(
-        kept.len().checked_mul(kept.len()).ok_or_else(|| {
-            FeregError::new(ErrorCode::Allocation, "PPML bread dimensions overflow")
-        })?,
-        0.0_f64,
-        "unable to reserve PPML identified bread",
-    )?;
-    for (out_row, &row) in kept.iter().enumerate() {
-        for (out_column, &column) in kept.iter().enumerate() {
-            selected[out_row * kept.len() + out_column] = matrix[row * full_dimension + column];
-        }
-    }
-    Ok(selected)
-}
-
 fn expand_identified_square(
     identified: &[f64],
     full_dimension: usize,
@@ -1456,100 +1400,6 @@ pub(super) fn filled<T: Clone>(elements: usize, value: T, message: &'static str)
 }
 
 pub(super) use crate::memory::fallible_copy;
-
-#[cfg(test)]
-pub(crate) struct PpmlVceInput<'a> {
-    pub regressors: &'a DenseMatrix,
-    pub score_residuals: &'a [f64],
-    pub prior_weights: &'a [f64],
-    pub bread: &'a [f64],
-    pub kept: &'a [usize],
-    pub residual_dof: usize,
-    pub clusters: &'a [Vec<u32>],
-    pub kind: VceKind,
-}
-
-/// Test-oracle adapter for the pre-prepared in-crate PPML prototype.
-///
-/// The production driver consumes `PpmlInferenceInput` directly, and the
-/// production inference engine above is the sole covariance implementation.
-/// This compatibility shim remains test-only for stale direct-fit oracle
-/// fixtures; it accepts only unit weights rather than guessing whether a
-/// nonunit vector meant fweights or normalized pweights.
-#[cfg(test)]
-pub(crate) fn compute_ppml_vce(input: PpmlVceInput<'_>) -> Result<VceReport> {
-    let rows = input.regressors.nrows();
-    if input.prior_weights.iter().any(|weight| *weight != 1.0) {
-        return Err(FeregError::new(
-            ErrorCode::Unsupported,
-            "the stale direct PPML VCE adapter cannot infer a nonunit weight kind",
-        ));
-    }
-    let model_rank = rows.checked_sub(input.residual_dof).ok_or_else(|| {
-        FeregError::new(
-            ErrorCode::InvalidArgument,
-            "stale PPML residual DoF exceeds physical observations",
-        )
-    })?;
-    let absorbed_rank = model_rank.checked_sub(input.kept.len()).ok_or_else(|| {
-        FeregError::new(
-            ErrorCode::InvalidArgument,
-            "stale PPML residual DoF is inconsistent with finite rank",
-        )
-    })?;
-    let coefficients = vec![0.0_f64; input.regressors.ncols()];
-    let compact_design = select_design_columns(input.regressors, input.kept)?;
-    let identified_bread =
-        select_identified_square(input.bread, input.regressors.ncols(), input.kept)?;
-    let cluster_slices = input.clusters.iter().map(Vec::as_slice).collect::<Vec<_>>();
-    let result = compute_ppml_inference(PpmlInferenceInput {
-        coefficients: &coefficients,
-        full_dimension: input.regressors.ncols(),
-        within_design: &compact_design,
-        reported_finite_rank: compact_design.ncols(),
-        score_residuals: input.score_residuals,
-        prior_weights: input.prior_weights,
-        weight_report: PreparedPpmlWeightReport {
-            kind: None,
-            physical_observations: rows,
-            effective_observations: rows,
-            raw_weight_sum: None,
-            log_raw_weight_sum: None,
-            prepared_weight_sum: rows as f64,
-            raw_to_prepared_multiplier: Some(1.0),
-            log_raw_to_prepared_multiplier: 0.0,
-        },
-        identified_bread: &identified_bread,
-        kept_full_slots: input.kept,
-        absorbed_rank,
-        connected_components: 0,
-        absorbed_rank_is_approximate: false,
-        clusters: &cluster_slices,
-        requested_vce: match input.kind {
-            VceKind::Unadjusted => PpmlVceRequest::Unadjusted,
-            VceKind::Robust => PpmlVceRequest::Robust,
-            VceKind::Clustered => PpmlVceRequest::Clustered,
-        },
-        wald_columns: &[],
-        wald_reference: None,
-        certificate_tolerance: 1e-9,
-    })?;
-    Ok(VceReport {
-        kind: input.kind,
-        covariance: result.vce.covariance,
-        standard_errors: result.vce.standard_errors,
-        cluster_subsets: result
-            .vce
-            .cluster_subsets
-            .into_iter()
-            .map(|report| ClusterSubsetReport {
-                dimensions: report.dimensions,
-                groups: report.groups,
-                sign: report.sign,
-            })
-            .collect(),
-    })
-}
 
 #[cfg(test)]
 mod tests {
@@ -2316,23 +2166,5 @@ mod tests {
         assert_eq!(report.absorbed_rank, 4);
         assert_eq!(report.model_rank, 6);
         assert_eq!(report.structural_residual, 14);
-    }
-
-    #[test]
-    fn stale_unit_weight_adapter_routes_through_the_new_engine() {
-        let design = DenseMatrix::from_columns(&[vec![1.0; 4], vec![0.0_f64, 1.0, 2.0, 3.0]])
-            .expect("design");
-        let report = compute_ppml_vce(PpmlVceInput {
-            regressors: &design,
-            score_residuals: &[0.0; 4],
-            prior_weights: &[1.0; 4],
-            bread: &[0.7, -0.2, -0.2, 0.1],
-            kept: &[0, 1],
-            residual_dof: 2,
-            clusters: &[],
-            kind: VceKind::Unadjusted,
-        })
-        .expect("compatibility adapter");
-        assert_eq!(report.covariance, vec![0.0; 4]);
     }
 }
