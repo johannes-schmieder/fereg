@@ -524,3 +524,49 @@ intermediate plugins were retired after recording the results. Compact timing
 observations, input hashes/headers, harness/source patches, failed evidence,
 replay summaries and production/final comparator plugins remain in the ignored
 follow-up directory; the current build cache and development plugin are retained.
+
+### Windows diagnostics repair and successful rerun
+
+The 2026-10-08 controller repair replaces the ambiguous wait-for-file failure
+with separate process outcomes and source-bound stage diagnostics. The old
+controller waited up to fifteen minutes even after Stata had exited; therefore
+an old run's duration alone cannot establish a timeout. Earlier raw source/logs
+were removed by that controller, and its aggregate receipts cannot recover the
+historical cause. The failure did not reproduce with the instrumented driver;
+no numerical runtime code changed in this repair.
+
+The clean rerun passed all Windows gates:
+
+- Source: `81c51e7e8f8ac67f0adc0ad53daa1692136d1200`.
+- Run: `win-20261009T004206Z-3ec0d7f7`, private `stata-do` profile.
+- Source archive SHA-256:
+  `c69818fd57189ea451b8816afe4b4e517327e136d1de969aa90d93b88d125027`.
+- Receipt SHA-256:
+  `8fc3057b16132331ae75bacbb5eef2b166e005cdc1c3e0d1b8effb9c211f4ee2`.
+- Plugin SHA-256:
+  `08995120c8c4e96963ae32acb55f90a45b8fb0b660ebb0902610b173df50500a`.
+- Release build, exact platform FMA witnesses, three fused-kernel tests,
+  numeric input/output guards, binary audit and actual-plugin loader passed.
+- Checksum verification, `windows_ci_smoke.do` and `single_runtime.do` passed.
+- The controller reported `passed`, final stage `complete`, exit code zero and
+  765,820 ms elapsed. This is an operational duration, not a performance result.
+- Source/controller identities and every controller gate passed. The wrapper
+  verified stopped state, transient-object deletion and lock release.
+
+The fixed collector passed twelve local tests. The maintenance installer passed
+thirteen isolated payload/rollback/cleanup tests. Real Windows PowerShell 5.1
+tests passed stage ordering, original-error preservation, atomic status writing,
+changed-plugin rejection, partial markers, early exit and timeout process-tree
+cleanup before installation. Shared-backend acceptance passed the out-of-scope
+permission denial, clean smoke, deliberate failure and concurrent-request
+rejection, with cleanup verified. Existing FEVC receipt/artifact contracts and
+the fifteen-minute Stata limit were preserved; GitHub workflows remain paused.
+
+The accepted shared controller SHA-256 is
+`f4b2fa90f4fe11a3b022407f0014207854bc4318163d00e8d2fa59e03ccd066d`;
+its fixed diagnostic collector SHA-256 is
+`37095cbf9ecbc91e796e3ff0e24a0d0ca7db96e3ae7e9af238f98d390a77ac3d`.
+The maintained patch is against controller SHA-256
+`f8db7b3321b44d893d19919dc11e1a298b41ced53b8a6b5a4b24ca60a494c3c2`.
+These are bounded Windows build/load and mapped-test results, not full Windows
+scientific or performance qualification or native distribution authorization.
