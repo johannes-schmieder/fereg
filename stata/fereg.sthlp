@@ -312,6 +312,13 @@ artifact and, with {cmd:verbose}, the Stata host and processor information.
 {cmd:selftest} runs the native diagnostic calculation. {cmd:threads(#)} may be
 supplied to {cmd:doctor} or {cmd:selftest}; zero selects the native default.
 
+{pstd}
+After installing or updating fereg in a Stata session that has already used
+it, restart Stata: the previously loaded plugin can stay in memory until Stata
+exits (on Windows it always does). On Windows, restart before updating, because
+a loaded plugin file cannot be overwritten. A plugin that does not match the
+installed ado files fails with {cmd:r(499)} and asks for a restart.
+
 {marker examples}
 {title:Examples}
 

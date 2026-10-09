@@ -81,6 +81,9 @@ test harness, leaves the code mapped until the process exits, so an idle worker
 never executes unmapped pages. A rebuilt or reinstalled Windows plugin takes
 effect after Stata restarts. The Windows actual-plugin loader test releases the
 library after the doctor action and asserts that the module is still mapped.
+Every `protocol_mismatch` error (ado files and loaded plugin from different
+versions) is followed by a line asking the user to restart Stata, and to
+reinstall fereg if the error persists.
 
 ## Estimation request transport
 

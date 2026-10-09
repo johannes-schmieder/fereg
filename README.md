@@ -123,6 +123,12 @@ fereg, doctor verbose
 fereg, selftest
 ```
 
+After installing or updating fereg in a Stata session that has already used
+it, restart Stata: the previously loaded plugin can stay in memory until Stata
+exits (on Windows it always does). On Windows, restart before updating, because
+a loaded plugin file cannot be overwritten. A plugin that does not match the
+installed ado files fails with `r(499)` and asks for a restart.
+
 The source tree uses the pinned Rust toolchain and these main development
 checks:
 

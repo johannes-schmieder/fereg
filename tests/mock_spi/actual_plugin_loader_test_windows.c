@@ -84,7 +84,8 @@ static int check_protocol_mismatch(stata_call_function call)
     };
     clear_output();
     if (call((int) (sizeof(arguments) / sizeof(arguments[0])), arguments) != 499) return 1;
-    if (strstr(error_buffer, "protocol_mismatch") == NULL) return 2;
+    if (strstr(error_buffer, "protocol_mismatch") == NULL ||
+        strstr(error_buffer, "restart Stata") == NULL) return 2;
     return 0;
 }
 

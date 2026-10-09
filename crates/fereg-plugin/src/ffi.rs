@@ -1590,7 +1590,18 @@ fn report_error(error: &FeregError) {
     }
     let sink = SpiSink;
     sink.error(&format!("fereg: {error}\n"));
+    if error.code == ErrorCode::ProtocolMismatch {
+        sink.error(VERSION_SKEW_HINT);
+    }
 }
+
+/// Every protocol mismatch means the ado files and the loaded plugin come from
+/// different fereg versions. A loaded plugin can stay in memory for the rest
+/// of the Stata session (on Windows it is pinned), so an update needs a
+/// restart to take effect.
+const VERSION_SKEW_HINT: &str = "fereg: the loaded native plugin does not match the \
+installed fereg files; restart Stata to load the installed plugin, and reinstall \
+fereg if the error persists\n";
 
 fn prepared_store_error_report(error: &FeregError) -> Option<&'static CStr> {
     if error.code == ErrorCode::Internal {

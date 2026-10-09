@@ -2,10 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 14289,
-      "before": 14254,
+      "after": 14295,
+      "before": 14289,
       "metric": "fereg-plugin/production_lines",
-      "reason": "Windows plugin module pin"
+      "reason": "protocol mismatch restart hint"
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -18558,7 +18558,7 @@
             "lines": 8
           },
           "panic_message#1": {
-            "line": 1616,
+            "line": 1627,
             "lines": 9
           },
           "parse_linux_memory_field#1": {
@@ -18586,7 +18586,7 @@
             "lines": 49
           },
           "prepared_store_error_report#1": {
-            "line": 1595,
+            "line": 1606,
             "lines": 11
           },
           "process_rss_bytes#1": {
@@ -18663,10 +18663,10 @@
           },
           "report_error#1": {
             "line": 1579,
-            "lines": 15
+            "lines": 18
           },
           "sanitize_c_string#1": {
-            "line": 1607,
+            "line": 1618,
             "lines": 8
           },
           "should_inject_ppml_allocation_failure#1": {
@@ -18726,7 +18726,7 @@
             "lines": 12
           }
         },
-        "production_lines": 1213
+        "production_lines": 1219
       },
       "crates/fereg-plugin/src/fused_kernels.rs": {
         "chunk_candidates": [],
@@ -20444,10 +20444,10 @@
         "dispatch_candidates": 134,
         "files_over_1500": 3,
         "functions_over_150": 14,
-        "production_lines": 14289
+        "production_lines": 14295
       }
     },
     "schema": 1
   },
-  "reason": "Windows plugin module pin"
+  "reason": "protocol mismatch restart hint"
 }

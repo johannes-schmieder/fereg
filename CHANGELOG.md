@@ -6,7 +6,9 @@
   worker threads outlive each command, so unloading the DLL (as the Windows
   loader test does right after the doctor check) could crash the process
   with an access violation when an idle worker was still running. A rebuilt
-  Windows plugin now takes effect after restarting Stata.
+  Windows plugin now takes effect after restarting Stata. A plugin that does
+  not match the installed ado files (`r(499)`) now tells the user to restart
+  Stata, and the README and `help fereg` explain when a restart is needed.
 - Fix: `feppml` with a slope fixed effect such as `absorb(g##c.x)` and zero
   outcomes could stop with r(459) ("prepared projection finite score
   certificate did not pass"). The iterated rectifier's projection divided the
