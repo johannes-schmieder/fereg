@@ -10,10 +10,10 @@ use std::time::Instant;
 #[cfg(test)]
 use crate::estimate::load_ols_input;
 use crate::estimate::{
-    imposed_memory_limit_bytes, load_ols_input_with_memory, loading_memory, parse_bool,
-    parse_nonnegative_u32, parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16,
-    parse_usize, read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks,
-    read_table, required,
+    imposed_memory_limit_bytes, loading_memory, parse_bool, parse_nonnegative_u32,
+    parse_positive_f64, parse_positive_u32, parse_positive_usize, parse_u16, parse_usize,
+    read_bindings, read_local_estimate_bundle, read_numeric_columns_in_chunks, read_table,
+    required,
 };
 use crate::input::{PreparedMatrixStoreName, SpiApi};
 use crate::instrumentation::{
@@ -322,12 +322,13 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         action.metadata_capacity_bytes() + action.transport_parent_bytes,
         action.memory.usable_bytes(),
     )?;
-    let loaded = load_ols_input_with_memory(
+    let loaded = crate::estimate::load_ols_input_with_action_team(
         &action.request,
         action.candidate_all,
         action.input_complete,
         &mut input_memory,
         spi,
+        action.linear.execution.threads,
     )?;
     let adjustment = load_adjustment(action.adjustment, &loaded.candidate, spi)?;
     let bias_units = load_optional_numeric(action.bias_unit, &loaded.candidate, spi)?;

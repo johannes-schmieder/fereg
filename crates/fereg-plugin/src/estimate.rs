@@ -1507,7 +1507,18 @@ pub(crate) fn load_ols_input(
     spi: &mut dyn SpiApi,
 ) -> Result<LoadedOlsInput> {
     let mut memory = loading_memory(request, spi.nobs()?, 0, 0, None)?;
-    load_ols_input_with_memory(request, candidate_all, input_complete, &mut memory, spi)
+    load_ols_input_with_team(
+        request,
+        candidate_all,
+        input_complete,
+        &mut memory,
+        spi,
+        None,
+        &mut None,
+        0,
+        None,
+        false,
+    )
 }
 
 pub(crate) fn load_preparation_input(
@@ -1585,20 +1596,26 @@ pub(crate) fn loading_memory(
     )
 }
 
-pub(crate) fn load_ols_input_with_memory(
+/// Load with the action's worker team when every candidate is retained and
+/// the effects support the tiled numeric pipeline, as the OLS action does.
+/// Loaded values are identical; only the reading schedule changes.
+pub(crate) fn load_ols_input_with_action_team(
     request: &OlsRequestV1,
     candidate_all: bool,
     input_complete: bool,
     memory: &mut InputMemory,
     spi: &mut dyn SpiApi,
+    threads: fereg_core::ThreadConfig,
 ) -> Result<LoadedOlsInput> {
+    let team = (candidate_all && numeric_pipeline_effects_supported(request))
+        .then(|| ThreadTeam::new(threads));
     load_ols_input_with_team(
         request,
         candidate_all,
         input_complete,
         memory,
         spi,
-        None,
+        team,
         &mut None,
         0,
         None,
@@ -6901,8 +6918,18 @@ mod tests {
                 action.metadata_capacity_bytes(),
                 usable,
             )?;
-            let result =
-                load_ols_input_with_memory(&action.request, false, false, &mut memory, &mut spi);
+            let result = load_ols_input_with_team(
+                &action.request,
+                false,
+                false,
+                &mut memory,
+                &mut spi,
+                None,
+                &mut None,
+                0,
+                None,
+                false,
+            );
             assert_eq!(spi.store_calls, 0);
             Ok((result?, memory.peak()))
         }
