@@ -427,7 +427,7 @@ fn implicit_interaction_partition_and_zero_controls_match_closed_form_projection
 #[test]
 fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundary() {
     use crate::ols::finite_wls_kernel::{
-        fill_finite_wls_moments, finite_wls_moment_layout, FixedBlockMomentSource,
+        fill_finite_wls_moments, validate_moment_source, FixedBlockMomentSource,
     };
     for (stored, active) in [(2, 1), (6, 6), (7, 3), (64, 64), (65, 64), (65, 65)] {
         let source = fixture_extra_columns(false, false, stored - 2);
@@ -510,13 +510,13 @@ fn implicit_moments_match_ordered_scalar_oracle_across_private_workspace_boundar
                                 solver_weight_divisor: divisor,
                                 column_scales: scaled.then_some(scales.as_slice()),
                             };
-                            let layout = finite_wls_moment_layout(source).unwrap();
+                            let layout_source = validate_moment_source(source).unwrap();
+                            let layout = layout_source.layout();
                             let mut partials = vec![0.; layout.partial_elements];
                             let mut rhs = vec![0.; active];
                             let mut gram = vec![0.; active * active];
                             fill_finite_wls_moments(
-                                source,
-                                layout,
+                                layout_source,
                                 &mut partials,
                                 &mut rhs,
                                 &mut gram,

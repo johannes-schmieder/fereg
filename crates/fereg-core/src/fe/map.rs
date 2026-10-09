@@ -1,5 +1,5 @@
 use super::certificate::CertificateContext;
-use super::projection::{AutoProjectionWorkspace, ParallelProjectionPlan};
+use super::projection::{AutoProjectionWorkspace, CheckedWeights, ParallelProjectionPlan};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
@@ -108,15 +108,16 @@ pub(super) fn absorb_map_with_context(
         }
     }
     let mut final_certificate = None;
+    let checked_weights = CheckedWeights::new(weights)?;
 
     for iteration in 1..=config.max_iterations {
         crate::interrupt::checkpoint()?;
         for effect in design.effects() {
-            workspace.project(effect, weights, values)?;
+            workspace.project(effect, checked_weights, values)?;
         }
         if config.symmetric && design.effects().len() > 1 {
             for effect in design.effects().iter().rev().skip(1) {
-                workspace.project(effect, weights, values)?;
+                workspace.project(effect, checked_weights, values)?;
             }
         }
         if iteration % config.check_every == 0 || iteration == config.max_iterations {
@@ -971,14 +972,17 @@ impl ReusableMapAbsorber {
                 ),
             );
         }
+        let checked_weights = CheckedWeights::new(weights)?;
         for iteration in 1..=config.max_iterations {
             crate::interrupt::checkpoint()?;
             for effect in self.design.effects() {
-                self.projection.project(effect, weights, &mut values)?;
+                self.projection
+                    .project(effect, checked_weights, &mut values)?;
             }
             if config.symmetric && self.design.effects().len() > 1 {
                 for effect in self.design.effects().iter().rev().skip(1) {
-                    self.projection.project(effect, weights, &mut values)?;
+                    self.projection
+                        .project(effect, checked_weights, &mut values)?;
                 }
             }
             if self.design.effects().len() <= 1

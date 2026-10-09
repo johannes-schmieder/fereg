@@ -48,8 +48,8 @@ use retained_refinement::{refine_workspace, RefinementFrame};
 
 use super::finite_wls_kernel::{
     certify_finite_inverse, certify_normal_equations, factor_guarded_cholesky_in_place,
-    fill_finite_wls_moments, finite_wls_moment_layout, inverse_relative_infinity_norm,
-    invert_guarded_cholesky, solve_guarded_cholesky, CholeskyPivotPolicy, FixedBlockMomentSource,
+    fill_finite_wls_moments, inverse_relative_infinity_norm, invert_guarded_cholesky,
+    solve_guarded_cholesky, validate_moment_source, CholeskyPivotPolicy, FixedBlockMomentSource,
     NormalEquationScale,
 };
 #[cfg(test)]
@@ -4479,7 +4479,8 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 self.bread_weight_scale,
                 &workspace.candidate_scales,
             )?;
-            let layout = finite_wls_moment_layout(source)?;
+            let layout_source = validate_moment_source(source)?;
+            let layout = layout_source.layout();
             resize_zeroed(
                 &mut workspace.moment_partials,
                 layout.partial_elements,
@@ -4513,8 +4514,7 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 }
             } else {
                 fill_finite_wls_moments(
-                    source,
-                    layout,
+                    layout_source,
                     &mut workspace.moment_partials,
                     &mut workspace.rhs,
                     &mut workspace.gram,
@@ -6017,7 +6017,8 @@ fn stream_frozen_solve(
         bread_weight_scale,
         &workspace.candidate_scales,
     )?;
-    let moment_layout = finite_wls_moment_layout(source)?;
+    let moment_layout_source = validate_moment_source(source)?;
+    let moment_layout = moment_layout_source.layout();
     resize_zeroed(
         &mut workspace.moment_partials,
         moment_layout.partial_elements,
@@ -6034,8 +6035,7 @@ fn stream_frozen_solve(
         "unable to reserve frozen weighted-linear RHS moments",
     )?;
     fill_finite_wls_moments(
-        source,
-        moment_layout,
+        moment_layout_source,
         &mut workspace.moment_partials,
         &mut workspace.rhs,
         &mut workspace.gram,

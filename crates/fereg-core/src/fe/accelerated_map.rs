@@ -1,5 +1,5 @@
 use super::certificate::CertificateContext;
-use super::projection::{AutoProjectionWorkspace, ParallelProjectionPlan};
+use super::projection::{AutoProjectionWorkspace, CheckedWeights, ParallelProjectionPlan};
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
@@ -86,12 +86,19 @@ pub(super) fn absorb_accelerated_map_with_context(
     }
 
     let mut workspace = AutoProjectionWorkspace::new(design, values.ncols(), projection_plan)?;
+    let checked_weights = CheckedWeights::new(weights)?;
     let mut iterations = 0;
     let mut accepted = 0;
     while iterations < config.max_iterations {
         crate::interrupt::checkpoint()?;
         let x0 = fallible_matrix_copy(values, "unable to reserve accelerator x0")?;
-        sweep(design, weights, values, &mut workspace, config.symmetric)?;
+        sweep(
+            design,
+            checked_weights,
+            values,
+            &mut workspace,
+            config.symmetric,
+        )?;
         iterations += 1;
         certificate = context.certify(values, &reference_norms, config.tolerance)?;
         if certificate.passed {
@@ -108,7 +115,13 @@ pub(super) fn absorb_accelerated_map_with_context(
             break;
         }
         let x1 = fallible_matrix_copy(values, "unable to reserve accelerator x1")?;
-        sweep(design, weights, values, &mut workspace, config.symmetric)?;
+        sweep(
+            design,
+            checked_weights,
+            values,
+            &mut workspace,
+            config.symmetric,
+        )?;
         iterations += 1;
         let baseline_certificate = context.certify(values, &reference_norms, config.tolerance)?;
         if baseline_certificate.passed {
@@ -192,7 +205,8 @@ fn absorb_conjugate_gradient(
 
     let mut workspace = AutoProjectionWorkspace::new(design, values.ncols(), projection_plan)?;
     let weight_scale = cg_weight_scale(weights)?;
-    let mut residual = apply_symmetric_projection(design, weights, values, &mut workspace)?;
+    let checked_weights = CheckedWeights::new(weights)?;
+    let mut residual = apply_symmetric_projection(design, checked_weights, values, &mut workspace)?;
     let mut direction = fallible_matrix_copy(&residual, "unable to reserve CG direction")?;
     let mut residual_square = weighted_dot_columns(&residual, &residual, weights, weight_scale)?;
     let initial_residual_square = fallible_vector_copy(
@@ -204,7 +218,8 @@ fn absorb_conjugate_gradient(
 
     for iteration in 1..=config.max_iterations {
         crate::interrupt::checkpoint()?;
-        let projection = apply_symmetric_projection(design, weights, &direction, &mut workspace)?;
+        let projection =
+            apply_symmetric_projection(design, checked_weights, &direction, &mut workspace)?;
         let direction_projection =
             weighted_dot_columns(&direction, &projection, weights, weight_scale)?;
         let alpha = match cg_ratios(
@@ -273,7 +288,7 @@ fn absorb_conjugate_gradient(
 
 fn apply_symmetric_projection(
     design: &FeDesign,
-    weights: &[f64],
+    weights: CheckedWeights<'_>,
     input: &DenseMatrix,
     workspace: &mut AutoProjectionWorkspace,
 ) -> Result<DenseMatrix> {
@@ -499,7 +514,7 @@ fn cg_report(
 
 fn sweep(
     design: &FeDesign,
-    weights: &[f64],
+    weights: CheckedWeights<'_>,
     values: &mut DenseMatrix,
     workspace: &mut AutoProjectionWorkspace,
     symmetric: bool,

@@ -51,6 +51,31 @@ pub fn project_effect_in_place(
     workspace: &mut ProjectionWorkspace,
 ) -> Result<()> {
     validate_projection(effect, weights, values, workspace)?;
+    project_validated(effect, weights, values, workspace)
+}
+
+/// Weights checked finite and positive once for a whole solve, so repeated
+/// projections inside its sweeps keep only their O(1) shape checks.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct CheckedWeights<'a>(&'a [f64]);
+
+impl<'a> CheckedWeights<'a> {
+    pub(crate) fn new(weights: &'a [f64]) -> Result<Self> {
+        validate_projection_weights(weights)?;
+        Ok(Self(weights))
+    }
+
+    pub(crate) const fn values(self) -> &'a [f64] {
+        self.0
+    }
+}
+
+fn project_validated(
+    effect: &EffectTerm,
+    weights: &[f64],
+    values: &mut DenseMatrix,
+    workspace: &mut ProjectionWorkspace,
+) -> Result<()> {
     let channels = effect.channels();
     let rhs_count = values.ncols();
 
@@ -153,12 +178,26 @@ fn validate_projection(
     values: &DenseMatrix,
     workspace: &ProjectionWorkspace,
 ) -> Result<()> {
+    validate_projection_axis(effect, weights, values)?;
+    validate_projection_weights(weights)?;
+    validate_projection_workspace(effect, values, workspace)
+}
+
+fn validate_projection_axis(
+    effect: &EffectTerm,
+    weights: &[f64],
+    values: &DenseMatrix,
+) -> Result<()> {
     if weights.len() != values.nrows() || effect.codes().len() != values.nrows() {
         return Err(FeregError::new(
             ErrorCode::InvalidArgument,
             "projection inputs have inconsistent observation counts",
         ));
     }
+    Ok(())
+}
+
+fn validate_projection_weights(weights: &[f64]) -> Result<()> {
     if weights
         .iter()
         .any(|weight| !weight.is_finite() || *weight <= 0.0)
@@ -168,6 +207,14 @@ fn validate_projection(
             "projection weights must be finite and positive",
         ));
     }
+    Ok(())
+}
+
+fn validate_projection_workspace(
+    effect: &EffectTerm,
+    values: &DenseMatrix,
+    workspace: &ProjectionWorkspace,
+) -> Result<()> {
     let channels = effect.channels();
     let rhs_count = values.ncols();
     if channels > workspace.max_channels || rhs_count > workspace.rhs_count {
@@ -357,16 +404,18 @@ impl AutoProjectionWorkspace {
     pub(super) fn project(
         &mut self,
         effect: &EffectTerm,
-        weights: &[f64],
+        weights: CheckedWeights<'_>,
         values: &mut DenseMatrix,
     ) -> Result<()> {
+        let weights = weights.values();
+        validate_projection_axis(effect, weights, values)?;
+        validate_projection_workspace(effect, values, &self.serial)?;
         if let Some(parallel) = self.parallel.as_mut() {
-            validate_projection(effect, weights, values, &self.serial)?;
             if values.ncols() > 0 && effect.n_levels() > 0 {
                 return project_parallel(effect, weights, values, parallel);
             }
         }
-        project_effect_in_place(effect, weights, values, &mut self.serial)
+        project_validated(effect, weights, values, &mut self.serial)
     }
 }
 
@@ -781,18 +830,12 @@ mod tests {
         for bad_plan in [Some(ParallelProjectionPlan { levels: 1, ..plan }), None] {
             let mut w = AutoProjectionWorkspace::new(&design, 1, bad_plan).unwrap();
             let mut values = input.clone();
-            assert!(w
-                .project(
-                    &design.effects()[0],
-                    &[1., 1., -1., 1., 1., 1.],
-                    &mut values
-                )
-                .is_err());
+            // Invalid weights are rejected once, before any projection.
+            assert!(CheckedWeights::new(&[1., 1., -1., 1., 1., 1.]).is_err());
             assert_eq!(values, input);
             if bad_plan.is_some() {
-                assert!(w
-                    .project(&design.effects()[0], &[1.; 6], &mut values)
-                    .is_err());
+                let unit = CheckedWeights::new(&[1.; 6]).unwrap();
+                assert!(w.project(&design.effects()[0], unit, &mut values).is_err());
                 assert_eq!(values, input);
             }
         }
@@ -808,7 +851,11 @@ mod tests {
         assert!(fallback.parallel.is_none());
         let mut values = input;
         fallback
-            .project(&design.effects()[0], &[1.; 6], &mut values)
+            .project(
+                &design.effects()[0],
+                CheckedWeights::new(&[1.; 6]).unwrap(),
+                &mut values,
+            )
             .unwrap();
     }
 

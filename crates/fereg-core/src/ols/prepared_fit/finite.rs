@@ -140,7 +140,8 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             weights,
             bread_weight_scale,
         );
-        let layout = finite_wls_moment_layout(source)?;
+        let layout_source = validate_moment_source(source)?;
+        let layout = layout_source.layout();
         let count = workspace.candidate_ids.len();
         resize(
             &mut workspace.moment_partials,
@@ -156,8 +157,7 @@ pub(super) fn solve_one_shot<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         )?;
         resize(&mut workspace.rhs, count, 0., reservation)?;
         fill_finite_wls_moments(
-            source,
-            layout,
+            layout_source,
             &mut workspace.moment_partials,
             &mut workspace.rhs,
             &mut workspace.gram,

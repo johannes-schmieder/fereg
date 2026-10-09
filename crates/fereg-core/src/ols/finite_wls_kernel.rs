@@ -204,10 +204,32 @@ pub(super) struct FiniteWlsMomentLayout {
     pub(super) partial_elements: usize,
 }
 
-pub(super) fn finite_wls_moment_layout(
+/// A moment source whose O(N) response, weight and scale checks passed once,
+/// with the layout planned for the current worker count. The fill consumes
+/// it, so one finite solve validates its source once.
+#[derive(Debug, Clone, Copy)]
+pub(super) struct ValidatedMomentSource<'a> {
+    source: FixedBlockMomentSource<'a>,
+    layout: FiniteWlsMomentLayout,
+}
+
+impl ValidatedMomentSource<'_> {
+    pub(super) const fn layout(&self) -> FiniteWlsMomentLayout {
+        self.layout
+    }
+}
+
+pub(super) fn validate_moment_source(
     source: FixedBlockMomentSource<'_>,
-) -> Result<FiniteWlsMomentLayout> {
+) -> Result<ValidatedMomentSource<'_>> {
     source.validate()?;
+    Ok(ValidatedMomentSource {
+        source,
+        layout: plan_moment_layout(source)?,
+    })
+}
+
+fn plan_moment_layout(source: FixedBlockMomentSource<'_>) -> Result<FiniteWlsMomentLayout> {
     FiniteWlsMomentLayout::plan(
         source.dimension(),
         source.row_workspace(),
@@ -261,16 +283,16 @@ pub(crate) fn retained_scratch_moment_envelope(
 /// Narrow prepared designs retain fixed-block compensated merging. Wide and
 /// retained designs partition Gram rows, with a thread-independent row order.
 pub(super) fn fill_finite_wls_moments(
-    source: FixedBlockMomentSource<'_>,
-    layout: FiniteWlsMomentLayout,
+    moments: ValidatedMomentSource<'_>,
     partials: &mut [f64],
     rhs: &mut [f64],
     gram: &mut [f64],
 ) -> Result<()> {
-    source.validate()?;
+    let ValidatedMomentSource { source, layout } = moments;
     let dimension = source.dimension();
     let square = checked_square(dimension, "finite-WLS Gram dimensions overflow")?;
-    if layout != finite_wls_moment_layout(source)?
+    // The worker count may differ from the one the layout was planned for.
+    if layout != plan_moment_layout(source)?
         || partials.len() != layout.partial_elements
         || rhs.len() != dimension
         || gram.len() != square
@@ -2348,14 +2370,14 @@ mod tests {
                                 solver_weight_divisor: divisor,
                                 column_scales: Some(&scales),
                             };
-                            let layout = finite_wls_moment_layout(source).unwrap();
+                            let layout_source = validate_moment_source(source).unwrap();
+                            let layout = layout_source.layout();
                             let mut partials = vec![0.0; layout.partial_elements];
                             let mut rhs = vec![0.0; columns];
                             let mut gram = vec![0.0; columns * columns];
                             let before = scratch.shared_read_chunks_for_test();
                             fill_finite_wls_moments(
-                                source,
-                                layout,
+                                layout_source,
                                 &mut partials,
                                 &mut rhs,
                                 &mut gram,
@@ -2505,11 +2527,12 @@ mod tests {
                     .build()
                     .unwrap()
                     .install(|| {
-                        let layout = finite_wls_moment_layout(source).unwrap();
+                        let layout_source = validate_moment_source(source).unwrap();
+                        let layout = layout_source.layout();
                         assert_eq!(layout.partial_elements, 0);
                         let mut rhs = vec![0.0; columns];
                         let mut gram = vec![0.0; columns * columns];
-                        fill_finite_wls_moments(source, layout, &mut [], &mut rhs, &mut gram)
+                        fill_finite_wls_moments(layout_source, &mut [], &mut rhs, &mut gram)
                             .unwrap();
                         assert_eq!(rhs, expected_rhs);
                         assert_eq!(gram, expected_gram);
@@ -2542,13 +2565,13 @@ mod tests {
                         .build()
                         .unwrap()
                         .install(|| {
-                            let layout = finite_wls_moment_layout(source).unwrap();
+                            let layout_source = validate_moment_source(source).unwrap();
+                            let layout = layout_source.layout();
                             let mut partials = vec![0.0; layout.partial_elements];
                             let mut rhs = vec![0.0; columns];
                             let mut gram = vec![0.0; columns * columns];
                             fill_finite_wls_moments(
-                                source,
-                                layout,
+                                layout_source,
                                 &mut partials,
                                 &mut rhs,
                                 &mut gram,
@@ -2606,10 +2629,9 @@ mod tests {
                 .build()
                 .unwrap()
                 .install(|| {
-                    let layout = finite_wls_moment_layout(source).unwrap();
+                    let layout_source = validate_moment_source(source).unwrap();
                     let error = fill_finite_wls_moments(
-                        source,
-                        layout,
+                        layout_source,
                         &mut [],
                         &mut [0.0; 8],
                         &mut [0.0; 64],
@@ -2651,11 +2673,13 @@ mod tests {
                         .build()
                         .expect("test pool")
                         .install(|| {
-                            let layout = finite_wls_moment_layout(source).expect("wide layout");
+                            let layout_source =
+                                validate_moment_source(source).expect("wide layout");
+                            let layout = layout_source.layout();
                             assert_eq!(layout.partial_elements, 0);
                             let mut rhs = vec![0.0; columns];
                             let mut gram = vec![0.0; columns * columns];
-                            fill_finite_wls_moments(source, layout, &mut [], &mut rhs, &mut gram)
+                            fill_finite_wls_moments(layout_source, &mut [], &mut rhs, &mut gram)
                                 .expect("wide moments");
                             for left in 0..columns {
                                 assert_eq!(
@@ -2693,12 +2717,11 @@ mod tests {
                     solver_weight_divisor: 1.0,
                     column_scales: None,
                 };
-                let layout = finite_wls_moment_layout(invalid_source)
+                let layout_source = validate_moment_source(invalid_source)
                     .expect("invalid values retain valid layout");
                 assert_eq!(
                     fill_finite_wls_moments(
-                        invalid_source,
-                        layout,
+                        layout_source,
                         &mut [],
                         &mut vec![0.0; columns],
                         &mut vec![0.0; columns * columns]

@@ -46,8 +46,8 @@ pub(crate) fn solve_finite_direction(
         column_scales: None,
     };
     // Dense retained moments need no per-worker Gram or observation bank.
-    let layout = finite_wls_moment_layout(source)?;
-    fill_finite_wls_moments(source, layout, &mut [], workspace.rhs, workspace.gram)?;
+    let layout_source = validate_moment_source(source)?;
+    fill_finite_wls_moments(layout_source, &mut [], workspace.rhs, workspace.gram)?;
     for column in 0..columns {
         let scale = workspace.gram[column * columns + column].sqrt();
         if !scale.is_finite() || scale <= 0.0 {

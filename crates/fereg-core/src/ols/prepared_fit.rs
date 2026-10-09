@@ -18,9 +18,9 @@ use rayon::prelude::*;
 use std::time::Instant;
 
 use super::finite_wls_kernel::{
-    certify_normal_equations, finite_wls_moment_layout,
+    certify_normal_equations,
     inverse_relative_infinity_norm as kernel_inverse_relative_infinity_norm,
-    FixedBlockMomentSource, NormalEquationScale,
+    validate_moment_source, FixedBlockMomentSource, NormalEquationScale,
 };
 use super::linear_session::{
     LinearSessionAllocationPhase, LinearSessionPhaseAllocationGuard,
@@ -7188,7 +7188,8 @@ mod tests {
             solver_weight_divisor: 1.0,
             column_scales: None,
         };
-        let layout = finite_wls_moment_layout(source)?;
+        let layout_source = validate_moment_source(source)?;
+        let layout = layout_source.layout();
         let mut partials = reserved_filled(
             reservation,
             layout.partial_elements,
@@ -7202,7 +7203,7 @@ mod tests {
             0.0,
             "test finite Gram",
         )?;
-        fill_finite_wls_moments(source, layout, &mut partials, &mut rhs, &mut gram)?;
+        fill_finite_wls_moments(layout_source, &mut partials, &mut rhs, &mut gram)?;
         Ok((rhs, gram))
     }
 
