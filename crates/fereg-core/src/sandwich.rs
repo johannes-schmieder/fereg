@@ -519,6 +519,9 @@ where
         "unable to reserve dense sandwich partials",
     )?;
     let fixed_triangle = fixed_dense_triangle_update(dimension);
+    let tiled = fixed_triangle.is_none()
+        && influence_bread.is_none()
+        && dimension <= DENSE_MEAT_TILE_COLUMNS;
     crate::parallel::stage_try_for_each(
         partials.par_chunks_mut(partial_stride).enumerate(),
         nrows as u128 * square as u128,
@@ -530,6 +533,16 @@ where
             let remainder = nrows % chunks;
             let start = chunk * rows_per_chunk + chunk.min(remainder);
             let end = start + rows_per_chunk + usize::from(chunk < remainder);
+            if tiled {
+                return accumulate_dense_meat_tiles(
+                    design,
+                    multipliers,
+                    start..end,
+                    production_score,
+                    production_meat,
+                    certificate_meat,
+                );
+            }
             design.visit_range(start..end, production_score, |row, production_score| {
                 let score = multipliers.score_pair(row)?;
                 if let Some(bread) = influence_bread {
@@ -649,6 +662,108 @@ where
 }
 
 type DenseTriangleUpdate = fn(&mut [f64], &mut [f64], &[f64], &[f64]) -> Result<()>;
+
+/// Widest design whose dense meat rows are tiled on the worker stack.
+const DENSE_MEAT_TILE_COLUMNS: usize = 256;
+/// Rows whose scaled scores update the dense meat together.
+const DENSE_MEAT_TILE_ROWS: usize = 4;
+
+/// Dense production and certificate meats over `rows`, updating each upper
+/// triangle entry once per tile of consecutive rows while it stays in a
+/// register. Each entry still receives one product per row, added in row
+/// order, so the result is bit-identical to one rank-one update per row.
+fn accumulate_dense_meat_tiles<D, M>(
+    design: D,
+    multipliers: M,
+    rows: std::ops::Range<usize>,
+    row_buffer: &mut [f64],
+    production_meat: &mut [f64],
+    certificate_meat: &mut [f64],
+) -> Result<()>
+where
+    D: SandwichDesign,
+    M: SandwichScoreMultiplier,
+{
+    let dimension = row_buffer.len();
+    let mut production_tile = [0.0_f64; DENSE_MEAT_TILE_ROWS * DENSE_MEAT_TILE_COLUMNS];
+    let mut certificate_tile = [0.0_f64; DENSE_MEAT_TILE_ROWS * DENSE_MEAT_TILE_COLUMNS];
+    let mut filled = 0_usize;
+    design.visit_range(rows, row_buffer, |row, raw_score| {
+        let score = multipliers.score_pair(row)?;
+        let offset = filled * dimension;
+        for (coordinate, &raw) in raw_score.iter().enumerate() {
+            let production = score.production * raw;
+            let certificate = score.certificate * raw;
+            if !production.is_finite() || !certificate.is_finite() {
+                return Err(invalid_data("dense sandwich scaled score is not finite"));
+            }
+            production_tile[offset + coordinate] = production;
+            certificate_tile[offset + coordinate] = certificate;
+        }
+        filled += 1;
+        if filled == DENSE_MEAT_TILE_ROWS {
+            update_dense_meat_tile(
+                dimension,
+                filled,
+                &production_tile,
+                &certificate_tile,
+                production_meat,
+                certificate_meat,
+            );
+            filled = 0;
+        }
+        Ok(())
+    })?;
+    update_dense_meat_tile(
+        dimension,
+        filled,
+        &production_tile,
+        &certificate_tile,
+        production_meat,
+        certificate_meat,
+    );
+    if production_meat.iter().all(|value| value.is_finite())
+        && certificate_meat.iter().all(|value| value.is_finite())
+    {
+        Ok(())
+    } else {
+        Err(invalid_data(
+            "dense sandwich partial contains a nonfinite value",
+        ))
+    }
+}
+
+fn update_dense_meat_tile(
+    dimension: usize,
+    rows: usize,
+    production_tile: &[f64],
+    certificate_tile: &[f64],
+    production_meat: &mut [f64],
+    certificate_meat: &mut [f64],
+) {
+    for left in 0..dimension {
+        let range = left * dimension + left..(left + 1) * dimension;
+        let production_row = &mut production_meat[range.clone()];
+        let certificate_row = &mut certificate_meat[range];
+        for row in 0..rows {
+            let scores = row * dimension;
+            let production_left = production_tile[scores + left];
+            let certificate_left = certificate_tile[scores + left];
+            let production_right = &production_tile[scores + left..scores + dimension];
+            let certificate_right = &certificate_tile[scores + left..scores + dimension];
+            for (((production, certificate), &production_right), &certificate_right) in
+                production_row
+                    .iter_mut()
+                    .zip(certificate_row.iter_mut())
+                    .zip(production_right)
+                    .zip(certificate_right)
+            {
+                *production += production_left * production_right;
+                *certificate += certificate_right * certificate_left;
+            }
+        }
+    }
+}
 
 fn fixed_dense_triangle_update(dimension: usize) -> Option<DenseTriangleUpdate> {
     // Fixed small widths eliminate repeated triangle-offset and slice-bound

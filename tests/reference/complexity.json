@@ -2,10 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 94854,
-      "before": 94836,
+      "after": 94960,
+      "before": 94854,
       "metric": "fereg-core/production_lines",
-      "reason": "score gram gather"
+      "reason": "tiled dense meat"
+    },
+    {
+      "after": 186,
+      "before": 173,
+      "metric": "function/crates/fereg-core/src/sandwich.rs/reduce_dense_score_meats#1",
+      "reason": "tiled dense meat"
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -17370,84 +17376,88 @@
           },
           {
             "condition": "nrows == 0 || multipliers . nrows ( ) != nrows || bread . len ( ) != square",
-            "line": 733
+            "line": 848
           },
           {
             "condition": "nrows == 0 || dimension == 0 || multipliers . nrows ( ) != nrows || clusters . nrows ( ) != nrows || cluster_dimensions . len ( ) > u16 :: BITS as usize",
-            "line": 825
+            "line": 940
           },
           {
             "condition": "boundary == 0 || boundary >= order . len ( )",
-            "line": 951
+            "line": 1066
           },
           {
             "condition": "production_corrections . len ( ) != dimension || certificate_score . len ( ) != dimension || certificate_corrections . len ( ) != dimension || production_meat . len ( ) != dimension * dimension || certificate_meat . len ( ) != production_meat . len ( )",
-            "line": 1167
+            "line": 1282
           },
           {
             "condition": "nrows == 0 || dimensions . is_empty ( ) || mask == 0 || mask >= ( 1_usize < < dimensions . len ( ) ) || dimensions . iter ( ) . any ( | codes | codes . len ( ) != nrows )",
-            "line": 1221
+            "line": 1336
           },
           {
             "condition": "offset != nrows",
-            "line": 1318
+            "line": 1433
           },
           {
             "condition": "bread . len ( ) != square || meat . len ( ) != square",
-            "line": 1361
+            "line": 1476
           },
           {
             "condition": "covariance . len ( ) != square",
-            "line": 1464
+            "line": 1579
           },
           {
             "condition": "matrix . len ( ) != square || corrections . len ( ) != square",
-            "line": 1505
+            "line": 1620
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 1524
+            "line": 1639
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 1550
+            "line": 1665
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 1566
+            "line": 1681
           },
           {
             "condition": "values . len ( ) != sums . len ( ) || values . len ( ) != corrections . len ( )",
-            "line": 1604
+            "line": 1719
           }
         ],
         "functions": {
+          "accumulate_dense_meat_tiles#1": {
+            "line": 675,
+            "lines": 60
+          },
           "bread_meat_bread#1": {
-            "line": 1352,
+            "line": 1467,
             "lines": 102
           },
           "build_cluster_order#1": {
-            "line": 1215,
+            "line": 1330,
             "lines": 121
           },
           "check_compensated#1": {
-            "line": 1588,
+            "line": 1703,
             "lines": 9
           },
           "checked_square#1": {
-            "line": 1574,
+            "line": 1689,
             "lines": 5
           },
           "compare_cluster_rows#1": {
-            "line": 1337,
+            "line": 1452,
             "lines": 12
           },
           "compensated_add#1": {
-            "line": 1580,
+            "line": 1695,
             "lines": 4
           },
           "compensated_add_scaled_row#1": {
-            "line": 1598,
+            "line": 1713,
             "lines": 28
           },
           "dimensions#1": {
@@ -17455,7 +17465,7 @@
             "lines": 3
           },
           "extend_cluster_boundary#1": {
-            "line": 946,
+            "line": 1061,
             "lines": 14
           },
           "factor#1": {
@@ -17463,15 +17473,15 @@
             "lines": 13
           },
           "finalize_symmetric_triangle#1": {
-            "line": 1499,
+            "line": 1614,
             "lines": 23
           },
           "finish_cluster_group#1": {
-            "line": 1156,
+            "line": 1271,
             "lines": 58
           },
           "fixed_dense_triangle_update#1": {
-            "line": 653,
+            "line": 768,
             "lines": 23
           },
           "new#1": {
@@ -17487,15 +17497,15 @@
             "lines": 3
           },
           "reduce_clustered_score_meats#1": {
-            "line": 809,
+            "line": 924,
             "lines": 126
           },
           "reduce_dense_score_meats#1": {
             "line": 477,
-            "lines": 173
+            "lines": 186
           },
           "reduce_one_cluster_subset#1": {
-            "line": 961,
+            "line": 1076,
             "lines": 193
           },
           "reduce_qualified_clustered_score_meats#1": {
@@ -17503,11 +17513,11 @@
             "lines": 122
           },
           "reduce_serial_influence_covariance#1": {
-            "line": 716,
+            "line": 831,
             "lines": 84
           },
           "reduction_chunks#1": {
-            "line": 1485,
+            "line": 1600,
             "lines": 13
           },
           "reserve#1": {
@@ -17515,23 +17525,27 @@
             "lines": 10
           },
           "reserved_empty#1": {
-            "line": 1559,
+            "line": 1674,
             "lines": 14
           },
           "reserved_filled#1": {
-            "line": 1542,
+            "line": 1657,
             "lines": 16
           },
           "standard_errors#1": {
-            "line": 1455,
+            "line": 1570,
             "lines": 29
           },
           "symmetrize#1": {
-            "line": 1523,
+            "line": 1638,
             "lines": 18
           },
+          "update_dense_meat_tile#1": {
+            "line": 736,
+            "lines": 31
+          },
           "update_fixed_dense_triangle#1": {
-            "line": 677,
+            "line": 792,
             "lines": 24
           },
           "visit_range#1": {
@@ -17539,7 +17553,7 @@
             "lines": 15
           }
         },
-        "production_lines": 1374
+        "production_lines": 1480
       },
       "crates/fereg-core/src/sandwich/influence.rs": {
         "chunk_candidates": [],
@@ -20421,7 +20435,7 @@
         "dispatch_candidates": 1251,
         "files_over_1500": 16,
         "functions_over_150": 66,
-        "production_lines": 94854
+        "production_lines": 94960
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
@@ -20433,5 +20447,5 @@
     },
     "schema": 1
   },
-  "reason": "score gram gather"
+  "reason": "tiled dense meat"
 }
