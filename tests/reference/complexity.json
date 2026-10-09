@@ -6476,19 +6476,19 @@
         "chunk_candidates": [
           {
             "condition": "layout . columns_per_partition > 1",
-            "line": 2160
+            "line": 1624
           },
           {
             "condition": "dimension == 0 || stored < dimension || rows == 0 || layout . columns_per_partition == 0 || layout . columns_per_partition > dimension",
-            "line": 2357
+            "line": 1821
           },
           {
             "condition": "rows . div_ceil ( partitions ) as u128 * total_work >= rows as u128 * old_critical_work",
-            "line": 2377
+            "line": 1841
           },
           {
             "condition": "fill_retained_scratch_row_partitions ( values , selected_columns , response , weights , divisor , scales , layout , partials , rhs , gram , ) ?",
-            "line": 2472
+            "line": 1936
           }
         ],
         "dispatch_candidates": [
@@ -6538,51 +6538,51 @@
           },
           {
             "condition": "gram . len ( ) != checked_square ( dimension , <string> ) ?",
-            "line": 1147
+            "line": 978
           },
           {
             "condition": "canonical . len ( ) != rhs . len ( ) || permutation . len ( ) != rhs . len ( ) || permutation . iter ( ) . any ( | & position | position >= rhs . len ( ) )",
-            "line": 1178
+            "line": 1009
           },
           {
             "condition": "dimension == 0 || gram . len ( ) != square || factor . len ( ) != square || permutation . len ( ) != dimension || ! pivot_guard . is_finite ( ) || pivot_guard < 0.0",
-            "line": 1208
+            "line": 1039
           },
           {
             "condition": "factor . len ( ) != checked_square ( dimension , <string> ) ? || forward . len ( ) != dimension || solution . len ( ) != dimension",
-            "line": 1661
+            "line": 1125
           },
           {
             "condition": "factor . len ( ) != square || inverse_lower . len ( ) != square || canonical_inverse . len ( ) != square || permutation . iter ( ) . any ( | position | * position >= dimension )",
-            "line": 1705
+            "line": 1169
           },
           {
             "condition": "gram . len ( ) != gram_square || gram_positions . len ( ) != rank || inverse . len ( ) != rank_square || gram_positions . iter ( ) . any ( | position | * position >= gram_dimension )",
-            "line": 1789
+            "line": 1253
           },
           {
             "condition": "gram . len ( ) != checked_square ( dimension , <string> ) ?",
-            "line": 1874
+            "line": 1338
           },
           {
             "condition": "generated_columns . len ( ) != dimension || generated_coefficients . len ( ) != reference_norms . len ( ) || score_norms . len ( ) != reference_norms . len ( ) || generated_columns . iter ( ) . any ( | column | * column >= reference_norms . len ( ) || * column >= score_norms . len ( ) )",
-            "line": 1886
+            "line": 1350
           },
           {
             "condition": "coefficients . len ( ) != dimension",
-            "line": 1898
+            "line": 1362
           },
           {
             "condition": "rows == 0 || stored_columns == 0 || dimension == 0 || elements != rows . saturating_mul ( stored_columns ) || response . len ( ) != rows || response . iter ( ) . any ( | value | ! value . is_finite ( ) ) || ! divisor . is_finite ( ) || divisor <= 0.0 || selected_columns . is_some_and ( | selected |",
-            "line": 2585
+            "line": 2049
           },
           {
             "condition": "weights",
-            "line": 2604
+            "line": 2068
           },
           {
             "condition": "weights",
-            "line": 2622
+            "line": 2086
           }
         ],
         "functions": {
@@ -6595,11 +6595,11 @@
             "lines": 29
           },
           "certify_finite_inverse#1": {
-            "line": 1766,
+            "line": 1230,
             "lines": 12
           },
           "certify_normal_equations#1": {
-            "line": 1868,
+            "line": 1332,
             "lines": 117
           },
           "certify_retained_qr_dropped_span#1": {
@@ -6607,11 +6607,11 @@
             "lines": 119
           },
           "checked_square#1": {
-            "line": 2730,
+            "line": 2173,
             "lines": 3
           },
           "compensated_add#1": {
-            "line": 2719,
+            "line": 2162,
             "lines": 10
           },
           "dimension#1": {
@@ -6619,11 +6619,11 @@
             "lines": 19
           },
           "factor_finite_cholesky#1": {
-            "line": 1139,
+            "line": 970,
             "lines": 29
           },
           "factor_guarded_cholesky_in_place#1": {
-            "line": 1198,
+            "line": 1029,
             "lines": 86
           },
           "factor_rank_revealing_retained_qr#1": {
@@ -6635,19 +6635,19 @@
             "lines": 25
           },
           "fill_retained_dense_partitioned#1": {
-            "line": 2134,
+            "line": 1598,
             "lines": 71
           },
           "fill_retained_dense_standardized_rows#1": {
-            "line": 2228,
+            "line": 1692,
             "lines": 46
           },
           "fill_retained_dense_standardized_tiles#1": {
-            "line": 2279,
+            "line": 1743,
             "lines": 67
           },
           "fill_retained_partitioned#1": {
-            "line": 2021,
+            "line": 1485,
             "lines": 111
           },
           "fill_retained_qr_row#1": {
@@ -6655,11 +6655,11 @@
             "lines": 84
           },
           "fill_retained_scratch_partitioned#1": {
-            "line": 2460,
+            "line": 1924,
             "lines": 74
           },
           "fill_retained_scratch_row_partitions#1": {
-            "line": 2384,
+            "line": 1848,
             "lines": 74
           },
           "finite_wls_moment_layout#1": {
@@ -6667,15 +6667,15 @@
             "lines": 10
           },
           "identities_are_unique#1": {
-            "line": 2671,
+            "line": 2114,
             "lines": 6
           },
           "inverse_relative_infinity_norm#1": {
-            "line": 1779,
+            "line": 1243,
             "lines": 66
           },
           "invert_guarded_cholesky#1": {
-            "line": 1697,
+            "line": 1161,
             "lines": 57
           },
           "invert_rank_revealing_qr_leading#1": {
@@ -6683,7 +6683,7 @@
             "lines": 71
           },
           "merge_fixed_block_partials#1": {
-            "line": 1986,
+            "line": 1450,
             "lines": 34
           },
           "moment_lane_work#1": {
@@ -6691,11 +6691,11 @@
             "lines": 6
           },
           "normalized_weight#1": {
-            "line": 2621,
+            "line": 2085,
             "lines": 19
           },
           "passed#1": {
-            "line": 1761,
+            "line": 1225,
             "lines": 3
           },
           "plan#1": {
@@ -6703,7 +6703,7 @@
             "lines": 14
           },
           "record_retained_moment_worker#1": {
-            "line": 2559,
+            "line": 2023,
             "lines": 12
           },
           "retained_scratch_moment_envelope#1": {
@@ -6719,19 +6719,19 @@
             "lines": 7
           },
           "scaled_column#1": {
-            "line": 2641,
+            "line": 2105,
             "lines": 8
           },
           "scratch_row_partition_plan#1": {
-            "line": 2351,
+            "line": 1815,
             "lines": 31
           },
           "solve_finite_cholesky#1": {
-            "line": 1170,
+            "line": 1001,
             "lines": 25
           },
           "solve_guarded_cholesky#1": {
-            "line": 1654,
+            "line": 1118,
             "lines": 39
           },
           "solve_rank_revealing_qr_leading#1": {
@@ -6739,11 +6739,11 @@
             "lines": 45
           },
           "sort_selected_inverse#1": {
-            "line": 2695,
+            "line": 2138,
             "lines": 11
           },
           "sort_selected_solution#1": {
-            "line": 2684,
+            "line": 2127,
             "lines": 10
           },
           "stable_qr_column_norm#1": {
@@ -6751,11 +6751,11 @@
             "lines": 24
           },
           "swap_symmetric_block#1": {
-            "line": 2707,
+            "line": 2150,
             "lines": 11
           },
           "valid_permutation#1": {
-            "line": 2678,
+            "line": 2121,
             "lines": 5
           },
           "validate#1": {
@@ -6763,11 +6763,11 @@
             "lines": 78
           },
           "validate_retained_source#1": {
-            "line": 2574,
+            "line": 2038,
             "lines": 46
           },
           "with_private_retained_moments#1": {
-            "line": 2209,
+            "line": 1673,
             "lines": 17
           }
         },
@@ -20342,5 +20342,5 @@
     },
     "schema": 1
   },
-  "reason": "Retire the gated pre-extraction clustered subset reducer."
+  "reason": "Retire the unused gated rank-revealing Cholesky family."
 }
