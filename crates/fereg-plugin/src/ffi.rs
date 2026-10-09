@@ -532,10 +532,12 @@ pub(crate) fn process_rss_bytes() -> (Option<u64>, Option<u64>) {
     };
     use windows_sys::Win32::System::Threading::GetCurrentProcess;
 
-    let mut counters = PROCESS_MEMORY_COUNTERS::default();
-    counters.cb = match u32::try_from(std::mem::size_of::<PROCESS_MEMORY_COUNTERS>()) {
-        Ok(value) => value,
-        Err(_) => return (None, None),
+    let Ok(cb) = u32::try_from(std::mem::size_of::<PROCESS_MEMORY_COUNTERS>()) else {
+        return (None, None);
+    };
+    let mut counters = PROCESS_MEMORY_COUNTERS {
+        cb,
+        ..Default::default()
     };
     // SAFETY: the pseudo-handle is valid in this process and `counters` has its exact size.
     let result =
@@ -548,6 +550,53 @@ pub(crate) fn process_rss_bytes() -> (Option<u64>, Option<u64>) {
             u64::try_from(counters.PeakWorkingSetSize).ok(),
         )
     }
+}
+
+/// Keep this plugin mapped until the process exits.
+///
+/// Estimation caches one Rayon worker team in a process-wide static, and its
+/// threads keep running this module's code between actions: idle workers spin
+/// and yield before they sleep. Windows `FreeLibrary` unmaps the module when
+/// its last reference goes, so a host or harness that unloads the plugin could
+/// leave a worker executing unmapped code. Pinning on the first action, before
+/// any worker team exists, makes every later unload a no-op for this process.
+#[cfg(windows)]
+fn pin_plugin_module() -> fereg_core::error::Result<()> {
+    use std::sync::OnceLock;
+    use windows_sys::Win32::System::LibraryLoader::{
+        GetModuleHandleExW, GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS, GET_MODULE_HANDLE_EX_FLAG_PIN,
+    };
+
+    static ANCHOR: u8 = 0;
+    static PINNED: OnceLock<bool> = OnceLock::new();
+    let pinned = *PINNED.get_or_init(|| {
+        let mut module = std::ptr::null_mut();
+        // SAFETY: FROM_ADDRESS accepts any address inside a loaded module;
+        // `ANCHOR` lies in this plugin's image and `module` is writable.
+        unsafe {
+            GetModuleHandleExW(
+                GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_PIN,
+                std::ptr::addr_of!(ANCHOR).cast(),
+                &mut module,
+            ) != 0
+        }
+    });
+    if pinned {
+        Ok(())
+    } else {
+        Err(FeregError::new(
+            ErrorCode::Internal,
+            "unable to keep the fereg plugin loaded while its worker threads exist",
+        ))
+    }
+}
+
+/// The macOS and Linux loader harnesses close the library after the same
+/// worker-team sequence without faults; only Windows needs the pin.
+#[cfg(not(windows))]
+#[allow(clippy::unnecessary_wraps)]
+fn pin_plugin_module() -> fereg_core::error::Result<()> {
+    Ok(())
 }
 
 #[cfg(not(any(target_os = "linux", target_os = "macos", windows)))]
@@ -1335,6 +1384,7 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
     let initial_sequence = ACTION_OBSERVATION_SEQUENCE.load(Ordering::Relaxed);
     let mut audited_estimator = None;
     let outcome = catch_unwind(AssertUnwindSafe(|| {
+        pin_plugin_module()?;
         crate::fused_kernels::install();
         // SAFETY: the exported ABI validates argc/argv before dereferencing.
         let args = unsafe { read_arguments(argc, argv) }?;

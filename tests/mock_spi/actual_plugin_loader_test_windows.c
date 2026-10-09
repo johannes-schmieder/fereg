@@ -111,6 +111,26 @@ static int check_estimator_action_routing(
     return 0;
 }
 
+/*
+ * The doctor check leaves the plugin's cached worker team alive, and idle
+ * workers keep running plugin code. The plugin pins its module, so releasing
+ * the only loader reference must leave the code mapped; otherwise a worker
+ * could fault on unmapped pages after FreeLibrary.
+ */
+static int check_module_stays_mapped(HMODULE library, const void *symbol, size_t symbol_size)
+{
+    LPCSTR address;
+    HMODULE mapped = NULL;
+    if (symbol_size != sizeof(address)) return 1;
+    memcpy(&address, symbol, sizeof(address));
+    /* A pinned module ignores the release; only the mapping is asserted. */
+    (void) FreeLibrary(library);
+    if (!GetModuleHandleExA(
+            GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+            address, &mapped) || mapped != library) return 2;
+    return 0;
+}
+
 int main(int argc, char *argv[])
 {
     HMODULE library;
@@ -159,8 +179,12 @@ int main(int argc, char *argv[])
     if (result != 0) { result += 30; goto failure; }
     result = check_estimator_action_routing(call);
     if (result != 0) { result += 40; goto failure; }
+    result = check_module_stays_mapped(library, &call, sizeof(call));
+    if (result != 0) {
+        fprintf(stderr, "plugin module was not pinned after FreeLibrary (%d)\n", result);
+        return 60 + result;
+    }
 
-    FreeLibrary(library);
     puts("actual-plugin ABI/self-test harness: PASS");
     return 0;
 

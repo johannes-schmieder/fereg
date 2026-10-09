@@ -2,6 +2,11 @@
 
 ## 0.5.0 beta — unreleased
 
+- Fix (Windows): the plugin now pins its own DLL on first use. Its cached
+  worker threads outlive each command, so unloading the DLL (as the Windows
+  loader test does right after the doctor check) could crash the process
+  with an access violation when an idle worker was still running. A rebuilt
+  Windows plugin now takes effect after restarting Stata.
 - Fix: `feppml` with a slope fixed effect such as `absorb(g##c.x)` and zero
   outcomes could stop with r(459) ("prepared projection finite score
   certificate did not pass"). The iterated rectifier's projection divided the

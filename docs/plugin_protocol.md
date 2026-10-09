@@ -72,6 +72,16 @@ checkpoint (FE sweeps and iterations, LSMR/CMG entry, one-shot fit phases,
 clustered subsets). The transaction then fails with return code 1 before any
 store and the ado restores prior results.
 
+## Plugin lifetime
+
+The plugin keeps one cached worker team per process between actions, and its
+threads keep running plugin code while idle. On Windows the plugin therefore
+pins its own module on the first action: a later `FreeLibrary`, by Stata or a
+test harness, leaves the code mapped until the process exits, so an idle worker
+never executes unmapped pages. A rebuilt or reinstalled Windows plugin takes
+effect after Stata restarts. The Windows actual-plugin loader test releases the
+library after the doctor action and asserts that the module is still mapped.
+
 ## Estimation request transport
 
 OLS and PPML retain their canonical count/byte-length framed request. The ado
