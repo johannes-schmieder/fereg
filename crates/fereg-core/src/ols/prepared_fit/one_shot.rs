@@ -103,7 +103,16 @@ fn dense_raw<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     } else {
         None
     };
-    if retain_fast_score_cache && raw_moments.is_none() {
+    let threads = rayon::current_num_threads();
+    let blocked_raw = threads == 1 || generated_columns.div_ceil(8) >= threads;
+    if raw_moments.is_none() && blocked_raw {
+        // One row-major pass per eight-column block; per-column order is the
+        // scalar norm's, and the column maxima are exact.
+        fill_weighted_matrix_norms_blocked::<8>(&raw, 1, weights, &mut reference_norms)?;
+        if retain_fast_score_cache {
+            fill_column_maxima_blocked::<8>(&raw, 1, &mut reference_mean_scales)?;
+        }
+    } else if retain_fast_score_cache && raw_moments.is_none() {
         crate::parallel::stage_try_for_each(
             reference_norms
                 .par_iter_mut()
@@ -268,7 +277,7 @@ fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             fill_weighted_matrix_norms_fused(within, weights, &mut within_norms, reservation)?;
         } else if within.ncols().div_ceil(8) >= rayon::current_num_threads() {
             // Keep enough independent blocks to occupy the existing worker team.
-            fill_weighted_matrix_norms_blocked::<8>(within, weights, &mut within_norms)?;
+            fill_weighted_matrix_norms_blocked::<8>(within, 0, weights, &mut within_norms)?;
         } else {
             crate::parallel::stage_try_for_each(
                 within_norms.par_iter_mut().enumerate(),

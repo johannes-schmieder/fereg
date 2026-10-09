@@ -34,32 +34,43 @@ pub(super) fn column_norms(
         }
         return Ok(());
     }
-    // Local scalar state avoids sharing cache lines during the recurrence.
-    // Columns retain precisely the serial kernel's observation order.
+    // Each lane owns a contiguous block of columns and streams the rows once,
+    // computing each row's root weight once. Every column still sees exactly
+    // the serial kernel's observation order and recurrence.
+    let block = plan_block(values.ncols(), work);
+    let width = values.ncols();
+    let data = values.as_slice();
     crate::parallel::stage_try_for_each(
         output
-            .par_iter_mut()
-            .zip(scales.par_iter_mut())
-            .zip(sums.par_iter_mut())
+            .par_chunks_mut(block)
+            .zip(scales.par_chunks_mut(block))
+            .zip(sums.par_chunks_mut(block))
             .enumerate(),
         work,
-        |(column, ((out, scale), sum))| {
-            let mut local_scale = 0.0;
-            let mut local_sum = 1.0;
+        |(index, ((out, scale), sum))| {
+            let first = index * block;
             for row in 0..values.nrows() {
-                update(
-                    root_weight(row)? * values[(row, column)],
-                    &mut local_scale,
-                    &mut local_sum,
-                    value_error,
-                )?;
+                let root = root_weight(row)?;
+                let start = row * width + first;
+                for ((value, scale), sum) in data[start..start + out.len()]
+                    .iter()
+                    .zip(scale.iter_mut())
+                    .zip(sum.iter_mut())
+                {
+                    update(root * value, scale, sum, value_error)?;
+                }
             }
-            *out = finish(local_scale, local_sum, norm_error)?;
-            *scale = local_scale;
-            *sum = local_sum;
+            for ((out, scale), sum) in out.iter_mut().zip(scale.iter()).zip(sum.iter()) {
+                *out = finish(*scale, *sum, norm_error)?;
+            }
             Ok(())
         },
     )
+}
+
+/// Columns per lane: one contiguous block for each planned lane.
+fn plan_block(columns: usize, work: u128) -> usize {
+    crate::parallel::StagePlan::current(work, columns).chunk(columns)
 }
 
 fn update(value: f64, scale: &mut f64, sum: &mut f64, message: &'static str) -> Result<()> {

@@ -4247,25 +4247,29 @@ fn fill_weighted_matrix_norms_fused<R: FitReservation>(
 /// Each column keeps the scalar norm's row order and arithmetic. Small column
 /// blocks share weight roots and adjacent matrix loads without a row reduction
 /// or an observation-sized transpose; all scratch is fixed-size worker stack.
+/// `output[j]` is the norm of matrix column `first_column + j`.
 fn fill_weighted_matrix_norms_blocked<const BLOCK: usize>(
     matrix: &DenseMatrix,
+    first_column: usize,
     weights: NormalizedWeights<'_>,
     output: &mut [f64],
 ) -> Result<()> {
-    if BLOCK == 0 || output.len() != matrix.ncols() {
+    if BLOCK == 0 || first_column > matrix.ncols() || output.len() != matrix.ncols() - first_column
+    {
         return Err(invalid_argument(
             "prepared OLS blocked weighted norm output has the wrong width",
         ));
     }
+    let work = matrix.nrows() as u128 * output.len() as u128;
     crate::parallel::stage_try_for_each(
         output.par_chunks_mut(BLOCK).enumerate(),
-        matrix.nrows() as u128 * matrix.ncols() as u128,
+        work,
         |(block, norms)| -> Result<()> {
             // Output chunks need not be cache-line aligned. Accumulate locally
             // so adjacent workers do not repeatedly write a shared cache line.
             let mut scales = [0.0_f64; BLOCK];
             let mut square_sums = [1.0_f64; BLOCK];
-            let start = block * BLOCK;
+            let start = first_column + block * BLOCK;
             for (row, values) in matrix.as_slice().chunks_exact(matrix.ncols()).enumerate() {
                 let root = weights.root(row)?;
                 for (column, scale) in scales.iter_mut().enumerate().take(norms.len()) {
@@ -4279,6 +4283,42 @@ fn fill_weighted_matrix_norms_blocked<const BLOCK: usize>(
             for ((norm, scale), square_sum) in norms.iter_mut().zip(scales).zip(square_sums) {
                 *norm = checked_norm(scale, square_sum)?;
             }
+            Ok(())
+        },
+    )
+}
+
+/// Raise `output[j]` to the largest absolute value of matrix column
+/// `first_column + j`, streaming rows once per block of columns. A maximum is
+/// exact, so the result equals any per-column scan from the same start.
+fn fill_column_maxima_blocked<const BLOCK: usize>(
+    matrix: &DenseMatrix,
+    first_column: usize,
+    output: &mut [f64],
+) -> Result<()> {
+    if BLOCK == 0 || first_column > matrix.ncols() || output.len() != matrix.ncols() - first_column
+    {
+        return Err(invalid_argument(
+            "prepared OLS blocked column maxima have the wrong width",
+        ));
+    }
+    let work = matrix.nrows() as u128 * output.len() as u128;
+    crate::parallel::stage_try_for_each(
+        output.par_chunks_mut(BLOCK).enumerate(),
+        work,
+        |(block, maxima)| -> Result<()> {
+            let mut local = [0.0_f64; BLOCK];
+            local[..maxima.len()].copy_from_slice(maxima);
+            let start = first_column + block * BLOCK;
+            for values in matrix.as_slice().chunks_exact(matrix.ncols()) {
+                for (maximum, value) in local[..maxima.len()]
+                    .iter_mut()
+                    .zip(&values[start..start + maxima.len()])
+                {
+                    *maximum = maximum.max(value.abs());
+                }
+            }
+            maxima.copy_from_slice(&local[..maxima.len()]);
             Ok(())
         },
     )
@@ -8515,16 +8555,19 @@ mod tests {
                             match block {
                                 2 => fill_weighted_matrix_norms_blocked::<2>(
                                     &matrix,
+                                    0,
                                     normalized,
                                     &mut actual,
                                 ),
                                 4 => fill_weighted_matrix_norms_blocked::<4>(
                                     &matrix,
+                                    0,
                                     normalized,
                                     &mut actual,
                                 ),
                                 _ => fill_weighted_matrix_norms_blocked::<8>(
                                     &matrix,
+                                    0,
                                     normalized,
                                     &mut actual,
                                 ),
@@ -8625,6 +8668,41 @@ mod tests {
     }
 
     #[test]
+    fn blocked_column_maxima_match_columnwise_scans() {
+        let rows = 37;
+        for columns in [1, 2, 9, 17] {
+            let data = (0..rows * columns)
+                .map(|i| ((i * 7919) % 211) as f64 - 105.5)
+                .collect();
+            let matrix = DenseMatrix::from_row_major(rows, columns, data).unwrap();
+            for first in 0..columns.min(2) {
+                let start = [0.0_f64, 50.0, 3.25, 400.0];
+                let width = columns - first;
+                let initial = (0..width).map(|j| start[j % 4]).collect::<Vec<_>>();
+                let expected = (0..width)
+                    .map(|j| {
+                        (0..rows).fold(initial[j], |m, row| m.max(matrix[(row, first + j)].abs()))
+                    })
+                    .collect::<Vec<_>>();
+                for threads in [1, 3] {
+                    let mut actual = initial.clone();
+                    rayon::ThreadPoolBuilder::new()
+                        .num_threads(threads)
+                        .build()
+                        .unwrap()
+                        .install(|| {
+                            fill_column_maxima_blocked::<4>(&matrix, first, &mut actual).unwrap();
+                        });
+                    assert_eq!(actual, expected);
+                }
+            }
+        }
+        let matrix = DenseMatrix::zeros(2, 2).unwrap();
+        assert!(fill_column_maxima_blocked::<4>(&matrix, 1, &mut [0.0; 2]).is_err());
+        assert!(fill_column_maxima_blocked::<4>(&matrix, 3, &mut []).is_err());
+    }
+
+    #[test]
     fn blocked_weighted_norms_fail_closed() {
         let mut matrix = DenseMatrix::zeros(3, 2).unwrap();
         let weights = NormalizedWeights {
@@ -8632,10 +8710,14 @@ mod tests {
             raw_scale: 1.0,
             kind: None,
         };
-        assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, weights, &mut [0.0]).is_err());
-        assert!(fill_weighted_matrix_norms_blocked::<0>(&matrix, weights, &mut [0.0; 2]).is_err());
+        assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, 0, weights, &mut [0.0]).is_err());
+        assert!(
+            fill_weighted_matrix_norms_blocked::<0>(&matrix, 0, weights, &mut [0.0; 2]).is_err()
+        );
         matrix[(1, 1)] = f64::INFINITY;
-        assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, weights, &mut [0.0; 2]).is_err());
+        assert!(
+            fill_weighted_matrix_norms_blocked::<4>(&matrix, 0, weights, &mut [0.0; 2]).is_err()
+        );
         matrix[(1, 1)] = 1.0;
         let bad_weights = [1.0, 0.0, 1.0];
         let weights = NormalizedWeights {
@@ -8643,7 +8725,9 @@ mod tests {
             raw_scale: 1.0,
             kind: Some(WeightKind::Analytic),
         };
-        assert!(fill_weighted_matrix_norms_blocked::<4>(&matrix, weights, &mut [0.0; 2]).is_err());
+        assert!(
+            fill_weighted_matrix_norms_blocked::<4>(&matrix, 0, weights, &mut [0.0; 2]).is_err()
+        );
     }
 
     #[test]
