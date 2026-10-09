@@ -1,7 +1,8 @@
 #![forbid(unsafe_code)]
 
 pub mod explicit_dummy;
-pub mod explicit_ols;
+/// Independent explicit-dummy OLS oracle; see `fereg_oracle::explicit_ols`.
+pub use fereg_oracle::explicit_ols;
 
 use fereg_plugin::{dispatch_args, BufferSink};
 

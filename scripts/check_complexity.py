@@ -10,6 +10,7 @@ import re
 import subprocess
 import sys
 import tarfile
+import tomllib
 import tempfile
 import io
 
@@ -170,13 +171,27 @@ def production_streams(root):
     return streams
 
 
+# Test-support crates are never linked into the native artifact; their lockfile
+# entries may change without changing the plugin.
+TEST_ONLY_PACKAGES = {'fereg-testkit', 'fereg-oracle'}
+
+
+def runtime_lockfile(path):
+    with path.open('rb') as handle:
+        lock = tomllib.load(handle)
+    lock['package'] = [package for package in lock.get('package', [])
+                       if package.get('name') not in TEST_ONLY_PACKAGES]
+    return json.dumps(lock, sort_keys=True).encode()
+
+
 def artifact_bytes(root):
     files = {}
     for entry in ARTIFACT_INPUTS:
         base = root/entry
         paths = [base] if base.is_file() else sorted(p for p in base.rglob('*') if p.is_file()) if base.is_dir() else []
         for path in paths:
-            files[path.relative_to(root).as_posix()] = path.read_bytes()
+            key = path.relative_to(root).as_posix()
+            files[key] = runtime_lockfile(path) if key == 'Cargo.lock' else path.read_bytes()
     return files
 
 

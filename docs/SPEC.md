@@ -151,7 +151,7 @@ OLS pw selects robust when VCE is omitted; explicit IID is rejected. HC1 meat
 uses squared normalized aw/pw weights, but fw multiplicity rather than fw².
 PPML prior weights q follow this table, while Hessian weights are q×mu.
 
-Tests: `tests/numeric_sample_oracle.rs`, weighted `tests/ols_oracle.rs`,
+Tests: `tests/numeric_sample_oracle.rs`, weighted `fereg-oracle/tests/ols.rs`,
 `tests/prepared_robust_oracle.rs`,
 `parity_ppmlhdfe/feppml_weights_inference.do`, frequency-expansion fixtures.
 
@@ -242,7 +242,7 @@ not automatically have a structural OLS constant. No-FE models retain the
 ordinary constant unless suppressed. `noconstant` preserves its accepted
 model/reporting semantics; it does not delete an intercept already in D.
 
-Tests: `tests/ols_oracle.rs`, `tests/prepared_fit_oracle.rs`,
+Tests: `fereg-oracle/tests/ols.rs`, `tests/prepared_fit_oracle.rs`,
 `tests/categorical_iid_oracle.rs`, normalized-intercept Stata parity fixtures.
 
 ## 8. Rank and collinearity

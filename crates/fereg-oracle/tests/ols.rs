@@ -1,5 +1,5 @@
 #![deny(clippy::too_many_lines)]
-// Harvested from fereg-testkit/tests/ols_oracle.rs at legacy-v0.5.0-beta.
+// Self-tests of the independent explicit-dummy OLS oracle.
 use fereg_oracle::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleError, OracleMatrix, OracleWeights,
 };

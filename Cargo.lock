@@ -158,6 +158,7 @@ name = "fereg-testkit"
 version = "0.5.0"
 dependencies = [
  "fereg-core",
+ "fereg-oracle",
  "fereg-plugin",
 ]
 
