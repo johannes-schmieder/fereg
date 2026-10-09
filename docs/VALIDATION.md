@@ -570,3 +570,28 @@ The maintained patch is against controller SHA-256
 `f8db7b3321b44d893d19919dc11e1a298b41ced53b8a6b5a4b24ca60a494c3c2`.
 These are bounded Windows build/load and mapped-test results, not full Windows
 scientific or performance qualification or native distribution authorization.
+
+## 2026-10-09 cleanup program, phase 1
+
+Phase 1 retired test-only and dead code without changing published science
+(commits f5eace5c through c4d91623). Independent public-API witnesses replaced
+the non-independent in-crate dense PPML and separation comparators before they
+were deleted: seeded dense PPML differential tests against
+`fereg_oracle::explicit_ppml`, bounded separation primers through the public
+fit, and an exact-rational recession-cone check of the same primers.
+
+Evidence per commit used the authorized tiers: production-token identity where
+no runtime token changed, otherwise a pinned-identity Mac build and the 73-case
+replay against the program baseline (`9debf9bf`, SHA-256
+`a66e48d37903f6f249acfc8d4ebcf0e5768309b8cec96b1cc5f83e034f2e174c`) with zero
+exact differences. The C-wrapper deletion produced a byte-identical plugin.
+
+Boundary wall-time check (`bench/time_exact.py`, Mac M-series, seven
+alternating pairs after one warm-up, exact science and solver signatures in
+every run) of candidate
+`49ab9e29b4a162d8556f469df301edead43c111f63870f60392302b818250f55` against the
+baseline on all 18 frozen workloads: every bootstrap upper bound is within its
+max(5%, 1 ms) allowance. Median ratios range from 0.999 to 1.015; the largest
+upper bound is 1.030 (no-FE K=5, four workers, allowance 1.212). A first run
+stopped at the first one-million-row input because the timing harness used the
+replay corpus's 10-million-cell bound; the harness build now raises it.
