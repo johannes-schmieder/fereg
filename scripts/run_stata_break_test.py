@@ -17,7 +17,7 @@ from pathlib import Path
 from run_stata_tests import sha256_file, validate_candidate_plugin, validate_fixture_log
 
 BREAK_FIXTURES = {
-    "ols": ("estimate_ols_eclass_break.do", ("FEREG_BREAK_ARMED",)),
+    "ols": ("estimate_ols_eclass_break.do", ("FEREG_NATIVE_BREAK_ARMED", "FEREG_BREAK_ARMED")),
     "ppml": (
         "estimate_ppml_eclass_break.do",
         (
@@ -114,7 +114,11 @@ def main() -> None:
     temporary = tempfile.TemporaryDirectory(prefix="fereg-stata-break-")
     run_dir = Path(temporary.name)
     native_marker_token = secrets.token_hex(16)
-    native_marker_path = run_dir / f"feppml-native-break-{native_marker_token}.marker"
+    # Native markers: (file prefix, file content) per armed sentinel.
+    native_markers = {
+        "FEPPML_NATIVE_BREAK_ARMED": ("feppml", b"FEPPML_NATIVE_BREAK_ARMED\n"),
+        "FEREG_NATIVE_BREAK_ARMED": ("fereg", b"FEREG_NATIVE_BREAK_ARMED\n"),
+    }
     master, slave = pty.openpty()
 
     def attach_controlling_terminal() -> None:
@@ -122,9 +126,9 @@ def main() -> None:
         fcntl.ioctl(0, termios.TIOCSCTTY, 0)
 
     process_environment = os.environ.copy()
-    if args.fixture_kind == "ppml":
-        process_environment["TMPDIR"] = str(run_dir)
-        process_environment["FEREG_PPML_BREAK_MARKER_TOKEN"] = native_marker_token
+    process_environment["TMPDIR"] = str(run_dir)
+    process_environment["FEREG_PPML_BREAK_MARKER_TOKEN"] = native_marker_token
+    process_environment["FEREG_BREAK_MARKER_TOKEN"] = native_marker_token
     process = subprocess.Popen(
         [args.stata],
         cwd=run_dir,
@@ -161,12 +165,14 @@ def main() -> None:
         )
         os.write(master, "\n".join(commands).encode("utf-8"))
         for armed in armed_markers:
-            if armed == "FEPPML_NATIVE_BREAK_ARMED":
+            if armed in native_markers:
+                prefix, content = native_markers[armed]
+                native_marker_path = run_dir / f"{prefix}-native-break-{native_marker_token}.marker"
                 transcript += read_until_marker_file(
                     master,
                     process,
                     native_marker_path,
-                    b"FEPPML_NATIVE_BREAK_ARMED\n",
+                    content,
                     args.timeout,
                 )
                 native_marker_path.unlink()

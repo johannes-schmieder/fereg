@@ -19,6 +19,24 @@ local prior_cmd `"`e(cmd)'"'
 local prior_N : display %21x e(N)
 local prior_rss : display %21x e(rss)
 
+* Native Break: the numerical phase waits at a cancellation checkpoint; the PTY
+* controller sends Control-C after the native marker file appears. Stata's
+* thread observes Break, cancels the work and the transaction rolls back.
+capture noisily _fereg_estimate_ols_test y c.x1, ///
+    absorb(worker firm) cluster(cluster_a cluster_b) ///
+    residual(__frg_native_resid) inject(breaknative)
+local native_rc = _rc
+assert `native_rc' == 1
+confirm new variable __frg_native_resid
+assert `"`e(cmd)'"' == `"`prior_cmd'"'
+local after_N : display %21x e(N)
+local after_rss : display %21x e(rss)
+assert `"`after_N'"' == `"`prior_N'"'
+assert `"`after_rss'"' == `"`prior_rss'"'
+assert mreldif(e(b), `prior_b') == 0
+assert mreldif(e(V), `prior_V') == 0
+assert e(sample) == __frg_prior_sample
+
 * The interactive PTY controller sends an actual Control-C only after this
 * hidden action has completed its sole plugin call and printed its armed line.
 capture noisily _fereg_estimate_ols_test y c.x1, ///

@@ -2,6 +2,7 @@
 
 mod action_memory;
 mod cancellable;
+mod developer_injection;
 mod dispatch;
 mod estimate;
 #[cfg_attr(not(feature = "ffi"), allow(dead_code))]

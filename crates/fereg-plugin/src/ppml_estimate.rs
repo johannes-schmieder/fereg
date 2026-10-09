@@ -5,7 +5,6 @@ use fereg_core::metadata::ModelWireV2;
 pub(crate) mod bias;
 use crate::memory_report::{Baseline, Report as MemoryReport, ROWS as MEMORY_ROWS};
 use std::collections::{BTreeMap, BTreeSet};
-use std::io::Write;
 use std::time::Instant;
 
 #[cfg(test)]
@@ -60,7 +59,6 @@ const CONFIRMATION: &str = "feppml-estimation";
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
 const MAX_PPML_PROTOCOL_FIELDS: usize = 99;
-const NATIVE_BREAK_MARKER: &str = "FEPPML_NATIVE_BREAK_ARMED\n";
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 enum PpmlDeveloperInjection {
@@ -392,10 +390,14 @@ pub fn estimate_ppml_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             && point == PpmlInterruptPoint::IrlsIteration
         {
             native_break_armed = true;
-            spi.display(NATIVE_BREAK_MARKER)?;
+            spi.display(crate::developer_injection::PPML_NATIVE_BREAK_MARKER)?;
             // Arm the PTY controller only after display returns: Linux Stata
             // can classify a Ctrl-C inside SF_display as an SPI display error.
-            create_native_break_marker(&action.break_marker_token)?;
+            crate::developer_injection::create_native_break_marker(
+                "feppml",
+                crate::developer_injection::PPML_NATIVE_BREAK_MARKER,
+                &action.break_marker_token,
+            )?;
             // Synchronize the interactive fixture after actual core entry.
             // The controller sends Ctrl-C only after observing the marker;
             // remain on Stata's caller thread until its poll reports Break.
@@ -912,24 +914,10 @@ impl EstimatePpmlSpec {
                 "PPML tolerances must lie strictly between zero and one",
             ));
         }
-        let expects_break_marker = self.injection == PpmlDeveloperInjection::BreakNative;
-        let has_break_marker = !self.break_marker_token.is_empty();
-        if expects_break_marker != has_break_marker {
-            return Err(syntax(
-                "breaknative requires exactly one hidden break_marker_token",
-            ));
-        }
-        if !self.break_marker_token.is_empty()
-            && (self.break_marker_token.len() != 32
-                || !self
-                    .break_marker_token
-                    .bytes()
-                    .all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte)))
-        {
-            return Err(syntax(
-                "hidden break_marker_token must be exactly 32 lowercase hexadecimal characters",
-            ));
-        }
+        crate::developer_injection::validate_break_marker_token(
+            self.injection == PpmlDeveloperInjection::BreakNative,
+            &self.break_marker_token,
+        )?;
 
         let memory = PpmlMemoryConfig {
             requested: self.memory,
@@ -1132,31 +1120,6 @@ impl EstimatePpmlSpec {
             ))),
         }
     }
-}
-
-fn native_break_marker_path(token: &str) -> std::path::PathBuf {
-    std::env::temp_dir().join(format!("feppml-native-break-{token}.marker"))
-}
-
-fn create_native_break_marker(token: &str) -> Result<()> {
-    let path = native_break_marker_path(token);
-    let mut marker = std::fs::OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&path)
-        .map_err(|error| {
-            internal(format!(
-                "unable to create hidden PPML Break marker: {error}"
-            ))
-        })?;
-    marker
-        .write_all(NATIVE_BREAK_MARKER.as_bytes())
-        .and_then(|_| marker.sync_all())
-        .map_err(|error| {
-            internal(format!(
-                "unable to commit hidden PPML Break marker: {error}"
-            ))
-        })
 }
 
 /// Parse the hidden PPML control plane without infallibly duplicating the
@@ -5351,17 +5314,21 @@ mod tests {
                 .expect("system clock")
                 .as_nanos()
         );
-        let marker_path = native_break_marker_path(&marker_token);
+        let marker_path =
+            crate::developer_injection::native_break_marker_path("feppml", &marker_token);
         args.push(format!("break_marker_token={marker_token}"));
         spi.interrupt_when_marker_exists = Some(marker_path.clone());
 
         let error = estimate_ppml_test(&args, &mut spi)
             .expect_err("native Break injection must stop inside the core");
         assert_eq!(error.code, ErrorCode::Interrupted);
-        assert_eq!(spi.displays, [NATIVE_BREAK_MARKER]);
+        assert_eq!(
+            spi.displays,
+            [crate::developer_injection::PPML_NATIVE_BREAK_MARKER]
+        );
         assert_eq!(
             std::fs::read_to_string(&marker_path).expect("native marker file"),
-            NATIVE_BREAK_MARKER
+            crate::developer_injection::PPML_NATIVE_BREAK_MARKER
         );
         std::fs::remove_file(&marker_path).expect("remove native marker file");
         assert!(

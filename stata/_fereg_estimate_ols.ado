@@ -69,7 +69,7 @@ program define _fereg_estimate_ols, eclass
     if `"`inject'"' != "" & !inlist(`"`inject'"', ///
         "posthold", "postplugin", "poststripe", "postereturn", ///
         "postscalars", "postdiagnostics", "precommit", ///
-        "breakpostplugin") {
+        "breakpostplugin", "breaknative") {
         di as error "unknown developer transaction injection stage: `inject'"
         exit 198
     }
@@ -507,6 +507,15 @@ program define _fereg_estimate_ols, eclass
     local stata_used_before = strtrim(string(r(used), "%21.0f"))
     local stata_alloc_before = strtrim(string(r(allocated), "%21.0f"))
     local request_arguments `"ado=0.5.0;protocol_major=1;protocol_minor=6;stata=`c(stata_version)';confirm=fereg-estimation;plugin=0.5.0;result_major=1;result_minor=5;model_major=`model_major';model_minor=`model_minor';source_matrix=`model_sources';source_count=`n_sources';term_matrix=`model_terms';term_count=`n_terms';component_matrix=`model_components';component_count=`n_components';source_names=`source_registry';canonical_tokens=`token_registry';raw_component_operators=`raw_registry';raw_time_series_operators=`ts_registry';absorb_term_matrix=`absorb_terms';absorb_term_count=`n_absorb_terms';absorb_component_matrix=`absorb_components';absorb_component_count=`n_absorb_components';absorb_labels=`absorb_label_registry';absorb_saved_names=`absorb_saved_registry';cluster_term_matrix=`cluster_terms';cluster_term_count=`n_cluster_terms';cluster_component_matrix=`cluster_components';cluster_component_count=`n_cluster_components';cluster_labels=`cluster_label_registry';binding_matrix=`input_bindings';binding_count=`n_bindings';include_intercept=`include_intercept';candidate_all=`candidate_all';input_complete=`input_complete';keep_singletons=`keep_singletons';vce=`vce_wire';dof=`dof_wire';account_cluster_nesting=`account_cluster_nesting';memory=`memory_mode';solver=`solver_mode';preconditioner=`preconditioner_mode';poolsize=`poolsize';threads=`threads';deterministic=`deterministic_wire';tolerance=`tolerance';iterate=`iterate';output_sample=`output_sample';output_residual=`output_residual';output_drop_reason=0;output_xb=`output_xb';output_xbd=`output_xbd';output_absorbed=`output_absorbed';output_saved_count=`output_saved_count';output_saved_channels=`output_saved_registry';output_b_matrix=`b_shadow';output_v_matrix=`v_shadow';output_status_matrix=`status_shadow';output_marker_b_matrix=`marker_b_shadow';output_marker_v_matrix=`marker_v_shadow';output_fit_matrix=`fit_shadow';output_dof_matrix=`dof_shadow';output_solver_matrix=`solver_shadow';output_fe_matrix=`fe_shadow';output_cluster_matrix=`cluster_shadow';output_subset_matrix=`subset_shadow';output_certificate_matrix=`certificate_shadow';output_runtime_matrix=`runtime_shadow';output_memory_matrix=`memory_shadow';stata_used_entry=`stata_used_entry';stata_alloc_entry=`stata_alloc_entry';stata_used_before=`stata_used_before';stata_alloc_before=`stata_alloc_before';output_receipt_matrix=`receipt_shadow';"'
+    if `"`inject'"' == "breaknative" {
+        local break_marker_token : environment FEREG_BREAK_MARKER_TOKEN
+        if strtrim(`"`break_marker_token'"') == "" {
+            di as error "hidden OLS breaknative requires FEREG_BREAK_MARKER_TOKEN"
+            exit 198
+        }
+        local request_arguments ///
+            `"`request_arguments'inject=breaknative;break_marker_token=`break_marker_token';"'
+    }
     // Frame bounded parser metadata in one vectorized pass. No observations or
     // generated design columns enter Mata; field lengths remain UTF-8 bytes.
     tempname request_input request_parser request_parts

@@ -161,6 +161,8 @@ struct EstimateAction {
     requested_tolerance: f64,
     outputs: ObservationOutputs,
     matrices: PreparedResultMatrices,
+    /// Hidden-adapter Break injection token; `None` for every ordinary action.
+    native_break_token: Option<String>,
 }
 
 #[derive(Debug)]
@@ -193,6 +195,7 @@ struct EstimateActionSpec {
     iterate: usize,
     outputs: ObservationOutputs,
     matrices: ResultMatrices,
+    native_break_token: Option<String>,
 }
 
 #[derive(Debug)]
@@ -295,10 +298,19 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
     // Preparation and inference run on the action team while Stata's thread
     // polls Break; an interruption stops core loops at their next checkpoint.
     let team = ThreadTeam::new(action.fit.execution.threads);
+    let mut native_break_token = action.native_break_token.take();
+    let hold_for_break = native_break_token.is_some();
     let numerical_action = &mut action;
     let (prepared, inference, prepare_seconds, inference_seconds) = crate::cancellable::run(
         team,
         move || {
+            if hold_for_break {
+                // Hidden Break injection: wait at a checkpoint for Stata Break.
+                loop {
+                    fereg_core::interrupt::checkpoint()?;
+                    std::thread::sleep(std::time::Duration::from_millis(1));
+                }
+            }
             let (prepared, loaded_rows) =
                 prepare_ols_pipeline(loaded, loaded_rhs, numerical_action, categorical)?;
             numerical_action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
@@ -309,7 +321,18 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
             let inference_seconds = inference_started.elapsed().as_secs_f64();
             Ok((prepared, inference, prepare_seconds, inference_seconds))
         },
-        &mut || spi.check_interrupted_while_waiting(),
+        &mut || {
+            if let Some(token) = native_break_token.take() {
+                // Arm the interactive controller only after display returns.
+                spi.display(crate::developer_injection::OLS_NATIVE_BREAK_MARKER)?;
+                crate::developer_injection::create_native_break_marker(
+                    "fereg",
+                    crate::developer_injection::OLS_NATIVE_BREAK_MARKER,
+                    &token,
+                )?;
+            }
+            spi.check_interrupted_while_waiting()
+        },
     )?;
     let view = inference.view();
     complete_ols(
@@ -859,6 +882,7 @@ impl EstimateActionSpec {
                 memory_report: required(&values, "output_memory_matrix")?.to_owned(),
                 receipt: required(&values, "output_receipt_matrix")?.to_owned(),
             },
+            native_break_token: parse_native_break(&values)?,
         };
         specification.reject_unknown_fields(&values)?;
         Ok(specification)
@@ -941,6 +965,8 @@ impl EstimateActionSpec {
             "stata_used_before",
             "stata_alloc_before",
             "output_receipt_matrix",
+            "inject",
+            "break_marker_token",
         ];
         for key in values.keys() {
             if !ALLOWED.contains(&key.as_str()) {
@@ -1185,6 +1211,7 @@ impl EstimateActionSpec {
             requested_tolerance: self.tolerance,
             outputs: self.outputs.clone(),
             matrices,
+            native_break_token: self.native_break_token.clone(),
         };
         action.metadata_owner_bytes = action
             .metadata_capacity_bytes()
@@ -3654,6 +3681,23 @@ fn reserved_filled<T: Clone>(elements: usize, value: T, label: &'static str) -> 
     let mut output = reserved_empty(elements, label)?;
     output.resize(elements, value);
     Ok(output)
+}
+
+/// Hidden-adapter OLS injection: only `breaknative`, which holds the numerical
+/// phase at a cancellation checkpoint until Stata reports Break.
+fn parse_native_break(values: &BTreeMap<String, String>) -> Result<Option<String>> {
+    let break_native = match values.get("inject").map(String::as_str).unwrap_or("") {
+        "" => false,
+        "breaknative" => true,
+        other => {
+            return Err(syntax(format!(
+                "unknown hidden OLS injection stage {other:?}"
+            )))
+        }
+    };
+    let token = values.get("break_marker_token").map_or("", String::as_str);
+    crate::developer_injection::validate_break_marker_token(break_native, token)?;
+    Ok(break_native.then(|| token.to_owned()))
 }
 
 fn syntax(message: impl Into<String>) -> FeregError {

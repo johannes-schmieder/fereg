@@ -41,6 +41,37 @@ rejected. The additive PPML wires do not alter or alias the OLS result wire.
   `_fereg_estimate_ppml` transaction. Non-SPI dispatcher attempts to invoke
   `estimate-ppml` are rejected.
 
+## Developer injections (hidden adapters only)
+
+Licensed qualification fixtures exercise the shipped binary's failure paths
+through request keys that public `fereg`/`feppml` syntax cannot produce; the
+public wrappers reject `inject()`. Injections never change arithmetic.
+
+| Key | Estimator | Effect |
+|---|---|---|
+| `inject=breaknative` + `break_marker_token=<32 lowercase hex>` | OLS, PPML | Arms native Break: displays `FEREG_NATIVE_BREAK_ARMED` (OLS) or `FEPPML_NATIVE_BREAK_ARMED` (PPML), creates `<tmp>/<fereg\|feppml>-native-break-<token>.marker`, and waits for Stata Break inside the native call |
+| `inject=panic` | PPML | Panics after validation to prove ABI panic containment (OLS uses the `panic-test` action) |
+| `inject=allocation` | PPML | Fails the FE-recovery reservation to prove atomic allocation failure |
+
+The hidden adapters read the token from `FEREG_BREAK_MARKER_TOKEN` (OLS) or
+`FEREG_PPML_BREAK_MARKER_TOKEN` (PPML); `scripts/run_stata_break_test.py`
+sets both and sends Break only after the marker file exists. Fixtures:
+`tests/licensed_stata/estimate_ols_eclass_break.do`,
+`tests/licensed_stata/estimate_ppml_eclass_break.do`,
+`parity_ppmlhdfe/estimate_ppml_hidden_transaction.do`,
+`parity_ppmlhdfe/estimate_ppml_hidden_allocation.do` and the PPML public-scope
+fixtures.
+
+## Break and cancellation
+
+SPI polling stays on Stata's thread. OLS preparation and inference run on the
+action team while Stata's thread polls Break every 20 ms; PPML polls at its
+IRLS, separation, inference and publication safe points. On Break the plugin
+requests cooperative cancellation and long native loops stop at their next
+checkpoint (FE sweeps and iterations, LSMR/CMG entry, one-shot fit phases,
+clustered subsets). The transaction then fails with return code 1 before any
+store and the ado restores prior results.
+
 ## Estimation request transport
 
 OLS and PPML retain their canonical count/byte-length framed request. The ado
