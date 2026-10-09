@@ -635,3 +635,23 @@ OLS-7 (zero-indicator skipping can change a zero's sign). Deferred: PPML-10
 (structured recovery classification must reproduce today's matched set),
 OLS-4 (needs a new admitted scratch layout), FE-16 (u32 level indices touch
 every FE consumer) and the PLUG-12 runtime missing value (next wire bump).
+
+## 2026-10-09 cleanup program, phase 4 and follow-ups
+
+Phase 4 (commits 5dcaaf81, 366df30f, e97d355e) made developer fault plans
+part of shipped control flow: the borrowed MAP absorber, checkpoint LSMR
+batch, three-FE Schur budget, linear session, PPML IRLS loop, fused CMG,
+prepared separation and simplex now run the same fault checks in shipped
+and test builds, with every plan unset in shipped code and only the test
+setters gated. Pure observation counters stay test-only. An independent
+review found no shipped behaviour change, no shipped writer and no new
+allocation; its two follow-ups are applied. These are the first
+thread-locals compiled into shipped code (const-initialized `Cell`s without
+destructors); Linux and Windows load checks were not run in this phase.
+
+Every commit replayed the 73 cases against the 296cbc23 baseline with zero
+exact differences. Boundary wall-time check (`bench/time_exact.py`, Mac
+M-series, seven alternating pairs, exact science in every run) of candidate
+`fdd48d5687698bcd9580184407827552f4d07d0feabcff1b2e41d80cd9933b41` against that baseline on all 18 frozen workloads: every bootstrap
+upper bound is within its max(5%, 1 ms) allowance; the largest is 1.160
+(no-FE K=5, four workers, allowance 1.204).
