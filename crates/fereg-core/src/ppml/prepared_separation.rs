@@ -12,7 +12,6 @@ use crate::memory::{fallible_copy, fallible_filled};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
-#[cfg(test)]
 use std::cell::Cell;
 
 use crate::data::{DenseMatrix, DropReason, WeightKind};
@@ -49,7 +48,8 @@ const SEPARATION_PHASES: [PpmlPhase; 4] = [
     PpmlPhase::SeparationMu,
 ];
 
-#[cfg(test)]
+// Developer fault plan for the current thread. Shipped code runs the same
+// checks with no plan; only the test setters write it.
 thread_local! {
     static FAIL_EXACT_FE_LEVEL_COMPACTION: Cell<bool> = const { Cell::new(false) };
     static FAIL_REPORT_BANK_RESERVATION: Cell<bool> = const { Cell::new(false) };
@@ -534,7 +534,6 @@ where
     );
     let method_report_capacity =
         checked_method_report_capacity(generation_capacity, separation_method_count(config))?;
-    #[cfg(test)]
     if FAIL_REPORT_BANK_RESERVATION.replace(false) {
         return Err(allocation(
             "injected prepared separation report-bank allocation failure",
@@ -2969,7 +2968,6 @@ fn compact_to_original_exact_capacity(
 /// scan buffer into a report would make retained memory grow by generations
 /// times the full level count rather than by unique accepted identities.
 fn compact_exact_fe_levels(levels: Vec<ExactFeLevelIdentity>) -> Result<Vec<ExactFeLevelIdentity>> {
-    #[cfg(test)]
     if FAIL_EXACT_FE_LEVEL_COMPACTION.replace(false) {
         return Err(allocation(
             "injected exact-FE level certificate compaction failure",

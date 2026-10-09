@@ -9,7 +9,6 @@
 use crate::linalg::neumaier_add;
 use std::time::Instant;
 
-#[cfg(test)]
 use std::cell::Cell;
 
 use rayon::prelude::*;
@@ -86,12 +85,18 @@ fn projection_design(
     BorrowedInterceptFeDesign::new(design.nobs(), effects)
 }
 
-#[cfg(test)]
+// Developer fault plan for the current thread. Shipped code runs the same
+// checks with every entry unset; only the test setters write them.
 thread_local! {
     static FORCE_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
     static FORCE_FATAL_FAILURE_ONCE: Cell<Option<ErrorCode>> = const { Cell::new(None) };
     static FORCE_POST_PROJECTION_NUMERICAL_FAILURE_ONCE: Cell<bool> = const { Cell::new(false) };
     static FORCE_PROJECTION_CERTIFICATE_FAILURE_ONCE: Cell<Option<usize>> = const { Cell::new(None) };
+}
+
+// Test-only observation counters; they never change control flow.
+#[cfg(test)]
+thread_local! {
     static TOTAL_RETRIED_RIGHT_HAND_SIDES: Cell<usize> = const { Cell::new(0) };
     static ROUTE_OBSERVATION_PREPARATIONS: Cell<usize> = const { Cell::new(0) };
 }
@@ -543,17 +548,14 @@ impl ReusableCategoricalFwlCmg {
                 passed: false,
             };
         }
-        #[cfg(test)]
-        {
-            if let Some(code) = FORCE_FATAL_FAILURE_ONCE.replace(None) {
-                return Err(FeregError::new(
-                    code,
-                    "injected fused PPML CMG fatal failure",
-                ));
-            }
-            if FORCE_NUMERICAL_FAILURE_ONCE.replace(false) {
-                return Err(nonconvergence("injected fused PPML CMG numerical failure"));
-            }
+        if let Some(code) = FORCE_FATAL_FAILURE_ONCE.replace(None) {
+            return Err(FeregError::new(
+                code,
+                "injected fused PPML CMG fatal failure",
+            ));
+        }
+        if FORCE_NUMERICAL_FAILURE_ONCE.replace(false) {
+            return Err(nonconvergence("injected fused PPML CMG numerical failure"));
         }
         self.fill_full_projection_input(working_response);
         let first_tolerance = (tolerance * self.projection_tolerance_scale).max(1e-14);
@@ -589,7 +591,6 @@ impl ReusableCategoricalFwlCmg {
         diagnostics.certification_seconds += certification_started.elapsed().as_secs_f64();
         diagnostics.observe_projection_certificates(&self.projection_certificates);
         projection_certificate?;
-        #[cfg(test)]
         if let Some(rhs) = FORCE_PROJECTION_CERTIFICATE_FAILURE_ONCE.replace(None) {
             let certificate = self.projection_certificates.get_mut(rhs).ok_or_else(|| {
                 FeregError::new(
@@ -673,7 +674,6 @@ impl ReusableCategoricalFwlCmg {
             retry_report = Some(report);
         }
 
-        #[cfg(test)]
         if FORCE_POST_PROJECTION_NUMERICAL_FAILURE_ONCE.replace(false) {
             return Err(nonconvergence(
                 "injected fused PPML CMG post-projection numerical failure",

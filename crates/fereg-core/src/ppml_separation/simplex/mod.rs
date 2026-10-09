@@ -15,14 +15,14 @@ use nullspace::nullspace_basis;
 use tableau::phase_one_cone;
 use tableau::{phase_one_cone_interruptible, PhaseOneConeOutcome};
 
-#[cfg(test)]
+// Developer fault plan for the current thread; shipped code runs the same
+// check with no plan and only the test setter writes it.
 std::thread_local! {
     static TEST_RESERVATIONS_UNTIL_FAILURE: std::cell::Cell<Option<usize>> =
         const { std::cell::Cell::new(None) };
 }
 
 fn reserve<T>(target: &mut Vec<T>, additional: usize, label: &'static str) -> Result<()> {
-    #[cfg(test)]
     if TEST_RESERVATIONS_UNTIL_FAILURE.with(|remaining| match remaining.get() {
         None => false,
         Some(0) => {

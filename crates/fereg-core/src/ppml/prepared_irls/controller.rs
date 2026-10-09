@@ -198,7 +198,6 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         solver_report: &mut Option<PpmlSolverReport>,
     ) -> Result<StrictFacts> {
         let basis_unchanged = transaction.basis_unchanged();
-        #[cfg(test)]
         let basis_unchanged = basis_unchanged && !take_strict_basis_change(1);
         let strict = transaction.candidate();
         let certified = strict.certified();
@@ -250,9 +249,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         iteration: usize,
         clock: &PpmlPhaseClock,
     ) -> Result<StrictAssessment> {
-        #[cfg(test)]
         let injected_strict_movement = take_strict_resume(1);
-        #[cfg(test)]
         if injected_strict_movement {
             inject_candidate_profile_movement(self.workspace);
         }

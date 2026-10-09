@@ -6,7 +6,6 @@
 
 #[cfg(test)]
 use crate::fe::PARALLEL_PROJECTION_MIN_ROWS;
-#[cfg(test)]
 use std::cell::Cell;
 use std::time::{Duration, Instant};
 
@@ -148,18 +147,24 @@ fn use_initial_checkpoint_lsmr_accelerator(
         && use_checkpoint_lsmr_accelerator(observations, effects)
 }
 
-#[cfg(test)]
+// Developer fault plan for the current thread. Shipped code runs the same
+// checks with every entry unset; only the test setters below write them.
 thread_local! {
     static FORCE_GENERIC_OUTER_SCORE: Cell<bool> = const { Cell::new(false) };
     static CANONICAL_FINAL_TEST_DISABLED: Cell<bool> = const { Cell::new(false) };
     static PROFILE_CURVE_TEST_DISABLED: Cell<bool> = const { Cell::new(false) };
     static PROFILE_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
-    static PROFILE_FINAL_ACCEPTED: Cell<usize> = const { Cell::new(0) };
     static JOINT_FINAL_TEST_MODE: Cell<u8> = const { Cell::new(0) };
-    static JOINT_FINAL_TEST_COUNTS: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
     static STRICT_RESUME_INJECTION: Cell<u8> = const { Cell::new(0) };
     static REPEATED_STRICT_RESUME_INJECTION: Cell<usize> = const { Cell::new(0) };
     static STRICT_BASIS_CHANGE_INJECTION: Cell<u8> = const { Cell::new(0) };
+}
+
+// Test-only observation counters; they never change control flow.
+#[cfg(test)]
+thread_local! {
+    static PROFILE_FINAL_ACCEPTED: Cell<usize> = const { Cell::new(0) };
+    static JOINT_FINAL_TEST_COUNTS: Cell<(usize, usize)> = const { Cell::new((0, 0)) };
     static CANONICAL_FRAME_REFRESH_COUNT: Cell<usize> = const { Cell::new(0) };
     static FUSED_STRICT_WITNESS_COUNT: Cell<usize> = const { Cell::new(0) };
     static CMG_EARLY_MEMORY_PEAKS: Cell<Option<(u128, u128)>> = const { Cell::new(None) };
@@ -175,7 +180,6 @@ fn inject_strict_resume(first_strict: bool, final_hessian: bool) {
     STRICT_RESUME_INJECTION.set(u8::from(first_strict) | (u8::from(final_hessian) << 1));
 }
 
-#[cfg(test)]
 fn take_strict_resume(bit: u8) -> bool {
     if bit == 1 && REPEATED_STRICT_RESUME_INJECTION.get() > 0 {
         REPEATED_STRICT_RESUME_INJECTION.set(REPEATED_STRICT_RESUME_INJECTION.get() - 1);
@@ -192,7 +196,6 @@ pub(super) fn inject_strict_basis_change(first_strict: bool, final_hessian: bool
     STRICT_BASIS_CHANGE_INJECTION.set(u8::from(first_strict) | (u8::from(final_hessian) << 1));
 }
 
-#[cfg(test)]
 fn take_strict_basis_change(bit: u8) -> bool {
     let state = STRICT_BASIS_CHANGE_INJECTION.get();
     let selected = state & bit != 0;
@@ -221,7 +224,6 @@ pub(super) fn take_cmg_early_memory_peaks() -> Option<(u128, u128)> {
     CMG_EARLY_MEMORY_PEAKS.replace(None)
 }
 
-#[cfg(test)]
 fn inject_candidate_profile_movement(workspace: &mut PpmlIterationWorkspace) {
     // Move a complete candidate profile, not merely a control-flow flag, so
     // the strict resume tests exercise eta, beta, and objective comparisons.
@@ -235,22 +237,11 @@ fn inject_candidate_profile_movement(workspace: &mut PpmlIterationWorkspace) {
 }
 
 fn profile_curve_enabled() -> bool {
-    #[cfg(test)]
-    {
-        !PROFILE_CURVE_TEST_DISABLED.get()
-    }
-    #[cfg(not(test))]
-    {
-        true
-    }
+    !PROFILE_CURVE_TEST_DISABLED.get()
 }
 
 fn canonical_final_enabled() -> bool {
-    #[cfg(test)]
-    if CANONICAL_FINAL_TEST_DISABLED.get() {
-        return false;
-    }
-    true
+    !CANONICAL_FINAL_TEST_DISABLED.get()
 }
 
 #[cfg(test)]
@@ -2494,7 +2485,6 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     solver_report: &mut PpmlSolverReport,
     mut categorical: Option<(&mut ReusableCategoricalJointLsmr, PpmlSolverEngine)>,
 ) -> Result<bool> {
-    #[cfg(test)]
     if JOINT_FINAL_TEST_MODE.get() == 1
         || categorical.is_some()
             && (STRICT_RESUME_INJECTION.get() != 0
@@ -2525,7 +2515,6 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
             checkpoint_tolerance,
             config.linear.absorb.lsmr.max_iterations,
         );
-        #[cfg(test)]
         let result = if JOINT_FINAL_TEST_MODE.get() == 4 {
             JOINT_FINAL_TEST_MODE.set(0);
             Err(FeregError::new(
@@ -2589,7 +2578,6 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     // absorbed intercept is a normalization coordinate, as on the canonical
     // specialized path; the final canonical fit independently normalizes it.
     let coefficient_slots = categorical.as_ref().map(|(joint, _)| joint.active_slots());
-    #[cfg(test)]
     if JOINT_FINAL_TEST_MODE.get() == 2 {
         JOINT_FINAL_TEST_MODE.set(0);
         inject_candidate_profile_movement(workspace);
@@ -2639,7 +2627,6 @@ fn try_joint_strict_final_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     let transaction = session.strict_candidate()?;
     let canonical = transaction.candidate();
     let unchanged = transaction.basis_unchanged();
-    #[cfg(test)]
     let unchanged = if JOINT_FINAL_TEST_MODE.get() == 3 {
         JOINT_FINAL_TEST_MODE.set(0);
         false
@@ -2731,11 +2718,9 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
     config: PreparedPpmlIrlsConfig,
     generation: u64,
 ) -> Result<bool> {
-    #[cfg(test)]
     if PROFILE_FINAL_TEST_MODE.get() == 1 {
         return Ok(false);
     }
-    #[cfg(test)]
     let generation = if PROFILE_FINAL_TEST_MODE.get() == 2 {
         generation + 1
     } else {
@@ -2778,7 +2763,6 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
             .max(output.finite_predictor()[row].abs());
         let candidate =
             offset[row] + (output.finite_predictor()[row] + output.absorbed_predictor()[row]);
-        #[cfg(test)]
         let candidate = if PROFILE_FINAL_TEST_MODE.get() == 3 && row == 0 {
             candidate + 0.01
         } else {
@@ -2843,7 +2827,6 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
     session.set_config(ppml_linear_config(config, strict_tolerance)?)?;
     let synchronized_transaction = session.strict_candidate()?;
     let synchronized_basis_unchanged = synchronized_transaction.basis_unchanged();
-    #[cfg(test)]
     let synchronized_basis_unchanged = synchronized_basis_unchanged && !take_strict_basis_change(2);
     let (synchronized_certified, synchronized_rank) = {
         let synchronized = synchronized_transaction.candidate();
@@ -2886,9 +2869,7 @@ fn synchronize_final_hessian_frame<P: PreparedOlsFitView + Sync + ?Sized>(
             )
         },
     );
-    #[cfg(test)]
     let injected_movement = take_strict_resume(2);
-    #[cfg(test)]
     if injected_movement {
         inject_candidate_profile_movement(workspace);
     }
@@ -4004,7 +3985,6 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
         prepared.fit_model(),
         prepared.fit_sample(),
     )?;
-    #[cfg(test)]
     let numeric = if FORCE_GENERIC_OUTER_SCORE.get() {
         None
     } else {
@@ -4019,7 +3999,6 @@ fn prepared_score_certificate<P: PreparedOlsFitView + ?Sized>(
                     | crate::ols::PreparedOlsColumnKind::CategoricalInteraction { .. }
             )
         });
-    #[cfg(test)]
     let generated_parallel = generated_parallel && !FORCE_GENERIC_OUTER_SCORE.get();
     let mut numeric_moments = [(0.0_f64, 0.0_f64); crate::ols::MAX_BOUND_NUMERIC_COLUMNS];
     if let Some(numeric) = numeric.as_ref() {

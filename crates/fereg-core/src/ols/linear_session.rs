@@ -22,7 +22,6 @@ use crate::parallel::ThreadTeam;
 use crate::prepared_fit_view::{PreparedOlsFitView, SharedPreparedOlsData};
 use crate::sandwich::SandwichDesign;
 use rayon::prelude::*;
-#[cfg(test)]
 use std::cell::Cell;
 #[cfg(test)]
 use std::sync::atomic::{AtomicBool, Ordering};
@@ -1547,7 +1546,8 @@ pub(crate) struct CertifiedLinearSession<'a, P: PreparedOlsFitView + Sync + ?Siz
     projection_refresh_required: bool,
     canonical_projection_work_hint: u128,
     phase_allocator_probe: Option<LinearSessionPhaseAllocatorProbe>,
-    #[cfg(test)]
+    // Developer fault plan, consumed once; shipped code runs the same check
+    // with no plan and only the test setter writes it.
     fresh_rank_failure_injection: u8,
 }
 
@@ -1573,7 +1573,8 @@ pub(crate) enum FrozenLinearFailureInjection {
     Interrupted,
 }
 
-#[cfg(test)]
+// Developer frozen-solve fault plan for the current thread. Shipped code
+// runs the same checks with no plan; only the test setter writes it.
 thread_local! {
     static FROZEN_FAILURE_INJECTION: Cell<u8> = const { Cell::new(0) };
 }
@@ -1774,7 +1775,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             projection_refresh_required: false,
             canonical_projection_work_hint: 0,
             phase_allocator_probe: None,
-            #[cfg(test)]
             fresh_rank_failure_injection: 0,
         })
     }
@@ -2038,7 +2038,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     /// Canonical solve using the current frame.  An already-frozen basis must
     /// still match; call `refresh_basis` to authorize a new rank decision.
     pub(crate) fn solve_fresh(&mut self) -> Result<CertifiedLinearSessionOutput<'_>> {
-        #[cfg(test)]
         if FROZEN_FAILURE_INJECTION.get() == 5 {
             FROZEN_FAILURE_INJECTION.set(0);
             return Err(allocation("injected canonical fallback allocation failure"));
@@ -2228,7 +2227,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
         };
     }
 
-    #[cfg(test)]
     fn take_fresh_rank_failure(&mut self) -> Option<FeregError> {
         match std::mem::take(&mut self.fresh_rank_failure_injection) {
             0 => None,
@@ -2570,7 +2568,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
     }
 
     fn check_frozen_failure_injection(&self) -> Result<()> {
-        #[cfg(test)]
         match FROZEN_FAILURE_INJECTION.get() {
             1 => {
                 FROZEN_FAILURE_INJECTION.set(0);
@@ -3533,7 +3530,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
             phase_probe.map(|_| &mut phase_allocation),
             LinearSessionAllocationPhase::FiniteSolve,
         );
-        #[cfg(test)]
         let candidate = match self.take_fresh_rank_failure() {
             Some(error) => Err(error),
             None => self.solve_full_retained_rank(
@@ -3543,13 +3539,6 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                 canonical_moments,
             ),
         };
-        #[cfg(not(test))]
-        let candidate = self.solve_full_retained_rank(
-            &within_response,
-            absorption_report,
-            prior_active_positions,
-            canonical_moments,
-        );
         // `absorb_current_response` transfers the session-owned response
         // allocation into `within_response`.  Return that exact allocation to
         // the reusable workspace on both success and every downstream rank /
