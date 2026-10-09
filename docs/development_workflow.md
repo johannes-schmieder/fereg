@@ -124,6 +124,22 @@ measurement budgets and stopping rules:
 - Result-changing changes require declared numerical scope, independent witnesses
   and the full quiet-timing protocol on the qualification host. Unaffected
   scientific results remain exact; affected results must satisfy SPEC.
+- Unchanged artifacts: a commit that only changes tests, documentation or
+  tooling passes `python3 scripts/check_complexity.py --compare-production HEAD~1`
+  (identical runtime token streams after removing comments, whitespace and
+  test-only items; byte-identical C bridge, manifests, lockfile, toolchain and
+  vendored sources). It needs `./scripts/run_tests.sh` only.
+- Workstream boundaries: arithmetic-preserving commits within one workstream
+  share one wall-time nonregression check at its end rather than one per commit.
+- Declared ulp-scope changes: affected fields named in the replay
+  `--affected-scope`, all other fields and discrete decisions exact, independent
+  witnesses on the affected fields and instruction counts within noise. They
+  reuse the prior timing evidence.
+
+The wall-time check is `bench/time_exact.py` (seven alternating pairs after one
+warm-up, paired-median bootstrap upper bound against max(5%, 1 ms)) over the
+frozen workloads regenerated and hash-verified by `bench/make_standard_cases.py`,
+using the clocked harness from `bench/build_timing_harness.sh`.
 
 Release performance claims require quiet Mac timing. For clean wall timings,
 run no builds or agents and coordinate unrelated workloads without terminating
@@ -138,9 +154,13 @@ Report slow workload families, memory, failed cells and scaling alongside aggreg
 time. Unexplained material scaling cliffs fail qualification. Changing the default
 max(5%, 1 ms) allowance requires Johannes's decision before the affected implementation.
 
+<a id="complexity-inventory"></a>
 The complexity inventory counts runtime Rust source after removing whitespace,
 comments and test-only items. It follows declared modules, including non-test cfg
 variants. Per-crate lines, long files/functions and sensitive dispatch conditions
 ratchet; decreases lower the inventory and growth needs exact scoped reasons.
 The inventory was relocated unchanged from the completed program; its historical
-growth explanations remain attached to the same measurements.
+growth explanations remain attached to the same measurements. Refresh it with
+`python3 scripts/check_complexity.py --write-inventory FILE` and copy the result
+into `tests/reference/complexity.json`; growth entries record
+`{metric, before, after, reason}`.

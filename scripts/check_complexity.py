@@ -9,6 +9,9 @@ from pathlib import Path
 import re
 import subprocess
 import sys
+import tarfile
+import tempfile
+import io
 
 from rust_source import _production_tokens, _function_spans, _matching, _item_start_with_attributes
 
@@ -148,11 +151,68 @@ def read_baseline(revision):
     return json.loads(old.stdout) if old.returncode == 0 else None
 
 
+# Inputs whose bytes define the native artifact apart from the Rust runtime
+# token streams compared below (C bridge, manifests, lockfile, toolchain,
+# vendored and build-script sources).
+ARTIFACT_INPUTS = ('plugin', 'vendor', 'Cargo.toml', 'Cargo.lock', 'rust-toolchain.toml', '.cargo',
+                   'crates/fereg-core/Cargo.toml', 'crates/fereg-core/build.rs',
+                   'crates/fereg-plugin/Cargo.toml')
+
+
+def production_streams(root):
+    """Runtime Rust token values per module after removing comments, whitespace
+    and test-only items, keyed by repository-relative path."""
+    streams = {}
+    for crate in CRATES:
+        prefix = root/'crates'/crate/'src'
+        for path, _source, tokens in modules(prefix, prefix/'lib.rs'):
+            streams[path.relative_to(root).as_posix()] = [t.value for t in tokens]
+    return streams
+
+
+def artifact_bytes(root):
+    files = {}
+    for entry in ARTIFACT_INPUTS:
+        base = root/entry
+        paths = [base] if base.is_file() else sorted(p for p in base.rglob('*') if p.is_file()) if base.is_dir() else []
+        for path in paths:
+            files[path.relative_to(root).as_posix()] = path.read_bytes()
+    return files
+
+
+def compare_production(revision):
+    """Tier-0 evidence: the runtime is unchanged from REVISION when every runtime
+    module's production token stream and every other artifact input is equal."""
+    archive = subprocess.run(['git', 'archive', '--format=tar', revision, 'crates', *ARTIFACT_INPUTS],
+                             cwd=ROOT, capture_output=True)
+    if archive.returncode:
+        raise SystemExit(archive.stderr.decode(errors='replace').strip() or f'cannot archive {revision}')
+    with tempfile.TemporaryDirectory() as directory:
+        old_root = Path(directory).resolve()
+        with tarfile.open(fileobj=io.BytesIO(archive.stdout)) as tar:
+            tar.extractall(old_root, filter='data')
+        old_streams, new_streams = production_streams(old_root), production_streams(ROOT)
+        old_files, new_files = artifact_bytes(old_root), artifact_bytes(ROOT)
+    differences = sorted(path for path in old_streams.keys() | new_streams.keys()
+                         if old_streams.get(path) != new_streams.get(path))
+    differences += sorted(path for path in old_files.keys() | new_files.keys()
+                          if old_files.get(path) != new_files.get(path))
+    if differences:
+        raise SystemExit('production differs from ' + revision + ':\n  ' + '\n  '.join(differences))
+    print(f'Production identity: PASS against {revision} ({len(new_streams)} runtime modules, '
+          f'{len(new_files)} artifact inputs)')
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--write-inventory', type=Path, help='write measured data for review; never approves growth')
     parser.add_argument('--base', help='Git revision to audit; defaults to HEAD for an uncommitted inventory, otherwise HEAD^')
+    parser.add_argument('--compare-production', metavar='REV',
+                        help='verify runtime production tokens and artifact inputs are unchanged from REV')
     args = parser.parse_args()
+    if args.compare_production:
+        compare_production(args.compare_production)
+        return
     current = inventory()
     if args.write_inventory:
         args.write_inventory.write_text(json.dumps(current, indent=2, sort_keys=True)+'\n')

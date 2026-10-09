@@ -1,7 +1,9 @@
 /* Lossless, bounded replay transport. A malformed case is a harness error. */
 #include <inttypes.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* Corpus bounds. Local large-case profiling may raise them at compile time,
    for example -DREPLAY_MAX_ROWS=4000000 -DREPLAY_MAX_CELLS=100000000U. */
@@ -147,6 +149,25 @@ static void replay_write(const char *path, int code)
         fputs("]}", file);
     }
     fputs("},\"columns\":[", file);
+#ifdef REPLAY_TIMING
+    /* Timing builds stream numeric columns as raw binary beside the JSON so
+     * large outputs stay hashable without hex text; timing inputs are numeric. */
+    {
+        char column_path[4096];
+        FILE *columns;
+        (void) j;
+        if (snprintf(column_path, sizeof(column_path), "%s.columns", path) >= (int) sizeof(column_path))
+            replay_die("column path too long");
+        columns = fopen(column_path, "wb");
+        if (columns == NULL) replay_die("cannot open column output");
+        for (i = 0; i < replay_columns; ++i) {
+            if (replay_strings[i]) replay_die("timing builds require numeric columns");
+            if (fwrite(replay_data[i], sizeof(double), (size_t) replay_rows, columns) != (size_t) replay_rows)
+                replay_die("column write failure");
+        }
+        if (fclose(columns) != 0) replay_die("column close failure");
+    }
+#else
     for (i = 0; i < replay_columns; ++i) {
         if (i) fputc(',', file);
         fputc('[', file);
@@ -157,6 +178,7 @@ static void replay_write(const char *path, int code)
         }
         fputc(']', file);
     }
+#endif
     fputs("],\"error\":", file);
     replay_json_string(file, error_buffer);
     fputs("}\n", file);

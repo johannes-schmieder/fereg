@@ -74,6 +74,14 @@ independent witnesses and quiet qualification-host timing. Release performance
 claims require quiet Mac timing. Identify artifacts and preserve observations;
 inconclusive evidence never passes a claim it cannot support. Experiments need
 bounded stopping rules.
+Johannes's 2026-10-09 decision adds two tiers. A commit whose runtime production
+tokens and artifact inputs equal its parent's
+(`scripts/check_complexity.py --compare-production REV`) is an unchanged artifact
+and needs `./scripts/run_tests.sh` only. For arithmetic-preserving work, wall-time
+nonregression is measured once per workstream boundary rather than per commit. A
+declared ulp-scope change (affected fields named in the replay scope, all other
+fields and discrete decisions exact, independent witnesses on the affected
+fields, instruction counts within noise) reuses prior timing evidence.
 
 The three-FE LSMR hot path lives in pinned `within`/`schwarz-precond` dependencies
 from `johannes-schmieder/within`. Apply these scientific and evidence rules there;

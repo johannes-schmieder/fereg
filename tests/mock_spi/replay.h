@@ -1,3 +1,6 @@
+#ifdef REPLAY_TIMING
+#include <time.h>
+#endif
 /* One process, one real binary, one complete native estimation transaction. */
 #include "replay_io.h"
 
@@ -131,7 +134,19 @@ static int replay_run(pginit_function initialize, stata_call_function call,
     plugin.macuse = replay_macuse;
     plugin.stopflag = &stop_flag;
     if (initialize(&plugin) != SD_PLUGINVER) replay_die("plugin ABI mismatch");
+#ifdef REPLAY_TIMING
+    {
+        struct timespec started, finished;
+        if (clock_gettime(CLOCK_MONOTONIC, &started) != 0) replay_die("clock failure");
+        code = call(replay_argc, replay_arguments);
+        if (clock_gettime(CLOCK_MONOTONIC, &finished) != 0) replay_die("clock failure");
+        fprintf(stderr, "NATIVE_SECONDS=%.9f\n",
+                (double) (finished.tv_sec - started.tv_sec)
+                    + (double) (finished.tv_nsec - started.tv_nsec) * 1e-9);
+    }
+#else
     code = call(replay_argc, replay_arguments);
+#endif
     if (replay_fault) replay_die("SPI request outside the supplied case");
     replay_write(output, code);
     if (code != 0) fprintf(stderr, "%s\n", error_buffer);

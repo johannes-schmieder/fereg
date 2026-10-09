@@ -1,19 +1,6 @@
 {
-  "definition": "docs/cleanup/complexity.md#version-1",
-  "growth": [
-    {
-      "after": 94455,
-      "before": 94423,
-      "metric": "fereg-core/production_lines",
-      "reason": "Share the existing wide standardized Gram tile arithmetic through guarded runtime FMA dispatch, retaining the inline portable path and all original validation/storage/order. No new solver family or allocation."
-    },
-    {
-      "after": 14096,
-      "before": 14074,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "Share the existing wide standardized Gram tile arithmetic through guarded runtime FMA dispatch, retaining the inline portable path and all original validation/storage/order. No new solver family or allocation."
-    }
-  ],
+  "definition": "docs/development_workflow.md#complexity-inventory",
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -20371,5 +20358,5 @@
     },
     "schema": 1
   },
-  "reason": "Borrowed-MAP group-mean passes move into the runtime kernel table (pending timing qualification)."
+  "reason": "Evidence tooling only; runtime inventory unchanged."
 }

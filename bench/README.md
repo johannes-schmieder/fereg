@@ -101,6 +101,23 @@ discrepancies `*`. Unavailable times and unvalidated ratios remain NR. Optional
 retest panel and CSV; it does not replace production medians. Render and inspect
 every PDF page before delivery.
 
+## Native nonregression timing
+
+The frozen timing workloads are six standard designs at one and four workers
+plus wide K=64/65/129 robust designs; their hashes are in `standard_cases.json`.
+
+```sh
+python3 bench/make_standard_cases.py
+bench/build_timing_harness.sh
+python3 bench/time_exact.py --plugin base=BASELINE.plugin --plugin cand=dist/fereg_macos.plugin \
+  --cases target/standard-cases/*.case --output target/timing-RUN
+```
+
+Every run must reproduce exact science and solver signatures; the decision is
+the paired-median bootstrap upper bound against max(5%, 1 ms) per workload.
+Run only on a quiet host (no builds, agents or Stata). The former three-FE LSMR
+timing inputs are not reproducible from a tracked recipe and are not frozen.
+
 ## Stata-free native A/B observations
 
 `replay_large` creates numeric replay cases from the existing oracle designs;
