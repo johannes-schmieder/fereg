@@ -159,8 +159,7 @@ struct worker_results {
     ST_int is_main_thread;
     ST_int display_rc;
     ST_int nobs;
-    ST_int ifobs;
-    ST_int is_missing;
+    ST_int is_string;
     ST_int stop_requested;
     ST_int vdata_rc;
     ST_retcode stata_call_rc;
@@ -169,14 +168,14 @@ struct worker_results {
 static void run_worker_checks(struct worker_results *results)
 {
     ST_double value = 0.0;
+    ST_int missing = 0;
     char *arguments[] = {"version"};
     results->is_main_thread = fereg_spi_is_main_thread();
     results->display_rc = fereg_spi_display("worker must not reach SPI\n");
     results->nobs = fereg_spi_nobs();
-    results->ifobs = fereg_spi_ifobs(12);
-    results->is_missing = fereg_spi_is_missing(1.0);
+    results->is_string = fereg_spi_var_is_string(4);
     results->stop_requested = fereg_spi_stop_requested();
-    results->vdata_rc = fereg_spi_vdata(3, 11, &value);
+    results->vdata_rc = fereg_spi_vdata_with_missing(3, 11, &value, &missing);
     results->stata_call_rc = stata_call(1, arguments);
 }
 
@@ -232,18 +231,17 @@ static int check_worker_thread_refusal(void)
     if (results.is_main_thread != 0 ||
         results.display_rc != FEREG_SPI_RC_UNAVAILABLE ||
         results.nobs != FEREG_SPI_VALUE_UNAVAILABLE ||
-        results.ifobs != 0 || results.is_missing != 1 ||
+        results.is_string != FEREG_SPI_VALUE_UNAVAILABLE ||
         results.stop_requested != 1 ||
         results.vdata_rc != FEREG_SPI_RC_UNAVAILABLE ||
         results.stata_call_rc != FEREG_SPI_RC_UNAVAILABLE) {
         fprintf(
             stderr,
-            "worker wrapper refusal failed: %d %d %d %d %d %d %d %d\n",
+            "worker wrapper refusal failed: %d %d %d %d %d %d %d\n",
             results.is_main_thread,
             results.display_rc,
             results.nobs,
-            results.ifobs,
-            results.is_missing,
+            results.is_string,
             results.stop_requested,
             results.vdata_rc,
             results.stata_call_rc
@@ -261,8 +259,10 @@ static int check_worker_thread_refusal(void)
 static int check_numeric_round_trips(void)
 {
     ST_double recovered = 0.0;
+    ST_int missing = -1;
     if (fereg_spi_vstore(3, 11, 8.5) != 0 ||
-        fereg_spi_vdata(3, 11, &recovered) != 0 || recovered != 8.5) {
+        fereg_spi_vdata_with_missing(3, 11, &recovered, &missing) != 0 ||
+        recovered != 8.5 || missing != 0) {
         fprintf(stderr, "data round trip failed: %.17g\n", recovered);
         return 1;
     }
@@ -271,9 +271,9 @@ static int check_numeric_round_trips(void)
         fprintf(stderr, "matrix round trip failed: %.17g\n", recovered);
         return 2;
     }
-    if (fereg_spi_scal_save("mock_scalar", 3.25) != 0 ||
-        fereg_spi_scal_use("mock_scalar", &recovered) != 0 || recovered != 3.25) {
-        fprintf(stderr, "scalar round trip failed: %.17g\n", recovered);
+    if (fereg_spi_vstore(3, 11, NAN) != 0 ||
+        fereg_spi_vdata_with_missing(3, 11, &recovered, &missing) != 0 || missing != 1) {
+        fprintf(stderr, "missing-value classification failed\n");
         return 3;
     }
     return 0;
@@ -283,14 +283,16 @@ static int check_string_round_trips(void)
 {
     char buffer[128];
     memset(buffer, 0, sizeof(buffer));
-    if (fereg_spi_sstore(4, 12, "firm alpha") != 0 ||
-        fereg_spi_sdata(4, 12, buffer) != 0 || strcmp(buffer, "firm alpha") != 0) {
-        fprintf(stderr, "string round trip failed: %s\n", buffer);
+    strcpy(string_slot, "firm alpha");
+    if (fereg_spi_read_string(4, 12, buffer, (ST_int) sizeof(buffer)) != 0 ||
+        strcmp(buffer, "firm alpha") != 0 ||
+        fereg_spi_read_string(4, 12, buffer, 4) != 920) {
+        fprintf(stderr, "string read failed: %s\n", buffer);
         return 1;
     }
     memset(buffer, 0, sizeof(buffer));
-    if (fereg_spi_macro_save("_mock_macro", "protocol=1.0") != 0 ||
-        fereg_spi_macro_use("_mock_macro", buffer, (ST_int) sizeof(buffer)) != 0 ||
+    strcpy(macro_slot, "protocol=1.0");
+    if (fereg_spi_macro_use("_mock_macro", buffer, (ST_int) sizeof(buffer)) != 0 ||
         strcmp(buffer, "protocol=1.0") != 0) {
         fprintf(stderr, "macro round trip failed: %s\n", buffer);
         return 2;
@@ -319,6 +321,7 @@ int main(void)
     ST_plugin plugin;
     char *arguments[] = {"version", "threads=32"};
     int rc;
+    ST_int scalar_missing = 0;
     memset(&plugin, 0, sizeof(plugin));
     plugin.spoutsml = append_display;
     plugin.spouterr = append_error;
@@ -379,9 +382,7 @@ int main(void)
     if (rc != 0) {
         return 6 + rc;
     }
-    if (fereg_spi_nobs() != 42 || fereg_spi_nvars() != 7 ||
-        fereg_spi_in1() != 5 || fereg_spi_in2() != 40 ||
-        fereg_spi_ifobs(12) != 1 || fereg_spi_ifobs(13) != 0) {
+    if (fereg_spi_nobs() != 42 || fereg_spi_nvars() != 7) {
         fprintf(stderr, "dimension wrappers failed\n");
         return 10;
     }
@@ -395,10 +396,6 @@ int main(void)
         return 12;
     }
     stop_flag = 0;
-    if (!fereg_spi_is_missing(NAN) || fereg_spi_is_missing(1.0)) {
-        fprintf(stderr, "missing-value wrapper failed\n");
-        return 13;
-    }
     if (fereg_spi_matrix_rows("mock_matrix") != 4 ||
         fereg_spi_matrix_cols("mock_matrix") != 5 ||
         fereg_spi_var_is_string(4) != 1 ||
@@ -423,7 +420,7 @@ int main(void)
         fprintf(stderr, "unexpected error buffer: %s\n", error_buffer);
         return 33;
     }
-    if (fereg_spi_vdata(3, 11, NULL) != FEREG_SPI_RC_SYNTAX ||
+    if (fereg_spi_vdata_with_missing(3, 11, NULL, &scalar_missing) != FEREG_SPI_RC_SYNTAX ||
         fereg_spi_mat_el(NULL, 1, 1, &scalar_slot) != FEREG_SPI_RC_SYNTAX ||
         fereg_spi_macro_use("_mock_macro", NULL, 1) != FEREG_SPI_RC_SYNTAX ||
         fereg_spi_macro_use("_mock_macro", macro_slot, 0) !=

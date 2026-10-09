@@ -97,34 +97,6 @@ ST_int fereg_spi_nvars(void)
     return SF_nvars();
 }
 
-ST_int fereg_spi_in1(void)
-{
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_VALUE_UNAVAILABLE;
-    }
-    return SF_in1();
-}
-
-ST_int fereg_spi_in2(void)
-{
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_VALUE_UNAVAILABLE;
-    }
-    return SF_in2();
-}
-
-ST_int fereg_spi_ifobs(ST_int observation)
-{
-    if (fereg_bridge_require_main_thread() != 0) return 0;
-    return SF_ifobs(observation) ? 1 : 0;
-}
-
-ST_int fereg_spi_is_missing(ST_double value)
-{
-    if (fereg_bridge_require_main_thread() != 0) return 1;
-    return SF_is_missing(value) ? 1 : 0;
-}
-
 ST_int fereg_spi_var_is_string(ST_int variable)
 {
     if (fereg_bridge_require_main_thread() != 0) {
@@ -147,15 +119,6 @@ ST_int fereg_spi_sdatalen(ST_int variable, ST_int observation)
         return FEREG_SPI_VALUE_UNAVAILABLE;
     }
     return SF_sdatalen(variable, observation);
-}
-
-ST_int fereg_spi_vdata(ST_int variable, ST_int observation, ST_double *value)
-{
-    if (value == NULL) return FEREG_SPI_RC_SYNTAX;
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    return SF_vdata(variable, observation, value);
 }
 
 ST_int fereg_spi_vdata_with_missing(
@@ -323,15 +286,6 @@ ST_int fereg_spi_vstore_columns(
     return 0;
 }
 
-ST_int fereg_spi_sdata(ST_int variable, ST_int observation, char *buffer)
-{
-    if (buffer == NULL) return FEREG_SPI_RC_SYNTAX;
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    return SF_sdata(variable, observation, buffer);
-}
-
 ST_int fereg_spi_read_string(
     ST_int variable,
     ST_int observation,
@@ -358,15 +312,6 @@ ST_int fereg_spi_read_string(
     if (rc != 0) return rc;
     buffer[length - 1] = '\0';
     return 0;
-}
-
-ST_int fereg_spi_sstore(ST_int variable, ST_int observation, const char *value)
-{
-    if (value == NULL) return FEREG_SPI_RC_SYNTAX;
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    return SF_sstore(variable, observation, (char *) value);
 }
 
 ST_int fereg_spi_matrix_rows(const char *name)
@@ -403,33 +348,6 @@ ST_int fereg_spi_mat_store(const char *name, ST_int row, ST_int column, ST_doubl
         return FEREG_SPI_RC_UNAVAILABLE;
     }
     return SF_mat_store((char *) name, row, column, value);
-}
-
-ST_int fereg_spi_scal_use(const char *name, ST_double *value)
-{
-    if (name == NULL || value == NULL) return FEREG_SPI_RC_SYNTAX;
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    return SF_scal_use((char *) name, value);
-}
-
-ST_int fereg_spi_scal_save(const char *name, ST_double value)
-{
-    if (name == NULL) return FEREG_SPI_RC_SYNTAX;
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    return SF_scal_save((char *) name, &value);
-}
-
-ST_int fereg_spi_macro_save(const char *name, const char *value)
-{
-    if (name == NULL || value == NULL) return FEREG_SPI_RC_SYNTAX;
-    if (fereg_bridge_require_main_thread() != 0) {
-        return FEREG_SPI_RC_UNAVAILABLE;
-    }
-    return SF_macro_save((char *) name, (char *) value);
 }
 
 ST_int fereg_spi_macro_use(const char *name, char *buffer, ST_int length)

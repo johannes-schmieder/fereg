@@ -36,20 +36,11 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_poll(void);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_stop_requested(void);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_nobs(void);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_nvars(void);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_in1(void);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_in2(void);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_ifobs(ST_int observation);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_is_missing(ST_double value);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_var_is_string(ST_int variable);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_var_is_strl(ST_int variable);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_sdatalen(
     ST_int variable,
     ST_int observation
-);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata(
-    ST_int variable,
-    ST_int observation,
-    ST_double *value
 );
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vdata_with_missing(
     ST_int variable,
@@ -84,21 +75,11 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_vstore_columns(
     ST_int observation_count,
     const ST_double *const *columns
 );
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_sdata(
-    ST_int variable,
-    ST_int observation,
-    char *buffer
-);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_read_string(
     ST_int variable,
     ST_int observation,
     char *buffer,
     ST_int length
-);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_sstore(
-    ST_int variable,
-    ST_int observation,
-    const char *value
 );
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_matrix_rows(const char *name);
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_matrix_cols(const char *name);
@@ -113,18 +94,6 @@ FEREG_BRIDGE_INTERNAL ST_int fereg_spi_mat_store(
     ST_int row,
     ST_int column,
     ST_double value
-);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_scal_use(
-    const char *name,
-    ST_double *value
-);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_scal_save(
-    const char *name,
-    ST_double value
-);
-FEREG_BRIDGE_INTERNAL ST_int fereg_spi_macro_save(
-    const char *name,
-    const char *value
 );
 FEREG_BRIDGE_INTERNAL ST_int fereg_spi_macro_use(
     const char *name,
