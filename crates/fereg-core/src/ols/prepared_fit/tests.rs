@@ -9010,6 +9010,26 @@ fn zero_within_norm_column_still_checks_its_raw_score_moment() {
     .expect("roundoff score certificate");
     assert!(roundoff.passed);
     assert!(roundoff.relative_infinity_norm < 1e-12);
+    // Projection-only fits (separation detectors) leave the absorbed
+    // intercept deferred; it is the same structural coordinate and keeps the
+    // same raw-norm moment.
+    let deferred = certify_scores(
+        &fe_prepared,
+        &roundoff_residuals,
+        weights,
+        &[reference_norm],
+        &[reference_norm * 1e-14],
+        FiniteScoreDraft::default(),
+        &[PreparedOlsFitStatus::AbsorbedInterceptDeferred],
+        1.0,
+        PreparedOlsFitConfig::default().score_tolerance,
+    )
+    .expect("deferred-intercept roundoff score certificate");
+    assert!(deferred.passed);
+    assert_eq!(
+        deferred.relative_infinity_norm.to_bits(),
+        roundoff.relative_infinity_norm.to_bits()
+    );
 
     // Exact-zero outcomes and residuals have a mathematically exact zero
     // score even though no positive response normalization exists. A

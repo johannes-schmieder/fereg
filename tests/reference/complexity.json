@@ -2,16 +2,16 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 94960,
-      "before": 94854,
+      "after": 94963,
+      "before": 94960,
       "metric": "fereg-core/production_lines",
-      "reason": "tiled dense meat"
+      "reason": "deferred intercept raw score norm"
     },
     {
-      "after": 186,
-      "before": 173,
-      "metric": "function/crates/fereg-core/src/sandwich.rs/reduce_dense_score_meats#1",
-      "reason": "tiled dense meat"
+      "after": 4258,
+      "before": 4255,
+      "metric": "file/crates/fereg-core/src/ols/prepared_fit.rs",
+      "reason": "deferred intercept raw score norm"
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -9656,11 +9656,11 @@
           },
           {
             "condition": "weights . values . is_none ( ) && matches ! ( prepared . fit_model ( ) . columns [ column ] . kind , PreparedOlsColumnKind :: Intercept )",
-            "line": 4600
+            "line": 4581
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 4735
+            "line": 4743
           }
         ],
         "functions": {
@@ -9689,7 +9689,7 @@
             "lines": 3
           },
           "build_coefficient_slots#1": {
-            "line": 4674,
+            "line": 4682,
             "lines": 53
           },
           "build_fast_score_cache#1": {
@@ -9726,7 +9726,7 @@
           },
           "certify_scores#1": {
             "line": 4511,
-            "lines": 146
+            "lines": 127
           },
           "check_retained_fe_initial_capacity#1": {
             "line": 1744,
@@ -9737,7 +9737,7 @@
             "lines": 12
           },
           "checked_square#1": {
-            "line": 4754,
+            "line": 4762,
             "lines": 3
           },
           "classify_qr_candidates#1": {
@@ -9761,7 +9761,7 @@
             "lines": 39
           },
           "compensated_add#1": {
-            "line": 4658,
+            "line": 4666,
             "lines": 15
           },
           "coordinates#1": {
@@ -9937,7 +9937,7 @@
             "lines": 24
           },
           "insufficient_observations#1": {
-            "line": 4758,
+            "line": 4766,
             "lines": 3
           },
           "into_kept#1": {
@@ -10049,11 +10049,11 @@
             "lines": 25
           },
           "reserved_empty#1": {
-            "line": 4728,
+            "line": 4736,
             "lines": 14
           },
           "reserved_filled#1": {
-            "line": 4743,
+            "line": 4751,
             "lines": 10
           },
           "residual_absorption_report#1": {
@@ -10091,6 +10091,10 @@
           "score_certificate#2": {
             "line": 607,
             "lines": 3
+          },
+          "score_denominator#1": {
+            "line": 4650,
+            "lines": 15
           },
           "solver_workspace_peak#1": {
             "line": 660,
@@ -10181,7 +10185,7 @@
             "lines": 34
           }
         },
-        "production_lines": 4255
+        "production_lines": 4258
       },
       "crates/fereg-core/src/ols/prepared_fit/finite.rs": {
         "chunk_candidates": [],
@@ -20435,7 +20439,7 @@
         "dispatch_candidates": 1251,
         "files_over_1500": 16,
         "functions_over_150": 66,
-        "production_lines": 94960
+        "production_lines": 94963
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
@@ -20447,5 +20451,5 @@
     },
     "schema": 1
   },
-  "reason": "tiled dense meat"
+  "reason": "deferred intercept raw score norm"
 }

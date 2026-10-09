@@ -2,6 +2,13 @@
 
 ## 0.5.0 beta — unreleased
 
+- Fix: `feppml` with a slope fixed effect such as `absorb(g##c.x)` and zero
+  outcomes could stop with r(459) ("prepared projection finite score
+  certificate did not pass"). The iterated rectifier's projection divided the
+  absorbed intercept's score moment by a solver-roundoff within norm; it now
+  uses the raw intercept norm, as published fits already did. Coefficients
+  agree with ppmlhdfe to 1e-14 on the failing design; previously published
+  results are unchanged.
 - PPML separation: a no-separation result from the iterated rectifier is now
   certified by a direct check of the stored projection instead of re-running
   the detector, which removes one expensive weighted projection; results are

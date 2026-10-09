@@ -4570,27 +4570,8 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
                 "prepared OLS within regressor score norm is invalid",
             ));
         }
-        // A coordinate certified as lying in the absorbed span has no finite
-        // score equation: its normal equation is already covered by the
-        // independent FE certificate. Do not divide its MAP-noise within norm
-        // into a manufactured order-one moment. A normalized absorbed intercept
-        // still keeps its raw score moment, but that moment uses the raw intercept
-        // norm instead of a numerically nonzero MAP-noise norm. Finite
-        // rank-deficient coordinates remain checked on their within scale.
-        if matches!(
-            status,
-            PreparedOlsFitStatus::Kept
-                | PreparedOlsFitStatus::NumericallyRankDeficient
-                | PreparedOlsFitStatus::CollinearWithFixedEffects
-        ) {
+        let Some(denominator) = score_denominator(status, score_norm, reference_norm) else {
             continue;
-        }
-        let denominator = if status == PreparedOlsFitStatus::NormalizedAbsorbedIntercept {
-            reference_norm
-        } else if score_norm > 0.0 {
-            score_norm
-        } else {
-            reference_norm
         };
         let relative = if denominator == 0.0 || zero_response {
             0.0
@@ -4653,6 +4634,33 @@ fn certify_scores<P: PreparedOlsFitView + ?Sized>(
         moments,
         passed: relative_infinity_norm <= tolerance,
     })
+}
+
+/// Scale for one column's raw score moment, or `None` when the column has no
+/// finite score equation to check.
+///
+/// A coordinate certified as lying in the absorbed span has no finite score
+/// equation: its normal equation is already covered by the independent FE
+/// certificate. Do not divide its MAP-noise within norm into a manufactured
+/// order-one moment. An absorbed intercept, whether normalized for publication
+/// or still deferred (projection-only fits skip normalization), keeps its raw
+/// score moment, but that moment uses the raw intercept norm instead of a
+/// numerically nonzero MAP-noise within norm. Finite rank-deficient
+/// coordinates remain checked on their within scale.
+fn score_denominator(
+    status: PreparedOlsFitStatus,
+    score_norm: f64,
+    reference_norm: f64,
+) -> Option<f64> {
+    match status {
+        PreparedOlsFitStatus::Kept
+        | PreparedOlsFitStatus::NumericallyRankDeficient
+        | PreparedOlsFitStatus::CollinearWithFixedEffects => None,
+        PreparedOlsFitStatus::NormalizedAbsorbedIntercept
+        | PreparedOlsFitStatus::AbsorbedInterceptDeferred => Some(reference_norm),
+        PreparedOlsFitStatus::SyntaxOmitted if score_norm > 0.0 => Some(score_norm),
+        PreparedOlsFitStatus::SyntaxOmitted => Some(reference_norm),
+    }
 }
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {

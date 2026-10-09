@@ -5647,6 +5647,69 @@ mod tests {
     }
 
     #[test]
+    fn rectifier_projection_certifies_the_deferred_intercept_under_a_slope_fe() {
+        // feppml y x, absorb(g##c.x) with zero outcomes. The projection-only
+        // fit leaves the absorbed intercept deferred. Under a slope FE its
+        // within norm can be solver roundoff (about 3e-16 here) instead of
+        // exactly zero, and dividing its raw score moment by that norm failed
+        // the projection's score certificate with a relative moment near 2e-6.
+        // Here x itself is also absorbed and omitted.
+        let (mut request, clusters, mut loaded, mut uses) = fixture();
+        let x = SourceId::new(1).unwrap();
+        request.absorbed_terms[0].slope_sources = vec![x];
+        uses[0].fixed_effect = true;
+        loaded.candidate = vec![true; 12];
+        loaded.outcome = column(&[0., 1., 2., 3., 4., 0., 1., 2., 3., 1., 0., 2.]);
+        loaded.numeric_sources[0].1 =
+            column(&[0.5, 1., -1., 2., 1.5, -0.5, 0.25, 3., 2., -1., 1., 0.75]);
+        loaded.numeric_sources[1].1 = column(&[1., 1., 1., 1., 2., 2., 2., 2., 3., 3., 3., 3.]);
+        loaded.numeric_sources[2].1 =
+            column(&[10., 20., 10., 20., 10., 20., 10., 20., 10., 20., 10., 20.]);
+        let make_owner = || {
+            PreparedPpmlModelOwner::new(
+                request.clone(),
+                clusters.clone(),
+                loaded.clone(),
+                prepare_numeric(&loaded, &uses),
+            )
+            .unwrap()
+        };
+        let config = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: true,
+                simplex: false,
+                iterated_rectifier: true,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        let ppml = PpmlConfig::default();
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..PreparedOlsFitConfig::default()
+        };
+        let coordinator = PreparedSeparationCoordinator::new(make_owner()).unwrap();
+        let generation = coordinator.view().prepared;
+        let proposal =
+            prepared_bound_iterated_rectifier(generation, ppml, config, linear, false, &mut |_| {
+                Ok(())
+            })
+            .expect("absorbed regressor must not fail the rectifier projection");
+        assert_eq!(proposal.status, MethodStatus::NoSeparation);
+        let evidence = proposal.fixed_point.as_ref().expect("terminal evidence");
+        assert!(evidence.kept_columns.is_empty());
+        assert_eq!(
+            certify_ir_fixed_point_evidence(generation, evidence, config).unwrap(),
+            proposal.certificate
+        );
+        let result = detect_prepared_ppml_separation(make_owner(), ppml, config, None, None)
+            .expect("separation detection");
+        assert_eq!(result.separation.separated_count, 0);
+    }
+
+    #[test]
     fn rectifier_fixed_point_evidence_checks_fe_slope_channels() {
         // g##c.h with an intercept: each level's three positive rows have
         // distinct h, so no direction separates its zero row.
