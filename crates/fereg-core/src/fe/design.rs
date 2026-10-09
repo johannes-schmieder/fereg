@@ -1,28 +1,6 @@
 use crate::error::{allocation, ErrorCode, FeregError, Result};
-
-trait LevelIndexReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemReservation;
-
-impl LevelIndexReservation for SystemReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
-}
+use crate::memory::SystemVecReservation as SystemReservation;
+use crate::memory::VecReservation as LevelIndexReservation;
 
 /// Compressed observation membership for one categorical effect.
 #[derive(Debug, Clone, PartialEq, Eq)]

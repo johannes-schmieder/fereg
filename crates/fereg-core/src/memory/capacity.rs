@@ -65,6 +65,34 @@ pub(crate) fn fallible_empty<T>(capacity: usize, message: &'static str) -> Resul
     Ok(values)
 }
 
+/// Exact fallible vector reservation. Owners take it as a generic parameter so
+/// tests can fail any individual request; production passes
+/// [`SystemVecReservation`].
+pub(crate) trait VecReservation {
+    fn reserve_vec<T>(
+        &mut self,
+        target: &mut Vec<T>,
+        additional: usize,
+        label: &'static str,
+    ) -> Result<()>;
+}
+
+/// Reservation through the process allocator.
+pub(crate) struct SystemVecReservation;
+
+impl VecReservation for SystemVecReservation {
+    fn reserve_vec<T>(
+        &mut self,
+        target: &mut Vec<T>,
+        additional: usize,
+        label: &'static str,
+    ) -> Result<()> {
+        target
+            .try_reserve_exact(additional)
+            .map_err(|_| allocation(label))
+    }
+}
+
 /// Exactly reserved vector holding `length` copies of `value`.
 pub(crate) fn fallible_filled<T: Clone>(
     length: usize,

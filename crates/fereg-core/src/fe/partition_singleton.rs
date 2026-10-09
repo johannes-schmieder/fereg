@@ -7,13 +7,17 @@
 //! It does not construct final solver membership and therefore avoids a second
 //! observation-scale `usize` array while the candidate sample is still live.
 
-use crate::error::{allocation, invalid_argument as invalid, Result};
+#[cfg(test)]
+use crate::error::allocation;
+use crate::error::{invalid_argument as invalid, Result};
 use crate::memory::push_reserved;
 
 use super::{
     prune_singletons_with_multiplicity, CategoricalCodeView, CategoricalPartitionRegistry,
     SingletonMultiplicity, SingletonResult,
 };
+use crate::memory::SystemVecReservation as SystemPartitionSingletonReservation;
+use crate::memory::VecReservation as PartitionSingletonReservation;
 
 /// Complete candidate-sample singleton result and reusable partition registry.
 #[derive(Debug, Clone, PartialEq)]
@@ -68,30 +72,6 @@ pub fn prune_categorical_partition_singletons(
         keep_singletons,
         &mut reservation,
     )
-}
-
-trait PartitionSingletonReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemPartitionSingletonReservation;
-
-impl PartitionSingletonReservation for SystemPartitionSingletonReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
 fn prune_categorical_partition_singletons_with_reservation<R: PartitionSingletonReservation>(

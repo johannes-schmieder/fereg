@@ -3,6 +3,8 @@
 
 use crate::error::{allocation, invalid_argument as invalid, unsupported, Result};
 use crate::memory::push_reserved;
+use crate::memory::SystemVecReservation as SystemRequestPlanReservation;
+use crate::memory::VecReservation as RequestPlanReservation;
 use crate::metadata::{AbsorbedTerm, SourceId};
 use crate::ols::{OlsInputRole, OlsRequestV1, PreparedCategoricalSource};
 
@@ -130,30 +132,6 @@ pub fn plan_categorical_absorbed_request(
 ) -> Result<CategoricalAbsorbRequestPlan<'_>> {
     let mut reservation = SystemRequestPlanReservation;
     plan_categorical_absorbed_request_with_reservation(request, &mut reservation)
-}
-
-trait RequestPlanReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemRequestPlanReservation;
-
-impl RequestPlanReservation for SystemRequestPlanReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
 fn plan_categorical_absorbed_request_with_reservation<'a, R: RequestPlanReservation>(

@@ -14,6 +14,8 @@ use crate::memory::push_reserved;
 
 use super::topology_axis::FinalizedAxis;
 use super::{CategoricalCodeView, CategoricalTopologyRegistry};
+use crate::memory::SystemVecReservation as SystemTopologyFinalizeReservation;
+use crate::memory::VecReservation as TopologyFinalizeReservation;
 
 /// One retained raw categorical source on the final observation axis.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -467,30 +469,6 @@ pub fn finalize_categorical_topology(
         active,
         &mut reservation,
     )
-}
-
-trait TopologyFinalizeReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemTopologyFinalizeReservation;
-
-impl TopologyFinalizeReservation for SystemTopologyFinalizeReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
 fn finalize_categorical_topology_with_reservation<R: TopologyFinalizeReservation>(

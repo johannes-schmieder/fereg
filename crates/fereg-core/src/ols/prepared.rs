@@ -1,3 +1,5 @@
+pub(crate) use crate::memory::SystemVecReservation as SystemFeTopologyReservation;
+pub(crate) use crate::memory::VecReservation as FeTopologyReservation;
 #[path = "prepared_topology.rs"]
 mod topology;
 use topology::build_borrowed_intercept_fe_design_with_reservation;
@@ -1034,30 +1036,6 @@ fn factorize_categorical_sources_reusing(
         ));
     }
     Ok(output)
-}
-
-pub(crate) trait FeTopologyReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-pub(crate) struct SystemFeTopologyReservation;
-
-impl FeTopologyReservation for SystemFeTopologyReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
 fn source_index(source: SourceId) -> Result<usize> {

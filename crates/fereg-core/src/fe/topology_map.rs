@@ -5,30 +5,8 @@ use super::{
 };
 use crate::data::DenseMatrix;
 use crate::error::{allocation, Result};
-
-trait TopologyMapReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemTopologyMapReservation;
-
-impl TopologyMapReservation for SystemTopologyMapReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
-}
+use crate::memory::SystemVecReservation as SystemTopologyMapReservation;
+use crate::memory::VecReservation as TopologyMapReservation;
 
 fn bind(topology: &FinalizedCategoricalTopology) -> Result<super::BorrowedInterceptFeDesign<'_>> {
     bind_with_reservation(topology, &mut SystemTopologyMapReservation)

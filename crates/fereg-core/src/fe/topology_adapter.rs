@@ -6,13 +6,17 @@
 //! allocates only O(U + G) small tables for U unique sources and G requested
 //! effects; it never copies observation-scale codes or membership.
 
-use crate::error::{allocation, invalid_argument as invalid, Result};
+#[cfg(test)]
+use crate::error::allocation;
+use crate::error::{invalid_argument as invalid, Result};
 use crate::memory::push_reserved;
 
 use super::design::{
     BorrowedInterceptEffect, BorrowedInterceptFeDesign, ValidatedBorrowedInterceptSource,
 };
 use super::{CategoricalCodeView, CategoricalTopologyRegistry};
+use crate::memory::SystemVecReservation as SystemTopologyAdapterReservation;
+use crate::memory::VecReservation as TopologyAdapterReservation;
 
 /// Build a validated borrowed intercept-only FE design from a deduplicated
 /// categorical topology registry.
@@ -34,30 +38,6 @@ pub fn borrow_categorical_topology_design<'a>(
         effect_to_topology,
         &mut reservation,
     )
-}
-
-trait TopologyAdapterReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemTopologyAdapterReservation;
-
-impl TopologyAdapterReservation for SystemTopologyAdapterReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
 fn borrow_categorical_topology_design_with_reservation<'a, R: TopologyAdapterReservation>(

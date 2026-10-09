@@ -5,10 +5,14 @@
 //! compact `u32` code per observation. Component indices are canonicalized so
 //! reordered and repeated interaction recipes reuse the same partition key.
 
-use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
+#[cfg(test)]
+use crate::error::allocation;
+use crate::error::{invalid_argument as invalid, invalid_data, Result};
 use crate::memory::push_reserved;
 
 use super::{factorize_code_interaction, CategoricalCodeView, EncodedInteraction};
+use crate::memory::SystemVecReservation as SystemPartitionReservation;
+use crate::memory::VecReservation as PartitionReservation;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum CategoricalPartitionKey {
@@ -204,30 +208,6 @@ impl CategoricalPartition {
             nobs,
             n_levels,
         })
-    }
-}
-
-trait PartitionReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemPartitionReservation;
-
-impl PartitionReservation for SystemPartitionReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
     }
 }
 

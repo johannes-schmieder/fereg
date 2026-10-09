@@ -5,7 +5,7 @@ use crate::options::MemoryMode;
 mod capacity;
 pub(crate) use capacity::{
     fallible_copy, fallible_empty, fallible_filled, matrix_bytes, push_reserved,
-    require_admitted_capacity, Capacity,
+    require_admitted_capacity, Capacity, SystemVecReservation, VecReservation,
 };
 mod categorical_schwarz;
 mod owned_fe;

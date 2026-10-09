@@ -10,6 +10,8 @@ use std::cmp::Ordering;
 
 use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
 use crate::memory::push_reserved;
+use crate::memory::SystemVecReservation as SystemInteractionReservation;
+pub(crate) use crate::memory::VecReservation as InteractionReservation;
 
 /// Borrowed compact categorical codes for one interaction component.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -74,30 +76,6 @@ pub fn factorize_code_interaction(
 ) -> Result<EncodedInteraction> {
     let mut reservation = SystemInteractionReservation;
     factorize_code_interaction_with_reservation(components, &mut reservation)
-}
-
-pub(crate) trait InteractionReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemInteractionReservation;
-
-impl InteractionReservation for SystemInteractionReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
 fn factorize_code_interaction_with_reservation<R: InteractionReservation>(

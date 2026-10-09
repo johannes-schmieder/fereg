@@ -14,6 +14,8 @@ use super::{
     absorb_finalized_categorical_topology_map_certified, BorrowedMapWeights, CertifiedBorrowedMap,
     FinalizedCategoricalTopology, MapConfig,
 };
+use crate::memory::SystemVecReservation as SystemTopologyRhsReservation;
+use crate::memory::VecReservation as TopologyRhsReservation;
 
 /// Candidate-axis objective weights for categorical RHS compaction.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -89,30 +91,6 @@ pub fn compact_categorical_rhs(
         candidate_weights,
         &mut reservation,
     )
-}
-
-trait TopologyRhsReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemTopologyRhsReservation;
-
-impl TopologyRhsReservation for SystemTopologyRhsReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
 fn compact_categorical_rhs_with_reservation<R: TopologyRhsReservation>(

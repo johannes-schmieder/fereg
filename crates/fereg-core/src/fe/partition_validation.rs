@@ -6,10 +6,14 @@
 //! checks exact equality. Numerical kernels may then borrow the certified codes
 //! without paying this O(A N log N) validation cost on every iteration.
 
-use crate::error::{allocation, invalid_argument as invalid, invalid_data, Result};
+#[cfg(test)]
+use crate::error::allocation;
+use crate::error::{invalid_argument as invalid, invalid_data, Result};
 use crate::memory::push_reserved;
 
 use super::{factorize_code_interaction, CategoricalCodeView, CategoricalPartition};
+use crate::memory::SystemVecReservation as SystemPartitionValidationReservation;
+use crate::memory::VecReservation as PartitionValidationReservation;
 
 /// Validate that a categorical partition still represents its authoritative
 /// source table exactly.
@@ -24,30 +28,6 @@ pub fn validate_categorical_partition(
 ) -> Result<()> {
     let mut reservation = SystemPartitionValidationReservation;
     validate_categorical_partition_with_reservation(partition, sources, &mut reservation)
-}
-
-trait PartitionValidationReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()>;
-}
-
-struct SystemPartitionValidationReservation;
-
-impl PartitionValidationReservation for SystemPartitionValidationReservation {
-    fn reserve_vec<T>(
-        &mut self,
-        target: &mut Vec<T>,
-        additional: usize,
-        label: &'static str,
-    ) -> Result<()> {
-        target
-            .try_reserve_exact(additional)
-            .map_err(|_| allocation(label))
-    }
 }
 
 fn validate_categorical_partition_with_reservation<R: PartitionValidationReservation>(
