@@ -727,7 +727,10 @@ fastest supported arithmetic when the same independent certificates and §20
 scientific witnesses accept their results and discrete decisions stay stable.
 The portable path remains supported and tested. Same-machine repeatability at
 a fixed worker count and seed remains required. The deterministic option
-remains supported.
+remains supported. Low memory mode is one such case: when its scratch moments
+are split by observations, the partial Gram matrices follow the planned worker
+count, so the last bits of Low results may differ across worker counts while
+Fast results do not (accepted by Johannes, 2026-10-09).
 
 threads(n) is an available worker budget. Stages may use fewer workers under
 general work/resource rules, with transparent requested, resolved-budget and

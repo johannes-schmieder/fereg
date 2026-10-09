@@ -1,13 +1,6 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [
-    {
-      "after": 14205,
-      "before": 14201,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "review follow-ups, CORE-9, PLUG-4, OLS-14 test move"
-    }
-  ],
+  "growth": [],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -6442,19 +6435,19 @@
         "chunk_candidates": [
           {
             "condition": "layout . columns_per_partition > 1",
-            "line": 1648
+            "line": 1652
           },
           {
             "condition": "dimension == 0 || stored < dimension || rows == 0 || layout . columns_per_partition == 0 || layout . columns_per_partition > dimension",
-            "line": 1843
+            "line": 1847
           },
           {
             "condition": "rows . div_ceil ( partitions ) as u128 * total_work >= rows as u128 * old_critical_work",
-            "line": 1863
+            "line": 1867
           },
           {
             "condition": "fill_retained_scratch_row_partitions ( values , selected_columns , response , weights , divisor , scales , layout , partials , rhs , gram , ) ?",
-            "line": 1958
+            "line": 1962
           }
         ],
         "dispatch_candidates": [
@@ -6472,112 +6465,112 @@
           },
           {
             "condition": "layout != plan_moment_layout ( source ) ? || partials . len ( ) != layout . partial_elements || rhs . len ( ) != dimension || gram . len ( ) != square",
-            "line": 295
+            "line": 299
           },
           {
             "condition": "canonical_generated_ids . len ( ) != dimension || qr . len ( ) != square || transformed_rhs . len ( ) != dimension || trailing_norms . len ( ) != dimension || permutation . len ( ) != dimension || ! relative_threshold . is_finite ( ) || relative_threshold <= 0.0 || relative_threshold >= 1.0 || ! identities_are_unique ( canonical_generated_ids )",
-            "line": 336
+            "line": 340
           },
           {
             "condition": "stored_row . len ( ) != stored_columns",
-            "line": 355
+            "line": 359
           },
           {
             "condition": "rank > dimension || qr . len ( ) != checked_square ( dimension , <string> ) ? || ! valid_permutation ( permutation ) || ! initial_norm . is_finite ( ) || initial_norm < 0.0 || ! relative_threshold . is_finite ( ) || relative_threshold <= 0.0 || relative_threshold >= 1.0 || stored_row . len ( ) != match source",
-            "line": 570
+            "line": 574
           },
           {
             "condition": "rank > dimension || qr . len ( ) != checked_square ( dimension , <string> ) ? || transformed_rhs . len ( ) != dimension || canonical_generated_ids . len ( ) != dimension || pivot_solution . len ( ) != rank || canonical_selected_ids . len ( ) != rank || canonical_solution . len ( ) != rank || ! valid_permutation ( permutation ) || ! identities_are_unique ( canonical_generated_ids )",
-            "line": 690
+            "line": 694
           },
           {
             "condition": "rank > dimension || qr . len ( ) != checked_square ( dimension , <string> ) ? || canonical_generated_ids . len ( ) != dimension || inverse_r . len ( ) != rank_square || canonical_selected_ids . len ( ) != rank || canonical_inverse . len ( ) != rank_square || ! valid_permutation ( permutation ) || ! identities_are_unique ( canonical_generated_ids )",
-            "line": 740
+            "line": 744
           },
           {
             "condition": "! root_weight . is_finite ( )",
-            "line": 866
+            "line": 870
           },
           {
             "condition": "matrix . len ( ) != checked_square ( dimension , <string> ) ? || column >= dimension || start_row > dimension",
-            "line": 892
+            "line": 896
           },
           {
             "condition": "gram . len ( ) != checked_square ( dimension , <string> ) ?",
-            "line": 1000
+            "line": 1004
           },
           {
             "condition": "canonical . len ( ) != rhs . len ( ) || permutation . len ( ) != rhs . len ( ) || permutation . iter ( ) . any ( | & position | position >= rhs . len ( ) )",
-            "line": 1031
+            "line": 1035
           },
           {
             "condition": "dimension == 0 || gram . len ( ) != square || factor . len ( ) != square || permutation . len ( ) != dimension || ! pivot_guard . is_finite ( ) || pivot_guard < 0.0",
-            "line": 1061
+            "line": 1065
           },
           {
             "condition": "factor . len ( ) != checked_square ( dimension , <string> ) ? || forward . len ( ) != dimension || solution . len ( ) != dimension",
-            "line": 1147
+            "line": 1151
           },
           {
             "condition": "factor . len ( ) != square || inverse_lower . len ( ) != square || canonical_inverse . len ( ) != square || permutation . iter ( ) . any ( | position | * position >= dimension )",
-            "line": 1191
+            "line": 1195
           },
           {
             "condition": "gram . len ( ) != gram_square || gram_positions . len ( ) != rank || inverse . len ( ) != rank_square || gram_positions . iter ( ) . any ( | position | * position >= gram_dimension )",
-            "line": 1275
+            "line": 1279
           },
           {
             "condition": "gram . len ( ) != checked_square ( dimension , <string> ) ?",
-            "line": 1360
+            "line": 1364
           },
           {
             "condition": "generated_columns . len ( ) != dimension || generated_coefficients . len ( ) != reference_norms . len ( ) || score_norms . len ( ) != reference_norms . len ( ) || generated_columns . iter ( ) . any ( | column | * column >= reference_norms . len ( ) || * column >= score_norms . len ( ) )",
-            "line": 1372
+            "line": 1376
           },
           {
             "condition": "coefficients . len ( ) != dimension",
-            "line": 1384
+            "line": 1388
           },
           {
             "condition": "rows == 0 || stored_columns == 0 || dimension == 0 || elements != rows . saturating_mul ( stored_columns ) || response . len ( ) != rows || response . iter ( ) . any ( | value | ! value . is_finite ( ) ) || ! divisor . is_finite ( ) || divisor <= 0.0 || selected_columns . is_some_and ( | selected |",
-            "line": 2071
+            "line": 2075
           },
           {
             "condition": "weights",
-            "line": 2090
+            "line": 2094
           },
           {
             "condition": "weights",
-            "line": 2108
+            "line": 2112
           }
         ],
         "functions": {
           "apply_qr_householder_to_vector#1": {
-            "line": 941,
+            "line": 945,
             "lines": 25
           },
           "apply_square_qr_householder#1": {
-            "line": 911,
+            "line": 915,
             "lines": 29
           },
           "certify_finite_inverse#1": {
-            "line": 1252,
+            "line": 1256,
             "lines": 12
           },
           "certify_normal_equations#1": {
-            "line": 1354,
+            "line": 1358,
             "lines": 117
           },
           "certify_retained_qr_dropped_span#1": {
-            "line": 555,
+            "line": 559,
             "lines": 119
           },
           "checked_square#1": {
-            "line": 2195,
+            "line": 2199,
             "lines": 3
           },
           "compensated_add#1": {
-            "line": 2184,
+            "line": 2188,
             "lines": 10
           },
           "dimension#1": {
@@ -6585,63 +6578,63 @@
             "lines": 19
           },
           "factor_finite_cholesky#1": {
-            "line": 992,
+            "line": 996,
             "lines": 29
           },
           "factor_guarded_cholesky_in_place#1": {
-            "line": 1051,
+            "line": 1055,
             "lines": 86
           },
           "factor_rank_revealing_retained_qr#1": {
-            "line": 323,
+            "line": 327,
             "lines": 217
           },
           "fill_finite_wls_moments#1": {
-            "line": 285,
+            "line": 289,
             "lines": 25
           },
           "fill_retained_dense_partitioned#1": {
-            "line": 1620,
+            "line": 1624,
             "lines": 72
           },
           "fill_retained_dense_standardized_rows#1": {
-            "line": 1715,
+            "line": 1719,
             "lines": 46
           },
           "fill_retained_dense_standardized_tiles#1": {
-            "line": 1766,
+            "line": 1770,
             "lines": 66
           },
           "fill_retained_partitioned#1": {
-            "line": 1507,
+            "line": 1511,
             "lines": 111
           },
           "fill_retained_qr_row#1": {
-            "line": 801,
+            "line": 805,
             "lines": 84
           },
           "fill_retained_scratch_partitioned#1": {
-            "line": 1946,
+            "line": 1950,
             "lines": 74
           },
           "fill_retained_scratch_row_partitions#1": {
-            "line": 1870,
+            "line": 1874,
             "lines": 74
           },
           "identities_are_unique#1": {
-            "line": 2136,
+            "line": 2140,
             "lines": 6
           },
           "inverse_relative_infinity_norm#1": {
-            "line": 1265,
+            "line": 1269,
             "lines": 66
           },
           "invert_guarded_cholesky#1": {
-            "line": 1183,
+            "line": 1187,
             "lines": 57
           },
           "invert_rank_revealing_qr_leading#1": {
-            "line": 729,
+            "line": 733,
             "lines": 71
           },
           "layout#1": {
@@ -6649,7 +6642,7 @@
             "lines": 3
           },
           "merge_fixed_block_partials#1": {
-            "line": 1472,
+            "line": 1476,
             "lines": 34
           },
           "moment_lane_work#1": {
@@ -6657,11 +6650,11 @@
             "lines": 6
           },
           "normalized_weight#1": {
-            "line": 2107,
+            "line": 2111,
             "lines": 19
           },
           "passed#1": {
-            "line": 1247,
+            "line": 1251,
             "lines": 3
           },
           "plan#1": {
@@ -6673,7 +6666,7 @@
             "lines": 7
           },
           "record_retained_moment_worker#1": {
-            "line": 2045,
+            "line": 2049,
             "lines": 12
           },
           "retained_scratch_moment_envelope#1": {
@@ -6689,43 +6682,43 @@
             "lines": 7
           },
           "scaled_column#1": {
-            "line": 2127,
+            "line": 2131,
             "lines": 8
           },
           "scratch_row_partition_plan#1": {
-            "line": 1837,
+            "line": 1841,
             "lines": 31
           },
           "solve_finite_cholesky#1": {
-            "line": 1023,
+            "line": 1027,
             "lines": 25
           },
           "solve_guarded_cholesky#1": {
-            "line": 1140,
+            "line": 1144,
             "lines": 39
           },
           "solve_rank_revealing_qr_leading#1": {
-            "line": 679,
+            "line": 683,
             "lines": 45
           },
           "sort_selected_inverse#1": {
-            "line": 2160,
+            "line": 2164,
             "lines": 11
           },
           "sort_selected_solution#1": {
-            "line": 2149,
+            "line": 2153,
             "lines": 10
           },
           "stable_qr_column_norm#1": {
-            "line": 886,
+            "line": 890,
             "lines": 24
           },
           "swap_symmetric_block#1": {
-            "line": 2172,
+            "line": 2176,
             "lines": 11
           },
           "valid_permutation#1": {
-            "line": 2143,
+            "line": 2147,
             "lines": 5
           },
           "validate#1": {
@@ -6737,11 +6730,11 @@
             "lines": 9
           },
           "validate_retained_source#1": {
-            "line": 2060,
+            "line": 2064,
             "lines": 46
           },
           "with_private_retained_moments#1": {
-            "line": 1696,
+            "line": 1700,
             "lines": 17
           }
         },
@@ -20369,5 +20362,5 @@
     },
     "schema": 1
   },
-  "reason": "review follow-ups, CORE-9, PLUG-4, OLS-14 test move"
+  "reason": "OLS-1 comment"
 }

@@ -281,7 +281,11 @@ pub(crate) fn retained_scratch_moment_envelope(
 
 /// Fill deterministic Gram and RHS moments into caller-owned storage.
 /// Narrow prepared designs retain fixed-block compensated merging. Wide and
-/// retained designs partition Gram rows, with a thread-independent row order.
+/// retained designs partition Gram rows, keeping each entry's row order. The
+/// low-memory scratch route may instead split observations into one partial
+/// Gram per planned worker and merge them in partition order, so its last
+/// bits depend on the worker count (SPEC §18); they are repeatable at a fixed
+/// worker count.
 pub(super) fn fill_finite_wls_moments(
     moments: ValidatedMomentSource<'_>,
     partials: &mut [f64],
