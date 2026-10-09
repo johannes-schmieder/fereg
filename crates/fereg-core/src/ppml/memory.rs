@@ -2502,6 +2502,13 @@ pub struct PpmlIterationWorkspace {
     candidate_eta: Vec<f64>,
     trial_eta: Vec<f64>,
     trial_mean: Vec<f64>,
+    /// Bounds under which `mean` was computed from the current `eta` with the
+    /// deterministic per-row Poisson mean, or `None` when unknown. Lets the
+    /// working-state refresh reuse the accepted line-search mean instead of
+    /// recomputing identical `exp` values.
+    mean_bounds: Option<PoissonBounds>,
+    /// The same record for `trial_mean` against `trial_eta`.
+    trial_mean_bounds: Option<PoissonBounds>,
     score_residuals: Vec<f64>,
     objective_partials: Vec<f64>,
     coefficients: Vec<f64>,
@@ -2579,6 +2586,8 @@ impl PpmlIterationWorkspace {
             candidate_eta: fallible_filled(n, 0.0, "PPML candidate-eta buffer")?,
             trial_eta: fallible_filled(n, 0.0, "PPML line-search eta buffer")?,
             trial_mean: fallible_filled(n, 0.0, "PPML line-search mean buffer")?,
+            mean_bounds: None,
+            trial_mean_bounds: None,
             score_residuals: fallible_filled(n, 0.0, "PPML score-residual buffer")?,
             objective_partials: fallible_filled(
                 layout.objective,
@@ -2799,7 +2808,9 @@ impl PpmlIterationWorkspace {
             &[outcome.len(), prior_weights.len(), offset.len()],
             "PPML working state",
         )?;
+        self.mean_bounds = None;
         means_from_eta(&self.eta, bounds, &mut self.mean)?;
+        self.mean_bounds = Some(bounds);
         fill_poisson_working_state(
             outcome,
             &self.mean,
@@ -2833,7 +2844,11 @@ impl PpmlIterationWorkspace {
             &[inputs.outcome().len()],
             "PPML working state",
         )?;
-        inputs.fill_means(&self.eta, bounds, &mut self.mean)?;
+        if self.mean_bounds != Some(bounds) {
+            self.mean_bounds = None;
+            inputs.fill_means(&self.eta, bounds, &mut self.mean)?;
+            self.mean_bounds = Some(bounds);
+        }
         inputs.fill_working_state_and_scores(
             &self.mean,
             &self.eta,
@@ -2912,6 +2927,7 @@ impl PpmlIterationWorkspace {
                 "PPML line-search step must be finite and lie in [0, 1]",
             ));
         }
+        self.trial_mean_bounds = None;
         for row in 0..self.eta.len() {
             let value = self.eta[row] + step * (self.candidate_eta[row] - self.eta[row]);
             if !value.is_finite() {
@@ -2939,6 +2955,7 @@ impl PpmlIterationWorkspace {
         } else {
             means_from_eta(&self.trial_eta, bounds, &mut self.trial_mean)?;
         }
+        self.trial_mean_bounds = Some(bounds);
         self.certify_steady_state_capacity()
     }
 
@@ -2949,6 +2966,7 @@ impl PpmlIterationWorkspace {
         inputs: &PreparedPoissonInputs<'_>,
         bounds: PoissonBounds,
     ) -> Result<PoissonObjective> {
+        self.trial_mean_bounds = None;
         inputs.fill_means(&self.candidate_eta, bounds, &mut self.trial_mean)?;
         let objective = inputs.evaluate_tiled(
             &self.candidate_eta,
@@ -2991,6 +3009,7 @@ impl PpmlIterationWorkspace {
     pub fn accept_trial(&mut self) -> Result<()> {
         std::mem::swap(&mut self.eta, &mut self.trial_eta);
         std::mem::swap(&mut self.mean, &mut self.trial_mean);
+        std::mem::swap(&mut self.mean_bounds, &mut self.trial_mean_bounds);
         self.coefficients.copy_from_slice(&self.trial_coefficients);
         self.certify_steady_state_capacity()
     }

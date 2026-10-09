@@ -1,6 +1,19 @@
 {
   "definition": "docs/development_workflow.md#complexity-inventory",
-  "growth": [],
+  "growth": [
+    {
+      "after": 93962,
+      "before": 93950,
+      "metric": "fereg-core/production_lines",
+      "reason": "Reuse the accepted PPML line-search mean in the working-state refresh."
+    },
+    {
+      "after": 3021,
+      "before": 3009,
+      "metric": "file/crates/fereg-core/src/ppml/memory.rs",
+      "reason": "Reuse the accepted PPML line-search mean in the working-state refresh."
+    }
+  ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
   "inventory": {
     "files": {
@@ -13106,88 +13119,88 @@
           },
           {
             "condition": "eta . len ( ) != plan . dimensions . observations",
-            "line": 2553
+            "line": 2560
           },
           {
             "condition": "coefficients . len ( ) != plan . dimensions . coefficient_slots",
-            "line": 2558
+            "line": 2565
           },
           {
             "condition": "delta_eta . len ( ) != self . eta . len ( ) || active_slots . len ( ) != delta_coefficients . len ( ) || active_slots . iter ( ) . any ( | slot | * slot >= self . coefficients . len ( ) )",
-            "line": 2671
+            "line": 2680
           },
           {
             "condition": "fitted_without_offset . len ( ) != self . eta . len ( ) || offset . len ( ) != self . eta . len ( ) || active_slots . len ( ) != active_coefficients . len ( ) || active_slots . iter ( ) . any ( | slot | * slot >= self . coefficients . len ( ) )",
-            "line": 2714
+            "line": 2723
           },
           {
             "condition": "current == self . steady_state_capacity",
-            "line": 3099
+            "line": 3118
           },
           {
             "condition": "self . capacity == 0",
-            "line": 3145
+            "line": 3164
           },
           {
             "condition": "self . reports . len ( ) < self . capacity",
-            "line": 3148
+            "line": 3167
           },
           {
             "condition": "self . reports . len ( ) < self . capacity || self . capacity == 0",
-            "line": 3180
+            "line": 3199
           },
           {
             "condition": "effective_threads == 0",
-            "line": 3385
+            "line": 3404
           },
           {
             "condition": "retained > capacity",
-            "line": 3450
+            "line": 3469
           },
           {
             "condition": "self . workspace_capacity . is_none ( )",
-            "line": 3515
+            "line": 3534
           },
           {
             "condition": "self . effective_threads == 0 || self . plan . dimensions . threads != self . effective_threads",
-            "line": 3532
+            "line": 3551
           },
           {
             "condition": "self . diagnostic_records_retained > diagnostic_capacity",
-            "line": 3603
+            "line": 3622
           },
           {
             "condition": "self . ppml_workspace_allocation_free != self . workspace_capacity . is_some ( )",
-            "line": 3636
+            "line": 3655
           },
           {
             "condition": "let Some ( capacity ) = self . workspace_capacity",
-            "line": 3641
+            "line": 3660
           },
           {
             "condition": "capacity . observation_capacity_sum < minimum_observation_capacity || capacity . coefficient_capacity_sum < minimum_coefficient_capacity || capacity . diagnostic_capacity != 0",
-            "line": 3648
+            "line": 3667
           },
           {
             "condition": "recomputed != certificate || ! self . plan . audit_route_matches_final ( certificate . observation . linear_route , route ) || self . workspace_capacity != Some ( certificate . observation . workspace_end ) || certificate . observation . scratch_bytes_end != scratch",
-            "line": 3662
+            "line": 3681
           },
           {
             "condition": "target . len ( ) != source . len ( )",
-            "line": 3719
+            "line": 3738
           }
         ],
         "functions": {
           "accept_candidate_interruptible#1": {
-            "line": 3016,
+            "line": 3035,
             "lines": 47
           },
           "accept_trial#1": {
-            "line": 2991,
-            "lines": 6
+            "line": 3009,
+            "lines": 7
           },
           "add#1": {
-            "line": 3274,
+            "line": 3293,
             "lines": 5
           },
           "admit_reusable_certificate#1": {
@@ -13207,11 +13220,11 @@
             "lines": 10
           },
           "allocation_events#1": {
-            "line": 3325,
+            "line": 3344,
             "lines": 4
           },
           "allocation_model_ratio#1": {
-            "line": 3463,
+            "line": 3482,
             "lines": 10
           },
           "allocator_growth_bytes#1": {
@@ -13231,27 +13244,27 @@
             "lines": 5
           },
           "bytes_f64#1": {
-            "line": 3748,
+            "line": 3767,
             "lines": 3
           },
           "candidate_coefficients#1": {
-            "line": 2652,
+            "line": 2661,
             "lines": 3
           },
           "candidate_coefficients_mut#1": {
-            "line": 2656,
+            "line": 2665,
             "lines": 3
           },
           "candidate_eta#1": {
-            "line": 2623,
+            "line": 2632,
             "lines": 3
           },
           "candidate_eta_mut#1": {
-            "line": 2627,
+            "line": 2636,
             "lines": 3
           },
           "capacity#1": {
-            "line": 3158,
+            "line": 3177,
             "lines": 3
           },
           "capacity_counts#1": {
@@ -13259,7 +13272,7 @@
             "lines": 17
           },
           "capacity_report#1": {
-            "line": 3079,
+            "line": 3098,
             "lines": 17
           },
           "certify_ppml_steady_state_allocation#1": {
@@ -13267,27 +13280,27 @@
             "lines": 49
           },
           "certify_steady_state_capacity#1": {
-            "line": 3097,
+            "line": 3116,
             "lines": 14
           },
           "certify_workspace#1": {
-            "line": 3474,
+            "line": 3493,
             "lines": 9
           },
           "checked_mul#1": {
-            "line": 3752,
+            "line": 3771,
             "lines": 7
           },
           "checked_sum#1": {
-            "line": 3760,
+            "line": 3779,
             "lines": 7
           },
           "coefficients#1": {
-            "line": 2647,
+            "line": 2656,
             "lines": 3
           },
           "copy_equal_len#1": {
-            "line": 3718,
+            "line": 3737,
             "lines": 15
           },
           "default#1": {
@@ -13295,15 +13308,15 @@
             "lines": 10
           },
           "default#2": {
-            "line": 3266,
+            "line": 3285,
             "lines": 5
           },
           "diagnostics#1": {
-            "line": 3074,
+            "line": 3093,
             "lines": 3
           },
           "elapsed#1": {
-            "line": 3703,
+            "line": 3722,
             "lines": 3
           },
           "end_phase_allocation#1": {
@@ -13311,7 +13324,7 @@
             "lines": 6
           },
           "estimate_diagnostic_capacity#1": {
-            "line": 3114,
+            "line": 3133,
             "lines": 4
           },
           "estimate_ppml_memory#1": {
@@ -13323,95 +13336,95 @@
             "lines": 1092
           },
           "eta#1": {
-            "line": 2603,
+            "line": 2612,
             "lines": 3
           },
           "evaluate_candidate_objective#1": {
-            "line": 2947,
-            "lines": 14
+            "line": 2964,
+            "lines": 15
           },
           "evaluate_current_objective#1": {
-            "line": 2962,
+            "line": 2980,
             "lines": 6
           },
           "evaluate_external_objective#1": {
-            "line": 2980,
+            "line": 2998,
             "lines": 8
           },
           "evaluate_trial_objective#1": {
-            "line": 2969,
+            "line": 2987,
             "lines": 10
           },
           "fallible_copy#1": {
-            "line": 3739,
+            "line": 3758,
             "lines": 8
           },
           "fallible_filled#1": {
-            "line": 3734,
+            "line": 3753,
             "lines": 4
           },
           "fill_absolute_candidate#1": {
-            "line": 2707,
+            "line": 2716,
             "lines": 40
           },
           "fill_incremental_candidate#1": {
-            "line": 2665,
+            "line": 2674,
             "lines": 40
           },
           "fill_line_search_trial_core#1": {
-            "line": 2903,
-            "lines": 41
+            "line": 2918,
+            "lines": 43
           },
           "fill_prepared_line_search_trial_with#1": {
-            "line": 2893,
+            "line": 2908,
             "lines": 9
           },
           "for_each_chronological#1": {
-            "line": 3179,
+            "line": 3198,
             "lines": 14
           },
           "from_initial_state#1": {
-            "line": 2537,
+            "line": 2544,
             "lines": 9
           },
           "from_initial_state_with_diagnostics#1": {
-            "line": 2547,
-            "lines": 54
+            "line": 2554,
+            "lines": 56
           },
           "get#1": {
-            "line": 3289,
+            "line": 3308,
             "lines": 4
           },
           "growth_bytes#1": {
-            "line": 3320,
+            "line": 3339,
             "lines": 3
           },
           "hessian_weights#1": {
-            "line": 2613,
+            "line": 2622,
             "lines": 3
           },
           "into_final_buffers#1": {
-            "line": 3064,
+            "line": 3083,
             "lines": 3
           },
           "is_empty#1": {
-            "line": 3168,
+            "line": 3187,
             "lines": 3
           },
           "len#1": {
-            "line": 3163,
+            "line": 3182,
             "lines": 3
           },
           "mean#1": {
-            "line": 2608,
+            "line": 2617,
             "lines": 3
           },
           "merge#1": {
-            "line": 3280,
+            "line": 3299,
             "lines": 7
           },
           "merge_phase_timings#1": {
-            "line": 3414,
+            "line": 3433,
             "lines": 3
           },
           "modeled_phase_peak_bytes#1": {
@@ -13419,7 +13432,7 @@
             "lines": 40
           },
           "name#1": {
-            "line": 3233,
+            "line": 3252,
             "lines": 17
           },
           "new#1": {
@@ -13427,43 +13440,43 @@
             "lines": 7
           },
           "new#2": {
-            "line": 2524,
+            "line": 2531,
             "lines": 10
           },
           "new#3": {
-            "line": 3130,
+            "line": 3149,
             "lines": 12
           },
           "new#4": {
-            "line": 3380,
+            "line": 3399,
             "lines": 29
           },
           "observe_allocator#1": {
-            "line": 3433,
+            "line": 3452,
             "lines": 3
           },
           "observe_diagnostic_records#1": {
-            "line": 3448,
+            "line": 3467,
             "lines": 13
           },
           "observe_linear_route#1": {
-            "line": 3437,
+            "line": 3456,
             "lines": 3
           },
           "observe_phase_peak#1": {
-            "line": 3418,
+            "line": 3437,
             "lines": 4
           },
           "observe_scratch#1": {
-            "line": 3441,
+            "line": 3460,
             "lines": 6
           },
           "observe_steady_state_allocation#1": {
-            "line": 3484,
+            "line": 3503,
             "lines": 21
           },
           "observed_phase_peak#1": {
-            "line": 3424,
+            "line": 3443,
             "lines": 3
           },
           "owned_fe_recovery_workspace_bytes#1": {
@@ -13471,7 +13484,7 @@
             "lines": 139
           },
           "peak_delta_bytes#1": {
-            "line": 3315,
+            "line": 3334,
             "lines": 3
           },
           "plan_ppml_memory#1": {
@@ -13483,43 +13496,43 @@
             "lines": 81
           },
           "prepare_final_hessian_response#1": {
-            "line": 2852,
+            "line": 2867,
             "lines": 18
           },
           "push#1": {
-            "line": 3143,
+            "line": 3162,
             "lines": 13
           },
           "push_diagnostic#1": {
-            "line": 3068,
+            "line": 3087,
             "lines": 4
           },
           "record_fallback#1": {
-            "line": 3428,
+            "line": 3447,
             "lines": 4
           },
           "record_phase#1": {
-            "line": 3410,
+            "line": 3429,
             "lines": 3
           },
           "refresh_prepared_working_state#1": {
-            "line": 2826,
-            "lines": 20
+            "line": 2837,
+            "lines": 24
           },
           "refresh_score_residuals#1": {
-            "line": 2769,
+            "line": 2778,
             "lines": 17
           },
           "require_observation_lengths#1": {
-            "line": 3708,
+            "line": 3727,
             "lines": 9
           },
           "score_residuals#1": {
-            "line": 2642,
+            "line": 2651,
             "lines": 3
           },
           "seconds#1": {
-            "line": 3295,
+            "line": 3314,
             "lines": 3
           },
           "selected_bytes#1": {
@@ -13531,19 +13544,19 @@
             "lines": 6
           },
           "set_candidate_coefficients#1": {
-            "line": 2761,
+            "line": 2770,
             "lines": 7
           },
           "set_candidate_eta#1": {
-            "line": 2757,
+            "line": 2766,
             "lines": 3
           },
           "set_coefficients#1": {
-            "line": 2753,
+            "line": 2762,
             "lines": 3
           },
           "start#1": {
-            "line": 3696,
+            "line": 3715,
             "lines": 5
           },
           "storage_contribution#1": {
@@ -13551,19 +13564,19 @@
             "lines": 34
           },
           "total_seen#1": {
-            "line": 3173,
+            "line": 3192,
             "lines": 3
           },
           "trial_coefficients#1": {
-            "line": 2749,
+            "line": 2758,
             "lines": 3
           },
           "trial_eta#1": {
-            "line": 2632,
+            "line": 2641,
             "lines": 3
           },
           "trial_mean#1": {
-            "line": 2637,
+            "line": 2646,
             "lines": 3
           },
           "usable_bytes#1": {
@@ -13575,7 +13588,7 @@
             "lines": 121
           },
           "validate#2": {
-            "line": 3531,
+            "line": 3550,
             "lines": 154
           },
           "validate_final_dimensions_within_preflight#1": {
@@ -13583,7 +13596,7 @@
             "lines": 48
           },
           "validate_publication#1": {
-            "line": 3513,
+            "line": 3532,
             "lines": 17
           },
           "with_final_dimensions#1": {
@@ -13595,11 +13608,11 @@
             "lines": 19
           },
           "working_response#1": {
-            "line": 2618,
+            "line": 2627,
             "lines": 3
           }
         },
-        "production_lines": 3009
+        "production_lines": 3021
       },
       "crates/fereg-core/src/ppml/metadata_memory.rs": {
         "chunk_candidates": [],
@@ -20284,7 +20297,7 @@
         "dispatch_candidates": 1244,
         "files_over_1500": 16,
         "functions_over_150": 67,
-        "production_lines": 93950
+        "production_lines": 93962
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
@@ -20296,5 +20309,5 @@
     },
     "schema": 1
   },
-  "reason": "Batched output stores on every platform."
+  "reason": "Reuse the accepted PPML line-search mean in the working-state refresh."
 }
