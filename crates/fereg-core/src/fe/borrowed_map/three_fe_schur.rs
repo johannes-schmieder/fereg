@@ -58,7 +58,8 @@ impl Plan {
 // the same allowance, so allocator rounding cannot silently exceed admission.
 pub(crate) struct AllocationBudget {
     remaining: u128,
-    #[cfg(test)]
+    // Developer fault plan: fail after this many reservations. Shipped code
+    // runs the same check with no plan.
     fail_after: Option<usize>,
 }
 
@@ -66,13 +67,11 @@ impl AllocationBudget {
     pub(crate) fn new(bytes: u128) -> Self {
         Self {
             remaining: bytes,
-            #[cfg(test)]
             fail_after: None,
         }
     }
 
     pub(crate) fn reserve<T: Clone>(&mut self, count: usize, value: T) -> Result<Vec<T>> {
-        #[cfg(test)]
         if let Some(left) = self.fail_after.as_mut() {
             if *left == 0 {
                 return Err(allocation("injected three-FE Schur reservation failure"));

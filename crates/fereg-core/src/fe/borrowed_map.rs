@@ -1088,15 +1088,13 @@ pub(crate) struct ReusableCategoricalMapAbsorber<'a> {
     checkpoint_lsmr_enabled: bool,
     checkpoint_deterministic: bool,
     checkpoint_component_scaling: bool,
-    #[cfg(test)]
+    // Developer fault plan. Shipped code runs the same checks with every
+    // entry unset; only the test setters below write them. Each entry is
+    // consumed once.
     checkpoint_lsmr_certificate_failure: bool,
-    #[cfg(test)]
     checkpoint_lsmr_fatal_failure: u8,
-    #[cfg(test)]
     checkpoint_lsmr_retry_error: Option<ErrorCode>,
-    #[cfg(test)]
     checkpoint_schur_iteration_cap: Option<usize>,
-    #[cfg(test)]
     checkpoint_schur_certificate_failure: bool,
 }
 
@@ -1482,15 +1480,10 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             checkpoint_lsmr_enabled: false,
             checkpoint_deterministic: false,
             checkpoint_component_scaling: false,
-            #[cfg(test)]
             checkpoint_lsmr_certificate_failure: false,
-            #[cfg(test)]
             checkpoint_lsmr_fatal_failure: 0,
-            #[cfg(test)]
             checkpoint_lsmr_retry_error: None,
-            #[cfg(test)]
             checkpoint_schur_iteration_cap: None,
-            #[cfg(test)]
             checkpoint_schur_certificate_failure: false,
         };
         let admitted = Self::owner_bytes(&owner.design, max_rhs, parallel_threads)?;
@@ -1521,7 +1514,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         };
     }
 
-    #[cfg(test)]
     fn take_checkpoint_lsmr_fatal_failure(&mut self) -> Option<FeregError> {
         let state = std::mem::take(&mut self.checkpoint_lsmr_fatal_failure);
         match state {
@@ -1777,7 +1769,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
 
         if self.checkpoint_lsmr_enabled && matches!(self.design.effects().len(), 2 | 3) {
-            #[cfg(test)]
             if let Some(error) = self.take_checkpoint_lsmr_fatal_failure() {
                 return Err(error);
             }
@@ -1785,12 +1776,9 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 Some(w) => validate_weights(BorrowedMapWeights::Provided(w), values.nrows())?,
                 None => weights,
             };
-            #[cfg(not(test))]
-            let allow_schur = true;
-            #[cfg(test)]
-            // A solver-specific fault must reach LSMR unless the test also
-            // explicitly requests a preceding Schur rejection. Otherwise an
-            // accepted accelerator silently bypasses the boundary under test.
+            // True unless a planned LSMR fault must reach LSMR without an
+            // explicitly planned preceding Schur rejection; otherwise an
+            // accepted accelerator would bypass the boundary under test.
             let allow_schur = !(self.checkpoint_lsmr_certificate_failure
                 || self.checkpoint_lsmr_retry_error.is_some())
                 || self.checkpoint_schur_iteration_cap.is_some()
@@ -1810,9 +1798,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
                 certified.report.certification_seconds += initial_certification_seconds;
                 return Ok(certified);
             }
-            #[cfg(not(test))]
-            let force_rejection = false;
-            #[cfg(test)]
             let force_rejection = std::mem::take(&mut self.checkpoint_lsmr_certificate_failure);
             let remaining = config
                 .max_iterations
@@ -1837,7 +1822,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
             let mut accumulated: Option<SolveReport> = None;
             let mut recurrence_tolerance = config.tolerance;
             let report = loop {
-                #[cfg(test)]
                 if accumulated.is_some() {
                     if let Some(code) = self.checkpoint_lsmr_retry_error.take() {
                         return Err(FeregError::new(code, "injected checkpoint retry failure"));
@@ -2060,7 +2044,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         let candidate = checkpoint_schur_copy(values, transient)?;
         cost.setup_seconds = started.elapsed().as_secs_f64();
         let cap = GRAPH_ATTEMPT_MAX_ITERATIONS.min(config.max_iterations);
-        #[cfg(test)]
         let cap = self
             .checkpoint_schur_iteration_cap
             .take()
@@ -2090,7 +2073,6 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         cost.solve_seconds = solve_started.elapsed().as_secs_f64();
         match attempt {
             SchurAttempt::Certified(mut result) => {
-                #[cfg(test)]
                 if std::mem::take(&mut self.checkpoint_schur_certificate_failure) {
                     cost.iterations = result.report.iterations;
                     cost.rejected = true;
@@ -3874,10 +3856,11 @@ struct CheckpointLsmrBatch<'s, 'a> {
     candidate: Option<DenseMatrix>,
     memory: BorrowedLsmrCallMemory,
     allowance: u128,
-    #[cfg(test)]
+    // Developer fault plan and a fixed attempt record; shipped code runs the
+    // same checks with no override and never allocates for the record.
     selective_allowance: Option<u128>,
-    #[cfg(test)]
-    attempted_rhs: Vec<usize>,
+    attempted_rhs: [usize; 4],
+    attempt_count: usize,
 }
 
 impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
@@ -3922,10 +3905,9 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
                 0,
             )?,
             allowance,
-            #[cfg(test)]
             selective_allowance: None,
-            #[cfg(test)]
-            attempted_rhs: Vec::new(),
+            attempted_rhs: [0; 4],
+            attempt_count: 0,
         })
     }
 
@@ -3983,7 +3965,6 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
                 .checked_add(capacity as u128 * std::mem::size_of::<usize>() as u128)
                 .is_some_and(|bytes| bytes <= self.allowance)
         };
-        #[cfg(test)]
         if self
             .selective_allowance
             .is_some_and(|limit| without_positions > limit)
@@ -4047,8 +4028,10 @@ impl<'s, 'a> CheckpointLsmrBatch<'s, 'a> {
             borrowed_within_preconditioner(resolved),
             self.config.threads.deterministic,
         )?;
-        #[cfg(test)]
-        self.attempted_rhs.push(rhs.len());
+        if let Some(slot) = self.attempted_rhs.get_mut(self.attempt_count) {
+            *slot = rhs.len();
+        }
+        self.attempt_count = self.attempt_count.saturating_add(1);
         if crate::diagnostics::solver_trace_enabled() {
             crate::diagnostics::emit_solver_trace(&format!(
                 "FEREG_SOLVER_TRACE|phase=checkpoint_batch|rhs={}|full_rhs={}|selective={}|builds={}|batches={}",
@@ -9685,8 +9668,8 @@ mod tests {
                                     .unwrap();
                                 assert_eq!(batch.prepared.builds, builds);
                                 assert_eq!(
-                                    batch.attempted_rhs,
-                                    vec![8, if refuse { 8 } else { 1 }]
+                                    &batch.attempted_rhs[..batch.attempt_count],
+                                    &[8, if refuse { 8 } else { 1 }]
                                 );
                                 let candidate = batch.candidate.as_ref().unwrap();
                                 assert!(
