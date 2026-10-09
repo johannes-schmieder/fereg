@@ -2,6 +2,15 @@
 
 ## 0.5.0 beta — unreleased
 
+- Cleanup program (2026-10-09), phases 2 and 3: OLS estimation now honours
+  Break during its numerical phase; checked batched observation stores run on
+  Linux and Windows; frontend return codes and messages follow the reviewed
+  contract. Hot paths drop repeated validation, duplicate certificates and
+  eigensolves, strided column passes and per-cell recipe dispatch while
+  keeping every published result exact. On the 18 frozen Mac workloads every
+  case passes the max(5%, 1 ms) nonregression allowance; wide and two-FE
+  four-worker cases ran 5-9% faster in that bounded check. One declared
+  ulp-scope change makes PPML score-certificate normalization overflow-safe.
 - Extend guarded hardware-FMA dispatch to standardized Gram tiles with more
   than 64 columns, preserving arithmetic order, portable execution and exact
   scientific outputs. The isolated Linux speedup now has a passing Mac

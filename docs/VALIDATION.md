@@ -595,3 +595,43 @@ max(5%, 1 ms) allowance. Median ratios range from 0.999 to 1.015; the largest
 upper bound is 1.030 (no-FE K=5, four workers, allowance 1.212). A first run
 stopped at the first one-million-row input because the timing harness used the
 replay corpus's 10-million-cell bound; the harness build now raises it.
+
+## 2026-10-09 cleanup program, phases 2 and 3
+
+Phases 2 and 3 (commits 09fc5e4c through 261536ac) shared one reservation
+trait, fixed frontend contract defects, made OLS interruptible with Break,
+enabled checked batched stores on Linux and Windows, and removed redundant
+work from hot paths. One declared ulp-scope change (296cbc23, PPML score
+certificate normalization) passed its scoped replay; the replay baseline was
+rebuilt from it (SHA-256
+`9009210ad15c2142eaaf24cb66f4dc8280b0ecd6d88719b9a624e544bce91f24`).
+
+Every later runtime commit is arithmetic-preserving: the 73-case replay
+against that baseline has zero exact differences, and commits that changed a
+parallel loop also replayed at two and four workers. Paths the replay does
+not reach were checked directly: a bitwise A/B of clipped multiway clustered
+covariances (fereg-testkit) for the eigensystem reuse, and an exact native
+A/B on all 18 frozen standard and wide (64/65/129-column) workloads at one
+and four workers for the FE kernel changes. PPML input loading through the
+action team also passed the `ppml-scientific` Stata profile on 261536ac.
+
+Boundary wall-time check (`bench/time_exact.py`, Mac M-series, seven
+alternating pairs after one warm-up, exact science in every run) of candidate
+`c0f9aff986349965365b6d96586b420ccf76d3007e50633bc5cbb31287f914a8` against
+the 296cbc23 baseline on all 18 frozen workloads: every bootstrap upper bound
+is within its max(5%, 1 ms) allowance. The largest upper bound is 1.108
+(no-FE K=5, four workers, allowance 1.193). Observed median ratios below one
+include 0.91 for two-FE K=20 at four workers, 0.93 and 0.92 for the
+64-column workload at one and four workers, 0.94 and 0.91 for 65 columns,
+and 0.95 for the probability-weighted two-FE case at four workers. These are
+bounded observations on one host, not release performance claims.
+
+Assessed and left unchanged, with reasons recorded in the commits: PPML-15
+(cascade allocations beside O(N) scans), PLUG-17's memory-limit sampling
+(fresh availability is intended), PLUG-18 (final publication barrier and an
+O(K^2) check beside an O(K^2) symmetry check), and the residual loops of
+OLS-7 (zero-indicator skipping can change a zero's sign). Deferred: PPML-10
+(likely result-changing; needs its own scope and witnesses), FE-11
+(structured recovery classification must reproduce today's matched set),
+OLS-4 (needs a new admitted scratch layout), FE-16 (u32 level indices touch
+every FE consumer) and the PLUG-12 runtime missing value (next wire bump).
