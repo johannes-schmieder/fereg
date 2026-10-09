@@ -583,7 +583,7 @@ where
                         let commit = coordinator.transact_validated_proposal(
                             SeparationDropReason::InitialSingleton,
                             singleton_rows,
-                            |_| Ok(PreparedSeparationCascade::default()),
+                            PreparedSeparationCascade::default(),
                         )?;
                         bounded_push(
                             &mut reports,
@@ -676,7 +676,7 @@ where
                         let commit = coordinator.transact_validated_proposal(
                             SeparationDropReason::FixedEffectZeroLevel,
                             primary_rows,
-                            |_| Ok(cascade),
+                            cascade,
                         )?;
                         bounded_push(
                             &mut reports,
@@ -1178,7 +1178,7 @@ fn commit_numerical(
         cascade,
         exact_fe_certificate: exact_followup_certificate,
     } = cascade;
-    let commit = coordinator.transact_validated_proposal(reason, primary_rows, |_| Ok(cascade))?;
+    let commit = coordinator.transact_validated_proposal(reason, primary_rows, cascade)?;
     bounded_push(
         reports,
         method_report_capacity,
@@ -1877,20 +1877,18 @@ fn prepared_simplex_proposal(
             return Err(invalid_argument("prepared simplex row has no FE level"));
         }
         let channels = usize::from(spec.intercept) + spec.slopes.len();
-        for row in 0..rows {
-            for level in 0..source.n_levels() {
-                let selected = codes[row] as usize == level;
-                let mut channel = 0_usize;
-                if spec.intercept {
-                    values[row * columns + column_offset + level * channels] = f64::from(selected);
-                    channel = 1;
-                }
-                for slope in &spec.slopes {
-                    let values_for_slope = categorical.numeric_source_values(slope.source)?;
-                    values[row * columns + column_offset + level * channels + channel] =
-                        if selected { values_for_slope[row] } else { 0.0 };
-                    channel += 1;
-                }
+        // The design is zero-filled, so only each row's own level is written;
+        // every other level's indicator and slope cells stay exactly zero.
+        for (row, &code) in codes.iter().enumerate() {
+            let base = row * columns + column_offset + code as usize * channels;
+            let mut channel = 0_usize;
+            if spec.intercept {
+                values[base] = 1.0;
+                channel = 1;
+            }
+            for slope in &spec.slopes {
+                values[base + channel] = categorical.numeric_source_values(slope.source)?[row];
+                channel += 1;
             }
         }
         column_offset += source.n_levels() * channels;
@@ -4323,7 +4321,7 @@ mod tests {
             .transact_validated_proposal(
                 SeparationDropReason::FixedEffectZeroLevel,
                 first.rows,
-                |_| Ok(PreparedSeparationCascade::default()),
+                PreparedSeparationCascade::default(),
             )
             .expect("first exact rebase");
 
@@ -4345,9 +4343,11 @@ mod tests {
         // remaining zero member must then be identified by stable term/row
         // evidence, not confused with the generation-zero code-zero level.
         coordinator
-            .transact_validated_proposal(SeparationDropReason::Simplex, vec![2], |_| {
-                Ok(PreparedSeparationCascade::default())
-            })
+            .transact_validated_proposal(
+                SeparationDropReason::Simplex,
+                vec![2],
+                PreparedSeparationCascade::default(),
+            )
             .expect("positive-row rebase");
         let second = {
             let generation = coordinator.view().prepared;
@@ -4985,9 +4985,11 @@ mod tests {
         let mut coordinator = PreparedSeparationCoordinator::new(owner).expect("coordinator");
 
         let error = coordinator
-            .transact_validated_proposal(SeparationDropReason::Simplex, vec![1, 3, 5], |_| {
-                Ok(PreparedSeparationCascade::default())
-            })
+            .transact_validated_proposal(
+                SeparationDropReason::Simplex,
+                vec![1, 3, 5],
+                PreparedSeparationCascade::default(),
+            )
             .expect_err("one cluster group must reject the staged generation");
         assert_eq!(error.code, ErrorCode::InvalidData);
         assert_eq!(coordinator.view().generation, 0);
@@ -4996,9 +4998,11 @@ mod tests {
         assert!(coordinator.active().iter().all(|active| *active));
 
         coordinator
-            .transact_validated_proposal(SeparationDropReason::Simplex, vec![0], |_| {
-                Ok(PreparedSeparationCascade::default())
-            })
+            .transact_validated_proposal(
+                SeparationDropReason::Simplex,
+                vec![0],
+                PreparedSeparationCascade::default(),
+            )
             .expect("valid transaction after rollback");
         assert_eq!(coordinator.view().generation, 1);
         assert_eq!(coordinator.view().original_rows, &[1, 2, 3, 4, 5]);

@@ -1206,12 +1206,14 @@ mod tests {
         );
 
         coordinator
-            .transact_validated_proposal(SeparationDropReason::Simplex, vec![1], |_| {
-                Ok(PreparedSeparationCascade {
+            .transact_validated_proposal(
+                SeparationDropReason::Simplex,
+                vec![1],
+                PreparedSeparationCascade {
                     singleton_rows: vec![4],
                     exact_fe_rows: Vec::new(),
-                })
-            })
+                },
+            )
             .expect("rebased transaction");
         let outcome = coordinator.into_outcome();
         assert_eq!(outcome.prepared.generation(), 1);

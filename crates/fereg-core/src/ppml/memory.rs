@@ -2509,6 +2509,9 @@ pub struct PpmlIterationWorkspace {
     mean_bounds: Option<PoissonBounds>,
     /// The same record for `trial_mean` against `trial_eta`.
     trial_mean_bounds: Option<PoissonBounds>,
+    /// Advances whenever `mean` may change, so a certificate computed from
+    /// the mean can be reused while the generation is unchanged.
+    mean_generation: u64,
     score_residuals: Vec<f64>,
     objective_partials: Vec<f64>,
     coefficients: Vec<f64>,
@@ -2588,6 +2591,7 @@ impl PpmlIterationWorkspace {
             trial_mean: fallible_filled(n, 0.0, "PPML line-search mean buffer")?,
             mean_bounds: None,
             trial_mean_bounds: None,
+            mean_generation: 0,
             score_residuals: fallible_filled(n, 0.0, "PPML score-residual buffer")?,
             objective_partials: fallible_filled(
                 layout.objective,
@@ -2614,6 +2618,11 @@ impl PpmlIterationWorkspace {
     }
 
     #[must_use]
+    /// Identifies the current `mean` contents; see the field documentation.
+    pub(crate) const fn mean_generation(&self) -> u64 {
+        self.mean_generation
+    }
+
     pub fn mean(&self) -> &[f64] {
         &self.mean
     }
@@ -2809,6 +2818,7 @@ impl PpmlIterationWorkspace {
             "PPML working state",
         )?;
         self.mean_bounds = None;
+        self.mean_generation = self.mean_generation.wrapping_add(1);
         means_from_eta(&self.eta, bounds, &mut self.mean)?;
         self.mean_bounds = Some(bounds);
         fill_poisson_working_state(
@@ -2846,6 +2856,7 @@ impl PpmlIterationWorkspace {
         )?;
         if self.mean_bounds != Some(bounds) {
             self.mean_bounds = None;
+            self.mean_generation = self.mean_generation.wrapping_add(1);
             inputs.fill_means(&self.eta, bounds, &mut self.mean)?;
             self.mean_bounds = Some(bounds);
         }
@@ -3009,6 +3020,7 @@ impl PpmlIterationWorkspace {
     pub fn accept_trial(&mut self) -> Result<()> {
         std::mem::swap(&mut self.eta, &mut self.trial_eta);
         std::mem::swap(&mut self.mean, &mut self.trial_mean);
+        self.mean_generation = self.mean_generation.wrapping_add(1);
         std::mem::swap(&mut self.mean_bounds, &mut self.trial_mean_bounds);
         self.coefficients.copy_from_slice(&self.trial_coefficients);
         self.certify_steady_state_capacity()

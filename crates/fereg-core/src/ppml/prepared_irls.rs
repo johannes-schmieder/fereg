@@ -1141,6 +1141,8 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
         config.ppml.score_tolerance,
         &mut score_workspace,
     )?;
+    // Set with every accepted-iteration score below, before any strict cycle.
+    let mut final_score_generation: u64;
     let mut previous_inner_tolerance = initial_tolerance;
     let mut previous_outer_progress = None;
     let mut rank_frozen = false;
@@ -1715,6 +1717,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             config.ppml.score_tolerance,
             &mut score_workspace,
         )?;
+        final_score_generation = workspace.mean_generation();
         memory.record_phase(PpmlPhase::ObjectiveLineSearch, line_search_clock.elapsed());
         record_phase_allocation(
             &mut memory,
@@ -1782,6 +1785,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
                     total_step_halvings: &mut total_step_halvings,
                     score_workspace: &mut score_workspace,
                     final_score: &mut final_score,
+                    final_score_generation: &mut final_score_generation,
                 },
                 session: &mut session,
                 direction: &mut direction,

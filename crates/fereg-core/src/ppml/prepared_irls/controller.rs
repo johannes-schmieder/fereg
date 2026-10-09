@@ -186,6 +186,8 @@ pub(super) struct CandidatePhase<'a, 'prepared, P: PreparedOlsFitView + Sync + ?
     pub(super) total_step_halvings: &'a mut usize,
     pub(super) score_workspace: &'a mut PpmlScoreWorkspace,
     pub(super) final_score: &'a mut PpmlCertificate,
+    /// Workspace mean generation from which `final_score` was computed.
+    pub(super) final_score_generation: &'a mut u64,
 }
 impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
     fn inspect(
@@ -434,7 +436,14 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
         }
     }
 
+    /// Recompute the score certificate only when the accepted mean changed
+    /// since it was computed; the certificate is a function of the mean and
+    /// of inputs fixed for the fit, so an unchanged mean reproduces it.
     fn refresh_score(&mut self, design: &FeDesign) -> Result<()> {
+        let generation = self.workspace.mean_generation();
+        if generation == *self.final_score_generation {
+            return Ok(());
+        }
         *self.final_score = prepared_score_certificate(
             self.prepared,
             design,
@@ -444,6 +453,7 @@ impl<P: PreparedOlsFitView + Sync + ?Sized> CandidatePhase<'_, '_, P> {
             self.config.ppml.score_tolerance,
             self.score_workspace,
         )?;
+        *self.final_score_generation = generation;
         Ok(())
     }
     fn resume_hessian_candidate(

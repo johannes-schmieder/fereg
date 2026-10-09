@@ -688,20 +688,25 @@ impl ReusableCategoricalFwlCmg {
         let finite_seconds = finish_started.elapsed().as_secs_f64();
         let reconstruction_started = Instant::now();
         let active_columns = self.active_columns;
-        let coefficients = &self.coefficients;
-        let projected = &self.projected;
+        let coefficients = &self.coefficients[..active_columns];
+        let width = self.projected.ncols();
+        let projected = self.projected.as_slice();
         self.team.install(|| {
+            // Row slices of the row-major projection; same per-row order.
             self.residual
                 .par_iter_mut()
                 .zip(self.fitted_without_offset.par_iter_mut())
-                .enumerate()
-                .for_each(|(row, (residual, fitted))| {
-                    let mut value = projected[(row, active_columns)];
-                    for column in 0..active_columns {
-                        value -= projected[(row, column)] * coefficients[column];
+                .zip(projected.par_chunks_exact(width))
+                .zip(working_response.par_iter())
+                .for_each(|(((residual, fitted), values), &response)| {
+                    let mut value = values[active_columns];
+                    for (&projected, &coefficient) in
+                        values[..active_columns].iter().zip(coefficients)
+                    {
+                        value -= projected * coefficient;
                     }
                     *residual = value;
-                    *fitted = working_response[row] - value;
+                    *fitted = response - value;
                 });
         });
         if self
