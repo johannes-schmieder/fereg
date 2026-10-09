@@ -800,3 +800,40 @@ candidates: streaming the certificate's group sums by row (bit-identical in
 principle, needs admitted per-level workspace), in-place row compaction for
 samples with drops, and the three-FE LSMR path inside the pinned `within`
 dependency. PPML time is spread across many kernels with no line above 3%.
+
+## 2026-10-09 Windows FMA kernels and plugin module pin
+
+Bounded Windows `stata-do` runs (Windows Server 2022, x86-64 with FMA/AVX,
+Stata/MP 19) through the owner-controlled controller. Each run stopped the
+instance, deleted transient objects and released the lock.
+
+- `win-20261009T194113Z-25d68772`, commit `a5df8fdc` (source archive SHA-256
+  `4f40b488a09009b2e5250d75753f2f2fb7801303971fbef032695c0e44de8cf9`,
+  receipt `ae74b6447af0af26ceb4ed177dc5eddba31442842f77e41cc5aba000d02914ec`):
+  **fail** at `native_loader`, native return code -1073741819 (0xC0000005).
+  `exact_fma` and `fused_kernels` passed first. From this commit a skipped
+  hardware path fails that stage, so the FMA instantiations, including the
+  one-pass certificate `group_sums` kernel from d4b68d26, matched the
+  portable bits on hardware.
+- `win-20261009T195813Z-b1b85f9d`, the same commit (archive
+  `dce94296763b061754cc6e25ca039b218e92b14a64207b5be96f93a2d610984a`,
+  receipt `74a19c1239b9fcdcc2f081570e97d0243eb8566a4565242dff757fd3670a3987`):
+  **pass**, all stages and licensed Stata. The crash was intermittent; the
+  harness code paths were unchanged since the last passing run.
+- Cause: the loader harness calls `FreeLibrary` milliseconds after doctor
+  starts the cached 32-worker Rayon team on a 2-vCPU host, and idle Rayon
+  workers spin through 33 yield rounds before sleeping, so a worker could
+  still run unmapped plugin code. d5eb37a7 pins the module on the first
+  action and makes the loader test assert that the module stays mapped
+  after release.
+- `win-20261009T201439Z-a3950702`, commit `d5eb37a7` (archive
+  `8b3df75d00402686469a45f0b92061a7a5b245edfece3fec16d0b0694a156325`,
+  receipt `16a0a14d9e4a3ff38ba9a665b11facf9a0e82c8af01c09c1048ca08d5ed977de`,
+  plugin `c3783aec8de5851866f7590806a8899a18dbb457f2508ac133b082399ed2de13`):
+  **pass**, including the mapped-after-release check and licensed Stata.
+
+One passing run after the fix bounds, but cannot exclude, a residual race of
+the same kind; the mapped-after-release assertion is deterministic. Mac:
+`scripts/run_tests.sh`, Windows-target clippy for both gates, the 73-case exact
+replay (zero differences) and the `quick` Stata profile pass on d5eb37a7. Linux
+was not run for these commits.
