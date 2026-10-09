@@ -4739,6 +4739,14 @@ impl<'a, P: PreparedOlsFitView + Sync + ?Sized> CertifiedLinearSession<'a, P> {
                     .min(workspace.moment_partials.len() / stored_columns.max(1));
                 if stored_columns != 0 && workers > 1 {
                     let chunk_rows = rows.div_ceil(workers);
+                    // Every residual chunk needs its own row bank; a short bank
+                    // would silently truncate the zip below.
+                    if rows.div_ceil(chunk_rows) > workspace.moment_partials.len() / stored_columns
+                    {
+                        return Err(crate::error::allocation(
+                            "retained residual reconstruction lacks one row bank per chunk",
+                        ));
+                    }
                     workspace
                         .residuals
                         .par_chunks_mut(chunk_rows)

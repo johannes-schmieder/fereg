@@ -3185,7 +3185,7 @@ fn certify_single_slope_parallel(
         .registry()
         .source(topology.effect_to_topology()[0])?;
     let levels = source.n_levels();
-    let block = levels.div_ceil(rayon::current_num_threads().min(levels));
+    let block = levels.div_ceil(rayon::current_num_threads().min(levels).max(1));
     let blocks = levels.div_ceil(block);
     let channels = effect.channels();
     let mut partials = fallible_filled(

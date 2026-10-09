@@ -67,6 +67,12 @@ pub(crate) fn reduction_blocks(
     stride: usize,
     target_bytes: usize,
 ) -> Result<usize> {
+    if maximum == 0 {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "reduction block policy must allow at least one block",
+        ));
+    }
     let bytes = stride
         .checked_mul(std::mem::size_of::<f64>())
         .ok_or_else(|| {
