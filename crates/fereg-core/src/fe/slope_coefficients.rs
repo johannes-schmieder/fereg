@@ -369,12 +369,14 @@ impl SlopeCoefficientWorkspace {
         for (root, weight) in self.roots.iter_mut().zip(weights) {
             *root = weight.sqrt();
         }
-        for column in 0..rhs {
-            for row in 0..n {
-                self.columns[column * n + row] = if norms[column] == 0. {
+        // Row-major reads with one sequential write stream per column.
+        for (row, entries) in values.as_slice().chunks_exact(rhs).enumerate() {
+            let root = self.roots[row];
+            for (column, (&value, &norm)) in entries.iter().zip(norms).enumerate() {
+                self.columns[column * n + row] = if norm == 0. {
                     0.
                 } else {
-                    (values[(row, column)] * self.roots[row]) / norms[column]
+                    (value * root) / norm
                 };
             }
         }
@@ -421,13 +423,14 @@ impl SlopeCoefficientWorkspace {
                     Ok(())
                 })?;
         }
-        for column in 0..rhs {
-            for row in 0..n {
-                let value = (self.columns[column * n + row] * norms[column]) / self.roots[row];
+        for (row, entries) in values.as_mut_slice().chunks_exact_mut(rhs).enumerate() {
+            let root = self.roots[row];
+            for (column, (entry, &norm)) in entries.iter_mut().zip(norms).enumerate() {
+                let value = (self.columns[column * n + row] * norm) / root;
                 if !value.is_finite() {
                     return Err(invalid());
                 }
-                values[(row, column)] = value;
+                *entry = value;
             }
         }
         Ok(self.workers.iter().map(|w| w.iterations).max().unwrap_or(0))

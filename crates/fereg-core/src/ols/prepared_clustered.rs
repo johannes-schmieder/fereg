@@ -318,6 +318,8 @@ impl<R: PreparedInferenceReservation> QualifiedClusterSubsetMeatProvider<R>
                     partial_budget_bytes: CLUSTER_PARTIAL_BUDGET_BYTES,
                     ordered_rows_per_block: 16_384,
                     dense_groups_per_block: 1_024,
+                    // Inference runs inside the action's installed team.
+                    planned_threads: rayon::current_num_threads(),
                 },
                 reservation,
             )?

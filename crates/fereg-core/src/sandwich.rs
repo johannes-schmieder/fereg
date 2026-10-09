@@ -767,12 +767,15 @@ where
             let mut product = 0.0_f64;
             let mut correction = 0.0_f64;
             for (right, score_value) in score.iter().copied().enumerate() {
-                compensated_add(
+                neumaier_add(
                     bread[left * dimension + right] * score_value,
                     &mut product,
                     &mut correction,
-                )?;
+                );
             }
+            // A nonfinite Neumaier state stays nonfinite, so one check per
+            // accumulator equals the former per-update check.
+            check_compensated(product, correction)?;
             *influence_value = scale * (product + correction);
             if !influence_value.is_finite() {
                 return Err(invalid_data(
@@ -889,6 +892,9 @@ where
                     partial_budget_bytes: policy.partial_budget_bytes,
                     ordered_rows_per_block: policy.rows_per_block,
                     dense_groups_per_block: policy.rows_per_block,
+                    // Callers run inside the action's installed team, so
+                    // this is its planned worker count.
+                    planned_threads: rayon::current_num_threads(),
                 },
                 reservation,
             )?;
@@ -1573,6 +1579,13 @@ fn checked_square(dimension: usize, message: &'static str) -> Result<usize> {
 
 fn compensated_add(value: f64, sum: &mut f64, correction: &mut f64) -> Result<()> {
     neumaier_add(value, sum, correction);
+    check_compensated(*sum, *correction)
+}
+
+/// The failure `compensated_add` reports, for callers that accumulate with
+/// `neumaier_add` and check once: a nonfinite Neumaier sum or correction
+/// stays nonfinite under further updates.
+pub(crate) fn check_compensated(sum: f64, correction: f64) -> Result<()> {
     if sum.is_finite() && correction.is_finite() {
         Ok(())
     } else {

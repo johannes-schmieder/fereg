@@ -722,9 +722,18 @@ fn classify_row<P: NumericDomainPolicy>(
         return Ok(DropReason::OtherModelExclusion);
     }
 
-    if input.regressors.iter().enumerate().any(|(index, column)| {
-        source_is_ordinary(source_uses, index) && column.is_unavailable(original_row)
-    }) {
+    // One sweep records each class's first unavailability; the precedence
+    // below is unchanged (ordinary, then weight, then FE, then cluster).
+    let (mut missing_ordinary, mut missing_fixed_effect, mut missing_cluster) =
+        (false, false, false);
+    for (index, column) in input.regressors.iter().enumerate() {
+        if column.is_unavailable(original_row) {
+            missing_ordinary |= source_is_ordinary(source_uses, index);
+            missing_fixed_effect |= source_is_fixed_effect(source_uses, index);
+            missing_cluster |= source_is_cluster(source_uses, index);
+        }
+    }
+    if missing_ordinary {
         return Ok(DropReason::MissingRegressor);
     }
 
@@ -737,15 +746,11 @@ fn classify_row<P: NumericDomainPolicy>(
         }
     }
 
-    if input.regressors.iter().enumerate().any(|(index, column)| {
-        source_is_fixed_effect(source_uses, index) && column.is_unavailable(original_row)
-    }) {
+    if missing_fixed_effect {
         return Ok(DropReason::MissingFixedEffect);
     }
 
-    if input.regressors.iter().enumerate().any(|(index, column)| {
-        source_is_cluster(source_uses, index) && column.is_unavailable(original_row)
-    }) {
+    if missing_cluster {
         return Ok(DropReason::MissingCluster);
     }
 

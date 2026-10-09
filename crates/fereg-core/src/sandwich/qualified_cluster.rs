@@ -9,11 +9,12 @@ use rayon::prelude::*;
 use std::cmp::Ordering;
 
 use super::{
-    allocation, compensated_add, invalid_argument, invalid_data, push_reserved, reserved_empty,
-    reserved_filled, FixedBlockReductionPolicy, SandwichDesign, SandwichReservation,
-    SandwichScoreMultiplier,
+    allocation, check_compensated, compensated_add, invalid_argument, invalid_data, push_reserved,
+    reserved_empty, reserved_filled, FixedBlockReductionPolicy, SandwichDesign,
+    SandwichReservation, SandwichScoreMultiplier,
 };
 use crate::error::Result;
+use crate::linalg::neumaier_add;
 
 #[derive(Debug, Clone, Copy)]
 pub(crate) enum QualifiedClusterCertificateRoute<'a> {
@@ -33,6 +34,9 @@ pub(crate) struct QualifiedClusterRoutePolicy {
     pub partial_budget_bytes: usize,
     pub ordered_rows_per_block: usize,
     pub dense_groups_per_block: usize,
+    /// Worker count of the action team; selects between the ordered and the
+    /// dense-table routes, which merge partials in different orders.
+    pub planned_threads: usize,
 }
 
 #[derive(Debug, PartialEq)]
@@ -118,7 +122,7 @@ where
                 groups: reduced.groups,
             });
         }
-        let threads = rayon::current_num_threads();
+        let threads = policy.planned_threads;
         let prefer_ordered =
             threads > 1 && dimension >= 8 || threads >= 8 && nobs >= 16_384 && dimension >= 6;
         if !prefer_ordered {
@@ -1229,34 +1233,46 @@ fn finish_serial_group(
     for coordinate in 0..dimension {
         raw_score[coordinate] = score[coordinate] + corrections[coordinate];
     }
+    // A nonfinite Neumaier state stays nonfinite, so checking each
+    // accumulator once equals the former per-update checks.
     for (row, target) in influence_score.iter_mut().enumerate() {
         let mut value = 0.0;
         let mut correction = 0.0;
         for column in 0..dimension {
-            compensated_add(
+            neumaier_add(
                 bread[row * dimension + column] * (score[column] + corrections[column]),
                 &mut value,
                 &mut correction,
-            )?;
+            );
         }
+        check_compensated(value, correction)?;
         *target = value + correction;
     }
+    let mut finite = true;
     for left in 0..dimension {
         for right in left..dimension {
             let position = left * dimension + right;
-            compensated_add(
+            neumaier_add(
                 raw_score[left] * raw_score[right],
                 &mut raw[position],
                 &mut raw_corrections[position],
-            )?;
-            compensated_add(
+            );
+            neumaier_add(
                 influence_score[left] * influence_score[right],
                 &mut influence[position],
                 &mut influence_corrections[position],
-            )?;
+            );
+            finite &= raw[position].is_finite()
+                & raw_corrections[position].is_finite()
+                & influence[position].is_finite()
+                & influence_corrections[position].is_finite();
         }
     }
-    Ok(())
+    if finite {
+        Ok(())
+    } else {
+        check_compensated(f64::NAN, 0.0)
+    }
 }
 
 fn accumulate_uncompensated(
@@ -1640,6 +1656,7 @@ mod scratch_table_tests {
             partial_budget_bytes: 64 << 20,
             ordered_rows_per_block: 16_384,
             dense_groups_per_block: 1_024,
+            planned_threads: rayon::current_num_threads(),
         };
         for dimension in [6, 7] {
             for weight_kind in 0..4 {
@@ -1695,7 +1712,10 @@ mod scratch_table_tests {
                                     &dimensions,
                                     mask,
                                     QualifiedClusterCertificateRoute::OlsIndependentRaw,
-                                    policy,
+                                    QualifiedClusterRoutePolicy {
+                                        planned_threads: threads,
+                                        ..policy
+                                    },
                                     &mut reservation,
                                 )
                             })
@@ -2063,6 +2083,7 @@ mod paired_scan_tests {
             partial_budget_bytes: 32 << 20,
             ordered_rows_per_block: 16384,
             dense_groups_per_block: 1024,
+            planned_threads: rayon::current_num_threads(),
         }
     }
     fn certificate() -> QualifiedClusterCertificateRoute<'static> {

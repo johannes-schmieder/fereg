@@ -6191,14 +6191,19 @@ fn fill_parallel_group_statistics(
                             "borrowed MAP effect contains an empty final level",
                         ));
                     }
-                    *group_weight = group_weight_sum(members, weights, values.nrows())?;
-                    for (rhs, mean) in level_means.iter_mut().enumerate() {
-                        *mean = group_mean_for_column_with_weight(
-                            members,
-                            rhs,
+                    // Sixty-four-column tiles read each member row segment
+                    // once; every column keeps its member-order recurrence.
+                    let data = values.as_slice();
+                    for (tile, output) in level_means.chunks_mut(PARALLEL_GROUP_MAX_RHS).enumerate()
+                    {
+                        let start = tile * PARALLEL_GROUP_MAX_RHS;
+                        *group_weight = fused_group_means_by_value(
+                            effect,
+                            level,
                             weights,
-                            *group_weight,
-                            values,
+                            values.nrows(),
+                            output,
+                            |row, rhs| data[row * columns + start + rhs],
                         )?;
                     }
                 }
@@ -6208,6 +6213,8 @@ fn fill_parallel_group_statistics(
     )
 }
 
+/// Parallel-lane group means for at most `PARALLEL_GROUP_MAX_RHS` columns,
+/// with stack scratch and the shared (possibly hardware-installed) kernels.
 fn fused_group_means_for_level(
     effect: &crate::fe::BorrowedInterceptEffect<'_>,
     level: usize,
@@ -6215,9 +6222,23 @@ fn fused_group_means_for_level(
     values: &DenseMatrix,
     means: &mut [f64],
 ) -> Result<f64> {
-    fused_group_means_by_value(effect, level, weights, values.nrows(), means, |row, rhs| {
-        values[(row, rhs)]
-    })
+    let members = effect.level_index().checked_members(level)?;
+    let columns = values.ncols();
+    if members.is_empty() || means.len() != columns || columns > PARALLEL_GROUP_MAX_RHS {
+        return Err(invalid_argument(
+            "borrowed MAP fused group dimensions are invalid",
+        ));
+    }
+    let mut scales = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
+    let mut corrections = [0.0_f64; PARALLEL_GROUP_MAX_RHS];
+    kernel_group_means(
+        members,
+        weights,
+        values,
+        &mut scales[..columns],
+        means,
+        &mut corrections[..columns],
+    )
 }
 
 fn fused_group_means_by_value(
@@ -6328,72 +6349,6 @@ fn record_parallel_group_means<R: InterceptCoefficientRecorder>(
     batch.add_intercept_level_major(effect, means, levels)
 }
 
-fn group_weight_sum(members: &[usize], weights: ValidatedWeights<'_>, nrows: usize) -> Result<f64> {
-    let mut weight_sum = 0.0_f64;
-    let mut weight_correction = 0.0_f64;
-    for &observation in members {
-        if observation >= nrows {
-            return Err(invalid_argument(
-                "borrowed MAP membership exceeds the observation axis",
-            ));
-        }
-        neumaier_add(
-            weights.normalized(observation),
-            &mut weight_sum,
-            &mut weight_correction,
-        );
-    }
-    compensated_finite(weight_sum, weight_correction)?;
-    let total_weight = weight_sum + weight_correction;
-    if total_weight.is_finite() && total_weight > 0.0 {
-        Ok(total_weight)
-    } else {
-        Err(invalid_data(
-            "borrowed MAP group weight sum is not finite and positive",
-        ))
-    }
-}
-
-fn group_mean_for_column_with_weight(
-    members: &[usize],
-    rhs: usize,
-    weights: ValidatedWeights<'_>,
-    total_weight: f64,
-    values: &DenseMatrix,
-) -> Result<f64> {
-    let mut scale = 0.0_f64;
-    for &observation in members {
-        if observation >= values.nrows() {
-            return Err(invalid_argument(
-                "borrowed MAP membership exceeds the observation axis",
-            ));
-        }
-        scale = scale.max(values[(observation, rhs)].abs());
-    }
-
-    let mut normalized_sum = 0.0_f64;
-    let mut correction = 0.0_f64;
-    if scale != 0.0 {
-        for &observation in members {
-            neumaier_add(
-                weights.normalized(observation) * (values[(observation, rhs)] / scale),
-                &mut normalized_sum,
-                &mut correction,
-            );
-        }
-        compensated_finite(normalized_sum, correction)?;
-    }
-    let mean = if scale == 0.0 {
-        0.0
-    } else {
-        scale * ((normalized_sum + correction) / total_weight)
-    };
-    if !mean.is_finite() {
-        return Err(invalid_data("borrowed MAP group mean is not finite"));
-    }
-    Ok(mean)
-}
-
 fn group_means(
     members: &[usize],
     weights: ValidatedWeights<'_>,
@@ -6404,10 +6359,31 @@ fn group_means(
     workspace.group_sums.fill(0.0);
     workspace.group_corrections.fill(0.0);
     let columns = values.ncols();
+    kernel_group_means(
+        members,
+        weights,
+        values,
+        &mut workspace.value_scales[..columns],
+        &mut workspace.group_sums[..columns],
+        &mut workspace.group_corrections[..columns],
+    )
+}
+
+/// Weighted group means of every column of `values` over `members`, written
+/// into `sums`; `scales`, `sums` and `corrections` have one entry per column.
+/// Returns the group's total normalized weight.
+fn kernel_group_means(
+    members: &[usize],
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    scales: &mut [f64],
+    sums: &mut [f64],
+    corrections: &mut [f64],
+) -> Result<f64> {
+    scales.fill(0.0);
+    sums.fill(0.0);
+    corrections.fill(0.0);
     let data = values.as_slice();
-    let scales = &mut workspace.value_scales[..columns];
-    let sums = &mut workspace.group_sums[..columns];
-    let corrections = &mut workspace.group_corrections[..columns];
 
     // An installed hardware table runs the same bodies; otherwise they inline.
     let hardware = crate::kernels::installed();

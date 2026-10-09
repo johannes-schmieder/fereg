@@ -36,7 +36,7 @@ pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
     // provisional codes in one hash pass, sort only the distinct levels, and
     // deterministically remap the codes to the canonical total order.
     let initial_levels = values.len().min(4_096);
-    let mut provisional_by_bits = HashMap::<u64, u32>::new();
+    let mut provisional_by_bits = HashMap::<u64, u32, LevelBitsHasher>::default();
     provisional_by_bits
         .try_reserve(initial_levels)
         .map_err(|_| allocation())?;
@@ -102,6 +102,45 @@ pub fn factorize_f64(values: &[f64]) -> Result<EncodedFactor<f64>> {
         *code = remap[*code as usize];
     }
     Ok(EncodedFactor { codes, levels })
+}
+
+/// Hash for normalized `f64` level bits. Provisional codes follow first
+/// appearance and are then remapped to the canonical total order, so the
+/// hasher never affects the result; a fixed finalizer replaces SipHash.
+/// The murmur3 `fmix64` avalanche spreads every input bit into the low bits
+/// the table indexes on (integer-valued doubles have all-zero low bits).
+#[derive(Clone, Copy, Default)]
+struct LevelBitsHasher;
+
+impl std::hash::BuildHasher for LevelBitsHasher {
+    type Hasher = LevelBitsHash;
+
+    fn build_hasher(&self) -> LevelBitsHash {
+        LevelBitsHash(0)
+    }
+}
+
+struct LevelBitsHash(u64);
+
+impl std::hash::Hasher for LevelBitsHash {
+    fn finish(&self) -> u64 {
+        let mut hash = self.0;
+        hash ^= hash >> 33;
+        hash = hash.wrapping_mul(0xff51_afd7_ed55_8ccd);
+        hash ^= hash >> 33;
+        hash = hash.wrapping_mul(0xc4ce_b9fe_1a85_ec53);
+        hash ^ (hash >> 33)
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for &byte in bytes {
+            self.0 = self.0.rotate_left(8) ^ u64::from(byte);
+        }
+    }
+
+    fn write_u64(&mut self, value: u64) {
+        self.0 ^= value;
+    }
 }
 
 // Ordered numeric levels already have the canonical factor order. Count runs

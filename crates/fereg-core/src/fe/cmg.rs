@@ -1636,8 +1636,14 @@ impl GraphCmg {
                             solution,
                         )?;
                     }
-                    subtract_core_fit(design, self.core_effects, &mut correction, local, solution)?;
                 }
+                subtract_core_fits(
+                    design,
+                    self.core_effects,
+                    &mut correction,
+                    0,
+                    &caller.solutions[..width * vertices],
+                )?;
             } else {
                 let correction_metrics = self.project_core_matrix(
                     design,
@@ -1789,14 +1795,14 @@ impl GraphCmg {
                                 solution,
                             )?;
                         }
-                        subtract_core_fit(
-                            design,
-                            self.core_effects,
-                            values,
-                            start + local,
-                            solution,
-                        )?;
                     }
+                    subtract_core_fits(
+                        design,
+                        self.core_effects,
+                        values,
+                        start,
+                        &caller.solutions[..width * vertices],
+                    )?;
                     if let Some(started) = subtract_started {
                         eprintln!("FEREG_PHASE|cmg_batch|rhs={rhs_seconds:.9}|solve={solve_seconds:.9}|subtract={:.9}|width={width}|route={:?}",
                             started.elapsed().as_secs_f64(), self.solver.select_batch_execution(width).map_err(cmg_error)?.execution());
@@ -2947,29 +2953,53 @@ fn nuisance_value(
     }
 }
 
-fn subtract_core_fit(
+/// Subtract the core graph fits of consecutive RHS columns
+/// `first_column..first_column + width`, whose solutions are stored
+/// contiguously (`width` blocks of the vertex count). One row-major pass
+/// replaces one strided pass per column; each element's arithmetic is unchanged.
+fn subtract_core_fits(
     design: &BorrowedInterceptFeDesign<'_>,
     core: [usize; 2],
     values: &mut DenseMatrix,
-    column: usize,
-    solution: &[f64],
+    first_column: usize,
+    solutions: &[f64],
 ) -> Result<()> {
+    if solutions.is_empty() {
+        return Ok(());
+    }
     let vertices = core_vertices(design, core)?;
-    if solution.len() != vertices {
+    if vertices == 0 || solutions.len() % vertices != 0 {
         return Err(invalid_argument(
             "CMG solution and graph dimensions are inconsistent",
+        ));
+    }
+    let width = solutions.len() / vertices;
+    let columns = values.ncols();
+    if first_column
+        .checked_add(width)
+        .is_none_or(|end| end > columns)
+    {
+        return Err(invalid_argument(
+            "CMG solution columns exceed the projected matrix",
         ));
     }
     let left = design.effects()[core[0]].codes();
     let right = design.effects()[core[1]].codes();
     let right_offset = design.effects()[core[0]].n_levels();
-    for row in 0..values.nrows() {
-        let fitted = solution[left[row] as usize] - solution[right_offset + right[row] as usize];
-        let residual = values[(row, column)] - fitted;
-        if !residual.is_finite() {
-            return Err(invalid_data("CMG projection produced a nonfinite residual"));
+    for (row, entries) in values.as_mut_slice().chunks_exact_mut(columns).enumerate() {
+        let left = left[row] as usize;
+        let right = right_offset + right[row] as usize;
+        for (value, solution) in entries[first_column..first_column + width]
+            .iter_mut()
+            .zip(solutions.chunks_exact(vertices))
+        {
+            let fitted = solution[left] - solution[right];
+            let residual = *value - fitted;
+            if !residual.is_finite() {
+                return Err(invalid_data("CMG projection produced a nonfinite residual"));
+            }
+            *value = residual;
         }
-        values[(row, column)] = residual;
     }
     Ok(())
 }
