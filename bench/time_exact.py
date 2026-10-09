@@ -66,6 +66,9 @@ def main() -> int:
     parser.add_argument('--budget', type=float, default=1800, help='total seconds')
     parser.add_argument('--timeout', type=float, default=90, help='seconds per process')
     parser.add_argument('--harness', type=Path, default=ROOT / 'target/timing-harness/timing-harness')
+    parser.add_argument('--result-changing', action='store_true',
+                        help='declared result-changing candidate: require exact repeats per plugin; '
+                             'cross-plugin agreement comes from the scoped replay')
     args = parser.parse_args()
 
     plugins = {label: Path(path).resolve()
@@ -124,10 +127,12 @@ def main() -> int:
                     exact['columns_sha256'] = sha256_file(columns)
                     fingerprint = hashlib.sha256(
                         json.dumps(exact, sort_keys=True, separators=(',', ':')).encode()).hexdigest()
-                    if case.name not in expected:
-                        expected[case.name] = fingerprint
-                        (output / f'{case.stem}-science.json').write_text(json.dumps(exact) + '\n')
-                    if fingerprint != expected[case.name]:
+                    key = (case.name, name) if args.result_changing else case.name
+                    if key not in expected:
+                        expected[key] = fingerprint
+                        suffix = f'-{name}' if args.result_changing else ''
+                        (output / f'{case.stem}{suffix}-science.json').write_text(json.dumps(exact) + '\n')
+                    if fingerprint != expected[key]:
                         raise RuntimeError(f'{case.name}/{name}/r{repetition}: nonexact science or solver signature')
                     seconds = float(re.search(r'NATIVE_SECONDS=([0-9.]+)', run.stderr)[1])
                     records.append({'case': case.name, 'plugin': name, 'repetition': repetition,
@@ -152,6 +157,7 @@ def main() -> int:
         if sha256_file(harness) != meta['harness_sha256']:
             raise RuntimeError('harness changed during timing')
         meta['all_exact'] = True
+        meta['exactness'] = 'per-plugin repeats' if args.result_changing else 'all plugins'
         meta['nonregression_pass'] = all(c['nonregression_pass'] for row in meta['summary']
                                          for c in row['comparisons'].values())
         meta['status'] = 'complete'

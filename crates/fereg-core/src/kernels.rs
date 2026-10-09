@@ -31,6 +31,21 @@ pub type GroupScales =
 pub type ScaledGroupSums =
     fn(Option<&[f64]>, f64, &[f64], &[usize], &[f64], &mut [f64], &mut [f64]);
 
+/// One-pass compensated weighted column sums, column maxima and weight sum
+/// over one group's members:
+/// `(weights, raw_scale, data, rows, members, sums, corrections, maxima)`;
+/// see [`group_sums`].
+pub type GroupSums = fn(
+    Option<&[f64]>,
+    f64,
+    &[f64],
+    usize,
+    &[usize],
+    &mut [f64],
+    &mut [f64],
+    &mut [f64],
+) -> Option<(f64, f64)>;
+
 /// Hardware-compiled instantiations of the kernels below.
 #[derive(Clone, Copy, Debug)]
 pub struct FusedKernels {
@@ -40,6 +55,7 @@ pub struct FusedKernels {
     pub upper_tile: UpperTile,
     pub group_scales: GroupScales,
     pub scaled_group_sums: ScaledGroupSums,
+    pub group_sums: GroupSums,
 }
 
 const PORTABLE_NAME: &str = if cfg!(target_arch = "aarch64") {
@@ -232,6 +248,57 @@ pub fn scaled_group_sums(
             }
         }
     }
+}
+
+/// One-pass group-mean sums over `members` of a row-major `data` matrix with
+/// `sums.len()` columns and `rows` rows. Every column is shifted by the first
+/// member's value: Neumaier-sum `weight * (value - shift)` for every column
+/// and the normalized weights (`weights[row] / raw_scale`, or one when
+/// unweighted) in member order, and raise each column maximum to the largest
+/// absolute member value. The group mean is `shift + sum / weight_sum`, which
+/// is exactly the shared value when all members are equal. The caller falls
+/// back to the scaled two-pass kernels when a sum is not finite or a column is
+/// so small that its products may underflow. Returns `None` for an empty group
+/// or at the first member outside the row axis.
+#[inline(always)]
+#[allow(clippy::too_many_arguments)]
+pub fn group_sums(
+    weights: Option<&[f64]>,
+    raw_scale: f64,
+    data: &[f64],
+    rows: usize,
+    members: &[usize],
+    sums: &mut [f64],
+    corrections: &mut [f64],
+    maxima: &mut [f64],
+) -> Option<(f64, f64)> {
+    let columns = sums.len();
+    let first = *members.first()?;
+    if first >= rows {
+        return None;
+    }
+    let shifts = &data[first * columns..(first + 1) * columns];
+    let mut weight_sum = 0.0_f64;
+    let mut weight_correction = 0.0_f64;
+    for &observation in members {
+        if observation >= rows {
+            return None;
+        }
+        let weight = normalized_weight(weights, raw_scale, observation);
+        neumaier_add(weight, &mut weight_sum, &mut weight_correction);
+        let row = &data[observation * columns..(observation + 1) * columns];
+        for ((((value, shift), sum), correction), maximum) in row
+            .iter()
+            .zip(shifts)
+            .zip(sums.iter_mut())
+            .zip(corrections.iter_mut())
+            .zip(maxima.iter_mut())
+        {
+            *maximum = maximum.max(value.abs());
+            neumaier_add(weight * (value - shift), sum, correction);
+        }
+    }
+    Some((weight_sum, weight_correction))
 }
 
 #[cfg(test)]

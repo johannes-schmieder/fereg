@@ -18,8 +18,9 @@ pub(crate) fn install() {
 #[cfg(target_arch = "x86_64")]
 mod x86_64 {
     use fereg_core::kernels::{
-        group_scales as portable_group_scales, scaled_group_sums as portable_scaled_group_sums,
-        weighted_upper_rank_one, weighted_upper_tile, FusedKernels,
+        group_scales as portable_group_scales, group_sums as portable_group_sums,
+        scaled_group_sums as portable_scaled_group_sums, weighted_upper_rank_one,
+        weighted_upper_tile, FusedKernels,
     };
 
     const HARDWARE: FusedKernels = FusedKernels {
@@ -28,6 +29,7 @@ mod x86_64 {
         upper_tile,
         group_scales,
         scaled_group_sums,
+        group_sums,
     };
 
     /// The hardware table, only when the processor and OS provide FMA and AVX.
@@ -134,6 +136,56 @@ mod x86_64 {
         // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
         unsafe {
             scaled_group_sums_fma(weights, raw_scale, data, members, scales, sums, corrections)
+        }
+    }
+
+    #[target_feature(enable = "fma")]
+    #[allow(clippy::too_many_arguments)]
+    unsafe fn group_sums_fma(
+        weights: Option<&[f64]>,
+        raw_scale: f64,
+        data: &[f64],
+        rows: usize,
+        members: &[usize],
+        sums: &mut [f64],
+        corrections: &mut [f64],
+        maxima: &mut [f64],
+    ) -> Option<(f64, f64)> {
+        portable_group_sums(
+            weights,
+            raw_scale,
+            data,
+            rows,
+            members,
+            sums,
+            corrections,
+            maxima,
+        )
+    }
+
+    #[allow(clippy::too_many_arguments)]
+    fn group_sums(
+        weights: Option<&[f64]>,
+        raw_scale: f64,
+        data: &[f64],
+        rows: usize,
+        members: &[usize],
+        sums: &mut [f64],
+        corrections: &mut [f64],
+        maxima: &mut [f64],
+    ) -> Option<(f64, f64)> {
+        // SAFETY: reachable only through `hardware()`, after FMA/AVX detection.
+        unsafe {
+            group_sums_fma(
+                weights,
+                raw_scale,
+                data,
+                rows,
+                members,
+                sums,
+                corrections,
+                maxima,
+            )
         }
     }
 
@@ -304,6 +356,40 @@ mod x86_64 {
                     );
                     assert_eq!(bits(&portable_sums), bits(&hardware_sums));
                     assert_eq!(bits(&portable_corrections), bits(&hardware_corrections));
+                    let mut one_pass = [vec![0.0; columns], vec![0.0; columns], vec![0.0; columns]];
+                    let mut hardware_pass =
+                        [vec![0.0; columns], vec![0.0; columns], vec![0.0; columns]];
+                    let [sums, corrections, maxima] = &mut one_pass;
+                    let portable_weight = portable_group_sums(
+                        weights,
+                        3.0,
+                        &data,
+                        rows,
+                        &members,
+                        sums,
+                        corrections,
+                        maxima,
+                    )
+                    .expect("valid members");
+                    let [sums, corrections, maxima] = &mut hardware_pass;
+                    let hardware_weight = (hardware.group_sums)(
+                        weights,
+                        3.0,
+                        &data,
+                        rows,
+                        &members,
+                        sums,
+                        corrections,
+                        maxima,
+                    )
+                    .expect("valid members");
+                    assert_eq!(
+                        [portable_weight.0.to_bits(), portable_weight.1.to_bits()],
+                        [hardware_weight.0.to_bits(), hardware_weight.1.to_bits()]
+                    );
+                    for (portable, hardware) in one_pass.iter().zip(&hardware_pass) {
+                        assert_eq!(bits(portable), bits(hardware));
+                    }
                 }
             }
             let mut scales = [0.0];

@@ -5840,9 +5840,10 @@ fn project_effect_serial<
                 weights,
                 auxiliary.expect("validated input projection source"),
                 workspace,
+                GroupMeanRoute::Scaled,
             )?;
         } else {
-            group_means(members, weights, values, workspace)?;
+            group_means(members, weights, values, workspace, GroupMeanRoute::Scaled)?;
         }
         if let Some((batch, effect_index)) = coefficients.as_mut() {
             batch.add_intercept_level(
@@ -5919,6 +5920,7 @@ fn project_effect_parallel<
             values_read,
             &mut workspace.parallel_group_weights[..levels],
             &mut workspace.parallel_group_means[..parallel_mean_count],
+            GroupMeanRoute::Scaled,
         )?;
     }
 
@@ -6024,13 +6026,7 @@ fn project_effect_parallel_fused<
                         let level = first_level + local_level;
                         let start = local_level * columns;
                         let level_means = &mut means[start..start + columns];
-                        fused_group_means_for_level(
-                            effect,
-                            level,
-                            weights,
-                            values_read,
-                            level_means,
-                        )?;
+                        projection_level_means(effect, level, weights, values_read, level_means)?;
                         for (destination, &mean) in accumulated[start..start + columns]
                             .iter_mut()
                             .zip(level_means.iter())
@@ -6057,7 +6053,7 @@ fn project_effect_parallel_fused<
             |first_level, means| {
                 for local_level in 0..means.len() / columns {
                     let start = local_level * columns;
-                    fused_group_means_for_level(
+                    projection_level_means(
                         effect,
                         first_level + local_level,
                         weights,
@@ -6133,6 +6129,7 @@ fn fill_parallel_group_statistics(
     values: &DenseMatrix,
     group_weights: &mut [f64],
     means: &mut [f64],
+    route: GroupMeanRoute,
 ) -> Result<()> {
     let levels = effect.n_levels();
     let columns = values.ncols();
@@ -6165,8 +6162,14 @@ fn fill_parallel_group_statistics(
                 let start = local_level * columns;
                 let level_means = &mut means[start..start + columns];
                 if columns <= PARALLEL_GROUP_MAX_RHS {
-                    *group_weight =
-                        fused_group_means_for_level(effect, level, weights, values, level_means)?;
+                    *group_weight = fused_group_means_for_level(
+                        effect,
+                        level,
+                        weights,
+                        values,
+                        level_means,
+                        route,
+                    )?;
                 } else {
                     let members = effect.level_index().checked_members(level)?;
                     if members.is_empty() {
@@ -6195,6 +6198,23 @@ fn fill_parallel_group_statistics(
         },
     )
 }
+/// Projection-route per-level means (scaled two-pass arithmetic).
+fn projection_level_means(
+    effect: &crate::fe::BorrowedInterceptEffect<'_>,
+    level: usize,
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    means: &mut [f64],
+) -> Result<f64> {
+    fused_group_means_for_level(
+        effect,
+        level,
+        weights,
+        values,
+        means,
+        GroupMeanRoute::Scaled,
+    )
+}
 
 /// Parallel-lane group means for at most `PARALLEL_GROUP_MAX_RHS` columns,
 /// with stack scratch and the shared (possibly hardware-installed) kernels.
@@ -6204,6 +6224,7 @@ fn fused_group_means_for_level(
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
     means: &mut [f64],
+    route: GroupMeanRoute,
 ) -> Result<f64> {
     let members = effect.level_index().checked_members(level)?;
     let columns = values.ncols();
@@ -6221,6 +6242,7 @@ fn fused_group_means_for_level(
         &mut scales[..columns],
         means,
         &mut corrections[..columns],
+        route,
     )
 }
 
@@ -6337,6 +6359,7 @@ fn group_means(
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
     workspace: &mut BorrowedMapWorkspace,
+    route: GroupMeanRoute,
 ) -> Result<f64> {
     workspace.value_scales.fill(0.0);
     workspace.group_sums.fill(0.0);
@@ -6349,13 +6372,107 @@ fn group_means(
         &mut workspace.value_scales[..columns],
         &mut workspace.group_sums[..columns],
         &mut workspace.group_corrections[..columns],
+        route,
     )
 }
 
 /// Weighted group means of every column of `values` over `members`, written
 /// into `sums`; `scales`, `sums` and `corrections` have one entry per column.
 /// Returns the group's total normalized weight.
+/// Which group-mean arithmetic a caller uses. Certificates use the one-pass
+/// sums; projections, whose solvers can amplify rounding changes, keep the
+/// scaled two-pass sums.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum GroupMeanRoute {
+    Scaled,
+    OnePass,
+}
+
+/// Columns whose largest member magnitude is below this bound take the scaled
+/// two-pass route, so unscaled weighted products cannot lose precision to
+/// underflow.
+const GROUP_SUM_MIN_MAGNITUDE: f64 = 1.0e-150;
+
+/// Group means of every column of `values` over `members`, written into
+/// `sums`; `scales`, `sums` and `corrections` have one entry per column.
+/// Returns the group's total normalized weight.
+///
+/// One pass accumulates compensated weighted sums of values shifted by the
+/// first member, and the column maxima, so a group of equal values has exactly
+/// that value as its mean. The scaled two-pass route recomputes the group when
+/// a sum or mean is not finite or a nonzero column lies below
+/// [`GROUP_SUM_MIN_MAGNITUDE`].
 fn kernel_group_means(
+    members: &[usize],
+    weights: ValidatedWeights<'_>,
+    values: &DenseMatrix,
+    scales: &mut [f64],
+    sums: &mut [f64],
+    corrections: &mut [f64],
+    route: GroupMeanRoute,
+) -> Result<f64> {
+    if route == GroupMeanRoute::Scaled {
+        return scaled_kernel_group_means(members, weights, values, scales, sums, corrections);
+    }
+    scales.fill(0.0);
+    sums.fill(0.0);
+    corrections.fill(0.0);
+    let data = values.as_slice();
+    let (rows, raw) = (values.nrows(), weights.raw_scale);
+    let one_pass = match crate::kernels::installed() {
+        Some(kernels) => (kernels.group_sums)(
+            weights.values,
+            raw,
+            data,
+            rows,
+            members,
+            sums,
+            corrections,
+            scales,
+        ),
+        None => crate::kernels::group_sums(
+            weights.values,
+            raw,
+            data,
+            rows,
+            members,
+            sums,
+            corrections,
+            scales,
+        ),
+    };
+    let (weight_sum, weight_correction) = one_pass
+        .ok_or_else(|| invalid_argument("borrowed MAP membership exceeds the observation axis"))?;
+    compensated_finite(weight_sum, weight_correction)?;
+    let total_weight = weight_sum + weight_correction;
+    if !total_weight.is_finite() || total_weight <= 0.0 {
+        return Err(invalid_data(
+            "borrowed MAP group weight sum is not finite and positive",
+        ));
+    }
+    let representable = scales.iter().zip(sums.iter()).zip(corrections.iter()).all(
+        |((&maximum, &sum), &correction)| {
+            (maximum == 0.0 || maximum >= GROUP_SUM_MIN_MAGNITUDE)
+                && ((sum + correction) / total_weight).is_finite()
+        },
+    );
+    if representable {
+        let columns = sums.len();
+        let first = members[0];
+        let shifts = &data[first * columns..(first + 1) * columns];
+        for ((sum, &correction), &shift) in sums.iter_mut().zip(corrections.iter()).zip(shifts) {
+            *sum = shift + (*sum + correction) / total_weight;
+        }
+        if sums.iter().all(|mean| mean.is_finite()) {
+            return Ok(total_weight);
+        }
+    }
+    scaled_kernel_group_means(members, weights, values, scales, sums, corrections)
+}
+
+/// The scaled two-pass group means: divide every member value by its column
+/// maximum before the compensated weighted sum.
+fn scaled_kernel_group_means(
     members: &[usize],
     weights: ValidatedWeights<'_>,
     values: &DenseMatrix,
@@ -6489,7 +6606,13 @@ fn certify_with_current_norms(
                     "borrowed MAP certificate contains an empty final level",
                 ));
             }
-            let group_weight = group_means(members, weights, residuals, workspace)?;
+            let group_weight = group_means(
+                members,
+                weights,
+                residuals,
+                workspace,
+                GroupMeanRoute::OnePass,
+            )?;
             let root_group_weight = group_weight.sqrt();
             if !root_group_weight.is_finite() || root_group_weight <= 0.0 {
                 return Err(invalid_data(
@@ -6580,6 +6703,7 @@ fn certify_effects_parallel(
             residuals,
             &mut workspace.parallel_group_weights[..levels],
             &mut workspace.parallel_group_means[..mean_count],
+            GroupMeanRoute::OnePass,
         )?;
         let group_weights = &workspace.parallel_group_weights[..levels];
         let means = &workspace.parallel_group_means[..mean_count];
@@ -11523,6 +11647,10 @@ mod tests {
             .fold(0.0_f64, f64::max);
         // The unaffected variable RHS already has cancellation error above
         // 1e-13; use the existing borrowed-CG oracle bound for that column.
+        eprintln!(
+            "DEBUG ordinary_error={ordinary_error:e} iterations={}",
+            ordinary.report().iterations
+        );
         assert!(ordinary_error <= 2e-10);
         let recovered = absorb_borrowed_intercept_cg_retaining_certified(
             &design,
