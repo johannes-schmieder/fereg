@@ -730,3 +730,39 @@ thread-local Cells are **verified** by these bounded checks. Windows loading
 of shipped thread-local Cells is **verified**; licensed-Stata batched output
 stores are **still unverified**. These results do not establish full Linux or
 Windows scientific or performance qualification.
+
+### Saved-output follow-up
+
+The Linux parallel-test failure above was an invocation error: FFI allocation
+counters observe the whole process, so simultaneous tests contaminate exact
+allocation deltas. The prescribed serial suite passed all 168 active tests.
+This serializes test cases, not estimator workers. No Linux runtime repair
+was indicated; the original failed result remains recorded above.
+
+Test-only commit `9c08204b74396cb811f61523b3b869836a980b9d` adds the portable
+`observation_stores.do` fixture to the Windows smoke and full Stata profile.
+Its complete 8,192-row sample exercises OLS batched residual/saved-effect
+stores, compares OLS residuals and predictions with explicit dummy regression,
+and checks PPML residuals, means, linear predictors and postestimation output.
+The Mac gate and focused licensed fixture passed. Production identity against
+`8fb67bb5` passed for all 168 runtime modules and 58 artifact inputs.
+
+Windows `stata-do` run `win-20261009T161002Z-0ccd6f09` passed on that exact
+commit, including the new fixture, native build, exact-FMA/fused-kernel tests,
+numeric guards, PE audit, loader and single-runtime checks. The receipt digest,
+source identity and every controller gate were verified; the controller and
+diagnostic collector hashes were unchanged. The wrapper confirmed stopped
+state, transient-object deletion and lock release.
+
+- Plugin SHA-256:
+  `ac92ad817cbbef9adf207f989494210cb32f87edf8b36fab787131a8b00ee359`.
+- Source archive SHA-256:
+  `6f1088302fa603c3075a2f396eed1b527c9a8266e23949779acfdf7395d6e4c0`.
+- Receipt SHA-256:
+  `b87b88e37b7afb63094e47c879015c56ce80c0e4974739b1a2c28eed8053fead`.
+
+Windows licensed-Stata batched output stores are now **verified** by this
+bounded smoke. Together with the preceding Linux evidence, both platforms
+have verified batched stores and loading of shipped thread-local Cells.
+Full platform scientific/performance qualification and full release packaging
+are unchanged by this test-only follow-up.
