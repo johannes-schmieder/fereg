@@ -39,4 +39,6 @@ assert e(rank) >= 1
 assert e(V)[1,1] >= 0 & e(V)[1,1] < .
 assert _b[x] < .
 
+do "tests/stata/installation/observation_stores.do"
+
 display as result "END_FIXTURE|windows_ci_smoke|rc=0"

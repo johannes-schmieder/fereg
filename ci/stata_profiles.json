@@ -376,6 +376,7 @@
         "tests/stata/documentation/feppml_help_examples.do",
         "tests/stata/development/feppml_no_fe_strict_oracle.do",
         "tests/stata/installation/single_runtime.do",
+        "tests/stata/installation/observation_stores.do",
         "tests/stata/installation/factor_availability.do",
         "tests/stata/installation/frequency_singleton_validation.do",
         "tests/stata/installation/slope_dof_validation.do"
