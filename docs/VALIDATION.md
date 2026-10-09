@@ -832,6 +832,12 @@ instance, deleted transient objects and released the lock.
   plugin `c3783aec8de5851866f7590806a8899a18dbb457f2508ac133b082399ed2de13`):
   **pass**, including the mapped-after-release check and licensed Stata.
 
+- `win-20261009T205250Z-b53eee6d`, commit `04a0e255` (archive
+  `e20e528ca3d899822e9344be556467ee15076dc8e9351b4f4d883fbaa3282922`,
+  receipt `309fba3f2bde284d4fa9a4590084cebf8f68373836dc1d2b0bacea9f89a5baea`):
+  **pass**, including the loader's check that a protocol mismatch now ends
+  with the restart-Stata line.
+
 One passing run after the fix bounds, but cannot exclude, a residual race of
 the same kind; the mapped-after-release assertion is deterministic. Mac:
 `scripts/run_tests.sh`, Windows-target clippy for both gates, the 73-case exact
