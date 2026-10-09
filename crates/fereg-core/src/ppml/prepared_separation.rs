@@ -2425,9 +2425,13 @@ fn prepared_project(
 /// the data: every kept regressor and every FE intercept or slope channel has
 /// a weighted residual moment that is zero relative to the channel norm and
 /// the larger of the recurrence and residual norms, within the certificate
-/// tolerance the rectifier decides with. This normalization never exceeds the
-/// one the projection's own FE and score certificates used. Returns `None`
-/// when any check fails; the caller then re-executes the detector.
+/// tolerance the rectifier decides with. Its denominators (the raw channel
+/// norm and the larger recurrence or residual norm) are at least as large as
+/// those of the projection's own FE and score certificates, so a projection
+/// that passed them passes this check; it is an independent recomputation,
+/// not a stricter test. An all-zero recurrence with an all-zero residual is the
+/// trivially certified vanishing projection. Returns `None` when any check
+/// fails; the caller then re-executes the detector.
 ///
 /// Like those certificates, the check works in the rectifier's weighted
 /// metric. Zero-outcome rows carry weight `tolerance^2 / zeros`, so their
@@ -2451,18 +2455,39 @@ fn certify_ir_fixed_point_evidence(
     if recurrence.len() != rows || residual.len() != rows {
         return Ok(None);
     }
-    // The recurrence is nonnegative, supported on zero outcomes and scaled to
-    // a unit maximum, as every rectifier iterate is.
+    // The recurrence is finite, nonnegative and supported on zero outcomes;
+    // it is either scaled to a unit maximum or, after a step that removed
+    // every boundary row, identically zero.
     let mut maximum = 0.0_f64;
     let mut boundary_rows = 0_usize;
-    for (value, entry) in outcome.iter().zip(recurrence) {
-        if !entry.is_finite() || *entry < 0.0 || (*value > 0.0 && *entry != 0.0) {
+    for ((value, entry), residual) in outcome.iter().zip(recurrence).zip(residual) {
+        if !entry.is_finite()
+            || !residual.is_finite()
+            || *entry < 0.0
+            || (*value > 0.0 && *entry != 0.0)
+        {
             return Ok(None);
         }
         boundary_rows += usize::from(*value == 0.0);
         maximum = maximum.max(*entry);
     }
-    if maximum != 1.0 || boundary_rows == 0 {
+    let columns = generation.fit_view().model().columns.len();
+    if boundary_rows == 0
+        || kept_columns.iter().any(|column| *column >= columns)
+        || kept_columns.windows(2).any(|pair| pair[0] >= pair[1])
+    {
+        return Ok(None);
+    }
+    if maximum == 0.0 {
+        // Projecting the zero vector certifies trivially; anything but a zero
+        // residual is not that projection.
+        return Ok(residual
+            .iter()
+            .all(|value| *value == 0.0)
+            .then(|| assess_ir_projection(outcome, |_| 0.0, config).certificate)
+            .flatten());
+    }
+    if maximum != 1.0 {
         return Ok(None);
     }
     let Some(certificate) =
@@ -2669,6 +2694,8 @@ fn replay_numerical_no_drop(
     // reproduce the reported certificate, does the detector run again.
     if observed.method == SeparationMethod::IteratedRectifier
         && observed.status == MethodStatus::NoSeparation
+        && observed.exact_fe_certificate.is_none()
+        && (1..=config.max_ir_iterations).contains(&observed.iterations)
     {
         if let Some(evidence) = observed.fixed_point.as_ref() {
             interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
@@ -5557,12 +5584,21 @@ mod tests {
             .for_each(|value| *value *= 0.5);
         let mut positive_support = evidence.clone();
         positive_support.recurrence[1] = 0.25;
+        let mut nonfinite_residual = evidence.clone();
+        nonfinite_residual.residual[2] = f64::NAN;
+        let mut foreign_column = evidence.clone();
+        foreign_column.kept_columns.push(usize::MAX);
+        let mut zero_recurrence_with_residual = evidence.clone();
+        zero_recurrence_with_residual.recurrence.fill(0.0);
         for corrupted in [
             moment_shift,
             sign_shift,
             zero_fit,
             unnormalized,
             positive_support,
+            nonfinite_residual,
+            foreign_column,
+            zero_recurrence_with_residual,
         ] {
             assert!(
                 certify_ir_fixed_point_evidence(generation, &corrupted, config)
@@ -5575,6 +5611,111 @@ mod tests {
             fallback.fixed_point = Some(corrupted);
             assert_eq!(replay(&fallback), proposal.certificate);
         }
+
+        // A recurrence that every boundary row has left is the vanishing
+        // projection, certified without moments.
+        let vanished = IrFixedPointEvidence {
+            recurrence: vec![0.0; 6],
+            residual: vec![0.0; 6],
+            kept_columns: evidence.kept_columns.clone(),
+        };
+        let vanished_certificate = certify_ir_fixed_point_evidence(generation, &vanished, config)
+            .unwrap()
+            .expect("vanishing projection");
+        assert_eq!(vanished_certificate.direction_scale, 0.0);
+        assert_eq!(vanished_certificate.interior_zero_relative, 0.0);
+
+        // Metadata the evidence cannot vouch for skips the fast path, so the
+        // re-run's equality checks still reject it.
+        let mut wrong_iterations = proposal.clone();
+        wrong_iterations.iterations = 0;
+        assert_eq!(
+            replay_numerical_no_drop(
+                generation,
+                &wrong_iterations,
+                ppml,
+                config,
+                linear,
+                false,
+                &mut |_| Ok(()),
+                None,
+            )
+            .unwrap_err()
+            .code,
+            ErrorCode::NonConvergence
+        );
+    }
+
+    #[test]
+    fn rectifier_fixed_point_evidence_checks_fe_slope_channels() {
+        // g##c.h with an intercept: each level's three positive rows have
+        // distinct h, so no direction separates its zero row.
+        let (mut request, clusters, mut loaded, mut uses) = fixture();
+        let h = SourceId::new(3).unwrap();
+        request.absorbed_terms[0].slope_sources = vec![h];
+        uses[2].fixed_effect = true;
+        loaded.candidate = vec![true; 12];
+        loaded.outcome = column(&[0., 1., 2., 3., 4., 0., 1., 2., 3., 1., 0., 2.]);
+        let xs = [0.5, 1., -1., 2., 1.5, -0.5, 0.25, 3., 2., -1., 1., 0.75];
+        loaded.numeric_sources[0].1 = column(&xs);
+        loaded.numeric_sources[1].1 = column(&[1., 1., 1., 1., 2., 2., 2., 2., 3., 3., 3., 3.]);
+        let hs = [
+            0.3, 1.7, -0.8, 2.4, 1.1, -0.6, 0.9, 2.2, -1.3, 0.4, 1.6, 0.7,
+        ];
+        loaded.numeric_sources[2].1 = column(&hs);
+        let owner = PreparedPpmlModelOwner::new(
+            request,
+            clusters,
+            loaded.clone(),
+            prepare_numeric(&loaded, &uses),
+        )
+        .unwrap();
+        let config = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: false,
+                iterated_rectifier: true,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        let ppml = PpmlConfig::default();
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..PreparedOlsFitConfig::default()
+        };
+        let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+        let generation = coordinator.view().prepared;
+        assert_eq!(
+            generation.prepared().as_ref().effect_specs()[0]
+                .slopes
+                .len(),
+            1
+        );
+        let proposal =
+            prepared_bound_iterated_rectifier(generation, ppml, config, linear, false, &mut |_| {
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(proposal.status, MethodStatus::NoSeparation);
+        let evidence = proposal.fixed_point.clone().expect("terminal evidence");
+        assert_eq!(
+            certify_ir_fixed_point_evidence(generation, &evidence, config).unwrap(),
+            proposal.certificate
+        );
+        // Moving positive rows of the first level along its slope channel
+        // keeps the signs but leaves that channel's moment unexplained.
+        let mut slope_shift = evidence.clone();
+        for row in [1, 2, 3] {
+            slope_shift.residual[row] += 1e-9 * hs[row];
+        }
+        assert!(
+            certify_ir_fixed_point_evidence(generation, &slope_shift, config)
+                .unwrap()
+                .is_none()
+        );
     }
 
     #[test]

@@ -511,11 +511,16 @@ discard that entire fitted session.
 
 A terminal no-drop result is checked before it is reported. For an IR
 fixed point (Johannes, 2026-10-09) the check uses the stored recurrence and
-projection residual: the recurrence is nonnegative, zero on positive
-outcomes and unit-scaled; the stored fitted values reproduce the reported
-sign certificate exactly; and every kept regressor and FE intercept or slope
-channel has a zero weighted residual moment, relative to the channel norm and
-the larger recurrence or residual norm, within the certificate tolerance. If
+projection residual: both are finite; the recurrence is nonnegative, zero
+on positive outcomes and unit-scaled (or identically zero with a zero
+residual, the vanishing projection); the stored fitted values reproduce the
+reported sign certificate exactly; the reported iteration count is in range
+and carries no exact-FE certificate; and every kept regressor and FE
+intercept or slope channel has a zero weighted residual moment, relative to
+the channel norm and the larger recurrence or residual norm, within the
+certificate tolerance. These denominators are at least as large as the
+projection's own certificates use, so this is an independent recomputation,
+not a stricter test. If
 any part fails, the detector is re-executed deterministically, as it is for
 simplex and Mu no-drop results. Like the projection's own certificates, this
 weighted check only weakly constrains fitted values on zero-outcome rows.
