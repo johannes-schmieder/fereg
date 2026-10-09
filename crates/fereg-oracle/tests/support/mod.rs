@@ -1,8 +1,9 @@
-//! Temporary legacy adapter: metadata only, never used by an oracle computation.
+//! Production-runtime adapter for differential tests: builds native requests
+//! from oracle designs; metadata only, never used by an oracle computation.
 use fereg_core::*;
 use fereg_oracle::designs::{Design, WeightKind};
 
-pub fn legacy_fit(
+pub fn native_fit(
     design: &Design,
     config: PreparedOlsFitConfig,
     keep_singletons: bool,

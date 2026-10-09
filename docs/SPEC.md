@@ -768,7 +768,7 @@ disconnected graphs, unequal weights, slopes and multiple RHSs against the
 explicit design, with one grounded coordinate per component. Exercise every
 supported backend, not just auto. Preserve the CMG raw-residual regression
 and the independent witness that FE moment certification alone can accept a
-wrong CG result. Large LSMR stability comparisons include a 100-times-tighter
+wrong CG result (`fereg-oracle/tests/seeded_dense_ols_differential.rs`). Large LSMR stability comparisons include a 100-times-tighter
 solve; reference residual distance is diagnostic when independent accuracy
 and runtime certificates pass, while exact fields and coefficient/VCE/fit
 envelopes remain binding.

@@ -4,19 +4,19 @@ use fereg_core::{FeSolverKind, PreparedOlsExecutionMode, PreparedOlsFitConfig};
 use fereg_oracle::compare::{COEFFICIENT, INFERENCE, PREDICTION};
 use fereg_oracle::designs::{generate, Design, DesignSpec, Graph, WeightKind};
 use fereg_oracle::explicit_ols::{fit_explicit_ols, OracleWeights};
-use support::legacy_fit;
+use support::native_fit;
 #[path = "support/counterexample.rs"]
 mod regression;
 use regression::counterexample;
 
 #[test]
-fn legacy_default_routes_match_seeded_dense_ols_oracles() {
+fn default_routes_match_seeded_dense_ols_oracles() {
     check_seeds(0..96);
 }
 
 #[test]
 #[ignore = "long differential suite: 2,000 independent seeded designs"]
-fn legacy_default_routes_long_differential_suite() {
+fn default_routes_long_differential_suite() {
     check_seeds(0..2000);
 }
 
@@ -50,7 +50,7 @@ fn check_seeds(seeds: std::ops::Range<u64>) {
             ..DesignSpec::default()
         };
         let design = generate(seed, &spec).unwrap();
-        compare_legacy(
+        compare_native(
             &design,
             PreparedOlsFitConfig::default(),
             &format!("seed {seed}, {spec:?}"),
@@ -58,11 +58,11 @@ fn check_seeds(seeds: std::ops::Range<u64>) {
     }
 }
 
-fn compare_legacy(design: &Design, config: PreparedOlsFitConfig, context: &str) {
+fn compare_native(design: &Design, config: PreparedOlsFitConfig, context: &str) {
     let (problem, rows) = design.oracle_problem(false).unwrap();
     let oracle = fit_explicit_ols(&problem).unwrap_or_else(|e| panic!("oracle {context}: {e}"));
     let (fit, prepared) =
-        legacy_fit(design, config, false).unwrap_or_else(|e| panic!("legacy {context}: {e}"));
+        native_fit(design, config, false).unwrap_or_else(|e| panic!("native {context}: {e}"));
     assert_eq!(prepared, rows, "{context}");
     PREDICTION
         .check_slice(fit.residuals(), &oracle.residuals)
@@ -111,7 +111,7 @@ fn repaired_cmg_and_retained_lsmr_match_the_800_row_regression() {
             config.execution.mode = mode;
             config.execution.poolsize = 1;
             config.absorb.solver = solver;
-            compare_legacy(
+            compare_native(
                 &counterexample(),
                 config,
                 &format!("CMG regression {mode:?} {solver:?}"),
@@ -120,15 +120,16 @@ fn repaired_cmg_and_retained_lsmr_match_the_800_row_regression() {
     }
 }
 
+/// SPEC section 20 witness: the FE moment certificate alone can accept a wrong
+/// CG result. CG remains rejected at the public ado boundary (`solver(cg)`).
 #[test]
-#[ignore = "diagnostic legacy-only CG defect; CG is rejected by the public ado boundary"]
-fn legacy_cg_counterexample_detects_false_certification() {
+fn cg_counterexample_shows_moment_certification_alone_is_insufficient() {
     let design = counterexample();
     let (problem, _) = design.oracle_problem(false).unwrap();
     let oracle = fit_explicit_ols(&problem).unwrap();
     let mut config = PreparedOlsFitConfig::default();
     config.absorb.solver = FeSolverKind::Cg;
-    let (fit, _) = legacy_fit(&design, config, false).unwrap();
+    let (fit, _) = native_fit(&design, config, false).unwrap();
     assert!(fit.residual_absorption_report().certified());
     assert!(
         COEFFICIENT
@@ -137,7 +138,7 @@ fn legacy_cg_counterexample_detects_false_certification() {
                 oracle.coefficients[0].unwrap()
             )
             .is_err(),
-        "update/remove this legacy-only diagnostic once the known CG defect is gone"
+        "the CG counterexample no longer separates certification from accuracy; replace this SPEC section 20 witness"
     );
 }
 
@@ -153,13 +154,13 @@ fn cmg_rejects_unsupported_slopes_while_lsmr_remains_available() {
     .unwrap();
     let mut config = PreparedOlsFitConfig::default();
     config.absorb.solver = FeSolverKind::Cmg;
-    assert!(legacy_fit(&design, config, false).is_err());
+    assert!(native_fit(&design, config, false).is_err());
     config.absorb.solver = FeSolverKind::Lsmr;
-    compare_legacy(&design, config, "explicit LSMR slopes");
+    compare_native(&design, config, "explicit LSMR slopes");
 }
 
 #[test]
-fn legacy_inference_matches_independent_dense_outputs_on_exact_dof_designs() {
+fn inference_matches_independent_dense_outputs_on_exact_dof_designs() {
     use fereg_core::{
         fit_prepared_categorical_ols_robust_map, fit_prepared_categorical_ols_unadjusted_map,
         prepare_categorical_ols_data, PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
