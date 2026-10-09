@@ -7,6 +7,7 @@ f _fereg_ols.ado
 f _fereg_estimate_ols.ado
 f _fereg_load.ado
 f _fereg_factor_sample.ado
+f _fereg_indepvars.ado
 f _fereg_memory_baseline.ado
 f _fereg_memory_validate.ado
 f feppml.ado

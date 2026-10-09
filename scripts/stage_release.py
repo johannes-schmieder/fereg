@@ -33,6 +33,7 @@ PRODUCTION_STATA_FILES = (
     "_fereg_estimate_ols.ado",
     "_fereg_load.ado",
     "_fereg_factor_sample.ado",
+    "_fereg_indepvars.ado",
     "_fereg_memory_baseline.ado",
     "_fereg_memory_validate.ado",
     "feppml.ado",

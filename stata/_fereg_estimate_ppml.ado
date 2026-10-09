@@ -1284,34 +1284,8 @@ program define _fereg_estimate_ppml, eclass
             "Inexact?" \ "Nested?")))
         ereturn matrix dof_table = `posted_dof_table', copy
     }
-    local intended_indepvars
-    if `n_terms' > 0 {
-        forvalues slot = 1/`n_terms' {
-            if `status_shadow'[`slot',2] == 2 continue
-            local name : word `slot' of `coefficient_names'
-            local remaining `"`name'"'
-            local intended_name
-            while `"`remaining'"' != "" {
-                gettoken component remaining : remaining, parse("#")
-                if `"`component'"' == "#" {
-                    local intended_name `"`intended_name'#"'
-                    continue
-                }
-                local intended_component `"`component'"'
-                if substr(`"`component'"', 1, 2) == "o." {
-                    local intended_component = substr(`"`component'"', 3, .)
-                }
-                else if regexm(`"`component'"', "^(-?[0-9]+)(b|bn|o)?[.](.+)$") {
-                    local factor_level = regexs(1)
-                    local factor_variable = regexs(3)
-                    local intended_component `"`factor_level'bn.`factor_variable'"'
-                }
-                local intended_name `"`intended_name'`intended_component'"'
-            }
-            local intended_indepvars `"`intended_indepvars' `intended_name'"'
-        }
-    }
-    local intended_indepvars = strtrim(`"`intended_indepvars'"')
+    _fereg_indepvars, target(intended_indepvars) count(`n_terms') ///
+        status(`status_shadow') names(`"`coefficient_names'"')
     if `"`publicmode'"' == "" {
         ereturn local cmd "_fereg_estimate_ppml"
         ereturn local cmdline `"`hidden_cmdline'"'

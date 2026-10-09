@@ -93,38 +93,8 @@ program define _fereg_ols, eclass sortpreserve
     if `coefficient_count' > 0 {
         local posted_indepvars : colfullnames e(b)
     }
-    local intended_indepvars
-    if `coefficient_count' > 0 {
-        forvalues slot = 1/`coefficient_count' {
-            // Pinned reghdfe's e(indepvars) excludes syntax/base coordinates,
-            // retains numerically omitted coordinates, and renders every
-            // retained factor component with Stata's nonbase `bn' marker.
-            // The posted b/V stripe remains the full omission-marked axis.
-            if e(fereg_status)[`slot',2] == 2 continue
-            local name : word `slot' of `posted_indepvars'
-            local remaining `"`name'"'
-            local intended_name
-            while `"`remaining'"' != "" {
-                gettoken component remaining : remaining, parse("#")
-                if `"`component'"' == "#" {
-                    local intended_name `"`intended_name'#"'
-                    continue
-                }
-                local intended_component `"`component'"'
-                if substr(`"`component'"', 1, 2) == "o." {
-                    local intended_component = substr(`"`component'"', 3, .)
-                }
-                else if regexm(`"`component'"', "^(-?[0-9]+)(b|bn|o)?[.](.+)$") {
-                    local factor_level = regexs(1)
-                    local factor_variable = regexs(3)
-                    local intended_component `"`factor_level'bn.`factor_variable'"'
-                }
-                local intended_name `"`intended_name'`intended_component'"'
-            }
-            local intended_indepvars `"`intended_indepvars' `intended_name'"'
-        }
-    }
-    local intended_indepvars = strtrim(`"`intended_indepvars'"')
+    _fereg_indepvars, target(intended_indepvars) count(`coefficient_count') ///
+        status(e(fereg_status)) names(`"`posted_indepvars'"')
     ereturn scalar fereg_v_determinant = e(fereg_certificate)[31,2]
     ereturn local indepvars `"`intended_indepvars'"'
     ereturn local cmd "_fereg_ols"
