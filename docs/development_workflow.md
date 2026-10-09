@@ -33,6 +33,42 @@ controller's `stata-do` profile uses `windows-ci.do` for an exact-source build,
 checksum verification and licensed OLS/PPML smoke checks. A successful build is
 not a full scientific or performance qualification for that platform.
 
+Windows failures have two independent reports: the controller's process outcome
+(reported failure, exit without a marker, invalid marker, launch failure or
+timeout) and the last project stage, with native and Stata return codes. Read
+`WINDOWS_CONTROLLER_OUTCOME`, `WINDOWS_LAST_STAGE`, `WINDOWS_STAGE_REASON` and
+the optional `WINDOWS_NATIVE_RC`, `WINDOWS_STATA_RC` and `WINDOWS_RUST_ERROR`
+lines from the accepted Windows wrapper. Its source-bound JSON receipt retains
+completed stages, elapsed time and the verified plugin hash. A timeout reports
+the stage that was still running; it does not establish that stage's cause.
+
+| Last stage | Next investigation |
+| --- | --- |
+| `startup`, `toolchain`, `source_identity` | Driver startup, installed tools or exact source manifest |
+| `cargo_build` | Native exit code and bounded Rust error codes/source locations |
+| `exact_fma`, `fused_kernels`, `numeric_guards` | The named arithmetic or native safety test |
+| `c_bridge`, `plugin_link`, `binary_audit`, `native_loader` | C compilation, linkage, ABI or actual-plugin loading |
+| `checksum` | Plugin checksum and verification receipt |
+| `stata_smoke`, `single_runtime` | The corresponding Stata fixture and Stata return code |
+| `unknown` | Controller startup or missing/invalid diagnostic data; no project result is established |
+
+`scripts/windows_ci_report.ps1` writes stage data and an atomic final marker;
+`scripts/windows_ci_diagnostics.py` validates a fixed set of fields before they
+leave Windows. Raw Stata logs, exception text and environment values are never
+collected. Native build failures remain the primary diagnosis even when Stata
+subsequently reports a missing plugin. Success requires every stage and the
+current plugin hash, in addition to the final marker.
+
+Run collector tests with `python3 -m unittest discover -s tests/python -p
+test_windows_ci_diagnostics.py`. On Windows PowerShell 5.1,
+`ci/test_windows_diagnostics.ps1 -Controller <installed-controller-path>` tests
+the actual process loop, partial markers, early exits and timeout tree cleanup
+using isolated child processes. It does not invoke licensed Stata or AWS.
+`ci/windows_controller.patch` records the shared controller integration against
+its accepted baseline. Changes to the installed controller or collector require
+the Windows skill's maintenance workflow and matching hash pins in the wrapper;
+editing a project copy alone does not update the shared service.
+
 Use `scripts/run_plugin_replay.sh` for real-plugin independent dense science and
 fixed-thread repeat checks. A prior binary may additionally serve as an exact
 regression comparator. It is not a second installed runtime or scientific authority.

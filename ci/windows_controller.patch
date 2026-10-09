@@ -1,0 +1,170 @@
+--- a/Invoke-WindowsCI.ps1
++++ b/Invoke-WindowsCI.ps1
+@@ -96,6 +96,26 @@
+ }
+ 
+ 
++
++$FeregDiagnosticGuard = 'C:\WindowsCI\fereg_windows_diagnostics.py'
++$FeregDiagnosticGuardHash = '37095cbf9ecbc91e796e3ff0e24a0d0ca7db96e3ae7e9af238f98d390a77ac3d'
++function Get-FeregDiagnostics {
++    try {
++        if (-not (Test-Path -LiteralPath $FeregDiagnosticGuard -PathType Leaf) -or
++            (Get-FileHash -LiteralPath $FeregDiagnosticGuard -Algorithm SHA256).Hash.ToLowerInvariant() -ne $FeregDiagnosticGuardHash) {
++            throw 'DIAGNOSTIC_GUARD_IDENTITY'
++        }
++        $python = (Get-Command python.exe -ErrorAction Stop).Source
++        $text = & $python -I $FeregDiagnosticGuard collect --root $SourceRoot 2>$null
++        if ($LASTEXITCODE -ne 0 -or ($text | Out-String).Length -gt 8192) { throw 'DIAGNOSTIC_UNAVAILABLE' }
++        return (($text | Out-String) | ConvertFrom-Json)
++    } catch {
++        return [pscustomobject]@{available=$false; status='UNAVAILABLE'; stage='unknown'; completed=@();
++            native_rc=$null; stata_rc=$null; reason='unavailable'; plugin_sha256=$null;
++            stage_elapsed_ms=$null; compiler_errors=@()}
++    }
++}
++
+ $status = 'FAIL'
+ $errorCode = 'CONTROLLER_ERROR'
+ $bucketName = $null
+@@ -141,6 +161,7 @@
+         Remove-Item -Force -ErrorAction SilentlyContinue
+ }
+ 
++$script:StataProcess = [ordered]@{outcome='not_run'; elapsed_ms=0; exit_code=$null}
+ function Invoke-StataDo {
+     param(
+         [Parameter(Mandatory = $true)][string]$DoFile,
+@@ -149,29 +170,81 @@
+         [Parameter(Mandatory = $true)][string]$ExpectedMarker
+     )
+ 
+-    $stataExecutable = Get-StataExecutable
+-    if (-not $stataExecutable) {
++    $watch = [Diagnostics.Stopwatch]::StartNew()
++    $process = $null
++    $script:StataProcess = [ordered]@{outcome='launch_failed'; elapsed_ms=0; exit_code=$null}
++    try {
++        $stataExecutable = Get-StataExecutable
++        if (-not $stataExecutable) {
++            $script:StataProcess.outcome = 'executable_missing'
++            return $false
++        }
++        Remove-Item -LiteralPath $StatusFile -Force -ErrorAction SilentlyContinue
++        try {
++            $process = Start-Process -FilePath $stataExecutable -ArgumentList @('/q', '/e', 'do', ('"{0}"' -f $DoFile)) -WorkingDirectory $WorkingDirectory -PassThru
++        } catch { return $false }
++        while ($watch.ElapsedMilliseconds -lt 900000) {
++            if (Test-Path -LiteralPath $StatusFile) {
++                $item = Get-Item -LiteralPath $StatusFile
++                if ($item.PSIsContainer -or $item.Length -gt 128 -or ($item.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
++                    $script:StataProcess.outcome = 'invalid_status'
++                    return $false
++                }
++                # Other projects can create the marker before writing/closing it.
++                # An incomplete prefix or a sharing violation is not yet failure.
++                $marker = $null
++                try { $marker = (Get-Content -LiteralPath $StatusFile -Raw).Trim() } catch {}
++                if ($null -eq $marker -or $marker.Length -eq 0 -or
++                    ($marker -cne $ExpectedMarker -and $ExpectedMarker.StartsWith($marker, [StringComparison]::Ordinal)) -or
++                    ($marker -cne 'WINDOWS_CI=FAIL' -and 'WINDOWS_CI=FAIL'.StartsWith($marker, [StringComparison]::Ordinal))) {
++                    $process.Refresh()
++                    if (-not $process.HasExited) { Start-Sleep -Milliseconds 250; continue }
++                    $script:StataProcess.outcome = 'invalid_status'
++                    return $false
++                }
++                if ($marker -ceq $ExpectedMarker) {
++                    $script:StataProcess.outcome = 'passed'
++                    return $true
++                }
++                $script:StataProcess.outcome = if ($marker -ceq 'WINDOWS_CI=FAIL') { 'reported_failure' } else { 'invalid_status' }
++                return $false
++            }
++            $process.Refresh()
++            if ($process.HasExited) {
++                # Recheck after observing exit to close the final-marker race.
++                if (Test-Path -LiteralPath $StatusFile) { continue }
++                $script:StataProcess.outcome = 'exited_without_status'
++                return $false
++            }
++            Start-Sleep -Milliseconds 250
++        }
++        $script:StataProcess.outcome = 'timeout'
+         return $false
+-    }
+-
+-    Remove-Item -LiteralPath $StatusFile -Force -ErrorAction SilentlyContinue
+-    $process = Start-Process -FilePath $stataExecutable -ArgumentList @('/q', '/e', 'do', ('"{0}"' -f $DoFile)) -WorkingDirectory $WorkingDirectory -PassThru
+-    $deadline = [DateTime]::UtcNow.AddMinutes(15)
+-    while (([DateTime]::UtcNow -lt $deadline) -and -not (Test-Path -LiteralPath $StatusFile)) {
+-        Start-Sleep -Seconds 2
+-    }
+-
+-    if (-not (Test-Path -LiteralPath $StatusFile)) {
+-        if (-not $process.HasExited) {
+-            Stop-Process -Id $process.Id -Force -ErrorAction SilentlyContinue
+-        }
++    } catch {
++        $script:StataProcess.outcome = 'invalid_status'
++        return $false
++    } finally {
++        $cleanupFailed = $false
++        if ($null -ne $process) {
++            if (-not $process.HasExited) { $null = $process.WaitForExit(2000) }
++            if ($process.HasExited) {
++                $process.Refresh()
++                $script:StataProcess.exit_code = $process.ExitCode
++            } else {
++                # A timed-out Stata shell can own Cargo/MSVC descendants.
++                try { & "$env:SystemRoot\System32\taskkill.exe" /PID $process.Id /T /F >$null 2>$null } catch {}
++                $cleanupFailed = -not $process.WaitForExit(5000)
++            }
++            $process.Dispose()
++        }
++        $watch.Stop()
++        $script:StataProcess.elapsed_ms = [long]$watch.ElapsedMilliseconds
+         Remove-StataLogs -Root $WorkingDirectory
+-        return $false
+-    }
+-
+-    $marker = (Get-Content -LiteralPath $StatusFile -Raw).Trim()
+-    Remove-StataLogs -Root $WorkingDirectory
+-    return ($marker -eq $ExpectedMarker)
++        if ($cleanupFailed) {
++            $script:StataProcess.outcome = 'cleanup_failed'
++            throw 'STATA_PROCESS_CLEANUP_FAILED'
++        }
++    }
+ }
+ 
+ function Assert-SafeArchivePaths {
+@@ -329,6 +402,14 @@
+             }
+             $checks.stata = Invoke-StataDo -DoFile $projectDo -WorkingDirectory $SourceRoot -StatusFile $projectStatus -ExpectedMarker 'WINDOWS_CI=PASS'
+             $checks.project_test = $checks.stata
++            if ($Project -eq 'fereg' -and $checks.stata) {
++                $feregDiagnostic = Get-FeregDiagnostics
++                if (-not $feregDiagnostic.available -or $feregDiagnostic.status -cne 'PASS') {
++                    $checks.project_test = $false
++                    $errorCode = 'FEREG_DIAGNOSTIC_INCOMPLETE'
++                    throw $errorCode
++                }
++            }
+             if (-not $checks.stata) {
+                 $errorCode = 'STATA_DRIVER_FAILED'
+                 throw $errorCode
+@@ -406,6 +487,14 @@
+         $receipt.failure_stage = $failureStage
+         $receipt.stata_rc = $stataReturnCode
+         $receipt.input_identity_sha256 = $inputIdentityHash
++    }
++
++    if ($Project -eq 'fereg') {
++        $receipt.schema_version = 4
++        $receipt.controller_sha256 = (Get-FileHash -LiteralPath $PSCommandPath -Algorithm SHA256).Hash.ToLowerInvariant()
++        $receipt.diagnostic_guard_sha256 = $FeregDiagnosticGuardHash
++        $receipt.process = $script:StataProcess
++        $receipt.diagnostics = Get-FeregDiagnostics
+     }
+ 
+     $receiptUploaded = $false

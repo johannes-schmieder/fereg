@@ -31,6 +31,8 @@ __pycache__/
 native-artifacts/
 release-artifacts/
 /windows-ci.status
+/windows-ci-diagnostics.json
+/windows-ci-*.tmp
 /feppml-platform-load-capture.json
 /feppml-windows-platform-source-manifest.json
 /feppml-windows-results.zip
