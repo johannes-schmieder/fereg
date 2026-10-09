@@ -766,3 +766,37 @@ bounded smoke. Together with the preceding Linux evidence, both platforms
 have verified batched stores and loading of shipped thread-local Cells.
 Full platform scientific/performance qualification and full release packaging
 are unchanged by this test-only follow-up.
+
+## 2026-10-09 measurement-driven performance work
+
+A profile of the frozen workloads plus a new 200,000-row PPML case with 30%
+zero outcomes (`replay_large --zero-fraction 0.3 --separation "fe simplex ir"`)
+directed four changes (commits 02936956 through 7dd56c01):
+
+- IR no-separation results are certified from stored evidence (finite,
+  unit-scaled recurrence; exact reproduction of the sign certificate; zero
+  weighted residual moments on every kept regressor and FE channel) instead
+  of a full detector re-run, with the re-run as fallback (Johannes's
+  decision, SPEC §14). Published outputs are unchanged; an independent review
+  found no way to change a result and its follow-ups are applied. The
+  rectifier workload runs at 0.78 (one worker) and 0.88 (four) of its prior
+  time; `ppml-scientific` passes on 297fc495.
+- FE certificate group means use one compensated pass over values shifted by
+  each group's first member (declared roundoff-level change, scope file
+  `tests/replay/scopes/2026-10-09-certificate-one-pass-group-means.json`:
+  FE-certificate norm cells only; all coefficients, covariances, residuals,
+  iteration counts and discrete decisions exact at one, two and four
+  workers). Projections and CG keep the scaled two-pass kernel. Quiet Mac
+  timing passed on all 18 frozen workloads; the replay baseline is now
+  d4b68d26 (SHA-256 prefix 4c1a432f).
+- Arithmetic-preserving: contiguous gathering in the strided score-Gram
+  certificate (129-column robust case 0.83/0.88) and four-row tiles for the
+  dense covariance meat (0.92/0.93).
+
+The hardware (FMA/AVX) instantiation of the new group-sum kernel has not
+been run on an FMA host; Rosetta reports no FMA. A branchless Neumaier
+update measured within noise and was not kept. Remaining measured
+candidates: streaming the certificate's group sums by row (bit-identical in
+principle, needs admitted per-level workspace), in-place row compaction for
+samples with drops, and the three-FE LSMR path inside the pinned `within`
+dependency. PPML time is spread across many kernels with no line above 3%.

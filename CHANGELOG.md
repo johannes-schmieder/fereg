@@ -2,6 +2,15 @@
 
 ## 0.5.0 beta — unreleased
 
+- PPML separation: a no-separation result from the iterated rectifier is now
+  certified by a direct check of the stored projection instead of re-running
+  the detector, which removes one expensive weighted projection; results are
+  unchanged and the re-run remains the fallback. A 200,000-row PPML model with
+  30% zero outcomes ran 12-22% faster in a bounded Mac check.
+- Faster FE certificates (one compensated pass per group mean, a declared
+  roundoff-level change to certificate diagnostics only) and faster robust
+  covariance for wide models. All coefficients and standard errors are
+  unchanged.
 - Cleanup program (2026-10-09), phases 2 and 3: OLS estimation now honours
   Break during its numerical phase; checked batched observation stores run on
   Linux and Windows; frontend return codes and messages follow the reviewed
