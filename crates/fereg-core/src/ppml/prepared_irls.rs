@@ -1725,15 +1725,20 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
             PpmlPhase::ObjectiveLineSearch,
         );
         if let PreparedPpmlIrlsPurpose::MuExploration { mu_tolerance } = purpose {
-            let minimum_positive = outcome
-                .iter()
-                .zip(workspace.mean())
-                .filter_map(|(y, mean)| (*y > 0.0).then_some(*mean))
-                .fold(f64::INFINITY, f64::min);
-            let reached = outcome
-                .iter()
-                .zip(workspace.mean())
-                .any(|(y, mean)| *y == 0.0 && *mean <= mu_tolerance * minimum_positive);
+            // One pass: some zero-outcome mean is at or below the threshold
+            // exactly when the smallest one is.
+            let mut minimum_positive = f64::INFINITY;
+            let mut minimum_zero = f64::INFINITY;
+            let mut has_zero = false;
+            for (y, mean) in outcome.iter().zip(workspace.mean()) {
+                if *y > 0.0 {
+                    minimum_positive = minimum_positive.min(*mean);
+                } else if *y == 0.0 {
+                    has_zero = true;
+                    minimum_zero = minimum_zero.min(*mean);
+                }
+            }
+            let reached = has_zero && minimum_zero <= mu_tolerance * minimum_positive;
             if reached {
                 exploration_terminal = PreparedPpmlMuTerminal::CandidateThresholdReached;
                 break;

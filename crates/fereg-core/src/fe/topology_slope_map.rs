@@ -2951,15 +2951,34 @@ fn group_moments_with_row_cache(
             }
         }
     } else {
+        const STACK_CHANNELS: usize = 8;
+        let mut basis = [0.0_f64; STACK_CHANNELS];
+        let stack_basis = channels <= STACK_CHANNELS;
         for &row in members {
             let weight = weights.value(row);
+            // Each basis value is one division of an immutable row value;
+            // computing it once per row leaves every product unchanged.
+            if stack_basis {
+                for (channel, value) in basis[..channels].iter_mut().enumerate() {
+                    *value = effect.basis_value(channel, row, &workspace.channel_scales);
+                }
+            }
             for left in 0..channels {
-                let left_basis = effect.basis_value(left, row, &workspace.channel_scales);
+                let left_basis = if stack_basis {
+                    basis[left]
+                } else {
+                    effect.basis_value(left, row, &workspace.channel_scales)
+                };
+                // Index form keeps the stack and recomputed bases on one path.
+                #[allow(clippy::needless_range_loop)]
                 for right in 0..channels {
+                    let right_basis = if stack_basis {
+                        basis[right]
+                    } else {
+                        effect.basis_value(right, row, &workspace.channel_scales)
+                    };
                     compensated_add(
-                        weight
-                            * left_basis
-                            * effect.basis_value(right, row, &workspace.channel_scales),
+                        weight * left_basis * right_basis,
                         &mut workspace.gram[left * channels + right],
                         &mut workspace.gram_corrections[left * channels + right],
                     )?;
