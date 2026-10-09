@@ -1629,33 +1629,34 @@ fn fill_retained_dense_partitioned(
     gram: &mut [f64],
 ) -> Result<()> {
     let dimension = rhs.len();
-    if let Some(scales) = scales {
-        if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
-            return fill_retained_dense_standardized_rows(
-                values,
-                selected_columns,
-                response,
-                weights,
-                divisor,
-                scales,
-                layout,
-                rhs,
-                gram,
-            );
-        }
-        if layout.columns_per_partition > 1 {
-            return fill_retained_dense_standardized_tiles(
-                values,
-                selected_columns,
-                response,
-                weights,
-                divisor,
-                scales,
-                layout,
-                rhs,
-                gram,
-            );
-        }
+    // Scaled and unscaled sources share the row and tile kernels (and an
+    // installed hardware table): each entry gets the same weight product and
+    // one mul_add per observation in row order, with each value checked once.
+    if dimension <= FIXED_BLOCK_MOMENT_MAX_COLUMNS {
+        return fill_retained_dense_standardized_rows(
+            values,
+            selected_columns,
+            response,
+            weights,
+            divisor,
+            scales,
+            layout,
+            rhs,
+            gram,
+        );
+    }
+    if layout.columns_per_partition > 1 {
+        return fill_retained_dense_standardized_tiles(
+            values,
+            selected_columns,
+            response,
+            weights,
+            divisor,
+            scales,
+            layout,
+            rhs,
+            gram,
+        );
     }
     crate::parallel::stage_try_for_each(
         rhs.par_chunks_mut(layout.columns_per_partition)
@@ -1717,7 +1718,7 @@ fn fill_retained_dense_standardized_rows(
     response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
-    scales: &[f64],
+    scales: Option<&[f64]>,
     layout: FiniteWlsMomentLayout,
     rhs: &mut [f64],
     gram: &mut [f64],
@@ -1740,7 +1741,7 @@ fn fill_retained_dense_standardized_rows(
                         let source_column =
                             selected_columns.map_or(column, |selected| selected[column]);
                         standardized[column] =
-                            scaled_column(source[source_column], Some(scales), column)?;
+                            scaled_column(source[source_column], scales, column)?;
                     }
                     crate::kernels::upper_rank_one(
                         hardware,
@@ -1768,7 +1769,7 @@ fn fill_retained_dense_standardized_tiles(
     response: FiniteResponse<'_>,
     weights: BorrowedMapWeights<'_>,
     divisor: f64,
-    scales: &[f64],
+    scales: Option<&[f64]>,
     layout: FiniteWlsMomentLayout,
     rhs: &mut [f64],
     gram: &mut [f64],
@@ -1797,8 +1798,7 @@ fn fill_retained_dense_standardized_tiles(
                     {
                         let left = left_base + offset;
                         let source_left = selected_columns.map_or(left, |selected| selected[left]);
-                        *weighted_left =
-                            weight * scaled_column(source[source_left], Some(scales), left)?;
+                        *weighted_left = weight * scaled_column(source[source_left], scales, left)?;
                         let destination = &mut rhs_rows[local_start + offset];
                         *destination = weighted_left.mul_add(response_value, *destination);
                     }
@@ -1811,7 +1811,7 @@ fn fill_retained_dense_standardized_tiles(
                             let right = right_start + offset;
                             let source_right =
                                 selected_columns.map_or(right, |selected| selected[right]);
-                            *value = scaled_column(source[source_right], Some(scales), right)?;
+                            *value = scaled_column(source[source_right], scales, right)?;
                         }
                         crate::kernels::upper_tile(
                             hardware,

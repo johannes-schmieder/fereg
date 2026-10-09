@@ -256,7 +256,9 @@ fn dense_finite_inputs<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
             weights,
             reservation,
             max_fast_score_cache_bytes,
-            false,
+            // Borrow numeric sources once instead of per-cell recipe dispatch;
+            // tests pin the bound and unbound caches as bit-identical.
+            true,
         )?
     } else {
         None

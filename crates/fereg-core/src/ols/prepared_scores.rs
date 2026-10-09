@@ -629,15 +629,26 @@ fn fill_raw_score_block<P: PreparedOlsFitView + ?Sized>(
             "prepared robust raw score block dimensions are inconsistent",
         ));
     }
-    for row in 0..nrows {
+    // Resolve each column recipe once per row tile instead of per cell; the
+    // copied values are exactly `fit_column_value`'s.
+    const TILE_ROWS: usize = 128;
+    for start in (0..nrows).step_by(TILE_ROWS) {
+        let end = (start + TILE_ROWS).min(nrows);
         for (column, generated) in generated_columns.iter().copied().enumerate() {
-            let value = prepared.fit_column_value(generated, row)?;
-            if !value.is_finite() {
-                return Err(invalid_data(
-                    "prepared robust raw score design contains a nonfinite value",
-                ));
-            }
-            output[row * rank + column] = value;
+            crate::prepared_fit_view::visit_prepared_column_range(
+                prepared,
+                generated,
+                start..end,
+                |row, value| {
+                    if !value.is_finite() {
+                        return Err(invalid_data(
+                            "prepared robust raw score design contains a nonfinite value",
+                        ));
+                    }
+                    output[row * rank + column] = value;
+                    Ok(())
+                },
+            )?;
         }
     }
     Ok(())

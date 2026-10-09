@@ -291,14 +291,22 @@ impl Plan {
     }
 }
 
+/// A generated column bound once, so the N x K loops avoid per-cell recipe
+/// dispatch. Each variant returns exactly `fit_column_value`'s value.
 enum Column<'a, P: ?Sized> {
     Numeric(&'a [f64]),
+    /// Factor indicator `f64::from(codes[row] == level)`.
+    Indicator(&'a [u32], u32),
+    /// Intercept (one) or a factor column without a level (zero).
+    Constant(f64),
     Generated(&'a P, usize),
 }
 impl<P: ?Sized> Clone for Column<'_, P> {
     fn clone(&self) -> Self {
         match self {
             Self::Numeric(v) => Self::Numeric(v),
+            Self::Indicator(codes, level) => Self::Indicator(codes, *level),
+            Self::Constant(value) => Self::Constant(*value),
             Self::Generated(p, j) => Self::Generated(p, *j),
         }
     }
@@ -308,6 +316,8 @@ impl<P: PreparedOlsFitView + ?Sized> Column<'_, P> {
     fn value(&self, row: usize) -> Result<f64> {
         match self {
             Self::Numeric(x) => Ok(x[row]),
+            Self::Indicator(codes, level) => Ok(f64::from(codes[row] == *level)),
+            Self::Constant(value) => Ok(*value),
             Self::Generated(p, j) => p.fit_column_value(*j, row),
         }
     }
@@ -672,22 +682,39 @@ fn build<'a, P: PreparedOlsFitView + Sync + ?Sized>(
     columns.push(Column::Numeric(response));
     for &j in generated {
         let recipe = prepared.fit_model().columns.get(j).ok_or_else(declined)?;
-        if let PreparedOlsColumnKind::Continuous {
-            prepared_source_index,
-            ..
-        } = recipe.kind
-        {
-            let values = prepared
-                .fit_sample()
-                .regressors
-                .get(prepared_source_index)
-                .ok_or_else(declined)?;
-            if values.len() != n {
-                return Err(declined());
+        match &recipe.kind {
+            PreparedOlsColumnKind::Continuous {
+                prepared_source_index,
+                ..
+            } => {
+                let values = prepared
+                    .fit_sample()
+                    .regressors
+                    .get(*prepared_source_index)
+                    .ok_or_else(declined)?;
+                if values.len() != n {
+                    return Err(declined());
+                }
+                columns.push(Column::Numeric(values));
             }
-            columns.push(Column::Numeric(values));
-        } else {
-            columns.push(Column::Generated(prepared, j));
+            PreparedOlsColumnKind::Intercept => columns.push(Column::Constant(1.0)),
+            PreparedOlsColumnKind::Categorical {
+                level_code: None, ..
+            } => columns.push(Column::Constant(0.0)),
+            PreparedOlsColumnKind::Categorical {
+                categorical_source_index,
+                level_code: Some(level),
+                ..
+            } => {
+                let codes = prepared.fit_categorical_codes(*categorical_source_index)?;
+                if codes.len() != n {
+                    return Err(declined());
+                }
+                columns.push(Column::Indicator(codes, *level));
+            }
+            PreparedOlsColumnKind::CategoricalInteraction { .. } => {
+                columns.push(Column::Generated(prepared, j));
+            }
         }
     }
     let mut parent = budget.reserve(q, 0_usize)?;
