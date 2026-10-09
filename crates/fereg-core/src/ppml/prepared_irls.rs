@@ -4212,14 +4212,7 @@ fn add_relative_score(
     square: &mut CompensatedSum,
     count: &mut usize,
 ) {
-    let denominator = basis_norm * score_scale;
-    let relative = if denominator > 0.0 {
-        moment.abs() / denominator
-    } else if moment == 0.0 {
-        0.0
-    } else {
-        f64::INFINITY
-    };
+    let relative = super::certificate::relative_moment(moment, basis_norm, score_scale);
     *infinity = (*infinity).max(relative);
     square.add(relative * relative);
     *count += 1;

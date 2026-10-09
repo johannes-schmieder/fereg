@@ -1308,14 +1308,7 @@ fn add_relative(
     square: &mut f64,
     count: &mut usize,
 ) {
-    let denominator = basis_norm * reference;
-    let relative = if denominator > 0.0 {
-        moment.abs() / denominator
-    } else if moment == 0.0 {
-        0.0
-    } else {
-        f64::INFINITY
-    };
+    let relative = super::certificate::relative_moment(moment, basis_norm, reference);
     *infinity = (*infinity).max(relative);
     *square = relative.mul_add(relative, *square);
     *count = count.saturating_add(1);

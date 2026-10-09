@@ -1,0 +1,170 @@
+{
+ "cases": {
+  "ppml-00": {
+   "input_sha256": "93c53efa6f43c1267f76c80c3fcc1c70de4b755e7b5896f44d6d7326e9dec409",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-01": {
+   "input_sha256": "d6d2f66c3350a26c7687ed335c01501df5b871aa5647b898ebf2400babca019a",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2",
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-02": {
+   "input_sha256": "c308c31e167cd492ee5145458df45745361685608c6ca7a751883e20f63e1102",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2",
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-03": {
+   "input_sha256": "71911f5efd1cfa281f1a4f0bfea9311584a72e7053331a641e1fc739850d620c",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2",
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-04": {
+   "input_sha256": "b2574be81d83ba4c48359db3b74919380c96b8e2d0242274462560b9cd17a849",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-05": {
+   "input_sha256": "332a68999d842b5da46f8241c523cc0f277307224440d1c5e95f23c21c2f2963",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2",
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-08": {
+   "input_sha256": "a71debfd839a8718b45c6e9cb60aad916e3d313d86c12ae427690379a0957ab9",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RSOLVER/bits/71",
+    "/matrices/RSOLVER/bits/72"
+   ]
+  },
+  "ppml-09": {
+   "input_sha256": "1f59e65ca736e0ff91cff3a6fa131a061b483bba97118372c27bf9b63f89f09e",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-11": {
+   "input_sha256": "586fb532bfc42860b7b21a3e650f0630b209c6b64cd727f844cf214c246d8e0b",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2",
+    "/matrices/RCERT/bits/3",
+    "/matrices/RSOLVER/bits/71",
+    "/matrices/RSOLVER/bits/72"
+   ]
+  },
+  "ppml-13": {
+   "input_sha256": "d8f51cb7cc4348c5f9f56b50a723a1d2553521e0466e41c59fc30fea13432fcb",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2"
+   ]
+  },
+  "ppml-14": {
+   "input_sha256": "72b2cd406f727e7575c908f6a46e0a6c8e30e7ec85a8a39f31f68014c9ed5593",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2"
+   ]
+  },
+  "ppml-16": {
+   "input_sha256": "b50473f29c3720990f72190c129812ed9603f94a5f10f1c80362deb8477cc0d2",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2",
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-17": {
+   "input_sha256": "dcc1e62d876774e1e160c99a9eebb5b4e3fef4383e9b7e2baa9b786f9f468e96",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-21": {
+   "input_sha256": "d935207955ca971ca6e8feaa021607f112745fbf15089bedf2391afbf57305f0",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2"
+   ]
+  },
+  "ppml-24": {
+   "input_sha256": "13f3bcc6b384a8b1f0978a9d8b5b33ce7054044e76339828ad5c6f90629b22aa",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2"
+   ]
+  },
+  "ppml-25": {
+   "input_sha256": "267213b936ece51d58aea019675f4c1b3e63c5cdb9cfe17d9263c57c744f21fc",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2",
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-28": {
+   "input_sha256": "9d0e2d14757d5412888ea0291e27e21f0550d9b02b6f925a8559973a1bc059df",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2"
+   ]
+  },
+  "ppml-29": {
+   "input_sha256": "a3b09fe79e92eff73ead4547ddf3270600169a61aee50c3ebadfa2f93006621f",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/2",
+    "/matrices/RSOLVER/bits/71",
+    "/matrices/RSOLVER/bits/72"
+   ]
+  },
+  "ppml-separation-fe": {
+   "input_sha256": "261be021949423a05ebd184ea56cd34f94d545e60177df17d6c27bfa9cdf3ee8",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-separation-ir": {
+   "input_sha256": "f9e7efb7fb3024de86cfb881ab956ff7e9c019ad2cb0d00e727f27a5069948a3",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-separation-mu": {
+   "input_sha256": "a1993ef67c77da0d61a6b0b54662c816b267036a89ad3e44c4aeceededda90ae",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/3"
+   ]
+  },
+  "ppml-separation-simplex": {
+   "input_sha256": "8a4ca5d1e312bf7e5535db824e7ae66d2986d7c83f8568aa6aca155d382b9433",
+   "reason": "PPML score/LSMR/CMG certificate relative moments divide by the larger scale first (overflow-safe); certificate scalars change at the last bits only.",
+   "allowed_paths": [
+    "/matrices/RCERT/bits/3"
+   ]
+  }
+ }
+}

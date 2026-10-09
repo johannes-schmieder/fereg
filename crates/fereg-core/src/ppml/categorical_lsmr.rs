@@ -1882,19 +1882,7 @@ pub(super) fn add_relative(
             "PPML LSMR certificate scale or moment is nonfinite",
         ));
     }
-    let relative = if basis_norm > 0.0 && reference > 0.0 {
-        // Divide by the larger scale first so the product of two finite norms
-        // cannot overflow and turn a material moment into a false zero.
-        if basis_norm >= reference {
-            (moment.abs() / basis_norm) / reference
-        } else {
-            (moment.abs() / reference) / basis_norm
-        }
-    } else if moment == 0.0 {
-        0.0
-    } else {
-        f64::INFINITY
-    };
+    let relative = super::certificate::relative_moment(moment, basis_norm, reference);
     *infinity = (*infinity).max(relative);
     square.add(relative * relative)?;
     *count = count
