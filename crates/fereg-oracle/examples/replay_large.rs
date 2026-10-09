@@ -13,8 +13,11 @@ use std::{collections::BTreeMap, path::PathBuf};
 const HELP: &str = "replay_large --output target/NAME.case --rows N --levels L1,L2[,L3] \
 --regressors K --weights unit|aw|fw|pw --vce iid|robust|cluster \
 --graph akm-strong|akm-weak|chain|barbell|random-mobility --solver auto|map|lsmr|cmg \
---seed N [--ppml] [--threads N] [--tolerance T] [--iterations N] [--max-cells N] [--max-edges N]\n\
+--seed N [--ppml] [--threads N] [--tolerance T] [--iterations N] [--max-cells N] [--max-edges N] \
+[--zero-fraction F] [--separation METHODS]\n\
 Defaults: threads=1 tolerance=1e-8 iterations=16000 max-cells=100000000 max-edges=10000000.\n\
+PPML only: --zero-fraction draws that share of outcomes as zero (default 0) and\n\
+--separation sets the space-separated separation methods (default none).\n\
 Cluster VCE uses one cluster dimension from the oracle design. Graph labels retain\n\
 the existing oracle topology (AkmStrong is adjacent-firm mobility, not random).";
 
@@ -53,6 +56,8 @@ fn run() -> Result<(), String> {
             "--iterations",
             "--max-cells",
             "--max-edges",
+            "--zero-fraction",
+            "--separation",
         ]
         .contains(&key.as_str())
         {
@@ -187,6 +192,15 @@ fn run() -> Result<(), String> {
         return Err("output must be a new file under target/".into());
     }
     let seed = get("--seed")?.parse::<u64>().map_err(|_| "invalid seed")?;
+    let zero_fraction = options
+        .get("--zero-fraction")
+        .map_or(Ok(0.0), |text| text.parse::<f64>())
+        .map_err(|_| "invalid --zero-fraction")?;
+    if !(0.0..1.0).contains(&zero_fraction)
+        || (!poisson && (zero_fraction != 0.0 || options.contains_key("--separation")))
+    {
+        return Err("--zero-fraction must lie in [0, 1); it and --separation need --ppml".into());
+    }
     let spec = DesignSpec {
         rows,
         levels,
@@ -195,6 +209,7 @@ fn run() -> Result<(), String> {
         weights,
         clusters,
         poisson,
+        zero_fraction,
         ..DesignSpec::default()
     };
     let design = generate(seed, &spec)?;
@@ -202,6 +217,9 @@ fn run() -> Result<(), String> {
     request.replace("iterate", &iterations.to_string());
     request.replace("threads", &threads.to_string());
     request.replace("tolerance", &tolerance.to_string());
+    if let Some(methods) = options.get("--separation") {
+        request.separation(methods);
+    }
     request.write(&output);
     println!("{}: seed={seed} {spec:?}, solver={solver}, vce={vce}, threads={threads}, tolerance={tolerance}, iterations={iterations}", output.display());
     Ok(())
