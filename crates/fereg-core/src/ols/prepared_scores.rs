@@ -909,9 +909,29 @@ fn accumulate_selected_score_gram_rows(
     first_row: usize,
     partial: &mut [f64],
 ) -> Result<()> {
+    // Gathering each row's selected values into a contiguous tile lets the
+    // inner update vectorize; every product and its row order are unchanged.
+    const GATHER_COLUMNS: usize = 256;
     let rank = generated_columns.len();
+    let mut gathered = [0.0_f64; GATHER_COLUMNS];
     for (row, values) in rows.chunks_exact(matrix_columns).enumerate() {
         let weight = weights.value(first_row + row)?;
+        if rank <= GATHER_COLUMNS {
+            for (value, &generated) in gathered.iter_mut().zip(generated_columns) {
+                *value = values[generated + 1];
+            }
+            let gathered = &gathered[..rank];
+            for (left, &left_value) in gathered.iter().enumerate() {
+                let weighted_left = weight * left_value;
+                for (entry, &right_value) in partial[left * rank + left..(left + 1) * rank]
+                    .iter_mut()
+                    .zip(&gathered[left..])
+                {
+                    *entry += weighted_left * right_value;
+                }
+            }
+            continue;
+        }
         for left in 0..rank {
             let weighted_left = weight * values[generated_columns[left] + 1];
             for right in left..rank {

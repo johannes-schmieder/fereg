@@ -2,28 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 1251,
-      "before": 1248,
-      "metric": "fereg-core/dispatch_candidates",
-      "reason": "one-pass certificate group means"
-    },
-    {
-      "after": 94836,
-      "before": 94682,
+      "after": 94854,
+      "before": 94836,
       "metric": "fereg-core/production_lines",
-      "reason": "one-pass certificate group means"
-    },
-    {
-      "after": 14254,
-      "before": 14205,
-      "metric": "fereg-plugin/production_lines",
-      "reason": "one-pass certificate group means"
-    },
-    {
-      "after": 7199,
-      "before": 7096,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "one-pass certificate group means"
+      "reason": "score gram gather"
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -11232,25 +11214,25 @@
           },
           {
             "condition": "values . len ( ) != nrows * rank",
-            "line": 936
+            "line": 956
           },
           {
             "condition": "row >= nrows || output . len ( ) != rank",
-            "line": 1089
+            "line": 1109
           },
           {
             "condition": "nrows == 0 || column >= ncols || values . len ( ) != nrows * ncols",
-            "line": 1115
+            "line": 1135
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 1157
+            "line": 1177
           }
         ],
         "functions": {
           "accumulate_selected_score_gram_rows#1": {
             "line": 904,
-            "lines": 21
+            "lines": 41
           },
           "build_prepared_ols_score_design#1": {
             "line": 362,
@@ -11265,7 +11247,7 @@
             "lines": 3
           },
           "certify_dense_score_gram#1": {
-            "line": 926,
+            "line": 946,
             "lines": 103
           },
           "certify_score_design#1": {
@@ -11273,7 +11255,7 @@
             "lines": 131
           },
           "certify_scratch_score_gram#1": {
-            "line": 1030,
+            "line": 1050,
             "lines": 51
           },
           "certify_selected_score_gram#1": {
@@ -11325,7 +11307,7 @@
             "lines": 32
           },
           "fill_score_storage_row#1": {
-            "line": 1082,
+            "line": 1102,
             "lines": 25
           },
           "finite_rank#1": {
@@ -11353,7 +11335,7 @@
             "lines": 3
           },
           "reserved_filled#1": {
-            "line": 1149,
+            "line": 1169,
             "lines": 16
           },
           "take_prepared_ols_score_product#1": {
@@ -11361,11 +11343,11 @@
             "lines": 18
           },
           "weighted_matrix_column_mean#1": {
-            "line": 1108,
+            "line": 1128,
             "lines": 40
           }
         },
-        "production_lines": 1110
+        "production_lines": 1128
       },
       "crates/fereg-core/src/ols/prepared_scratch.rs": {
         "chunk_candidates": [
@@ -20439,7 +20421,7 @@
         "dispatch_candidates": 1251,
         "files_over_1500": 16,
         "functions_over_150": 66,
-        "production_lines": 94836
+        "production_lines": 94854
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
@@ -20451,5 +20433,5 @@
     },
     "schema": 1
   },
-  "reason": "one-pass certificate group means"
+  "reason": "score gram gather"
 }
