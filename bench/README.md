@@ -22,7 +22,7 @@ Stata's timer and report medians by workload; they cannot establish small change
 below its resolution. Dedicated performance decisions require a separately declared
 bounded protocol under `docs/development_workflow.md`.
 
-Generated captures belong under `target/` and can be deleted after inspection.
+Generated captures belong under `target/tmp/` and are deleted after inspection.
 Historical campaigns and the legacy comparator are available only in Git history.
 
 ## Packed SCC comparison
@@ -110,7 +110,7 @@ plus wide K=64/65/129 robust designs; their hashes are in `standard_cases.json`.
 python3 bench/make_standard_cases.py
 bench/build_timing_harness.sh
 python3 bench/time_exact.py --plugin base=BASELINE.plugin --plugin cand=dist/fereg_macos.plugin \
-  --cases target/standard-cases/*.case --output target/timing-RUN
+  --cases target/standard-cases/*.case --output target/tmp/timing/RUN
 ```
 
 Every run must reproduce exact science and solver signatures; the decision is
@@ -126,7 +126,7 @@ runs two supplied plugins in alternating A/B, B/A order. Inputs, plugins and the
 harness are hash-bound. Every repetition must pass native return-code,
 completion/certificate, exact replay metadata and streamed output-column checks.
 A later repeat mismatch fails the run; timings never substitute for scientific
-qualification. Output is a fresh directory under `target/`, including `run.json`,
+qualification. Output is a fresh directory under `target/tmp/`, including `run.json`,
 compact result heads, logs and the harness. Raw result JSON is removed after
 successful checks unless `--keep-outputs` is requested. Failed partial runs remain
 visible. No licensed Stata installation is required.

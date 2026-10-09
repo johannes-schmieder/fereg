@@ -114,8 +114,11 @@ Staging validates the source/object hashes. There is no runtime compilation fall
 ## Outputs and performance
 
 Use `target/` for one current build/test cache and `dist/` for the current plugin.
-Remove temporary captures, profiles, copied source and obsolete builds after
-recording useful results. Keep large generated inputs and outputs out of Git.
+Task outputs (candidate plugins, A/B builds, worktrees, data, logs, profiles) go
+under `target/tmp/<task>/` and are deleted when the task is reported, after
+recording hashes and summaries; `scripts/clean_target.sh` lists everything else
+in `target/` except Cargo's cache and `target/replay-baseline/`, and `--apply`
+removes it. Keep large generated inputs and outputs out of Git.
 The compact benchmark entrypoint is documented in [bench](../bench/README.md).
 
 Use two evidence tiers, with identified artifacts, predeclared workloads,

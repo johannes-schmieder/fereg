@@ -837,3 +837,12 @@ the same kind; the mapped-after-release assertion is deterministic. Mac:
 `scripts/run_tests.sh`, Windows-target clippy for both gates, the 73-case exact
 replay (zero differences) and the `quick` Stata profile pass on d5eb37a7. Linux
 was not run for these commits.
+
+## 2026-10-09 target cleanup
+
+`scripts/clean_target.sh --apply` reduced `target/` from 35 GB to 8.7 GB,
+leaving Cargo's build cache and the replay baseline (d4b68d26, SHA-256 prefix
+4c1a432f). The ignored captures that earlier sections describe as retained
+under `target/`, including `target/integration-checkpoint-2026-10-09/`, were
+deleted; the hashes and summaries recorded in this file are the remaining
+record.

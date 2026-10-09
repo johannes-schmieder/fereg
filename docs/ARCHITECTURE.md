@@ -83,5 +83,5 @@ engine identity results are removed. Scientific solver-route diagnostics remain.
 There is no legacy binary, selector, fallback, comparator packaging or required
 historical timing campaign. The retained benchmark is descriptive and local.
 Tests, pinned independent references and the complexity ratchet remain maintained.
-Builds and captures go under ignored `target/`; only one current local plugin is
-retained in `dist/`. Git history preserves the completed development programs.
+Builds go under ignored `target/` and task captures under `target/tmp/`, which is
+deleted after use; only one current local plugin is retained in `dist/`. Git history preserves the completed development programs.

@@ -90,10 +90,17 @@ integrate changes through a pinned revision bump.
 ## Repository hygiene
 
 Keep source, compact fixtures, current documentation and maintained test/benchmark
-tools. Generated builds, datasets, raw logs and profiles belong in ignored output
-directories and may be removed after their useful summary is recorded. Use one
-current build cache; retire temporary source copies and artifacts after use.
-Johannes explicitly authorized deleting completed campaign captures and caches;
+tools. `target/` keeps only Cargo's build cache and the current replay baseline
+(`target/replay-baseline/`); repository scripts may write their fixed default
+outputs there and overwrite them each run. Put every other task output
+(candidate plugins, A/B builds and extra Cargo target directories, worktrees,
+generated data, logs, profiles) under one `target/tmp/<task>/` directory, never
+one directory per run or tag, and delete it before reporting the task done,
+after its hashes and summaries are in commits or committed documents. Committed
+documents never cite ignored paths as retained evidence.
+`scripts/clean_target.sh --apply` removes everything else; run it at the start
+of a session when no other task is using `target/`, and whenever `target/`
+exceeds 15 GB. Johannes authorized deleting completed captures and caches;
 historical committed source/documents remain in Git, ignored raw data does not.
 
 Retain the runtime complexity ratchet at `tests/reference/complexity.json`;
