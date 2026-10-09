@@ -655,3 +655,78 @@ M-series, seven alternating pairs, exact science in every run) of candidate
 `fdd48d5687698bcd9580184407827552f4d07d0feabcff1b2e41d80cd9933b41` against that baseline on all 18 frozen workloads: every bootstrap
 upper bound is within its max(5%, 1 ms) allowance; the largest is 1.160
 (no-FE K=5, four workers, allowance 1.204).
+
+## 2026-10-09 integration checkpoint
+
+All checks below tested clean main commit
+`8fb67bb58cc473999e20f3abe9b1c37016d62139`; no source code changed.
+GitHub workflows remained paused. This checkpoint makes no timing claim.
+Raw commands, logs and receipts are retained under
+`target/integration-checkpoint-2026-10-09/` (ignored).
+
+- **Pass — Mac gate:** `./scripts/run_tests.sh`, using the Homebrew rustup
+  PATH. The Linux-only mock audit was skipped on Mac as designed.
+- **Pass — committed-source Stata full:** 68 tests, zero failures, Stata/MP 19.
+  Full includes every syntax, differential and ppml-hidden fixture and both
+  hidden Break fixtures; separate runs of those profiles were not needed.
+- **Pass — separate licensed Break:** OLS, PPML and PPML `--public-scope`,
+  using `scripts/run_stata_break_test.py` and the full-profile plugin.
+- **Fail — full release staging:** `python3 scripts/stage_release.py` with
+  the full-profile plugin directory failed with `missing or empty native
+  artifact: .../fereg_linux.plugin`; that input directory contained only Mac.
+  No full release zip was produced. **Pass — Mac review subset:** the supported
+  `--review-platforms macos` archive passed the dependency audit, clean
+  `net install`, installed-copy OLS/PPML residual/prediction assertions, and
+  installation of `_fereg_indepvars.ado`. Review zip SHA-256:
+  `6da8b22b9aa7b76c1990ce1613e40902a0e8ac7db5d63290b9097c747dd9a8ca`.
+- **Pass — Linux:** `scripts/build_linux.sh`, its binary/loader/numeric-guard
+  checks, `cargo test -p fereg-plugin fused_kernels`, and core unit tests
+  (1,144 passed, three ignored). The FFI plugin suite passed in its documented
+  serial configuration (168 passed, ten ignored). Licensed Stata 19 OLS/PPML
+  output-store smokes passed at 96 and 8,192 rows; the latter crosses OLS's
+  4,096-row batching threshold. SCC jobs 7983044, 7983253 and 7983326 each
+  have accounting `failed=0`, `exit_status=0` and application result records.
+- **Fail — initial Linux parallel FFI invocation:**
+  `cargo test --locked -p fereg-plugin --lib --profile ci -- --test-threads=4`
+  returned 101: 163 passed, five allocator-accounting assertions failed,
+  ten ignored (including `construction 74966 > 67138`). This invocation
+  conflicted with the repository's required serial FFI configuration; its
+  failure is retained separately from the subsequent prescribed serial pass.
+  Failed test executable SHA-256:
+  `c8345ced0559a0dec0e9fe1d82b3a9e062997034eca76d5b0dd60e74c0b6d127`.
+- **Pass — bounded Windows committed driver:** accepted shared controller
+  `stata-do` run `win-20261009T153654Z-b98c20e7` passed the release build,
+  exact-FMA/fused-kernel tests, numeric guards, PE audit, native loader,
+  checksum and licensed OLS/PPML estimates. Outcome `passed`, last stage
+  `complete`; source identity and every controller gate passed. The wrapper
+  confirmed stopped state, transient-object deletion and lock release.
+  Controller files were unchanged. Source archive SHA-256:
+  `622d300306f381483cf688771d76788a9ee496b849d36da10484334af1284a11`;
+  receipt SHA-256:
+  `06195ea585a8fd6804e2d5729b6f183110511a562b7e5a43e5efdf9e7e8732d4`.
+- **Not run — Windows saved-output smoke:** the committed controller driver
+  does not request residuals/predictions. Adding that coverage would require
+  changing its source snapshot; this task prohibited source changes.
+
+Documentation links, whitespace and production identity passed (168 runtime
+modules, 58 artifact inputs unchanged). The supplemental identity check first
+failed under system Python (`No module named tomllib`); the supported
+Homebrew Python invocation passed. Both logs are retained.
+
+Tested plugin SHA-256 values:
+
+| Platform | SHA-256 |
+| --- | --- |
+| Mac universal | `c43633626c498dc716e528c092fb7574645d496977124bb3d06f348b2ba47d9b` |
+| Linux x86-64 | `919330739e440db8ae4a6c6b02c454076188ff63e4160ca067a027276108686d` |
+| Windows x86-64 | `961afc7cc593f7520039dba0200d922dd3359e3b55a77a3662259b3c0e5ca751` |
+
+```text
+STATA_CI_RECEIPT status=success profile=full tested_sha=8fb67bb58cc473999e20f3abe9b1c37016d62139 stata_rc=0 failure_kind=None
+```
+
+**Platform claims:** Linux batched observation stores and loading of shipped
+thread-local Cells are **verified** by these bounded checks. Windows loading
+of shipped thread-local Cells is **verified**; licensed-Stata batched output
+stores are **still unverified**. These results do not establish full Linux or
+Windows scientific or performance qualification.
