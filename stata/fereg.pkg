@@ -31,4 +31,3 @@ f fereg_linux.plugin
 f fereg_linux.plugin.sha256
 f fereg_macos.plugin
 f fereg_macos.plugin.sha256
-f LEGACY_COMPARATOR.json

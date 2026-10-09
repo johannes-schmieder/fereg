@@ -9,6 +9,7 @@ Exact commits are machine-readable in `references.lock.toml`.
 | reghdfe | Stata syntax, FE/singleton/DoF/VCE compatibility oracle | Exact pinned reference capture and differential qualification; never called at runtime |
 | ppmlhdfe | PPML syntax, sample, separation, inference, and result compatibility oracle | Exact pinned qualification reference; never called at runtime |
 | Stata SPI 3.0 | Native ABI | Official `stplugin.c/h` compiled into plugin |
+| Somaini and Wolak (2016), "An Algorithm to Estimate the Two-Way Fixed Effects Model", *Journal of Econometric Methods*, doi:10.1515/jem-2014-0008 | Two-way FE projection background | Literature reference only; no code adapted |
 
 Later code adaptation must identify the exact upstream file/function, preserve
 license notices, add a source-level mapping here, and add a regression test that

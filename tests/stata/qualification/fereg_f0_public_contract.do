@@ -14,7 +14,7 @@ display as text "FEREG_F0_OUTPUT_BEGIN|version"
 capture noisily fereg, version
 assert _rc == 0
 assert `"`r(ado_version)'"' == "0.5.0"
-assert `"`r(action_protocol)'"' == "1.5"
+assert `"`r(action_protocol)'"' == "1.6"
 assert `"`r(model_wire)'"' == "2.1"
 assert r(requested_threads) == 0
 display as text "FEREG_F0_OUTPUT_END|version"

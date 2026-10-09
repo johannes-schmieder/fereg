@@ -2,8 +2,8 @@
 clear all
 set seed 12345
 
-adopath + /Users/johannes/Git/fereg/stata
-adopath + /Users/johannes/Git/fereg/dist
+adopath + "stata"
+adopath + "dist"
 
 global GTOOLS_BETA = "I KNOW WHAT I AM DOING"
 

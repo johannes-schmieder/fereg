@@ -15,8 +15,9 @@ NumPy, pandas and SciPy. Rust uses the pinned toolchain and Cargo.lock.
 ./ci/run_stata_ci.sh full
 ```
 
-The full entrypoint covers Rust, Clippy, allocation/FFI audits, runtime complexity
-and the mock SPI bridge. Licensed Stata profiles also include `smoke`,
+The full entrypoint covers Rust, Clippy, allocation/FFI audits, runtime complexity,
+the mock SPI bridge, portable shell/Python/strict-C checks and the exact-rational
+FE boundary-response and cancellation witnesses. Licensed Stata profiles also include `smoke`,
 `differential`, `fereg-regression`, `ppml-scientific` and `ppml-hidden`.
 See [the Stata runner](../STATA_CI_RUNNER.md). Target mapped tests during development;
 run the applicable integration checks before committing runtime changes.

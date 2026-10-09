@@ -11,7 +11,7 @@ artifact before distributing a development package. Retain explicit platform gap
 
 `scripts/stage_release.py` stages a deterministic archive with one plugin per
 included platform, production Stata files, checksums, source identity, dependency
-audit, SBOM and licenses. Default production staging requires all three platforms.
+audit (receipt written by `scripts/run_dependency_audit.py`), SBOM and licenses. Default production staging requires all three platforms.
 `--review-platforms macos` creates a visibly incomplete review archive; passing its
 local checks does not confer publication eligibility. `run_staged_stata_tests.py
 --review-only` admits only such explicitly requested review packages.

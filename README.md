@@ -70,7 +70,8 @@ Common options are:
 
 - `absorb(absvars)` for categorical fixed effects, interactions, and absorbed
   slopes;
-- `vce(unadjusted|robust|cluster clustervars)` and
+- `vce(unadjusted|robust|cluster clustervars)` (`iid` and `ols` are
+  aliases of `unadjusted`) and
   `dof(pairwise|firstpair|continuous|none)` for inference;
 - `residuals(newvar)` and names inside `absorb()`, such as
   `absorb(fe_worker=worker fe_firm=firm)`, for saved outputs;

@@ -41,7 +41,7 @@ program define fereg, rclass
 
         return local ado_version "0.5.0"
 
-        return local action_protocol "1.5"
+        return local action_protocol "1.6"
         return local model_wire "2.1"
         return local plugin_name "`plugin_name'"
         return local plugin_file `"`plugin_file'"'

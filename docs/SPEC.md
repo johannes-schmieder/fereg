@@ -122,7 +122,7 @@ Empty or insufficient final samples fail, with no public sample posted.
 Tests: `tests/numeric_sample_oracle.rs`,
 `tests/categorical_final_sample_rebase_oracle.rs`,
 `parity_ppmlhdfe/feppml_native_preparation.do`, `feppml_time_series.do`.
-Replacement checks: engine `tests/ols_preparation.rs` and
+Replacement checks: `tests/categorical_cluster_preparation.rs` and
 `tests/stata/development/reference_factor_precedence.do`.
 
 ## 3. Weights

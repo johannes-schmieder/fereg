@@ -5,6 +5,8 @@ cd "$ROOT"
 python3 -m unittest discover -s tests/python -p test_plugin_replay.py
 python3 -m unittest discover -s tests/python -p test_windows_ci_diagnostics.py
 python3 scripts/check_fma_rounding_vectors.py
+python3 scripts/check_fe_boundary_response_oracle.py
+python3 scripts/check_fe_cancellation_oracle.py
 
 command -v cargo >/dev/null 2>&1 || {
   printf '%s\n' 'Rust/Cargo is required; install the pinned rust-toolchain.toml toolchain.' >&2
@@ -35,6 +37,7 @@ if [[ "$audit_count" -eq 0 ]]; then
   printf '%s\n' 'No allocator audits discovered; refusing an empty audit gate.' >&2
   exit 1
 fi
+bash scripts/run_portable_static_checks.sh
 if [[ -f scripts/check_sizes.sh ]]; then
   bash scripts/check_sizes.sh
 fi
