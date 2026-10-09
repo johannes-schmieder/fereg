@@ -8856,284 +8856,284 @@
         "dispatch_candidates": [
           {
             "condition": "! ( 1.. = 10 ) . contains ( & prepared . clustered_design ( ) . len ( ) )",
-            "line": 783
+            "line": 745
           },
           {
             "condition": "bread . len ( ) != square || meat . len ( ) != square",
-            "line": 2019
+            "line": 949
           },
           {
             "condition": "raw . uncorrected . len ( ) != square || raw . independent_uncorrected . len ( ) != square || raw . subsets . len ( ) != raw . independent_subsets . len ( )",
-            "line": 2040
+            "line": 970
           },
           {
             "condition": "raw . uncorrected . len ( ) != raw . corrected . len ( ) || ! raw . correction . is_finite ( ) || raw . correction <= 0.0",
-            "line": 2074
+            "line": 1004
           },
           {
             "condition": "raw . len ( ) != square",
-            "line": 2106
+            "line": 1036
           },
           {
             "condition": "p == 0",
-            "line": 2111
+            "line": 1041
           },
           {
             "condition": "prepared . clustered_design ( ) . len ( ) == 1",
-            "line": 2112
+            "line": 1042
           },
           {
             "condition": "prepared . clustered_design ( ) . len ( ) == 1 && minimum_raw < - tolerance * scale",
-            "line": 2155
+            "line": 1085
           },
           {
             "condition": "matrix . len ( ) != square",
-            "line": 2269
+            "line": 1199
           },
           {
             "condition": "index == p || index == q",
-            "line": 2374
+            "line": 1304
           },
           {
             "condition": "actual . len ( ) != square || eigen . values . len ( ) != dimension || eigen . vectors . len ( ) != square",
-            "line": 2489
+            "line": 1419
           },
           {
             "condition": "covariance . raw_values . len ( ) != square || covariance . values . len ( ) != square",
-            "line": 2536
+            "line": 1466
           },
           {
             "condition": "p == 0",
-            "line": 2542
+            "line": 1472
           },
           {
             "condition": "left . len ( ) != square || right . len ( ) != square",
-            "line": 2669
+            "line": 1599
           },
           {
             "condition": "covariance . len ( ) != square",
-            "line": 2703
+            "line": 1633
           },
           {
             "condition": "positions . len ( ) != slope_dimension",
-            "line": 2766
+            "line": 1696
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 2842
+            "line": 1772
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 2863
+            "line": 1793
           },
           {
             "condition": "matrix . len ( ) != dimension * dimension",
-            "line": 2901
+            "line": 1831
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 2928
+            "line": 1858
           }
         ],
         "functions": {
           "apply_psd_policy#1": {
-            "line": 2097,
+            "line": 1027,
             "lines": 162
           },
           "borrow_cluster_dimensions#1": {
-            "line": 799,
+            "line": 761,
             "lines": 22
           },
           "build_clustered_dof#1": {
-            "line": 822,
+            "line": 784,
             "lines": 61
           },
           "build_raw_covariance#1": {
-            "line": 901,
+            "line": 863,
             "lines": 78
           },
           "build_standard_errors#1": {
-            "line": 2694,
+            "line": 1624,
             "lines": 31
           },
           "build_wald#1": {
-            "line": 2726,
+            "line": 1656,
             "lines": 54
           },
           "certify_clipped_reconstruction#1": {
-            "line": 2480,
+            "line": 1410,
             "lines": 44
           },
           "certify_corrected_covariance#1": {
-            "line": 2073,
+            "line": 1003,
             "lines": 23
           },
           "certify_eigensystem#1": {
-            "line": 2399,
+            "line": 1329,
             "lines": 44
           },
           "certify_psd_state#1": {
-            "line": 2525,
+            "line": 1455,
             "lines": 138
           },
           "certify_statistics#1": {
-            "line": 2781,
+            "line": 1711,
             "lines": 49
           },
           "certify_with_group_influences#1": {
-            "line": 2034,
+            "line": 964,
             "lines": 38
           },
           "cluster_correction#1": {
-            "line": 884,
+            "line": 846,
             "lines": 16
           },
           "cluster_counts#1": {
-            "line": 228,
+            "line": 224,
             "lines": 3
           },
           "cluster_dimensions#1": {
-            "line": 300,
+            "line": 288,
             "lines": 3
           },
           "compose_clustered_view#1": {
-            "line": 534,
+            "line": 496,
             "lines": 244
           },
           "correction#1": {
-            "line": 141,
+            "line": 137,
             "lines": 3
           },
           "covariance_scale#1": {
-            "line": 2900,
+            "line": 1830,
             "lines": 20
           },
           "default#1": {
-            "line": 56,
+            "line": 52,
             "lines": 8
           },
           "dimension#1": {
-            "line": 162,
+            "line": 158,
             "lines": 3
           },
           "dimension#2": {
-            "line": 296,
+            "line": 284,
             "lines": 3
           },
           "fit_clustered_view_with_reservation#1": {
-            "line": 492,
+            "line": 454,
             "lines": 21
           },
           "fit_prepared_categorical_ols_clustered_map#1": {
-            "line": 435,
+            "line": 397,
             "lines": 6
           },
           "fit_prepared_categorical_ols_clustered_map_with_loaded_moments#1": {
-            "line": 443,
+            "line": 405,
             "lines": 11
           },
           "fit_prepared_model_clustered_with_loaded_moments#1": {
-            "line": 456,
+            "line": 418,
             "lines": 11
           },
           "fit_prepared_ols_clustered_map#1": {
-            "line": 414,
+            "line": 376,
             "lines": 6
           },
           "fit_prepared_ols_clustered_map_with_loaded_moments#1": {
-            "line": 422,
+            "line": 384,
             "lines": 10
           },
           "fit_with_loaded_reservation#1": {
-            "line": 477,
+            "line": 439,
             "lines": 14
           },
           "inference_owned_bytes#1": {
-            "line": 206,
+            "line": 202,
             "lines": 4
           },
           "inference_owned_bytes#2": {
-            "line": 220,
+            "line": 216,
             "lines": 4
           },
           "jacobi_rotate#1": {
-            "line": 2347,
+            "line": 1277,
             "lines": 51
           },
           "matrix_relative_infinity_norm#1": {
-            "line": 2664,
+            "line": 1594,
             "lines": 29
           },
           "nrows#1": {
-            "line": 271,
+            "line": 259,
             "lines": 3
           },
           "optional_error#1": {
-            "line": 2831,
+            "line": 1761,
             "lines": 9
           },
           "psd#1": {
-            "line": 167,
+            "line": 163,
             "lines": 3
           },
           "raw_values#1": {
-            "line": 147,
+            "line": 143,
             "lines": 3
           },
           "reconstruct_clipped#1": {
-            "line": 2444,
+            "line": 1374,
             "lines": 35
           },
           "reduce_subset#1": {
-            "line": 304,
-            "lines": 58
+            "line": 292,
+            "lines": 39
           },
           "report#1": {
-            "line": 363,
+            "line": 332,
             "lines": 15
           },
           "reserved_empty#1": {
-            "line": 2921,
+            "line": 1851,
             "lines": 14
           },
           "sandwich#1": {
-            "line": 2012,
+            "line": 942,
             "lines": 21
           },
           "score_pair#1": {
-            "line": 274,
+            "line": 262,
             "lines": 15
           },
           "standard_error_error#1": {
-            "line": 2883,
+            "line": 1813,
             "lines": 16
           },
           "standard_errors#1": {
-            "line": 157,
+            "line": 153,
             "lines": 3
           },
           "subsets#1": {
-            "line": 232,
+            "line": 228,
             "lines": 3
           },
           "symmetric_eigensystem#1": {
-            "line": 2260,
+            "line": 1190,
             "lines": 86
           },
           "symmetrize#1": {
-            "line": 2841,
+            "line": 1771,
             "lines": 20
           },
           "symmetry_error#1": {
-            "line": 2862,
+            "line": 1792,
             "lines": 20
           },
           "validate_config#1": {
-            "line": 779,
+            "line": 741,
             "lines": 19
           },
           "values#1": {
-            "line": 152,
+            "line": 148,
             "lines": 3
           }
         },
@@ -20342,5 +20342,5 @@
     },
     "schema": 1
   },
-  "reason": "Retire test-only OLS frame wrappers and dead trait defaults."
+  "reason": "Retire the gated pre-extraction clustered subset reducer."
 }
