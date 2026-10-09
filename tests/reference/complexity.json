@@ -2,28 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 94462,
-      "before": 94270,
-      "metric": "fereg-core/production_lines",
-      "reason": "shipped control flow equals tested control flow (linear session and PPML)"
-    },
-    {
-      "after": 5346,
-      "before": 5293,
-      "metric": "file/crates/fereg-core/src/ols/linear_session.rs",
-      "reason": "shipped control flow equals tested control flow (linear session and PPML)"
-    },
-    {
-      "after": 3728,
-      "before": 3659,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_irls.rs",
-      "reason": "shipped control flow equals tested control flow (linear session and PPML)"
-    },
-    {
-      "after": 3177,
-      "before": 3162,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "shipped control flow equals tested control flow (linear session and PPML)"
+      "after": 14205,
+      "before": 14201,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "review follow-ups, CORE-9, PLUG-4, OLS-14 test move"
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -17248,15 +17230,15 @@
         "dispatch_candidates": [
           {
             "condition": "self . inference_rows != PPML_RESULT_INFERENCE_ROWS || self . drop_count_rows != PPML_RESULT_DROP_COUNT_ROWS || self . separation_sequence_rows != PPML_RESULT_SEPARATION_SEQUENCE_ROWS || self . separation_generation_count >= self . candidate_observations || self . separation_execution_count > self . candidate_observations . saturating_mul ( PPML_RESULT_SEPARATION_SEQUENCE_ROWS )",
-            "line": 398
+            "line": 348
           },
           {
             "condition": "self . cluster_dimensions == 0 || self . cluster_subset_rows != expected",
-            "line": 429
+            "line": 379
           },
           {
             "condition": "self . cluster_dimensions != 0 || self . cluster_subset_rows != 0",
-            "line": 437
+            "line": 387
           }
         ],
         "functions": {
@@ -17273,11 +17255,11 @@
             "lines": 3
           },
           "current#1": {
-            "line": 476,
+            "line": 426,
             "lines": 7
           },
           "from_key_values#1": {
-            "line": 524,
+            "line": 474,
             "lines": 11
           },
           "index#1": {
@@ -17289,31 +17271,31 @@
             "lines": 3
           },
           "parse_key_values#1": {
-            "line": 537,
+            "line": 487,
             "lines": 26
           },
           "parse_stata_major#1": {
-            "line": 582,
+            "line": 532,
             "lines": 13
           },
           "parse_u16#1": {
-            "line": 573,
+            "line": 523,
             "lines": 8
           },
           "required#1": {
-            "line": 564,
+            "line": 514,
             "lines": 8
           },
           "validate#1": {
-            "line": 346,
+            "line": 296,
             "lines": 101
           },
           "validate#2": {
-            "line": 484,
+            "line": 434,
             "lines": 39
           }
         },
-        "production_lines": 528
+        "production_lines": 478
       },
       "crates/fereg-core/src/sandwich.rs": {
         "chunk_candidates": [],
@@ -18412,7 +18394,7 @@
             "lines": 4
           },
           "action_memory_audit_estimator#1": {
-            "line": 1420,
+            "line": 1428,
             "lines": 8
           },
           "alloc#1": {
@@ -18477,7 +18459,7 @@
           },
           "fereg_dispatch#1": {
             "line": 1333,
-            "lines": 84
+            "lines": 92
           },
           "finish_abi_memory_observation#1": {
             "line": 1315,
@@ -18512,7 +18494,7 @@
             "lines": 8
           },
           "panic_message#1": {
-            "line": 1558,
+            "line": 1566,
             "lines": 9
           },
           "parse_linux_memory_field#1": {
@@ -18532,7 +18514,7 @@
             "lines": 49
           },
           "prepared_store_error_report#1": {
-            "line": 1537,
+            "line": 1545,
             "lines": 11
           },
           "process_rss_bytes#1": {
@@ -18552,7 +18534,7 @@
             "lines": 3
           },
           "read_arguments#1": {
-            "line": 1429,
+            "line": 1437,
             "lines": 91
           },
           "read_estimate_bundle#1": {
@@ -18608,11 +18590,11 @@
             "lines": 5
           },
           "report_error#1": {
-            "line": 1521,
+            "line": 1529,
             "lines": 15
           },
           "sanitize_c_string#1": {
-            "line": 1549,
+            "line": 1557,
             "lines": 8
           },
           "should_inject_ppml_allocation_failure#1": {
@@ -18672,7 +18654,7 @@
             "lines": 12
           }
         },
-        "production_lines": 1174
+        "production_lines": 1178
       },
       "crates/fereg-plugin/src/fused_kernels.rs": {
         "chunk_candidates": [],
@@ -20375,17 +20357,17 @@
         "dispatch_candidates": 1246,
         "files_over_1500": 16,
         "functions_over_150": 67,
-        "production_lines": 94462
+        "production_lines": 94412
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
         "dispatch_candidates": 135,
         "files_over_1500": 3,
         "functions_over_150": 14,
-        "production_lines": 14201
+        "production_lines": 14205
       }
     },
     "schema": 1
   },
-  "reason": "shipped control flow equals tested control flow (linear session and PPML)"
+  "reason": "review follow-ups, CORE-9, PLUG-4, OLS-14 test move"
 }

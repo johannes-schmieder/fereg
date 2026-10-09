@@ -229,116 +229,66 @@ impl PpmlResultReceiptV1 {
         receipt[PpmlResultReceiptFieldV1::Minor.index()] =
             f64::from(PPML_RESULT_WIRE_VERSION.minor);
         receipt[PpmlResultReceiptFieldV1::Vce.index()] = self.vce.code();
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::CoefficientCount,
-            self.coefficient_count,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::CovarianceDimension,
-            self.covariance_dimension,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::OriginalObservations,
-            self.original_observations,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::CandidateObservations,
-            self.candidate_observations,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::FinalObservations,
-            self.final_observations,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::ClusterDimensions,
-            self.cluster_dimensions,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::FixedEffectRows,
-            self.fixed_effect_rows,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::ClusterSubsetRows,
-            self.cluster_subset_rows,
-        );
         receipt[PpmlResultReceiptFieldV1::SamplePresent.index()] = f64::from(self.sample_present);
         receipt[PpmlResultReceiptFieldV1::ResidualPresent.index()] =
             f64::from(self.residual_present);
         receipt[PpmlResultReceiptFieldV1::MandatoryCertificatesPassed.index()] =
             f64::from(self.mandatory_certificates_passed);
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::SeparatedObservations,
-            self.separated_observations,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::SeparationReportRows,
-            self.separation_report_rows,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::SavedFixedEffectChannels,
-            self.saved_fixed_effect_channels,
-        );
         receipt[PpmlResultReceiptFieldV1::Adjustment.index()] = self.adjustment.code();
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::InferenceRows,
-            self.inference_rows,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::DropCountRows,
-            self.drop_count_rows,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::SeparationSequenceRows,
-            self.separation_sequence_rows,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::SeparationExecutionCount,
-            self.separation_execution_count,
-        );
-        set_receipt_count(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::SeparationGenerationCount,
-            self.separation_generation_count,
-        );
-        set_receipt_hash(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::InitialGenerationHashHigh,
-            PpmlResultReceiptFieldV1::InitialGenerationHashLow,
-            self.initial_generation_hash,
-        );
-        set_receipt_hash(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::FinalGenerationHashHigh,
-            PpmlResultReceiptFieldV1::FinalGenerationHashLow,
-            self.final_generation_hash,
-        );
-        set_receipt_hash(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::SeparationTraceDigestHigh,
-            PpmlResultReceiptFieldV1::SeparationTraceDigestLow,
-            self.separation_trace_digest,
-        );
-        set_receipt_hash(
-            &mut receipt,
-            PpmlResultReceiptFieldV1::GenerationHashDigestHigh,
-            PpmlResultReceiptFieldV1::GenerationHashDigestLow,
-            self.generation_hash_digest,
-        );
+        use PpmlResultReceiptFieldV1 as Field;
+        for (field, count) in [
+            (Field::CoefficientCount, self.coefficient_count),
+            (Field::CovarianceDimension, self.covariance_dimension),
+            (Field::OriginalObservations, self.original_observations),
+            (Field::CandidateObservations, self.candidate_observations),
+            (Field::FinalObservations, self.final_observations),
+            (Field::ClusterDimensions, self.cluster_dimensions),
+            (Field::FixedEffectRows, self.fixed_effect_rows),
+            (Field::ClusterSubsetRows, self.cluster_subset_rows),
+            (Field::SeparatedObservations, self.separated_observations),
+            (Field::SeparationReportRows, self.separation_report_rows),
+            (
+                Field::SavedFixedEffectChannels,
+                self.saved_fixed_effect_channels,
+            ),
+            (Field::InferenceRows, self.inference_rows),
+            (Field::DropCountRows, self.drop_count_rows),
+            (Field::SeparationSequenceRows, self.separation_sequence_rows),
+            (
+                Field::SeparationExecutionCount,
+                self.separation_execution_count,
+            ),
+            (
+                Field::SeparationGenerationCount,
+                self.separation_generation_count,
+            ),
+        ] {
+            set_receipt_count(&mut receipt, field, count);
+        }
+        for (high, low, hash) in [
+            (
+                Field::InitialGenerationHashHigh,
+                Field::InitialGenerationHashLow,
+                self.initial_generation_hash,
+            ),
+            (
+                Field::FinalGenerationHashHigh,
+                Field::FinalGenerationHashLow,
+                self.final_generation_hash,
+            ),
+            (
+                Field::SeparationTraceDigestHigh,
+                Field::SeparationTraceDigestLow,
+                self.separation_trace_digest,
+            ),
+            (
+                Field::GenerationHashDigestHigh,
+                Field::GenerationHashDigestLow,
+                self.generation_hash_digest,
+            ),
+        ] {
+            set_receipt_hash(&mut receipt, high, low, hash);
+        }
         debug_assert_eq!(receipt[PpmlResultReceiptFieldV1::Complete.index()], 0.0);
         Ok(receipt)
     }

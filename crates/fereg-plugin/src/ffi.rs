@@ -1379,7 +1379,11 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
                 peak_bytes: usage.peak_bytes,
             }
         });
-    let return_code = match outcome {
+    // Reporting formats messages and calls SPI; a panic there (or in a
+    // payload's destructor) must not unwind across the C ABI either. A
+    // second payload is forgotten rather than dropped, since its destructor
+    // could panic again.
+    let return_code = catch_unwind(AssertUnwindSafe(move || match outcome {
         Ok(Ok(())) => 0,
         Ok(Err(error)) => {
             report_error(&error);
@@ -1394,7 +1398,11 @@ pub unsafe extern "C" fn fereg_dispatch(argc: c_int, argv: *const *const c_char)
             report_error(&error);
             error.return_code()
         }
-    };
+    }))
+    .unwrap_or_else(|payload| {
+        std::mem::forget(payload);
+        ErrorCode::Panic.stata_return_code()
+    });
     let whole_action = finish_abi_memory_observation();
     if let Some(terminal) = terminal {
         // Diagnostic I/O is outside the Stata transaction and never changes

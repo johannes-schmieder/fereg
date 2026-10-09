@@ -2105,15 +2105,15 @@ fn public_solver_memory_admission<P: PreparedOlsFitView + ?Sized>(
                 .checked_add(retained_frame)
                 .ok_or_else(|| allocation("prepared PPML CMG steady-state peak overflows"))?;
             let complete_peak = topology_prepare.max(steady_peak);
+            // Observation only: saturating sums never fail, so test and
+            // shipped builds take the same error paths.
             #[cfg(test)]
             {
                 let topology_only = fused_workspace
-                    .checked_add(topology_prepare)
-                    .and_then(|value| value.checked_add(owned_fe_design_shortfall_bytes))
-                    .ok_or_else(|| allocation("prepared PPML CMG legacy early peak overflows"))?;
-                let complete_incremental = complete_peak
-                    .checked_add(owned_fe_design_shortfall_bytes)
-                    .ok_or_else(|| allocation("prepared PPML CMG complete early peak overflows"))?;
+                    .saturating_add(topology_prepare)
+                    .saturating_add(owned_fe_design_shortfall_bytes);
+                let complete_incremental =
+                    complete_peak.saturating_add(owned_fe_design_shortfall_bytes);
                 CMG_EARLY_MEMORY_PEAKS.set(Some((topology_only, complete_incremental)));
             }
             complete_peak
@@ -2763,7 +2763,7 @@ fn reuse_canonical_final_products<P: PreparedOlsFitView + Sync + ?Sized>(
             .max(output.finite_predictor()[row].abs());
         let candidate =
             offset[row] + (output.finite_predictor()[row] + output.absorbed_predictor()[row]);
-        let candidate = if PROFILE_FINAL_TEST_MODE.get() == 3 && row == 0 {
+        let candidate = if row == 0 && PROFILE_FINAL_TEST_MODE.get() == 3 {
             candidate + 0.01
         } else {
             candidate
