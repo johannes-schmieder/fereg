@@ -2992,12 +2992,29 @@ fn exact_nonnegative_integer_as_f64(value: u128) -> Result<f64> {
     Ok(value as f64)
 }
 
+/// The independent raw residual offered to the reported-intercept finalizer.
+/// Only a seed that the caller publishes is shifted by the reported intercept;
+/// a mean-only vector is read for its weighted mean and then dropped.
+enum RawResiduals<'a> {
+    MeanOnly(&'a [f64]),
+    Seed(&'a mut [f64]),
+}
+
+impl RawResiduals<'_> {
+    fn values(&self) -> &[f64] {
+        match self {
+            Self::MeanOnly(values) => values,
+            Self::Seed(values) => values,
+        }
+    }
+}
+
 #[allow(clippy::too_many_arguments)]
 fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     prepared: &P,
     response: &[f64],
     qr: &mut FiniteFit,
-    raw_residuals: Option<&mut [f64]>,
+    raw_residuals: Option<RawResiduals<'_>>,
     weights: NormalizedWeights<'_>,
     tolerance: f64,
     reservation: &mut R,
@@ -3012,7 +3029,7 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
         || current_frame_predictor.is_some_and(|values| values.len() != response.len())
         || raw_residuals
             .as_ref()
-            .is_some_and(|residuals| residuals.len() != prepared.fit_sample().n_active())
+            .is_some_and(|residuals| residuals.values().len() != prepared.fit_sample().n_active())
     {
         return Err(invalid_argument(
             "prepared OLS reported-intercept residual axis is inconsistent",
@@ -3163,10 +3180,11 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
         }
 
         // Fast mode already owns the reconstructed within residual from the QR
-        // state. Derive the independent raw-residual mean directly instead of
-        // allocating and retaining a second observation-scale residual vector.
-        let raw_residual_mean = if let Some(residuals) = raw_residuals.as_deref() {
-            weighted_mean_slice(residuals, weights)?
+        // state. A caller-built raw residual (the low-memory seed, or the
+        // dense route's independent vector) supplies the mean directly;
+        // otherwise the mean is derived rowwise without retaining a vector.
+        let raw_residual_mean = if let Some(residuals) = raw_residuals.as_ref() {
+            weighted_mean_slice(residuals.values(), weights)?
         } else if let Some(predictor) = current_frame_predictor {
             weighted_mean_by(response.len(), weights, |row| {
                 Ok(response[row] - predictor[row])
@@ -3286,8 +3304,8 @@ fn finalize_reported_bread_and_intercept<P: PreparedOlsFitView + ?Sized, R: FitR
             PreparedOlsFitStatus::NormalizedAbsorbedIntercept;
         qr.dropped
             .retain(|generated| *generated != intercept_generated);
-        if let Some(residuals) = raw_residuals {
-            for residual in residuals {
+        if let Some(RawResiduals::Seed(residuals)) = raw_residuals {
+            for residual in residuals.iter_mut() {
                 *residual -= reported_intercept;
                 if !residual.is_finite() {
                     return Err(invalid_data(

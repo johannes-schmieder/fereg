@@ -1106,51 +1106,48 @@ fn apply_psd_policy<P: PreparedOlsClusteredView + ?Sized, R: PreparedInferenceRe
         // Repair the complete reported covariance, including the constant.
         // Restoring an independently clipped slope block can destroy PSD.
     }
-    let (pre_restore_eigen, pre_restore_scale) = if full_adjusted {
-        let mut pre_restore = reconstruct_clipped(&raw_eigen, p, reservation)?.0;
-        symmetrize(&mut pre_restore, p)?;
-        let eigen = symmetric_eigensystem(&pre_restore, p, reservation)?;
-        let pre_restore_minimum = eigen.values.iter().copied().fold(f64::INFINITY, f64::min);
-        let pre_restore_scale = covariance_scale(&pre_restore, p)?;
-        if pre_restore_minimum < -tolerance * pre_restore_scale {
-            return Err(invalid_data(
-                "prepared clustered clipped full covariance is materially indefinite",
-            ));
-        }
-        (eigen, pre_restore_scale)
+    // The clipped reconstruction is exactly symmetric, so symmetrizing it is
+    // the identity and the pre-restore and final matrices are the same bits.
+    // Without an adjustment, `output` is the symmetrized raw matrix itself.
+    // One eigensystem therefore serves both the pre-restore and final checks.
+    symmetrize(&mut output, p)?;
+    let adjusted_eigen = if full_adjusted {
+        Some(symmetric_eigensystem(&output, p, reservation)?)
     } else {
-        (
-            symmetric_eigensystem(&output, p, reservation)?,
-            covariance_scale(&output, p)?,
-        )
+        None
     };
-    eig_error = eig_error.max(pre_restore_eigen.reconstruction_error);
-    orthogonality_error = orthogonality_error.max(pre_restore_eigen.orthogonality_error);
-    let minimum_pre_restore = pre_restore_eigen
+    let output_eigen = adjusted_eigen.as_ref().unwrap_or(&raw_eigen);
+    let output_scale = if full_adjusted {
+        covariance_scale(&output, p)?
+    } else {
+        scale
+    };
+    let minimum_pre_restore = output_eigen
         .values
         .iter()
         .copied()
         .fold(f64::INFINITY, f64::min);
-    if minimum_pre_restore < -tolerance * pre_restore_scale {
+    if full_adjusted && minimum_pre_restore < -tolerance * output_scale {
+        return Err(invalid_data(
+            "prepared clustered clipped full covariance is materially indefinite",
+        ));
+    }
+    if let Some(eigen) = adjusted_eigen.as_ref() {
+        eig_error = eig_error.max(eigen.reconstruction_error);
+        orthogonality_error = orthogonality_error.max(eigen.orthogonality_error);
+    }
+    if minimum_pre_restore < -tolerance * output_scale {
         return Err(invalid_data(
             "prepared clustered pre-restore full covariance is materially indefinite",
         ));
     }
-    let pre_restore_full_rank = pre_restore_eigen
+    let pre_restore_full_rank = output_eigen
         .values
         .iter()
-        .filter(|value| **value > tolerance * pre_restore_scale)
+        .filter(|value| **value > tolerance * output_scale)
         .count();
-    symmetrize(&mut output, p)?;
-    let final_eigen = symmetric_eigensystem(&output, p, reservation)?;
-    eig_error = eig_error.max(final_eigen.reconstruction_error);
-    orthogonality_error = orthogonality_error.max(final_eigen.orthogonality_error);
-    let minimum_final = final_eigen
-        .values
-        .iter()
-        .copied()
-        .fold(f64::INFINITY, f64::min);
-    let final_scale = covariance_scale(&output, p)?;
+    let minimum_final = minimum_pre_restore;
+    let final_scale = output_scale;
     if minimum_final < -tolerance * final_scale {
         return Err(invalid_data(format!(
             "prepared clustered final covariance is materially indefinite: min={minimum_final:.17e}, scale={final_scale:.17e}, adjusted={full_adjusted}",

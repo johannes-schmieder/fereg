@@ -577,7 +577,10 @@ fn reported_bread<P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         prepared,
         frame.response(),
         qr,
-        raw_residuals.as_deref_mut(),
+        match (&inputs.storage, raw_residuals.as_deref_mut()) {
+            (ProjectedStorage::Scratch(_), Some(values)) => Some(RawResiduals::Seed(values)),
+            (_, values) => values.map(|values| RawResiduals::MeanOnly(values)),
+        },
         frame.weights(),
         config.bread_tolerance,
         reservation,
