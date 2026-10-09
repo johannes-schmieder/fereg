@@ -273,6 +273,7 @@ impl Geometry {
         let mut rr = residual.iter().map(|v| v * v).sum::<f64>();
         let mut iterations = 0;
         while iterations < cap {
+            crate::interrupt::checkpoint()?;
             if residual.iter().map(|v| v.abs()).fold(0., f64::max) <= tolerance * 0.05 {
                 break;
             }

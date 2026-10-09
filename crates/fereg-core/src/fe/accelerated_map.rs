@@ -89,6 +89,7 @@ pub(super) fn absorb_accelerated_map_with_context(
     let mut iterations = 0;
     let mut accepted = 0;
     while iterations < config.max_iterations {
+        crate::interrupt::checkpoint()?;
         let x0 = fallible_matrix_copy(values, "unable to reserve accelerator x0")?;
         sweep(design, weights, values, &mut workspace, config.symmetric)?;
         iterations += 1;
@@ -201,6 +202,7 @@ fn absorb_conjugate_gradient(
         largest_relative_residual(&residual_square, &initial_residual_square)?;
 
     for iteration in 1..=config.max_iterations {
+        crate::interrupt::checkpoint()?;
         let projection = apply_symmetric_projection(design, weights, &direction, &mut workspace)?;
         let direction_projection = weighted_dot_columns(&direction, &projection, weights)?;
         let alpha = match cg_ratios(

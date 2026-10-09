@@ -292,15 +292,26 @@ pub fn estimate_ols_test(args: &[String], spi: &mut dyn SpiApi) -> Result<()> {
         && action.vce != OlsVceKind::Clustered
         && fereg_core::diagnostics::phase_timing_enabled();
     let trace_started = Instant::now();
-    let (prepared, loaded_rows) =
-        prepare_ols_pipeline(loaded, loaded_rhs, &mut action, categorical)?;
-    action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
-    let prepare_seconds = trace_started.elapsed().as_secs_f64();
-    let inference_started = Instant::now();
-    let inference = infer_ols(&prepared, &action, loaded_rows)?;
+    // Preparation and inference run on the action team while Stata's thread
+    // polls Break; an interruption stops core loops at their next checkpoint.
+    let team = ThreadTeam::new(action.fit.execution.threads);
+    let numerical_action = &mut action;
+    let (prepared, inference, prepare_seconds, inference_seconds) = crate::cancellable::run(
+        team,
+        move || {
+            let (prepared, loaded_rows) =
+                prepare_ols_pipeline(loaded, loaded_rhs, numerical_action, categorical)?;
+            numerical_action.admit_prepared_parent(prepared.owned_buffer_bytes())?;
+            let prepare_seconds = trace_started.elapsed().as_secs_f64();
+            let inference_started = Instant::now();
+            let inference = infer_ols(&prepared, numerical_action, loaded_rows)?;
+            numerical_action.admit_output_parent(inference.view().owned_buffer_bytes())?;
+            let inference_seconds = inference_started.elapsed().as_secs_f64();
+            Ok((prepared, inference, prepare_seconds, inference_seconds))
+        },
+        &mut || spi.check_interrupted_while_waiting(),
+    )?;
     let view = inference.view();
-    action.admit_output_parent(view.owned_buffer_bytes())?;
-    let inference_seconds = inference_started.elapsed().as_secs_f64();
     complete_ols(
         &action,
         &prepared,
@@ -3694,6 +3705,7 @@ mod tests {
         fail_store_at: Option<usize>,
         interrupt_at: Option<usize>,
         interrupt_checks: usize,
+        waiting_checks: usize,
         stores: Vec<StoreEvent>,
         store_error: Option<FeregError>,
     }
@@ -3848,6 +3860,11 @@ mod tests {
         }
 
         fn display(&mut self, _message: &str) -> Result<()> {
+            Ok(())
+        }
+
+        fn check_interrupted_while_waiting(&mut self) -> Result<()> {
+            self.waiting_checks += 1;
             Ok(())
         }
 
@@ -4278,6 +4295,7 @@ mod tests {
                 fail_store_at: None,
                 interrupt_at: None,
                 interrupt_checks: 0,
+                waiting_checks: 0,
                 // The allocation-sensitive fake path must not grow this log
                 // after the first output store.
                 stores: Vec::with_capacity(512),

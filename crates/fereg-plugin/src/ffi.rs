@@ -1258,7 +1258,7 @@ impl SpiApi for SpiSession {
         if poll != 0 || stopped != 0 {
             Err(FeregError::new(
                 ErrorCode::Interrupted,
-                "Stata requested interruption during OLS input preparation",
+                "Stata requested interruption (Break) during native estimation",
             ))
         } else {
             Ok(())

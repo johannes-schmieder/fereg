@@ -209,6 +209,11 @@ pub trait SpiApi {
     /// receives an SPI session.
     fn display(&mut self, message: &str) -> Result<()>;
     fn check_interrupted(&mut self) -> Result<()>;
+    /// Periodic Break poll while native work runs on the action team. Timed
+    /// polls are separate from the deterministic boundary polls above.
+    fn check_interrupted_while_waiting(&mut self) -> Result<()> {
+        self.check_interrupted()
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -414,6 +414,7 @@ where
             if mask.count_ones() as usize != cardinality {
                 continue;
             }
+            crate::interrupt::checkpoint()?;
             let reduced = provider.reduce_subset(mask, reservation)?;
             if reduced.production.len() != square || reduced.certificate.len() != square {
                 return Err(invalid_argument(

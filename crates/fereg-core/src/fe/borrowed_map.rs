@@ -1986,6 +1986,7 @@ impl<'a> ReusableCategoricalMapAbsorber<'a> {
         }
 
         for iteration in 1..=config.max_iterations {
+            crate::interrupt::checkpoint()?;
             self.with_pilot_group_scratch(rhs_count, |design, workspace| {
                 borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
                     design,
@@ -2394,6 +2395,7 @@ fn absorb_two_fe_pcg_reusing(
     let mut breakdown = false;
     let initialization_seconds = phase_start.elapsed().as_secs_f64();
     while !reconstruct && iterations < pcg_iteration_limit {
+        crate::interrupt::checkpoint()?;
         let op_start = Instant::now();
         graph.apply_schur(design, weights, rhs_count, stride)?;
         // Count actual operator lanes, including converged zeros. Only the
@@ -2707,6 +2709,7 @@ fn absorb_two_fe_pcg_reusing(
     // observation-space candidate. One quarter of the original iteration
     // budget remains reserved for this fail-safe continuation.
     for iteration in iterations.saturating_add(1)..=config.max_iterations {
+        crate::interrupt::checkpoint()?;
         borrowed_residual_sweep_recording::<MapCoefficientAccumulator>(
             design,
             weights,
@@ -3313,6 +3316,7 @@ pub(crate) fn absorb_borrowed_intercept_irons_tuck_certified(
 
     let mut iterations = 0_usize;
     while iterations < config.max_iterations {
+        crate::interrupt::checkpoint()?;
         let x0 = fallible_matrix_copy(&values, "unable to reserve Irons-Tuck x0")?;
         let c0 = coefficients
             .as_ref()
@@ -4516,6 +4520,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
     prepared: Option<&mut BorrowedLsmrPrepared<'a>>,
     memory: &mut BorrowedLsmrCallMemory,
 ) -> Result<(DenseMatrix, SolveReport, f64, Option<FeCoefficientBatch>)> {
+    crate::interrupt::checkpoint()?;
     let total_started = Instant::now();
     let effective_max_iterations = lsmr_config.max_iterations.min(max_iterations);
     if !tolerance.is_finite() || tolerance <= 0.0 {
@@ -5120,6 +5125,7 @@ fn absorb_cg_with_reservation<R: WorkspaceReservation>(
     let mut reconstruction_check_active = false;
 
     for iteration in 1..=config.max_iterations {
+        crate::interrupt::checkpoint()?;
         if let Some(coefficients) = projection_coefficients.as_mut() {
             coefficients.fill_zero();
         }
@@ -5456,6 +5462,7 @@ fn absorb_with_reservation_mode<R: WorkspaceReservation>(
     }
 
     for iteration in 1..=config.max_iterations {
+        crate::interrupt::checkpoint()?;
         borrowed_residual_sweep_recording(
             design,
             weights,

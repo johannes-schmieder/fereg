@@ -73,6 +73,7 @@ pub fn absorb_lsmr(
     values: &mut DenseMatrix,
     config: LsmrConfig,
 ) -> Result<SolveReport> {
+    crate::interrupt::checkpoint()?;
     validate_config(config)?;
     if design.nobs() != values.nrows() || weights.len() != values.nrows() {
         return Err(FeregError::new(

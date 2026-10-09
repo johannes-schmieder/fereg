@@ -1160,6 +1160,7 @@ fn run_prepared_ppml_irls<P: PreparedOlsFitView + Sync + ?Sized>(
     );
 
     for iteration in 1..=config.ppml.max_iterations {
+        crate::interrupt::checkpoint()?;
         interrupt(PpmlInterruptPoint::IrlsIteration)?;
         // The qualification-only median covers the same complete warmed
         // iterations as the allocator window.  `None` is the normal path and

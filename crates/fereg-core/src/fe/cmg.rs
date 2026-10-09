@@ -1706,6 +1706,7 @@ impl GraphCmg {
             && crate::diagnostics::phase_timing_enabled();
         let mut start = 0;
         while start < values.ncols() {
+            crate::interrupt::checkpoint()?;
             let seed_end = if seed.as_ref().is_some_and(|(_, enabled)| *enabled)
                 && start < values.ncols() - 1
             {

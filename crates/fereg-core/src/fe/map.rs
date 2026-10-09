@@ -110,6 +110,7 @@ pub(super) fn absorb_map_with_context(
     let mut final_certificate = None;
 
     for iteration in 1..=config.max_iterations {
+        crate::interrupt::checkpoint()?;
         for effect in design.effects() {
             workspace.project(effect, weights, values)?;
         }
@@ -971,6 +972,7 @@ impl ReusableMapAbsorber {
             );
         }
         for iteration in 1..=config.max_iterations {
+            crate::interrupt::checkpoint()?;
             for effect in self.design.effects() {
                 self.projection.project(effect, weights, &mut values)?;
             }

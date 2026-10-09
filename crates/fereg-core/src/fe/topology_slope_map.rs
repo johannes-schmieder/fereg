@@ -2327,6 +2327,7 @@ fn recover_with_reservation<R: SlopeWorkspaceReservation>(
     }
 
     for iteration in 1..=config.max_iterations {
+        crate::interrupt::checkpoint()?;
         for (effect_index, effect) in effects.iter().enumerate() {
             project_effect_and_accumulate(
                 topology,
@@ -2762,6 +2763,7 @@ fn absorb_with_reservation<R: SlopeWorkspaceReservation>(
     }
 
     for iteration in 1..=config.max_iterations {
+        crate::interrupt::checkpoint()?;
         for (effect_index, effect) in effects.iter().enumerate() {
             project_effect(
                 topology,

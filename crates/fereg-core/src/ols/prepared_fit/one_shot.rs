@@ -395,6 +395,7 @@ fn project_scratch_columns<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation
     let block_width = config.execution.poolsize.min(generated_columns.max(1));
     let mut intercept_cross = None;
     for start in (0..generated_columns).step_by(block_width) {
+        crate::interrupt::checkpoint()?;
         let end = start.saturating_add(block_width).min(generated_columns);
         let raw_block =
             prepared.fit_build_rhs_block_with_response(start, end, false, frame.response())?;
@@ -659,6 +660,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
     retained_scratch: Option<&mut Option<PreparedOlsScratch>>,
 ) -> Result<CertifiedPreparedOlsFit> {
     let mut trace = PhaseTrace::new();
+    crate::interrupt::checkpoint()?;
     frame.validate_for(prepared)?;
     let weights = frame.weights();
     // FE norm handoffs remain max-normalized, including explicit divisor frames.
@@ -715,6 +717,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         retain_fast_score_cache,
         max_fast_score_cache_bytes,
     )?;
+    crate::interrupt::checkpoint()?;
     let mut qr = solve_one_shot(
         prepared,
         &mut inputs,
@@ -753,6 +756,7 @@ pub(super) fn fit<'a, P: PreparedOlsFitView + ?Sized, R: FitReservation>(
         phase_observation,
         LinearSessionAllocationPhase::Projection,
     );
+    crate::interrupt::checkpoint()?;
     let (residuals, residual_absorption_report, residual_fe_coefficients) = project_residual(
         &mut cmg,
         prepared.fit_sample().n_active(),
