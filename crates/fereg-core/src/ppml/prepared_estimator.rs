@@ -3948,15 +3948,12 @@ mod tests {
         let second = [0_u32, 1, 0, 1, 0, 1, 0, 1];
         let views = [first.as_slice(), second.as_slice()];
         let bound = cluster_subset_groups(&views).expect("cluster bound");
-        let exact = crate::factorize::interaction_codes(&[first.as_slice()])
-            .expect("first")
-            .n_levels()
-            + crate::factorize::interaction_codes(&[second.as_slice()])
-                .expect("second")
-                .n_levels()
-            + crate::factorize::interaction_codes(&[first.as_slice(), second.as_slice()])
-                .expect("joint")
-                .n_levels();
+        let distinct = |rows: &mut dyn Iterator<Item = (u32, u32)>| {
+            rows.collect::<std::collections::BTreeSet<_>>().len()
+        };
+        let exact = distinct(&mut first.iter().map(|&a| (a, 0)))
+            + distinct(&mut second.iter().map(|&b| (b, 0)))
+            + distinct(&mut first.iter().zip(&second).map(|(&a, &b)| (a, b)));
         assert!(bound >= exact);
     }
 

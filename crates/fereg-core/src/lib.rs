@@ -28,16 +28,14 @@ pub mod selftest;
 pub mod topology_dof;
 
 pub use data::{
-    prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput, ColumnRecipe,
-    DenseMatrix, DomainDecision, DropReason, ModelMatrixBuilder, NumericColumnView,
-    NumericDomainPolicy, NumericPreparationInput, NumericSourceUse, PreparedAdjustment,
-    PreparedNumericSample, PreparedWeights, WeightInput, WeightKind,
+    prepare_numeric_sample, prepare_numeric_sample_with_source_uses, AdjustmentInput, DenseMatrix,
+    DomainDecision, DropReason, NumericColumnView, NumericDomainPolicy, NumericPreparationInput,
+    NumericSourceUse, PreparedAdjustment, PreparedNumericSample, PreparedWeights, WeightInput,
+    WeightKind,
 };
 pub use diagnostics::{BuildInfo, DoctorInput, DoctorReport};
 pub use error::{ErrorCode, FeregError, Result};
-pub use factorize::{
-    factorize_f64, factorize_i64, factorize_strings, interaction_codes, EncodedFactor,
-};
+pub use factorize::{factorize_f64, EncodedFactor};
 pub use fe::{
     absorb_borrowed_intercept_map_certified, absorb_finalized_categorical_topology_map_certified,
     absorb_fixed_effects, absorb_lsmr, absorb_map, borrow_categorical_topology_design,
@@ -122,7 +120,7 @@ pub use protocol::{
 };
 pub use selftest::{run_native_selftest, SelfTestCase, SelfTestReport};
 pub use topology_dof::{
-    compute_categorical_topology_absorbed_dof, CategoricalTopologyDofEffect,
-    CategoricalTopologyDofEffectIdentity, CategoricalTopologyDofEffectSpec,
-    CategoricalTopologyDofPolicy, CategoricalTopologyDofReport, CategoricalTopologyDofSlopeSpec,
+    CategoricalTopologyDofEffect, CategoricalTopologyDofEffectIdentity,
+    CategoricalTopologyDofEffectSpec, CategoricalTopologyDofPolicy, CategoricalTopologyDofReport,
+    CategoricalTopologyDofSlopeSpec,
 };

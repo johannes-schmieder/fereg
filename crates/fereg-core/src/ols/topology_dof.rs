@@ -104,30 +104,6 @@ impl CategoricalTopologyDofReport {
     }
 }
 
-/// Compute absorbed rank for finalized categorical topology.
-///
-/// `effect_specs` and `topology.effect_to_topology()` are both in requested
-/// absorbed-term order. `cluster_dimensions` are final-sample compact numeric
-/// cluster codes; each declared source tuple has already been factorized as one
-/// cluster dimension by the caller.
-pub fn compute_categorical_topology_absorbed_dof(
-    topology: &FinalizedCategoricalTopology,
-    effect_specs: &[CategoricalTopologyDofEffectSpec],
-    structural_intercept: bool,
-    policy: CategoricalTopologyDofPolicy,
-    cluster_dimensions: &[&[u32]],
-) -> Result<CategoricalTopologyDofReport> {
-    compute_categorical_topology_absorbed_dof_with_slopes(
-        topology,
-        effect_specs,
-        structural_intercept,
-        policy,
-        cluster_dimensions,
-        &[],
-        None,
-    )
-}
-
 pub(crate) fn compute_categorical_topology_absorbed_dof_with_slopes(
     topology: &FinalizedCategoricalTopology,
     effect_specs: &[CategoricalTopologyDofEffectSpec],

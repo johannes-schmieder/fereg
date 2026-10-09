@@ -17,6 +17,8 @@ command -v cargo >/dev/null 2>&1 || {
 profile="${FEREG_TEST_PROFILE:-ci}"
 
 cargo fmt --all -- --check
+# The fuzz package is its own workspace; keep its targets compiling.
+(cd fuzz && cargo fmt -- --check && cargo check --locked --quiet)
 cargo clippy --workspace --all-targets --no-default-features --profile "$profile" -- -D warnings
 cargo clippy -p fereg-plugin --all-targets --features ffi --profile "$profile" -- -D warnings
 cargo test --workspace --all-targets --no-default-features --profile "$profile"

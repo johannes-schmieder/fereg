@@ -28,30 +28,6 @@
           {
             "condition": "column >= self . ncols",
             "line": 110
-          },
-          {
-            "condition": "continuous . iter ( ) . any ( | column | column . len ( ) != nrows ) || categorical . iter ( ) . any ( | column | column . len ( ) != nrows )",
-            "line": 187
-          },
-          {
-            "condition": "start > end || end > recipes . len ( )",
-            "line": 217
-          },
-          {
-            "condition": "pool_size == 0",
-            "line": 243
-          },
-          {
-            "condition": "sources . is_empty ( ) || sources . len ( ) != levels . len ( )",
-            "line": 263
-          },
-          {
-            "condition": "source < self . continuous . len ( )",
-            "line": 298
-          },
-          {
-            "condition": "source < self . categorical . len ( )",
-            "line": 309
           }
         ],
         "functions": {
@@ -63,21 +39,9 @@
             "line": 69,
             "lines": 3
           },
-          "check_categorical#1": {
-            "line": 308,
-            "lines": 10
-          },
-          "check_continuous#1": {
-            "line": 297,
-            "lines": 10
-          },
           "column#1": {
             "line": 109,
             "lines": 19
-          },
-          "for_each_block#1": {
-            "line": 234,
-            "lines": 22
           },
           "from_columns#1": {
             "line": 41,
@@ -86,14 +50,6 @@
           "from_row_major#1": {
             "line": 13,
             "lines": 15
-          },
-          "generate#1": {
-            "line": 207,
-            "lines": 3
-          },
-          "generate_range#1": {
-            "line": 211,
-            "lines": 22
           },
           "index#1": {
             "line": 133,
@@ -111,16 +67,8 @@
             "line": 64,
             "lines": 3
           },
-          "new#1": {
-            "line": 181,
-            "lines": 20
-          },
           "nrows#1": {
             "line": 59,
-            "lines": 3
-          },
-          "nrows#2": {
-            "line": 203,
             "lines": 3
           },
           "resize_zeroed_within_capacity#1": {
@@ -131,20 +79,12 @@
             "line": 78,
             "lines": 3
           },
-          "validate_recipe#1": {
-            "line": 257,
-            "lines": 39
-          },
-          "value#1": {
-            "line": 319,
-            "lines": 39
-          },
           "zeros#1": {
             "line": 29,
             "lines": 11
           }
         },
-        "production_lines": 328
+        "production_lines": 128
       },
       "crates/fereg-core/src/data/sample.rs": {
         "chunk_candidates": [],
@@ -432,48 +372,32 @@
         "dispatch_candidates": [
           {
             "condition": "values . len ( ) >= 16_384",
-            "line": 42
-          },
-          {
-            "condition": "sources . iter ( ) . any ( | source | source . len ( ) != len )",
-            "line": 319
+            "line": 25
           }
         ],
         "functions": {
           "ensure_u32_levels#1": {
-            "line": 344,
+            "line": 274,
             "lines": 10
           },
           "factorize_dense_integer_f64#1": {
-            "line": 167,
+            "line": 150,
             "lines": 123
           },
           "factorize_f64#1": {
-            "line": 35,
+            "line": 18,
             "lines": 88
           },
-          "factorize_i64#1": {
-            "line": 18,
-            "lines": 16
-          },
           "factorize_ordered_f64#1": {
-            "line": 128,
+            "line": 111,
             "lines": 38
-          },
-          "factorize_strings#1": {
-            "line": 291,
-            "lines": 19
-          },
-          "interaction_codes#1": {
-            "line": 311,
-            "lines": 32
           },
           "n_levels#1": {
             "line": 13,
             "lines": 3
           }
         },
-        "production_lines": 327
+        "production_lines": 260
       },
       "crates/fereg-core/src/fe/accelerated_map.rs": {
         "chunk_candidates": [],
@@ -5479,7 +5403,7 @@
         "chunk_candidates": [],
         "dispatch_candidates": [],
         "functions": {},
-        "production_lines": 126
+        "production_lines": 124
       },
       "crates/fereg-core/src/linalg/mod.rs": {
         "chunk_candidates": [],
@@ -11948,100 +11872,96 @@
         "dispatch_candidates": [
           {
             "condition": "effect_is_nested_within_any_cluster ( source . codes ( & source_views ) ? , source . n_levels ( ) , nobs , cluster_dimensions , reservation , ) ?",
-            "line": 260
+            "line": 236
           },
           {
             "condition": "eligible_indices . len ( ) >= 2",
-            "line": 368
+            "line": 344
           },
           {
             "condition": "values . len ( ) != codes . len ( )",
-            "line": 611
+            "line": 587
           },
           {
             "condition": "effect_specs . len ( ) != topology . effect_to_topology ( ) . len ( )",
-            "line": 677
+            "line": 653
           },
           {
             "condition": "cluster_dimensions . len ( ) > 10",
-            "line": 704
+            "line": 680
           },
           {
             "condition": "cluster_codes . len ( ) != nobs",
-            "line": 710
+            "line": 686
           },
           {
             "condition": "fe_codes . len ( ) != nobs",
-            "line": 746
+            "line": 722
           },
           {
             "condition": "earlier_codes . len ( ) != later_codes . len ( )",
-            "line": 788
+            "line": 764
           },
           {
             "condition": "left >= earlier . n_levels ( ) || right >= vertex_count",
-            "line": 825
+            "line": 801
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 896
+            "line": 872
           },
           {
             "condition": "output . capacity ( ) < input . len ( )",
-            "line": 912
+            "line": 888
           },
           {
             "condition": "output . capacity ( ) < input . len ( )",
-            "line": 928
+            "line": 904
           }
         ],
         "functions": {
           "apply_mobility_policy#1": {
-            "line": 356,
+            "line": 332,
             "lines": 52
           },
           "build_report#1": {
-            "line": 410,
+            "line": 386,
             "lines": 185
           },
-          "compute_categorical_topology_absorbed_dof#1": {
-            "line": 113,
-            "lines": 17
-          },
           "compute_categorical_topology_absorbed_dof_with_slopes#1": {
-            "line": 131,
+            "line": 107,
             "lines": 21
           },
           "compute_with_reservation#1": {
-            "line": 197,
+            "line": 173,
             "lines": 116
           },
           "continuous_slope_redundancy#1": {
-            "line": 596,
+            "line": 572,
             "lines": 68
           },
           "effect_is_nested_within_any_cluster#1": {
-            "line": 736,
+            "line": 712,
             "lines": 40
           },
           "effect_source#1": {
-            "line": 724,
+            "line": 700,
             "lines": 11
           },
           "eligible_indices#1": {
-            "line": 334,
+            "line": 310,
             "lines": 21
           },
           "fallible_string_copy#1": {
-            "line": 921,
+            "line": 897,
             "lines": 15
           },
           "fallible_vec_copy#1": {
-            "line": 905,
+            "line": 881,
             "lines": 15
           },
           "find#1": {
-            "line": 844,
+            "line": 820,
             "lines": 18
           },
           "owned_buffer_bytes#1": {
@@ -12049,39 +11969,39 @@
             "lines": 16
           },
           "pair_components_for_effects#1": {
-            "line": 777,
+            "line": 753,
             "lines": 66
           },
           "reserve_string#1": {
-            "line": 183,
+            "line": 159,
             "lines": 10
           },
           "reserve_vec#1": {
-            "line": 172,
+            "line": 148,
             "lines": 10
           },
           "reserved_filled#1": {
-            "line": 888,
+            "line": 864,
             "lines": 16
           },
           "source_index#1": {
-            "line": 665,
+            "line": 641,
             "lines": 4
           },
           "source_views#1": {
-            "line": 314,
+            "line": 290,
             "lines": 19
           },
           "union#1": {
-            "line": 863,
+            "line": 839,
             "lines": 24
           },
           "validate_inputs#1": {
-            "line": 670,
+            "line": 646,
             "lines": 53
           }
         },
-        "production_lines": 862
+        "production_lines": 845
       },
       "crates/fereg-core/src/ols/vce.rs": {
         "chunk_candidates": [],
@@ -17678,35 +17598,35 @@
         "dispatch_candidates": [],
         "functions": {
           "chunk_checksum#1": {
-            "line": 137,
+            "line": 153,
             "lines": 26
           },
           "passed#1": {
-            "line": 24,
+            "line": 25,
             "lines": 3
           },
           "render#1": {
-            "line": 29,
+            "line": 30,
             "lines": 20
           },
           "require#1": {
-            "line": 182,
+            "line": 198,
             "lines": 7
           },
           "require_pass#1": {
-            "line": 50,
+            "line": 51,
             "lines": 17
           },
           "run_case#1": {
-            "line": 164,
+            "line": 180,
             "lines": 17
           },
           "run_native_selftest#1": {
-            "line": 70,
-            "lines": 62
+            "line": 71,
+            "lines": 77
           }
         },
-        "production_lines": 175
+        "production_lines": 190
       },
       "crates/fereg-plugin/src/action_memory.rs": {
         "chunk_candidates": [],
@@ -20327,10 +20247,10 @@
     "metrics": {
       "fereg-core": {
         "chunk_candidates": 11,
-        "dispatch_candidates": 1251,
+        "dispatch_candidates": 1244,
         "files_over_1500": 16,
         "functions_over_150": 67,
-        "production_lines": 94362
+        "production_lines": 94091
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
@@ -20342,5 +20262,5 @@
     },
     "schema": 1
   },
-  "reason": "Retire the unused gated rank-revealing Cholesky family."
+  "reason": "Retire unused model-matrix builder, DoF wrapper and self-test-only factorizers."
 }

@@ -1,5 +1,6 @@
 use crate::error::{ErrorCode, FeregError, Result};
-use crate::factorize::{factorize_f64, factorize_i64, factorize_strings, interaction_codes};
+use crate::factorize::factorize_f64;
+use crate::fe::{factorize_code_interaction, CategoricalCodeView};
 use crate::metadata::{CompiledTermGraph, ModelWireV2};
 use crate::options::ThreadConfig;
 use crate::parallel::ThreadTeam;
@@ -70,28 +71,43 @@ impl SelfTestReport {
 pub fn run_native_selftest(threads: usize) -> SelfTestReport {
     let cases = vec![
         run_case("protocol", || Handshake::current(18).validate()),
-        run_case("factor_i64", || {
-            let encoded = factorize_i64(&[4, 2, 4, -3])?;
+        run_case("factor_f64_dense", || {
+            let encoded = factorize_f64(&[4.0, 2.0, 4.0, -3.0])?;
             require(
                 encoded.codes == vec![2, 1, 2, 0],
-                "unexpected integer codes",
+                "unexpected dense integer codes",
             )
         }),
-        run_case("factor_f64", || {
+        run_case("factor_f64_hashed", || {
             let encoded = factorize_f64(&[-0.0, 0.0, 1.5])?;
             require(
                 encoded.codes == vec![0, 0, 1],
                 "floating zero was not canonicalized",
             )
         }),
-        run_case("factor_string", || {
-            let encoded = factorize_strings(&["firm-2", "firm-1", "firm-2"])?;
-            require(encoded.codes == vec![1, 0, 1], "unexpected string codes")
+        run_case("factor_f64_ordered", || {
+            // At least 16,384 sorted values select the ordered-run path.
+            let values: Vec<f64> = (0..16_384_u32)
+                .map(|row| f64::from(row / 2) + 0.5)
+                .collect();
+            let encoded = factorize_f64(&values)?;
+            require(
+                encoded.levels.len() == 8_192
+                    && encoded
+                        .codes
+                        .iter()
+                        .enumerate()
+                        .all(|(row, &code)| code as usize == row / 2),
+                "unexpected ordered numeric codes",
+            )
         }),
-        run_case("interaction", || {
+        run_case("code_interaction", || {
             let first = [0, 0, 1, 1];
             let second = [0, 1, 0, 1];
-            let encoded = interaction_codes(&[&first, &second])?;
+            let encoded = factorize_code_interaction(&[
+                CategoricalCodeView::new(&first, 2),
+                CategoricalCodeView::new(&second, 2),
+            ])?;
             require(
                 encoded.n_levels() == 4,
                 "interaction tuple count is incorrect",

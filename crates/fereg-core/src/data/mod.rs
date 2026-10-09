@@ -4,7 +4,7 @@ mod model_matrix;
 mod sample;
 mod weights;
 
-pub use model_matrix::{ColumnRecipe, DenseMatrix, ModelMatrixBuilder};
+pub use model_matrix::DenseMatrix;
 pub(crate) use sample::{
     classify_numeric_sample_into_mask, classify_numeric_sample_with_source_uses,
     NumericSampleClassification,

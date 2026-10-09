@@ -1868,7 +1868,7 @@ mod tests {
         assert_eq!(reduced.certificate_subsets, reduced.subsets);
     }
 
-    fn legacy_dense_fixed_block_meats(
+    fn scalar_reference_fixed_block_meats(
         values: &[f64],
         nrows: usize,
         dimension: usize,
@@ -1944,7 +1944,7 @@ mod tests {
         (production, certificate)
     }
 
-    fn legacy_serial_influence_covariance(
+    fn scalar_reference_serial_influence_covariance(
         values: &[f64],
         nrows: usize,
         dimension: usize,
@@ -1996,7 +1996,8 @@ mod tests {
         ];
         let multipliers = [0.13, -1.7, 2.2, 0.03, -0.9, 1.01, 0.47];
         let bread = [0.73, -0.12, 0.04, -0.12, 0.51, -0.09, 0.04, -0.09, 0.28];
-        let expected = legacy_serial_influence_covariance(&values, 7, 3, &multipliers, &bread);
+        let expected =
+            scalar_reference_serial_influence_covariance(&values, 7, 3, &multipliers, &bread);
         let design = RowMajorSandwichDesign::new(&values, 7, 3).expect("serial design");
         let scores = SliceSandwichScoreMultiplier::same(&multipliers).expect("serial multipliers");
         let mut reservation = CountingReservation::default();
@@ -2019,8 +2020,13 @@ mod tests {
             let multipliers: Vec<_> = (0..rows)
                 .map(|i| [0.0, -0.0, 1e-10, -1.0, 1e10][i % 5])
                 .collect();
-            let expected =
-                legacy_serial_influence_covariance(&values, rows, dimension, &multipliers, &bread);
+            let expected = scalar_reference_serial_influence_covariance(
+                &values,
+                rows,
+                dimension,
+                &multipliers,
+                &bread,
+            );
             let design = RowMajorSandwichDesign::new(&values, rows, dimension).unwrap();
             let scores = SliceSandwichScoreMultiplier::same(&multipliers).unwrap();
             let mut reservation = CountingReservation::default();
@@ -2151,7 +2157,7 @@ mod tests {
             partial_budget_bytes: 1 << 20,
         };
         let (legacy_production, legacy_certificate) =
-            legacy_dense_fixed_block_meats(&values, 9, 3, &production, &certificate, policy);
+            scalar_reference_fixed_block_meats(&values, 9, 3, &production, &certificate, policy);
         let design = RowMajorSandwichDesign::new(&values, 9, 3).expect("design");
         let multipliers =
             SliceSandwichScoreMultiplier::new(&production, &certificate).expect("scores");
@@ -2188,7 +2194,7 @@ mod tests {
                             maximum_blocks: 16,
                             partial_budget_bytes: 1 << 20,
                         };
-                        let expected = legacy_dense_fixed_block_meats(
+                        let expected = scalar_reference_fixed_block_meats(
                             &values, nrows, dimension, &production, &certificate, policy,
                         );
                         let actual = reduce_dense_score_meats(

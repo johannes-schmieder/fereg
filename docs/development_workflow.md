@@ -70,6 +70,12 @@ its accepted baseline. Changes to the installed controller or collector require
 the Windows skill's maintenance workflow and matching hash pins in the wrapper;
 editing a project copy alone does not update the shared service.
 
+`./scripts/run_tests.sh` also compiles the separate `fuzz/` package. Bounded
+fuzzing uses `cargo fuzz` (nightly) from `fuzz/`, for example
+`cargo +nightly fuzz run raw_abi_args -- -max_total_time=60`; record target,
+toolchain, duration, corpus hash and outcome as described in
+`tests/fuzz/README.md`.
+
 Use `scripts/run_plugin_replay.sh` for real-plugin independent dense science and
 fixed-thread repeat checks. A prior binary may additionally serve as an exact
 regression comparator. It is not a second installed runtime or scientific authority.
