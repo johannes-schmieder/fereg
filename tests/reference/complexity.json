@@ -407,24 +407,24 @@
             "line": 59
           },
           {
-            "condition": "left . nrows ( ) != right . nrows ( ) || left . ncols ( ) != right . ncols ( ) || weights . len ( ) != left . nrows ( )",
-            "line": 296
+            "condition": "! weight_scale . is_finite ( ) || weight_scale <= 0.0 || weights . iter ( ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 || * weight / weight_scale == 0.0 )",
+            "line": 297
           },
           {
-            "condition": "! weight_scale . is_finite ( ) || weight_scale <= 0.0 || weights . iter ( ) . any ( | weight | ! weight . is_finite ( ) || * weight <= 0.0 || * weight / weight_scale == 0.0 )",
-            "line": 306
+            "condition": "left . nrows ( ) != right . nrows ( ) || left . ncols ( ) != right . ncols ( ) || weights . len ( ) != left . nrows ( )",
+            "line": 317
           },
           {
             "condition": "numerators . len ( ) != denominators . len ( )",
-            "line": 348
+            "line": 357
           },
           {
             "condition": "current . len ( ) != initial . len ( )",
-            "line": 429
+            "line": 438
           },
           {
             "condition": "symmetric && design . effects ( ) . len ( ) > 1",
-            "line": 501
+            "line": 510
           }
         ],
         "functions": {
@@ -438,130 +438,134 @@
           },
           "absorb_conjugate_gradient#1": {
             "line": 168,
-            "lines": 102
+            "lines": 105
           },
           "apply_symmetric_projection#1": {
-            "line": 271,
+            "line": 274,
             "lines": 19
           },
           "cg_ratios#1": {
-            "line": 347,
+            "line": 356,
             "lines": 39
           },
           "cg_report#1": {
-            "line": 463,
+            "line": 472,
             "lines": 27
           },
+          "cg_weight_scale#1": {
+            "line": 295,
+            "lines": 15
+          },
           "extrapolate#1": {
-            "line": 509,
+            "line": 518,
             "lines": 51
           },
           "fallible_matrix_copy#1": {
-            "line": 561,
+            "line": 570,
             "lines": 4
           },
           "fallible_vector_copy#1": {
-            "line": 566,
-            "lines": 8
-          },
-          "fallible_zeros#1": {
             "line": 575,
             "lines": 8
           },
+          "fallible_zeros#1": {
+            "line": 584,
+            "lines": 8
+          },
           "largest_relative_residual#1": {
-            "line": 428,
+            "line": 437,
             "lines": 34
           },
           "report#1": {
-            "line": 584,
+            "line": 593,
             "lines": 32
           },
           "sweep#1": {
-            "line": 491,
+            "line": 500,
             "lines": 17
           },
           "update_direction#1": {
-            "line": 409,
+            "line": 418,
             "lines": 18
           },
           "update_solution_and_residual#1": {
-            "line": 387,
+            "line": 396,
             "lines": 21
           },
           "weighted_dot_columns#1": {
-            "line": 291,
-            "lines": 55
+            "line": 311,
+            "lines": 44
           }
         },
-        "production_lines": 572
+        "production_lines": 578
       },
       "crates/fereg-core/src/fe/auto.rs": {
         "chunk_candidates": [],
         "dispatch_candidates": [
           {
             "condition": "values . nrows ( ) != design . nobs ( ) || ! config . map . tolerance . is_finite ( ) || config . map . tolerance <= 0. || config . map . max_iterations == 0 || config . map . check_every == 0",
-            "line": 127
+            "line": 126
           },
           {
             "condition": "design . effects ( ) . len ( ) > 1 && config . map . max_iterations > 1",
-            "line": 144
+            "line": 142
           },
           {
             "condition": "config . solver_memory_budget . is_none_or ( | b | b . fits ( cached . bytes ( ) . unwrap ( ) as u128 ) )",
-            "line": 196
+            "line": 192
           },
           {
             "condition": "let Ok ( bytes ) = context . parallel_workspace_bytes ( values . ncols ( ) )",
-            "line": 208
+            "line": 204
           },
           {
             "condition": "config . solver_memory_budget . is_none_or ( | b | b . fits ( parallel . bytes ( ) . unwrap ( ) as u128 ) )",
-            "line": 210
+            "line": 206
           },
           {
             "condition": "budget . is_none_or ( | budget | budget . fits ( peak . bytes ( ) . unwrap ( ) as u128 ) )",
-            "line": 262
+            "line": 258
           },
           {
             "condition": "let Some ( budget ) = config . solver_memory_budget",
-            "line": 289
+            "line": 285
           },
           {
             "condition": "! budget . fits ( required )",
-            "line": 290
+            "line": 286
           }
         ],
         "functions": {
           "absorb_auto#1": {
-            "line": 120,
-            "lines": 132
+            "line": 119,
+            "lines": 129
           },
           "absorb_fixed_effects#1": {
-            "line": 55,
+            "line": 54,
             "lines": 64
           },
           "admit_generic_solver#1": {
-            "line": 270,
+            "line": 266,
             "lines": 28
           },
           "admit_parallel_projection#1": {
-            "line": 255,
+            "line": 251,
             "lines": 14
           },
           "default#1": {
-            "line": 42,
+            "line": 41,
             "lines": 10
           },
           "direct_lsmr_tolerance#1": {
-            "line": 17,
+            "line": 16,
             "lines": 7
           },
           "fallible_matrix_copy#1": {
-            "line": 299,
+            "line": 295,
             "lines": 8
           }
         },
-        "production_lines": 282
+        "production_lines": 275
       },
       "crates/fereg-core/src/fe/borrowed_map.rs": {
         "chunk_candidates": [],
@@ -20294,7 +20298,7 @@
         "dispatch_candidates": 1244,
         "files_over_1500": 16,
         "functions_over_150": 67,
-        "production_lines": 93963
+        "production_lines": 93962
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
@@ -20306,5 +20310,5 @@
     },
     "schema": 1
   },
-  "reason": "Shared overflow-safe PPML certificate normalization."
+  "reason": "FE-7/FE-8 redundant LSMR certification and accelerator copy removed"
 }

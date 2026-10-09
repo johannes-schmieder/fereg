@@ -122,8 +122,8 @@ pub(super) fn absorb_accelerated_map_with_context(
             ));
         }
 
-        let x2 = fallible_matrix_copy(values, "unable to reserve accelerator x2")?;
-        let candidate = extrapolate(&x0, &x1, &x2, solver)?;
+        // `values` is the second sweep's output; extrapolate reads it in place.
+        let candidate = extrapolate(&x0, &x1, values, solver)?;
         if let Some(candidate) = candidate {
             let candidate_certificate =
                 context.certify(&candidate, &reference_norms, config.tolerance)?;
@@ -191,9 +191,10 @@ fn absorb_conjugate_gradient(
     }
 
     let mut workspace = AutoProjectionWorkspace::new(design, values.ncols(), projection_plan)?;
+    let weight_scale = cg_weight_scale(weights)?;
     let mut residual = apply_symmetric_projection(design, weights, values, &mut workspace)?;
     let mut direction = fallible_matrix_copy(&residual, "unable to reserve CG direction")?;
-    let mut residual_square = weighted_dot_columns(&residual, &residual, weights)?;
+    let mut residual_square = weighted_dot_columns(&residual, &residual, weights, weight_scale)?;
     let initial_residual_square = fallible_vector_copy(
         &residual_square,
         "unable to reserve CG initial residual norms",
@@ -204,7 +205,8 @@ fn absorb_conjugate_gradient(
     for iteration in 1..=config.max_iterations {
         crate::interrupt::checkpoint()?;
         let projection = apply_symmetric_projection(design, weights, &direction, &mut workspace)?;
-        let direction_projection = weighted_dot_columns(&direction, &projection, weights)?;
+        let direction_projection =
+            weighted_dot_columns(&direction, &projection, weights, weight_scale)?;
         let alpha = match cg_ratios(
             &residual_square,
             &direction_projection,
@@ -230,7 +232,8 @@ fn absorb_conjugate_gradient(
         };
 
         update_solution_and_residual(values, &mut residual, &direction, &projection, &alpha)?;
-        let next_residual_square = weighted_dot_columns(&residual, &residual, weights)?;
+        let next_residual_square =
+            weighted_dot_columns(&residual, &residual, weights, weight_scale)?;
         recurrence_residual =
             largest_relative_residual(&next_residual_square, &initial_residual_square)?;
 
@@ -288,20 +291,8 @@ fn apply_symmetric_projection(
     Ok(residual)
 }
 
-fn weighted_dot_columns(
-    left: &DenseMatrix,
-    right: &DenseMatrix,
-    weights: &[f64],
-) -> Result<Vec<f64>> {
-    if left.nrows() != right.nrows()
-        || left.ncols() != right.ncols()
-        || weights.len() != left.nrows()
-    {
-        return Err(FeregError::new(
-            ErrorCode::InvalidArgument,
-            "CG weighted-dot dimensions differ",
-        ));
-    }
+/// Validate CG weights once per solve; returns the normalizing maximum.
+fn cg_weight_scale(weights: &[f64]) -> Result<f64> {
     let weight_scale = weights.iter().copied().fold(0.0_f64, f64::max);
     if !weight_scale.is_finite()
         || weight_scale <= 0.0
@@ -312,6 +303,24 @@ fn weighted_dot_columns(
         return Err(FeregError::new(
             ErrorCode::InvalidData,
             "CG weights must be finite, positive, and safely normalizable",
+        ));
+    }
+    Ok(weight_scale)
+}
+
+fn weighted_dot_columns(
+    left: &DenseMatrix,
+    right: &DenseMatrix,
+    weights: &[f64],
+    weight_scale: f64,
+) -> Result<Vec<f64>> {
+    if left.nrows() != right.nrows()
+        || left.ncols() != right.ncols()
+        || weights.len() != left.nrows()
+    {
+        return Err(FeregError::new(
+            ErrorCode::InvalidArgument,
+            "CG weighted-dot dimensions differ",
         ));
     }
     let mut output = fallible_zeros(left.ncols(), "unable to reserve CG weighted dots")?;

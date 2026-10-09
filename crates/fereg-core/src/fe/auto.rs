@@ -4,9 +4,8 @@ use super::projection::ParallelProjectionPlan;
 use crate::data::DenseMatrix;
 use crate::error::{ErrorCode, FeregError, Result};
 use crate::fe::{
-    absorb_accelerated_map, absorb_lsmr, absorb_map, certify_residuals_with_reference_norms,
-    weighted_column_norms, FeDesign, FeSolverKind, LsmrConfig, MapConfig, SolveReport,
-    SolveStopReason,
+    absorb_accelerated_map, absorb_lsmr, absorb_map, FeDesign, FeSolverKind, LsmrConfig, MapConfig,
+    SolveReport, SolveStopReason,
 };
 use crate::memory::SolverWorkspacePeak;
 use crate::memory::{generic_fe_solver_bytes, owned_fe_matrix_bytes, FeSolverMemoryBudget};
@@ -135,7 +134,6 @@ fn absorb_auto(
             "general FE projection inputs are invalid",
         ));
     }
-    let norms = weighted_column_norms(values, weights)?;
     let mut peak = SolverWorkspacePeak::ZERO;
     let mut prior = None;
     // A coefficient-space solve preserves the original projection identity.
@@ -156,13 +154,11 @@ fn absorb_auto(
                     ..config.lsmr
                 };
                 let mut report = absorb_lsmr(design, weights, &mut candidate, policy)?;
-                report.certificate = certify_residuals_with_reference_norms(
-                    design,
-                    weights,
-                    &candidate,
-                    &norms,
-                    config.map.tolerance,
-                )?;
+                // absorb_lsmr already certified these residuals against the
+                // same reference norms (weighted_column_norms of the untouched
+                // inputs); only the public pass threshold differs.
+                report.certificate.passed =
+                    report.certificate.relative_infinity_norm <= config.map.tolerance;
                 report.requested_solver = FeSolverKind::Auto;
                 report.solver_workspace_peak = peak;
                 if report.certificate.passed {
