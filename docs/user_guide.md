@@ -306,7 +306,9 @@ benchmark additionally requires Stata 19 and an installed `reghdfe`.
 
 The public 0.5.0 beta does not expose IV/GMM, group outcomes with individual
 fixed effects, HAC or Driscoll--Kraay covariance estimators, other GLMs, or GPU
-execution. `feppml` does not expose a model-based IID covariance,
+execution. During each call `feppml` temporarily sets Stata's `processors` to 1 so that
+Stata's own workers do not compete with the native team; the caller's setting
+is restored on success, error and Break. `feppml` does not expose a model-based IID covariance,
 preconditioner or DoF-policy controls, analytic/importance weights, or
 developer injection.
 Fixed-width string categorical sources are supported, but

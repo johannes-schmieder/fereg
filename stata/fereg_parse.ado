@@ -1,7 +1,7 @@
 *! fereg model-wire v2 metadata parser 0.5.0 24aug2026
 program define fereg_parse, rclass
     version 18.0
-    syntax [varlist(fv ts numeric)], ///
+    syntax [varlist(fv ts numeric default=none)], ///
         TOUSE(varname numeric) [ABSorb(string asis) CLUster(string asis) EMPTYMODEL]
 
     local rhs `"`varlist'"'

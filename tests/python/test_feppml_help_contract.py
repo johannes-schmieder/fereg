@@ -1,4 +1,5 @@
 from pathlib import Path
+import hashlib
 import tempfile
 import unittest
 
@@ -173,10 +174,8 @@ class CanonicalContractTests(unittest.TestCase):
 
 
 class PublicHelpBoundaryTests(unittest.TestCase):
-    def test_current_public_help_matches_the_canonical_fixture(self) -> None:
-        require_public_help_bytes(
-            PUBLIC_HELP_PATH.read_bytes(), CANONICAL_HELP_PATH.read_bytes()
-        )
+    def test_current_public_help_matches_its_reviewed_hash(self) -> None:
+        require_public_help()
 
     def test_public_help_requires_exact_full_bytes(self) -> None:
         canonical = _canonical().encode("utf-8")
@@ -188,17 +187,15 @@ class PublicHelpBoundaryTests(unittest.TestCase):
         with self.assertRaisesRegex(HelpContractError, "differs from canonical bytes"):
             require_public_help_bytes(canonical + b"\n", canonical)
 
-    def test_file_entry_point_requires_the_canonical_bytes(self) -> None:
+    def test_file_entry_point_requires_the_reviewed_bytes(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
-            root = Path(temporary)
-            canonical = root / "canonical.sthlp"
-            public = root / "public.sthlp"
-            canonical.write_bytes(_canonical().encode("utf-8"))
-            public.write_bytes(canonical.read_bytes())
-            require_public_help(public, canonical)
+            public = Path(temporary) / "public.sthlp"
+            public.write_bytes(_canonical().encode("utf-8"))
+            reviewed = hashlib.sha256(public.read_bytes()).hexdigest()
+            require_public_help(public, reviewed)
             public.write_bytes(public.read_bytes().replace(b"Examples", b"Examplez"))
             with self.assertRaises(HelpContractError):
-                require_public_help(public, canonical)
+                require_public_help(public, reviewed)
 
 
 class SharedFixtureTests(unittest.TestCase):
@@ -226,8 +223,8 @@ class RepositorySourceContractTests(unittest.TestCase):
 
     def test_documentation_fixtures_use_the_canonical_source(self) -> None:
         self.assertEqual(
-            CANONICAL_HELP_PATH.relative_to(CANONICAL_HELP_PATH.parents[3]).as_posix(),
-            "tests/stata/documentation/feppml_public.sthlp",
+            CANONICAL_HELP_PATH.relative_to(CANONICAL_HELP_PATH.parents[1]).as_posix(),
+            "stata/feppml.sthlp",
         )
         shared = SHARED_FIXTURE_PATH.read_text(encoding="utf-8")
         wrapper = HIDDEN_WRAPPER_PATH.read_text(encoding="utf-8")
@@ -236,7 +233,7 @@ class RepositorySourceContractTests(unittest.TestCase):
             self.assertIn(example_id, shared)
         self.assertIn("$FEREG_PPML_TEST_COMMAND", shared)
         self.assertIn("_fereg_ppml", wrapper)
-        self.assertIn("feppml_public.sthlp", wrapper)
+        self.assertIn('global FEREG_PPML_HELP_SOURCE "feppml.sthlp"', wrapper)
         self.assertIn(SHARED_FIXTURE_PATH.name, wrapper)
 
 

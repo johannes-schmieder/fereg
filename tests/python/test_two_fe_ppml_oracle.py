@@ -2,7 +2,11 @@
 from pathlib import Path
 import json
 import sys
-import numpy as np
+import unittest
+try:
+    import numpy as np
+except ImportError as error:  # scientific Python is optional for the gate
+    raise unittest.SkipTest(f"requires NumPy/SciPy/pandas: {error}") from error
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / 'tests/python'))
 from ppml_explicit_dummy_oracle import fit_explicit_ppml
@@ -91,7 +95,6 @@ if __name__ == '__main__':
     print(json.dumps(dict(positive=validate(), nonnegative=validate_nonnegative()), indent=2, allow_nan=False))
 
 
-import unittest
 
 class GroundedPoissonOracleTests(unittest.TestCase):
     def test_positive_sample(self):

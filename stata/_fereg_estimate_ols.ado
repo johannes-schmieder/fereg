@@ -17,7 +17,7 @@ program define _fereg_estimate_ols, eclass
          SOLVer(string) PREConditioner(string) ///
          MEMory(string) POOLSize(integer 10) TOLerance(real 1e-8) ///
          ITERate(integer 16000) THREADS(integer 0) DETERMINISTIC ///
-         INJECT(string)]
+         INJECT(string) PUBLICWEXP(string)]
 
     local memory_mode = lower(strtrim(`"`memory'"'))
     if `"`memory_mode'"' == "" local memory_mode "fast"
@@ -131,10 +131,7 @@ program define _fereg_estimate_ols, eclass
     tempname model_sources model_terms model_components absorb_terms
     tempname absorb_components cluster_terms cluster_components input_bindings
     if strtrim(`"`indepvars'"') == "" {
-        // `syntax [varlist]' expands an omitted varlist to `_all'; supply the
-        // numeric marker solely to enter the parser, whose `emptymodel` branch
-        // clears it before constructing the wire model.
-        fereg_parse `touse', touse(`touse') emptymodel ///
+        fereg_parse, touse(`touse') emptymodel ///
             `absorb_option' `cluster_option'
     }
     else {
@@ -741,15 +738,18 @@ program define _fereg_estimate_ols, eclass
     }
     if `has_aweight' {
         ereturn local wtype "aweight"
-        ereturn local wexp "= `aweight'"
+        if strtrim(`"`publicwexp'"') != "" ereturn local wexp `"`publicwexp'"'
+        else ereturn local wexp "= `aweight'"
     }
     if `has_fweight' {
         ereturn local wtype "fweight"
-        ereturn local wexp "= `fweight'"
+        if strtrim(`"`publicwexp'"') != "" ereturn local wexp `"`publicwexp'"'
+        else ereturn local wexp "= `fweight'"
     }
     if `has_pweight' {
         ereturn local wtype "pweight"
-        ereturn local wexp "= `pweight'"
+        if strtrim(`"`publicwexp'"') != "" ereturn local wexp `"`publicwexp'"'
+        else ereturn local wexp "= `pweight'"
     }
     if `"`residual'"' != "" ereturn local resid "`residual'"
     ereturn local fereg_action_protocol "1.6"
@@ -814,7 +814,7 @@ program define _fereg_eols_validate, rclass
        rowsof(`runtime') != 30 | colsof(`runtime') != 2 | ///
        rowsof(`receipt') != 1 | colsof(`receipt') != 16 {
         di as error "hidden OLS result layout failed exact structural validation"
-        exit 459
+        exit 499
     }
     local coefficients = `receipt'[1,5]
     if `receipt'[1,1] != 5354601 | `receipt'[1,2] != 1 | ///
@@ -830,19 +830,24 @@ program define _fereg_eols_validate, rclass
        `receipt'[1,8] < 0 | `receipt'[1,8] > _N | ///
        `receipt'[1,9] < 0 | `receipt'[1,9] > `receipt'[1,8] {
        di as error "hidden OLS receipt failed exact structural validation"
-       exit 459
+       exit 499
     }
-    mata: __fereg_runtime_validate = st_matrix("`runtime'")
-    mata: st_numscalar("`runtime_valid'", ///
-        all(((__fereg_runtime_validate[.,1] :== 0) :| ///
-             (__fereg_runtime_validate[.,1] :== 1)) :& ///
-            (__fereg_runtime_validate[.,2] :< .) :& ///
-            ((__fereg_runtime_validate[.,1] :== 1) :| ///
-             (__fereg_runtime_validate[.,2] :== 0))))
-    mata: mata drop __fereg_runtime_validate
+    tempname runtime_rows
+    capture noisily {
+        mata: `runtime_rows' = st_matrix("`runtime'")
+        mata: st_numscalar("`runtime_valid'", ///
+            all(((`runtime_rows'[.,1] :== 0) :| ///
+                 (`runtime_rows'[.,1] :== 1)) :& ///
+                (`runtime_rows'[.,2] :< .) :& ///
+                ((`runtime_rows'[.,1] :== 1) :| ///
+                 (`runtime_rows'[.,2] :== 0))))
+    }
+    local runtime_rc = _rc
+    capture mata: mata drop `runtime_rows'
+    if `runtime_rc' exit `runtime_rc'
     if `runtime_valid' != 1 {
         di as error "hidden OLS runtime report failed defined/value validation"
-        exit 459
+        exit 3499
     }
     if `runtime'[1,1] != 1 | `runtime'[2,1] != 1 | ///
        `runtime'[3,1] != 1 | `runtime'[4,1] != 1 | ///
@@ -856,7 +861,7 @@ program define _fereg_eols_validate, rclass
        `runtime'[25,1] != 1 | `runtime'[28,1] != 1 | ///
        `runtime'[29,1] != 1 | `runtime'[30,1] != 1 {
         di as error "hidden OLS runtime report omitted a mandatory field"
-        exit 459
+        exit 3499
     }
     if !inlist(`runtime'[1,2], 1, 2, 3) | ///
        !inlist(`runtime'[2,2], 1, 2) | ///
@@ -868,7 +873,7 @@ program define _fereg_eols_validate, rclass
        `runtime'[29,2] < 1 | `runtime'[29,2] != int(`runtime'[29,2]) | ///
        !inlist(`runtime'[30,2], 0, 1) {
         di as error "hidden OLS runtime report failed semantic validation"
-        exit 459
+        exit 3499
     }
     return scalar coefficients = `coefficients'
 end

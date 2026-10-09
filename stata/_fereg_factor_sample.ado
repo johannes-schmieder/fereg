@@ -30,7 +30,7 @@ program define _fereg_factor_sample, rclass
     local cluster_option
     if strtrim(`"`absorb'"') != "" local absorb_option `"absorb(`absorb')"'
     if strtrim(`"`cluster'"') != "" local cluster_option `"cluster(`cluster')"'
-    quietly fereg_parse `touse', touse(`touse') emptymodel `absorb_option' `cluster_option'
+    quietly fereg_parse, touse(`touse') emptymodel `absorb_option' `cluster_option'
     local required `"`r(source_vars)'"'
     if strtrim(`"`required'"') != "" markout `generate' `required', strok
     if "`offset'`exposure'" != "" markout `generate' `offset' `exposure'

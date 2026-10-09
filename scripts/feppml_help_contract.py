@@ -3,8 +3,9 @@
 
 The help is executable source as well as documentation.  This
 module deliberately parses only the exact marker syntax understood by
-``fereg_run`` and fails closed on structural ambiguity. The file contract
-requires byte identity between the reviewed fixture and installed public help.
+``fereg_run`` and fails closed on structural ambiguity. The installed public
+help must match the reviewed SHA-256 below; any edit requires re-running this
+contract and updating that pin in the same reviewed change.
 """
 from __future__ import annotations
 
@@ -15,10 +16,10 @@ from typing import NamedTuple, Sequence
 
 
 ROOT = Path(__file__).resolve().parents[1]
-CANONICAL_HELP_PATH = (
-    ROOT / "tests" / "stata" / "documentation" / "feppml_public.sthlp"
-)
 PUBLIC_HELP_PATH = ROOT / "stata" / "feppml.sthlp"
+CANONICAL_HELP_PATH = PUBLIC_HELP_PATH
+# Reviewed bytes of stata/feppml.sthlp.
+REVIEWED_PUBLIC_HELP_SHA256 = "b87a746ed7f8808930e5d89ab1afcb203c8a200f296ccda6dd8eceab052033c2"
 SHARED_FIXTURE_PATH = (
     ROOT / "tests" / "stata" / "documentation" / "feppml_help_examples.do"
 )
@@ -285,10 +286,16 @@ def require_public_help_bytes(
 
 def require_public_help(
     public_path: Path = PUBLIC_HELP_PATH,
-    canonical_path: Path = CANONICAL_HELP_PATH,
+    reviewed_sha256: str = REVIEWED_PUBLIC_HELP_SHA256,
 ) -> tuple[HelpExample, ...]:
-    """Validate the public help file against the canonical fixture."""
+    """Validate the public help file and require its reviewed bytes."""
 
     public_help = _read_help(public_path, "public feppml help")
-    canonical_help = _read_help(canonical_path, "canonical feppml help")
-    return require_public_help_bytes(public_help, canonical_help)
+    examples = validate_canonical_help(_decode_help(public_help, "public feppml help"))
+    public_hash = hashlib.sha256(public_help).hexdigest()
+    if public_hash != reviewed_sha256:
+        raise HelpContractError(
+            "public feppml help differs from its reviewed bytes; "
+            f"public_sha256={public_hash}, reviewed_sha256={reviewed_sha256}"
+        )
+    return examples

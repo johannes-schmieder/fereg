@@ -247,12 +247,9 @@ program define _fereg_estimate_ppml, eclass
         di as error "PPML output variable names must be distinct"
         exit 110
     }
+    * Preserve Stata's specific binding error (r(110)) for existing names.
     foreach output of local requested_output_names {
-        capture confirm new variable `output'
-        if _rc {
-            di as error "PPML output variable `output' already exists"
-            exit 198
-        }
+        confirm new variable `output'
     }
 
     marksample touse, novarlist
@@ -310,7 +307,7 @@ program define _fereg_estimate_ppml, eclass
     tempname model_sources model_terms model_components absorb_terms
     tempname absorb_components cluster_terms cluster_components input_bindings
     if strtrim(`"`indepvars'"') == "" {
-        fereg_parse `touse', touse(`touse') emptymodel ///
+        fereg_parse, touse(`touse') emptymodel ///
             `absorb_option' `cluster_option'
     }
     else {
@@ -363,7 +360,10 @@ program define _fereg_estimate_ppml, eclass
             local base_source : word `source_id' of `original_source_vars'
             local ts_piece : word `component_row' of `component_ts'
             local ts_colon = strpos(`"`ts_piece'"', ":")
-            if `ts_colon' == 0 exit 198
+            if `ts_colon' == 0 {
+                di as error "malformed time-series operator registry"
+                exit 198
+            }
             local ts_operator = substr(`"`ts_piece'"', `ts_colon' + 1, .)
             local ts_expression `"`ts_operator'"'
             if substr(`"`ts_expression'"', strlen(`"`ts_expression'"'), 1) != "." ///
@@ -372,6 +372,7 @@ program define _fereg_estimate_ppml, eclass
             capture quietly generate double `materialized_ts' = `ts_expression'`base_source'
             if _rc {
                 local materialize_rc = _rc
+                di as error "unable to materialize time-series source `ts_expression'`base_source'"
                 exit `materialize_rc'
             }
 

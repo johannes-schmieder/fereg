@@ -488,7 +488,7 @@ assert _rc == 110
 confirm new variable __bad_duplicate
 generate double __existing_output = 0
 capture noisily `feppml_test_command' y c.x, xb(__existing_output)
-assert _rc == 198
+assert _rc == 110
 assert __existing_output == 0
 tsset obs_id
 capture noisily `feppml_test_command' i.y c.x

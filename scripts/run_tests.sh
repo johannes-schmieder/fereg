@@ -2,9 +2,7 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
-python3 -m unittest discover -s tests/python -p test_plugin_replay.py
-python3 -m unittest discover -s tests/python -p test_ppml_recession_cone_primers.py
-python3 -m unittest discover -s tests/python -p test_windows_ci_diagnostics.py
+python3 -m unittest discover -s tests/python
 python3 scripts/check_fma_rounding_vectors.py
 python3 scripts/check_fe_boundary_response_oracle.py
 python3 scripts/check_fe_cancellation_oracle.py

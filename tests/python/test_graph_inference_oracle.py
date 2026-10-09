@@ -4,10 +4,14 @@ import hashlib
 import itertools
 import json
 from pathlib import Path
+import unittest
+try:
+    import numpy as np
+    import pandas as pd
+    from scipy.linalg import lstsq
+except ImportError as error:  # scientific Python is optional for the gate
+    raise unittest.SkipTest(f"requires NumPy/SciPy/pandas: {error}") from error
 
-import numpy as np
-import pandas as pd
-from scipy.linalg import lstsq
 
 from graph_oracle import solve
 from small_sparse_oracle import fit
@@ -87,7 +91,6 @@ def check(root):
 
 
 import tempfile
-import unittest
 
 class GraphInferenceOracleTests(unittest.TestCase):
     def test_schur_and_sparse_dummy_against_dense_svd(self):

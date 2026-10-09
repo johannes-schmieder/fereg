@@ -52,7 +52,6 @@ CANDIDATE_SUFFIXES = (
 )
 SHARED_CANDIDATES = (
     Path("/Users/Shared/fereg-references"),
-    Path("/Users/Shared/fereg-references"),
     Path("/Users/Shared/references"),
 )
 

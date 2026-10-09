@@ -82,16 +82,29 @@ program define _fereg_estimate_public, eclass
             local vce_option `"vce(`vce_kind')"'
         }
         else {
-            di as error "hidden numeric manifest adapter received an unsupported vce()"
-            exit 498
+            di as error "vce() must be unadjusted, robust, or cluster clustervars"
+            exit 198
         }
     }
     if strtrim(`"`dof'"') != "" local dof_option `"dof(`dof')"'
     if `"`keepsingletons'"' != "" local singleton_option "keepsingletons"
     if `"`residuals'"' != "" local residual_option `"residual(`residuals')"'
     if `"`noconstant'"' != "" local constant_option "noconstant"
+    local public_wexp_option
     if `"`weight'"' != "" {
         local weight_variable = strtrim(subinstr(`"`exp'"', "=", "", 1))
+        local weight_words : word count `weight_variable'
+        capture confirm numeric variable `weight_variable'
+        if _rc | `weight_words' != 1 {
+            * Weight expressions are evaluated once on the if/in candidates,
+            * as feppml does; e(wexp) keeps the caller's expression.
+            tempvar public_weight_touse public_weight
+            quietly mark `public_weight_touse' `if' `in'
+            quietly generate double `public_weight' = ///
+                `weight_variable' if `public_weight_touse'
+            local weight_variable `public_weight'
+            local public_wexp_option `"publicwexp(`"`exp'"')"'
+        }
         if `"`weight'"' == "aweight" local weight_option "aweight(`weight_variable')"
         else if `"`weight'"' == "fweight" local weight_option "fweight(`weight_variable')"
         else if `"`weight'"' == "pweight" local weight_option "pweight(`weight_variable')"
@@ -100,7 +113,7 @@ program define _fereg_estimate_public, eclass
     _fereg_estimate_ols `varlist' `if' `in', ///
         `absorb_option' `vce_option' `cluster_option' `dof_option' `singleton_option' ///
         `residual_option' `constant_option' `memory_option' ///
-        `weight_option' ///
+        `weight_option' `public_wexp_option' ///
         solver(`solver_mode') preconditioner(`preconditioner_mode') ///
         poolsize(`poolsize') threads(`threads') tolerance(`tolerance') ///
         iterate(`iterate') `deterministic'

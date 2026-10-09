@@ -447,6 +447,9 @@ sets the available native team for the call. {cmd:e(feppml_requested_threads)} r
 and {cmd:e(feppml_threads)} records the resolved command budget. Stages may use fewer
 workers according to work, independent tasks and admitted storage. Existing
 stage traces distinguish lane limits and independent work from this budget.
+For the duration of the call {cmd:feppml} sets Stata's {cmd:processors} to 1, so
+Stata's own workers do not compete with the native team; the caller's setting is
+restored on success, error, and Break.
 {cmd:deterministic} fixes reduction
 partitions and merge order for the same platform, route, and thread count.
 {cmd:solver(auto)} is the default. It selects LSMR for exactly two or three

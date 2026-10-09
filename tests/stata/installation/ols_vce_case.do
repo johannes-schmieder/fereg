@@ -95,8 +95,7 @@ foreach request in "cluster Firm" "cluster" "robust firm" "bogus" "cluster firm#
     local rc = _rc
     assert `rc' != 0
     if "`request'" == "cluster Firm" assert `rc' == 111
-    if "`request'" == "cluster" assert `rc' == 198
-    if inlist("`request'", "robust firm", "bogus") assert `rc' == 498
+    if inlist("`request'", "cluster", "robust firm", "bogus") assert `rc' == 198
     assert `"`e(cmd)'"' == "regress"
     assert e(N) == `prior_N'
     assert e(df_r) == `prior_df'

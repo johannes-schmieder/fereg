@@ -1,8 +1,11 @@
 import importlib.util
 from pathlib import Path
 import unittest
+try:
+    import numpy as np
+except ImportError as error:  # scientific Python is optional for the gate
+    raise unittest.SkipTest(f"requires NumPy/SciPy/pandas: {error}") from error
 
-import numpy as np
 
 SOURCE = Path(__file__).resolve().parents[2] / 'tests/python/cycle_effect_oracle.py'
 SPEC = importlib.util.spec_from_file_location('cycle_effect_oracle', SOURCE)

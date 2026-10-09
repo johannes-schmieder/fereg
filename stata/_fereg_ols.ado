@@ -34,9 +34,11 @@ program define _fereg_ols, eclass sortpreserve
 
     local vce_option
     local cluster_option
-    local vce_text = lower(strtrim(`"`vce'"'))
+    local vce_text = strtrim(`"`vce'"')
     if `"`vce_text'"' != "" {
         gettoken vce_kind vce_rest : vce_text
+        * Keywords are case-insensitive; cluster variable names keep their case.
+        local vce_kind = lower(`"`vce_kind'"')
         if `"`vce_kind'"' == "cluster" {
             local vce_rest = strtrim(`"`vce_rest'"')
             if `"`vce_rest'"' == "" {

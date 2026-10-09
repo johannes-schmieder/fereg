@@ -311,7 +311,7 @@ def fit(root, cell, arm, repetition, frame, cpus):
     else:
         command_file=directory/'command.do'
         command_file.write_text(f'do "{HERE}/campaign_stata.do" "{directory}/config.do"\n')
-        command=['stata-mp','-b','do',str(command_file)]
+        command=[os.environ.get('STATA_BIN','stata-mp'),'-b','do',str(command_file)]
     observation=execute(command,directory,cpus[:cell['threads']],POLICY['process_timeout_seconds'])
     meta=read_metadata(directory/'metadata.tsv')
     meta['native_arm']='1' if arm=='fereg' else '0'

@@ -63,4 +63,5 @@ matrix report[1,2] = 1
 capture _fereg_memory_validate report
 assert _rc == 459
 display "FEREG_MEMORY_BASELINE_PASS"
+display as result "END_FIXTURE|memory_baseline_contract|rc=0"
 exit, clear

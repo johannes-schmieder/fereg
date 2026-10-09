@@ -20,44 +20,55 @@ program define fereg_p
         marksample touse, novarlist
         local sample "`touse' & e(sample)"
     }
+    // Compute in double, store into a private variable of the requested type,
+    // and publish only after every finite value proved representable.
+    tempvar work stored
     if `"`xb'"' != "" {
-        quietly _fereg_p_xb `typlist' `varlist' if `sample'
-        exit
+        quietly _fereg_p_xb double `work' if `sample', storage(`typlist')
     }
-
-    local residual_var `"`e(resid)'"'
-    if strtrim(`"`residual_var'"') == "" {
-        di as error "predict `xbd'`d'`residuals' requires residuals() at estimation time"
-        exit 498
+    else {
+        local residual_var `"`e(resid)'"'
+        if strtrim(`"`residual_var'"') == "" {
+            di as error "predict `xbd'`d'`residuals' requires residuals() at estimation time"
+            exit 498
+        }
+        capture confirm numeric variable `residual_var'
+        if _rc {
+            di as error "the estimation residual variable is no longer available"
+            exit 111
+        }
+        if `"`residuals'"' != "" {
+            quietly generate double `work' = `residual_var' if `sample'
+        }
+        else if `"`xbd'"' != "" {
+            quietly generate double `work' = `e(depvar)' - `residual_var' if `sample'
+        }
+        else {
+            tempvar linear_prediction
+            quietly _fereg_p_xb double `linear_prediction' if `sample', storage(double)
+            quietly generate double `work' = ///
+                `e(depvar)' - `linear_prediction' - `residual_var' if `sample'
+        }
     }
-    capture confirm numeric variable `residual_var'
-    if _rc {
-        di as error "the estimation residual variable is no longer available"
-        exit 111
+    quietly generate `typlist' `stored' = `work' if `sample'
+    capture assert missing(`stored') == missing(`work') if `sample'
+    local validation_rc = _rc
+    if `validation_rc' {
+        capture drop `stored'
+        if `validation_rc' == 1 exit 1
+        di as error "prediction is not representable in the requested storage type"
+        exit 430
     }
-    if `"`residuals'"' != "" {
-        quietly generate `typlist' `varlist' = `residual_var' if `sample'
-        exit
-    }
-    if `"`xbd'"' != "" {
-        quietly generate `typlist' `varlist' = `e(depvar)' - `residual_var' ///
-            if `sample'
-        exit
-    }
-
-    tempvar linear_prediction
-    quietly _fereg_p_xb double `linear_prediction' if `sample'
-    quietly generate `typlist' `varlist' = ///
-        `e(depvar)' - `linear_prediction' - `residual_var' ///
-        if `sample'
+    nobreak rename `stored' `varlist'
 end
 
 program define _fereg_p_xb
     version 18.0
-    syntax newvarname [if] [in]
+    syntax newvarname [if] [in], STORage(string)
     // Plain numeric coefficient names need no factor or time-series expansion.
     // Score current data; no fitted-value cache survives data edits or sorting.
-    local plain = inlist("`typlist'", "float", "double")
+    // The route follows the caller's requested storage type, as before.
+    local plain = inlist("`storage'", "float", "double")
     local columns : colnames e(b)
     foreach column of local columns {
         capture confirm name `column'

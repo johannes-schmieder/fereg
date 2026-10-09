@@ -5,9 +5,12 @@ from pathlib import Path
 import sys
 import unittest
 from unittest import mock
+try:
+    import numpy as np
+    from scipy.linalg import qr
+except ImportError as error:  # scientific Python is optional for the gate
+    raise unittest.SkipTest(f"requires NumPy/SciPy/pandas: {error}") from error
 
-import numpy as np
-from scipy.linalg import qr
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
 from two_fe_span_audit import audit_two_fe_span
