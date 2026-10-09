@@ -509,6 +509,17 @@ Requested/default IR nonconvergence or uncertified output is fatal. Mu needs
 a fitted start and the same independent cone certificate; accepted Mu drops
 discard that entire fitted session.
 
+A terminal no-drop result is checked before it is reported. For an IR
+fixed point (Johannes, 2026-10-09) the check uses the stored recurrence and
+projection residual: the recurrence is nonnegative, zero on positive
+outcomes and unit-scaled; the stored fitted values reproduce the reported
+sign certificate exactly; and every kept regressor and FE intercept or slope
+channel has a zero weighted residual moment, relative to the channel norm and
+the larger recurrence or residual norm, within the certificate tolerance. If
+any part fails, the detector is re-executed deterministically, as it is for
+simplex and Mu no-drop results. Like the projection's own certificates, this
+weighted check only weakly constrains fitted values on zero-outcome rows.
+
 No prior-generation projected design, warm state, rank, cluster subset,
 bread or output is reusable. Recompute canonical finite rank on the final
 sample and verify positive weighted outcome. Report requested/executed

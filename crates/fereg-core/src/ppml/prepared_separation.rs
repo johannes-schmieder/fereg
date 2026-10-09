@@ -83,6 +83,20 @@ struct PreparedNumericalProposal {
     direction: Option<Vec<f64>>,
     exact_intercept_span: Option<graph::ExactInterceptSpan>,
     note: SeparationNote,
+    /// Stored projection of a terminal no-separation rectifier iteration; the
+    /// no-drop check verifies it instead of re-running the detector.
+    fixed_point: Option<IrFixedPointEvidence>,
+}
+
+/// The rectifier's final recurrence vector, the residual of its certified
+/// weighted projection onto the regressor and FE span, and the kept finite
+/// columns of that projection. Fitted values are `recurrence - residual`,
+/// exactly as the projection formed them.
+#[derive(Debug, Clone, PartialEq)]
+struct IrFixedPointEvidence {
+    recurrence: Vec<f64>,
+    residual: Vec<f64>,
+    kept_columns: Vec<usize>,
 }
 
 /// Validation capability consumed by the atomic commit path.  Keeping this
@@ -1267,6 +1281,7 @@ fn bind_numerical_proposal(
         direction: proposal.direction,
         exact_intercept_span: None,
         note: proposal.note,
+        fixed_point: None,
     })
 }
 
@@ -1972,10 +1987,11 @@ fn prepared_bound_iterated_rectifier(
             }
         }
     }
-    bind_numerical_proposal(
-        generation,
-        prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?,
-    )
+    let (proposal, fixed_point) =
+        prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?;
+    let mut bound = bind_numerical_proposal(generation, proposal)?;
+    bound.fixed_point = fixed_point;
+    Ok(bound)
 }
 
 fn prepared_iterated_rectifier(
@@ -1984,7 +2000,7 @@ fn prepared_iterated_rectifier(
     config: SeparationConfig,
     linear: PreparedOlsFitConfig,
     interrupt: &mut dyn FnMut(PpmlInterruptPoint) -> Result<()>,
-) -> Result<DetectionProposal> {
+) -> Result<(DetectionProposal, Option<IrFixedPointEvidence>)> {
     let outcome = generation.outcome();
     let boundary = fallible_collect(
         outcome
@@ -1995,14 +2011,16 @@ fn prepared_iterated_rectifier(
         "unable to reserve prepared IR boundary rows",
     )?;
     if boundary.is_empty() {
-        return Ok(DetectionProposal::empty(
-            SeparationMethod::IteratedRectifier,
-            MethodStatus::NoCandidates,
-            "no zero-outcome observations",
+        return Ok((
+            DetectionProposal::empty(
+                SeparationMethod::IteratedRectifier,
+                MethodStatus::NoCandidates,
+                "no zero-outcome observations",
+            ),
+            None,
         ));
     }
-    let boundary_weight =
-        (config.tolerance * config.tolerance / boundary.len() as f64).max(f64::MIN_POSITIVE);
+    let boundary_weight = ir_boundary_weight(config, boundary.len());
     let weights = fallible_collect(
         outcome
             .iter()
@@ -2021,57 +2039,45 @@ fn prepared_iterated_rectifier(
     for iteration in 1..=config.max_ir_iterations {
         interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
         let projection = prepared_project(generation, &u, &weights, ppml, config, linear)?;
-        let positive_direction = projection.fitted;
-        let scale = infinity_norm(&positive_direction);
-        if scale <= f64::MIN_POSITIVE {
-            return Ok(no_separation_proposal(
-                SeparationMethod::IteratedRectifier,
-                iteration,
-                0.0,
-                "prepared iterated rectifier converged to zero".into(),
+        let fitted = &projection.fitted;
+        let assessment = assess_ir_projection(outcome, |row| fitted[row], config);
+        if let Some(certificate) = assessment.certificate {
+            let note = if assessment.scale <= f64::MIN_POSITIVE {
+                "prepared iterated rectifier converged to zero"
+            } else {
+                "prepared iterated rectifier certified no separation"
+            };
+            let PreparedProjection {
+                residual,
+                kept_columns,
+                ..
+            } = projection;
+            return Ok((
+                DetectionProposal {
+                    method: SeparationMethod::IteratedRectifier,
+                    dropped: Vec::new(),
+                    iterations: iteration,
+                    status: MethodStatus::NoSeparation,
+                    certificate: Some(certificate),
+                    exact_fe_certificate: None,
+                    direction: None,
+                    note: note.into(),
+                },
+                Some(IrFixedPointEvidence {
+                    recurrence: u,
+                    residual,
+                    kept_columns,
+                }),
             ));
         }
-        let recurrence_scale = scale.max(1.0);
-        let threshold = config.tolerance * recurrence_scale;
-        let interior = outcome
-            .iter()
-            .zip(&positive_direction)
-            .filter(|(outcome, _)| **outcome > 0.0)
-            .fold(0.0_f64, |maximum, (_, value)| maximum.max(value.abs()));
-        let minimum_boundary = boundary
-            .iter()
-            .map(|row| positive_direction[*row])
-            .fold(f64::INFINITY, f64::min);
-        let maximum_boundary = boundary
-            .iter()
-            .map(|row| positive_direction[*row])
-            .fold(f64::NEG_INFINITY, f64::max);
-        let boundary_violation = nonnegative_ir_boundary_violation(minimum_boundary);
-        if minimum_boundary >= -threshold
-            && maximum_boundary <= threshold
-            && interior <= config.certificate_tolerance * recurrence_scale
-            && boundary_violation <= config.certificate_tolerance * recurrence_scale
-        {
-            return Ok(DetectionProposal {
-                method: SeparationMethod::IteratedRectifier,
-                dropped: Vec::new(),
-                iterations: iteration,
-                status: MethodStatus::NoSeparation,
-                certificate: Some(SeparationCertificate {
-                    proof: crate::ppml_separation::SeparationCertificateProof::IteratedRectifierFixedPoint,
-                    interior_zero_relative: interior / recurrence_scale,
-                    boundary_violation_relative: boundary_violation / recurrence_scale,
-                    span_residual_relative: 0.0,
-                    negative_margin_relative: 0.0,
-                    direction_scale: scale,
-                    positive_maximum: boundary_violation,
-                    passed: true,
-                }),
-                exact_fe_certificate: None,
-                direction: None,
-                note: "prepared iterated rectifier certified no separation".into(),
-            });
-        }
+        let positive_direction = projection.fitted;
+        let IrProjectionAssessment {
+            scale,
+            threshold,
+            minimum_boundary,
+            maximum_boundary,
+            ..
+        } = assessment;
         if minimum_boundary >= -threshold && maximum_boundary > threshold {
             let direction = fallible_collect(
                 positive_direction.iter().map(|value| -*value),
@@ -2093,16 +2099,19 @@ fn prepared_iterated_rectifier(
                     &dropped,
                     config.certificate_tolerance,
                 )?;
-                return Ok(DetectionProposal {
-                    method: SeparationMethod::IteratedRectifier,
-                    dropped,
-                    iterations: iteration,
-                    status: MethodStatus::Certified,
-                    certificate: Some(certificate),
-                    exact_fe_certificate: None,
-                    direction: Some(direction),
-                    note: "prepared iterated-rectifier candidate direction".into(),
-                });
+                return Ok((
+                    DetectionProposal {
+                        method: SeparationMethod::IteratedRectifier,
+                        dropped,
+                        iterations: iteration,
+                        status: MethodStatus::Certified,
+                        certificate: Some(certificate),
+                        exact_fe_certificate: None,
+                        direction: Some(direction),
+                        note: "prepared iterated-rectifier candidate direction".into(),
+                    },
+                    None,
+                ));
             }
         }
         let mut maximum = 0.0_f64;
@@ -2118,23 +2127,103 @@ fn prepared_iterated_rectifier(
             u.iter_mut().for_each(|value| *value /= maximum);
         }
     }
-    Ok(DetectionProposal {
-        method: SeparationMethod::IteratedRectifier,
-        dropped: Vec::new(),
-        iterations: config.max_ir_iterations,
-        status: MethodStatus::MaximumIterations,
-        certificate: None,
-        exact_fe_certificate: None,
-        direction: None,
-        note: SeparationNote::with_detail(
-            "prepared iterated rectifier exhausted its iteration budget",
-            config.max_ir_iterations,
-        ),
-    })
+    Ok((
+        DetectionProposal {
+            method: SeparationMethod::IteratedRectifier,
+            dropped: Vec::new(),
+            iterations: config.max_ir_iterations,
+            status: MethodStatus::MaximumIterations,
+            certificate: None,
+            exact_fe_certificate: None,
+            direction: None,
+            note: SeparationNote::with_detail(
+                "prepared iterated rectifier exhausted its iteration budget",
+                config.max_ir_iterations,
+            ),
+        },
+        None,
+    ))
 }
 
 fn nonnegative_ir_boundary_violation(minimum_boundary: f64) -> f64 {
     (-minimum_boundary).max(0.0)
+}
+
+/// Weight of every zero-outcome row in the rectifier projection.
+fn ir_boundary_weight(config: SeparationConfig, boundary_rows: usize) -> f64 {
+    (config.tolerance * config.tolerance / boundary_rows as f64).max(f64::MIN_POSITIVE)
+}
+
+/// Sign summary of one rectifier projection, with its no-separation
+/// certificate when the projection is terminal: either it vanished, or it is
+/// within tolerance on zero-outcome rows and near zero on positive rows.
+struct IrProjectionAssessment {
+    scale: f64,
+    threshold: f64,
+    minimum_boundary: f64,
+    maximum_boundary: f64,
+    certificate: Option<SeparationCertificate>,
+}
+
+fn assess_ir_projection(
+    outcome: &[f64],
+    fitted: impl Fn(usize) -> f64,
+    config: SeparationConfig,
+) -> IrProjectionAssessment {
+    let mut scale = 0.0_f64;
+    let mut interior = 0.0_f64;
+    let mut minimum_boundary = f64::INFINITY;
+    let mut maximum_boundary = f64::NEG_INFINITY;
+    for (row, value) in outcome.iter().enumerate() {
+        let fitted = fitted(row);
+        scale = scale.max(fitted.abs());
+        if *value > 0.0 {
+            interior = interior.max(fitted.abs());
+        } else if *value == 0.0 {
+            minimum_boundary = minimum_boundary.min(fitted);
+            maximum_boundary = maximum_boundary.max(fitted);
+        }
+    }
+    let recurrence_scale = scale.max(1.0);
+    let threshold = config.tolerance * recurrence_scale;
+    let boundary_violation = nonnegative_ir_boundary_violation(minimum_boundary);
+    let proof = crate::ppml_separation::SeparationCertificateProof::IteratedRectifierFixedPoint;
+    let certificate = if scale <= f64::MIN_POSITIVE {
+        Some(SeparationCertificate {
+            proof,
+            interior_zero_relative: 0.0,
+            boundary_violation_relative: 0.0,
+            span_residual_relative: 0.0,
+            negative_margin_relative: 0.0,
+            direction_scale: 0.0,
+            positive_maximum: 0.0,
+            passed: true,
+        })
+    } else if minimum_boundary >= -threshold
+        && maximum_boundary <= threshold
+        && interior <= config.certificate_tolerance * recurrence_scale
+        && boundary_violation <= config.certificate_tolerance * recurrence_scale
+    {
+        Some(SeparationCertificate {
+            proof,
+            interior_zero_relative: interior / recurrence_scale,
+            boundary_violation_relative: boundary_violation / recurrence_scale,
+            span_residual_relative: 0.0,
+            negative_margin_relative: 0.0,
+            direction_scale: scale,
+            positive_maximum: boundary_violation,
+            passed: true,
+        })
+    } else {
+        None
+    };
+    IrProjectionAssessment {
+        scale,
+        threshold,
+        minimum_boundary,
+        maximum_boundary,
+        certificate,
+    }
 }
 
 fn prepared_mu_from_mean(
@@ -2239,6 +2328,7 @@ fn prepared_mu_from_mean(
 struct PreparedProjection {
     fitted: Vec<f64>,
     residual: Vec<f64>,
+    kept_columns: Vec<usize>,
 }
 
 fn prepared_project(
@@ -2315,7 +2405,226 @@ fn prepared_project(
             "prepared separation projection produced a nonfinite value",
         ));
     }
-    Ok(PreparedProjection { fitted, residual })
+    let kept_columns = fallible_copy(
+        fit.kept_generated_columns(),
+        "unable to reserve prepared separation projection basis",
+    )?;
+    Ok(PreparedProjection {
+        fitted,
+        residual,
+        kept_columns,
+    })
+}
+
+/// Certify a stored terminal rectifier projection without re-solving it.
+///
+/// The no-separation conclusion rests on two facts about the stored vectors:
+/// the fitted values `recurrence - residual` satisfy the rectifier's sign
+/// conditions, and the residual is the weighted least-squares residual of the
+/// recurrence on the regressor and FE span. The second fact is checked from
+/// the data: every kept regressor and every FE intercept or slope channel has
+/// a weighted residual moment that is zero relative to the channel norm and
+/// the larger of the recurrence and residual norms, within the certificate
+/// tolerance the rectifier decides with. This normalization never exceeds the
+/// one the projection's own FE and score certificates used. Returns `None`
+/// when any check fails; the caller then re-executes the detector.
+///
+/// Like those certificates, the check works in the rectifier's weighted
+/// metric. Zero-outcome rows carry weight `tolerance^2 / zeros`, so their
+/// fitted values are only weakly constrained by any weighted moment. The check
+/// certifies that the stored vectors are a genuine certified projection
+/// (catching stale, corrupted or uncertified state); it does not improve the
+/// method's resolution on zero-outcome rows, which the former deterministic
+/// re-run did not improve either.
+fn certify_ir_fixed_point_evidence(
+    generation: &PreparedPpmlModelGeneration,
+    evidence: &IrFixedPointEvidence,
+    config: SeparationConfig,
+) -> Result<Option<SeparationCertificate>> {
+    let outcome = generation.outcome();
+    let rows = outcome.len();
+    let IrFixedPointEvidence {
+        recurrence,
+        residual,
+        kept_columns,
+    } = evidence;
+    if recurrence.len() != rows || residual.len() != rows {
+        return Ok(None);
+    }
+    // The recurrence is nonnegative, supported on zero outcomes and scaled to
+    // a unit maximum, as every rectifier iterate is.
+    let mut maximum = 0.0_f64;
+    let mut boundary_rows = 0_usize;
+    for (value, entry) in outcome.iter().zip(recurrence) {
+        if !entry.is_finite() || *entry < 0.0 || (*value > 0.0 && *entry != 0.0) {
+            return Ok(None);
+        }
+        boundary_rows += usize::from(*value == 0.0);
+        maximum = maximum.max(*entry);
+    }
+    if maximum != 1.0 || boundary_rows == 0 {
+        return Ok(None);
+    }
+    let Some(certificate) =
+        assess_ir_projection(outcome, |row| recurrence[row] - residual[row], config).certificate
+    else {
+        return Ok(None);
+    };
+    let boundary_weight = ir_boundary_weight(config, boundary_rows);
+    let weight = |row: usize| {
+        if outcome[row] > 0.0 {
+            1.0
+        } else {
+            boundary_weight
+        }
+    };
+    let response_scale = ir_weighted_norm(&weight, &|row| recurrence[row], 0..rows)
+        .max(ir_weighted_norm(&weight, &|row| residual[row], 0..rows));
+    if !response_scale.is_finite() || response_scale <= 0.0 {
+        return Ok(None);
+    }
+    let largest = ir_regressor_moment_ratio(generation, &weight, residual, kept_columns)?
+        .max(ir_fe_moment_ratio(generation, &weight, residual)?)
+        / response_scale;
+    let passed = largest.is_finite() && largest <= config.certificate_tolerance;
+    if crate::diagnostics::solver_trace_enabled() {
+        crate::diagnostics::emit_solver_trace(&format!(
+            "FEREG_SOLVER_TRACE|phase=ir_fixed_point_check|largest_relative_moment={largest:.17e}|tolerance={:.17e}|passed={}",
+            config.certificate_tolerance,
+            u8::from(passed),
+        ));
+    }
+    Ok(passed.then_some(certificate))
+}
+
+/// Overflow-safe `sqrt(sum w * value^2)` over `members`.
+fn ir_weighted_norm(
+    weight: &dyn Fn(usize) -> f64,
+    values: &dyn Fn(usize) -> f64,
+    members: impl Iterator<Item = usize>,
+) -> f64 {
+    let mut scale = 0.0_f64;
+    let mut sum = 1.0_f64;
+    for row in members {
+        let absolute = (weight(row).sqrt() * values(row)).abs();
+        if absolute == 0.0 {
+            continue;
+        }
+        if scale < absolute {
+            let ratio = scale / absolute;
+            sum = 1.0 + sum * ratio * ratio;
+            scale = absolute;
+        } else {
+            let ratio = absolute / scale;
+            sum += ratio * ratio;
+        }
+    }
+    if scale == 0.0 {
+        0.0
+    } else {
+        scale * sum.sqrt()
+    }
+}
+
+/// Largest `|moment| / channel norm`; a nonzero moment on a zero or
+/// nonfinite norm is infinite.
+fn ir_moment_ratio(largest: f64, moment: f64, norm: f64) -> f64 {
+    if norm > 0.0 && norm.is_finite() {
+        largest.max(moment.abs() / norm)
+    } else if moment != 0.0 || !norm.is_finite() {
+        f64::INFINITY
+    } else {
+        largest
+    }
+}
+
+/// Weighted residual moments of the kept regressors, each over its norm.
+fn ir_regressor_moment_ratio(
+    generation: &PreparedPpmlModelGeneration,
+    weight: &dyn Fn(usize) -> f64,
+    residual: &[f64],
+    kept_columns: &[usize],
+) -> Result<f64> {
+    let fit_view = generation.fit_view();
+    let mut largest = 0.0_f64;
+    for &column in kept_columns {
+        let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+        let (mut scale, mut squares) = (0.0_f64, 1.0_f64);
+        crate::prepared_fit_view::visit_prepared_column_range(
+            fit_view,
+            column,
+            0..residual.len(),
+            |row, value| {
+                let w = weight(row);
+                crate::linalg::neumaier_add(w * value * residual[row], &mut sum, &mut correction);
+                let absolute = (w.sqrt() * value).abs();
+                if absolute != 0.0 {
+                    if scale < absolute {
+                        let ratio = scale / absolute;
+                        squares = 1.0 + squares * ratio * ratio;
+                        scale = absolute;
+                    } else {
+                        let ratio = absolute / scale;
+                        squares += ratio * ratio;
+                    }
+                }
+                Ok(())
+            },
+        )?;
+        let norm = if scale == 0.0 {
+            0.0
+        } else {
+            scale * squares.sqrt()
+        };
+        largest = ir_moment_ratio(largest, sum + correction, norm);
+    }
+    Ok(largest)
+}
+
+/// Weighted residual moments of every FE intercept and slope channel, each
+/// over its level norm.
+fn ir_fe_moment_ratio(
+    generation: &PreparedPpmlModelGeneration,
+    weight: &dyn Fn(usize) -> f64,
+    residual: &[f64],
+) -> Result<f64> {
+    let categorical = generation.prepared().as_ref();
+    let topology = DetectorTopology::new(generation.prepared())?;
+    let mut largest = 0.0_f64;
+    for (effect, spec) in categorical.effect_specs().iter().enumerate() {
+        let source = topology.sources[topology.effect_to_source[effect]];
+        for level in 0..source.n_levels() {
+            let members = source.checked_members(level)?;
+            if spec.intercept {
+                let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+                let (mut mass, mut mass_correction) = (0.0_f64, 0.0_f64);
+                for &row in members {
+                    crate::linalg::neumaier_add(
+                        weight(row) * residual[row],
+                        &mut sum,
+                        &mut correction,
+                    );
+                    crate::linalg::neumaier_add(weight(row), &mut mass, &mut mass_correction);
+                }
+                largest =
+                    ir_moment_ratio(largest, sum + correction, (mass + mass_correction).sqrt());
+            }
+            for slope in &spec.slopes {
+                let values = categorical.numeric_source_values(slope.source)?;
+                let (mut sum, mut correction) = (0.0_f64, 0.0_f64);
+                for &row in members {
+                    crate::linalg::neumaier_add(
+                        weight(row) * values[row] * residual[row],
+                        &mut sum,
+                        &mut correction,
+                    );
+                }
+                let norm = ir_weighted_norm(weight, &|row| values[row], members.iter().copied());
+                largest = ir_moment_ratio(largest, sum + correction, norm);
+            }
+        }
+    }
+    Ok(largest)
 }
 
 /// Re-execute a terminal numerical detector from the immutable generation.
@@ -2355,6 +2664,23 @@ fn replay_numerical_no_drop(
             "terminal numerical detector did not produce a replayable no-drop status",
         ));
     }
+    // A terminal rectifier projection is certified from its stored evidence
+    // in one pass over the data. Only if that check fails, or if it does not
+    // reproduce the reported certificate, does the detector run again.
+    if observed.method == SeparationMethod::IteratedRectifier
+        && observed.status == MethodStatus::NoSeparation
+    {
+        if let Some(evidence) = observed.fixed_point.as_ref() {
+            interrupt(PpmlInterruptPoint::SeparationIrIteration)?;
+            if let Some(certificate) =
+                certify_ir_fixed_point_evidence(generation, evidence, config)?
+            {
+                if observed.certificate.as_ref() == Some(&certificate) {
+                    return Ok(Some(certificate));
+                }
+            }
+        }
+    }
     let replayed = if observed.method == SeparationMethod::IteratedRectifier {
         prepared_bound_iterated_rectifier(
             generation,
@@ -2372,7 +2698,7 @@ fn replay_numerical_no_drop(
                     prepared_simplex_proposal(generation, config, interrupt)?
                 }
                 SeparationMethod::IteratedRectifier => {
-                    prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?
+                    prepared_iterated_rectifier(generation, ppml, config, linear, interrupt)?.0
                 }
                 SeparationMethod::Mu => {
                     let exploration = mu_exploration.ok_or_else(|| {
@@ -2768,33 +3094,6 @@ fn validate_numerical_proposal(
         proposal,
         certificate,
     })
-}
-
-fn no_separation_proposal(
-    method: SeparationMethod,
-    iterations: usize,
-    scale: f64,
-    note: SeparationNote,
-) -> DetectionProposal {
-    DetectionProposal {
-        method,
-        dropped: Vec::new(),
-        iterations,
-        status: MethodStatus::NoSeparation,
-        certificate: Some(SeparationCertificate {
-            proof: crate::ppml_separation::SeparationCertificateProof::IteratedRectifierFixedPoint,
-            interior_zero_relative: 0.0,
-            boundary_violation_relative: 0.0,
-            span_residual_relative: 0.0,
-            negative_margin_relative: 0.0,
-            direction_scale: scale,
-            positive_maximum: 0.0,
-            passed: true,
-        }),
-        exact_fe_certificate: None,
-        direction: None,
-        note,
-    }
 }
 
 fn proposal_report(
@@ -4008,6 +4307,7 @@ mod tests {
             direction: Some(vec![-1.0; generation.original_rows().len()]),
             exact_intercept_span: None,
             note: "adversarial proposal".into(),
+            fixed_point: None,
         };
 
         let mut forgeries = Vec::new();
@@ -5167,6 +5467,114 @@ mod tests {
         )
         .expect("rank-certified final generation");
         assert_eq!(fit.finite_rank(), 0);
+    }
+
+    #[test]
+    fn rectifier_fixed_point_evidence_replaces_the_rerun_and_rejects_corruption() {
+        // Zeros at rows 0 and 3 with no separating direction: level 3 has two
+        // positive rows, which forces the regressor coefficient to zero.
+        let (request, clusters, mut loaded, uses) = fixture();
+        loaded.outcome = column(&[0., 2., 1., 0., 1., 3.]);
+        loaded.numeric_sources[0].1 = column(&[0.5, -1., 2., -0.3, 1., 0.7]);
+        let owner = PreparedPpmlModelOwner::new(
+            request,
+            clusters,
+            loaded.clone(),
+            prepare_numeric(&loaded, &uses),
+        )
+        .unwrap();
+        let config = SeparationConfig {
+            methods: SeparationMethods {
+                fixed_effects: false,
+                simplex: false,
+                iterated_rectifier: true,
+                mu: false,
+            },
+            drop_singletons: false,
+            ..SeparationConfig::default()
+        };
+        let ppml = PpmlConfig::default();
+        let linear = PreparedOlsFitConfig {
+            absorb: ppml.absorb,
+            fixed_effect_collinearity_tolerance: ppml.fixed_effect_collinearity_tolerance,
+            ..PreparedOlsFitConfig::default()
+        };
+        let coordinator = PreparedSeparationCoordinator::new(owner).unwrap();
+        let generation = coordinator.view().prepared;
+        let proposal =
+            prepared_bound_iterated_rectifier(generation, ppml, config, linear, false, &mut |_| {
+                Ok(())
+            })
+            .unwrap();
+        assert_eq!(proposal.status, MethodStatus::NoSeparation);
+        let evidence = proposal.fixed_point.clone().expect("terminal evidence");
+        assert_eq!(
+            certify_ir_fixed_point_evidence(generation, &evidence, config).unwrap(),
+            proposal.certificate
+        );
+        let replay = |observed: &PreparedNumericalProposal| {
+            replay_numerical_no_drop(
+                generation,
+                observed,
+                ppml,
+                config,
+                linear,
+                false,
+                &mut |_| Ok(()),
+                None,
+            )
+            .unwrap()
+        };
+        assert_eq!(replay(&proposal), proposal.certificate);
+
+        // A residual moved off the projection along the regressor keeps the
+        // sign conditions but leaves a regressor moment; a larger move breaks
+        // the sign conditions; claiming zero fitted values leaves this
+        // fixture's FE moments unexplained.
+        let x = [0.5, -1., 2., -0.3, 1., 0.7];
+        let mut moment_shift = evidence.clone();
+        let mut sign_shift = evidence.clone();
+        for row in [1, 2, 4, 5] {
+            moment_shift.residual[row] += 1e-9 * x[row];
+            sign_shift.residual[row] += 1e-3 * x[row];
+        }
+        assert!(
+            assess_ir_projection(
+                generation.outcome(),
+                |row| moment_shift.recurrence[row] - moment_shift.residual[row],
+                config,
+            )
+            .certificate
+            .is_some(),
+            "the small shift must pass the sign checks"
+        );
+        let mut zero_fit = evidence.clone();
+        zero_fit.residual.clone_from(&zero_fit.recurrence);
+        let mut unnormalized = evidence.clone();
+        unnormalized
+            .recurrence
+            .iter_mut()
+            .for_each(|value| *value *= 0.5);
+        let mut positive_support = evidence.clone();
+        positive_support.recurrence[1] = 0.25;
+        for corrupted in [
+            moment_shift,
+            sign_shift,
+            zero_fit,
+            unnormalized,
+            positive_support,
+        ] {
+            assert!(
+                certify_ir_fixed_point_evidence(generation, &corrupted, config)
+                    .unwrap()
+                    .is_none()
+            );
+            // Failed evidence falls back to the deterministic re-run, which
+            // still reproduces the reported certificate.
+            let mut fallback = proposal.clone();
+            fallback.fixed_point = Some(corrupted);
+            assert_eq!(replay(&fallback), proposal.certificate);
+        }
     }
 
     #[test]
