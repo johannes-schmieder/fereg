@@ -135,12 +135,19 @@ try {
     $KernelOutput = & cargo test --manifest-path "$Root\Cargo.toml" --locked `
         --profile ci -p fereg-plugin --target $Target --lib `
         fused_kernels::x86_64::tests -- --show-output
+    $KernelText = $KernelOutput -join "`n"
     if ($LASTEXITCODE -ne 0 -or
-        -not (($KernelOutput -join "`n") -match 'test result: ok\. 3 passed; 0 failed;')) {
+        -not ($KernelText -match 'test result: ok\. 3 passed; 0 failed;')) {
         $KernelOutput | ForEach-Object { Write-Host $_ }
         throw "Windows fused-kernel checks failed or did not run"
     }
-    Write-Host "Windows fused-kernel checks: PASS"
+    # The tests return early (and pass) without FMA/AVX; qualification must
+    # exercise the hardware instantiations, so a skip fails the stage.
+    if ($KernelText -match 'skipped: this processor has no FMA/AVX hardware path') {
+        $KernelOutput | ForEach-Object { Write-Host $_ }
+        throw "Windows fused-kernel checks skipped the FMA/AVX hardware path"
+    }
+    Write-Host "Windows fused-kernel checks: PASS (FMA/AVX hardware path exercised)"
 
     Set-FeregWindowsStage $ControllerRoot 'c_bridge'
     $StpluginObj = Join-Path $Build "stplugin.obj"
