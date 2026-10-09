@@ -1,0 +1,70 @@
+# Bounded PPML separation primers shared by
+#   crates/fereg-oracle/tests/ppml_separation_primers.rs (public native fit) and
+#   tests/python/test_ppml_recession_cone_primers.py (exact-rational cone oracle).
+# Each [name] block lists space-separated rows. `regressor` and `effect` may
+# repeat. `methods` uses the public names fe, simplex, ir. `dropped` and
+# `reasons` (public drop-reason codes) are the native final drop set; `cone`
+# is the first-round recession-cone set over intercept, regressors and every
+# FE level dummy. `simplex_cells` optionally caps the simplex tableau.
+
+[exact-fe-zero-level]
+outcome = 0 0 0 1 2 3
+effect = 0 0 1 1 2 2
+methods = fe
+drop_singletons = 0
+dropped = 0 1
+reasons = 9 9
+cone = 0 1
+
+[two-regressor-simplex]
+outcome = 0 0 0 1 2 3
+regressor = 2 -1 0 0 5 6
+regressor = -1 2 0 0 -10 -12
+methods = simplex
+drop_singletons = 0
+dropped = 0
+reasons = 10
+cone = 0
+
+[combined-two-way-ir]
+outcome = 0 1 0 0 1
+effect = 0 0 1 1 1
+effect = 0 0 0 1 1
+methods = fe ir
+drop_singletons = 0
+dropped = 2
+reasons = 11
+cone = 2
+
+[simplex-singleton-exact-fe-generation]
+outcome = 0 1 0 0 1 1 1 2 3
+regressor = 1 0 0 0 0 0 0 0 0
+effect = 0 1 1 1 0 0 0 0 0
+effect = 0 0 1 1 1 2 2 2 2
+methods = fe simplex
+drop_singletons = 1
+dropped = 0 1 2 3 4
+reasons = 10 8 9 9 8
+# Rows 2 and 3 already lie in the original cone; the native chain reaches them
+# by exact FE after the simplex drop and singleton cascade.
+cone = 0 2 3
+
+[simplex-memory-skip-covered-by-ir]
+outcome = 0 0 1 2 3
+regressor = 2 -1 0 0 0
+regressor = -1 2 0 0 0
+methods = simplex ir
+simplex_cells = 1
+drop_singletons = 0
+dropped = 0 1
+reasons = 11 11
+cone = 0 1
+
+[no-separation]
+outcome = 0 1 2 1 3
+regressor = 1 2 1 3 2
+methods = fe simplex ir
+drop_singletons = 0
+dropped =
+reasons =
+cone =

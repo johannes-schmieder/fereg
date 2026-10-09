@@ -1,5 +1,6 @@
 //! Production-runtime adapter for differential tests: builds native requests
 //! from oracle designs; metadata only, never used by an oracle computation.
+pub mod ppml;
 use fereg_core::*;
 use fereg_oracle::designs::{Design, WeightKind};
 
