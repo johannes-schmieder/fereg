@@ -64,7 +64,7 @@ fn joint_response_checks_match_separate_fresh_passes_and_reject_invalid_inputs()
 
 #[test]
 fn reconstruction_matches_exact_rational_oracle_and_rejects_corruption() {
-    let oracle = include_str!("../../../../tests/fixtures/ppml/reconstruction.csv");
+    let oracle = include_str!("../../../../../tests/fixtures/ppml/reconstruction.csv");
     let mut cancellation_rejections = 0;
     for line in oracle.lines().skip(1) {
         let fields: Vec<_> = line.split(',').collect();
