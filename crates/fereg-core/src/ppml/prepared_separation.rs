@@ -23,7 +23,7 @@ use crate::ols::{
 };
 use crate::ppml_separation::{
     model_simplex_interruptible, separation_generation_capacity, separation_method_count,
-    simplex_workspace_peak_cells,
+    simplex_workspace_peak_cells, PREFLIGHT_REPORT_GENERATIONS,
 };
 use crate::ppml_separation::{
     DetectionProposal, ExactFeLevelIdentity, ExactFeSeparationCertificate, MethodStatus,
@@ -546,8 +546,11 @@ where
             .all(|value| *value > 0.0),
         config.drop_singletons,
     );
-    let method_report_capacity =
-        checked_method_report_capacity(generation_capacity, separation_method_count(config))?;
+    let method_count = separation_method_count(config);
+    let method_report_capacity = checked_method_report_capacity(
+        generation_capacity.min(PREFLIGHT_REPORT_GENERATIONS),
+        method_count,
+    )?;
     if FAIL_REPORT_BANK_RESERVATION.replace(false) {
         return Err(allocation(
             "injected prepared separation report-bank allocation failure",
@@ -570,6 +573,11 @@ where
 
     let (final_fit, final_replay) = loop {
         interrupt(PpmlInterruptPoint::SeparationGeneration)?;
+        // A generation records at most one report per method. Beyond the
+        // preflighted generations the bank grows here, fallibly.
+        reports
+            .try_reserve(method_count)
+            .map_err(|_| allocation("unable to grow prepared separation method reports"))?;
         require_positive_outcome(coordinator.view().prepared.outcome())?;
         // Reinitialized after every committed deletion.  Consequently only
         // detector replays performed on the eventual stable generation can

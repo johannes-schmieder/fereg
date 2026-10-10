@@ -287,6 +287,11 @@ pub(crate) const fn separation_generation_capacity(
     }
 }
 
+/// Generations whose method-report records are admitted and reserved before
+/// the first generation runs. Longer cascades grow the record bank fallibly,
+/// one generation at a time, outside every measured phase.
+pub(crate) const PREFLIGHT_REPORT_GENERATIONS: usize = 256;
+
 /// Number of independently requested separation policies. Each immutable
 /// generation executes a policy at most once before either committing a
 /// deletion or reaching the terminal stable generation. This count freezes

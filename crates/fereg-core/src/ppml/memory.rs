@@ -1209,7 +1209,9 @@ fn estimate_route(
     };
     let separation_method_report_record_bytes = checked_mul(
         checked_mul(
-            dimensions.separation_generation_capacity as u128,
+            dimensions
+                .separation_generation_capacity
+                .min(crate::ppml_separation::PREFLIGHT_REPORT_GENERATIONS) as u128,
             dimensions.separation_method_count as u128,
             "PPML separation method execution records",
         )?,

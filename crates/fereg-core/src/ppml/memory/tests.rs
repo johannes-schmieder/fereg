@@ -336,10 +336,20 @@ fn all_positive_report_capacity_reduces_both_route_peaks_by_exact_storage() {
     let config = PpmlMemoryConfig::default();
     let wide = estimate_ppml_memory(general, config).expect("general plan");
     let narrow = estimate_ppml_memory(positive, config).expect("positive plan");
-    let saving = (general.observations - 2) as u128
-        * (4 * size_of::<SeparationMethodReport>() + size_of::<u64>()) as u128;
+    // Records are charged for at most the preflighted generations; one
+    // generation hash is charged per admitted generation.
+    let record_generations = general
+        .observations
+        .min(crate::ppml_separation::PREFLIGHT_REPORT_GENERATIONS);
+    let saving = (record_generations - 2) as u128
+        * (4 * size_of::<SeparationMethodReport>()) as u128
+        + (general.observations - 2) as u128 * size_of::<u64>() as u128;
     for (before, after) in [(wide.fast, narrow.fast), (wide.low, narrow.low)] {
         assert_eq!(before.peak_bytes - after.peak_bytes, saving);
+        assert_eq!(
+            before.separation_method_report_record_bytes,
+            (record_generations * 4 * size_of::<SeparationMethodReport>()) as u128
+        );
         assert_eq!(
             after.separation_method_report_record_bytes,
             (8 * size_of::<SeparationMethodReport>()) as u128
