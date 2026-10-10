@@ -46,10 +46,18 @@ not release or end-to-end Stata claims.
 - `ols_three_fe_batch_oracle.do` failed with `r(459)` on every binary: explicit
   LSMR stopped its recurrence at `tolerance()` and certified per-level FE
   moments at that same tolerance, leaving one weighted column at 1.0167e-8
-  against 1e-8. Johannes's decision A (2026-10-10, commit `5413cfe`) makes
-  explicit OLS LSMR iterate to a hundredth of the tolerance and certify at it.
-  The native witness `explicit_lsmr_three_fe_batch_matches_explicit_dummy_oracle`
-  now passes. Linux replay against `e237c217` passes under the declared scope
+  against 1e-8. The same gap remained at the 1e-14 final residual projection
+  used for saved outputs. In a 128-configuration sweep at 100,000 rows, 2 of 64
+  failed on the base plugin. Johannes's decisions A and A' (2026-10-10, commits
+  `5413cfe` and `a551feb`) make explicit OLS LSMR iterate to a hundredth of the
+  tolerance, floored at 1e-15 and never looser than it, and certify at the
+  tolerance. With that, the native witnesses
+  `explicit_lsmr_three_fe_batch_matches_explicit_dummy_oracle` and
+  `explicit_lsmr_final_residual_projection_keeps_a_margin` pass, and the sweep
+  has no failures. Mean LSMR iterations change from 16.7 to 20.7 in the main
+  projection and from 16.1 to 13.7 at the residual step on strong graphs.
+  Instructions on one 100,000-row explicit-LSMR case rise 3.7%. Linux replay
+  against `e237c217` passes under the declared scope
   `tests/replay/scopes/2026-10-10-explicit-lsmr-direct-tolerance.json`: only
   ols-10 and ols-13 change (coefficients at most 1.4e-15 relative, covariance
   at most 2.1e-10 relative), and 71 cases stay exact with 2- and 4-worker
