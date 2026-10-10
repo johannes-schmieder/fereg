@@ -87,11 +87,14 @@ Preserve requested/used solver, work accounting and existing reason diagnostics;
 unsupported explicit requests must not silently become auto.
 
 Explicit OLS `solver(lsmr)` stops its recurrence at a hundredth of
-`tolerance()` (floored at 1e-14, the frozen rule automatic LSMR uses) and
-certifies the FE moments at `tolerance()`. Johannes chose this scoped change
+`tolerance()`, floored at 1e-15 and never looser than `tolerance()`, and
+certifies the FE moments at `tolerance()`. Johannes chose these scoped changes
 on 2026-10-10: an equal-tolerance stop could leave a certificate just above the
-request (`development/ols_three_fe_batch_oracle.do`). Explicit PPML LSMR keeps
-its scheduled certificate and one tighter continuation.
+request, both in the main projection
+(`development/ols_three_fe_batch_oracle.do`) and in the 1e-14 final residual
+projection used for saved outputs. Unlike automatic LSMR (floor 1e-14, with a
+MAP fallback), explicit LSMR has no fallback, so it keeps that margin. Explicit
+PPML LSMR keeps its scheduled certificate and one tighter continuation.
 
 Tests: `tests/model_wire_{roundtrip,adversarial}.rs`, `parser/`,
 `parity_ppmlhdfe/feppml_command_contract.do`,

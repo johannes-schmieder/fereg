@@ -611,6 +611,24 @@ fn explicit_lsmr_recurrence_is_direct_and_certificate_stays_requested() {
     let validated = validate_weights(BorrowedMapWeights::Provided(&raw), rows).unwrap();
     let recurrence = super::super::auto::explicit_lsmr_recurrence(lsmr);
     assert_eq!(recurrence.tolerance, direct_lsmr_tolerance(1e-8));
+    // The explicit rule keeps a margin at the 1e-14 final-residual projection
+    // and is never looser than the certificate.
+    for (requested, expected) in [
+        (1e-8, 1e-10),
+        (1e-12, 1e-14),
+        (5e-13, 5e-15),
+        (1e-14, 1e-15),
+        (1e-15, 1e-15),
+        (1e-16, 1e-16),
+    ] {
+        let tolerance = super::super::auto::explicit_lsmr_recurrence(LsmrConfig {
+            tolerance: requested,
+            ..lsmr
+        })
+        .tolerance;
+        assert_eq!(tolerance, expected, "{requested:e}");
+        assert!(tolerance <= requested);
+    }
     let (rule, rule_report, _, _) = run_borrowed_lsmr(
         &design(),
         validated,

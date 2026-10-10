@@ -142,6 +142,36 @@ fn cg_counterexample_shows_moment_certification_alone_is_insufficient() {
     );
 }
 
+/// Regression (2026-10-10): saved outputs run the final residual projection at
+/// 1e-14. When explicit LSMR stopped its recurrence at that same tolerance,
+/// this 100,000-row AKM design failed its residual certificate (3 of 120
+/// scanned seeds did); the 1e-15 recurrence floor keeps a margin.
+#[test]
+fn explicit_lsmr_final_residual_projection_keeps_a_margin() {
+    let design = generate(
+        20261013,
+        &DesignSpec {
+            rows: 100_000,
+            levels: vec![10_000, 1_000],
+            regressors: 3,
+            graph: Graph::AkmStrong,
+            ..DesignSpec::default()
+        },
+    )
+    .unwrap();
+    let mut config = PreparedOlsFitConfig::default();
+    config.absorb.solver = FeSolverKind::Lsmr;
+    config.absorb.map.tolerance = 1e-8;
+    config.absorb.map.max_iterations = 16_000;
+    config.absorb.lsmr.tolerance = 1e-8;
+    config.absorb.lsmr.max_iterations = 16_000;
+    config.allow_final_fe_recovery = true;
+    config.final_residual_tolerance = Some(1e-14);
+    let (fit, _) = native_fit(&design, config, false)
+        .expect("explicit LSMR certifies the 1e-14 final residual");
+    assert!(fit.residual_absorption_report().certified());
+}
+
 #[test]
 fn cmg_rejects_unsupported_slopes_while_lsmr_remains_available() {
     let design = generate(

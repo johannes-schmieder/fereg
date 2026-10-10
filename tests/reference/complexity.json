@@ -2,10 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 93250,
-      "before": 93238,
+      "after": 93253,
+      "before": 93250,
       "metric": "fereg-core/production_lines",
-      "reason": "Decision A: explicit_lsmr_recurrence (tol/100 recurrence, certificate at the request) applied at the three explicit OLS LSMR entry points."
+      "reason": "Decision A': the explicit LSMR recurrence floor becomes its own 1e-15 constant, never looser than the certificate."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -542,56 +542,56 @@
         "dispatch_candidates": [
           {
             "condition": "values . nrows ( ) != design . nobs ( ) || ! config . map . tolerance . is_finite ( ) || config . map . tolerance <= 0. || config . map . max_iterations == 0 || config . map . check_every == 0",
-            "line": 143
+            "line": 150
           },
           {
             "condition": "design . effects ( ) . len ( ) > 1 && config . map . max_iterations > 1",
-            "line": 159
+            "line": 166
           },
           {
             "condition": "config . solver_memory_budget . is_none_or ( | b | cached . bytes ( ) . is_some_and ( | bytes | b . fits ( bytes as u128 ) ) )",
-            "line": 209
+            "line": 216
           },
           {
             "condition": "let Ok ( bytes ) = context . parallel_workspace_bytes ( values . ncols ( ) )",
-            "line": 221
+            "line": 228
           },
           {
             "condition": "config . solver_memory_budget . is_none_or ( | b | parallel . bytes ( ) . is_some_and ( | bytes | b . fits ( bytes as u128 ) ) )",
-            "line": 223
+            "line": 230
           },
           {
             "condition": "budget . is_none_or ( | budget | peak . bytes ( ) . is_some_and ( | bytes | budget . fits ( bytes as u128 ) ) )",
-            "line": 275
+            "line": 282
           },
           {
             "condition": "let Some ( budget ) = config . solver_memory_budget",
-            "line": 304
+            "line": 311
           },
           {
             "condition": "! budget . fits ( required )",
-            "line": 305
+            "line": 312
           }
         ],
         "functions": {
           "absorb_auto#1": {
-            "line": 136,
+            "line": 143,
             "lines": 129
           },
           "absorb_fixed_effects#1": {
-            "line": 65,
+            "line": 72,
             "lines": 70
           },
           "admit_generic_solver#1": {
-            "line": 285,
+            "line": 292,
             "lines": 28
           },
           "admit_parallel_projection#1": {
-            "line": 268,
+            "line": 275,
             "lines": 16
           },
           "default#1": {
-            "line": 52,
+            "line": 59,
             "lines": 10
           },
           "direct_lsmr_tolerance#1": {
@@ -599,15 +599,15 @@
             "lines": 7
           },
           "explicit_lsmr_recurrence#1": {
-            "line": 28,
-            "lines": 6
+            "line": 33,
+            "lines": 8
           },
           "fallible_matrix_copy#1": {
-            "line": 314,
+            "line": 321,
             "lines": 8
           }
         },
-        "production_lines": 289
+        "production_lines": 292
       },
       "crates/fereg-core/src/fe/borrowed_map.rs": {
         "chunk_candidates": [],
@@ -19954,7 +19954,7 @@
         "dispatch_candidates": 1225,
         "files_over_1500": 15,
         "functions_over_150": 61,
-        "production_lines": 93250
+        "production_lines": 93253
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

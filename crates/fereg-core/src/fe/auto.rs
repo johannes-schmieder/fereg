@@ -21,13 +21,20 @@ pub(crate) fn direct_lsmr_tolerance(requested_tolerance: f64) -> f64 {
     }
 }
 
-/// Explicit `solver(lsmr)` runs its recurrence under the same frozen rule and
-/// keeps the independent FE certificate at the requested tolerance (scoped
-/// decision of 2026-10-10: an equal-tolerance stop can leave a certificate
-/// just above the request).
+/// Smallest recurrence target explicit LSMR chases below its certificate.
+const EXPLICIT_LSMR_RECURRENCE_FLOOR: f64 = 1e-15;
+
+/// Explicit `solver(lsmr)` iterates to a hundredth of the requested tolerance,
+/// floored at 1e-15 and never looser than the request, while the independent
+/// FE certificate stays at the request (scoped decisions of 2026-10-10: an
+/// equal-tolerance stop can leave a certificate just above the request).
+/// Unlike [`direct_lsmr_tolerance`] it keeps a margin at the 1e-14 final
+/// residual projection, because explicit LSMR has no MAP fallback.
 pub(crate) fn explicit_lsmr_recurrence(config: LsmrConfig) -> LsmrConfig {
     LsmrConfig {
-        tolerance: direct_lsmr_tolerance(config.tolerance),
+        tolerance: (config.tolerance * 1e-2)
+            .max(EXPLICIT_LSMR_RECURRENCE_FLOOR)
+            .min(config.tolerance),
         ..config
     }
 }

@@ -98,10 +98,12 @@ Qualification scope and open caveats are in
   tiny-scale covariance is rejected rather than published.
 - The internal `_fereg_ols.ado` developer adapter is no longer installed.
 - Explicit `solver(lsmr)` in `fereg` now iterates to one hundredth of
-  `tolerance()` and certifies at `tolerance()`, as automatic LSMR does. It no
-  longer stops with `r(459)` when a fixed-effect certificate lands just above
-  the tolerance (seen with weights and three absorbed effects). Explicit-LSMR
-  results change at roundoff level and take somewhat more LSMR iterations.
+  `tolerance()` (at least 1e-15) and certifies at `tolerance()`. It no longer
+  stops with `r(459)` when a fixed-effect certificate lands just above the
+  tolerance, as happened with weights and three absorbed effects and, for
+  large samples with saved residuals or effects, in the final residual
+  projection. Explicit-LSMR results change at roundoff level and take somewhat
+  more LSMR iterations.
 
 Apart from that explicit-LSMR change, coefficients and standard errors did
 not change in the October 2026 cleanup and improvement programmes;
