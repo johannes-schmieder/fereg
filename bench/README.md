@@ -104,8 +104,12 @@ every PDF page before delivery.
 
 ## Native nonregression timing
 
-The frozen timing workloads are six standard designs at one and four workers
-plus wide K=64/65/129 robust designs; their hashes are in `standard_cases.json`.
+The frozen timing workloads are six standard designs at one and four workers,
+the million-row K=20 two-FE OLS design at eight and sixteen workers, and wide
+K=64/65/129 robust designs. The high-worker cases guard norm/certificate scaling
+that the one/four-worker panel missed. Hashes are in `standard_cases.json`.
+Regeneration rejects missing, modified and unlisted `.case` files, including
+stale files left in the output directory.
 
 ```sh
 python3 bench/make_standard_cases.py

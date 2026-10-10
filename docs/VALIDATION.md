@@ -154,5 +154,40 @@ reconstructed summaries of `20261007T171717Z-akm-current` (production
 | --- | --- |
 | Setup `8016862`, smoke `8016895`, production `8016905.1–4` | All six accounting records have failed=0/exit=0; sentinels, frozen identities and all 492 planned fit positions verified. glibc 2.28 audit, ABI/load, UBSan guards, 40 harness tests and 11 native smoke oracles pass. Production used 28 slots on 28-core nodes, without the exclusive consumable. |
 | Scientific outcomes and unavailable cells | Native repeatability and cross-worker checks pass for 55/56 configurations; four-million-row three-sparse PPML times out as before. Across 164 arm cells: 131 eligible, 25 asterisked, 8 without timing, versus 129/18/17 previously. The capture repair exposes seven remaining reference discrepancies and makes two strict-fixest cells eligible; no formerly eligible cell becomes ineligible. All failed fits and reference smoke failures remain reported. |
-| Timing and scaling | Native current/previous median ratio 0.9521 across 55 configurations; four-worker medians 0.9390 OLS / 0.9582 PPML. OLS AKM at 8/16 workers is 20.2%/20.4% slower on the same node; cause unresolved, despite nearly unchanged fixest controls. Its 16-worker speedup falls from 2.573× to 1.692×. PPML AKM gains only 2.6% in elapsed time from 8 to 16 workers. No explicit-LSMR arms were scheduled. These separate campaigns do not replace the Mac qualification timing. |
+| Timing and scaling | Native current/previous median ratio 0.9521 across 55 configurations; four-worker medians 0.9390 OLS / 0.9582 PPML. OLS AKM at 8/16 workers is 20.2%/20.4% slower on the same node, despite nearly unchanged fixest controls; the follow-up below isolates and repairs the cause. Its 16-worker speedup falls from 2.573× to 1.692×. PPML AKM gains only 2.6% in elapsed time from 8 to 16 workers. No explicit-LSMR arms were scheduled. These separate campaigns do not replace the Mac qualification timing. |
 | Memory and report | Native peak sampled RSS 5.032 GiB, essentially unchanged; median 1.120 versus 1.174 GiB across 51 resolved cells. Unresolved memory stays NR. All 19 PDF pages rendered and visually inspected. PDF SHA-256 `ba133153`, configuration summary `f0ab36f9`, full comparison CSV `6c8b9cc9`, retained-file manifest `a4bb00bc`; full hashes are in the documentation commit. |
+
+### OLS high-worker slowdown investigation
+
+Three bounded SCC experiments on `scc-zj4` used nine alternating or rotating
+pairs per arm at 1/4/8/16 workers, with 28 slots on a 28-core node and no
+exclusive consumable. The frozen AKM input has one million rows, 16 regressors,
+200,000 worker and 10,000 firm levels, iid inference and seed 739391 (input
+SHA-256 `5fd1a5cf`). Full-size warmups precede timing; diagnostic traces follow
+it. Inputs and the timed Stata command are unchanged from the campaigns.
+Reproducers, observations and accounting are retained under
+`/projectnb/welfgr/fereg/dev/20261010-ols-slowdown/`.
+
+Commit `b21244aa` replaced private scalar norm accumulators with repeated writes
+to adjacent shared scratch slices. Keeping its contiguous column partition but
+privatizing the recurrence removes the regression. The selected repair uses
+bounded 64-column stack tiles (1 KiB per active worker), then publishes scratch
+once. It preserves each column's observation order and arithmetic and adds no
+heap allocation. The intervention supports a shared-scratch implementation
+cause, consistent with false sharing; no hardware cache-counter measurement
+establishes that mechanism exclusively. Restoring the older per-column loop was
+also measured, but retaining blocks performed better at four/eight workers.
+
+| Evidence | Result |
+| --- | --- |
+| Endpoints, job `8017329` | PR31/October-7 paired ratios at 8/16 workers: 1.0942 / 1.1274; 95% bootstrap intervals [1.0772, 1.1890] / [1.0883, 1.2688]. Norm setup and certificate time increase; operator time and 14 solver iterations remain stable. This reproduces the campaign slowdown with smaller magnitudes under paired measurement. |
+| Controlled intervention, job `8017369` | Private-block/control ratios at 1/4/8/16 workers: 1.0278 / 0.8076 / 0.7322 / 0.7981; upper bounds 1.0367 / 0.8358 / 0.7949 / 0.8524. The observed single-worker cost is retained. Exact science and solver signatures across variants; scalar norm/scratch witnesses through 257 columns and 1/2/4/8/16 workers pass. Linux glibc 2.28 audits, ABI/load and both UBSan guard variants pass. |
+| Direct repaired/October-7 confirmation, job `8017720` | Ratios 0.8269 / 0.7950 / 0.8649 / 0.9210 at 1/4/8/16 workers; all upper bounds below 1.0. Coefficients, covariance and model metadata are exact. Historical residual/certificate diagnostics differ already before the repair; current-to-repaired diagnostics are exact. Peak sampled RSS remains about 650 MiB. All three jobs have failed=0/exit=0 (181/697/172 s). |
+| Mac science and transactions, plugin `c5190816` | `run_tests.sh`, universal audit/load, 73 exact replay cases and 292 checks at 2/4/8/16 workers pass. Working-tree licensed profiles: full 69/69 and ppml-hidden 12/12, including OLS/PPML PTY Break. Source patch and plugin hashes bind these profiles; their source label is the parent commit. No fresh Windows check is claimed. |
+| Mac timing and future coverage | All 20 frozen workloads retain exact science/signatures. Seven-pair run passes 19: PPML/four-worker upper 1.06765 fails during observed backup/sync activity. One predeclared 15-pair confirmation passes (upper 1.00211); pooling all 22 pairs also passes (1.00538). Largest upper among the other 19 is 1.03420. Practical-quiet observations and every failed pair remain retained; no release-speed claim. The new eight/sixteen-worker K=20 guards pass, and the verifier now rejects unlisted/missing/modified workloads. |
+
+The repair's Linux plugin is `e5eed20e`, built from `5e2951a4` plus the measured
+private-block patch; its production tokens equal the integrated repair. Full
+artifact, source-patch and result hashes are in the repair commit. The old 18
+frozen workload hashes are unchanged. These are bounded workload observations,
+not a universal speed or platform claim.

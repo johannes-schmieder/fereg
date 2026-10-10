@@ -1,6 +1,7 @@
 //! Frozen standard timing workloads for `bench/time_exact.py`.
 //!
-//! Six fixed designs at one and four workers (seed 739391, tolerance 1e-8,
+//! Six fixed designs at one and four workers, plus the K=20 OLS design at
+//! eight and sixteen workers (seed 739391, tolerance 1e-8,
 //! automatic solver). Their SHA-256 values are recorded in
 //! `bench/standard_cases.json`; regenerate and compare before timing.
 //! `standard_cases OUTPUT_DIR [SCALE]`; SCALE > 1 divides rows and levels for
@@ -137,7 +138,14 @@ fn main() {
                 DummyEffect::new(codes, levels, true, vec![]).expect("effect")
             })
             .collect();
-        for threads in [1, 4] {
+        // The wide two-FE design also guards high-worker norm/certificate
+        // scaling; one/four-worker qualification missed shared scratch writes.
+        let threads: &[usize] = if name == "ols-two-unit-k20" {
+            &[1, 4, 8, 16]
+        } else {
+            &[1, 4]
+        };
+        for threads in threads {
             let mut request = wire::make(&design, poisson, vce, "auto", false);
             request.replace("tolerance", "1e-8");
             request.replace("threads", &threads.to_string());

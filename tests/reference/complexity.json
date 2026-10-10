@@ -2,22 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 93255,
-      "before": 93253,
+      "after": 93265,
+      "before": 93255,
       "metric": "fereg-core/production_lines",
-      "reason": "Separate the bounded initial report reservation from the full logical ceiling and reserve a possible exact-FE cascade follow-up before detector phases."
-    },
-    {
-      "after": 3454,
-      "before": 3452,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Separate the bounded initial report reservation from the full logical ceiling and reserve a possible exact-FE cascade follow-up before detector phases."
-    },
-    {
-      "after": 639,
-      "before": 635,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_separation.rs/coordinate_prepared_ppml_separation#1",
-      "reason": "Separate the bounded initial report reservation from the full logical ceiling and reserve a possible exact-FE cascade follow-up before detector phases."
+      "reason": "Keep FE norm recurrence state private to each worker using bounded 64-column stack tiles; this removes the measured multiworker shared-scratch regression without changing arithmetic or allocation policy."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -3357,22 +3345,22 @@
         "functions": {
           "column_norms#1": {
             "line": 8,
-            "lines": 62
+            "lines": 74
           },
           "finish#1": {
-            "line": 94,
+            "line": 106,
             "lines": 12
           },
           "plan_block#1": {
-            "line": 72,
+            "line": 84,
             "lines": 3
           },
           "update#1": {
-            "line": 76,
+            "line": 88,
             "lines": 17
           }
         },
-        "production_lines": 96
+        "production_lines": 106
       },
       "crates/fereg-core/src/fe/partition.rs": {
         "chunk_candidates": [],
@@ -19966,7 +19954,7 @@
         "dispatch_candidates": 1225,
         "files_over_1500": 15,
         "functions_over_150": 61,
-        "production_lines": 93255
+        "production_lines": 93265
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

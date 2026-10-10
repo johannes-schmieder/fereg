@@ -13,6 +13,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import native
 import native_io
+from make_standard_cases import verify_cases
 
 
 def bits(value):
@@ -48,6 +49,20 @@ class NativeTransport(unittest.TestCase):
         path = self.root / 'result.json'
         path.write_text(json.dumps(value, separators=(',', ':')) + '\n')
         return path
+
+    def test_frozen_panel_rejects_unlisted_missing_and_modified_cases(self):
+        case = self.root / 'guard.case'
+        case.write_bytes(b'frozen input')
+        expected = {case.name: hashlib.sha256(case.read_bytes()).hexdigest()}
+        self.assertEqual(verify_cases(self.root, expected), [])
+        extra = self.root / 'unlisted.case'
+        extra.write_bytes(b'not frozen')
+        self.assertEqual(verify_cases(self.root, expected), ['unlisted case: unlisted.case'])
+        extra.unlink()
+        case.write_bytes(b'changed input')
+        self.assertEqual(verify_cases(self.root, expected), ['hash mismatch: guard.case'])
+        case.unlink()
+        self.assertEqual(verify_cases(self.root, expected), ['missing case: guard.case'])
 
     def test_streaming_head_tail_and_hash(self):
         value = result()

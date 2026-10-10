@@ -34,9 +34,9 @@ pub(super) fn column_norms(
         }
         return Ok(());
     }
-    // Each lane owns a contiguous block of columns and streams the rows once,
-    // computing each row's root weight once. Every column still sees exactly
-    // the serial kernel's observation order and recurrence.
+    // Each lane owns contiguous columns. Keep recurrence state on its stack:
+    // adjacent output slices may share cache lines with other lanes. Every
+    // column retains the serial kernel's observation order and recurrence.
     let block = plan_block(values.ncols(), work);
     let width = values.ncols();
     let data = values.as_slice();
@@ -49,19 +49,31 @@ pub(super) fn column_norms(
         work,
         |(index, ((out, scale), sum))| {
             let first = index * block;
-            for row in 0..values.nrows() {
-                let root = root_weight(row)?;
-                let start = row * width + first;
-                for ((value, scale), sum) in data[start..start + out.len()]
-                    .iter()
-                    .zip(scale.iter_mut())
-                    .zip(sum.iter_mut())
-                {
-                    update(root * value, scale, sum, value_error)?;
+            // Keep recurrence state private to this worker until publication.
+            // Tiling bounds stack storage for arbitrarily wide RHS matrices.
+            const TILE: usize = 64;
+            for offset in (0..out.len()).step_by(TILE) {
+                let count = (out.len() - offset).min(TILE);
+                let mut local_scale = [0.0; TILE];
+                let mut local_sum = [1.0; TILE];
+                for row in 0..values.nrows() {
+                    let root = root_weight(row)?;
+                    let start = row * width + first + offset;
+                    for column in 0..count {
+                        update(
+                            root * data[start + column],
+                            &mut local_scale[column],
+                            &mut local_sum[column],
+                            value_error,
+                        )?;
+                    }
                 }
-            }
-            for ((out, scale), sum) in out.iter_mut().zip(scale.iter()).zip(sum.iter()) {
-                *out = finish(*scale, *sum, norm_error)?;
+                for column in 0..count {
+                    out[offset + column] =
+                        finish(local_scale[column], local_sum[column], norm_error)?;
+                    scale[offset + column] = local_scale[column];
+                    sum[offset + column] = local_sum[column];
+                }
             }
             Ok(())
         },
@@ -110,7 +122,7 @@ mod tests {
 
     #[test]
     fn scheduled_rhs_norms_preserve_frozen_scalar_bits_and_scratch() {
-        for width in [1, 7, 8, 9, 17, 33] {
+        for width in [1, 7, 8, 9, 17, 33, 65, 129, 257] {
             let rows = 10_007;
             let data = (0..rows * width)
                 .map(|i| match i % 7 {
@@ -155,7 +167,7 @@ mod tests {
                     .zip(&sums)
                     .map(|(s, q)| if *s == 0.0 { 0.0 } else { s * q.sqrt() })
                     .collect();
-                for threads in [1, 4, 16] {
+                for threads in [1, 2, 4, 8, 16] {
                     let pool = rayon::ThreadPoolBuilder::new()
                         .num_threads(threads)
                         .build()

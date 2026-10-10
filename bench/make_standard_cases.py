@@ -20,6 +20,15 @@ def sha256_file(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def verify_cases(output: Path, expected: dict[str, str]) -> list[str]:
+    actual = {path.name for path in output.glob('*.case')}
+    errors = [f'missing case: {name}' for name in sorted(expected.keys() - actual)]
+    errors += [f'unlisted case: {name}' for name in sorted(actual - expected.keys())]
+    errors += [f'hash mismatch: {name}' for name in sorted(actual & expected.keys())
+               if sha256_file(output / name) != expected[name]]
+    return errors
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument('--output', type=Path, default=ROOT / 'target/standard-cases')
@@ -34,16 +43,21 @@ def main() -> int:
     wide = spec['wide']
     for regressors in wide['regressors']:
         for threads in wide['threads']:
+            case = output / f'ols-wide-k{regressors}-t{threads}.case'
+            # replay_large requires a new file. Replace only declared outputs;
+            # unlisted files remain visible to the verification below.
+            if case.name in wide['cases']:
+                case.unlink(missing_ok=True)
             subprocess.run([str(examples / 'replay_large'), '--output',
-                            str(output / f'ols-wide-k{regressors}-t{threads}.case'),
+                            str(case),
                             '--rows', '50000', '--levels', '5000,500', '--regressors', str(regressors),
                             '--weights', 'pw', '--vce', 'robust', '--graph', 'random-mobility',
                             '--solver', 'auto', '--seed', '20261008', '--iterations', '1000',
                             '--threads', str(threads)], check=True, stdout=subprocess.DEVNULL)
     expected = {**spec['standard']['cases'], **wide['cases']}
-    mismatched = [name for name, digest in expected.items() if sha256_file(output / name) != digest]
-    if mismatched:
-        print('hash mismatch: ' + ', '.join(mismatched))
+    errors = verify_cases(output, expected)
+    if errors:
+        print('\n'.join(errors))
         return 1
     print(f'{len(expected)} frozen workloads verified in {output}')
     return 0

@@ -77,6 +77,9 @@ Qualification scope and open caveats are in
 
 ### Fixes during the beta
 
+- Fixed an OLS slowdown at higher worker counts caused by shared scratch
+  writes during fixed-effect norm accumulation. Accumulators now stay private
+  to each worker; observation order and scientific results are unchanged.
 - Windows: the plugin pins its own DLL, so unloading it while a cached worker
   was still running can no longer crash Stata.
 - `feppml` with slope fixed effects and zero outcomes no longer stops with
