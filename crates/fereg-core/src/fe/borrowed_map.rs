@@ -6457,10 +6457,8 @@ fn certify_with_current_norms(
         return certify_effects_parallel(design, weights, residuals, tolerance, workspace);
     }
 
-    let mut absolute_infinity_norm = 0.0_f64;
-    let mut relative_infinity_norm = 0.0_f64;
-    let mut relative_square_sum = 0.0_f64;
-    let mut relative_count = 0_usize;
+    let columns = residuals.ncols();
+    let mut fold = CertificateFold::default();
     for effect in design.effects() {
         for level in 0..effect.n_levels() {
             let members = effect.level_index().checked_members(level)?;
@@ -6476,71 +6474,16 @@ fn certify_with_current_norms(
                 workspace,
                 GroupMeanRoute::OnePass,
             )?;
-            let root_group_weight = group_weight.sqrt();
-            if !root_group_weight.is_finite() || root_group_weight <= 0.0 {
-                return Err(invalid_data(
-                    "borrowed MAP certificate group weight is invalid",
-                ));
-            }
-            for rhs in 0..residuals.ncols() {
-                let mean = workspace.group_sums[rhs];
-                let denominator = workspace.rhs_scales[rhs];
-                let relative = if denominator == 0.0 {
-                    if mean == 0.0 {
-                        0.0
-                    } else {
-                        return Err(invalid_data(
-                            "borrowed MAP zero-scale certificate has a nonzero moment",
-                        ));
-                    }
-                } else {
-                    (mean.abs() / denominator) * root_group_weight
-                };
-                if !relative.is_finite() {
-                    return Err(invalid_data("borrowed MAP certificate ratio is not finite"));
-                }
-                relative_infinity_norm = relative_infinity_norm.max(relative);
-                workspace.rhs_relative_infinity_norms[rhs] =
-                    workspace.rhs_relative_infinity_norms[rhs].max(relative);
-                relative_square_sum = relative.mul_add(relative, relative_square_sum);
-                if !relative_square_sum.is_finite() {
-                    return Err(invalid_data(
-                        "borrowed MAP certificate two-norm accumulation is not finite",
-                    ));
-                }
-                relative_count = relative_count
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("borrowed MAP certificate moment count overflows"))?;
-
-                let normalized_moment = mean.abs() * group_weight;
-                let raw_moment = normalized_moment * weights.raw_scale;
-                absolute_infinity_norm = absolute_infinity_norm.max(if raw_moment.is_finite() {
-                    raw_moment
-                } else if normalized_moment == 0.0 {
-                    0.0
-                } else {
-                    f64::INFINITY
-                });
-            }
+            fold.level(
+                group_weight,
+                &workspace.group_sums[..columns],
+                &workspace.rhs_scales,
+                &mut workspace.rhs_relative_infinity_norms,
+                weights.raw_scale,
+            )?;
         }
     }
-
-    let relative_two_norm = if relative_count == 0 {
-        0.0
-    } else {
-        (relative_square_sum / relative_count as f64).sqrt()
-    };
-    if !relative_two_norm.is_finite() {
-        return Err(invalid_data(
-            "borrowed MAP certificate two norm is not finite",
-        ));
-    }
-    Ok(FeCertificate {
-        absolute_infinity_norm,
-        relative_infinity_norm,
-        relative_two_norm,
-        passed: relative_infinity_norm <= tolerance,
-    })
+    fold.finish(tolerance)
 }
 
 fn certify_effects_parallel(
@@ -6551,10 +6494,7 @@ fn certify_effects_parallel(
     workspace: &mut BorrowedMapWorkspace,
 ) -> Result<FeCertificate> {
     let columns = residuals.ncols();
-    let mut absolute_infinity_norm = 0.0_f64;
-    let mut relative_infinity_norm = 0.0_f64;
-    let mut relative_square_sum = 0.0_f64;
-    let mut relative_count = 0_usize;
+    let mut fold = CertificateFold::default();
     for effect in design.effects() {
         let levels = effect.n_levels();
         let mean_count = levels
@@ -6571,70 +6511,103 @@ fn certify_effects_parallel(
         let group_weights = &workspace.parallel_group_weights[..levels];
         let means = &workspace.parallel_group_means[..mean_count];
         for level in 0..levels {
-            let group_weight = group_weights[level];
-            let root_group_weight = group_weight.sqrt();
-            if !root_group_weight.is_finite() || root_group_weight <= 0.0 {
-                return Err(invalid_data(
-                    "borrowed MAP certificate group weight is invalid",
-                ));
-            }
-            for rhs in 0..columns {
-                let mean = means[level * columns + rhs];
-                let denominator = workspace.rhs_scales[rhs];
-                let relative = if denominator == 0.0 {
-                    if mean == 0.0 {
-                        0.0
-                    } else {
-                        return Err(invalid_data(
-                            "borrowed MAP zero-scale certificate has a nonzero moment",
-                        ));
-                    }
+            fold.level(
+                group_weights[level],
+                &means[level * columns..(level + 1) * columns],
+                &workspace.rhs_scales,
+                &mut workspace.rhs_relative_infinity_norms,
+                weights.raw_scale,
+            )?;
+        }
+    }
+    fold.finish(tolerance)
+}
+
+/// Running FE moment certificate, folded level-major and RHS-minor.
+#[derive(Default)]
+struct CertificateFold {
+    absolute_infinity_norm: f64,
+    relative_infinity_norm: f64,
+    relative_square_sum: f64,
+    relative_count: usize,
+}
+
+impl CertificateFold {
+    /// Fold one level's group means, one per RHS, at its group weight.
+    fn level(
+        &mut self,
+        group_weight: f64,
+        means: &[f64],
+        rhs_scales: &[f64],
+        rhs_relative_infinity_norms: &mut [f64],
+        raw_scale: f64,
+    ) -> Result<()> {
+        let root_group_weight = group_weight.sqrt();
+        if !root_group_weight.is_finite() || root_group_weight <= 0.0 {
+            return Err(invalid_data(
+                "borrowed MAP certificate group weight is invalid",
+            ));
+        }
+        for (rhs, &mean) in means.iter().enumerate() {
+            let denominator = rhs_scales[rhs];
+            let relative = if denominator == 0.0 {
+                if mean == 0.0 {
+                    0.0
                 } else {
-                    (mean.abs() / denominator) * root_group_weight
-                };
-                if !relative.is_finite() {
-                    return Err(invalid_data("borrowed MAP certificate ratio is not finite"));
-                }
-                relative_infinity_norm = relative_infinity_norm.max(relative);
-                workspace.rhs_relative_infinity_norms[rhs] =
-                    workspace.rhs_relative_infinity_norms[rhs].max(relative);
-                relative_square_sum = relative.mul_add(relative, relative_square_sum);
-                if !relative_square_sum.is_finite() {
                     return Err(invalid_data(
-                        "borrowed MAP certificate two-norm accumulation is not finite",
+                        "borrowed MAP zero-scale certificate has a nonzero moment",
                     ));
                 }
-                relative_count = relative_count
-                    .checked_add(1)
-                    .ok_or_else(|| allocation("borrowed MAP certificate moment count overflows"))?;
-                let normalized_moment = mean.abs() * group_weight;
-                let raw_moment = normalized_moment * weights.raw_scale;
-                absolute_infinity_norm = absolute_infinity_norm.max(if raw_moment.is_finite() {
+            } else {
+                (mean.abs() / denominator) * root_group_weight
+            };
+            if !relative.is_finite() {
+                return Err(invalid_data("borrowed MAP certificate ratio is not finite"));
+            }
+            self.relative_infinity_norm = self.relative_infinity_norm.max(relative);
+            rhs_relative_infinity_norms[rhs] = rhs_relative_infinity_norms[rhs].max(relative);
+            self.relative_square_sum = relative.mul_add(relative, self.relative_square_sum);
+            if !self.relative_square_sum.is_finite() {
+                return Err(invalid_data(
+                    "borrowed MAP certificate two-norm accumulation is not finite",
+                ));
+            }
+            self.relative_count = self
+                .relative_count
+                .checked_add(1)
+                .ok_or_else(|| allocation("borrowed MAP certificate moment count overflows"))?;
+            let normalized_moment = mean.abs() * group_weight;
+            let raw_moment = normalized_moment * raw_scale;
+            self.absolute_infinity_norm =
+                self.absolute_infinity_norm.max(if raw_moment.is_finite() {
                     raw_moment
                 } else if normalized_moment == 0.0 {
                     0.0
                 } else {
                     f64::INFINITY
                 });
-            }
         }
+        Ok(())
     }
-    let relative_two_norm = if relative_count == 0 {
-        0.0
-    } else {
-        (relative_square_sum / relative_count as f64).sqrt()
-    };
-    if !relative_two_norm.is_finite() {
-        return Err(invalid_data(
-            "borrowed MAP certificate two norm is not finite",
-        ));
+
+    fn finish(self, tolerance: f64) -> Result<FeCertificate> {
+        let relative_two_norm = if self.relative_count == 0 {
+            0.0
+        } else {
+            (self.relative_square_sum / self.relative_count as f64).sqrt()
+        };
+        if !relative_two_norm.is_finite() {
+            return Err(invalid_data(
+                "borrowed MAP certificate two norm is not finite",
+            ));
+        }
+        Ok(FeCertificate {
+            absolute_infinity_norm: self.absolute_infinity_norm,
+            relative_infinity_norm: self.relative_infinity_norm,
+            relative_two_norm,
+            passed: self.relative_infinity_norm <= tolerance,
+        })
     }
-    Ok(FeCertificate {
-        absolute_infinity_norm,
-        relative_infinity_norm,
-        relative_two_norm,
-        passed: relative_infinity_norm <= tolerance,
-    })
 }
 
 /// Form I-S from its FE contributions, not by subtracting two observation
