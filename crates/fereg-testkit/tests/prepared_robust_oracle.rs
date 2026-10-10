@@ -446,11 +446,11 @@ fn absorbed_dof_policy_changes_only_the_hc1_scalar() {
 // three deterministic FEs (32/19/13 levels, 64 slots so Auto LSMR uses the
 // diagonal preconditioner), 17 regressors plus y and the constant (19 RHS),
 // explicit LSMR at the ado defaults, robust VCE, unit and analytic weights.
-// Known open failure: with analytic weights every column meets the LSMR stop
-// at 1e-8, but one column's FE certificate is 1.0167e-8, so explicit LSMR
-// returns an uncertified result at every thread count (see docs/VALIDATION.md).
+// Regression witness: when the recurrence stopped at the requested 1e-8, one
+// analytic-weight column's FE certificate was 1.0167e-8 and every thread count
+// returned an uncertified result. Explicit LSMR now solves at a hundredth of
+// the request and certifies at the request.
 #[test]
-#[ignore = "known open failure: explicit LSMR certifies at its own stop tolerance"]
 fn explicit_lsmr_three_fe_batch_matches_explicit_dummy_oracle() {
     let rows = 16_416_usize;
     let g1 = (0..rows).map(|row| (row % 32) as u32).collect::<Vec<_>>();

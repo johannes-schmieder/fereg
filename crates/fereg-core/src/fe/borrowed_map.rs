@@ -3174,7 +3174,7 @@ pub(crate) fn absorb_borrowed_intercept_lsmr(
         &values,
         config.tolerance,
         config.max_iterations,
-        config,
+        super::auto::explicit_lsmr_recurrence(config),
         None,
         retain_coefficients,
     )?;
@@ -4084,7 +4084,7 @@ impl<'a> BorrowedLsmrAbsorber<'a> {
             &values,
             config.lsmr.tolerance,
             config.lsmr.max_iterations,
-            config.lsmr,
+            super::auto::explicit_lsmr_recurrence(config.lsmr),
             None,
             config.retain_coefficients,
             Some(&mut self.prepared),

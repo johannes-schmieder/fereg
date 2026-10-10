@@ -97,10 +97,15 @@ Qualification scope and open caveats are in
   as in `feppml`, so an eigensystem whose error the former unit floor hid on a
   tiny-scale covariance is rejected rather than published.
 - The internal `_fereg_ols.ado` developer adapter is no longer installed.
+- Explicit `solver(lsmr)` in `fereg` now iterates to one hundredth of
+  `tolerance()` and certifies at `tolerance()`, as automatic LSMR does. It no
+  longer stops with `r(459)` when a fixed-effect certificate lands just above
+  the tolerance (seen with weights and three absorbed effects). Explicit-LSMR
+  results change at roundoff level and take somewhat more LSMR iterations.
 
-Coefficients and standard errors did not change in the October 2026 cleanup
-and improvement programmes; certificate diagnostics changed only within
-declared roundoff scopes. The development history of this beta, including
+Apart from that explicit-LSMR change, coefficients and standard errors did
+not change in the October 2026 cleanup and improvement programmes;
+certificate diagnostics changed only within declared roundoff scopes. The development history of this beta, including
 benchmark tooling and qualification receipts, is in Git.
 
 ## 0.1.0-phase01 — 2026-08-20

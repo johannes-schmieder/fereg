@@ -202,7 +202,9 @@ largest categorical intercept effects and uses CMG-preconditioned PCG for all
 right-hand sides. Additional absorbed intercept effects are supported when
 their combined non-base dimension is at most 64. Absorbed slopes are not
 supported by {cmd:cmg}. A failed CMG construction or solve falls back visibly
-to certified CG; a successful bulk solve is polished by CG when needed. All
+to certified CG; a successful bulk solve is polished by CG when needed.
+Explicit {cmd:lsmr} iterates to one hundredth of {cmd:tolerance()} (at least
+1e-14), as automatic LSMR does, and certifies at {cmd:tolerance()}. All
 explicit methods fail closed on a failed independent fixed-effect certificate.
 
 {pstd}

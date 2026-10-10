@@ -2,22 +2,10 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 93238,
-      "before": 93193,
+      "after": 93250,
+      "before": 93238,
       "metric": "fereg-core/production_lines",
-      "reason": "LSMR recurrence and FE-certificate tolerances become separate inputs (behaviour-neutral: every caller passes equal values) ahead of the explicit-LSMR decision; absorb_lsmr_certified_at extracts its trace and warning helpers to stay under 150 lines."
-    },
-    {
-      "after": 6986,
-      "before": 6984,
-      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
-      "reason": "LSMR recurrence and FE-certificate tolerances become separate inputs (behaviour-neutral: every caller passes equal values) ahead of the explicit-LSMR decision; absorb_lsmr_certified_at extracts its trace and warning helpers to stay under 150 lines."
-    },
-    {
-      "after": 260,
-      "before": 258,
-      "metric": "function/crates/fereg-core/src/fe/borrowed_map.rs/run_borrowed_lsmr_with_prepared#1",
-      "reason": "LSMR recurrence and FE-certificate tolerances become separate inputs (behaviour-neutral: every caller passes equal values) ahead of the explicit-LSMR decision; absorb_lsmr_certified_at extracts its trace and warning helpers to stay under 150 lines."
+      "reason": "Decision A: explicit_lsmr_recurrence (tol/100 recurrence, certificate at the request) applied at the three explicit OLS LSMR entry points."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -554,68 +542,72 @@
         "dispatch_candidates": [
           {
             "condition": "values . nrows ( ) != design . nobs ( ) || ! config . map . tolerance . is_finite ( ) || config . map . tolerance <= 0. || config . map . max_iterations == 0 || config . map . check_every == 0",
-            "line": 126
+            "line": 143
           },
           {
             "condition": "design . effects ( ) . len ( ) > 1 && config . map . max_iterations > 1",
-            "line": 142
+            "line": 159
           },
           {
             "condition": "config . solver_memory_budget . is_none_or ( | b | cached . bytes ( ) . is_some_and ( | bytes | b . fits ( bytes as u128 ) ) )",
-            "line": 192
+            "line": 209
           },
           {
             "condition": "let Ok ( bytes ) = context . parallel_workspace_bytes ( values . ncols ( ) )",
-            "line": 204
+            "line": 221
           },
           {
             "condition": "config . solver_memory_budget . is_none_or ( | b | parallel . bytes ( ) . is_some_and ( | bytes | b . fits ( bytes as u128 ) ) )",
-            "line": 206
+            "line": 223
           },
           {
             "condition": "budget . is_none_or ( | budget | peak . bytes ( ) . is_some_and ( | bytes | budget . fits ( bytes as u128 ) ) )",
-            "line": 258
+            "line": 275
           },
           {
             "condition": "let Some ( budget ) = config . solver_memory_budget",
-            "line": 287
+            "line": 304
           },
           {
             "condition": "! budget . fits ( required )",
-            "line": 288
+            "line": 305
           }
         ],
         "functions": {
           "absorb_auto#1": {
-            "line": 119,
+            "line": 136,
             "lines": 129
           },
           "absorb_fixed_effects#1": {
-            "line": 54,
-            "lines": 64
+            "line": 65,
+            "lines": 70
           },
           "admit_generic_solver#1": {
-            "line": 268,
+            "line": 285,
             "lines": 28
           },
           "admit_parallel_projection#1": {
-            "line": 251,
+            "line": 268,
             "lines": 16
           },
           "default#1": {
-            "line": 41,
+            "line": 52,
             "lines": 10
           },
           "direct_lsmr_tolerance#1": {
             "line": 16,
             "lines": 7
           },
+          "explicit_lsmr_recurrence#1": {
+            "line": 28,
+            "lines": 6
+          },
           "fallible_matrix_copy#1": {
-            "line": 297,
+            "line": 314,
             "lines": 8
           }
         },
-        "production_lines": 277
+        "production_lines": 289
       },
       "crates/fereg-core/src/fe/borrowed_map.rs": {
         "chunk_candidates": [],
@@ -19962,7 +19954,7 @@
         "dispatch_candidates": 1225,
         "files_over_1500": 15,
         "functions_over_150": 61,
-        "production_lines": 93238
+        "production_lines": 93250
       },
       "fereg-plugin": {
         "chunk_candidates": 0,

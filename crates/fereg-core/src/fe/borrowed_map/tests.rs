@@ -567,6 +567,125 @@ fn ols_norms_are_scaled_and_bit_stable_across_worker_counts() {
 }
 
 #[test]
+fn explicit_lsmr_recurrence_is_direct_and_certificate_stays_requested() {
+    let rows = 240;
+    let codes = [
+        (0..rows).map(|r| (r % 8) as u32).collect::<Vec<_>>(),
+        (0..rows).map(|r| ((r / 8) % 7) as u32).collect::<Vec<_>>(),
+        (0..rows)
+            .map(|r| ((3 * r + r / 5) % 5) as u32)
+            .collect::<Vec<_>>(),
+    ];
+    let indexes = [
+        LevelIndex::from_codes(&codes[0], 8).unwrap(),
+        LevelIndex::from_codes(&codes[1], 7).unwrap(),
+        LevelIndex::from_codes(&codes[2], 5).unwrap(),
+    ];
+    let sources = [
+        ValidatedBorrowedInterceptSource::new(&codes[0], 8, &indexes[0]).unwrap(),
+        ValidatedBorrowedInterceptSource::new(&codes[1], 7, &indexes[1]).unwrap(),
+        ValidatedBorrowedInterceptSource::new(&codes[2], 5, &indexes[2]).unwrap(),
+    ];
+    let design = || {
+        BorrowedInterceptFeDesign::new(rows, sources.iter().map(|s| s.effect()).collect()).unwrap()
+    };
+    let input = DenseMatrix::from_columns(&[
+        (0..rows)
+            .map(|r| (r as f64 * 0.13).sin())
+            .collect::<Vec<_>>(),
+        (0..rows)
+            .map(|r| (r as f64 * 0.07).cos() + (r % 3) as f64)
+            .collect::<Vec<_>>(),
+    ])
+    .unwrap();
+    let raw = (0..rows).map(|r| 1. + (r % 5) as f64).collect::<Vec<_>>();
+    let lsmr = LsmrConfig {
+        tolerance: 1e-8,
+        ..LsmrConfig::default()
+    };
+    let config = super::super::AbsorbConfig {
+        solver: FeSolverKind::Lsmr,
+        lsmr,
+        ..super::super::AbsorbConfig::default()
+    };
+    let validated = validate_weights(BorrowedMapWeights::Provided(&raw), rows).unwrap();
+    let recurrence = super::super::auto::explicit_lsmr_recurrence(lsmr);
+    assert_eq!(recurrence.tolerance, direct_lsmr_tolerance(1e-8));
+    let (rule, rule_report, _, _) = run_borrowed_lsmr(
+        &design(),
+        validated,
+        &input,
+        lsmr.tolerance,
+        lsmr.max_iterations,
+        recurrence,
+        None,
+        false,
+    )
+    .unwrap();
+    let (_, equal_report, _, _) = run_borrowed_lsmr(
+        &design(),
+        validated,
+        &input,
+        lsmr.tolerance,
+        lsmr.max_iterations,
+        lsmr,
+        None,
+        false,
+    )
+    .unwrap();
+    // The tighter recurrence never stops earlier, and the certificate keeps
+    // the requested threshold rather than the recurrence tolerance.
+    assert!(rule_report.iterations >= equal_report.iterations);
+    assert!(rule_report.certified());
+    assert_eq!(
+        rule_report.certificate.passed,
+        rule_report.certificate.relative_infinity_norm <= lsmr.tolerance
+    );
+    let one_shot = absorb_borrowed_intercept_lsmr(
+        &design(),
+        BorrowedMapWeights::Provided(&raw),
+        input.clone(),
+        lsmr,
+        false,
+    )
+    .unwrap();
+    let mut session =
+        BorrowedLsmrAbsorber::new(design(), BorrowedMapWeights::Provided(&raw), config).unwrap();
+    let retained = session
+        .absorb(
+            BorrowedMapWeights::Provided(&raw),
+            input.clone(),
+            super::super::MapGeometryGeneration {
+                sample: 1,
+                topology: 1,
+                weights: 1,
+            },
+            config,
+        )
+        .unwrap();
+    for (residualized, report) in [one_shot.into_parts(), retained.into_parts()] {
+        assert_eq!(residualized, rule);
+        assert_eq!(report.certificate, rule_report.certificate);
+        assert_eq!(report.iterations, rule_report.iterations);
+    }
+    let error = run_borrowed_lsmr(
+        &design(),
+        validated,
+        &input,
+        lsmr.tolerance,
+        lsmr.max_iterations,
+        LsmrConfig {
+            tolerance: f64::NAN,
+            ..lsmr
+        },
+        None,
+        false,
+    )
+    .expect_err("nonfinite recurrence tolerance");
+    assert_eq!(error.code, ErrorCode::InvalidArgument);
+}
+
+#[test]
 fn retained_lsmr_weight_generation_revokes_failed_and_changed_frames() {
     let rows = 128;
     let codes = [

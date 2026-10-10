@@ -156,7 +156,7 @@ dimension. Cluster interactions use `#`, not `##`.
 | Option | Default | Meaning |
 |---|---|---|
 | `solver(auto)` | `auto` | Select topology-qualified CMG before the bounded MAP pilot; otherwise select a certified direct, MAP, CG, or LSMR route. |
-| `solver(map|it|squarem|lsmr|cmg)` | — | Request a specific fixed-effect solver. `cmg` is the sparse AKM graph route for categorical intercept effects. |
+| `solver(map|it|squarem|lsmr|cmg)` | — | Request a specific fixed-effect solver. `cmg` is the sparse AKM graph route for categorical intercept effects. In `fereg`, explicit `lsmr` iterates to one hundredth of `tolerance()` (at least 1e-14) and certifies at `tolerance()`. |
 | `preconditioner(auto|off|diagonal|schwarz)` | `auto` with `auto`/`lsmr` | Select the LSMR preconditioner. `none` aliases `off`; `additive` aliases `schwarz`. |
 | `threads(#)` | `0` | Request a native thread team. Zero uses the native default. |
 | `memory(auto|fast|low)` | `auto` | Choose automatically, retain dense workspaces, or use blockwise work and bounded scratch storage. |

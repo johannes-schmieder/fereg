@@ -21,6 +21,17 @@ pub(crate) fn direct_lsmr_tolerance(requested_tolerance: f64) -> f64 {
     }
 }
 
+/// Explicit `solver(lsmr)` runs its recurrence under the same frozen rule and
+/// keeps the independent FE certificate at the requested tolerance (scoped
+/// decision of 2026-10-10: an equal-tolerance stop can leave a certificate
+/// just above the request).
+pub(crate) fn explicit_lsmr_recurrence(config: LsmrConfig) -> LsmrConfig {
+    LsmrConfig {
+        tolerance: direct_lsmr_tolerance(config.tolerance),
+        ..config
+    }
+}
+
 /// Unified fixed-effect absorption configuration.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct AbsorbConfig {
@@ -78,7 +89,13 @@ pub fn absorb_fixed_effects(
                     fallible_matrix_copy(values, "unable to reserve explicit LSMR fallback matrix")
                 })
                 .transpose()?;
-            let mut report = absorb_lsmr(design, weights, values, config.lsmr)?;
+            let mut report = super::lsmr::absorb_lsmr_certified_at(
+                design,
+                weights,
+                values,
+                explicit_lsmr_recurrence(config.lsmr),
+                config.lsmr.tolerance,
+            )?;
             report.solver_workspace_peak = attempted_peak;
             if report.certified() || !config.certified_fallback {
                 return Ok(report);
@@ -818,6 +835,40 @@ mod generic_budget_regression {
     #[test]
     fn generic_cg_enforces_joint_budget() {
         check_budget(FeSolverKind::Cg);
+    }
+
+    #[test]
+    fn explicit_owned_lsmr_tightens_the_recurrence_and_certifies_the_request() {
+        let (design, outcome, _) = crossed_slope();
+        let weights = (0..design.nobs())
+            .map(|row| 1.0 + (row % 5) as f64)
+            .collect::<Vec<_>>();
+        let lsmr = LsmrConfig {
+            tolerance: 1e-8,
+            ..LsmrConfig::default()
+        };
+        let config = AbsorbConfig {
+            solver: FeSolverKind::Lsmr,
+            lsmr,
+            ..AbsorbConfig::default()
+        };
+        let mut routed = DenseMatrix::from_columns(&[outcome.clone()]).unwrap();
+        let report = absorb_fixed_effects(&design, &weights, &mut routed, config).unwrap();
+        let mut expected_values = DenseMatrix::from_columns(&[outcome]).unwrap();
+        let expected = super::super::lsmr::absorb_lsmr_certified_at(
+            &design,
+            &weights,
+            &mut expected_values,
+            explicit_lsmr_recurrence(lsmr),
+            lsmr.tolerance,
+        )
+        .unwrap();
+        assert_eq!(routed, expected_values);
+        assert_eq!(report.used_solver, FeSolverKind::Lsmr);
+        assert!(!report.fallback_used);
+        assert_eq!(report.iterations, expected.iterations);
+        assert_eq!(report.certificate, expected.certificate);
+        assert!(report.certified());
     }
 
     #[test]
