@@ -5782,55 +5782,13 @@ fn project_effect_parallel<
     if let Some((batch, effect_index)) = coefficients {
         record_parallel_group_means(batch, effect_index, means, levels, columns)?;
     }
-    let codes = effect.codes();
-    let update_row = |observation: usize, row: &mut [f64], auxiliary: Option<&[f64]>| {
-        let level = codes[observation] as usize;
-        if level >= levels {
-            return Err(invalid_argument(
-                "borrowed MAP code exceeds the finalized level count",
-            ));
-        }
-        for (rhs, value) in row.iter_mut().enumerate() {
-            let source = if FROM_INPUT {
-                auxiliary.expect("validated input projection row")[rhs]
-            } else {
-                *value
-            };
-            let projected = source - means[level * columns + rhs];
-            let output = if COMPLEMENT {
-                auxiliary.expect("validated complement row")[rhs] - projected
-            } else {
-                projected
-            };
-            if !output.is_finite() {
-                return Err(invalid_data(
-                    "borrowed MAP projection produced a nonfinite residual",
-                ));
-            }
-            *value = output;
-        }
-        Ok(())
-    };
-    let row_work = values.nrows() as u128 * columns as u128;
-    if FROM_INPUT || COMPLEMENT {
-        let auxiliary = auxiliary.expect("validated auxiliary projection matrix");
-        crate::parallel::stage_try_for_each(
-            values
-                .as_mut_slice()
-                .par_chunks_mut(columns)
-                .zip(auxiliary.as_slice().par_chunks(columns))
-                .enumerate(),
-            row_work,
-            |(observation, (row, auxiliary))| update_row(observation, row, Some(auxiliary)),
-        )?;
-    } else {
-        crate::parallel::stage_try_for_each(
-            values.as_mut_slice().par_chunks_mut(columns).enumerate(),
-            row_work,
-            |(observation, row)| update_row(observation, row, None),
-        )?;
-    }
-    Ok(())
+    subtract_parallel_level_means::<FROM_INPUT, COMPLEMENT>(
+        effect.codes(),
+        levels,
+        means,
+        values,
+        auxiliary,
+    )
 }
 
 fn project_effect_parallel_fused<
@@ -5926,7 +5884,25 @@ fn project_effect_parallel_fused<
             record_parallel_group_means(batch, effect_index, means, levels, columns)?;
         }
     }
-    let codes = effect.codes();
+    subtract_parallel_level_means::<FROM_INPUT, COMPLEMENT>(
+        effect.codes(),
+        levels,
+        means,
+        values,
+        auxiliary,
+    )
+}
+
+// Subtract each row's level means in parallel. FROM_INPUT reads the source
+// row from `auxiliary`; COMPLEMENT returns `auxiliary - projected`.
+fn subtract_parallel_level_means<const FROM_INPUT: bool, const COMPLEMENT: bool>(
+    codes: &[u32],
+    levels: usize,
+    means: &[f64],
+    values: &mut DenseMatrix,
+    auxiliary: Option<&DenseMatrix>,
+) -> Result<()> {
+    let columns = values.ncols();
     let update_row = |observation: usize, row: &mut [f64], auxiliary: Option<&[f64]>| {
         let level = codes[observation] as usize;
         if level >= levels {

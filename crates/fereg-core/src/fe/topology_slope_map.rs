@@ -1831,56 +1831,14 @@ fn finish_one_intercept_recovery(
                     }
                     value_scale = value_scale.max(remainder.abs());
                 }
-                let mut gram = 0.0_f64;
-                let mut gram_correction = 0.0_f64;
-                let mut cross = 0.0_f64;
-                let mut cross_correction = 0.0_f64;
-                for &row in members {
-                    let weight = weights.value(row);
-                    compensated_add(weight, &mut gram, &mut gram_correction)?;
-                    if value_scale != 0.0 {
-                        compensated_add(
-                            weight * ((target[row] - alpha) / value_scale),
-                            &mut cross,
-                            &mut cross_correction,
-                        )?;
-                    }
-                }
-                gram += gram_correction;
-                cross += cross_correction;
-                if !gram.is_finite() || gram <= 0.0 || !cross.is_finite() {
-                    return Err(invalid_data(
-                        "categorical recovery certificate group moment is invalid",
-                    ));
-                }
-                let coefficient = value_scale * (cross / gram);
-                let projected_square = coefficient.mul_add(gram * coefficient, 0.0);
-                let projected = projected_square.max(0.0).sqrt();
-                let relative = if denominator == 0.0 {
-                    if projected == 0.0 {
-                        0.0
-                    } else {
-                        f64::INFINITY
-                    }
-                } else {
-                    projected / denominator
-                };
-                if !relative.is_finite() {
-                    return Err(invalid_data(
-                        "categorical recovery certificate ratio is nonfinite",
-                    ));
-                }
-                partial.relative_infinity = partial.relative_infinity.max(relative);
-                partial.relative_squares = relative.mul_add(relative, partial.relative_squares);
-                partial.count = partial.count.checked_add(1).ok_or_else(|| {
-                    allocation("categorical recovery certificate count overflows")
-                })?;
-                let raw = cross.abs() * value_scale * weights.raw_scale;
-                partial.absolute_infinity = partial.absolute_infinity.max(if raw.is_finite() {
-                    raw
-                } else {
-                    f64::INFINITY
-                });
+                fold_level_certificate(
+                    &mut partial,
+                    members,
+                    weights,
+                    value_scale,
+                    denominator,
+                    |row| target[row] - alpha,
+                )?;
             }
             *destination = partial;
             Ok(())
@@ -1969,6 +1927,73 @@ struct InterceptRecoveryCertificatePartial {
     count: usize,
 }
 
+// Fold one final level's projected-residual ratio into a certificate partial.
+fn fold_level_certificate(
+    partial: &mut InterceptRecoveryCertificatePartial,
+    members: &[usize],
+    weights: ValidatedWeights<'_>,
+    value_scale: f64,
+    denominator: f64,
+    residual: impl Fn(usize) -> f64,
+) -> Result<()> {
+    let mut gram = 0.0_f64;
+    let mut gram_correction = 0.0_f64;
+    let mut cross = 0.0_f64;
+    let mut cross_correction = 0.0_f64;
+    for &row in members {
+        let weight = weights.value(row);
+        compensated_add(weight, &mut gram, &mut gram_correction)?;
+        if value_scale != 0.0 {
+            compensated_add(
+                weight * (residual(row) / value_scale),
+                &mut cross,
+                &mut cross_correction,
+            )?;
+        }
+    }
+    gram += gram_correction;
+    cross += cross_correction;
+    if !gram.is_finite() || gram <= 0.0 || !cross.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery certificate group moment is invalid",
+        ));
+    }
+    let coefficient = value_scale * (cross / gram);
+    let projected_square = coefficient.mul_add(gram * coefficient, 0.0);
+    let projected = projected_square.max(0.0).sqrt();
+    let relative = if denominator == 0.0 {
+        if projected == 0.0 {
+            0.0
+        } else {
+            f64::INFINITY
+        }
+    } else {
+        projected / denominator
+    };
+    if !relative.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery certificate ratio is nonfinite",
+        ));
+    }
+    partial.relative_infinity = partial.relative_infinity.max(relative);
+    partial.relative_squares = relative.mul_add(relative, partial.relative_squares);
+    if !partial.relative_squares.is_finite() {
+        return Err(invalid_data(
+            "categorical recovery certificate two-norm accumulation is nonfinite",
+        ));
+    }
+    partial.count = partial
+        .count
+        .checked_add(1)
+        .ok_or_else(|| allocation("categorical recovery certificate count overflows"))?;
+    let raw = cross.abs() * value_scale * weights.raw_scale;
+    partial.absolute_infinity =
+        partial
+            .absolute_infinity
+            .max(if raw.is_finite() { raw } else { f64::INFINITY });
+    Ok(())
+}
+
 fn certify_intercept_only_recovery(
     topology: &FinalizedCategoricalTopology,
     weights: ValidatedWeights<'_>,
@@ -2031,61 +2056,14 @@ fn certify_intercept_only_recovery(
                         })?;
                         value_scale = value_scale.max(value.abs());
                     }
-                    let mut gram = 0.0_f64;
-                    let mut gram_correction = 0.0_f64;
-                    let mut cross = 0.0_f64;
-                    let mut cross_correction = 0.0_f64;
-                    for &row in members {
-                        let weight = weights.value(row);
-                        compensated_add(weight, &mut gram, &mut gram_correction)?;
-                        if value_scale != 0.0 {
-                            compensated_add(
-                                weight * (residuals[row] / value_scale),
-                                &mut cross,
-                                &mut cross_correction,
-                            )?;
-                        }
-                    }
-                    gram += gram_correction;
-                    cross += cross_correction;
-                    if !gram.is_finite() || gram <= 0.0 || !cross.is_finite() {
-                        return Err(invalid_data(
-                            "categorical recovery certificate group moment is invalid",
-                        ));
-                    }
-                    let coefficient = value_scale * (cross / gram);
-                    let projected_square = coefficient.mul_add(gram * coefficient, 0.0);
-                    let projected = projected_square.max(0.0).sqrt();
-                    let relative = if denominator == 0.0 {
-                        if projected == 0.0 {
-                            0.0
-                        } else {
-                            f64::INFINITY
-                        }
-                    } else {
-                        projected / denominator
-                    };
-                    if !relative.is_finite() {
-                        return Err(invalid_data(
-                            "categorical recovery certificate ratio is nonfinite",
-                        ));
-                    }
-                    partial.relative_infinity = partial.relative_infinity.max(relative);
-                    partial.relative_squares = relative.mul_add(relative, partial.relative_squares);
-                    if !partial.relative_squares.is_finite() {
-                        return Err(invalid_data(
-                            "categorical recovery certificate two-norm accumulation is nonfinite",
-                        ));
-                    }
-                    partial.count = partial.count.checked_add(1).ok_or_else(|| {
-                        allocation("categorical recovery certificate count overflows")
-                    })?;
-                    let raw = cross.abs() * value_scale * weights.raw_scale;
-                    partial.absolute_infinity = partial.absolute_infinity.max(if raw.is_finite() {
-                        raw
-                    } else {
-                        f64::INFINITY
-                    });
+                    fold_level_certificate(
+                        &mut partial,
+                        members,
+                        weights,
+                        value_scale,
+                        denominator,
+                        |row| residuals[row],
+                    )?;
                 }
                 *destination = partial;
                 Ok(())
