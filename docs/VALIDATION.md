@@ -41,9 +41,10 @@ Timing rows use paired-median bootstrap upper bounds against max(5%, 1 ms) on
 the frozen workloads. They are bounded native-call observations on one host,
 not release or end-to-end Stata claims.
 
-## Open failures and gaps
+## Failures, resolutions and gaps
 
-- `ols_three_fe_batch_oracle.do` failed with `r(459)` on every binary: explicit
+- Resolved on Mac 10-10: `ols_three_fe_batch_oracle.do` had failed with
+  `r(459)` on every binary: explicit
   LSMR stopped its recurrence at `tolerance()` and certified per-level FE
   moments at that same tolerance, leaving one weighted column at 1.0167e-8
   against 1e-8. The same gap remained at the 1e-14 final residual projection
@@ -61,7 +62,8 @@ not release or end-to-end Stata claims.
   `tests/replay/scopes/2026-10-10-explicit-lsmr-direct-tolerance.json`: only
   ols-10 and ols-13 change (coefficients at most 1.4e-15 relative, covariance
   at most 2.1e-10 relative), and 71 cases stay exact with 2- and 4-worker
-  checks. The licensed fixture run and Mac timing remain Johannes's.
+  checks. The licensed fixture and Mac boundary timing now pass; see the
+  qualification record below.
 - Full release staging failed at `8fb67bb5` because its input held only the
   Mac plugin; only the Mac review archive passed.
 - One passing Windows run after the module pin bounds, but cannot exclude, a
@@ -86,7 +88,7 @@ not release or end-to-end Stata claims.
 
 ## 2026-10-10 improvement programme
 
-Branch `ccr-7c76506a-21m47l` carries the programme's commits. Each stack was
+PR #31 was fast-forwarded from `140dda27` to `06ed5f94` on 10-10. Each stack was
 checked on Linux with `./scripts/run_tests.sh` and the 73-case replay against a
 `140dda27` baseline plugin (`e237c217`), with zero exact differences; commit
 messages record each result. Behaviour changes are confined to admission and
@@ -104,8 +106,7 @@ observation, not timing. The explicit-LSMR decisions (`5413cfe`, `a551feb`) are
 the programme's only deliberate result change. After them the Linux replay
 anchor moved from `e237c217` (`140dda27`) to `ba350134` (`71c289a`), which
 reproduces the declared scope against the old anchor and replays exactly
-against itself. Mac boundary timing, the Mac replay anchor, the licensed Stata
-full profile and the PTY Break fixtures are Johannes's to run.
+against itself. The Mac qualification and replay re-anchor are recorded below.
 
 Mac follow-up found two qualification defects at `5d548274`. Its replay had
 71 exact cases and only `ols-10`/`ols-13` differences, but both input hashes
@@ -125,4 +126,16 @@ logical ceiling and reserving exact-FE follow-up records fixes it. The native
 1/4 workers pass; all 73 replay cases remain exact against the original PR
 plugin (`04157bcc`). Both that public fixture and
 `ols_three_fe_batch_oracle.do` pass on Mac Stata/MP 19. These focused results
-use candidate plugin `2d2dd904`; the remaining integration checks are still pending.
+use candidate plugin `2d2dd904`; final integration results follow.
+
+| Final qualification (10-10) | Artifact / receipt SHA-256 prefix | Result |
+| --- | --- | --- |
+| Mac build and replay, merged `06ed5f94` | plugin `336015be`; replay `c8e08323` | Universal audit and ABI/load pass; 73 scoped cases and 146 worker checks pass. Re-anchored from `4842d6f3`; only ols-10/13 differ. |
+| Mac timing against `140dda27` | timed plugin `8c1b779e`; summary `18e5f922`; host observations `d67117e9` | All 18 workloads exact and within max(5%, 1 ms), 15 alternating pairs each. Largest bootstrap upper bound 1.04017 (K=129, four workers); paired medians 0.97417–1.00678. Johannes accepted practical quiet; brief background bursts and every pair were retained. Earlier seven-pair upper bound 1.05118 failed; two interrupted confirmations were inconclusive. No release-speed claim. |
+| Licensed Mac Stata/MP 19 and PTY Break | full `4ea95203`; hidden `1cab8469`; development `4a8fe8dc`; Break `6e34ae90` / `756572c6` | Full 69/69, ppml-hidden 12/12, development 64/64, including the three-FE oracle; OLS/PPML Break pass. Initial development failures led to fixture repairs in `4f6d0427`; tracing was disabled for allocation assertions. |
+| Bounded Windows build/load | plugin `de000832`; receipt `f18dba21` | Native build, ABI/load and licensed smoke pass; machine stopped. |
+| Bounded SCC Linux build/load and report-bank regressions | job `8016714`; plugin `eff64e7b`; result `03b58901`; accounting `220ed385` | glibc 2.28 audit, ABI/load, both UBSan variants and both targeted tests pass; scheduler failed=0/exit=0, 216 s, maxvmem 3.886G. Original job `8016626` failed linking system UBSan; explicit GCC 12.2 fixed it and is pinned in campaign setup by `06ed5f94`. |
+
+Full hashes are in the documentation commit. Evidence built at `ac7a7a9` and
+`4f6d0427` is reused through `06ed5f94`: all 168 production modules and 58
+artifact inputs are identical; `run_tests.sh` passes at the final source.
