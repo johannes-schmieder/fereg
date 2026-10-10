@@ -2,7 +2,7 @@ use crate::model_metadata::{exact_usize, reserved_filled, syntax};
 use crate::publication::store_matrix;
 use crate::transport::{
     admit_estimate_transport, decode_output_position_registry, fallible_string,
-    read_local_estimate_bundle, PPML_PROTOCOL,
+    read_local_estimate_bundle, reject_unknown_fields, PPML_PROTOCOL,
 };
 #[cfg(test)]
 use fereg_core::metadata::ModelWireV2;
@@ -61,6 +61,36 @@ use fereg_core::{MemoryMode, ThreadConfig};
 pub const ACTION_ESTIMATE_PPML: &str = "estimate-ppml";
 const CONFIRMATION: &str = "feppml-estimation";
 const CLUSTER_TERM_ROW_WIDTH: usize = 2;
+/// Fields only the PPML estimation protocol accepts.
+const PPML_FIELDS: &[&str] = &[
+    "request_major",
+    "request_minor",
+    "adjustment",
+    "adjustment_position",
+    "residual",
+    "allocation_audit",
+    "separation",
+    "separation_tolerance",
+    "separation_max_iterations",
+    "simplex_max_iterations",
+    "simplex_max_tableau_cells",
+    "output_eta",
+    "output_mean",
+    "bias_method",
+    "bias_unit",
+    "bias_probes",
+    "bias_seed",
+    "bias_stream",
+    "output_bias_count",
+    "output_bias_channels",
+    "output_bias_matrix",
+    "output_bias_diagnostics",
+    "output_bias_support",
+    "output_separation_matrix",
+    "output_inference_matrix",
+    "output_drop_counts_matrix",
+    "output_separation_sequence_matrix",
+];
 const CLUSTER_COMPONENT_ROW_WIDTH: usize = 3;
 
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
@@ -792,119 +822,8 @@ impl EstimatePpmlSpec {
                 .cloned()
                 .unwrap_or_default(),
         };
-        specification.reject_unknown_fields(&values)?;
+        reject_unknown_fields(ACTION_ESTIMATE_PPML, &values, PPML_FIELDS)?;
         Ok(specification)
-    }
-
-    fn reject_unknown_fields(&self, values: &BTreeMap<String, String>) -> Result<()> {
-        const ALLOWED: &[&str] = &[
-            "ado",
-            "protocol_major",
-            "protocol_minor",
-            "stata",
-            "confirm",
-            "plugin",
-            "result_major",
-            "result_minor",
-            "request_major",
-            "request_minor",
-            "model_major",
-            "model_minor",
-            "source_matrix",
-            "source_count",
-            "term_matrix",
-            "term_count",
-            "component_matrix",
-            "component_count",
-            "source_names",
-            "canonical_tokens",
-            "raw_component_operators",
-            "raw_time_series_operators",
-            "absorb_term_matrix",
-            "absorb_term_count",
-            "absorb_component_matrix",
-            "absorb_component_count",
-            "absorb_labels",
-            "absorb_saved_names",
-            "cluster_term_matrix",
-            "cluster_term_count",
-            "cluster_component_matrix",
-            "cluster_component_count",
-            "cluster_labels",
-            "binding_matrix",
-            "binding_count",
-            "include_intercept",
-            "candidate_all",
-            "input_complete",
-            "keep_singletons",
-            "adjustment",
-            "adjustment_position",
-            "residual",
-            "vce",
-            "memory",
-            "poolsize",
-            "threads",
-            "deterministic",
-            "allocation_audit",
-            "solver",
-            "tolerance",
-            "iterate",
-            "separation",
-            "separation_tolerance",
-            "separation_max_iterations",
-            "simplex_max_iterations",
-            "simplex_max_tableau_cells",
-            "output_sample",
-            "output_residual",
-            "output_xb",
-            "output_absorbed",
-            "output_eta",
-            "output_mean",
-            "output_drop_reason",
-            "output_saved_count",
-            "output_saved_channels",
-            "bias_method",
-            "bias_unit",
-            "bias_probes",
-            "bias_seed",
-            "bias_stream",
-            "output_bias_count",
-            "output_bias_channels",
-            "output_bias_matrix",
-            "output_bias_diagnostics",
-            "output_bias_support",
-            "output_b_matrix",
-            "output_v_matrix",
-            "output_status_matrix",
-            "output_fit_matrix",
-            "output_dof_matrix",
-            "output_fe_matrix",
-            "output_cluster_matrix",
-            "output_subset_matrix",
-            "output_separation_matrix",
-            "output_inference_matrix",
-            "output_drop_counts_matrix",
-            "output_separation_sequence_matrix",
-            "output_certificate_matrix",
-            "output_solver_matrix",
-            "output_runtime_matrix",
-            "output_memory_matrix",
-            "stata_used_entry",
-            "stata_alloc_entry",
-            "stata_used_before",
-            "stata_alloc_before",
-            "output_receipt_matrix",
-            "inject",
-            "break_marker_token",
-        ];
-        for key in values.keys() {
-            if !ALLOWED.contains(&key.as_str()) {
-                return Err(syntax(format!(
-                    "unknown {ACTION_ESTIMATE_PPML} field {key}",
-                )));
-            }
-        }
-        Ok(())
     }
 
     fn decode_and_validate(mut self, spi: &mut dyn SpiApi) -> Result<EstimatePpmlAction> {

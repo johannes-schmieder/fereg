@@ -224,6 +224,96 @@ pub(crate) fn fallible_string(value: &str, label: &'static str) -> Result<String
     Ok(output)
 }
 
+/// Protocol fields every guarded estimation action accepts.
+pub(crate) const COMMON_ESTIMATE_FIELDS: &[&str] = &[
+    "ado",
+    "protocol_major",
+    "protocol_minor",
+    "stata",
+    "confirm",
+    "plugin",
+    "result_major",
+    "result_minor",
+    "model_major",
+    "model_minor",
+    "source_matrix",
+    "source_count",
+    "term_matrix",
+    "term_count",
+    "component_matrix",
+    "component_count",
+    "source_names",
+    "canonical_tokens",
+    "raw_component_operators",
+    "raw_time_series_operators",
+    "absorb_term_matrix",
+    "absorb_term_count",
+    "absorb_component_matrix",
+    "absorb_component_count",
+    "absorb_labels",
+    "absorb_saved_names",
+    "cluster_term_matrix",
+    "cluster_term_count",
+    "cluster_component_matrix",
+    "cluster_component_count",
+    "cluster_labels",
+    "binding_matrix",
+    "binding_count",
+    "include_intercept",
+    "candidate_all",
+    "input_complete",
+    "keep_singletons",
+    "vce",
+    "memory",
+    "solver",
+    "poolsize",
+    "threads",
+    "deterministic",
+    "tolerance",
+    "iterate",
+    "output_sample",
+    "output_residual",
+    "output_drop_reason",
+    "output_xb",
+    "output_absorbed",
+    "output_saved_count",
+    "output_saved_channels",
+    "output_b_matrix",
+    "output_v_matrix",
+    "output_status_matrix",
+    "output_fit_matrix",
+    "output_dof_matrix",
+    "output_solver_matrix",
+    "output_fe_matrix",
+    "output_cluster_matrix",
+    "output_subset_matrix",
+    "output_certificate_matrix",
+    "output_runtime_matrix",
+    "output_memory_matrix",
+    "stata_used_entry",
+    "stata_alloc_entry",
+    "stata_used_before",
+    "stata_alloc_before",
+    "output_receipt_matrix",
+    "inject",
+    "break_marker_token",
+];
+
+/// Reject any field outside the shared and estimator-specific allowlists.
+pub(crate) fn reject_unknown_fields(
+    action: &str,
+    values: &BTreeMap<String, String>,
+    specific: &[&str],
+) -> Result<()> {
+    for key in values.keys() {
+        let key = key.as_str();
+        if !COMMON_ESTIMATE_FIELDS.contains(&key) && !specific.contains(&key) {
+            return Err(syntax(format!("unknown {action} field {key}")));
+        }
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
