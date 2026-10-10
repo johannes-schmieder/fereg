@@ -736,6 +736,16 @@ impl EstimateAction {
 }
 
 impl EstimateActionSpec {
+    fn cluster_tables(&self) -> ClusterTables<'_> {
+        ClusterTables {
+            term_matrix: &self.cluster_term_matrix,
+            term_count: self.cluster_term_count,
+            component_matrix: &self.cluster_component_matrix,
+            component_count: self.cluster_component_count,
+            labels: &self.cluster_labels,
+        }
+    }
+
     fn metadata_shape(&self) -> crate::metadata_memory::MetadataShape {
         let registry_bytes = [
             &self.model.registries.source_names,
@@ -937,18 +947,7 @@ impl EstimateActionSpec {
             include_intercept: self.include_intercept,
             keep_singletons: self.keep_singletons,
         };
-        let clusters = read_cluster_terms(
-            spi,
-            ClusterTables {
-                term_matrix: &self.cluster_term_matrix,
-                term_count: self.cluster_term_count,
-                component_matrix: &self.cluster_component_matrix,
-                component_count: self.cluster_component_count,
-                labels: &self.cluster_labels,
-            },
-            &request,
-            None,
-        )?;
+        let clusters = read_cluster_terms(spi, self.cluster_tables(), &request, None)?;
         validate_vce(self.vce, &clusters, self.account_cluster_nesting)?;
         let categorical = request.absorbed_terms.iter().any(|term| {
             term.categorical_sources.len() > 1
