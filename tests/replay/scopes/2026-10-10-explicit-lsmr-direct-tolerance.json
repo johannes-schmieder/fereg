@@ -2,7 +2,7 @@
   "cases": {
     "ols-10": {
       "input_sha256": "aaa81cea19252ac8ca8d1c5713ebc683d3f08801282c17f45ee7976266f6d736",
-      "reason": "Decision A (2026-10-10): explicit OLS solver(lsmr) iterates to direct_lsmr_tolerance(tol) = tol/100 and certifies at tol. This near-tolerance explicit-LSMR case takes more LSMR iterations; coefficients, covariance, fit statistics, solver/certificate diagnostics and derived observation outputs change at roundoff level.",
+      "reason": "Decisions A and A' (2026-10-10, 5413cfe and a551feb): explicit OLS solver(lsmr) iterates to tol/100, floored at 1e-15 and never looser than tol, and certifies at tol. This near-tolerance explicit-LSMR case takes more LSMR iterations; coefficients, covariance, fit statistics, solver/certificate diagnostics and derived observation outputs change at roundoff level.",
       "allowed_paths": [
         "/columns/10",
         "/columns/11",
@@ -51,7 +51,7 @@
     },
     "ols-13": {
       "input_sha256": "b2f7248db17aaa40d9db9a61f2ca6bfcc9a6d6bdf43783b0023848564e9df037",
-      "reason": "Decision A (2026-10-10): explicit OLS solver(lsmr) iterates to direct_lsmr_tolerance(tol) = tol/100 and certifies at tol. This near-tolerance explicit-LSMR case takes more LSMR iterations; coefficients, covariance, fit statistics, solver/certificate diagnostics and derived observation outputs change at roundoff level.",
+      "reason": "Decisions A and A' (2026-10-10, 5413cfe and a551feb): explicit OLS solver(lsmr) iterates to tol/100, floored at 1e-15 and never looser than tol, and certifies at tol. This near-tolerance explicit-LSMR case takes more LSMR iterations; coefficients, covariance, fit statistics, solver/certificate diagnostics and derived observation outputs change at roundoff level.",
       "allowed_paths": [
         "/columns/11",
         "/columns/12",
