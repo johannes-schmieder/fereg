@@ -29,6 +29,7 @@ EXCLUDED_PREFIXES = (
 )
 EXCLUDED_FILES = {
     "stata/_fereg_estimate_ols_test.ado",
+    "stata/_fereg_ols.ado",
     "stata/_fereg_ols_hidden_numeric_v1.ado",
     "stata/_fereg_prepare_ols_test.ado",
 }

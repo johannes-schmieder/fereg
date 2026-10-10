@@ -34,8 +34,11 @@ rejected. The additive PPML wires do not alter or alias the OLS result wire.
 - `panic-test` is confirmation-guarded and exists only for ABI containment.
 - `estimate-ols` is the one live-SPI public estimation action used by
   `fereg`.
-- `prepare-ols-test` and the hidden OLS adapter remain developer qualification
-  actions and are excluded from distributions.
+- `prepare-ols-test` and the hidden OLS adapters (`_fereg_ols`,
+  `_fereg_ols_hidden_numeric_v1`, `_fereg_estimate_ols_test`) remain developer
+  qualification surfaces. Their ado files are excluded from distributions; the
+  plugin binary still answers `prepare-ols-test` because the native loader test
+  drives it through every distributed plugin.
 - `estimate-ppml` is the live-SPI public estimation action used by `feppml`.
   The public wrapper delegates once through `_fereg_ppml` and the guarded
   `_fereg_estimate_ppml` transaction. Non-SPI dispatcher attempts to invoke
