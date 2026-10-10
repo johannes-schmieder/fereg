@@ -2945,81 +2945,75 @@ fn store_shadow(
             spi.store_numeric(position, observation, f64::from(reason.code()))?;
         }
     }
-    store_matrix(spi, &action.matrices.b, 1, shadow.b.len(), &shadow.b)?;
     let dimension = shadow.coefficient_count.max(1);
-    store_matrix(
-        spi,
-        &action.matrices.covariance,
-        dimension,
-        dimension,
-        &shadow.covariance,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.coefficient_status,
-        dimension,
-        COEFFICIENT_STATUS_COLUMNS,
-        &shadow.coefficient_status,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.omission_b_marker,
-        1,
-        dimension,
-        &shadow.omission_b_marker,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.omission_v_marker,
-        dimension,
-        dimension,
-        &shadow.omission_v_marker,
-    )?;
-    store_matrix(spi, &action.matrices.fit, FIT_ROWS, 2, &shadow.fit)?;
-    store_matrix(spi, &action.matrices.dof, DOF_ROWS, 2, &shadow.dof)?;
-    store_matrix(
-        spi,
-        &action.matrices.solver,
-        SOLVER_ROWS,
-        SOLVER_COLUMNS,
-        &shadow.solver,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.fixed_effects,
-        shadow.fixed_effect_rows,
-        FE_COLUMNS,
-        &shadow.fixed_effects,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.clusters,
-        shadow.cluster_rows,
-        CLUSTER_COLUMNS,
-        &shadow.clusters,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.subsets,
-        shadow.subset_rows,
-        SUBSET_COLUMNS,
-        &shadow.subsets,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.certificates,
-        CERTIFICATE_ROWS,
-        2,
-        &shadow.certificates,
-    )?;
-    store_matrix(spi, &action.matrices.runtime, RUNTIME_ROWS, 2, runtime)?;
-    store_matrix(
-        spi,
-        &action.matrices.memory_report,
-        MEMORY_ROWS,
-        2,
-        &memory_report.0,
-    )?;
+    for (name, rows, columns, values) in [
+        (&action.matrices.b, 1, shadow.b.len(), &shadow.b[..]),
+        (
+            &action.matrices.covariance,
+            dimension,
+            dimension,
+            &shadow.covariance[..],
+        ),
+        (
+            &action.matrices.coefficient_status,
+            dimension,
+            COEFFICIENT_STATUS_COLUMNS,
+            &shadow.coefficient_status[..],
+        ),
+        (
+            &action.matrices.omission_b_marker,
+            1,
+            dimension,
+            &shadow.omission_b_marker[..],
+        ),
+        (
+            &action.matrices.omission_v_marker,
+            dimension,
+            dimension,
+            &shadow.omission_v_marker[..],
+        ),
+        (&action.matrices.fit, FIT_ROWS, 2, &shadow.fit[..]),
+        (&action.matrices.dof, DOF_ROWS, 2, &shadow.dof[..]),
+        (
+            &action.matrices.solver,
+            SOLVER_ROWS,
+            SOLVER_COLUMNS,
+            &shadow.solver[..],
+        ),
+        (
+            &action.matrices.fixed_effects,
+            shadow.fixed_effect_rows,
+            FE_COLUMNS,
+            &shadow.fixed_effects[..],
+        ),
+        (
+            &action.matrices.clusters,
+            shadow.cluster_rows,
+            CLUSTER_COLUMNS,
+            &shadow.clusters[..],
+        ),
+        (
+            &action.matrices.subsets,
+            shadow.subset_rows,
+            SUBSET_COLUMNS,
+            &shadow.subsets[..],
+        ),
+        (
+            &action.matrices.certificates,
+            CERTIFICATE_ROWS,
+            2,
+            &shadow.certificates[..],
+        ),
+        (&action.matrices.runtime, RUNTIME_ROWS, 2, runtime),
+        (
+            &action.matrices.memory_report,
+            MEMORY_ROWS,
+            2,
+            &memory_report.0[..],
+        ),
+    ] {
+        store_matrix(spi, name, rows, columns, values)?;
+    }
     for column in 1..RECEIPT_COMPLETE_COLUMN {
         spi.store_matrix(
             &action.matrices.receipt,

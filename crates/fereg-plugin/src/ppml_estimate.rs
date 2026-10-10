@@ -2107,87 +2107,80 @@ fn store_shadow_prefix(
             &bias.support,
         )?;
     }
-    store_matrix(spi, &action.matrices.b, 1, shadow.b.len(), &shadow.b)?;
     let dimension = shadow.coefficient_count.max(1);
-    store_matrix(
-        spi,
-        &action.matrices.covariance,
-        dimension,
-        dimension,
-        &shadow.covariance,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.coefficient_status,
-        dimension,
-        COEFFICIENT_STATUS_COLUMNS,
-        &shadow.coefficient_status,
-    )?;
-    store_matrix(spi, &action.matrices.fit, FIT_ROWS, 1, &shadow.fit)?;
-    store_matrix(spi, &action.matrices.dof, DOF_ROWS, 1, &shadow.dof)?;
-    store_matrix(
-        spi,
-        &action.matrices.fixed_effects,
-        shadow.fixed_effect_rows.max(1),
-        FE_COLUMNS,
-        &shadow.fixed_effects,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.clusters,
-        shadow.cluster_rows.max(1),
-        CLUSTER_COLUMNS,
-        &shadow.clusters,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.subsets,
-        shadow.subset_rows.max(1),
-        SUBSET_COLUMNS,
-        &shadow.subsets,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.separation,
-        shadow.separation_rows.max(1),
-        SEPARATION_COLUMNS,
-        &shadow.separation,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.inference,
-        INFERENCE_ROWS,
-        1,
-        &shadow.inference,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.drop_counts,
-        DROP_COUNT_ROWS,
-        DROP_COUNT_COLUMNS,
-        &shadow.drop_counts,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.separation_sequence,
-        SEPARATION_SEQUENCE_ROWS,
-        SEPARATION_SEQUENCE_COLUMNS,
-        &shadow.separation_sequence,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.certificates,
-        CERTIFICATE_ROWS,
-        1,
-        &shadow.certificates,
-    )?;
-    store_matrix(
-        spi,
-        &action.matrices.solver,
-        SOLVER_ROWS,
-        SOLVER_COLUMNS,
-        &shadow.solver,
-    )?;
+    for (name, rows, columns, values) in [
+        (&action.matrices.b, 1, shadow.b.len(), &shadow.b[..]),
+        (
+            &action.matrices.covariance,
+            dimension,
+            dimension,
+            &shadow.covariance[..],
+        ),
+        (
+            &action.matrices.coefficient_status,
+            dimension,
+            COEFFICIENT_STATUS_COLUMNS,
+            &shadow.coefficient_status[..],
+        ),
+        (&action.matrices.fit, FIT_ROWS, 1, &shadow.fit[..]),
+        (&action.matrices.dof, DOF_ROWS, 1, &shadow.dof[..]),
+        (
+            &action.matrices.fixed_effects,
+            shadow.fixed_effect_rows.max(1),
+            FE_COLUMNS,
+            &shadow.fixed_effects[..],
+        ),
+        (
+            &action.matrices.clusters,
+            shadow.cluster_rows.max(1),
+            CLUSTER_COLUMNS,
+            &shadow.clusters[..],
+        ),
+        (
+            &action.matrices.subsets,
+            shadow.subset_rows.max(1),
+            SUBSET_COLUMNS,
+            &shadow.subsets[..],
+        ),
+        (
+            &action.matrices.separation,
+            shadow.separation_rows.max(1),
+            SEPARATION_COLUMNS,
+            &shadow.separation[..],
+        ),
+        (
+            &action.matrices.inference,
+            INFERENCE_ROWS,
+            1,
+            &shadow.inference[..],
+        ),
+        (
+            &action.matrices.drop_counts,
+            DROP_COUNT_ROWS,
+            DROP_COUNT_COLUMNS,
+            &shadow.drop_counts[..],
+        ),
+        (
+            &action.matrices.separation_sequence,
+            SEPARATION_SEQUENCE_ROWS,
+            SEPARATION_SEQUENCE_COLUMNS,
+            &shadow.separation_sequence[..],
+        ),
+        (
+            &action.matrices.certificates,
+            CERTIFICATE_ROWS,
+            1,
+            &shadow.certificates[..],
+        ),
+        (
+            &action.matrices.solver,
+            SOLVER_ROWS,
+            SOLVER_COLUMNS,
+            &shadow.solver[..],
+        ),
+    ] {
+        store_matrix(spi, name, rows, columns, values)?;
+    }
     for column in 1..PPML_RESULT_RECEIPT_COMPLETE_COLUMN {
         spi.store_matrix(
             &action.matrices.receipt,
