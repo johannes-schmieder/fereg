@@ -1,12 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
-    prepare_categorical_ols_clustered_data, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
-    CompiledTermGraph, ComponentKind, ComponentOrder, DropReason, ErrorCode, ExpandedTerm,
-    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1,
-    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedCategoricalOlsClusteredData, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
-    TermOrder, TimeSeriesState,
+    prepare_model, AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
+    ComponentOrder, DropReason, ErrorCode, ExpandedTerm, LevelState, LoadedNumericColumn,
+    LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding,
+    OlsInputRole, OlsRequestV1, PreparedCategoricalOlsClusteredData, RawTermKind, SourceEntry,
+    SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 
 const X_SOURCE: usize = 0;
@@ -360,8 +359,8 @@ fn prepare_case(
         frequency_weight: None,
         probability_weight: None,
     };
-    let borrowed = prepare_categorical_ols_clustered_data(&request, &loaded);
-    let owned = fereg_core::ols::prepare_categorical_ols_clustered_data_owned(&request, loaded);
+    let borrowed = prepare_model(&request.ols, &request.clusters, &loaded, true);
+    let owned = fereg_core::ols::prepare_model_owned(&request.ols, &request.clusters, loaded, true);
     match (&borrowed, &owned) {
         (Ok(a), Ok(b)) => assert_eq!(a, b),
         (Err(a), Err(b)) => {

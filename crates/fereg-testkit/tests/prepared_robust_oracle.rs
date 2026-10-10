@@ -1,9 +1,9 @@
 use fereg_core::{
-    fit_prepared_model_robust_with_loaded_moments, prepare_ols_data_owned, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsData, PreparedOlsRobustConfig,
-    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_robust_with_loaded_moments, prepare_model_owned, AbsorbTermId, AbsorbedTerm,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
+    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedOlsAbsorbedDofPolicy, PreparedOlsData, PreparedOlsRobustConfig, RawTermKind,
+    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -528,7 +528,7 @@ fn prepare_continuous_case(
         });
     }
     let raw_weight = weight_values(weights);
-    prepare_ols_data_owned(
+    prepare_model_owned(
         &OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
             absorbed_terms: effects
@@ -548,6 +548,7 @@ fn prepare_continuous_case(
             include_intercept,
             keep_singletons: true,
         },
+        &[],
         LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded_column(outcome.to_vec()),
@@ -570,6 +571,7 @@ fn prepare_continuous_case(
             probability_weight: matches!(weights, CaseWeights::Probability(_))
                 .then(|| loaded_column(raw_weight)),
         },
+        false,
     )
     .expect("prepared continuous robust case")
 }
@@ -613,7 +615,7 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
             }],
         });
     }
-    prepare_ols_data_owned(
+    prepare_model_owned(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![
@@ -665,6 +667,7 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
             include_intercept: true,
             keep_singletons: true,
         },
+        &[],
         LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded_column(outcome),
@@ -677,6 +680,7 @@ fn prepare_one_fe_factor_case(csv: &str) -> PreparedOlsData {
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .expect("prepared one-FE factor robust case")
 }
@@ -692,7 +696,7 @@ fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> Pr
         label: label.to_owned(),
         saved_name: String::new(),
     };
-    prepare_ols_data_owned(
+    prepare_model_owned(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![
@@ -729,6 +733,7 @@ fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> Pr
             include_intercept: true,
             keep_singletons: true,
         },
+        &[],
         LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded_column(outcome.to_vec()),
@@ -743,6 +748,7 @@ fn prepare_repeated_effect_case(outcome: &[f64], x: &[f64], codes: &[u32]) -> Pr
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .expect("prepared repeated-FE robust case")
 }

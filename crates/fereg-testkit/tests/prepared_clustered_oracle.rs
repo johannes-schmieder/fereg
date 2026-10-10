@@ -1,11 +1,10 @@
 use fereg_core::{
-    fit_prepared_model_clustered_with_loaded_moments, prepare_ols_clustered_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1,
-    OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsBreadCoordinateKind, PreparedOlsClusteredConfig, PreparedOlsClusteredData,
-    PreparedOlsClusteredPsdState, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
-    TermOrder, TimeSeriesState,
+    fit_prepared_model_clustered_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
+    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1,
+    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsBreadCoordinateKind,
+    PreparedOlsClusteredConfig, PreparedOlsClusteredData, PreparedOlsClusteredPsdState,
+    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -389,7 +388,8 @@ fn missing_cluster_is_reason_six_before_fe_singleton_pruning_and_small_groups_ar
     request.ols.keep_singletons = false;
     let cluster_source = loaded.numeric_sources.last_mut().expect("cluster source");
     cluster_source.1.missing[2] = true;
-    let prepared = prepare_ols_clustered_data(&request, &loaded).expect("missing cluster prepare");
+    let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+        .expect("missing cluster prepare");
     assert_eq!(
         prepared.ols().sample().drop_reason(2),
         Some(fereg_core::DropReason::MissingCluster)
@@ -778,8 +778,13 @@ fn cluster_dimension_bounds_and_single_group_dimensions_fail_closed() {
         false,
         CaseWeights::Unit,
     );
-    let error = prepare_ols_clustered_data(&empty_request, &empty_loaded)
-        .expect_err("zero cluster dimensions must fail");
+    let error = prepare_model(
+        &empty_request.ols,
+        &empty_request.clusters,
+        &empty_loaded,
+        false,
+    )
+    .expect_err("zero cluster dimensions must fail");
     assert_eq!(error.code, fereg_core::ErrorCode::InvalidArgument);
 
     let dimensions = (0..11)
@@ -797,8 +802,13 @@ fn cluster_dimension_bounds_and_single_group_dimensions_fail_closed() {
         false,
         CaseWeights::Unit,
     );
-    let error = prepare_ols_clustered_data(&too_many_request, &too_many_loaded)
-        .expect_err("eleven cluster dimensions must fail");
+    let error = prepare_model(
+        &too_many_request.ols,
+        &too_many_request.clusters,
+        &too_many_loaded,
+        false,
+    )
+    .expect_err("eleven cluster dimensions must fail");
     assert_eq!(error.code, fereg_core::ErrorCode::InvalidArgument);
 
     let (one_group_request, one_group_loaded) = case_inputs(
@@ -809,8 +819,13 @@ fn cluster_dimension_bounds_and_single_group_dimensions_fail_closed() {
         false,
         CaseWeights::Unit,
     );
-    let error = prepare_ols_clustered_data(&one_group_request, &one_group_loaded)
-        .expect_err("one-group cluster dimension must fail");
+    let error = prepare_model(
+        &one_group_request.ols,
+        &one_group_request.clusters,
+        &one_group_loaded,
+        false,
+    )
+    .expect_err("one-group cluster dimension must fail");
     assert_eq!(error.code, fereg_core::ErrorCode::InvalidData);
 }
 
@@ -1059,9 +1074,11 @@ fn prepare_case(
         include_intercept,
         weights,
     );
-    let borrowed = prepare_ols_clustered_data(&request, &loaded).expect("prepare clustered case");
-    let owned = fereg_core::ols::prepare_ols_clustered_data_owned(&request, loaded)
-        .expect("owned clustered case");
+    let borrowed = prepare_model(&request.ols, &request.clusters, &loaded, false)
+        .expect("prepare clustered case");
+    let owned =
+        fereg_core::ols::prepare_model_owned(&request.ols, &request.clusters, loaded, false)
+            .expect("owned clustered case");
     assert_eq!(borrowed, owned);
     owned
 }

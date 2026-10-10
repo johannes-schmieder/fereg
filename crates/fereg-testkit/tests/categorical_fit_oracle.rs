@@ -1,8 +1,8 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
-    fit_prepared_model_coefficients, prepare_categorical_ols_data, AbsorbTermId, AbsorbedTerm,
-    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
+    fit_prepared_model_coefficients, prepare_model, AbsorbTermId, AbsorbedTerm, CoefficientSlot,
+    CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
     LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
     PreparedCategoricalOlsData, PreparedOlsBreadCoordinateKind, PreparedOlsFitConfig,
     PreparedOlsFitStatus, RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder,
@@ -404,7 +404,7 @@ fn prepare_case(
         include_intercept,
         keep_singletons: false,
     };
-    prepare_categorical_ols_data(&request, &loaded).expect("prepared categorical oracle case")
+    prepare_model(&request, &[], &loaded, true).expect("prepared categorical oracle case")
 }
 
 fn continuous_term(index: usize, source: SourceId) -> ExpandedTerm {

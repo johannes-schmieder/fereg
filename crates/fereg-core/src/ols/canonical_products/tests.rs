@@ -1,7 +1,7 @@
 use super::*;
 use crate::metadata::*;
 use crate::ols::{
-    prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
+    prepare_model, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
     OlsRequestV1, PreparedOlsData,
 };
 
@@ -69,7 +69,7 @@ fn prepared_effects(y: &[f64], x: &[Vec<f64>], effects: &[&[f64]]) -> PreparedOl
             });
         }
     }
-    prepare_ols_data(
+    prepare_model(
         &OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
             absorbed_terms: (0..effects.len() as u32)
@@ -86,6 +86,7 @@ fn prepared_effects(y: &[f64], x: &[Vec<f64>], effects: &[&[f64]]) -> PreparedOl
             include_intercept: true,
             keep_singletons: true,
         },
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; y.len()],
             outcome: LoadedNumericColumn {
@@ -97,6 +98,7 @@ fn prepared_effects(y: &[f64], x: &[Vec<f64>], effects: &[&[f64]]) -> PreparedOl
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .unwrap()
 }

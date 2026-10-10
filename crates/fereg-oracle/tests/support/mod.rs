@@ -11,11 +11,11 @@ pub fn native_fit(
 ) -> Result<(CertifiedPreparedOlsFit, Vec<usize>)> {
     let (request, loaded) = inputs(design, keep_singletons);
     if design.effects.is_empty() {
-        let prepared = prepare_ols_data(&request, &loaded)?;
+        let prepared = prepare_model(&request, &[], &loaded, false)?;
         let fit = fit_prepared_model_coefficients(&prepared, config)?;
         Ok((fit, prepared.sample().original_row_by_active.clone()))
     } else {
-        let prepared = prepare_categorical_ols_data(&request, &loaded)?;
+        let prepared = prepare_model(&request, &[], &loaded, true)?;
         let fit = fit_prepared_model_coefficients(&prepared, config)?;
         Ok((fit, prepared.sample().original_row_by_active.clone()))
     }

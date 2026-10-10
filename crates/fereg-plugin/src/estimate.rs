@@ -25,14 +25,10 @@ use fereg_core::error::{
 };
 use fereg_core::fe::{AbsorbConfig, FeSolverKind, LsmrConfig, LsmrPreconditioner};
 use fereg_core::metadata::{ComponentKind, SourceId};
-#[cfg(all(test, feature = "ffi"))]
-use fereg_core::ols::prepare_ols_data_owned;
 use fereg_core::ols::PreparedOlsData;
 #[cfg(test)]
 use fereg_core::ols::{
-    fit_prepared_model_unadjusted_with_loaded_moments,
-    prepare_categorical_ols_clustered_data_owned, prepare_ols_clustered_data_owned,
-    OlsClusteredRequestV1,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_model_owned, OlsClusteredRequestV1,
 };
 use fereg_core::ols::{
     CertifiedPreparedOlsFit, LoadedNumericColumn, LoadedOlsInput, LoadedOlsRows, OlsClusterTermV1,
@@ -41,8 +37,6 @@ use fereg_core::ols::{
     PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsRobustConfig,
     PreparedOlsUnadjustedConfig,
 };
-#[cfg(test)]
-use fereg_core::prepare_categorical_ols_data_owned;
 use fereg_core::protocol::{
     parse_key_values, Handshake, ACTION_PROTOCOL_VERSION, OLS_RESULT_WIRE_VERSION, PLUGIN_VERSION,
 };

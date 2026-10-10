@@ -2,7 +2,7 @@ use super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_infer
 use super::*;
 use crate::data::WeightKind;
 use crate::error::ErrorCode;
-use crate::ols::prepare_ols_clustered_data;
+use crate::ols::prepare_model;
 
 struct CountingReservation {
     calls: usize,
@@ -121,7 +121,7 @@ fn outcome_overlap_preserves_clustered_statistics_and_covariance() {
                 role,
             });
         }
-        let prepared = prepare_ols_clustered_data(&request, &loaded).unwrap();
+        let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false).unwrap();
         let mut config = PreparedOlsClusteredConfig::default();
         config.fit.execution.threads = crate::ThreadConfig::from_requested(16, true).unwrap();
         let actual =
@@ -157,8 +157,8 @@ fn outcome_overlap_preserves_clustered_statistics_and_covariance() {
 fn strided_score_storage_matches_packed_clustered_inference() {
     let (mut request, loaded) = super::super::prepared_clusters::tests::fixture();
     request.ols.include_intercept = true;
-    let prepared =
-        prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
+    let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+        .expect("prepared clustered fixture");
     let config = PreparedOlsClusteredConfig::default();
     let packed = fit_prepared_model_clustered_with_loaded_moments(&prepared, config, None)
         .expect("packed clustered inference");
@@ -206,7 +206,8 @@ fn low_memory_small_cluster_table_matches_legacy_group_influences() {
         target.values = source.values.repeat(512);
         target.missing = source.missing.repeat(512);
     }
-    let prepared = prepare_ols_clustered_data(&request, &loaded).expect("large clustered fixture");
+    let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+        .expect("large clustered fixture");
     let mut config = PreparedOlsClusteredConfig::default();
     config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
     let low = fit_prepared_model_clustered_with_loaded_moments(&prepared, config, None)
@@ -247,7 +248,8 @@ fn low_memory_batched_cluster_tables_match_legacy_and_fail_closed() {
         target.values = source.values.repeat(512);
         target.missing = source.missing.repeat(512);
     }
-    let prepared = prepare_ols_clustered_data(&request, &loaded).expect("large clustered fixture");
+    let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+        .expect("large clustered fixture");
     let mut config = PreparedOlsClusteredConfig::default();
     config.fit.execution.mode = super::super::PreparedOlsExecutionMode::Low;
     let low = fit_prepared_model_clustered_with_loaded_moments(&prepared, config, None)
@@ -266,8 +268,8 @@ fn low_memory_batched_cluster_tables_match_legacy_and_fail_closed() {
 #[test]
 fn every_clustered_inference_reservation_failure_and_undersize_fails_closed() {
     let (request, loaded) = super::super::prepared_clusters::tests::fixture();
-    let prepared =
-        prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
+    let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+        .expect("prepared clustered fixture");
     let mut count = CountingReservation::succeeds();
     fit_with_reservation(&prepared, PreparedOlsClusteredConfig::default(), &mut count)
         .expect("count clustered inference reservations");
@@ -295,8 +297,8 @@ fn every_clustered_inference_reservation_failure_and_undersize_fails_closed() {
 fn every_clustered_scientific_mutation_fails_closed() {
     let (mut request, loaded) = super::super::prepared_clusters::tests::fixture();
     request.ols.include_intercept = true;
-    let prepared =
-        prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
+    let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+        .expect("prepared clustered fixture");
     for perturbation in [
         ClusteredPerturbations {
             score_design: true,
@@ -375,8 +377,8 @@ fn compose_for_test<R: PreparedInferenceReservation>(
 #[test]
 fn singular_wald_slope_block_is_explicitly_undefined() {
     let (request, loaded) = super::super::prepared_clusters::tests::fixture();
-    let prepared =
-        prepare_ols_clustered_data(&request, &loaded).expect("prepared clustered fixture");
+    let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+        .expect("prepared clustered fixture");
     let result = fit_prepared_model_clustered_with_loaded_moments(
         &prepared,
         PreparedOlsClusteredConfig::default(),

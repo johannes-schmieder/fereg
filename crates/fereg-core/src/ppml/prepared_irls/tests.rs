@@ -6,9 +6,8 @@ use crate::metadata::{
     TermId, TermOrder, TimeSeriesState,
 };
 use crate::ols::{
-    inject_frozen_linear_failure, prepare_ols_data, FrozenLinearFailureInjection,
-    LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsData,
+    inject_frozen_linear_failure, prepare_model, FrozenLinearFailureInjection, LoadedNumericColumn,
+    LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsData,
 };
 use std::sync::atomic::{AtomicUsize, Ordering};
 
@@ -104,8 +103,9 @@ fn prepared_with_factor_sources(
         component.omitted = MetadataFlag::False;
         component.raw_operator = "1".into();
     }
-    let mut prepared = prepare_ols_data(
+    let mut prepared = prepare_model(
         &request,
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded(outcome),
@@ -114,6 +114,7 @@ fn prepared_with_factor_sources(
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .expect("prepared fixture");
     if factor_count != 0 {
@@ -554,7 +555,7 @@ fn prepared_two_fe_with_codes(
     let x = source(1, "x");
     let g = source(2, "g");
     let h = source(3, "h");
-    prepare_ols_data(
+    prepare_model(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![x.clone(), g.clone(), h.clone()],
@@ -603,6 +604,7 @@ fn prepared_two_fe_with_codes(
             include_intercept: true,
             keep_singletons: true,
         },
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded(outcome),
@@ -615,6 +617,7 @@ fn prepared_two_fe_with_codes(
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .expect("prepared two-FE fixture")
 }
@@ -632,7 +635,7 @@ fn prepared_joint_slopes(
     let x = source(1, "x");
     let g = source(2, "g");
     let h = source(3, "h");
-    crate::prepare_categorical_ols_data(
+    crate::prepare_model(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![x.clone(), g.clone(), h.clone(), z.clone(), w.clone()],
@@ -689,6 +692,7 @@ fn prepared_joint_slopes(
             include_intercept: true,
             keep_singletons: true,
         },
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded(outcome),
@@ -703,6 +707,7 @@ fn prepared_joint_slopes(
             frequency_weight: None,
             probability_weight: None,
         },
+        true,
     )
     .expect("prepared two-FE fixture")
 }
@@ -916,7 +921,7 @@ fn prepared_three_fe(
             saved_name: format!("__fe_{}", labels[effect]),
         })
         .collect();
-    let prepared = prepare_ols_data(
+    let prepared = prepare_model(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![
@@ -957,6 +962,7 @@ fn prepared_three_fe(
             include_intercept: true,
             keep_singletons: true,
         },
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; rows],
             outcome: loaded(&outcome),
@@ -970,6 +976,7 @@ fn prepared_three_fe(
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .expect("prepared three-FE fixture");
     (prepared, outcome)
@@ -3246,7 +3253,7 @@ fn higher_dimensional_categorical_frames_preserve_weighted_poisson_truth() {
             stata_var_position: (j + 4) as u32,
             role: OlsInputRole::NumericSource(e.id),
         }));
-        let prepared = prepare_ols_data(
+        let prepared = prepare_model(
             &OlsRequestV1 {
                 model: CompiledTermGraph {
                     sources,
@@ -3269,6 +3276,7 @@ fn higher_dimensional_categorical_frames_preserve_weighted_poisson_truth() {
                 include_intercept: true,
                 keep_singletons: true,
             },
+            &[],
             &LoadedOlsInput {
                 candidate: vec![true; n],
                 outcome: loaded(&y),
@@ -3277,6 +3285,7 @@ fn higher_dimensional_categorical_frames_preserve_weighted_poisson_truth() {
                 frequency_weight: None,
                 probability_weight: None,
             },
+            false,
         )
         .unwrap();
         for (mode, threads) in [

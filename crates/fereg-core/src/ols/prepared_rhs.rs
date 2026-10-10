@@ -889,7 +889,7 @@ mod tests {
         TermComponent, TermId, TermOrder, TimeSeriesState,
     };
     use crate::ols::{
-        prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
+        prepare_model, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
         OlsRequestV1,
     };
 
@@ -1065,8 +1065,9 @@ mod tests {
 
     fn prepared(with_fe: bool, include_intercept: bool) -> PreparedOlsData {
         let request = request(with_fe, include_intercept);
-        prepare_ols_data(
+        prepare_model(
             &request,
+            &[],
             &LoadedOlsInput {
                 candidate: vec![true; 4],
                 outcome: loaded(vec![1.0, 3.0, 4.0, 8.0]),
@@ -1091,6 +1092,7 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: None,
             },
+            false,
         )
         .expect("prepared")
     }
@@ -1151,7 +1153,7 @@ mod tests {
                 ));
                 request.model.sources.push(source);
             }
-            let mut prepared = prepare_ols_data(&request, &input).unwrap();
+            let mut prepared = prepare_model(&request, &[], &input, false).unwrap();
             for threads in [1, 4, 8, 16] {
                 ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
                     .install(|| {
@@ -1298,8 +1300,9 @@ mod tests {
             include_intercept: true,
             keep_singletons: false,
         };
-        let mut prepared = prepare_ols_data(
+        let mut prepared = prepare_model(
             &request,
+            &[],
             &LoadedOlsInput {
                 candidate: vec![true; 4],
                 outcome: loaded(vec![10.0, 11.0, 12.0, 13.0]),
@@ -1311,6 +1314,7 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: None,
             },
+            false,
         )
         .expect("factor preparation");
         assert_eq!(prepared.model.coefficients.len(), 5);
@@ -1417,10 +1421,8 @@ mod tests {
                 stata_var_position: 6,
                 role: OlsInputRole::AnalyticWeight,
             });
-            let simple = prepare_ols_data(&request, &input).unwrap();
-            let complex =
-                crate::prepared_categorical_data::prepare_categorical_ols_data(&request, &input)
-                    .unwrap();
+            let simple = prepare_model(&request, &[], &input, false).unwrap();
+            let complex = crate::ols::prepare_model(&request, &[], &input, true).unwrap();
             assert!(complex
                 .categorical_sources()
                 .iter()
@@ -1627,8 +1629,9 @@ mod tests {
     #[test]
     fn empty_rhs_is_valid_but_map_requires_nonempty_rows() {
         let request = request(false, false);
-        let prepared = prepare_ols_data(
+        let prepared = prepare_model(
             &request,
+            &[],
             &LoadedOlsInput {
                 candidate: Vec::new(),
                 outcome: loaded(Vec::new()),
@@ -1637,6 +1640,7 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: None,
             },
+            false,
         )
         .expect("empty prepared");
         let rhs = build_prepared_ols_rhs(&prepared).expect("empty RHS");

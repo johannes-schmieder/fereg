@@ -237,30 +237,6 @@ impl ClusterReservation for SystemClusterReservation {
     }
 }
 
-/// Prepare OLS and declared clusters through one authoritative sample pass.
-/// Missing cluster values are reason 6 before FE singleton deletion; cluster
-/// group sizes never affect that deletion. All cluster factorization happens
-/// after the final singleton fixed point.
-pub fn prepare_ols_clustered_data(
-    request: &OlsClusteredRequestV1,
-    loaded: &LoadedOlsInput,
-) -> Result<PreparedOlsClusteredData> {
-    let cluster_sources = validate_request(request)?;
-    let ols = prepare_ols_data_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
-    finish_prepare_ols_clusters(request, ols)
-}
-
-/// Consume loaded columns while preserving pre-singleton cluster availability
-/// and final-sample cluster coding.
-pub fn prepare_ols_clustered_data_owned(
-    request: &OlsClusteredRequestV1,
-    loaded: LoadedOlsInput,
-) -> Result<PreparedOlsClusteredData> {
-    let cluster_sources = validate_request(request)?;
-    let ols = prepare_ols_data_owned_with_cluster_sources(&request.ols, loaded, &cluster_sources)?;
-    finish_prepare_ols_clusters(request, ols)
-}
-
 pub(super) fn finish_prepare_ols_clusters(
     request: &OlsClusteredRequestV1,
     mut ols: PreparedOlsData,
@@ -604,6 +580,42 @@ pub fn prepare_model_owned(
     loaded: LoadedOlsInput,
     categorical: bool,
 ) -> Result<PreparedOlsData> {
+    prepare_model_with(request, clusters, |sources| {
+        if categorical {
+            crate::prepared_categorical_data::prepare_categorical_ols_data_owned_with_cluster_sources(
+                request, loaded, sources,
+            )
+        } else {
+            prepare_ols_data_owned_with_cluster_sources(request, loaded, sources)
+        }
+    })
+}
+
+/// Borrowed counterpart of [`prepare_model_owned`]. The loaded columns stay
+/// with the caller; PPML's preparation uses the same borrowed kernel to
+/// re-prepare every separation generation from one retained input.
+pub fn prepare_model(
+    request: &super::OlsRequestV1,
+    clusters: &[OlsClusterTermV1],
+    loaded: &LoadedOlsInput,
+    categorical: bool,
+) -> Result<PreparedOlsData> {
+    prepare_model_with(request, clusters, |sources| {
+        if categorical {
+            crate::prepared_categorical_data::prepare_categorical_ols_data_with_cluster_sources(
+                request, loaded, sources,
+            )
+        } else {
+            prepare_ols_data_with_cluster_sources(request, loaded, sources)
+        }
+    })
+}
+
+fn prepare_model_with(
+    request: &super::OlsRequestV1,
+    clusters: &[OlsClusterTermV1],
+    prepare: impl FnOnce(&[SourceId]) -> Result<PreparedOlsData>,
+) -> Result<PreparedOlsData> {
     let cluster_request = ClusterRequest {
         ols: request,
         clusters,
@@ -613,13 +625,7 @@ pub fn prepare_model_owned(
     } else {
         validate_cluster_request(&cluster_request)?
     };
-    let mut prepared = if categorical {
-        crate::prepared_categorical_data::prepare_categorical_ols_data_owned_with_cluster_sources(
-            request, loaded, &sources,
-        )?
-    } else {
-        prepare_ols_data_owned_with_cluster_sources(request, loaded, &sources)?
-    };
+    let mut prepared = prepare(&sources)?;
     if !clusters.is_empty() {
         prepared.clusters = Some(build_cluster_design(
             &cluster_request,
@@ -880,8 +886,9 @@ pub(super) mod tests {
                     _ => unreachable!(),
                 }
             }
-            let expected = prepare_ols_clustered_data(&request, &loaded).unwrap();
-            let actual = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
+            let expected = prepare_model(&request.ols, &request.clusters, &loaded, false).unwrap();
+            let actual =
+                prepare_model_owned(&request.ols, &request.clusters, loaded, false).unwrap();
             assert_eq!(expected, actual);
             assert_eq!(
                 actual.sample.drop_reason(0),
@@ -905,7 +912,8 @@ pub(super) mod tests {
     #[test]
     fn interaction_factorization_is_row_order_invariant_and_collision_free() {
         let (request, loaded) = fixture();
-        let prepared = prepare_ols_clustered_data(&request, &loaded).expect("prepared interaction");
+        let prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+            .expect("prepared interaction");
         assert_eq!(prepared.clusters().dimensions.len(), 1);
         assert_eq!(prepared.clusters().dimensions[0].groups, 8);
         let codes = prepared.cluster_codes(0).expect("interaction codes");
@@ -942,8 +950,8 @@ pub(super) mod tests {
             target.1.values = permutation.iter().map(|row| source.values[*row]).collect();
             target.1.missing = permutation.iter().map(|row| source.missing[*row]).collect();
         }
-        let permuted_prepared =
-            prepare_ols_clustered_data(&request, &permuted).expect("permuted interaction");
+        let permuted_prepared = prepare_model(&request.ols, &request.clusters, &permuted, false)
+            .expect("permuted interaction");
         let permuted_codes = permuted_prepared
             .cluster_codes(0)
             .expect("permuted interaction codes");
@@ -994,8 +1002,8 @@ pub(super) mod tests {
     #[test]
     fn corrupted_interaction_codes_and_group_metadata_fail_closed() {
         let (request, loaded) = fixture();
-        let mut prepared =
-            prepare_ols_clustered_data(&request, &loaded).expect("prepared clusters");
+        let mut prepared = prepare_model(&request.ols, &request.clusters, &loaded, false)
+            .expect("prepared clusters");
         let groups = prepared.clusters().dimensions[0].groups;
         let codes = match &mut prepared.clusters.as_mut().unwrap().dimensions[0].codes {
             PreparedOlsClusterCodes::Interaction(codes) => codes,

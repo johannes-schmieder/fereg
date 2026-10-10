@@ -52,16 +52,13 @@ pub(crate) use prepared::{
     SystemFeTopologyReservation,
 };
 pub use prepared::{
-    prepare_ols_data, prepare_ols_data_owned, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedCategoricalSource, PreparedOlsCategoricalComponent,
-    PreparedOlsCoefficient, PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind,
-    PreparedOlsData, PreparedOlsFeSingletonPolicy, PreparedOlsModel, PreparedOlsSingletons,
+    LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedCategoricalSource, PreparedOlsCategoricalComponent, PreparedOlsCoefficient,
+    PreparedOlsCoefficientStatus, PreparedOlsColumn, PreparedOlsColumnKind, PreparedOlsData,
+    PreparedOlsFeSingletonPolicy, PreparedOlsModel, PreparedOlsSingletons,
 };
 pub(crate) use prepared_categorical_clusters::prepare_ppml_categorical_ols_clustered_data;
-pub use prepared_categorical_clusters::{
-    prepare_categorical_ols_clustered_data, prepare_categorical_ols_clustered_data_owned,
-    PreparedCategoricalOlsClusteredData,
-};
+pub use prepared_categorical_clusters::PreparedCategoricalOlsClusteredData;
 pub use prepared_clustered::{
     fit_prepared_model_clustered_with_loaded_moments, CertifiedPreparedCategoricalOlsClustered,
     CertifiedPreparedOlsClustered, PreparedOlsClusterSubsetCertificate,
@@ -69,9 +66,9 @@ pub use prepared_clustered::{
     PreparedOlsClusteredDofReport, PreparedOlsClusteredPsdReport, PreparedOlsClusteredPsdState,
 };
 pub use prepared_clusters::{
-    compile_prepared_model, prepare_model_owned, prepare_ols_clustered_data,
-    prepare_ols_clustered_data_owned, OlsClusterTermV1, OlsClusteredRequestV1,
-    PreparedOlsClusterDesign, PreparedOlsClusterDimension, PreparedOlsClusteredData,
+    compile_prepared_model, prepare_model, prepare_model_owned, OlsClusterTermV1,
+    OlsClusteredRequestV1, PreparedOlsClusterDesign, PreparedOlsClusterDimension,
+    PreparedOlsClusteredData,
 };
 pub use prepared_dof::{
     compute_prepared_ols_absorbed_dof, PreparedOlsAbsorbedDofEffect,

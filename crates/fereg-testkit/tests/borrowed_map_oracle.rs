@@ -1,6 +1,6 @@
 use fereg_core::{
     absorb_borrowed_intercept_map_certified, absorb_prepared_ols_rhs_map, build_prepared_ols_rhs,
-    prepare_ols_data, AbsorbTermId, AbsorbedTerm, BorrowedMapWeights, CoefficientSlot,
+    prepare_model, AbsorbTermId, AbsorbedTerm, BorrowedMapWeights, CoefficientSlot,
     CompiledTermGraph, ComponentKind, ComponentOrder, DenseMatrix, EffectTerm, ExpandedTerm,
     FeDesign, LevelState, LoadedNumericColumn, LoadedOlsInput, MapConfig, MetadataFlag,
     OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsData, PreparedWeights, RawTermKind,
@@ -381,7 +381,7 @@ fn prepare_case(
         probability_weight: matches!(weights, CaseWeights::Probability(_))
             .then(|| loaded_column(raw_weight)),
     };
-    prepare_ols_data(&request, &loaded).expect("prepared case")
+    prepare_model(&request, &[], &loaded, false).expect("prepared case")
 }
 
 fn continuous_term(index: usize, source: SourceId) -> ExpandedTerm {

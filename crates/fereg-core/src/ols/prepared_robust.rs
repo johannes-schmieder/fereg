@@ -1335,7 +1335,7 @@ mod tests {
 
     use super::super::prepared_fit::fit_prepared_ols_coefficients_view_map_for_inference_with_cache_limit;
     use super::super::{
-        prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
+        prepare_model, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
         OlsRequestV1,
     };
     use super::*;
@@ -2188,7 +2188,7 @@ mod tests {
             include_intercept,
             weights,
         );
-        prepare_ols_data(&request, &input).expect("prepared robust test case")
+        prepare_model(&request, &[], &input, false).expect("prepared robust test case")
     }
 
     fn prepared_inputs(

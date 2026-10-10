@@ -2,12 +2,11 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::f64::consts::TAU;
 
 use fereg_core::{
-    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode,
-    ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
-    OlsInputRole, OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsUnadjustedConfig,
-    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
-    WeightKind,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode, ExpandedTerm,
+    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
+    OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsUnadjustedConfig, RawTermKind,
+    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState, WeightKind,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, ExplicitOlsResult, OracleWeights,
@@ -429,7 +428,7 @@ fn prepare_case(
         include_intercept,
         keep_singletons: false,
     };
-    prepare_categorical_ols_data(&request, &loaded).expect("prepared categorical iid case")
+    prepare_model(&request, &[], &loaded, true).expect("prepared categorical iid case")
 }
 
 fn continuous_term(index: usize, source: SourceId) -> ExpandedTerm {

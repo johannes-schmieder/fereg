@@ -456,7 +456,7 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = crate::prepare_categorical_ols_data(&request, &loaded).unwrap();
+        let prepared = crate::prepare_model(&request, &[], &loaded, true).unwrap();
         let policy = PreparedOlsAbsorbedDofPolicy::Continuous;
         let report = prepared.inference_compute_absorbed_dof(policy).unwrap();
         // Group zero's constant slope duplicates its intercept: four declared

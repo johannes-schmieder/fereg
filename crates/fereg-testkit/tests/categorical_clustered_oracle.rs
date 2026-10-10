@@ -1,12 +1,12 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
-    fit_prepared_model_clustered_with_loaded_moments, prepare_categorical_ols_clustered_data,
-    AbsorbTermId, AbsorbedTerm, CertifiedPreparedCategoricalOlsClustered, CoefficientSlot,
-    CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
-    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsClusterTermV1, OlsClusteredRequestV1,
-    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsClusteredConfig, PreparedOlsFitStatus,
-    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_clustered_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
+    CertifiedPreparedCategoricalOlsClustered, CoefficientSlot, CompiledTermGraph, ComponentKind,
+    ComponentOrder, ExpandedTerm, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
+    OlsClusterTermV1, OlsClusteredRequestV1, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedOlsClusteredConfig, PreparedOlsFitStatus, RawTermKind, SourceEntry, SourceId,
+    TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -363,7 +363,7 @@ fn prepare_case(
             })
             .collect(),
     };
-    prepare_categorical_ols_clustered_data(&request, &loaded)
+    prepare_model(&request.ols, &request.clusters, &loaded, true)
         .expect("prepared categorical clustered oracle case")
 }
 

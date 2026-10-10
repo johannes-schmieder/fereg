@@ -1,10 +1,10 @@
 use fereg_core::{
     fit_prepared_model_robust_with_loaded_moments,
-    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedOlsFitStatus, PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
-    RawTermKind, SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
+    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedOlsFitStatus, PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig, RawTermKind,
+    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -27,7 +27,7 @@ fn single_level_and_omitted_only_recipes_preserve_science_and_original_slots() {
                 request.model.terms[1].canonical_token = "1.f#1b.b".to_owned();
             }
             loaded.numeric_sources[1].1.values.fill(1.0);
-            let prepared = prepare_categorical_ols_data(&request, &loaded)
+            let prepared = prepare_model(&request, &[], &loaded, true)
                 .expect("original single-level or syntax-omitted graph");
             assert_eq!(prepared.sample().retained_rows(), &[1, 2, 3, 4, 5, 6, 7, 8]);
             assert_eq!(prepared.model().coefficients.len(), 3);
@@ -79,13 +79,13 @@ fn single_level_and_omitted_only_recipes_preserve_science_and_original_slots() {
             // sample domain checks. A candidate exclusion alone removes it.
             loaded.numeric_sources[1].1.values[2] = -1.0;
             assert_eq!(
-                prepare_categorical_ols_data(&request, &loaded)
+                prepare_model(&request, &[], &loaded, true)
                     .expect_err("eligible invalid factor")
                     .code,
                 fereg_core::ErrorCode::InvalidFactor
             );
             loaded.candidate[2] = false;
-            prepare_categorical_ols_data(&request, &loaded)
+            prepare_model(&request, &[], &loaded, true)
                 .expect("excluded invalid factor is not a domain failure");
         }
     }
@@ -152,8 +152,8 @@ fn singleton_fixture() -> (OlsRequestV1, LoadedOlsInput, Vec<f64>, Vec<f64>, Vec
 #[test]
 fn singleton_deleted_base_preserves_original_axis_and_identified_contrasts() {
     let (request, loaded, y, x, factor) = singleton_fixture();
-    let prepared = prepare_categorical_ols_data(&request, &loaded)
-        .expect("final-sample categorical preparation");
+    let prepared =
+        prepare_model(&request, &[], &loaded, true).expect("final-sample categorical preparation");
     assert_eq!(prepared.sample().retained_rows(), &[1, 2, 3, 4, 5, 6, 7, 8]);
     assert_eq!(prepared.singletons().num_singletons, 2);
     assert_eq!(prepared.report_plan().original_coefficient_count(), 5);
@@ -480,8 +480,7 @@ fn vanished_base_does_not_remove_a_slope_only_model_direction() {
         effect(2, Some(3)),
         false,
     );
-    let prepared =
-        prepare_categorical_ols_data(&request, &loaded).expect("slope-only original graph");
+    let prepared = prepare_model(&request, &[], &loaded, true).expect("slope-only original graph");
     let result = fit_prepared_model_robust_with_loaded_moments(
         &prepared,
         PreparedOlsRobustConfig::default(),
@@ -541,7 +540,7 @@ fn vanished_base_does_not_remove_nonhierarchical_cell_effects() {
     ];
     let (request, loaded) =
         small_fixture(terms, vec![f, z, vec![1.0; 10]], y, effect(3, None), true);
-    let prepared = prepare_categorical_ols_data(&request, &loaded).expect("cell graph");
+    let prepared = prepare_model(&request, &[], &loaded, true).expect("cell graph");
     let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
@@ -581,8 +580,7 @@ fn whole_column_omission_is_authoritative_for_base_marked_components() {
     ];
     let (mut request, loaded) =
         small_fixture(terms, vec![f, z, vec![1.0; 10]], y, effect(3, None), true);
-    let prepared =
-        prepare_categorical_ols_data(&request, &loaded).expect("active base-component cell");
+    let prepared = prepare_model(&request, &[], &loaded, true).expect("active base-component cell");
     let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig::default(),
@@ -600,8 +598,7 @@ fn whole_column_omission_is_authoritative_for_base_marked_components() {
         2.0,
     );
     request.model.terms[1].whole_column_omitted = true;
-    let omitted =
-        prepare_categorical_ols_data(&request, &loaded).expect("whole-column omitted cell");
+    let omitted = prepare_model(&request, &[], &loaded, true).expect("whole-column omitted cell");
     assert_eq!(
         omitted.model().coefficients[1].status,
         fereg_core::PreparedOlsCoefficientStatus::SyntaxOmitted

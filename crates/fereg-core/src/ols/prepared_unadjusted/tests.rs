@@ -5,8 +5,7 @@ use crate::metadata::{
 };
 
 use super::super::{
-    prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
-    OlsRequestV1,
+    prepare_model, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole, OlsRequestV1,
 };
 use super::*;
 
@@ -321,8 +320,8 @@ fn multi_fe_outcome_stages_repeat_ordinary_and_categorical_inference() {
                     .numeric_sources
                     .push((source, loaded(&groups[effect])));
             }
-            let ordinary = prepare_ols_data(&request, &input).unwrap();
-            let categorical = crate::prepare_categorical_ols_data(&request, &input).unwrap();
+            let ordinary = prepare_model(&request, &[], &input, false).unwrap();
+            let categorical = crate::prepare_model(&request, &[], &input, true).unwrap();
             let mut config = PreparedOlsUnadjustedConfig::default();
             config.fit.execution.threads = crate::ThreadConfig::from_requested(8, true).unwrap();
             let expected =
@@ -394,7 +393,7 @@ fn wide_outcome_stages_repeat_numeric_and_categorical_inference() {
 
     let (mut request, input) = prepared_input(&y, &columns, Some(&groups), true, TestWeights::Unit);
     request.absorbed_terms[0].saved_name = "saved_g".to_owned();
-    let data = crate::prepare_categorical_ols_data(&request, &input).unwrap();
+    let data = crate::prepare_model(&request, &[], &input, true).unwrap();
     config.fit.allow_final_fe_recovery = true;
     config.fit.absorb.retain_coefficients = true;
     let expected = fit_prepared_model_unadjusted_with_loaded_moments(&data, config, None).unwrap();
@@ -432,7 +431,7 @@ fn categorical_outcome_stages_repeat_inference_and_fit_errors() {
             let (mut request, input) =
                 prepared_input(&y, &[x.clone(), x.clone()], Some(&groups), true, weight);
             request.absorbed_terms[0].saved_name = "saved_g".to_owned();
-            let prepared = crate::prepare_categorical_ols_data(&request, &input).unwrap();
+            let prepared = crate::prepare_model(&request, &[], &input, true).unwrap();
             for threads in [1, 8, 16] {
                 let mut config = PreparedOlsUnadjustedConfig::default();
                 config.fit.allow_final_fe_recovery = true;
@@ -972,7 +971,7 @@ fn pinned_full_ibn_span_has_one_finite_contrast_and_report_only_cons() {
     let foreign_values = [0.0, 0.0, 0.0, 1.0, 1.0, 1.0];
     let y = [9.5, 10.0, 10.5, 12.5, 13.0, 13.5];
     let fit = |include_intercept| {
-        let prepared = prepare_ols_data(
+        let prepared = prepare_model(
             &OlsRequestV1 {
                 model: CompiledTermGraph {
                     sources: vec![foreign.clone()],
@@ -996,6 +995,7 @@ fn pinned_full_ibn_span_has_one_finite_contrast_and_report_only_cons() {
                 include_intercept,
                 keep_singletons: true,
             },
+            &[],
             &LoadedOlsInput {
                 candidate: vec![true; y.len()],
                 outcome: loaded(&y),
@@ -1004,6 +1004,7 @@ fn pinned_full_ibn_span_has_one_finite_contrast_and_report_only_cons() {
                 frequency_weight: None,
                 probability_weight: None,
             },
+            false,
         )
         .expect("full ibn preparation");
         fit_prepared_model_unadjusted_with_loaded_moments(
@@ -1359,7 +1360,7 @@ fn prepared(
         include_intercept,
         weights,
     );
-    prepare_ols_data(&request, &input).expect("prepared iid test case")
+    prepare_model(&request, &[], &input, false).expect("prepared iid test case")
 }
 
 fn prepared_input(

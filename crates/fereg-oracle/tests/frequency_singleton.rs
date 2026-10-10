@@ -8,8 +8,8 @@ mod fixture;
 #[allow(dead_code)]
 mod support;
 use fereg_core::{
-    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsExecutionMode, PreparedOlsUnadjustedConfig,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_model, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsExecutionMode, PreparedOlsUnadjustedConfig,
 };
 use fereg_oracle::compare::PREDICTION;
 
@@ -17,7 +17,7 @@ use fereg_oracle::compare::PREDICTION;
 fn frequency_retained_singleton_factor_is_absorbed_by_its_group_slope() {
     let case = fixture::case(66);
     let oracle = dense::independent(&case);
-    let prepared = prepare_categorical_ols_data(&case.request, &case.loaded).unwrap();
+    let prepared = prepare_model(&case.request, &[], &case.loaded, true).unwrap();
     assert_eq!(prepared.sample().retained_rows(), oracle.rows);
     assert!(oracle.rows.contains(&(case.loaded.candidate.len() - 1)));
     for mode in [

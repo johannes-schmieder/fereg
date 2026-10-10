@@ -87,7 +87,7 @@ mod tests {
     use crate::error::ErrorCode;
     use crate::metadata::{AbsorbedTerm, CompiledTermGraph, SourceEntry, SourceId};
     use crate::ols::{
-        prepare_ols_data, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
+        prepare_model, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding, OlsInputRole,
         OlsRequestV1,
     };
 
@@ -714,7 +714,7 @@ mod tests {
             probability_weight: matches!(weights, TestWeights::Probability(_))
                 .then(|| loaded_column(raw_weights)),
         };
-        prepare_ols_data(&request, &loaded).expect("prepare absorbed-DoF case")
+        prepare_model(&request, &[], &loaded, false).expect("prepare absorbed-DoF case")
     }
 
     fn source_id(index: usize) -> SourceId {

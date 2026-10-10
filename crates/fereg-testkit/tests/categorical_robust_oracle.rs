@@ -1,11 +1,11 @@
 use std::collections::{BTreeMap, BTreeSet};
 
 use fereg_core::{
-    fit_prepared_model_robust_with_loaded_moments, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm,
-    LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole,
-    OlsRequestV1, PreparedCategoricalOlsData, PreparedOlsRobustConfig, RawTermKind, SourceEntry,
-    SourceId, TermComponent, TermId, TermOrder, TimeSeriesState, WeightKind,
+    fit_prepared_model_robust_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ExpandedTerm, LevelState,
+    LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
+    PreparedCategoricalOlsData, PreparedOlsRobustConfig, RawTermKind, SourceEntry, SourceId,
+    TermComponent, TermId, TermOrder, TimeSeriesState, WeightKind,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, ExplicitOlsResult, OracleWeights,
@@ -359,7 +359,7 @@ fn prepare_case(
         include_intercept,
         keep_singletons: false,
     };
-    prepare_categorical_ols_data(&request, &loaded).expect("prepared categorical robust case")
+    prepare_model(&request, &[], &loaded, true).expect("prepared categorical robust case")
 }
 
 fn continuous_term(index: usize, source: SourceId) -> ExpandedTerm {

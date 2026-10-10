@@ -1,12 +1,11 @@
 use fereg_core::{
     fit_prepared_model_coefficients, fit_prepared_model_unadjusted_with_loaded_moments,
-    prepare_ols_data, AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph,
-    ComponentKind, ComponentOrder, ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn,
-    LoadedOlsInput, MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1,
-    PreparedOlsAbsorbedDofPolicy, PreparedOlsBreadCoordinateKind, PreparedOlsData,
-    PreparedOlsExecutionMode, PreparedOlsFitConfig, PreparedOlsFitStatus,
-    PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
-    TermOrder, TimeSeriesState,
+    prepare_model, AbsorbTermId, AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind,
+    ComponentOrder, ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput,
+    MetadataFlag, OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
+    PreparedOlsBreadCoordinateKind, PreparedOlsData, PreparedOlsExecutionMode,
+    PreparedOlsFitConfig, PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind,
+    SourceEntry, SourceId, TermComponent, TermId, TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -1400,7 +1399,7 @@ fn prepare_case(
         include_intercept,
         keep_singletons: true,
     };
-    prepare_ols_data(&request, &loaded).expect("prepared oracle case")
+    prepare_model(&request, &[], &loaded, false).expect("prepared oracle case")
 }
 
 fn prepare_one_fe_factor_case(core: &str) -> PreparedOlsData {
@@ -1450,7 +1449,7 @@ fn prepare_one_fe_factor_case(core: &str) -> PreparedOlsData {
             }],
         });
     }
-    prepare_ols_data(
+    prepare_model(
         &OlsRequestV1 {
             model: CompiledTermGraph {
                 sources: vec![
@@ -1502,6 +1501,7 @@ fn prepare_one_fe_factor_case(core: &str) -> PreparedOlsData {
             include_intercept: true,
             keep_singletons: true,
         },
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded_column(outcome),
@@ -1514,6 +1514,7 @@ fn prepare_one_fe_factor_case(core: &str) -> PreparedOlsData {
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .expect("prepared one-FE factor case")
 }

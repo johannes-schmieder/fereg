@@ -118,7 +118,7 @@ fn fixture_extra_columns(
         include_intercept: true,
         keep_singletons: true,
     };
-    Arc::new(crate::prepare_categorical_ols_data(&request, &input).unwrap())
+    Arc::new(crate::prepare_model(&request, &[], &input, true).unwrap())
 }
 
 #[test]

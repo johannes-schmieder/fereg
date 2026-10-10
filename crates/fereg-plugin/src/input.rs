@@ -11,9 +11,7 @@ use fereg_core::error::{
 };
 #[cfg(test)]
 use fereg_core::metadata::SourceId;
-use fereg_core::ols::{
-    absorb_prepared_ols_rhs_map, prepare_ols_data, OlsRequestV1, PreparedOlsData,
-};
+use fereg_core::ols::{absorb_prepared_ols_rhs_map, prepare_model, OlsRequestV1, PreparedOlsData};
 use fereg_core::protocol::{parse_key_values, Handshake};
 use fereg_core::{MapConfig, SolveStopReason};
 
@@ -258,7 +256,7 @@ fn prepare_ols_test_with_map_config(
     let specification = PrepareActionSpec::parse(args)?;
     let action = specification.decode_and_validate(spi)?;
     let loaded = crate::estimate::load_preparation_input(&action.request, spi)?;
-    let prepared = prepare_ols_data(&action.request, &loaded)?;
+    let prepared = prepare_model(&action.request, &[], &loaded, false)?;
     drop(loaded);
     let map_summary = if action.run_borrowed_map {
         spi.check_interrupted()?;

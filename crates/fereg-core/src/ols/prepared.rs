@@ -451,24 +451,6 @@ fn compile_column_kind(
     })
 }
 
-/// Finish the Stata-independent boundary after the SPI layer has loaded raw inputs.
-pub fn prepare_ols_data(
-    request: &OlsRequestV1,
-    loaded: &LoadedOlsInput,
-) -> Result<PreparedOlsData> {
-    prepare_ols_data_with_cluster_sources(request, loaded, &[])
-}
-
-/// Prepare observations in owned plugin buffers. The authoritative classifier
-/// determines the shared sample before stable column compaction; supplied
-/// weights retain their kind and unmodified reference values.
-pub fn prepare_ols_data_owned(
-    request: &OlsRequestV1,
-    loaded: LoadedOlsInput,
-) -> Result<PreparedOlsData> {
-    prepare_ols_data_owned_with_cluster_sources(request, loaded, &[])
-}
-
 pub(crate) fn prepare_ols_data_owned_with_cluster_sources(
     request: &OlsRequestV1,
     loaded: LoadedOlsInput,
@@ -1331,6 +1313,7 @@ mod tests {
         AbsorbTermId, AbsorbedTerm, ComponentOrder, ExpandedTerm, SourceEntry, TermComponent,
         TermId, TermOrder,
     };
+    use crate::ols::{prepare_model, prepare_model_owned};
 
     #[derive(Default)]
     struct InjectedFeTopologyReservation {
@@ -1668,7 +1651,7 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("prepare");
+        let prepared = prepare_model(&request, &[], &loaded, false).expect("prepare");
         assert_eq!(prepared.sample.retained_rows(), &[1, 5]);
         assert_eq!(
             prepared.sample.drop_reasons,
@@ -1720,8 +1703,8 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let borrowed = prepare_ols_data(&request, &loaded).expect("borrowed preparation");
-        let owned = prepare_ols_data_owned(&request, loaded).expect("owned preparation");
+        let borrowed = prepare_model(&request, &[], &loaded, false).expect("borrowed preparation");
+        let owned = prepare_model_owned(&request, &[], loaded, false).expect("owned preparation");
         assert_eq!(owned, borrowed);
     }
 
@@ -1769,14 +1752,14 @@ mod tests {
                         loaded.candidate[row] = row % 13 == 0;
                     }
                 }
-                let serial = prepare_ols_data(&request, &loaded);
+                let serial = prepare_model(&request, &[], &loaded, false);
                 for threads in [1, 4] {
                     let input = loaded.clone();
                     let team = crate::ThreadTeam::new(
                         crate::ThreadConfig::from_requested(threads, true).expect("threads"),
                     );
                     let parallel = team
-                        .install(|| prepare_ols_data_owned(&request, input))
+                        .install(|| prepare_model_owned(&request, &[], input, false))
                         .expect("worker team");
                     match (&serial, parallel) {
                         (Ok(expected), Ok(actual)) => assert_eq!(*expected, actual),
@@ -1812,7 +1795,7 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: None,
             };
-            let prepared_expected = prepare_ols_data(&request, &loaded).unwrap();
+            let prepared_expected = prepare_model(&request, &[], &loaded, false).unwrap();
             let expected = prepared_expected.sample();
             let actual = take_classified_sample(&request, loaded, &[]).unwrap();
             assert_eq!(&actual, expected);
@@ -1899,13 +1882,13 @@ mod tests {
                     WeightKind::Probability => loaded.probability_weight = Some(weight),
                     WeightKind::Importance => unreachable!(),
                 }
-                let expected = prepare_ols_data(&request, &loaded);
+                let expected = prepare_model(&request, &[], &loaded, false);
                 for threads in [1, 4] {
                     let input = loaded.clone();
                     let actual = crate::ThreadTeam::new(
                         crate::ThreadConfig::from_requested(threads, true).unwrap(),
                     )
-                    .install(|| prepare_ols_data_owned(&request, input))
+                    .install(|| prepare_model_owned(&request, &[], input, false))
                     .unwrap();
                     match (&expected, actual) {
                         (Ok(expected), Ok(actual)) => {
@@ -1957,8 +1940,8 @@ mod tests {
                 loaded.candidate[0] = !excluded;
                 loaded.outcome.missing[1] = true;
                 assert_eq!(
-                    prepare_ols_data(&request, &loaded).unwrap(),
-                    prepare_ols_data_owned(&request, loaded).unwrap()
+                    prepare_model(&request, &[], &loaded, false).unwrap(),
+                    prepare_model_owned(&request, &[], loaded, false).unwrap()
                 );
             }
         }
@@ -1984,7 +1967,7 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("factor preparation");
+        let prepared = prepare_model(&request, &[], &loaded, false).expect("factor preparation");
 
         assert_eq!(prepared.sample.retained_rows(), &[1, 2, 5]);
         assert_eq!(
@@ -2065,19 +2048,20 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: None,
             };
-            prepare_ols_data(&request, &loaded).expect("off-candidate invalid factor value");
+            prepare_model(&request, &[], &loaded, false)
+                .expect("off-candidate invalid factor value");
 
             let mut candidate_invalid = loaded;
             candidate_invalid.candidate[0] = true;
-            let error = prepare_ols_data(&request, &candidate_invalid)
+            let error = prepare_model(&request, &[], &candidate_invalid, false)
                 .expect_err("candidate invalid factor value");
             assert_eq!(error.code, ErrorCode::InvalidFactor);
             candidate_invalid.outcome.missing[0] = true;
             for owned in [false, true] {
                 let prepared = if owned {
-                    prepare_ols_data_owned(&request, candidate_invalid.clone())
+                    prepare_model_owned(&request, &[], candidate_invalid.clone(), false)
                 } else {
-                    prepare_ols_data(&request, &candidate_invalid)
+                    prepare_model(&request, &[], &candidate_invalid, false)
                 }
                 .expect("unavailable invalid factor is excluded");
                 assert_eq!(prepared.sample.retained_rows(), &[1]);
@@ -2112,7 +2096,8 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("interaction preparation");
+        let prepared =
+            prepare_model(&request, &[], &loaded, false).expect("interaction preparation");
 
         assert_eq!(prepared.sample.retained_rows(), &[0, 1, 2]);
         assert_eq!(prepared.categorical_sources().len(), 3);
@@ -2191,8 +2176,10 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let original = prepare_ols_data(&request, &make_loaded(&[0, 1, 2])).expect("original");
-        let permuted = prepare_ols_data(&request, &make_loaded(&[2, 0, 1])).expect("permuted");
+        let original =
+            prepare_model(&request, &[], &make_loaded(&[0, 1, 2]), false).expect("original");
+        let permuted =
+            prepare_model(&request, &[], &make_loaded(&[2, 0, 1]), false).expect("permuted");
         for column in 0..original.model.columns.len() {
             let original_values =
                 [0, 1, 2].map(|row| original.column_value(column, row).expect("original value"));
@@ -2242,7 +2229,8 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request(0, false), &no_fe).expect("nonempty no-FE data");
+        let prepared =
+            prepare_model(&request(0, false), &[], &no_fe, false).expect("nonempty no-FE data");
         let design = prepared
             .borrowed_intercept_fe_design()
             .expect("nonempty no-FE design");
@@ -2257,7 +2245,7 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request(0, false), &empty).expect("empty");
+        let prepared = prepare_model(&request(0, false), &[], &empty, false).expect("empty");
         assert_eq!(prepared.sample.n_original, 0);
         assert_eq!(prepared.sample.n_active(), 0);
         assert!(prepared.model.columns.is_empty());
@@ -2270,7 +2258,7 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request(0, true), &dropped).expect("all dropped");
+        let prepared = prepare_model(&request(0, true), &[], &dropped, false).expect("all dropped");
         assert_eq!(prepared.sample.n_candidate, 1);
         assert_eq!(prepared.sample.n_active(), 0);
         assert_eq!(prepared.model.columns.len(), 1);
@@ -2355,7 +2343,8 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("analytic-weight prepare");
+        let prepared =
+            prepare_model(&request, &[], &loaded, false).expect("analytic-weight prepare");
         assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
         assert_eq!(
             prepared.sample.drop_reasons,
@@ -2392,12 +2381,13 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &off_candidate).expect("off-candidate weight");
+        let prepared =
+            prepare_model(&request, &[], &off_candidate, false).expect("off-candidate weight");
         assert_eq!(prepared.sample.retained_rows(), &[1]);
 
         let mut candidate_negative = off_candidate;
         candidate_negative.candidate = vec![true, true];
-        let error = prepare_ols_data(&request, &candidate_negative)
+        let error = prepare_model(&request, &[], &candidate_negative, false)
             .expect_err("candidate-negative analytic weight");
         assert_eq!(error.code, ErrorCode::NegativeWeight);
     }
@@ -2432,7 +2422,7 @@ mod tests {
             probability_weight: None,
         };
         assert_eq!(
-            prepare_ols_data(&request(0, false), &unbound_loaded)
+            prepare_model(&request(0, false), &[], &unbound_loaded, false)
                 .expect_err("unbound loaded weight")
                 .code,
             ErrorCode::InvalidArgument
@@ -2458,7 +2448,8 @@ mod tests {
             )),
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("frequency-weight prepare");
+        let prepared =
+            prepare_model(&request, &[], &loaded, false).expect("frequency-weight prepare");
         assert_eq!(prepared.sample.retained_rows(), &[0, 1, 2]);
         assert_eq!(
             prepared.sample.drop_reasons,
@@ -2505,7 +2496,7 @@ mod tests {
                 frequency_weight: Some(column(&[invalid_weight], &[false])),
                 probability_weight: None,
             };
-            let error = prepare_ols_data(&request, &loaded)
+            let error = prepare_model(&request, &[], &loaded, false)
                 .expect_err("invalid candidate frequency weight");
             assert_eq!(error.code, ErrorCode::InvalidFrequencyWeight);
         }
@@ -2560,7 +2551,7 @@ mod tests {
             probability_weight: None,
         };
         assert_eq!(
-            prepare_ols_data(&request(0, false), &unbound_loaded)
+            prepare_model(&request(0, false), &[], &unbound_loaded, false)
                 .expect_err("unbound loaded frequency weight")
                 .code,
             ErrorCode::InvalidArgument
@@ -2587,7 +2578,8 @@ mod tests {
                 &[false, false, false, true],
             )),
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("probability-weight prepare");
+        let prepared =
+            prepare_model(&request, &[], &loaded, false).expect("probability-weight prepare");
         assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
         assert_eq!(
             prepared.sample.drop_reasons,
@@ -2623,7 +2615,7 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: Some(column(&[invalid_weight], &[false])),
             };
-            let error = prepare_ols_data(&request, &loaded)
+            let error = prepare_model(&request, &[], &loaded, false)
                 .expect_err("invalid candidate probability weight");
             assert_eq!(error.code, ErrorCode::InvalidData);
         }
@@ -2680,7 +2672,7 @@ mod tests {
             probability_weight: Some(column(&[1.0], &[false])),
         };
         assert_eq!(
-            prepare_ols_data(&request(0, false), &unbound_loaded)
+            prepare_model(&request(0, false), &[], &unbound_loaded, false)
                 .expect_err("unbound loaded probability weight")
                 .code,
             ErrorCode::InvalidArgument
@@ -2743,10 +2735,10 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("FE preparation");
+        let prepared = prepare_model(&request, &[], &loaded, false).expect("FE preparation");
         assert_eq!(
             prepared,
-            prepare_ols_data_owned(&request, loaded).expect("owned FE preparation")
+            prepare_model_owned(&request, &[], loaded, false).expect("owned FE preparation")
         );
         assert_eq!(
             prepared.sample.drop_reasons,
@@ -2852,8 +2844,8 @@ mod tests {
     #[test]
     fn two_way_singletons_match_the_sealed_reference_and_compact_every_source() {
         let request = two_way_singleton_request(false);
-        let prepared =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("singleton preparation");
+        let prepared = prepare_model(&request, &[], &two_way_singleton_input(), false)
+            .expect("singleton preparation");
         assert_eq!(prepared.singletons.num_singletons, 5);
         assert_eq!(prepared.singletons.cascade_events, 5);
         assert!(!prepared.singletons.kept_by_request);
@@ -2936,7 +2928,8 @@ mod tests {
                     *value = (*value as f32) as f64;
                 }
             }
-            let prepared = prepare_ols_data(&request, &loaded).expect("singleton preparation");
+            let prepared =
+                prepare_model(&request, &[], &loaded, false).expect("singleton preparation");
             let inference = super::super::fit_prepared_model_unadjusted_with_loaded_moments(
                 &prepared,
                 super::super::PreparedOlsUnadjustedConfig::default(),
@@ -2988,8 +2981,13 @@ mod tests {
 
     #[test]
     fn keepsingletons_and_aweights_preserve_reference_identities() {
-        let kept = prepare_ols_data(&two_way_singleton_request(true), &two_way_singleton_input())
-            .expect("keep singletons");
+        let kept = prepare_model(
+            &two_way_singleton_request(true),
+            &[],
+            &two_way_singleton_input(),
+            false,
+        )
+        .expect("keep singletons");
         assert_eq!(kept.sample.n_active(), 9);
         assert_eq!(kept.singletons.num_singletons, 0);
         assert!(kept.singletons.kept_by_request);
@@ -3015,7 +3013,8 @@ mod tests {
             ],
             &[false; 9],
         ));
-        let weighted = prepare_ols_data(&request, &loaded).expect("weighted singleton preparation");
+        let weighted =
+            prepare_model(&request, &[], &loaded, false).expect("weighted singleton preparation");
         assert_eq!(weighted.sample.retained_rows(), &[5, 6, 7, 8]);
         assert_eq!(weighted.singletons.num_singletons, 5);
         assert_eq!(
@@ -3037,7 +3036,7 @@ mod tests {
         });
         let mut probability_input = two_way_singleton_input();
         probability_input.probability_weight = Some(column(&[0.5; 9], &[false; 9]));
-        let probability = prepare_ols_data(&probability_request, &probability_input)
+        let probability = prepare_model(&probability_request, &[], &probability_input, false)
             .expect("probability-weighted singleton preparation");
         assert_eq!(probability.sample.retained_rows(), &[5, 6, 7, 8]);
         assert_eq!(probability.singletons.num_singletons, 5);
@@ -3099,7 +3098,7 @@ mod tests {
                     }
                     let run = |threads| {
                         ThreadTeam::new(ThreadConfig::from_requested(threads, false).unwrap())
-                            .install(|| prepare_ols_data_owned(&request, input.clone()))
+                            .install(|| prepare_model_owned(&request, &[], input.clone(), false))
                             .unwrap()
                     };
                     let expected = run(1).expect("serial prepared fixture");
@@ -3278,7 +3277,7 @@ mod tests {
                 frequency_weight: None,
                 probability_weight: None,
             };
-            let expected = prepare_ols_data(&request, &loaded).unwrap();
+            let expected = prepare_model(&request, &[], &loaded, false).unwrap();
             for reusable in [false, true] {
                 let (model, sample) = prepare_ols_numeric_sample(&request, &loaded, &[]).unwrap();
                 let available = crate::prepared_categorical_data::finish_prepared_model(
@@ -3502,10 +3501,11 @@ mod tests {
             frequency_weight: Some(column(&[2.0, 1.0], &[false; 2])),
             probability_weight: None,
         };
-        let mut weighted = prepare_ols_data(&request, &loaded).expect("frequency singleton");
+        let mut weighted =
+            prepare_model(&request, &[], &loaded, false).expect("frequency singleton");
         assert_eq!(
             weighted,
-            prepare_ols_data_owned(&request, loaded.clone()).unwrap()
+            prepare_model_owned(&request, &[], loaded.clone(), false).unwrap()
         );
         assert_eq!(weighted.sample.retained_rows(), &[0]);
         assert_eq!(
@@ -3527,7 +3527,7 @@ mod tests {
 
         let mut precedence = loaded.clone();
         precedence.outcome.values[1] = f64::NAN;
-        let prepared = prepare_ols_data(&request, &precedence).expect("reason precedence");
+        let prepared = prepare_model(&request, &[], &precedence, false).expect("reason precedence");
         assert_eq!(
             prepared.sample.drop_reasons,
             vec![
@@ -3560,7 +3560,7 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("shared factor and FE");
+        let prepared = prepare_model(&request, &[], &loaded, false).expect("shared factor and FE");
 
         assert_eq!(prepared.sample.retained_rows(), &[1, 2]);
         assert_eq!(prepared.categorical_sources()[0].level_values(), vec![2.0]);
@@ -3641,7 +3641,8 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("all singleton preparation");
+        let prepared =
+            prepare_model(&request, &[], &loaded, false).expect("all singleton preparation");
         assert_eq!(prepared.sample.n_active(), 0);
         assert_eq!(prepared.singletons.num_singletons, 2);
         assert_eq!(
@@ -3671,8 +3672,8 @@ mod tests {
     #[test]
     fn borrowed_fe_design_uses_final_singleton_axis_and_existing_membership() {
         let request = two_way_singleton_request(false);
-        let prepared =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+        let prepared = prepare_model(&request, &[], &two_way_singleton_input(), false)
+            .expect("prepared topology");
         let design = prepared
             .borrowed_intercept_fe_design()
             .expect("borrowed FE design");
@@ -3710,8 +3711,8 @@ mod tests {
     #[test]
     fn borrowed_fe_design_reservation_and_capacity_guard_fail_closed() {
         let request = two_way_singleton_request(true);
-        let prepared =
-            prepare_ols_data(&request, &two_way_singleton_input()).expect("prepared topology");
+        let prepared = prepare_model(&request, &[], &two_way_singleton_input(), false)
+            .expect("prepared topology");
 
         let mut successful = InjectedFeTopologyReservation::default();
         build_borrowed_intercept_fe_design_with_reservation(&prepared, &mut successful)
@@ -3802,7 +3803,7 @@ mod tests {
                 let expected_sample = sample
                     .compact_active_rows(&expected.active, DropReason::Singleton)
                     .unwrap();
-                let prepared = prepare_ols_data(&request, &loaded).unwrap();
+                let prepared = prepare_model(&request, &[], &loaded, false).unwrap();
                 assert_eq!(prepared.sample(), &expected_sample, "{order:?}/{frequency}");
                 assert_eq!(prepared.singletons.num_singletons, dropped);
                 assert_eq!(prepared.singletons.cascade_events, cascade);
@@ -3834,7 +3835,8 @@ mod tests {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared = prepare_ols_data(&request, &loaded).expect("repeated FE preparation");
+        let prepared =
+            prepare_model(&request, &[], &loaded, false).expect("repeated FE preparation");
         assert_eq!(prepared.fe_topology().registry().sources().len(), 1);
         assert_eq!(prepared.fe_effects().len(), TERM_COUNT);
 
@@ -3862,7 +3864,8 @@ mod tests {
     fn borrowed_fe_design_rejects_changed_outer_bindings_without_panicking() {
         let request = two_way_singleton_request(false);
         for fault in 0..4 {
-            let mut prepared = prepare_ols_data(&request, &two_way_singleton_input()).unwrap();
+            let mut prepared =
+                prepare_model(&request, &[], &two_way_singleton_input(), false).unwrap();
             match fault {
                 0 => prepared.effect_specs[0].intercept = false,
                 1 => {
@@ -3894,7 +3897,7 @@ mod tests {
     fn final_owner_metadata_reservations_and_capacity_guards_fail_closed() {
         let request = two_way_singleton_request(true);
         let metadata = |reservation: &mut InjectedFeTopologyReservation| {
-            let prepared = prepare_ols_data(&request, &two_way_singleton_input()).unwrap();
+            let prepared = prepare_model(&request, &[], &two_way_singleton_input(), false).unwrap();
             let sources = factorize_preparation_sources(&request, prepared.sample()).unwrap();
             let required: Vec<_> = sources.iter().map(|source| source.source).collect();
             crate::prepared_categorical_data::retain_model_sources_with_reservation(

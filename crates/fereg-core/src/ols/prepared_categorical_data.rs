@@ -823,27 +823,6 @@ impl PreparedCategoricalOlsRhs {
     }
 }
 
-/// Prepare numeric categorical intercept effects, including interactions and
-/// the guarded single intercept-plus-slope channel.
-///
-/// This is a developer/core boundary. It does not activate any public estimator
-/// or Stata result-transport action.
-pub fn prepare_categorical_ols_data(
-    request: &OlsRequestV1,
-    loaded: &LoadedOlsInput,
-) -> Result<PreparedCategoricalOlsData> {
-    prepare_categorical_ols_data_with_cluster_sources(request, loaded, &[])
-}
-
-/// Consume source columns before constructing the unchanged interaction/slope
-/// topology and applying its singleton fixed point.
-pub fn prepare_categorical_ols_data_owned(
-    request: &OlsRequestV1,
-    loaded: LoadedOlsInput,
-) -> Result<PreparedCategoricalOlsData> {
-    prepare_categorical_ols_data_owned_with_cluster_sources(request, loaded, &[])
-}
-
 pub(crate) fn prepare_categorical_ols_data_owned_with_cluster_sources(
     request: &OlsRequestV1,
     loaded: LoadedOlsInput,

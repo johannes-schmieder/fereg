@@ -163,8 +163,8 @@ fn cmg_rejects_unsupported_slopes_while_lsmr_remains_available() {
 fn inference_matches_independent_dense_outputs_on_exact_dof_designs() {
     use fereg_core::{
         fit_prepared_model_robust_with_loaded_moments,
-        fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data,
-        PreparedOlsRobustConfig, PreparedOlsUnadjustedConfig,
+        fit_prepared_model_unadjusted_with_loaded_moments, prepare_model, PreparedOlsRobustConfig,
+        PreparedOlsUnadjustedConfig,
     };
     for seed in 0..32 {
         let kind = [
@@ -187,7 +187,7 @@ fn inference_matches_independent_dense_outputs_on_exact_dof_designs() {
         let (problem, _) = design.oracle_problem(false).unwrap();
         let oracle = fit_explicit_ols(&problem).unwrap();
         let (request, loaded) = support::inputs(&design, false);
-        let prepared = prepare_categorical_ols_data(&request, &loaded).unwrap();
+        let prepared = prepare_model(&request, &[], &loaded, true).unwrap();
         let robust = fit_prepared_model_robust_with_loaded_moments(
             &prepared,
             PreparedOlsRobustConfig::default(),

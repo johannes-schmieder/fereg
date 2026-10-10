@@ -920,25 +920,27 @@ fn prepared_owner_accounting_matches_independent_allocator_deallocation() {
                     };
                     if complex {
                         let owner =
-                            prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
+                            prepare_model_owned(&request.ols, &request.clusters, loaded, true)
+                                .unwrap();
                         let before = crate::ffi::allocation_usage();
                         let bytes = owner.owned_buffer_bytes();
                         assert_eq!(crate::ffi::allocation_usage().events, before.events);
                         check_shared(owner, bytes);
                     } else {
-                        let owner = prepare_ols_clustered_data_owned(&request, loaded).unwrap();
+                        let owner =
+                            prepare_model_owned(&request.ols, &request.clusters, loaded, false)
+                                .unwrap();
                         let bytes = owner.owned_buffer_bytes();
                         check(owner, bytes);
                     }
                 } else if complex {
-                    let owner =
-                        prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+                    let owner = prepare_model_owned(&action.request, &[], loaded, true).unwrap();
                     let bytes = owner.owned_buffer_bytes();
                     check_shared(owner, bytes);
                 } else {
                     let mut loaded = loaded;
                     loaded.outcome.values.reserve(101);
-                    let owner = prepare_ols_data_owned(&action.request, loaded).unwrap();
+                    let owner = prepare_model_owned(&action.request, &[], loaded, false).unwrap();
                     let before = crate::ffi::allocation_usage();
                     let bytes = owner.owned_buffer_bytes();
                     assert_eq!(crate::ffi::allocation_usage().events, before.events);
@@ -993,7 +995,7 @@ fn inference_owner_accounting_matches_allocator_in_all_six_routes() {
             fit: action.fit,
             ..Default::default()
         };
-        let prepared = prepare_ols_data_owned(&action.request, loaded.clone()).unwrap();
+        let prepared = prepare_model_owned(&action.request, &[], loaded.clone(), false).unwrap();
         let inference =
             fit_prepared_model_unadjusted_with_loaded_moments(&prepared, iid, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
@@ -1002,12 +1004,14 @@ fn inference_owner_accounting_matches_allocator_in_all_six_routes() {
             fit_prepared_model_robust_with_loaded_moments(&prepared, robust, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
-        let prepared = prepare_ols_clustered_data_owned(&clustered, loaded.clone()).unwrap();
+        let prepared =
+            prepare_model_owned(&clustered.ols, &clustered.clusters, loaded.clone(), false)
+                .unwrap();
         let inference =
             fit_prepared_model_clustered_with_loaded_moments(&prepared, cluster, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
-        let prepared = prepare_categorical_ols_data_owned(&action.request, loaded.clone()).unwrap();
+        let prepared = prepare_model_owned(&action.request, &[], loaded.clone(), true).unwrap();
         let inference =
             fit_prepared_model_unadjusted_with_loaded_moments(&prepared, iid, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
@@ -1016,7 +1020,8 @@ fn inference_owner_accounting_matches_allocator_in_all_six_routes() {
             fit_prepared_model_robust_with_loaded_moments(&prepared, robust, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
         check(inference, bytes);
-        let prepared = prepare_categorical_ols_clustered_data_owned(&clustered, loaded).unwrap();
+        let prepared =
+            prepare_model_owned(&clustered.ols, &clustered.clusters, loaded, true).unwrap();
         let inference =
             fit_prepared_model_clustered_with_loaded_moments(&prepared, cluster, None).unwrap();
         let bytes = inference.owned_buffer_bytes();
@@ -1032,7 +1037,7 @@ fn saved_fe_model_certificate_rejects_an_in_span_corrupted_product() {
         .decode_with_memory_limit(&mut spi, || Ok(None))
         .unwrap();
     let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
-    let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+    let prepared = prepare_model_owned(&action.request, &[], loaded, true).unwrap();
     let result = fit_prepared_model_unadjusted_with_loaded_moments(
         &prepared,
         PreparedOlsUnadjustedConfig {
@@ -1081,7 +1086,7 @@ fn model_recovery_workspace_bounds_observed_allocator_peak() {
         .decode_with_memory_limit(&mut spi, || Ok(None))
         .unwrap();
     let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
-    let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+    let prepared = prepare_model_owned(&action.request, &[], loaded, true).unwrap();
     let raw = prepared.sample().outcome.clone();
     let residuals = vec![0.0; raw.len()];
     let map = MapConfig {
@@ -1171,7 +1176,7 @@ fn saved_slope_recovery_workspace_bounds_observed_allocator_peak() {
         .zip(&loaded.numeric_sources[1].1.values)
         .map(|(slope, group)| 2.0 * slope + 3.0 * group)
         .collect::<Vec<_>>();
-    let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+    let prepared = prepare_model_owned(&action.request, &[], loaded, true).unwrap();
     for workers in [1, 4] {
         let pool = rayon::ThreadPoolBuilder::new()
             .num_threads(workers)
@@ -1330,7 +1335,7 @@ fn construction_and_transient_frame_peaks_bound_independent_allocations() {
                     // Use the complex topology even for the intercept-only
                     // control, exercising construction overlap and validation.
                     let prepared =
-                        prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
+                        prepare_model_owned(&request.ols, &request.clusters, loaded, true).unwrap();
                     let peak =
                         crate::ffi::allocation_usage().peak_bytes - start.allocation_current_bytes;
                     assert!(u128::from(peak) <= bound, "construction {peak} > {bound}");
@@ -1521,7 +1526,7 @@ fn inference_residual_overlap_stays_within_existing_frame() {
                 sources: vec![SourceId::new(11).unwrap()],
             }],
         };
-        let prepared = prepare_categorical_ols_clustered_data_owned(&request, loaded).unwrap();
+        let prepared = prepare_model_owned(&request.ols, &request.clusters, loaded, true).unwrap();
         team.install(|| {
             for clustered in [false, true] {
                 let fit = PreparedOlsFitConfig {
@@ -1643,7 +1648,7 @@ fn action_ledger_covers_every_ols_stage_without_reporting_allocations() {
         .unwrap();
     let base = action.memory_plan.estimate;
     let loaded = load_ols_input(&action.request, false, false, &mut spi).unwrap();
-    let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+    let prepared = prepare_model_owned(&action.request, &[], loaded, true).unwrap();
     action
         .admit_prepared_parent(prepared.owned_buffer_bytes())
         .unwrap();
@@ -1873,7 +1878,7 @@ fn saved_publication_checks_observed_capacities_before_any_store() {
             &mut spi,
         )
         .unwrap();
-        let prepared = prepare_categorical_ols_data_owned(&action.request, loaded).unwrap();
+        let prepared = prepare_model_owned(&action.request, &[], loaded, true).unwrap();
         let inference = fit_prepared_model_unadjusted_with_loaded_moments(
             &prepared,
             PreparedOlsUnadjustedConfig {
@@ -2533,9 +2538,13 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
                 assert_eq!(rows.capacity() * 8, required);
                 assert!(memory.peak() >= required as u128);
             }
-            let categorical_clustered =
-                prepare_categorical_ols_clustered_data_owned(&clustered_request, loaded.clone())
-                    .unwrap();
+            let categorical_clustered = prepare_model_owned(
+                &clustered_request.ols,
+                &clustered_request.clusters,
+                loaded.clone(),
+                true,
+            )
+            .unwrap();
             let categorical = categorical_clustered.ols();
             let categorical_rows = rhs.clone().map(|rows| {
                 let bytes = LoadedOlsRows::moment_workspace_bytes(spi.nobs, 12).unwrap();
@@ -2545,8 +2554,13 @@ fn loaded_rhs_admission_recipe_and_missing_fallback_preserve_estimates() {
             });
             let robust_rows = rhs.clone();
             let clustered_rows = rhs.clone();
-            let prepared_clustered =
-                prepare_ols_clustered_data_owned(&clustered_request, loaded).unwrap();
+            let prepared_clustered = prepare_model_owned(
+                &clustered_request.ols,
+                &clustered_request.clusters,
+                loaded,
+                false,
+            )
+            .unwrap();
             let prepared = prepared_clustered.ols();
             let mut config = PreparedOlsUnadjustedConfig::default();
             config.fit.execution.threads = ThreadConfig::from_requested(4, false).unwrap();
@@ -2756,7 +2770,7 @@ fn slope_loaded_rhs_preserves_classification_and_inference() {
                 assert_eq!(rows.len(), spi.nobs * layout.width);
                 assert_eq!(layout.append_intercept, request.include_intercept);
             }
-            let prepared = prepare_categorical_ols_data_owned(&request, loaded).unwrap();
+            let prepared = prepare_model_owned(&request, &[], loaded, true).unwrap();
             let mut config = PreparedOlsRobustConfig::default();
             config.fit.execution.threads = ThreadConfig::from_requested(8, false).unwrap();
             let expected = fereg_core::ols::fit_prepared_model_robust_with_loaded_moments(
@@ -2952,8 +2966,8 @@ fn weighted_loaded_rhs_preserves_sample_domains_and_inference() {
                         .lanes
                             > 1
                 );
-                let expected = prepare_categorical_ols_data_owned(&request, reference);
-                let actual = prepare_categorical_ols_data_owned(&request, loaded);
+                let expected = prepare_model_owned(&request, &[], reference, true);
+                let actual = prepare_model_owned(&request, &[], loaded, true);
                 match (expected, actual) {
                     (Err(expected), Err(actual)) => assert_eq!(actual, expected),
                     (Ok(expected), Ok(actual)) => {

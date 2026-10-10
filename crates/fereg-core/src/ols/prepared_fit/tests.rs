@@ -47,7 +47,7 @@ use crate::ols::finite_wls_kernel::{
     begin_retained_moment_worker_observation, finish_retained_moment_worker_observation,
 };
 use crate::ols::{
-    begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation, prepare_ols_data,
+    begin_frozen_qr_fallback_observation, finish_frozen_qr_fallback_observation, prepare_model,
     CertifiedLinearSession, CertifiedLinearSessionOutput, CertifiedLinearSessionProducts,
     CertifiedLinearWithinDesign, LinearSessionAllocationPhase, LinearSessionGenerations,
     LinearSessionPhaseAllocationEvent, LoadedNumericColumn, LoadedOlsInput, OlsInputBinding,
@@ -450,7 +450,7 @@ fn prepared(
             (None, None, Some(loaded(values)))
         }
     };
-    prepare_ols_data(
+    prepare_model(
         &OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
             absorbed_terms,
@@ -458,6 +458,7 @@ fn prepared(
             include_intercept,
             keep_singletons: true,
         },
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded(outcome),
@@ -466,6 +467,7 @@ fn prepared(
             frequency_weight,
             probability_weight,
         },
+        false,
     )
     .expect("prepared data")
 }
@@ -1228,10 +1230,7 @@ fn single_slope_cache_is_ols_only_and_preserves_full_fit() {
                 frequency_weight: None,
                 probability_weight: None,
             };
-            let data = crate::prepared_categorical_data::prepare_categorical_ols_data_owned(
-                &request, input,
-            )
-            .unwrap();
+            let data = crate::ols::prepare_model_owned(&request, &[], input, true).unwrap();
             let config = PreparedOlsFitConfig::default();
 
             let admitted =
@@ -1349,9 +1348,7 @@ fn multipartition_slope_owner_preserves_span_and_admission_boundaries() {
         frequency_weight: None,
         probability_weight: None,
     };
-    let data =
-        crate::prepared_categorical_data::prepare_categorical_ols_data_owned(&request, input)
-            .unwrap();
+    let data = crate::ols::prepare_model_owned(&request, &[], input, true).unwrap();
     let supplied: Vec<_> = (0..n).map(|r| 0.1 + (r % 13) as f64).collect();
     for mode in [
         PreparedOlsExecutionMode::Fast,
@@ -1469,8 +1466,7 @@ fn generic_prepared_slope_admits_owned_design_unit_weights_and_solver_together()
         frequency_weight: None,
         probability_weight: None,
     };
-    let prepared =
-        crate::prepared_categorical_data::prepare_categorical_ols_data(&request, &input).unwrap();
+    let prepared = crate::ols::prepare_model(&request, &[], &input, true).unwrap();
     let memory = prepared.fit_owned_fe_design_memory().unwrap();
     let design = prepared.fit_owned_fe_design().unwrap();
     assert_eq!(
@@ -1689,9 +1685,7 @@ fn saved_slope_recovery_admits_each_attempt_and_keeps_map_fallback() {
             frequency_weight: None,
             probability_weight: None,
         };
-        let prepared =
-            crate::prepared_categorical_data::prepare_categorical_ols_data(&request, &input)
-                .unwrap();
+        let prepared = crate::ols::prepare_model(&request, &[], &input, true).unwrap();
         let target = y.iter().zip(&noise).map(|(y, e)| y - e).collect::<Vec<_>>();
         for budget in [
             None,
@@ -2141,7 +2135,7 @@ fn prepared_multiway_categorical_weights(
             role,
         });
     }
-    crate::prepare_categorical_ols_data(
+    crate::prepare_model(
         &OlsRequestV1 {
             model: CompiledTermGraph { sources, terms },
             absorbed_terms,
@@ -2149,6 +2143,7 @@ fn prepared_multiway_categorical_weights(
             include_intercept: true,
             keep_singletons: true,
         },
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded(outcome),
@@ -2157,6 +2152,7 @@ fn prepared_multiway_categorical_weights(
             frequency_weight,
             probability_weight,
         },
+        true,
     )
     .expect("prepared multiway categorical data")
 }
@@ -5255,8 +5251,9 @@ fn pinned_full_ibn_span_keeps_cons_and_earlier_indicator() {
         include_intercept: true,
         keep_singletons: true,
     };
-    let prepared = prepare_ols_data(
+    let prepared = prepare_model(
         &request,
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded(&outcome),
@@ -5265,6 +5262,7 @@ fn pinned_full_ibn_span_keeps_cons_and_earlier_indicator() {
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .expect("full ibn preparation");
     let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
@@ -5331,8 +5329,9 @@ fn factor_interaction_omission_and_vanished_level_keep_exact_slot_semantics() {
         include_intercept: true,
         keep_singletons: false,
     };
-    let prepared = prepare_ols_data(
+    let prepared = prepare_model(
         &request,
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded(&outcome),
@@ -5341,6 +5340,7 @@ fn factor_interaction_omission_and_vanished_level_keep_exact_slot_semantics() {
             frequency_weight: None,
             probability_weight: None,
         },
+        false,
     )
     .expect("factor preparation");
     let fit = fit_prepared_model_coefficients(&prepared, PreparedOlsFitConfig::default())
@@ -5551,8 +5551,9 @@ fn categorical_one_fe_initial_projection_preserves_warm_and_retained_paths() {
         include_intercept: true,
         keep_singletons: true,
     };
-    let prepared = crate::prepare_categorical_ols_data(
+    let prepared = crate::prepare_model(
         &request,
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; rows],
             outcome: loaded(&outcome),
@@ -5565,6 +5566,7 @@ fn categorical_one_fe_initial_projection_preserves_warm_and_retained_paths() {
             frequency_weight: None,
             probability_weight: None,
         },
+        true,
     )
     .unwrap();
     let config = AbsorbConfig::default();
@@ -5705,8 +5707,9 @@ fn categorical_ols_adapter_and_borrowed_frame_are_exact() {
         include_intercept: true,
         keep_singletons: true,
     };
-    let prepared = crate::prepare_categorical_ols_data(
+    let prepared = crate::prepare_model(
         &request,
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; outcome.len()],
             outcome: loaded(&outcome),
@@ -5715,6 +5718,7 @@ fn categorical_ols_adapter_and_borrowed_frame_are_exact() {
             frequency_weight: None,
             probability_weight: None,
         },
+        true,
     )
     .expect("categorical prepared data");
     let config = PreparedOlsFitConfig::default();
@@ -6041,8 +6045,9 @@ fn categorical_recovery_uses_explicit_final_hessian_weights_for_normalization() 
         include_intercept: true,
         keep_singletons: true,
     };
-    let prepared = crate::prepare_categorical_ols_data(
+    let prepared = crate::prepare_model(
         &request,
+        &[],
         &LoadedOlsInput {
             candidate: vec![true; target.len()],
             outcome: loaded(&target),
@@ -6054,6 +6059,7 @@ fn categorical_recovery_uses_explicit_final_hessian_weights_for_normalization() 
             frequency_weight: None,
             probability_weight: None,
         },
+        true,
     )
     .expect("categorical recovery preparation");
     let requested = [true, true];

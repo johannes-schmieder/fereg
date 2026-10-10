@@ -1,11 +1,11 @@
 use fereg_core::CategoricalTopologyDofPolicy;
 use fereg_core::{
-    fit_prepared_model_unadjusted_with_loaded_moments, prepare_categorical_ols_data, AbsorbTermId,
-    AbsorbedTerm, CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode,
-    ExpandedTerm, FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag,
-    OlsInputBinding, OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy,
-    PreparedOlsFitStatus, PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId,
-    TermComponent, TermId, TermOrder, TimeSeriesState,
+    fit_prepared_model_unadjusted_with_loaded_moments, prepare_model, AbsorbTermId, AbsorbedTerm,
+    CoefficientSlot, CompiledTermGraph, ComponentKind, ComponentOrder, ErrorCode, ExpandedTerm,
+    FeSolverKind, LevelState, LoadedNumericColumn, LoadedOlsInput, MetadataFlag, OlsInputBinding,
+    OlsInputRole, OlsRequestV1, PreparedOlsAbsorbedDofPolicy, PreparedOlsFitStatus,
+    PreparedOlsUnadjustedConfig, RawTermKind, SourceEntry, SourceId, TermComponent, TermId,
+    TermOrder, TimeSeriesState,
 };
 use fereg_testkit::explicit_ols::{
     fit_explicit_ols, DummyEffect, ExplicitOlsProblem, OracleWeights,
@@ -548,7 +548,7 @@ fn prepare_case(
         frequency_weight: None,
         probability_weight: None,
     };
-    prepare_categorical_ols_data(&request, &loaded).expect("prepared frozen case")
+    prepare_model(&request, &[], &loaded, true).expect("prepared frozen case")
 }
 
 fn prepare_multiple_slope_only_case(
@@ -643,7 +643,7 @@ fn prepare_multiple_slope_only_case(
         frequency_weight: None,
         probability_weight: None,
     };
-    prepare_categorical_ols_data(&request, &loaded).expect("prepared multiple slope-only case")
+    prepare_model(&request, &[], &loaded, true).expect("prepared multiple slope-only case")
 }
 
 fn source(index: usize) -> SourceId {
