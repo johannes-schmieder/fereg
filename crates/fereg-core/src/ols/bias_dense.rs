@@ -29,7 +29,7 @@ impl DenseInformation {
         let left = &design.effects()[0];
         let right = &design.effects()[1];
         let offset = left.n_levels();
-        let components = crate::fe::connected_components_all_fallible(
+        let components = crate::fe::connected_components_all(
             &[left.codes(), right.codes()],
             &[offset, right.n_levels()],
         )?;

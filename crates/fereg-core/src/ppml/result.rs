@@ -22,8 +22,7 @@ use crate::error::{ErrorCode, FeregError, Result};
 #[cfg(test)]
 use crate::fe::FeSolverKind;
 use crate::fe::{
-    connected_components_all_fallible, BorrowedMapWeights, FeCoefficientBatch, LsmrConfig,
-    MapConfig,
+    connected_components_all, BorrowedMapWeights, FeCoefficientBatch, LsmrConfig, MapConfig,
 };
 use crate::memory::{fallible_copy, fallible_filled};
 use crate::ppml_separation::{
@@ -960,7 +959,7 @@ fn categorical_connected_components(
         codes.push(source.codes(&source_table)?);
         levels.push(source.n_levels());
     }
-    Ok(connected_components_all_fallible(&codes, &levels)?.n_components)
+    Ok(connected_components_all(&codes, &levels)?.n_components)
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]

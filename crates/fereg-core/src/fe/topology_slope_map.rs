@@ -21,7 +21,7 @@ use crate::memory::{
 use rayon::prelude::*;
 
 use super::{
-    borrow_categorical_topology_design, connected_components_all_fallible, BorrowedMapWeights,
+    borrow_categorical_topology_design, connected_components_all, BorrowedMapWeights,
     CertifiedBorrowedMap, FeCertificate, FeCoefficientBatch, FeSolverKind,
     FinalizedCategoricalTopology, MapConfig, SolveReport, SolveStopReason,
 };
@@ -952,7 +952,7 @@ fn normalize_intercept_components(
         codes.push(source.codes(&source_table)?);
         levels.push(source.n_levels());
     }
-    let components = connected_components_all_fallible(&codes, &levels)?;
+    let components = connected_components_all(&codes, &levels)?;
     let mut component_weights = fallible_filled(
         components.n_components,
         0.0_f64,

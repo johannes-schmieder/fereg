@@ -63,7 +63,7 @@ pub(crate) use cmg::{
     CmgUnpolishedProjectionReport, PreparedCmgTopology,
     MAX_NUISANCE_COLUMNS as CMG_MAX_NUISANCE_COLUMNS,
 };
-pub(crate) use components::connected_components_all_fallible;
+pub(crate) use components::connected_components_all;
 pub use components::{connected_components, ComponentInfo};
 pub(crate) use design::{retained_effect_order_by_levels, ValidatedBorrowedInterceptSource};
 pub use design::{

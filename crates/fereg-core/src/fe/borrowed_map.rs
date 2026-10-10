@@ -1111,7 +1111,7 @@ fn component_scaled_checkpoint_weights(
         codes[i] = effect.codes();
         levels[i] = effect.n_levels();
     }
-    let components = super::connected_components_all_fallible(
+    let components = super::connected_components_all(
         &codes[..design.effects().len()],
         &levels[..design.effects().len()],
     )?;
