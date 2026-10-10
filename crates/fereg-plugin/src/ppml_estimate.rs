@@ -2331,6 +2331,19 @@ fn validate_variable_layout(
         {
             return Err(invalid("PPML input variables alias one another"));
         }
+        // Categorical sources may be string-coded; every other input is read
+        // as numeric, as the OLS layout requires.
+        let numeric = match binding.role {
+            OlsInputRole::NumericSource(source) => {
+                crate::estimate::source_requires_numeric(request, source)
+            }
+            _ => true,
+        };
+        if numeric && spi.variable_is_string(position)? {
+            return Err(unsupported(format!(
+                "plugin varlist position {position} must be numeric"
+            )));
+        }
     }
     if let Some(position) = adjustment.position() {
         if request

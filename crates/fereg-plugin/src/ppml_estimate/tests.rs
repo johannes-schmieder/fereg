@@ -130,6 +130,7 @@ struct FakeSpi {
     interrupt_after_display: bool,
     interrupt_when_marker_exists: Option<std::path::PathBuf>,
     displays: Vec<String>,
+    string_variables: BTreeSet<u32>,
 }
 
 impl FakeSpi {
@@ -165,8 +166,8 @@ impl SpiApi for FakeSpi {
         Ok(self.nvars)
     }
 
-    fn variable_is_string(&mut self, _variable: u32) -> Result<bool> {
-        Ok(false)
+    fn variable_is_string(&mut self, variable: u32) -> Result<bool> {
+        Ok(self.string_variables.contains(&variable))
     }
 
     fn variable_is_strl(&mut self, _variable: u32) -> Result<bool> {
@@ -534,8 +535,22 @@ fn fixture() -> (Vec<String>, FakeSpi) {
             interrupt_after_display: false,
             interrupt_when_marker_exists: None,
             displays: Vec::new(),
+            string_variables: BTreeSet::new(),
         },
     )
+}
+
+#[test]
+fn string_numeric_inputs_fail_before_any_read_or_store() {
+    // Positions 1-3 bind the candidate marker, the outcome and continuous x.
+    for position in [1, 2, 3] {
+        let (args, mut spi) = fixture();
+        spi.string_variables.insert(position);
+        let error = estimate_ppml_test(&args, &mut spi).expect_err("string numeric input");
+        assert_eq!(error.code, ErrorCode::Unsupported, "position {position}");
+        assert_eq!(spi.reads, 0);
+        assert_eq!(spi.store_calls, 0);
+    }
 }
 
 fn categorical_absorb_cluster_weight_fixture() -> (Vec<String>, FakeSpi) {

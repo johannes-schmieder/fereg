@@ -3206,7 +3206,7 @@ fn validate_categorical_position(
     Ok(())
 }
 
-fn source_requires_numeric(request: &OlsRequestV1, source: SourceId) -> bool {
+pub(crate) fn source_requires_numeric(request: &OlsRequestV1, source: SourceId) -> bool {
     request.model.terms.iter().any(|term| {
         term.components.iter().any(|component| {
             component.source == source && component.kind == ComponentKind::Continuous
@@ -3299,7 +3299,7 @@ fn parse_dof(value: &str) -> Result<PreparedOlsAbsorbedDofPolicy> {
 }
 
 fn parse_solver(value: &str) -> Result<FeSolverKind> {
-    match value {
+    match value.to_ascii_lowercase().as_str() {
         "auto" => Ok(FeSolverKind::Auto),
         "map" => Ok(FeSolverKind::Map),
         "lsmr" => Ok(FeSolverKind::Lsmr),
@@ -3314,7 +3314,7 @@ fn parse_solver(value: &str) -> Result<FeSolverKind> {
 }
 
 fn parse_preconditioner(value: &str) -> Result<LsmrPreconditioner> {
-    match value {
+    match value.to_ascii_lowercase().as_str() {
         "auto" => Ok(LsmrPreconditioner::Auto),
         "off" | "none" => Ok(LsmrPreconditioner::Off),
         "diagonal" => Ok(LsmrPreconditioner::Diagonal),

@@ -3709,3 +3709,15 @@ fn shadow_fe_identity_rejects_malformed_combinations() {
         assert!(validate_shadow_fixed_effect_row(&row).is_err());
     }
 }
+
+#[test]
+fn option_spellings_parse_case_insensitively_like_vce_and_dof() {
+    assert_eq!(parse_solver("LSMR").unwrap(), FeSolverKind::Lsmr);
+    assert_eq!(parse_solver("Irons-Tuck").unwrap(), FeSolverKind::IronsTuck);
+    assert_eq!(
+        parse_preconditioner("Schwarz").unwrap(),
+        LsmrPreconditioner::Schwarz
+    );
+    assert_eq!(parse_vce("ROBUST").unwrap(), OlsVceKind::Robust);
+    assert_eq!(parse_solver("gauss").unwrap_err().code, ErrorCode::Syntax);
+}

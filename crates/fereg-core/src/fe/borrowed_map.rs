@@ -4505,7 +4505,7 @@ fn run_borrowed_lsmr_with_prepared<'a>(
         lsmr_values.ncols(),
         &mut reservation,
     )?;
-    let certificate_bytes = certificate_workspace.payload_peak()?.bytes().unwrap() as u128;
+    let certificate_bytes = modeled_bytes(certificate_workspace.payload_peak()?)?;
     memory.include_payload(
         retained,
         (lsmr_values.storage_capacity() as u128 + solved.x.capacity() as u128) * 8
@@ -7283,6 +7283,13 @@ pub(super) fn cg_largest_relative_residual(current: &[f64], initial: &[f64]) -> 
         largest = largest.max(relative);
     }
     Ok(largest)
+}
+
+/// Bytes of a workspace peak that must carry a complete model.
+fn modeled_bytes(peak: SolverWorkspacePeak) -> Result<u128> {
+    peak.bytes()
+        .map(u128::from)
+        .ok_or_else(|| FeregError::new(ErrorCode::Internal, "solver workspace peak is unmodeled"))
 }
 
 fn fallible_matrix_copy(input: &DenseMatrix, label: &'static str) -> Result<DenseMatrix> {

@@ -191,7 +191,7 @@ fn absorb_auto(
         if let Ok(cached) = retained.with_retained(bytes) {
             if config
                 .solver_memory_budget
-                .is_none_or(|b| b.fits(cached.bytes().unwrap() as u128))
+                .is_none_or(|b| cached.bytes().is_some_and(|bytes| b.fits(bytes as u128)))
             {
                 match context.cache() {
                     Ok(()) => retained = cached,
@@ -205,7 +205,7 @@ fn absorb_auto(
         if let Ok(parallel) = retained.with_retained(bytes) {
             if config
                 .solver_memory_budget
-                .is_none_or(|b| b.fits(parallel.bytes().unwrap() as u128))
+                .is_none_or(|b| parallel.bytes().is_some_and(|bytes| b.fits(bytes as u128)))
             {
                 context.set_parallel_rhs(values.ncols());
                 retained = parallel;
@@ -255,7 +255,9 @@ fn admit_parallel_projection(
 ) -> (Option<ParallelProjectionPlan>, SolverWorkspacePeak) {
     if let Some(plan) = plan {
         if let Ok(peak) = plan.bytes().and_then(|bytes| base.with_retained(bytes)) {
-            if budget.is_none_or(|budget| budget.fits(peak.bytes().unwrap() as u128)) {
+            if budget
+                .is_none_or(|budget| peak.bytes().is_some_and(|bytes| budget.fits(bytes as u128)))
+            {
                 return (Some(plan), peak);
             }
         }

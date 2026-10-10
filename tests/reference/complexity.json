@@ -2,34 +2,28 @@
   "definition": "docs/development_workflow.md#complexity-inventory",
   "growth": [
     {
-      "after": 92892,
-      "before": 92883,
+      "after": 92899,
+      "before": 92892,
       "metric": "fereg-core/production_lines",
-      "reason": "Separation report bank per plan decision D9: preflight and initial reservation bounded to 256 generations, per-generation fallible growth beyond that."
+      "reason": "Unwrap-free workspace-peak admission: optional caches decline an unmodeled peak and the LSMR certificate reports it as Internal through modeled_bytes (plan Phase 6 item 5)."
     },
     {
-      "after": 2899,
-      "before": 2897,
-      "metric": "file/crates/fereg-core/src/ppml/memory.rs",
-      "reason": "Separation report bank per plan decision D9: preflight and initial reservation bounded to 256 generations, per-generation fallible growth beyond that."
+      "after": 14023,
+      "before": 14012,
+      "metric": "fereg-plugin/production_lines",
+      "reason": "PPML layout now rejects string variables bound to numeric-only inputs, as OLS does (plan Phase 6 item 5)."
     },
     {
-      "after": 1094,
-      "before": 1092,
-      "metric": "function/crates/fereg-core/src/ppml/memory.rs/estimate_route#1",
-      "reason": "Separation report bank per plan decision D9: preflight and initial reservation bounded to 256 generations, per-generation fallible growth beyond that."
+      "after": 7011,
+      "before": 7006,
+      "metric": "file/crates/fereg-core/src/fe/borrowed_map.rs",
+      "reason": "modeled_bytes helper replacing an unwrap on the LSMR certificate workspace peak."
     },
     {
-      "after": 3453,
-      "before": 3447,
-      "metric": "file/crates/fereg-core/src/ppml/prepared_separation.rs",
-      "reason": "Separation report bank per plan decision D9: preflight and initial reservation bounded to 256 generations, per-generation fallible growth beyond that."
-    },
-    {
-      "after": 635,
-      "before": 627,
-      "metric": "function/crates/fereg-core/src/ppml/prepared_separation.rs/coordinate_prepared_ppml_separation#1",
-      "reason": "Separation report bank per plan decision D9: preflight and initial reservation bounded to 256 generations, per-generation fallible growth beyond that."
+      "after": 2589,
+      "before": 2578,
+      "metric": "file/crates/fereg-plugin/src/ppml_estimate.rs",
+      "reason": "PPML numeric-input layout check, matching the OLS layout rule."
     }
   ],
   "initial_source": "c4a98e44d0584548c6b7c19b10725767473f44d2",
@@ -550,7 +544,7 @@
             "line": 142
           },
           {
-            "condition": "config . solver_memory_budget . is_none_or ( | b | b . fits ( cached . bytes ( ) . unwrap ( ) as u128 ) )",
+            "condition": "config . solver_memory_budget . is_none_or ( | b | cached . bytes ( ) . is_some_and ( | bytes | b . fits ( bytes as u128 ) ) )",
             "line": 192
           },
           {
@@ -558,20 +552,20 @@
             "line": 204
           },
           {
-            "condition": "config . solver_memory_budget . is_none_or ( | b | b . fits ( parallel . bytes ( ) . unwrap ( ) as u128 ) )",
+            "condition": "config . solver_memory_budget . is_none_or ( | b | parallel . bytes ( ) . is_some_and ( | bytes | b . fits ( bytes as u128 ) ) )",
             "line": 206
           },
           {
-            "condition": "budget . is_none_or ( | budget | budget . fits ( peak . bytes ( ) . unwrap ( ) as u128 ) )",
+            "condition": "budget . is_none_or ( | budget | peak . bytes ( ) . is_some_and ( | bytes | budget . fits ( bytes as u128 ) ) )",
             "line": 258
           },
           {
             "condition": "let Some ( budget ) = config . solver_memory_budget",
-            "line": 285
+            "line": 287
           },
           {
             "condition": "! budget . fits ( required )",
-            "line": 286
+            "line": 288
           }
         ],
         "functions": {
@@ -584,12 +578,12 @@
             "lines": 64
           },
           "admit_generic_solver#1": {
-            "line": 266,
+            "line": 268,
             "lines": 28
           },
           "admit_parallel_projection#1": {
             "line": 251,
-            "lines": 14
+            "lines": 16
           },
           "default#1": {
             "line": 41,
@@ -600,11 +594,11 @@
             "lines": 7
           },
           "fallible_matrix_copy#1": {
-            "line": 295,
+            "line": 297,
             "lines": 8
           }
         },
-        "production_lines": 275
+        "production_lines": 277
       },
       "crates/fereg-core/src/fe/borrowed_map.rs": {
         "chunk_candidates": [],
@@ -1011,11 +1005,11 @@
           },
           {
             "condition": "output . len ( ) != values . ncols ( ) || scales . len ( ) != values . ncols ( ) || scaled_square_sums . len ( ) != values . ncols ( )",
-            "line": 7311
+            "line": 7318
           },
           {
             "condition": "output . capacity ( ) < elements",
-            "line": 7427
+            "line": 7434
           }
         ],
         "functions": {
@@ -1104,7 +1098,7 @@
             "lines": 21
           },
           "add_to#1": {
-            "line": 7451,
+            "line": 7458,
             "lines": 18
           },
           "apply_schur#1": {
@@ -1172,7 +1166,7 @@
             "lines": 13
           },
           "certified_result#1": {
-            "line": 7359,
+            "line": 7366,
             "lines": 20
           },
           "certified_rhs_norms#1": {
@@ -1180,7 +1174,7 @@
             "lines": 3
           },
           "certified_solver_result#1": {
-            "line": 7381,
+            "line": 7388,
             "lines": 29
           },
           "certify#1": {
@@ -1244,7 +1238,7 @@
             "lines": 51
           },
           "checkpoint_schur_copy#1": {
-            "line": 7481,
+            "line": 7488,
             "lines": 14
           },
           "coefficient_count#1": {
@@ -1256,11 +1250,11 @@
             "lines": 3
           },
           "compensated_add#1": {
-            "line": 7339,
+            "line": 7346,
             "lines": 9
           },
           "compensated_finite#1": {
-            "line": 7349,
+            "line": 7356,
             "lines": 9
           },
           "component_scaled_checkpoint_weights#1": {
@@ -1288,11 +1282,11 @@
             "lines": 25
           },
           "fallible_matrix_copy#1": {
-            "line": 7288,
+            "line": 7295,
             "lines": 5
           },
           "fallible_matrix_zeros#1": {
-            "line": 7294,
+            "line": 7301,
             "lines": 9
           },
           "fill_parallel_group_statistics#1": {
@@ -1394,6 +1388,10 @@
           "max_rhs#1": {
             "line": 1533,
             "lines": 3
+          },
+          "modeled_bytes#1": {
+            "line": 7289,
+            "lines": 5
           },
           "new#1": {
             "line": 947,
@@ -1532,7 +1530,7 @@
             "lines": 10
           },
           "reserved_zeros#1": {
-            "line": 7420,
+            "line": 7427,
             "lines": 15
           },
           "residualized#1": {
@@ -1620,7 +1618,7 @@
             "lines": 3
           },
           "trace#1": {
-            "line": 7470,
+            "line": 7477,
             "lines": 9
           },
           "try_checkpoint_schur#1": {
@@ -1636,7 +1634,7 @@
             "lines": 35
           },
           "update_workspace_norms#1": {
-            "line": 7515,
+            "line": 7522,
             "lines": 19
           },
           "validate_binary_layout#1": {
@@ -1652,7 +1650,7 @@
             "lines": 33
           },
           "weighted_column_norms#1": {
-            "line": 7304,
+            "line": 7311,
             "lines": 34
           },
           "weighted_dot_columns_into#1": {
@@ -1668,7 +1666,7 @@
             "lines": 11
           },
           "zero_certificate#1": {
-            "line": 7411,
+            "line": 7418,
             "lines": 8
           },
           "zero_rhs#1": {
@@ -1684,7 +1682,7 @@
             "lines": 43
           }
         },
-        "production_lines": 7006
+        "production_lines": 7011
       },
       "crates/fereg-core/src/fe/borrowed_map/three_fe_schur.rs": {
         "chunk_candidates": [],
@@ -18991,11 +18989,11 @@
           },
           {
             "condition": "spi . matrix_dimensions ( name ) ? != ( rows , columns )",
-            "line": 2473
+            "line": 2486
           },
           {
             "condition": "outputs . saved_channels . len ( ) != expected",
-            "line": 2568
+            "line": 2581
           }
         ],
         "functions": {
@@ -19032,27 +19030,27 @@
             "lines": 11
           },
           "fallible_clone_absorbed_terms#1": {
-            "line": 2660,
+            "line": 2673,
             "lines": 23
           },
           "fallible_clone_clusters#1": {
-            "line": 2694,
+            "line": 2707,
             "lines": 13
           },
           "fallible_clone_component#1": {
-            "line": 2603,
+            "line": 2616,
             "lines": 17
           },
           "fallible_clone_model#1": {
-            "line": 2621,
+            "line": 2634,
             "lines": 38
           },
           "fallible_clone_ols_request#1": {
-            "line": 2684,
+            "line": 2697,
             "lines": 9
           },
           "fallible_copy_values#1": {
-            "line": 2594,
+            "line": 2607,
             "lines": 8
           },
           "finish#1": {
@@ -19060,7 +19058,7 @@
             "lines": 5
           },
           "internal#1": {
-            "line": 2712,
+            "line": 2725,
             "lines": 3
           },
           "kind#1": {
@@ -19088,7 +19086,7 @@
             "lines": 25
           },
           "optional_position#1": {
-            "line": 2589,
+            "line": 2602,
             "lines": 4
           },
           "parse#1": {
@@ -19100,11 +19098,11 @@
             "lines": 14
           },
           "parse_residual_request#1": {
-            "line": 2533,
+            "line": 2546,
             "lines": 22
           },
           "parse_separation_methods#1": {
-            "line": 2489,
+            "line": 2502,
             "lines": 36
           },
           "position#1": {
@@ -19128,7 +19126,7 @@
             "lines": 8
           },
           "protocol#1": {
-            "line": 2708,
+            "line": 2721,
             "lines": 3
           },
           "publication_matrix_cells#1": {
@@ -19144,7 +19142,7 @@
             "lines": 7
           },
           "separation_method_capacity#1": {
-            "line": 2526,
+            "line": 2539,
             "lines": 6
           },
           "shadow_hash#1": {
@@ -19180,7 +19178,7 @@
             "lines": 74
           },
           "validate_matrix_layout#1": {
-            "line": 2383,
+            "line": 2396,
             "lines": 105
           },
           "validate_ppml_weights#1": {
@@ -19192,7 +19190,7 @@
             "lines": 51
           },
           "validate_saved_output_layout#1": {
-            "line": 2556,
+            "line": 2569,
             "lines": 32
           },
           "validate_shadow#1": {
@@ -19205,10 +19203,10 @@
           },
           "validate_variable_layout#1": {
             "line": 2301,
-            "lines": 81
+            "lines": 94
           }
         },
-        "production_lines": 2578
+        "production_lines": 2589
       },
       "crates/fereg-plugin/src/ppml_execution.rs": {
         "chunk_candidates": [],
@@ -19860,14 +19858,14 @@
         "dispatch_candidates": 1225,
         "files_over_1500": 16,
         "functions_over_150": 65,
-        "production_lines": 92892
+        "production_lines": 92899
       },
       "fereg-plugin": {
         "chunk_candidates": 0,
         "dispatch_candidates": 129,
         "files_over_1500": 3,
         "functions_over_150": 13,
-        "production_lines": 14012
+        "production_lines": 14023
       }
     },
     "schema": 1
