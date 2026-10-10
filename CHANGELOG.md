@@ -2,6 +2,19 @@
 
 ## 0.5.0 beta — unreleased
 
+- Improvement programme (2026-10-10): published estimates are unchanged
+  (73-case replay with zero exact differences against the programme base).
+  Break now also interrupts OLS derived outputs and saved fixed-effect
+  recovery, and long serial inference passes check for Break every 1,024
+  rows. A Break during `feppml` result validation now returns `r(1)` instead
+  of `r(3499)`, and its display runs after the commit. `feppml` rejects a
+  string variable used as the outcome, a weight or a continuous regressor
+  before reading data. Large `feppml` samples with zero outcomes need much
+  less admitted memory: separation report records are charged for at most 256
+  generations rather than one per observation (about 9.6 GB less at ten
+  million rows). `solver()` and `preconditioner()` names are case-insensitive
+  in `fereg`. The internal `_fereg_ols.ado` developer adapter is no longer
+  installed.
 - Fix (Windows): the plugin now pins its own DLL on first use. Its cached
   worker threads outlive each command, so unloading the DLL (as the Windows
   loader test does right after the doctor check) could crash the process

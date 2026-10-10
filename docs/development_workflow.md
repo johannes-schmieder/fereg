@@ -22,7 +22,7 @@ FE boundary-response and cancellation witnesses. Licensed Stata profiles also in
 `development` profile runs every `tests/stata/development` fixture, and `triage`
 lists the remaining fixtures no other profile or script runs, for Johannes to map
 into a verdict profile or retire.
-See [the Stata runner](../STATA_CI_RUNNER.md). Target mapped tests during development;
+See [the Stata runner](../ci/README.md). Target mapped tests during development;
 run the applicable integration checks before committing runtime changes.
 GitHub testing is paused. Mac remains the default qualification host; Johannes
 additionally requested bounded Linux and Windows build checks on 2026-10-07.
@@ -177,3 +177,21 @@ growth explanations remain attached to the same measurements. Refresh it with
 `python3 scripts/check_complexity.py --write-inventory FILE` and copy the result
 into `tests/reference/complexity.json`; growth entries record
 `{metric, before, after, reason}`.
+
+## Scientific validation
+
+[SPEC](SPEC.md) defines the scientific contract. [VALIDATION](VALIDATION.md)
+records the accepted scope and caveats. No historical campaign is a substitute
+for independent scientific witnesses on the responsibilities a change affects.
+
+Dense Rust oracles and Decimal/Python/Mata witnesses cover coefficients,
+prediction, covariance and PSD, rank and DoF, FE reconstruction, separation and
+both mean-bias corrections. Licensed fixtures cover Stata syntax and metadata,
+original factor slots/base flags, publication, rollback and Break. Actual-plugin
+replay checks complete transactions, repeatability and stable thread decisions.
+
+Arithmetic-preserving changes require exact unaffected results and available
+route signatures. Declared numerical changes retain independent targets, fixed
+seeds, deterministic repeats and exact results outside the affected scope.
+Missing, failed or inconclusive evidence remains visible. Mac-only qualification
+does not establish new Linux, SCC, Windows or Intel-host Stata evidence.

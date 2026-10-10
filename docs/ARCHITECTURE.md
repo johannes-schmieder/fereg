@@ -78,8 +78,8 @@ are prohibited. Explicit LSMR/CMG and both bias-correction modes remain supporte
 
 ## Repository boundaries
 
-One plugin per platform serves both public commands. `engine()` and the old
-engine identity results are removed. Scientific solver-route diagnostics remain.
+One plugin per platform serves both public commands. Scientific solver-route
+diagnostics remain.
 There is no legacy binary, selector, fallback, comparator packaging or required
 historical timing campaign. The retained benchmark is descriptive and local.
 Tests, pinned independent references and the complexity ratchet remain maintained.
